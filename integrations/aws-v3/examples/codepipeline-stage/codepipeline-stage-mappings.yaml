@@ -1,5 +1,3 @@
-deleteDependentEntities: true
-createMissingRelatedEntities: true
 resources:
   - kind: AWS::CodePipeline::Stage
     selector:

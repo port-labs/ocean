@@ -1,4 +1,6 @@
 from typing import cast
+
+from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -202,10 +204,11 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         )
 
         exporter = OrganizationsAccountExporter(session)
+        region = await RegionHelper.get_custom_partition_region_or_none(session) or ""
         options = PaginatedAccountRequest(
             include=aws_resource_config.selector.include_actions,
             account_id=account["Id"],
-            region="",
+            region=region,
         )
 
         try:

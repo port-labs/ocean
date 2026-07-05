@@ -1,0 +1,78 @@
+{
+  "identifier": "arn:aws:rds:us-east-1:123456789012:cluster:my-aurora-cluster",
+  "title": "my-aurora-cluster",
+  "blueprint": "rdsDbCluster",
+  "properties": {
+    "activityStreamStatus": "stopped",
+    "associatedRoles": [],
+    "autoMinorVersionUpgrade": true,
+    "availabilityZones": [
+      "us-east-1a",
+      "us-east-1b",
+      "us-east-1c"
+    ],
+    "backupRetentionPeriod": 7,
+    "clusterCreateTime": "2024-03-15T10:22:33.456Z",
+    "copyTagsToSnapshot": true,
+    "crossAccountClone": false,
+    "databaseName": "myappdb",
+    "dbClusterArn": "arn:aws:rds:us-east-1:123456789012:cluster:my-aurora-cluster",
+    "dbClusterIdentifier": "my-aurora-cluster",
+    "dbClusterMembers": [
+      {
+        "DBInstanceIdentifier": "my-aurora-cluster-instance-1",
+        "IsClusterWriter": true,
+        "DBClusterParameterGroupStatus": "in-sync",
+        "PromotionTier": 1
+      },
+      {
+        "DBInstanceIdentifier": "my-aurora-cluster-instance-2",
+        "IsClusterWriter": false,
+        "DBClusterParameterGroupStatus": "in-sync",
+        "PromotionTier": 1
+      }
+    ],
+    "dbClusterResourceId": "cluster-ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "deletionProtection": true,
+    "earliestRestorableTime": "2024-03-15T10:30:00.000Z",
+    "endpoint": "my-aurora-cluster.cluster-abcdefgh1234.us-east-1.rds.amazonaws.com",
+    "engine": "aurora-mysql",
+    "engineMode": "provisioned",
+    "engineVersion": "8.0.mysql_aurora.3.04.0",
+    "globalWriteForwardingStatus": "disabled",
+    "httpEndpointEnabled": false,
+    "iamDatabaseAuthenticationEnabled": true,
+    "kmsKeyId": "arn:aws:kms:us-east-1:123456789012:key/mrk-abcdef1234567890",
+    "latestRestorableTime": "2024-03-20T08:15:00.000Z",
+    "masterUsername": "admin",
+    "multiAZ": true,
+    "networkType": "IPV4",
+    "port": 3306,
+    "preferredBackupWindow": "02:00-03:00",
+    "preferredMaintenanceWindow": "sun:05:00-sun:06:00",
+    "readerEndpoint": "my-aurora-cluster.cluster-ro-abcdefgh1234.us-east-1.rds.amazonaws.com",
+    "status": "available",
+    "storageEncrypted": true,
+    "storageType": "aurora",
+    "tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      }
+    ],
+    "vpcSecurityGroups": [
+      {
+        "VpcSecurityGroupId": "sg-0123456789abcdef0",
+        "Status": "active"
+      }
+    ],
+    "dbSubnetGroup": "my-db-subnet-group"
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

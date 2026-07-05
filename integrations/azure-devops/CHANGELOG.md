@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.10 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.10.9 (2026-07-01)
+
+
+### Improvements
+
+- Fixed unbounded concurrent file downloads in `IncludedFilesEnricher`. File downloads triggered by `includedFiles` config previously fired all at once via `asyncio.gather` with no concurrency cap, causing 429 bursts on orgs with large repo counts.
+- Fixed work item sync to process projects concurrently using `BoundedSemaphore` fan-out, eliminating the serial per-project loop.
+- Fixed unbounded concurrent area path fetches in `enrich_teams_with_area_paths`. Area path calls previously fired all at once per batch, causing repeated 5-minute rate limit holds on orgs with large team counts.
+- Fixed `httpx.ReadError` during response body reads not triggering the rate-limit cooldown. ADO occasionally closes the TCP connection mid-response instead of returning a proper 429; the integration now signals a 300-second throttle on `ReadError`, preventing it from silently aborting the sync.
+
+
+## 0.10.8 (2026-06-30)
+
+
+### Bug Fixes
+
+- Added Azure DevOps-specific 429 retry handling that pauses requests through the affected client for a cooldown and retries rate-limited requests up to 10 times before failing.
+
+
+## 0.10.7 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
 ## 0.10.6 (2026-06-28)
 
 
