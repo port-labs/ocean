@@ -360,7 +360,9 @@ class ExecutionManager:
         """
         Round-robin worker across global and partitions queues.
         """
-        with logger.contextualize(worker_id=asyncio.current_task().get_name()):
+        current_task = asyncio.current_task()
+        worker_id = current_task.get_name() if current_task else "unknown"
+        with logger.contextualize(worker_id=worker_id):
             while not self._is_shutting_down.is_set():
                 try:
                     # Enable graceful worker shutdown when there are no active sources to process

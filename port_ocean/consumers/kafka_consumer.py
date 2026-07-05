@@ -3,7 +3,12 @@ import signal
 from asyncio import get_running_loop, ensure_future
 from typing import Any, Callable, Awaitable
 
-from confluent_kafka import Consumer, KafkaException, Message, TopicPartition
+from confluent_kafka import (  # type: ignore[import-untyped]
+    Consumer,
+    KafkaException,
+    Message,
+    TopicPartition,
+)
 from loguru import logger
 from pydantic.v1 import BaseModel
 

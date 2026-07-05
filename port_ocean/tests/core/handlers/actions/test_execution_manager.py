@@ -64,11 +64,12 @@ def generate_mock_action_run(
 def generate_mock_wf_node_run(
     action_type: str = "test_action",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
+    run_id: str | None = None,
 ) -> WorkflowNodeRun:
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
     return WorkflowNodeRun(
-        id=f"test-wf-node-run-id-{uuid.uuid4()}",
+        id=run_id or f"test-wf-node-run-id-{uuid.uuid4()}",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",
@@ -464,7 +465,7 @@ class TestExecutionManager:
 
         assert execution_manager._buffer_queue_counts[RunKind.ACTION] == {}
         assert execution_manager._buffer_queue_counts[RunKind.WORKFLOW_NODE] == {
-            "test_action": 1
+            run.buffer_utilization_key: 1
         }
 
         await execution_manager._handle_global_queue_once()
@@ -503,10 +504,12 @@ class TestExecutionManager:
         execution_manager._poll_check_interval_seconds = 0
         mock_port_client.claim_pending_runs.return_value = []
 
-        for _ in range(2):
-            await execution_manager._add_run_to_queue(
-                generate_mock_wf_node_run(), GLOBAL_SOURCE
-            )
+        run = generate_mock_wf_node_run(run_id="saturated-wf-run")
+        limit = execution_manager._get_max_runs_buffer_util_per_action()
+        assert limit is not None
+        execution_manager._buffer_queue_counts[RunKind.WORKFLOW_NODE][
+            run.buffer_utilization_key
+        ] = limit
 
         polling_task = asyncio.create_task(execution_manager._poll_action_runs())
         await asyncio.sleep(0.1)
@@ -516,7 +519,7 @@ class TestExecutionManager:
             limit=ANY,
             visibility_timeout_ms=execution_manager._visibility_timeout_ms,
             exclude_action_identifiers=[],
-            exclude_workflow_invocation_types=["test_action"],
+            exclude_workflow_invocation_types=[run.buffer_utilization_key],
         )
 
     @pytest.mark.asyncio
