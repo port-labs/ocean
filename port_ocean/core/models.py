@@ -195,14 +195,11 @@ class RunKind(StrEnum):
     WORKFLOW_NODE = "workflow_node"
 
 
-class IntegrationActionInvocation(BaseModel):
+class IntegrationActionInvocationPayload(BaseModel):
     type: Literal["INTEGRATION_ACTION"]
     installationId: str
     integrationActionType: str
     integrationActionExecutionProperties: dict[str, Any]
-
-
-IntegrationActionInvocationPayload = IntegrationActionInvocation
 
 
 class WorkflowIntegrationActionConfig(BaseModel):
@@ -211,13 +208,6 @@ class WorkflowIntegrationActionConfig(BaseModel):
     integrationProvider: str
     integrationInvocationType: str
     integrationActionExecutionProperties: dict[str, Any]
-
-    class Config:
-        extra = Extra.allow
-
-
-class WorkflowNode(BaseModel):
-    config: WorkflowIntegrationActionConfig | None = None
 
     class Config:
         extra = Extra.allow
@@ -263,7 +253,7 @@ class ActionRun(BaseModel, IntegrationRun):
 
     id: str
     status: RunStatus
-    payload: IntegrationActionInvocation
+    payload: IntegrationActionInvocationPayload
     action: Action
 
     @property
@@ -292,15 +282,18 @@ class ActionRun(BaseModel, IntegrationRun):
 
 
 class WorkflowNodeRun(BaseModel, IntegrationRun):
+    class WorkflowNode(BaseModel):
+        config: WorkflowIntegrationActionConfig
+
+    class Config:
+        allow_population_by_field_name = True
+        extra = Extra.allow
+
     id: str = Field(alias="identifier")
     status: WorkflowNodeRunStatus
     config: WorkflowIntegrationActionConfig | None = None
     node: WorkflowNode | None = None
     output: dict[str, Any] = Field(default_factory=dict)
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = Extra.allow
 
     @root_validator(skip_on_failure=True)
     def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:
