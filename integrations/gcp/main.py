@@ -4,6 +4,8 @@ import os
 import tempfile
 import typing
 from asyncio import BoundedSemaphore
+import gcp_core.webhook_processors.asset_feed_processor as _feed_processor
+from gcp_core.webhook_processors.asset_feed_processor import AssetFeedProcessor
 
 from fastapi import Request, Response
 from loguru import logger
@@ -121,6 +123,9 @@ async def setup_real_time_request_controllers() -> None:
         BACKGROUND_TASK_THRESHOLD = float(
             PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 10
         )
+
+        _feed_processor.rate_limiter = PROJECT_V3_GET_REQUESTS_RATE_LIMITER
+        _feed_processor.semaphore = PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
@@ -336,3 +341,6 @@ async def feed_events_callback(
         logger.exception(f"Got error {str(e)} while handling a real time event")
         return Response(status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR)
     return Response(status_code=200)
+
+
+ocean.add_webhook_processor("/events", AssetFeedProcessor)
