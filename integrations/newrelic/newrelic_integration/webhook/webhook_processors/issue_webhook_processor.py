@@ -2,9 +2,7 @@ import typing
 
 from loguru import logger
 from port_ocean.context.event import event as ocean_event
-from pydantic.v1 import ValidationError
 
-from newrelic_integration.core.issues import IssueEvent
 from newrelic_integration.overrides import NewRelicPortAppConfig
 from newrelic_integration.webhook.issue_event_utils import (
     enrich_issue_entity_relations,
@@ -22,19 +20,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class IssueWebhookProcessor(BaseWebhookProcessor):
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        return await self.validate_payload(event.payload)
-
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         app_config = typing.cast(NewRelicPortAppConfig, ocean_event.port_app_config)
         return get_issue_kinds(app_config)
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        try:
-            IssueEvent(**payload)
-            return True
-        except (ValidationError, TypeError):
-            return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

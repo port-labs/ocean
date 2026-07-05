@@ -30,21 +30,13 @@ def get_issue_kinds(app_config: NewRelicPortAppConfig) -> list[str]:
 
 
 def get_entity_kinds(app_config: NewRelicPortAppConfig) -> list[str]:
-    kinds: list[str] = []
-    for resource in app_config.resources:
-        if resource.kind in RESYNC_ONLY_KINDS:
-            continue
-        if resource.kind == DEFAULT_ISSUE_KIND:
-            continue
-        if (
-            resource.selector.newrelic_types
-            and ISSUE_ENTITY_TYPE in resource.selector.newrelic_types
-            and not resource.selector.entity_query_filter
-        ):
-            continue
-        if resource.selector.entity_query_filter:
-            kinds.append(resource.kind)
-    return kinds
+    return [
+        resource.kind
+        for resource in app_config.resources
+        if resource.selector.entity_query_filter
+        and resource.kind not in RESYNC_ONLY_KINDS
+        and resource.kind != DEFAULT_ISSUE_KIND
+    ]
 
 
 async def enrich_issue_entity_relations(
