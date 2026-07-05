@@ -19,7 +19,7 @@ EXTERNAL_ID = "gl_42_99"
 def make_run() -> WorkflowNodeRun:
     return WorkflowNodeRun(
         id="run-1",
-        nodeUid="test-node-uid",
+        node_uid="test-node-uid",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",

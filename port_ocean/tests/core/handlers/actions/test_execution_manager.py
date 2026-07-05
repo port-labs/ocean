@@ -71,7 +71,7 @@ def generate_mock_wf_node_run(
         integrationActionExecutionProperties = {}
     return WorkflowNodeRun(
         id=run_id or f"test-wf-node-run-id-{uuid.uuid4()}",
-        nodeUid=node_uid,
+        node_uid=node_uid,
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",

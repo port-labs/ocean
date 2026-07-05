@@ -23,6 +23,7 @@ def make_run(execution_properties: dict[str, Any]) -> ActionRun:
     return ActionRun(
         id="run-123",
         status=ActionRunStatus.IN_PROGRESS,
+        action=ActionRun.Action(identifier="update_repo_external_properties"),
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
             installationId="inst-1",

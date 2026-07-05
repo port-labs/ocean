@@ -27,8 +27,8 @@ PIPELINE_RESPONSE = {
 
 def make_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
     return WorkflowNodeRun(
-        identifier="run-1",
-        nodeUid="test-node-uid",
+        id="run-1",
+        node_uid="test-node-uid",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         node=WorkflowNodeRun.WorkflowNode(
             config=WorkflowIntegrationActionConfig(
