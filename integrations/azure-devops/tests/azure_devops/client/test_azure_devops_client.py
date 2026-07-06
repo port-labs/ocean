@@ -620,6 +620,15 @@ def mock_azure_client() -> AzureDevopsClient:
     return AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
 
+def test_clients_for_same_org_use_client_local_rate_limiters() -> None:
+    client_1 = AzureDevopsClient(
+        f"{MOCK_ORG_URL}/", MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME
+    )
+    client_2 = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    assert client_1._rate_limiter is not client_2._rate_limiter
+
+
 @pytest.fixture
 def sample_folder_patterns() -> List[FolderPattern]:
     return [
@@ -2052,6 +2061,64 @@ async def test_generate_work_items_raises_on_malformed_batch(
 
     assert len(collected_items) == 200
     assert batch_call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_generate_work_items_multiple_projects_concurrent(
+    mock_event_context: MagicMock,
+) -> None:
+    """
+    Tests that work items from multiple projects are all returned when projects
+    are processed concurrently via semaphore fan-out.
+    """
+    client = AzureDevopsClient(
+        "https://fake_org_url.com", PatAuthProvider("fake_pat"), "fake_username"
+    )
+    projects = [{"id": f"proj{i}", "name": f"Project {i}"} for i in range(1, 4)]
+
+    def create_work_item(wi_id: int, proj_id: str) -> Dict[str, Any]:
+        return {"id": wi_id, "fields": {"System.TeamProject": proj_id}}
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        proj_id = next((p["id"] for p in projects if p["id"] in url), None)
+        if "wit/wiql" in url and proj_id:
+            return Response(
+                status_code=200,
+                request=Request(method, url),
+                json={
+                    "workItems": [
+                        {"id": int(proj_id[-1]) * 100 + i} for i in range(1, 4)
+                    ]
+                },
+            )
+        if "wit/workitems" in url and proj_id:
+            params = kwargs.get("params", {})
+            ids = [int(x) for x in params.get("ids", "").split(",") if x]
+            return Response(
+                status_code=200,
+                request=Request(method, url),
+                json={"value": [create_work_item(wi_id, proj_id) for wi_id in ids]},
+            )
+        return Response(status_code=404, request=Request(method, url))
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield projects
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            collected_items: List[Dict[str, Any]] = []
+            async for item_batch in client.generate_work_items(wiql=None, expand="All"):
+                collected_items.extend(item_batch)
+
+    # 3 projects × 3 work items each = 9 total
+    assert len(collected_items) == 9
 
 
 @pytest.mark.asyncio

@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.15.3-beta (2026-07-05)
+
+
+### Improvements
+
+- Added static examples
+
+
+## 2.15.2-beta (2026-07-05)
+
+
+### Improvements
+
+- Added missing/fixed existing internal examples
+
+
+## 2.15.1-beta (2026-07-05)
+
+
+### Improvements
+
+- Typing for models uses new syntax rather than the deprecated format
+
+
+## 2.15.0-beta (2026-07-02)
+
+
+### Improvements
+
+- Added support for GovCloud environments
+
+
+## 2.14.3-beta (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 2.14.2-beta (2026-07-01)
+
+
+### Improvements
+
+- Fixed typo in alias kwarg which caused ExportedEnvironmentVariables field in CodeBuild Build Run to not be ingested properly
+
+
 ## 2.14.1-beta (2026-06-30)
 
 

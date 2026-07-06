@@ -139,6 +139,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/newrelic",
+      "envFile": "${workspaceFolder}/integrations/newrelic/.env",
+      "justMyCode": false,
+      "name": "Run New Relic integration",
+      "program": "${workspaceFolder}/integrations/newrelic/debug.py",
+      "python": "${workspaceFolder}/integrations/newrelic/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/aws-v3",
       "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
       "justMyCode": false,
