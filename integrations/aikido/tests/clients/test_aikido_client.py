@@ -9,7 +9,9 @@ from clients.aikido_client import (
     ISSUES_ENDPOINT,
 )
 from clients.options import ListRepositoriesOptions, ListContainersOptions
-from helpers.exceptions import MissingIntegrationCredentialException
+from helpers.exceptions import (
+    MissingIntegrationCredentialException,
+)
 from helpers.utils import IgnoredError
 
 
@@ -185,6 +187,46 @@ async def test_send_api_request_non_404_http_error(aikido_client: AikidoClient) 
 
 
 @pytest.mark.asyncio
+async def test_send_list_api_request_returns_list(aikido_client: AikidoClient) -> None:
+    """_send_list_api_request returns the parsed list from the response."""
+    items = [{"id": "1"}, {"id": "2"}]
+    mock_response = MagicMock(spec=Response)
+    mock_response.json.return_value = items
+    mock_response.raise_for_status.return_value = None
+
+    with patch.object(
+        aikido_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+
+        result = await aikido_client._send_list_api_request("test_endpoint")
+
+        assert result == items
+        mock_request.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_send_list_api_request_propagates_404(
+    aikido_client: AikidoClient,
+) -> None:
+    """_send_list_api_request never swallows errors — 404 must propagate."""
+    sample_req = Request("GET", "https://api.example.com/not_found")
+    mock_response = MagicMock(spec=Response)
+    mock_response.status_code = 404
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "404", request=sample_req, response=mock_response
+    )
+
+    with patch.object(
+        aikido_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+
+        with pytest.raises(HTTPStatusError):
+            await aikido_client._send_list_api_request("not_found")
+
+
+@pytest.mark.asyncio
 async def test_init_strips_trailing_slash_from_base_url() -> None:
     client = AikidoClient(
         base_url="https://api.example.com/",
@@ -205,7 +247,7 @@ async def test_get_paginated_resource_uses_first_page_and_page_size(
     responses = [first_page, second_page]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(
@@ -247,7 +289,7 @@ async def test_get_open_issue_groups_paginates(aikido_client: AikidoClient) -> N
     responses = [first_page, second_page]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(
@@ -281,7 +323,7 @@ async def test_get_teams_paginates(aikido_client: AikidoClient) -> None:
     responses = [first_page, second_page]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(
@@ -317,7 +359,7 @@ async def test_get_paginated_resource_continues_when_yielded_batch_is_mutated(
     responses = [first_page, second_page]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def items_to_parse(
@@ -357,7 +399,7 @@ async def test_get_containers_paginates(aikido_client: AikidoClient) -> None:
     responses = [first_page, second_page]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(
@@ -393,7 +435,7 @@ async def test_get_repositories_paginates_with_default_params(
     responses = [first_page, second_page]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(
@@ -431,7 +473,7 @@ async def test_get_repositories_paginates_with_options(
     options: ListRepositoriesOptions = {"include_inactive": True}
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(
@@ -469,7 +511,7 @@ async def test_get_containers_paginates_with_options(
     options: ListContainersOptions = {"filter_status": "inactive"}
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(
@@ -502,7 +544,7 @@ async def test_get_all_issues_returns_list_on_success(
     issues = [{"id": "1"}, {"id": "2"}]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = issues
 
@@ -510,9 +552,8 @@ async def test_get_all_issues_returns_list_on_success(
 
     assert result == issues
     mock_request.assert_awaited_once()
-    _, kwargs = mock_request.call_args
-    assert kwargs["params"] == {"format": "json"}
     assert mock_request.call_args.args[0] == ISSUES_ENDPOINT
+    assert mock_request.call_args.kwargs["params"] == {"format": "json"}
 
 
 @pytest.mark.asyncio
@@ -521,7 +562,7 @@ async def test_get_all_issues_reraises_on_timeout(
 ) -> None:
     """A persistent timeout must fail the kind, not report an empty fetch."""
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = ReadTimeout("issues/export timed out")
 
@@ -534,7 +575,7 @@ async def test_get_all_issues_reraises_on_generic_error(
     aikido_client: AikidoClient,
 ) -> None:
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = Exception("boom")
 
@@ -543,15 +584,24 @@ async def test_get_all_issues_reraises_on_generic_error(
 
 
 @pytest.mark.asyncio
-async def test_get_all_issues_raises_on_non_list_response(
+async def test_get_all_issues_reraises_404_as_http_error(
     aikido_client: AikidoClient,
 ) -> None:
-    with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = {"unexpected": "shape"}
+    """issues/export uses _send_list_api_request which never ignores errors,
+    so a 404 propagates as HTTPStatusError."""
+    sample_req = Request("GET", "https://api.example.com/api/public/v1/issues/export")
+    mock_response = MagicMock(spec=Response)
+    mock_response.status_code = 404
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "404", request=sample_req, response=mock_response
+    )
 
-        with pytest.raises(ValueError):
+    with patch.object(
+        aikido_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+
+        with pytest.raises(HTTPStatusError):
             await aikido_client.get_all_issues()
 
 
@@ -564,7 +614,7 @@ async def test_get_paginated_resource_reraises_on_timeout(
     responses: list[Any] = [first_page, ReadTimeout("page 2 timed out")]
 
     with patch.object(
-        aikido_client, "_send_api_request", new_callable=AsyncMock
+        aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
 
         async def _side_effect(

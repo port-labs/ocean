@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, List, Dict, Optional
-from httpx import HTTPStatusError, AsyncClient
+from httpx import HTTPStatusError, AsyncClient, Response
 from aiolimiter import AsyncLimiter
 from clients.auth_client import AikidoAuth
 from clients.options import ListRepositoriesOptions, ListContainersOptions
@@ -62,6 +62,49 @@ class AikidoClient:
                 return True
         return False
 
+    async def _execute_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        params: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> Optional[Response]:
+        """
+        Execute an authenticated, rate-limited request.
+        Returns the httpx Response on success, or None when the error is intentionally
+        ignored (e.g. 404). Raises for all other errors.
+        """
+        token = await self.auth.get_token()
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        async with self.rate_limiter:
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
+            try:
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    headers=headers,
+                )
+                response.raise_for_status()
+                return response
+            except HTTPStatusError as e:
+                if self._should_ignore_error(
+                    e, url, method, ignored_errors, ignore_default_errors
+                ):
+                    return None
+                logger.error(f"API request failed for {url}: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during API request to {url}: {e}")
+                raise
+
     async def _send_api_request(
         self,
         endpoint: str,
@@ -72,39 +115,30 @@ class AikidoClient:
         ignore_default_errors: bool = True,
     ) -> Dict[str, Any]:
         """
-        Send an authenticated API request to the Aikido API.
-        Rate limited to stay under Aikido's 20 req/min limit.
+        Send a request to an endpoint that returns a single object.
+        Ignored errors (e.g. 404) return an empty dict.
         """
-        token = await self.auth.get_token()
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        async with self.rate_limiter:
+        response = await self._execute_request(
+            endpoint, method, params, json_data, ignored_errors, ignore_default_errors
+        )
+        return response.json() if response is not None else {}
 
-            headers = {
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            }
-
-            try:
-                response = await self.http_client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=json_data,
-                    headers=headers,
-                )
-                response.raise_for_status()
-                return response.json()
-            except HTTPStatusError as e:
-                if self._should_ignore_error(
-                    e, url, method, ignored_errors, ignore_default_errors
-                ):
-                    return {}
-                logger.error(f"API request failed for {url}: {e}")
-                raise
-            except Exception as e:
-                logger.error(f"Unexpected error during API request to {url}: {e}")
-                raise
+    async def _send_list_api_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        params: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Send a request to an endpoint that returns a list.
+        All errors propagate — list endpoints must not silently return empty
+        data, as that would cause false reconciliation deletions.
+        """
+        response = await self._execute_request(
+            endpoint, method, params, json_data, ignore_default_errors=False
+        )
+        return response.json() if response is not None else []
 
     async def get_paginated_resource(
         self,
@@ -118,13 +152,10 @@ class AikidoClient:
 
         while True:
             try:
-                resources = await self._send_api_request(endpoint, params=params)
+                resources = await self._send_list_api_request(endpoint, params=params)
             except Exception as e:
                 logger.error(f"Error fetching {resource_name}: {e}")
                 raise
-
-            if not isinstance(resources, list):
-                break
 
             if not resources:
                 logger.info(f"No {resource_name} returned for page {params['page']}")
@@ -166,18 +197,13 @@ class AikidoClient:
         fails instead of reporting an empty successful fetch, which would cause
         reconciliation to delete existing issue entities.
         """
-        endpoint = ISSUES_ENDPOINT
-        params = {"format": "json"}
         try:
-            issues = await self._send_api_request(endpoint, params=params)
+            return await self._send_list_api_request(
+                ISSUES_ENDPOINT, params={"format": "json"}
+            )
         except Exception as e:
             logger.error(f"Error fetching issues: {e}")
             raise
-        if not isinstance(issues, list):
-            raise ValueError(
-                f"Unexpected response type from {endpoint}: expected list, got {type(issues).__name__}"
-            )
-        return issues
 
     async def get_issues_in_batches(
         self, batch_size: int = 100
