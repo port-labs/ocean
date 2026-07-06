@@ -397,21 +397,11 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.S3_BUCKET)
 async def resync_s3(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = []
     async for credentials in get_accounts():
-        allowed_regions = list(
-            filter(
-                aws_resource_config.selector.is_region_allowed,
-                credentials.enabled_regions,
-            )
+        tasks.append(
+            resync_resources_for_account(credentials, kind, resync_s3_bucket)
         )
-        if allowed_regions:
-            tasks.append(
-                resync_s3_bucket(
-                    kind, credentials, get_available_regions(allowed_regions)
-                )
-            )
 
         if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):

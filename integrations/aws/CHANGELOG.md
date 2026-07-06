@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed S3 buckets not syncing when the chosen region denied access; `resync_s3_bucket` now iterates allowed regions (standard regions first, then opt-in) and falls back to the next region when one returns an access-denied error
+- Fixed S3 buckets (and other global resources) not syncing when the first attempted region denied access; region iteration now prioritises standard regions over opt-in ones and falls back to the next region when one returns an access-denied error
 
 
 ## 0.3.77 (2026-06-25)
