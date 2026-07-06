@@ -3,6 +3,7 @@ from httpx import HTTPStatusError, AsyncClient
 from aiolimiter import AsyncLimiter
 from clients.auth_client import AikidoAuth
 from clients.options import ListRepositoriesOptions, ListContainersOptions
+from helpers.utils import IgnoredError
 from loguru import logger
 from port_ocean.utils import http_async_client
 
@@ -26,11 +27,40 @@ class AikidoClient:
     Implements methods to fetch repositories and issues
     """
 
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=404,
+            message="Resource not found at endpoint",
+            type="NOT_FOUND",
+        ),
+    ]
+
     def __init__(self, base_url: str, client_id: str, client_secret: str):
         self.base_url = base_url.rstrip("/")
         self.http_client: AsyncClient = http_async_client
         self.auth = AikidoAuth(base_url, client_id, client_secret, self.http_client)
         self.rate_limiter = AsyncLimiter(REQUESTS_PER_MINUTE, 60)
+
+    def _should_ignore_error(
+        self,
+        error: HTTPStatusError,
+        resource: str,
+        method: str,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> bool:
+        all_ignored_errors = (ignored_errors or []) + (
+            self._DEFAULT_IGNORED_ERRORS if ignore_default_errors else []
+        )
+        status_code = error.response.status_code
+
+        for ignored_error in all_ignored_errors:
+            if str(status_code) == str(ignored_error.status):
+                logger.warning(
+                    f"Failed to {method} resource at {resource} due to {ignored_error.message} with status code {status_code}"
+                )
+                return True
+        return False
 
     async def _send_api_request(
         self,
@@ -38,6 +68,8 @@ class AikidoClient:
         method: str = "GET",
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
     ) -> Dict[str, Any]:
         """
         Send an authenticated API request to the Aikido API.
@@ -64,10 +96,9 @@ class AikidoClient:
                 response.raise_for_status()
                 return response.json()
             except HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    logger.warning(
-                        f"Requested resource not found: {url}; message: {str(e)}"
-                    )
+                if self._should_ignore_error(
+                    e, url, method, ignored_errors, ignore_default_errors
+                ):
                     return {}
                 logger.error(f"API request failed for {url}: {e}")
                 raise

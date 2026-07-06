@@ -10,6 +10,7 @@ from clients.aikido_client import (
 )
 from clients.options import ListRepositoriesOptions, ListContainersOptions
 from helpers.exceptions import MissingIntegrationCredentialException
+from helpers.utils import IgnoredError
 
 
 @pytest.fixture
@@ -63,6 +64,51 @@ async def test_send_api_request_404(aikido_client: AikidoClient) -> None:
         mock_request.return_value = mock_response
         result = await aikido_client._send_api_request("not_found")
         assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_ignores_custom_error(
+    aikido_client: AikidoClient,
+) -> None:
+    """A status code passed via ignored_errors is treated as an empty result."""
+    sample_req = Request("GET", "https://api.example.com/error")
+    mock_response = MagicMock(spec=Response)
+    mock_response.status_code = 500
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "500", request=sample_req, response=mock_response
+    )
+
+    with patch.object(
+        aikido_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+        result = await aikido_client._send_api_request(
+            "test_endpoint",
+            ignored_errors=[IgnoredError(status=500, message="server error")],
+        )
+        assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_raises_404_when_defaults_disabled(
+    aikido_client: AikidoClient,
+) -> None:
+    """Disabling default ignored errors makes a 404 propagate instead of returning {}."""
+    sample_req = Request("GET", "https://api.example.com/not_found")
+    mock_response = MagicMock(spec=Response)
+    mock_response.status_code = 404
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "404", request=sample_req, response=mock_response
+    )
+
+    with patch.object(
+        aikido_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+        with pytest.raises(HTTPStatusError):
+            await aikido_client._send_api_request(
+                "not_found", ignore_default_errors=False
+            )
 
 
 @pytest.mark.asyncio
@@ -567,8 +613,15 @@ async def test_token_acquisition_outside_rate_limiter(
         call_order.append("get_token")
         return "test_token"
 
-    async def tracked_acquire(amount: float = 1) -> None:
-        call_order.append("rate_limiter_acquire")
+    class RecordingLimiter:
+        async def __aenter__(self) -> "RecordingLimiter":
+            call_order.append("rate_limiter_acquire")
+            return self
+
+        async def __aexit__(self, *args: Any) -> bool:
+            return False
+
+    aikido_client.rate_limiter = RecordingLimiter()  # type: ignore[assignment]
 
     mock_response = MagicMock(spec=Response)
     mock_response.json.return_value = {"key": "value"}
@@ -576,9 +629,6 @@ async def test_token_acquisition_outside_rate_limiter(
 
     with (
         patch.object(aikido_client.auth, "get_token", side_effect=tracked_get_token),
-        patch.object(
-            aikido_client.rate_limiter, "acquire", side_effect=tracked_acquire
-        ),
         patch.object(
             aikido_client.http_client, "request", new_callable=AsyncMock
         ) as mock_request,
