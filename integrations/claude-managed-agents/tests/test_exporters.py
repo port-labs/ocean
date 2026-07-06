@@ -23,62 +23,65 @@ async def _batches(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "exporter_cls, client_method",
+    "exporter_cls, resource_name",
     [
-        (AgentsExporter, "get_agents"),
-        (EnvironmentsExporter, "get_environments"),
-        (SessionsExporter, "get_sessions"),
-        (VaultsExporter, "get_vaults"),
-        (MemoryStoresExporter, "get_memory_stores"),
+        (AgentsExporter, "agents"),
+        (EnvironmentsExporter, "environments"),
+        (SessionsExporter, "sessions"),
+        (VaultsExporter, "vaults"),
+        (MemoryStoresExporter, "memory_stores"),
     ],
 )
-async def test_exporter_yields_batches(exporter_cls: type, client_method: str) -> None:
+async def test_exporter_yields_batches(exporter_cls: type, resource_name: str) -> None:
     client = MagicMock()
     page = [{"id": "1"}, {"id": "2"}]
-    setattr(client, client_method, lambda **_: _batches(page))
+    client.paginate = MagicMock(return_value=_batches(page))
 
     exporter = exporter_cls(client)
     results = [batch async for batch in exporter.get_paginated_resources()]
 
     assert results == [page]
+    getattr(client.beta, resource_name).list.assert_called_once_with(
+        include_archived=False
+    )
+    client.paginate.assert_called_once_with(
+        getattr(client.beta, resource_name).list.return_value
+    )
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "exporter_cls, client_method",
+    "exporter_cls, resource_name",
     [
-        (AgentsExporter, "get_agents"),
-        (EnvironmentsExporter, "get_environments"),
-        (SessionsExporter, "get_sessions"),
-        (VaultsExporter, "get_vaults"),
-        (MemoryStoresExporter, "get_memory_stores"),
+        (AgentsExporter, "agents"),
+        (EnvironmentsExporter, "environments"),
+        (SessionsExporter, "sessions"),
+        (VaultsExporter, "vaults"),
+        (MemoryStoresExporter, "memory_stores"),
     ],
 )
 async def test_exporter_forwards_include_archived(
-    exporter_cls: type, client_method: str
+    exporter_cls: type, resource_name: str
 ) -> None:
     client = MagicMock()
-    calls: list[dict[str, Any]] = []
-
-    def _record(**kwargs: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
-        calls.append(kwargs)
-        return _batches([])
-
-    setattr(client, client_method, _record)
+    client.paginate = MagicMock(return_value=_batches())
 
     exporter = exporter_cls(client)
     [batch async for batch in exporter.get_paginated_resources(include_archived=True)]
 
-    assert calls == [{"include_archived": True}]
+    getattr(client.beta, resource_name).list.assert_called_once_with(
+        include_archived=True
+    )
 
 
 @pytest.mark.asyncio
 async def test_skills_exporter_yields_batches() -> None:
     client = MagicMock()
     page = [{"id": "1"}, {"id": "2"}]
-    client.get_skills = lambda: _batches(page)
+    client.paginate = MagicMock(return_value=_batches(page))
 
     exporter = SkillsExporter(client)
     results = [batch async for batch in exporter.get_paginated_resources()]
 
     assert results == [page]
+    client.beta.skills.list.assert_called_once_with(source="custom")

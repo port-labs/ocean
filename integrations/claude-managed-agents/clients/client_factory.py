@@ -16,6 +16,7 @@ def create_anthropic_client() -> AnthropicClient:
     _anthropic_client = AnthropicClient(
         api_host=integration_config["anthropic_api_host"],
         api_key=integration_config["anthropic_api_key"],
+        console_host=integration_config["platform_console_host"],
         webhook_signing_secret=integration_config.get("webhook_signing_secret"),
         anthropic_version=integration_config.get("anthropic_version"),
     )

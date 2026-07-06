@@ -9,10 +9,15 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.session_config import normalize_session_config
-from actions.utils import build_external_id, build_session_link
+from actions.exceptions import InvalidActionParametersException
+from actions.utils import (
+    build_external_id,
+    build_session_link,
+    normalize_session_config,
+)
 from integration import ObjectKind
 from webhook_processors.registry import WEBHOOK_PATH
 from webhook_processors.trigger_agent_webhook_processor import (
@@ -28,8 +33,9 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     sent message event. Completion is reported asynchronously by
     `TriggerAgentWebhookProcessor` when the session reaches a terminal state.
 
-    New sessions for the same agent are executed sequentially via the agent id
-    partition key; continuations are serialized per session id.
+    New sessions have no partition key and may execute in parallel, since each
+    creates an independent session; continuations are serialized per session id
+    to avoid two runs racing on the same session.
     """
 
     ACTION_NAME = "trigger_agent"
@@ -40,13 +46,13 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         session_id = run.execution_properties.get("sessionId")
         if session_id:
             return session_id
-        return run.execution_properties.get("agentId")
+        return None
 
     async def _ensure_session_continuable(self, session_id: str) -> dict[str, Any]:
         session = await self.client.get_session(session_id)
         status = session.get("status")
         if status != "idle":
-            raise ValueError(
+            raise ActionExecutionError(
                 f"Session {session_id} cannot be continued (status={status!r}); "
                 "only idle sessions accept a new prompt"
             )
@@ -61,7 +67,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             if isinstance(idle_event, BetaManagedAgentsSessionStatusIdleEvent):
                 stop_reason = idle_event.stop_reason
                 if isinstance(stop_reason, BetaManagedAgentsSessionRequiresAction):
-                    raise ValueError(
+                    raise ActionExecutionError(
                         f"Session {session_id} is waiting for user action "
                         "(tool confirmation or similar) and cannot accept a plain prompt"
                     )
@@ -79,17 +85,17 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         if config is None:
             config = {}
         elif not isinstance(config, dict):
-            raise ValueError("config must be an object")
+            raise InvalidActionParametersException("config must be an object")
 
         if not (agent_id and prompt):
-            raise ValueError("agentId and prompt are required")
+            raise InvalidActionParametersException("agentId and prompt are required")
 
         if session_id:
             session = await self._ensure_session_continuable(session_id)
             resolved_session_id = session_id
         else:
             if not environment_id:
-                raise ValueError(
+                raise InvalidActionParametersException(
                     "environmentId is required when starting a new session"
                 )
             api_config = await normalize_session_config(config)
@@ -100,7 +106,9 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             )
             resolved_session_id = session.get("id")
             if not resolved_session_id or not isinstance(resolved_session_id, str):
-                raise ValueError("Session was created but no session id was returned")
+                raise ActionExecutionError(
+                    "Session was created but no session id was returned"
+                )
 
         user_message = await self.client.send_user_message(resolved_session_id, prompt)
         logger.info(
@@ -111,12 +119,16 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Status updates arrive later via webhooks. Best-effort:
         # never fails the run.
-        await self.register_entity(ObjectKind.SESSION, session)
+        await self.register_entity(ObjectKind.SESSION, session, run)
 
         external_id = build_external_id(resolved_session_id, user_message.id)
         await ocean.port_client.update_run_started(
             run,
-            build_session_link(self.client.get_workspace_id(), resolved_session_id),
+            build_session_link(
+                self.client.get_console_host(),
+                self.client.get_workspace_id(),
+                resolved_session_id,
+            ),
             external_id,
             extra_output={
                 "sessionId": resolved_session_id,
@@ -124,7 +136,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             },
         )
 
-        if not props.get("reportSessionStatus", True):
+        if not props.get("reportSessionStatus", False):
             await ocean.port_client.report_run_completed(
                 run, True, f"Prompt sent to session {resolved_session_id}"
             )

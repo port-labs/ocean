@@ -36,6 +36,12 @@ configurations:
     sensitive: false
     default: https://api.anthropic.com
     description: The host of the Anthropic api instance. If not specified, the default will be https://api.anthropic.com.
+  - name: platformConsoleHost
+    type: url
+    required: false
+    sensitive: false
+    default: https://platform.claude.com
+    description: The host of the Claude Console, used to build session links in action run output. If not specified, the default will be https://platform.claude.com.
   - name: webhookSigningSecret
     type: string
     required: false
@@ -101,5 +107,5 @@ actions:
       - name: reportSessionStatus
         title: Report session status
         type: boolean
-        description: Whether to report the session status back to Port via webhooks
-        default: true
+        description: Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires a webhook to be configured on the integration (see webhookSigningSecret); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.
+        default: false

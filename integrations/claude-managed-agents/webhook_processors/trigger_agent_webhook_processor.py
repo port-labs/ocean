@@ -67,6 +67,12 @@ SESSION_SUCCESS_WEBHOOK_DATA = (
 
 _INTERACTION_EVENT_TYPES = ["session.error", "session.status_idle", "agent.message"]
 
+_TERMINAL_SESSION_WEBHOOK_TYPES = {
+    "session.idled",
+    "session.status_idled",
+    "session.status_terminated",
+}
+
 
 class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     """Reports `trigger_agent` node-run status from session webhooks.
@@ -150,11 +156,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         return WebhookProcessorType.ACTION
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return self.get_event_type(event.payload) in {
-            "session.idled",
-            "session.status_idled",
-            "session.status_terminated",
-        }
+        return self.get_event_type(event.payload) in _TERMINAL_SESSION_WEBHOOK_TYPES
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return []
@@ -181,7 +183,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         if not (
             run
             and ocean.port_client.is_run_in_progress(run)
-            and run.execution_properties.get("reportSessionStatus", True)
+            and run.execution_properties.get("reportSessionStatus", False)
         ):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
