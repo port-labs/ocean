@@ -1,0 +1,67 @@
+{
+  "identifier": "ecrRepository",
+  "title": "ECR Repository",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "arn": {
+        "type": "string",
+        "title": "ARN",
+        "description": "The Amazon Resource Name (ARN) of the repository"
+      },
+      "repositoryUri": {
+        "type": "string",
+        "title": "Repository URI",
+        "description": "The URI of the repository"
+      },
+      "registryId": {
+        "type": "string",
+        "title": "Registry ID",
+        "description": "The AWS account ID of the registry that contains the repository"
+      },
+      "createdAt": {
+        "type": "string",
+        "title": "Created At",
+        "description": "The date and time the repository was created",
+        "format": "date-time"
+      },
+      "imageTagMutability": {
+        "type": "string",
+        "title": "Image Tag Mutability",
+        "description": "The tag mutability setting for the repository",
+        "enum": [
+          "MUTABLE",
+          "IMMUTABLE"
+        ]
+      },
+      "imageScanningConfiguration": {
+        "type": "object",
+        "title": "Image Scanning Configuration",
+        "description": "The image scanning configuration for the repository"
+      },
+      "encryptionConfiguration": {
+        "type": "object",
+        "title": "Encryption Configuration",
+        "description": "The encryption configuration for the repository"
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Tags associated with the repository",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": []
+  },
+  "calculationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}
