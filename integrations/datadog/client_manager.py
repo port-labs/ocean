@@ -41,18 +41,19 @@ def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]
             credentials.base_url or config["datadog_base_url"],
             credentials.api_key,
             credentials.app_key,
+            org_id=credentials.org_id,
+            org_name=credentials.org_name,
         )
 
 
 class DatadogClientManager:
     """Owns the set of Datadog clients for the integration.
 
-    For multi-org installs the configured credentials are validated against
-    Datadog once at startup (``validate_and_enrich``): clients whose keys are
-    rejected are dropped, and each surviving client is tagged with the org_id
-    (public UUID) and org_name of the organization its keys belong to. Live events
-    are then routed to candidate clients by org_id (audit trail) or org_name
-    (monitor webhooks).
+    For multi-org installs each client's org identity is resolved once at startup
+    (``validate_credentials``): taken from the credential map when supplied, or
+    fetched from Datadog otherwise. Clients whose identity can't be resolved are
+    dropped. Live events are then routed to candidate clients by org_id (audit
+    trail) or org_name (monitor webhooks).
     """
 
     def __init__(self, config: dict[str, Any]) -> None:
@@ -70,31 +71,31 @@ class DatadogClientManager:
         return self._clients
 
     async def validate_credentials(self) -> None:
-        """Validate each org's keys against Datadog and tag the client with the org
-        id and name its keys belong to.
+        """Resolve each client's org identity (public id + name) for multi-org installs.
 
-        Clients whose credentials are rejected (or whose org can't be resolved) are
-        dropped, so resyncs and live events only run against valid keys. No-op for
-        single-org installs, which keep their sole client untouched.
+        Identity supplied in the credential map is used as-is; it is fetched from
+        Datadog only when not supplied. A client whose identity is neither supplied
+        nor resolvable is dropped, so resyncs and live events only run against
+        routable clients. No-op for single-org installs, which keep their sole client.
         """
         if not self.is_multi_org:
             return
 
         valid: list[DatadogClient] = []
         for client in self._clients:
-            org = await self._fetch_org(client)
-            if org is None:
-                logger.warning(
-                    f"Dropping Datadog credentials for base url '{client.api_url}': "
-                    "keys are invalid or org information is unavailable",
-                    application_key_prefix=client.dd_app_key[:5],
-                )
-                continue
-            client.org_id, client.org_name = org
+            if not (client.org_id and client.org_name):
+                org = await self._fetch_org(client)
+                if org is None:
+                    logger.warning(
+                        f"Dropping Datadog credentials for base url '{client.api_url}': "
+                        "org identity was not supplied and could not be resolved",
+                        application_key_prefix=client.dd_app_key[:5],
+                    )
+                    continue
+                client.org_id, client.org_name = org
             valid.append(client)
             logger.info(
-                f"Validated Datadog credentials for org '{client.org_name}' "
-                f"(id={client.org_id})"
+                f"Resolved Datadog org '{client.org_name}' (id={client.org_id})"
             )
 
         self._clients = valid
