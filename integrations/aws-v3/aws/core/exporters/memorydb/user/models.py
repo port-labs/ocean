@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
@@ -6,11 +6,11 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 class MemoryDbUserProperties(BaseModel):
     Name: str = Field(default_factory=str)
     Status: str = Field(default_factory=str)
-    AccessString: Optional[str] = Field(default=None)
+    AccessString: str | None = Field(default=None)
     ACLNames: list[str] = Field(default_factory=list)
-    MinimumEngineVersion: Optional[str] = Field(default=None)
+    MinimumEngineVersion: str | None = Field(default=None)
     ARN: str = Field(default_factory=str)
-    Authentication: Optional[dict[str, Any]] = Field(default=None)
+    Authentication: dict[str, Any] | None = Field(default=None)
     TagList: list[dict[str, Any]] = Field(default_factory=list)
 
     class Config:
