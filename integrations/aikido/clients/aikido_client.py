@@ -115,18 +115,6 @@ class AikidoClient:
         )
         return response.json() if response is not None else {}
 
-    async def _send_list_api_request(
-        self,
-        endpoint: str,
-        method: str = "GET",
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        response = await self._execute_request(
-            endpoint, method, params, json_data, ignore_default_errors=False
-        )
-        return response.json() if response is not None else []
-
     async def get_paginated_resource(
         self,
         endpoint: str,
@@ -139,7 +127,12 @@ class AikidoClient:
 
         while True:
             try:
-                resources = await self._send_list_api_request(endpoint, params=params)
+                response = await self._execute_request(
+                    endpoint, params=params, ignore_default_errors=False
+                )
+                resources: List[Dict[str, Any]] = (
+                    response.json() if response is not None else []
+                )
             except Exception as e:
                 logger.error(f"Error fetching {resource_name}: {e}")
                 raise
