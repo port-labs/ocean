@@ -464,6 +464,7 @@ async def test_get_issues_reraises_on_timeout(
     aikido_client: AikidoClient,
 ) -> None:
     """A persistent timeout must fail the kind, not report an empty fetch."""
+
     async def _mock_paginated(**_kwargs: Any) -> Any:
         raise ReadTimeout("issues/export timed out")
         yield  # noqa: unreachable — makes this an async generator
