@@ -280,8 +280,8 @@ async def test_resync_resource_group(
             assert group["__Resources"] == [{"ResourceArn": "test-arn"}]
 
 
-def test_select_s3_region_prefers_standard_regions() -> None:
-    """Test that select_s3_region yields standard regions before opt-in regions."""
+def test_get_available_regions_prefers_standard_regions() -> None:
+    """Test that get_available_regions yields standard regions before opt-in regions."""
     from main import get_available_regions
 
     # Standard regions should be yielded first, opt-in regions last

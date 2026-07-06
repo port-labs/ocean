@@ -56,7 +56,7 @@ import functools
 
 
 def get_available_regions(allowed_regions: list[str]) -> Iterator[str]:
-    """Yield regions for S3 list_resources calls, preferring standard regions over opt-in ones."""
+    """Yield regions preferring standard regions over opt-in ones."""
     opt_in_regions = []
     for region in allowed_regions:
         if region in OPT_IN_REGIONS:
@@ -76,7 +76,14 @@ async def _handle_global_resource_resync(
     resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
     allowed_regions: Optional[Iterable[str]] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in credentials.create_session_for_each_region(allowed_regions):
+    regions = (
+        list(allowed_regions)
+        if allowed_regions is not None
+        else credentials.enabled_regions
+    )
+    async for session in credentials.create_session_for_each_region(
+        get_available_regions(regions)
+    ):
         region = session.region_name
         try:
             async for batch in resync_func(kind, session):
