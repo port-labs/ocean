@@ -60,7 +60,6 @@ class AikidoClient:
                     params=params,
                     json=json_data,
                     headers=headers,
-                    timeout=30,
                 )
                 response.raise_for_status()
                 return response.json()
@@ -89,27 +88,25 @@ class AikidoClient:
         while True:
             try:
                 resources = await self._send_api_request(endpoint, params=params)
-
-                if not isinstance(resources, list):
-                    break
-
-                if not resources:
-                    logger.info(
-                        f"No {resource_name} returned for page {params['page']}"
-                    )
-                    break
-
-                logger.info(f"Fetched {len(resources)} {resource_name} from Aikido API")
-                fetched_count = len(resources)
-                yield resources
-
-                if fetched_count < page_size:
-                    break
-
-                params["page"] += 1
             except Exception as e:
                 logger.error(f"Error fetching {resource_name}: {e}")
+                raise
+
+            if not isinstance(resources, list):
                 break
+
+            if not resources:
+                logger.info(f"No {resource_name} returned for page {params['page']}")
+                break
+
+            logger.info(f"Fetched {len(resources)} {resource_name} from Aikido API")
+            fetched_count = len(resources)
+            yield resources
+
+            if fetched_count < page_size:
+                break
+
+            params["page"] += 1
 
     async def get_repositories(
         self,
@@ -133,17 +130,23 @@ class AikidoClient:
         """
         Fetch all issues from the Aikido API in a single request.
         Returns a list of issue dicts.
+
+        Errors (including persistent timeouts) are propagated so the issues kind
+        fails instead of reporting an empty successful fetch, which would cause
+        reconciliation to delete existing issue entities.
         """
         endpoint = ISSUES_ENDPOINT
         params = {"format": "json"}
         try:
             issues = await self._send_api_request(endpoint, params=params)
-            if not isinstance(issues, list):
-                return []
-            return issues
         except Exception as e:
             logger.error(f"Error fetching issues: {e}")
-            return []
+            raise
+        if not isinstance(issues, list):
+            raise ValueError(
+                f"Unexpected response type from {endpoint}: expected list, got {type(issues).__name__}"
+            )
+        return issues
 
     async def get_issues_in_batches(
         self, batch_size: int = 100
