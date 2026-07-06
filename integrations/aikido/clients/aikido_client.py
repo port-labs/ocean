@@ -71,11 +71,6 @@ class AikidoClient:
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
     ) -> Optional[Response]:
-        """
-        Execute an authenticated, rate-limited request.
-        Returns the httpx Response on success, or None when the error is intentionally
-        ignored (e.g. 404). Raises for all other errors.
-        """
         token = await self.auth.get_token()
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         async with self.rate_limiter:
@@ -114,10 +109,6 @@ class AikidoClient:
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
     ) -> Dict[str, Any]:
-        """
-        Send a request to an endpoint that returns a single object.
-        Ignored errors (e.g. 404) return an empty dict.
-        """
         response = await self._execute_request(
             endpoint, method, params, json_data, ignored_errors, ignore_default_errors
         )
@@ -130,11 +121,6 @@ class AikidoClient:
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """
-        Send a request to an endpoint that returns a list.
-        All errors propagate — list endpoints must not silently return empty
-        data, as that would cause false reconciliation deletions.
-        """
         response = await self._execute_request(
             endpoint, method, params, json_data, ignore_default_errors=False
         )
@@ -189,14 +175,6 @@ class AikidoClient:
             yield repositories
 
     async def get_all_issues(self) -> List[Dict[str, Any]]:
-        """
-        Fetch all issues from the Aikido API in a single request.
-        Returns a list of issue dicts.
-
-        Errors (including persistent timeouts) are propagated so the issues kind
-        fails instead of reporting an empty successful fetch, which would cause
-        reconciliation to delete existing issue entities.
-        """
         try:
             return await self._send_list_api_request(
                 ISSUES_ENDPOINT, params={"format": "json"}

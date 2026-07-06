@@ -48,7 +48,7 @@ async def test_send_api_request_success(aikido_client: AikidoClient) -> None:
         result = await aikido_client._send_api_request("test_endpoint")
 
         assert result == test_data
-        mock_request.assert_called_once()
+        mock_request.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -132,7 +132,7 @@ async def test_send_api_request_with_post_method(aikido_client: AikidoClient) ->
         )
 
         assert result == test_data
-        mock_request.assert_called_once()
+        mock_request.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -152,7 +152,7 @@ async def test_send_api_request_with_params(aikido_client: AikidoClient) -> None
         result = await aikido_client._send_api_request("test_endpoint", params=params)
 
         assert result == test_data
-        mock_request.assert_called_once()
+        mock_request.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -202,7 +202,7 @@ async def test_send_list_api_request_returns_list(aikido_client: AikidoClient) -
         result = await aikido_client._send_list_api_request("test_endpoint")
 
         assert result == items
-        mock_request.assert_called_once()
+        mock_request.assert_awaited_once()
 
 
 @pytest.mark.asyncio
