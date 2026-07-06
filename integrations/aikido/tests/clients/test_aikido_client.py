@@ -7,6 +7,7 @@ from aiolimiter import AsyncLimiter
 from clients.aikido_client import (
     AikidoClient,
     ISSUES_ENDPOINT,
+    ISSUES_PAGE_SIZE,
 )
 from clients.options import ListRepositoriesOptions, ListContainersOptions
 from helpers.exceptions import (
@@ -538,26 +539,42 @@ async def test_get_containers_paginates_with_options(
 
 
 @pytest.mark.asyncio
-async def test_get_all_issues_returns_list_on_success(
-    aikido_client: AikidoClient,
-) -> None:
-    issues = [{"id": "1"}, {"id": "2"}]
+async def test_get_issues_paginates(aikido_client: AikidoClient) -> None:
+    first_page = [{"id": str(i)} for i in range(ISSUES_PAGE_SIZE)]
+    second_page = [{"id": str(ISSUES_PAGE_SIZE)}]
+    captured_params: list[dict[str, Any]] = []
+    responses = [first_page, second_page]
 
     with patch.object(
         aikido_client, "_send_list_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.return_value = issues
 
-        result = await aikido_client.get_all_issues()
+        async def _side_effect(
+            endpoint: str,
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> list[dict[str, Any]]:
+            assert endpoint == ISSUES_ENDPOINT
+            if params is not None:
+                captured_params.append(params.copy())
+            return responses.pop(0)
 
-    assert result == issues
-    mock_request.assert_awaited_once()
-    assert mock_request.call_args.args[0] == ISSUES_ENDPOINT
-    assert mock_request.call_args.kwargs["params"] == {"format": "json"}
+        mock_request.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_issues():
+            batches.append(batch)
+
+    assert batches == [first_page, second_page]
+    assert mock_request.call_count == 2
+    assert captured_params == [
+        {"format": "json", "per_page": ISSUES_PAGE_SIZE, "page": 0},
+        {"format": "json", "per_page": ISSUES_PAGE_SIZE, "page": 1},
+    ]
 
 
 @pytest.mark.asyncio
-async def test_get_all_issues_reraises_on_timeout(
+async def test_get_issues_reraises_on_timeout(
     aikido_client: AikidoClient,
 ) -> None:
     """A persistent timeout must fail the kind, not report an empty fetch."""
@@ -567,24 +584,12 @@ async def test_get_all_issues_reraises_on_timeout(
         mock_request.side_effect = ReadTimeout("issues/export timed out")
 
         with pytest.raises(ReadTimeout):
-            await aikido_client.get_all_issues()
+            async for _ in aikido_client.get_issues():
+                pass
 
 
 @pytest.mark.asyncio
-async def test_get_all_issues_reraises_on_generic_error(
-    aikido_client: AikidoClient,
-) -> None:
-    with patch.object(
-        aikido_client, "_send_list_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.side_effect = Exception("boom")
-
-        with pytest.raises(Exception, match="boom"):
-            await aikido_client.get_all_issues()
-
-
-@pytest.mark.asyncio
-async def test_get_all_issues_reraises_404_as_http_error(
+async def test_get_issues_reraises_404_as_http_error(
     aikido_client: AikidoClient,
 ) -> None:
     """issues/export uses _send_list_api_request which never ignores errors,
@@ -602,7 +607,8 @@ async def test_get_all_issues_reraises_404_as_http_error(
         mock_request.return_value = mock_response
 
         with pytest.raises(HTTPStatusError):
-            await aikido_client.get_all_issues()
+            async for _ in aikido_client.get_issues():
+                pass
 
 
 @pytest.mark.asyncio

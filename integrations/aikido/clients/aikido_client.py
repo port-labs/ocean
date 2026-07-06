@@ -11,6 +11,7 @@ API_VERSION = "v1"
 FIRST_PAGE = 0
 PAGE_SIZE = 20
 REPOSITORIES_PAGE_SIZE = 100
+ISSUES_PAGE_SIZE = 100
 REQUESTS_PER_MINUTE = 15
 
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
@@ -174,25 +175,15 @@ class AikidoClient:
         ):
             yield repositories
 
-    async def get_all_issues(self) -> List[Dict[str, Any]]:
-        try:
-            return await self._send_list_api_request(
-                ISSUES_ENDPOINT, params={"format": "json"}
-            )
-        except Exception as e:
-            logger.error(f"Error fetching issues: {e}")
-            raise
-
-    async def get_issues_in_batches(
-        self, batch_size: int = 100
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """
-        Fetch all issues and yield them in batches of the specified size.
-        """
-
-        all_issues = await self.get_all_issues()
-        for i in range(0, len(all_issues), batch_size):
-            yield all_issues[i : i + batch_size]
+    async def get_issues(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        async for issues in self.get_paginated_resource(
+            endpoint=ISSUES_ENDPOINT,
+            resource_name="issues",
+            first_page=FIRST_PAGE,
+            page_size=ISSUES_PAGE_SIZE,
+            base_params={"format": "json"},
+        ):
+            yield issues
 
     async def get_open_issue_groups(
         self, team_id: Optional[str | int] = None
