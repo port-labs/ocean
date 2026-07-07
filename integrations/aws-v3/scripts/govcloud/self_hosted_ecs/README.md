@@ -1,6 +1,6 @@
-# AWS v3 GovCloud self-hosted ECS setup
+# Self-hosted ECS (GovCloud)
 
-Use `setup_govcloud_self_hosted_ecs.py` to deploy the Port AWS v3 self-hosted ECS integration in AWS GovCloud.
+Deploy the Port AWS v3 self-hosted ECS integration in AWS GovCloud.
 
 The commercial installation docs rely on CloudFormation templates and container images hosted outside GovCloud. This script automates the GovCloud-specific steps that the standard docs cannot complete on their own.
 
@@ -14,14 +14,14 @@ The commercial installation docs rely on CloudFormation templates and container 
 - [ ] Ensure Docker is available (unless `SKIP_ECR_MIRROR = True`).
 - [ ] Identify your VPC ID and subnet IDs (`subnet-xxxxxxxx`, not display names).
 - [ ] Use **public subnets** with internet access (the template sets `AssignPublicIp: ENABLED`).
-- [ ] Edit the configuration section at the top of `setup_govcloud_self_hosted_ecs.py`.
+- [ ] Edit the configuration section at the top of `setup.py`.
 
 ### What the script does
 
 1. [ ] **Validates configuration** - checks Port credentials, VPC ID format, and subnet ID format.
 2. [ ] **Mirrors the container image to ECR** - pulls `ghcr.io/port-labs/port-ocean-aws-v3:latest` as `linux/amd64`, creates the `port-ocean-aws-v3` ECR repository if needed, and pushes the image to GovCloud ECR.
 3. [ ] **Downloads the CloudFormation template** - fetches the commercial ECS template from Port's S3 bucket.
-4. [ ] **Transforms the template for GovCloud** - rewrites `arn:aws:` to `arn:aws-us-gov:`, adds a `ContainerImage` parameter, and fixes the Ocean event listener env vars (`interval` and `OCEAN__SCHEDULED_RESYNC_INTERVAL`).
+4. [ ] **Transforms the template for GovCloud** - rewrites `arn:aws:` to `arn:aws-us-gov:`, adds a `ContainerImage` parameter, sets `AWS_PARTITION`, and fixes the Ocean event listener env vars.
 5. [ ] **Caches the transformed template** - saves a copy under `~/.cache/port-aws-govcloud-setup/templates/`.
 6. [ ] **Uploads the template to GovCloud S3** - creates the `port-cfn-templates-<account-id>-<region>` bucket if needed and uploads the template.
 7. [ ] **Deploys the CloudFormation stack** - creates or updates `port-aws-ecs-integration` with your Port credentials, VPC, subnets, and image URI.
@@ -64,7 +64,7 @@ The commercial installation docs rely on CloudFormation templates and container 
 
 ## Usage
 
-1. Open `setup_govcloud_self_hosted_ecs.py` and edit the configuration section at the top (`REGION`, `VPC_ID`, `SUBNET_IDS`, and so on).
+1. Open `setup.py` and edit the configuration section at the top (`REGION`, `VPC_ID`, `SUBNET_IDS`, and so on).
 2. Export your Port credentials:
 
 ```bash
@@ -75,12 +75,12 @@ export PORT_CLIENT_SECRET="your-client-secret"
 3. Run the script from the `integrations/aws-v3` directory:
 
 ```bash
-poetry run python scripts/setup_govcloud_self_hosted_ecs.py
+poetry run python scripts/govcloud/self_hosted_ecs/run.py
 ```
 
 ## Configuration
 
-All settings are defined as module-level variables at the top of the script. Port credentials are read from environment variables only.
+All settings are defined as module-level variables at the top of `setup.py`. Port credentials are read from environment variables only.
 
 | Variable | Description |
 |----------|-------------|
@@ -101,7 +101,7 @@ All settings are defined as module-level variables at the top of the script. Por
 | `AccessDenied` during stack create | Your IAM principal needs permissions to create CloudFormation stacks, IAM roles, ECS resources, and CloudWatch Logs. |
 | `ROLLBACK_COMPLETE` / stack create failed | Delete the failed stack, fix the error, and re-run. Common issues: invalid `SUBNET_IDS`, or a stale transformed template in S3 (re-run the full script to re-upload). |
 | Invalid IAM managed policy ARN | The script only changes the partition (`arn:aws:` to `arn:aws-us-gov:`). AWS-managed policies keep the `aws` account ID in the ARN path. |
-| `exec format error` in CloudWatch Logs | The ECR image was likely pushed for the wrong CPU architecture (common on Apple Silicon). Re-mirror with `docker pull --platform linux/amd64` and redeploy. The script now does this automatically. |
+| `exec format error` in CloudWatch Logs | The ECR image was likely pushed for the wrong CPU architecture (common on Apple Silicon). Re-mirror with `docker pull --platform linux/amd64` and redeploy. The script does this automatically. |
 | ECS task fails to start | Confirm the ECR image exists, is `linux/amd64`, and the execution role can pull from ECR. |
 | Integration cannot reach Port | Verify outbound HTTPS from the task subnets and that `PORT_BASE_URL` is correct. |
 | Container starts but no entities sync | The task needs `OCEAN__INTEGRATION__CONFIG__AWS_PARTITION=aws-us-gov`. Without it, Ocean calls the commercial Account API (`listRegions`) which fails in GovCloud. The script adds this to the template automatically. |

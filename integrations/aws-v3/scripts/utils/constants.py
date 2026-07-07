@@ -1,0 +1,24 @@
+"""Shared constants for AWS v3 setup scripts."""
+
+UPSTREAM_IMAGE = "ghcr.io/port-labs/port-ocean-aws-v3:latest"
+CONTAINER_PLATFORM = "linux/amd64"
+
+DEFAULT_TEMPLATE_BUCKET_PREFIX = "port-cfn-templates"
+DEFAULT_SERVICE_NAME = "port-ocean-aws-v3"
+
+STACK_CREATE_TIMEOUT_SECONDS = 900
+ECS_VERIFY_TIMEOUT_SECONDS = 600
+ECS_VERIFY_POLL_INTERVAL_SECONDS = 15
+
+TERMINAL_STACK_FAILURE_STATUSES = frozenset(
+    {
+        "CREATE_FAILED",
+        "ROLLBACK_IN_PROGRESS",
+        "ROLLBACK_FAILED",
+        "ROLLBACK_COMPLETE",
+        "UPDATE_FAILED",
+        "UPDATE_ROLLBACK_IN_PROGRESS",
+        "UPDATE_ROLLBACK_FAILED",
+        "UPDATE_ROLLBACK_COMPLETE",
+    }
+)
