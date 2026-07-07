@@ -2,19 +2,6 @@ deleteDependentEntities: true
 createMissingRelatedEntities: true
 repositoryType: 'all'
 resources:
-  - kind: team
-    selector:
-      query: "true"
-      members: true
-    port:
-      entity:
-        mappings:
-          identifier: .slug
-          title: .name
-          blueprint: '"githubTeam"'
-          properties: {}
-
-
   - kind: organization
     selector:
       query: 'true'
