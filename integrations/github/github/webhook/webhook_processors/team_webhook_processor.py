@@ -6,7 +6,11 @@ from github.core.exporters.team_exporter import (
 )
 from github.core.options import ListTeamOptions, SingleTeamOptions
 from github.webhook.events import TEAM_DELETE_EVENTS, TEAM_EVENTS
-from github.helpers.utils import GithubClientType, ObjectKind, enrich_members_with_saml_email
+from github.helpers.utils import (
+    GithubClientType,
+    ObjectKind,
+    enrich_members_with_saml_email,
+)
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
