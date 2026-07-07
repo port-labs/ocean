@@ -24,8 +24,8 @@ class TestGetPartition:
             result = RegionHelper.get_partition()
 
         assert result == "aws-cn"
-        mock_ocean.integration_config.get.assert_has_calls(
-            [call("aws_partition"), call("aws_partition")]
+        mock_ocean.integration_config.get.assert_called_once_with(
+            "aws_partition"
         )
 
     def test_returns_partition_from_role_arn(self) -> None:
@@ -39,7 +39,7 @@ class TestGetPartition:
 
         assert result == "aws-us-gov"
         mock_ocean.integration_config.get.assert_has_calls(
-            [call("aws_partition"), call("account_role_arn"), call("account_role_arn")]
+            [call("aws_partition"), call("account_role_arn")]
         )
 
     def test_returns_partition_from_account_role_arns(self) -> None:
@@ -86,8 +86,8 @@ class TestGetPartition:
             result = RegionHelper.get_partition()
 
         assert result == "aws-cn"
-        mock_ocean.integration_config.get.assert_has_calls(
-            [call("aws_partition"), call("aws_partition")]
+        mock_ocean.integration_config.get.assert_called_once_with(
+            "aws_partition"
         )
 
     def test_cache_prevents_second_config_read(self) -> None:
