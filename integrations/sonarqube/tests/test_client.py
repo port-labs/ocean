@@ -479,7 +479,7 @@ async def test_get_single_project_is_called_with_correct_params(
     mock_get_branches.assert_any_call(PURE_PROJECTS[0]["key"])
 
 
-async def test_get_single_project_skips_project_when_ignored_errors_return_no_branches(
+async def test_get_single_project_handles_ignored_errors_return_no_branches(
     mock_ocean_context: Any,
 ) -> None:
     sonarqube_client = SonarQubeClient(
@@ -505,7 +505,10 @@ async def test_get_single_project_skips_project_when_ignored_errors_return_no_br
 
     result = await sonarqube_client.get_single_project({"key": "GWAM_gwamda-Honeywell"})
 
-    assert result == {}
+    assert result["key"] == "GWAM_gwamda-Honeywell"
+    assert result["__measures"] == []
+    assert result["__branches"] == []
+    assert result["__branch"] == {}
 
 
 async def test_projects_will_return_correct_data(

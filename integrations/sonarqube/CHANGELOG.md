@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Skipped SonarQube projects that return no main branch data after ignored API errors, preventing inaccessible or stale projects from failing resyncs
+- Handled SonarQube projects with missing main branch data, preventing stale or inaccessible projects from failing resyncs
 
 
 ## 0.1.389 (2026-07-02)
