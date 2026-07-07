@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.9 (2026-07-03)
+
+
+### Bug Fixes
+
+- Fixed persistent timeouts and fetch errors on `issues/export` and paginated resources being masked as an empty successful fetch, which caused reconciliation to falsely delete existing entities. These errors now fail the affected kind so reconciliation is skipped.
+
+
 ## 0.2.8 (2026-07-02)
 
 
