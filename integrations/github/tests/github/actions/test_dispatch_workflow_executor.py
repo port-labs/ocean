@@ -91,9 +91,7 @@ class TestDispatchWorkflowExecutor:
         get_resource_mock = AsyncMock(return_value=WORKFLOW_RUN)
 
         with (
-            patch.object(
-                executor, "_get_default_ref", AsyncMock(return_value="main")
-            ),
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
             patch.object(
                 executor._workflow_run_exporter,
                 "get_resource",
@@ -196,9 +194,7 @@ class TestDispatchWorkflowExecutor:
         mock_rest_client.make_request.return_value = dispatch_response
 
         with (
-            patch.object(
-                executor, "_get_default_ref", AsyncMock(return_value="main")
-            ),
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
             patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean,
         ):
             mock_ocean.port_client = mock_port_client
@@ -232,9 +228,7 @@ class TestDispatchWorkflowExecutor:
         )
 
         with (
-            patch.object(
-                executor, "_get_default_ref", AsyncMock(return_value="main")
-            ),
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
             patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean,
         ):
             mock_ocean.port_client = mock_port_client
