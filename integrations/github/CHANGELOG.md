@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.3 (2026-07-07)
+
+
+### Improvements
+
+- Use GitHub workflow run ID returned on dispatch to track workflow runs, enabling concurrent dispatch workflow action executions. (thsmib)
+
+
 ## 6.2.2 (2026-07-02)
 
 

@@ -1,39 +1,31 @@
-import asyncio
-from datetime import datetime, timezone
 import json
 from typing import Any
 
 import httpx
 from loguru import logger
 from github.actions.utils import build_external_id
-from github.context.auth import (
-    get_authenticated_actor,
-)
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
-from github.core.options import SingleRepositoryOptions
+from github.core.options import SingleRepositoryOptions, SingleWorkflowRunOptions
 from github.webhook.registry import (
     WEBHOOK_PATH as DISPATCH_WEBHOOK_PATH,
 )
 from github.helpers.exceptions import (
     InvalidActionParametersException,
-    NoWorkflowRunsFoundException,
     RepositoryDefaultBranchNotFoundException,
 )
 from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_processor import (
     DispatchWorkflowWebhookProcessor,
 )
+from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
 )
-
-
-MAX_WORKFLOW_POLL_ATTEMPTS = 30
-WORKFLOW_POLL_DELAY_SECONDS = 2
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
 class DispatchWorkflowExecutor(AbstractGithubExecutor):
@@ -106,11 +98,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
     _default_ref_cache: dict[str, str] = {}
 
-    async def _get_partition_key(self, run: ActionRun | WorkflowNodeRun) -> str | None:
-        """
-        Get the workflow name as the partition key.
-        """
-        return run.execution_properties.get("workflow")
+    def __init__(self) -> None:
+        super().__init__()
+        self._workflow_run_exporter = RestWorkflowRunExporter(self.rest_client)
 
     async def _get_default_ref(self, organization: str, repo_name: str) -> str:
         """
@@ -149,47 +139,6 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         self._default_ref_cache[key] = repo["default_branch"]
         return self._default_ref_cache[key]
 
-    async def _get_workflow_run(
-        self, organization: str, repo: str, ref: str, isoDate: str
-    ) -> dict[str, Any]:
-        """
-        Get the workflow run for a given workflow.
-        """
-        workflow_runs: list[dict[str, Any]] = []
-        actor = await get_authenticated_actor()
-        attempts_made = 0
-        while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
-            response = await self.rest_client.send_api_request(
-                f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/runs",
-                params={
-                    "actor": actor,
-                    "event": "workflow_dispatch",
-                    "created": f">={isoDate}",
-                    "exclude_pull_requests": True,
-                    "branch": ref,
-                },
-                method="GET",
-                ignore_default_errors=False,
-            )
-            workflow_runs = response.get("workflow_runs", [])
-            if len(workflow_runs) == 0:
-                logger.warning(
-                    f"Couldn't find the triggered workflow run, waiting for {WORKFLOW_POLL_DELAY_SECONDS} seconds",
-                    attempts_made=attempts_made,
-                )
-                await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)
-                attempts_made += 1
-
-        if len(workflow_runs) == 0:
-            raise NoWorkflowRunsFoundException(
-                "Workflow dispatched successfully but due to a delay in GitHub we were unable to track it's progress"
-            )
-
-        logger.info(
-            f"Found workflow run for {organization}/{repo} with ref {ref}: {workflow_runs[0]['id']}",
-        )
-        return workflow_runs[0]
-
     def _parse_inputs(self, raw_inputs: dict[str, Any]) -> dict[str, Any]:
         inputs: dict[str, str] = {}
         for key, value in raw_inputs.items():
@@ -220,30 +169,41 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         if not ref:
             ref = await self._get_default_ref(organization, repo)
         try:
-            isoDate = datetime.now(timezone.utc).isoformat()
-            await self.rest_client.make_request(
+            response = await self.rest_client.make_request(
                 f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
                 method="POST",
                 json_data={
                     "ref": ref,
                     "inputs": inputs,
+                    "return_run_details": True,
                 },
                 ignore_default_errors=False,
             )
+            workflow_run_id = response.json().get("workflow_run_id")
+            if not workflow_run_id:
+                raise ActionExecutionError("Workflow run ID not found")
 
-            workflow_run = await self._get_workflow_run(
-                organization, repo, ref, isoDate
+            workflow_run = await self._workflow_run_exporter.get_resource(
+                SingleWorkflowRunOptions(
+                    organization=organization,
+                    repo_name=repo,
+                    run_id=workflow_run_id,
+                )
             )
+            if not workflow_run:
+                raise ActionExecutionError(
+                    f"Workflow run {workflow_run_id} not found in {organization}/{repo}"
+                )
             external_id = build_external_id(workflow_run)
 
             await ocean.port_client.update_run_started(
                 run,
                 workflow_run["html_url"],
                 external_id,
-                extra_output={"workflowRunId": workflow_run["id"]},
+                extra_output={"workflowRunId": workflow_run_id},
             )
         except Exception as e:
             error_message = str(e)
             if isinstance(e, httpx.HTTPStatusError):
                 error_message = json.loads(e.response.text).get("message", str(e))
-            raise Exception(f"Error dispatching workflow: {error_message}")
+            raise ActionExecutionError(f"Error dispatching workflow: {error_message}")
