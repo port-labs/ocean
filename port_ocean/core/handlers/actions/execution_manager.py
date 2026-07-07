@@ -192,7 +192,7 @@ class ExecutionManager:
                     limit=poll_limit,
                     visibility_timeout_ms=self._visibility_timeout_ms,
                     exclude_action_identifiers=exclude_action_identifiers,
-                    exclude_workflow_invocation_types=exclude_workflow_invocation_types,
+                    exclude_workflow_node_uids=exclude_workflow_invocation_types,
                 )
 
                 if not runs:

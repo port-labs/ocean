@@ -38,7 +38,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         limit: int,
         visibility_timeout_ms: int,
         exclude_action_identifiers: list[str] | None = None,
-        exclude_workflow_invocation_types: list[str] | None = None,
+        exclude_workflow_node_uids: list[str] | None = None,
     ) -> list[IntegrationRun]:
         remaining = limit
         runs: list[IntegrationRun] = []
@@ -50,7 +50,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                     await self.claim_pending_wf_node_runs(
                         limit=remaining,
                         visibility_timeout_ms=visibility_timeout_ms,
-                        exclude_invocation_types=exclude_workflow_invocation_types,
+                        exclude_workflow_node_uids=exclude_workflow_node_uids,
                     )
                 )
             else:
