@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Any
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -53,6 +56,41 @@ def resource_config() -> GithubFileResourceConfig:
                     properties={},
                 )
             )
+        ),
+    )
+
+
+@pytest.fixture
+def resource_config_with_items_to_parse() -> GithubFileResourceConfig:
+    return GithubFileResourceConfig(
+        kind=ObjectKind.FILE,
+        selector=GithubFileSelector(
+            query="true",
+            files=[
+                GithubFilePattern(
+                    organization="test-org",
+                    path="*.yaml",
+                    repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
+                    skipParsing=False,
+                ),
+                GithubFilePattern(
+                    organization="test-org",
+                    path="*.json",
+                    repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
+                    skipParsing=True,
+                ),
+            ],
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".item.name",
+                    title=".item.name",
+                    blueprint='"githubFile"',
+                    properties={},
+                )
+            ),
+            itemsToParse=".content.items",
         ),
     )
 
@@ -258,15 +296,14 @@ class TestFileWebhookProcessor:
             mock_exporter.fetch_commit_diff.assert_called_once_with(
                 "test-org", "test-repo", "abc123", "def456"
             )
-            mock_exporter.get_resource.assert_called_once_with(
-                FileContentOptions(
-                    organization="test-org",
-                    repo_name="test-repo",
-                    file_path="config.yaml",
-                    branch="main",
-                )
-            )
-            mock_exporter.file_processor.process_file.assert_called_once()
+            requested_refs = {
+                call.args[0]["branch"]
+                for call in mock_exporter.get_resource.call_args_list
+            }
+            assert requested_refs == {"main"}
+            assert mock_exporter.file_processor.process_file.call_count == 1
+            for call in mock_exporter.file_processor.process_file.call_args_list:
+                assert call.kwargs["branch"] == "main"
 
     async def test_handle_event_with_deleted_files(
         self,
@@ -275,7 +312,6 @@ class TestFileWebhookProcessor:
         payload: EventPayload,
     ) -> None:
 
-        # Mock the exporter to return deleted files
         mock_exporter = AsyncMock()
         mock_exporter.fetch_commit_diff.return_value = {
             "files": [
@@ -295,7 +331,15 @@ class TestFileWebhookProcessor:
             assert isinstance(result, WebhookEventRawResults)
             assert result.updated_raw_results == []
             assert len(result.deleted_raw_results) == 1
-            assert result.deleted_raw_results[0]["metadata"]["path"] == "config.yaml"
+            deleted = result.deleted_raw_results[0]
+            assert deleted["metadata"]["path"] == "config.yaml"
+            assert deleted["path"] == "config.yaml"
+            assert deleted["name"] == "config.yaml"
+            assert deleted["branch"] == "main"
+            assert "content" not in deleted
+
+            mock_exporter.get_resource.assert_not_called()
+            mock_exporter.file_processor.process_file.assert_not_called()
 
     async def test_handle_event_file_without_content(
         self,
@@ -333,6 +377,291 @@ class TestFileWebhookProcessor:
             assert isinstance(result, WebhookEventRawResults)
             assert result.updated_raw_results == []
             assert result.deleted_raw_results == []
+
+    async def test_handle_event_modified_file_carries_old_content_for_deletion(
+        self,
+        file_webhook_processor: FileWebhookProcessor,
+        resource_config_with_items_to_parse: GithubFileResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        new_content = "items:\n  - a\n  - b\n"
+        old_content = "items:\n  - a\n  - b\n  - c\n"
+
+        def fake_get_resource(options: FileContentOptions) -> dict[str, Any]:
+            content = old_content if options["branch"] == "abc123" else new_content
+            return {
+                "content": content,
+                "name": "config.yaml",
+                "path": "config.yaml",
+                "size": len(content),
+            }
+
+        async def fake_process_file(**kwargs: Any) -> dict[str, Any]:
+            return {
+                "organization": kwargs["organization"],
+                "content": kwargs["content"],
+                "repository": kwargs["repository"],
+                "branch": kwargs["branch"],
+                "path": kwargs["file_path"],
+                "name": Path(kwargs["file_path"]).name,
+                "metadata": kwargs.get("metadata") or {},
+            }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [{"filename": "config.yaml", "status": "modified"}]
+        }
+        mock_exporter.get_resource.side_effect = fake_get_resource
+        mock_exporter.file_processor.process_file.side_effect = fake_process_file
+
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(
+                payload, resource_config_with_items_to_parse
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 1
+            assert len(result.deleted_raw_results) == 1
+            assert result.updated_raw_results[0]["content"] == new_content
+            assert result.deleted_raw_results[0]["content"] == old_content
+            assert result.updated_raw_results[0]["branch"] == "main"
+            assert result.deleted_raw_results[0]["branch"] == "main"
+
+            resolve_by_content = {
+                call.kwargs["content"]: call.kwargs["should_resolve_references"]
+                for call in mock_exporter.file_processor.process_file.call_args_list
+            }
+            assert resolve_by_content == {new_content: True, old_content: False}
+
+    async def test_handle_event_removed_file_without_old_content_yields_no_deletion(
+        self,
+        file_webhook_processor: FileWebhookProcessor,
+        resource_config_with_items_to_parse: GithubFileResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [{"filename": "config.yaml", "status": "removed"}]
+        }
+        mock_exporter.get_resource.return_value = {
+            "content": None,
+            "name": "config.yaml",
+            "path": "config.yaml",
+            "size": 1024 * 1024 + 1,
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(
+                payload, resource_config_with_items_to_parse
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+            mock_exporter.file_processor.process_file.assert_not_called()
+
+    async def test_handle_event_modified_file_without_old_content_is_not_deleted(
+        self,
+        file_webhook_processor: FileWebhookProcessor,
+        resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [{"filename": "config.yaml", "status": "modified"}]
+        }
+        mock_exporter.get_resource.return_value = {
+            "content": None,
+            "name": "config.yaml",
+            "path": "config.yaml",
+            "size": 1024 * 1024 + 1,
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(payload, resource_config)
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+
+    async def test_handle_event_renamed_file_uses_previous_filename_for_old_content(
+        self,
+        file_webhook_processor: FileWebhookProcessor,
+        resource_config_with_items_to_parse: GithubFileResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        async def fake_process_file(**kwargs: Any) -> dict[str, Any]:
+            return {
+                "organization": kwargs["organization"],
+                "content": kwargs["content"],
+                "repository": kwargs["repository"],
+                "branch": kwargs["branch"],
+                "path": kwargs["file_path"],
+                "name": Path(kwargs["file_path"]).name,
+                "metadata": kwargs.get("metadata") or {},
+            }
+
+        def fake_get_resource(options: FileContentOptions) -> dict[str, Any]:
+            return {
+                "content": "name: test",
+                "name": Path(options["file_path"]).name,
+                "path": options["file_path"],
+                "size": 9,
+            }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [
+                {
+                    "filename": "new.yaml",
+                    "previous_filename": "old.yaml",
+                    "status": "renamed",
+                }
+            ]
+        }
+        mock_exporter.get_resource.side_effect = fake_get_resource
+        mock_exporter.file_processor.process_file.side_effect = fake_process_file
+
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(
+                payload, resource_config_with_items_to_parse
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 1
+            assert len(result.deleted_raw_results) == 1
+            assert result.updated_raw_results[0]["path"] == "new.yaml"
+            assert result.deleted_raw_results[0]["path"] == "old.yaml"
+
+            fetches = {
+                (call.args[0]["file_path"], call.args[0]["branch"])
+                for call in mock_exporter.get_resource.call_args_list
+            }
+            assert fetches == {("new.yaml", "main"), ("old.yaml", "abc123")}
+
+    async def test_handle_event_renamed_file_without_old_content_yields_no_deletion(
+        self,
+        file_webhook_processor: FileWebhookProcessor,
+        resource_config_with_items_to_parse: GithubFileResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        def fake_get_resource(options: FileContentOptions) -> dict[str, Any]:
+            content = None if options["branch"] == "abc123" else "items: []"
+            return {
+                "content": content,
+                "name": Path(options["file_path"]).name,
+                "path": options["file_path"],
+                "size": 1024 * 1024 + 1 if content is None else 9,
+            }
+
+        async def fake_process_file(**kwargs: Any) -> dict[str, Any]:
+            return {
+                "organization": kwargs["organization"],
+                "content": kwargs["content"],
+                "repository": kwargs["repository"],
+                "branch": kwargs["branch"],
+                "path": kwargs["file_path"],
+                "name": Path(kwargs["file_path"]).name,
+                "metadata": kwargs.get("metadata") or {},
+            }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [
+                {
+                    "filename": "new.yaml",
+                    "previous_filename": "old.yaml",
+                    "status": "renamed",
+                }
+            ]
+        }
+        mock_exporter.get_resource.side_effect = fake_get_resource
+        mock_exporter.file_processor.process_file.side_effect = fake_process_file
+
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(
+                payload, resource_config_with_items_to_parse
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 1
+            assert result.updated_raw_results[0]["path"] == "new.yaml"
+            assert result.deleted_raw_results == []
+
+    async def test_handle_event_renamed_file_without_items_to_parse_deletes_old_path(
+        self,
+        file_webhook_processor: FileWebhookProcessor,
+        resource_config: GithubFileResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        async def fake_process_file(**kwargs: Any) -> dict[str, Any]:
+            return {
+                "organization": kwargs["organization"],
+                "content": kwargs["content"],
+                "repository": kwargs["repository"],
+                "branch": kwargs["branch"],
+                "path": kwargs["file_path"],
+                "name": Path(kwargs["file_path"]).name,
+                "metadata": kwargs.get("metadata") or {},
+            }
+
+        def fake_get_resource(options: FileContentOptions) -> dict[str, Any]:
+            return {
+                "content": "name: test",
+                "name": Path(options["file_path"]).name,
+                "path": options["file_path"],
+                "size": 9,
+            }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [
+                {
+                    "filename": "new.yaml",
+                    "previous_filename": "old.yaml",
+                    "status": "renamed",
+                }
+            ]
+        }
+        mock_exporter.get_resource.side_effect = fake_get_resource
+        mock_exporter.file_processor.process_file.side_effect = fake_process_file
+
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(payload, resource_config)
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 1
+            assert len(result.deleted_raw_results) == 1
+            assert result.updated_raw_results[0]["path"] == "new.yaml"
+
+            deleted = result.deleted_raw_results[0]
+            assert deleted["metadata"]["path"] == "old.yaml"
+            assert deleted["name"] == "old.yaml"
+            assert "content" not in deleted
+
+            fetches = {
+                (call.args[0]["file_path"], call.args[0]["branch"])
+                for call in mock_exporter.get_resource.call_args_list
+            }
+            assert fetches == {("new.yaml", "main")}
 
     async def test_handle_event_processing_error(
         self,
