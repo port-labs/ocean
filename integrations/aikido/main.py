@@ -48,7 +48,7 @@ async def on_repositories_resync(
 async def on_issues_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
     logger.info("Fetching all issues from Aikido API")
-    async for issue_batch in client.get_issues_in_batches():
+    async for issue_batch in client.get_issues():
         logger.info(f"Yielding issues batch of size: {len(issue_batch)}")
         yield issue_batch
 
