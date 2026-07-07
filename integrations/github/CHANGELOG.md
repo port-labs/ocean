@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed file-kind live events not deleting entities when a file is deleted or renamed, or an item is removed from a file that uses `items_to_parse`. When `items_to_parse` is configured, old content is fetched from the before commit (concurrently with new content) so the delete path carries real content. When `items_to_parse` is not configured, deletions for removed and renamed files are emitted from metadata only, avoiding extra Contents API calls.
 
 
+## 6.3.0 (2026-07-07)
+
+
+### Features
+
+- Expanded team member ingestion to support GitHub Enterprise (`ent:*`) teams by falling back to the REST members API when GraphQL returns null, enabling Port to display members for EMU organisations.
+
+
 ## 6.2.2 (2026-07-02)
 
 
