@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.15.4-beta (2026-07-07)
+
+
+### Improvements
+
+- Supported account_role_arns in partition extraction
+
+
 ## 2.15.3-beta (2026-07-05)
 
 
