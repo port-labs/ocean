@@ -35,22 +35,21 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     This executor implements the Port action for triggering GitHub Actions workflows.
     It supports:
     - Dispatching workflows with custom inputs
-    - Tracking workflow execution status
+    - Tracking workflow execution status via the returned workflow run ID
     - Reporting workflow completion back to Port
     - Rate limit handling for GitHub API
     - Webhook processing for async status updates
 
-    The executor uses workflow names as partition keys to ensure sequential
-    execution of the same workflow, which is necessary for proper run tracking.
-    It identifies workflow runs by finding the one closest to the trigger time
-    and recording its ID.
+    On dispatch, GitHub returns a workflow run ID when `return_run_details` is set.
+    The executor fetches that run and builds a unique external ID from it, so
+    multiple dispatches of the same workflow can run concurrently without collision.
 
     Attributes:
         ACTION_NAME (str): The name of this action in Port's spec ("dispatch_workflow")
-        PARTITION_KEY (str): The key for partitioning runs ("workflow")
         WEBHOOK_PROCESSOR_CLASS (Type[AbstractWebhookProcessor]): Processor for workflow_run events
         WEBHOOK_PATH (str): Path for receiving GitHub webhook events
         _default_ref_cache (dict[str, str]): Cache of repository default branch names
+        _workflow_run_exporter (RestWorkflowRunExporter): Fetches dispatched workflow runs by ID
 
     Example Usage in Port:
         ```yaml
@@ -87,12 +86,6 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     """
 
     ACTION_NAME = "dispatch_workflow"
-
-    """
-    We use the workflow name as the partition key because we track workflow executions
-    by locating the workflow run closest to the trigger time and record its ID.
-    Triggering the same workflow concurrently would prevent us from uniquely tracking each instance.
-    """
 
     WEBHOOK_PROCESSOR_CLASS = DispatchWorkflowWebhookProcessor
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
@@ -150,7 +143,10 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
 
     async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
         """
-        Execute a workflow dispatch action by triggering a GitHub Actions workflow.
+        Dispatch a GitHub Actions workflow and register the returned run with Port.
+
+        Requests `return_run_details` from GitHub, fetches the workflow run by ID,
+        and calls `update_run_started` with its URL and external ID.
         """
         logger.info(f"Dispatching workflow for action run {run.id}", run_id=run.id)
         organization = run.execution_properties.get("org")
