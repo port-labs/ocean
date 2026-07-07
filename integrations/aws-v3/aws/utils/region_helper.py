@@ -13,14 +13,12 @@ class RegionHelper:
     @classmethod
     def get_partition(cls) -> str:
         if not cls._partition:
-            if ocean.integration_config.get("aws_partition"):
-                cls._partition = cast(
-                    str, ocean.integration_config.get("aws_partition")
-                )
-            elif ocean.integration_config.get("account_role_arn"):
-                cls._partition = cast(
-                    str, ocean.integration_config.get("account_role_arn")
-                ).split(":")[1]
+            if partition := ocean.integration_config.get("aws_partition"):
+                cls._partition = cast(str, partition)
+            elif account_role_arn := ocean.integration_config.get("account_role_arn"):
+                cls._partition = cast(str, account_role_arn).split(":")[1]
+            elif account_role_arns := ocean.integration_config.get("account_role_arns"):
+                cls._partition = str(account_role_arns[0]).split(":")[1]
             else:
                 cls._partition = Consts.default_partition
 
