@@ -42,6 +42,26 @@ class TestGetPartition:
             [call("aws_partition"), call("account_role_arn"), call("account_role_arn")]
         )
 
+    def test_returns_partition_from_account_role_arns(self) -> None:
+        with patch(
+            "aws.utils.region_helper.ocean", new_callable=MagicMock
+        ) as mock_ocean:
+            mock_ocean.integration_config.get.side_effect = lambda key: {
+                "account_role_arns": [
+                    "arn:aws-us-gov:iam::123456789012:role/port-aws-ecs-integration-ReadRole"
+                ]
+            }.get(key)
+            result = RegionHelper.get_partition()
+
+        assert result == "aws-us-gov"
+        mock_ocean.integration_config.get.assert_has_calls(
+            [
+                call("aws_partition"),
+                call("account_role_arn"),
+                call("account_role_arns"),
+            ]
+        )
+
     def test_returns_default_partition_when_no_config(self) -> None:
         with patch(
             "aws.utils.region_helper.ocean", new_callable=MagicMock
@@ -51,7 +71,7 @@ class TestGetPartition:
 
         assert result == Consts.default_partition
         mock_ocean.integration_config.get.assert_has_calls(
-            [call("aws_partition"), call("account_role_arn")]
+            [call("aws_partition"), call("account_role_arn"), call("account_role_arns")]
         )
 
     def test_aws_partition_takes_precedence_over_role_arn(self) -> None:
