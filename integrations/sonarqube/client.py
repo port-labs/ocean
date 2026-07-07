@@ -88,14 +88,6 @@ class SonarQubeClient:
         )
         self.semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
-    async def _enrich_projects(
-        self, projects: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        enriched_projects = await asyncio.gather(
-            *[self.get_single_project(project) for project in projects]
-        )
-        return [project for project in enriched_projects if project]
-
     @property
     def api_auth_params(self) -> dict[str, Any]:
         if self.organization_id:
@@ -248,7 +240,9 @@ class SonarQubeClient:
                 logger.info(
                     f"Fetched {len(components)} components {[item.get('key') for item in components]} from SonarQube"
                 )
-                yield await self._enrich_projects(components)
+                yield await asyncio.gather(
+                    *[self.get_single_project(project) for project in components]
+                )
         except Exception as e:
             logger.error(f"Error occurred while fetching components: {e}")
             raise
@@ -312,11 +306,6 @@ class SonarQubeClient:
         branches = await self.get_branches(project_key)
         project["__branches"] = branches
         main_branch = [branch for branch in branches if branch.get("isMain")]
-        if not main_branch:
-            logger.warning(
-                f"Skipping project {project_key} because no main branch data was returned from SonarQube"
-            )
-            return {}
         project["__branch"] = main_branch[0]
 
         if self.is_onpremise:
@@ -341,7 +330,9 @@ class SonarQubeClient:
             # if enrich_project is True, fetch the project details
             # including measures, branches and link
             if enrich_project:
-                yield await self._enrich_projects(projects)
+                yield await asyncio.gather(
+                    *[self.get_single_project(project) for project in projects]
+                )
             else:
                 yield projects
 
