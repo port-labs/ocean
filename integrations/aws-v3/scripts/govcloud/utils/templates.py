@@ -35,6 +35,57 @@ EC2_EVENT_LISTENER_NEW = """-e OCEAN__EVENT_LISTENER='{"type": "POLLING", "resyn
             -e OCEAN__SCHEDULED_RESYNC_INTERVAL=${ResyncIntervalMinutes} \\
             -e OCEAN__INTEGRATION__CONFIG__AWS_PARTITION=aws-us-gov"""
 
+EC2_ASSUME_READ_ROLE_POLICY_END = f"""                Resource: !Sub 'arn:{GOVCLOUD_PARTITION}:iam::${{AWS::AccountId}}:role/${{AWS::StackName}}-ReadRole'
+
+  # Role with read-only access; assumed by the app using instance-role credentials
+  PortOceanReadRole:"""
+
+EC2_ASSUME_MEMBER_READ_ROLES_POLICY_END = f"""                Resource: 'arn:{GOVCLOUD_PARTITION}:iam::*:role/PortOceanReadRole'
+
+  InstanceProfile:"""
+
+EC2_ECR_PULL_POLICY = """        - PolicyName: ECRPull
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
+
+"""
+
+EC2_USERDATA_DOCKER_INSTALL = "dnf install -y docker"
+
+EC2_USERDATA_DOCKER_INSTALL_WITH_AWSCLI = "dnf install -y docker aws-cli"
+
+EC2_USERDATA_ECR_LOGIN = """          ECR_REGISTRY=$(echo "${ContainerImage}" | cut -d/ -f1)
+          aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+"""
+
+EC2_USERDATA_ECR_LOGIN_INDENTED = """              ECR_REGISTRY=$(echo "${ContainerImage}" | cut -d/ -f1)
+              aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+"""
+
+EC2_SYSTEMD_ECR_LOGIN = """          ExecStartPre=/bin/bash -c 'aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com'
+"""
+
+EC2_SYSTEMD_ECR_LOGIN_INDENTED = """              ExecStartPre=/bin/bash -c 'aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com'
+"""
+
+EC2_MULTI_ACCOUNT_SUB_MAPPING_END = """              AccountRoleArn: !Ref AccountRoleArn
+      Tags:"""
+
+EC2_MULTI_ACCOUNT_SUB_MAPPING_WITH_IMAGE = """              AccountRoleArn: !Ref AccountRoleArn
+              ContainerImage: !Ref ContainerImage
+      Tags:"""
+
 
 def _download_and_partition_transform(
     relative_path: str,
@@ -88,25 +139,111 @@ def _apply_ecs_container_transforms(content: str, *, multi_account: bool) -> str
     )
 
 
+def _apply_ec2_event_listener_transforms(content: str) -> str:
+    if EC2_EVENT_LISTENER_OLD in content:
+        return content.replace(EC2_EVENT_LISTENER_OLD, EC2_EVENT_LISTENER_NEW, 1)
+    multi_account_listener = (
+        """-e OCEAN__EVENT_LISTENER='{"type": "POLLING", "resyncInterval": ${ResyncIntervalMinutes}}'"""
+    )
+    multi_account_listener_new = """-e OCEAN__EVENT_LISTENER='{"type": "POLLING", "resync_on_start": true, "interval": 60}' \\
+                -e OCEAN__SCHEDULED_RESYNC_INTERVAL=${ResyncIntervalMinutes} \\
+                -e OCEAN__INTEGRATION__CONFIG__AWS_PARTITION=aws-us-gov"""
+    if multi_account_listener in content:
+        return content.replace(multi_account_listener, multi_account_listener_new, 1)
+    if "OCEAN__INTEGRATION__CONFIG__AWS_PARTITION" in content:
+        return content
+    role_arn_line = "-e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARNS="
+    if role_arn_line in content:
+        return content.replace(
+            role_arn_line,
+            f"-e OCEAN__INTEGRATION__CONFIG__AWS_PARTITION={GOVCLOUD_PARTITION} \\\n            {role_arn_line}",
+            1,
+        )
+    if "-e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARN=" in content:
+        return content.replace(
+            "-e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARN=",
+            f"-e OCEAN__INTEGRATION__CONFIG__AWS_PARTITION={GOVCLOUD_PARTITION} \\\n                -e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARN=",
+            1,
+        )
+    return content
+
+
+def _apply_ec2_ecr_support(content: str) -> str:
+    if "PolicyName: ECRPull" not in content:
+        if EC2_ASSUME_READ_ROLE_POLICY_END in content:
+            content = content.replace(
+                EC2_ASSUME_READ_ROLE_POLICY_END,
+                EC2_ASSUME_READ_ROLE_POLICY_END.replace(
+                    "\n\n  # Role with read-only access; assumed by the app using instance-role credentials\n  PortOceanReadRole:",
+                    f"\n{EC2_ECR_PULL_POLICY}\n  # Role with read-only access; assumed by the app using instance-role credentials\n  PortOceanReadRole:",
+                ),
+                1,
+            )
+        elif EC2_ASSUME_MEMBER_READ_ROLES_POLICY_END in content:
+            content = content.replace(
+                EC2_ASSUME_MEMBER_READ_ROLES_POLICY_END,
+                EC2_ASSUME_MEMBER_READ_ROLES_POLICY_END.replace(
+                    "\n\n  InstanceProfile:",
+                    f"\n{EC2_ECR_PULL_POLICY}\n  InstanceProfile:",
+                ),
+                1,
+            )
+        else:
+            raise ValueError("Could not find EC2 instance role policy block for ECR permissions")
+
+    if EC2_USERDATA_DOCKER_INSTALL in content:
+        content = content.replace(
+            EC2_USERDATA_DOCKER_INSTALL,
+            EC2_USERDATA_DOCKER_INSTALL_WITH_AWSCLI,
+            1,
+        )
+
+    if "ECR_REGISTRY=$(echo" not in content:
+        if "systemctl enable docker\n\n          # Create systemd service" in content:
+            content = content.replace(
+                "systemctl enable docker\n\n          # Create systemd service",
+                f"systemctl enable docker\n\n{EC2_USERDATA_ECR_LOGIN}\n          # Create systemd service",
+                1,
+            )
+        elif "systemctl enable docker\n\n              cat > /etc/systemd/system/port-ocean.service" in content:
+            content = content.replace(
+                "systemctl enable docker\n\n              cat > /etc/systemd/system/port-ocean.service",
+                "systemctl enable docker\n\n"
+                f"{EC2_USERDATA_ECR_LOGIN_INDENTED}\n"
+                "              cat > /etc/systemd/system/port-ocean.service",
+                1,
+            )
+
+    if "docker login --username AWS" not in content:
+        if "ExecStartPre=-/usr/bin/docker stop port-ocean" in content:
+            indented = "              ExecStartPre=-/usr/bin/docker stop port-ocean"
+            if indented in content:
+                content = content.replace(
+                    indented,
+                    f"{EC2_SYSTEMD_ECR_LOGIN_INDENTED}{indented}",
+                    1,
+                )
+            else:
+                content = content.replace(
+                    "ExecStartPre=-/usr/bin/docker stop port-ocean",
+                    f"{EC2_SYSTEMD_ECR_LOGIN}          ExecStartPre=-/usr/bin/docker stop port-ocean",
+                    1,
+                )
+
+    if EC2_MULTI_ACCOUNT_SUB_MAPPING_END in content:
+        content = content.replace(
+            EC2_MULTI_ACCOUNT_SUB_MAPPING_END,
+            EC2_MULTI_ACCOUNT_SUB_MAPPING_WITH_IMAGE,
+            1,
+        )
+
+    return content
+
+
 def _apply_ec2_userdata_transforms(content: str) -> str:
     content = content.replace(f"{UPSTREAM_IMAGE}", "${ContainerImage}")
-    if EC2_EVENT_LISTENER_OLD in content:
-        content = content.replace(EC2_EVENT_LISTENER_OLD, EC2_EVENT_LISTENER_NEW, 1)
-    elif "OCEAN__INTEGRATION__CONFIG__AWS_PARTITION" not in content:
-        role_arn_line = "-e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARNS="
-        if role_arn_line in content:
-            content = content.replace(
-                role_arn_line,
-                f"-e OCEAN__INTEGRATION__CONFIG__AWS_PARTITION={GOVCLOUD_PARTITION} \\\n            {role_arn_line}",
-                1,
-            )
-        elif "-e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARN=" in content:
-            content = content.replace(
-                "-e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARN=",
-                f"-e OCEAN__INTEGRATION__CONFIG__AWS_PARTITION={GOVCLOUD_PARTITION} \\\n                -e OCEAN__INTEGRATION__CONFIG__ACCOUNT_ROLE_ARN=",
-                1,
-            )
-    return content
+    content = _apply_ec2_event_listener_transforms(content)
+    return _apply_ec2_ecr_support(content)
 
 
 def prepare_ecs_single_account_template(
