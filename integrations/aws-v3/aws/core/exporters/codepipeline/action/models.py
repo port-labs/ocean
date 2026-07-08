@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Any
+from typing import Any
 from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
@@ -18,28 +18,28 @@ class CodePipelineActionProperties(BaseModel):
     actionTypeId: ActionTypeIdProperties = Field(
         default_factory=ActionTypeIdProperties, alias="ActionTypeId"
     )
-    configuration: Optional[Dict[str, str]] = Field(default=None, alias="Configuration")
-    commands: Optional[List[str]] = Field(default=None, alias="Commands")
-    environmentVariables: Optional[List[dict[str, Any]]] = Field(
+    configuration: dict[str, str] | None = Field(default=None, alias="Configuration")
+    commands: list[str] | None = Field(default=None, alias="Commands")
+    environmentVariables: list[dict[str, Any]] | None = Field(
         default=None, alias="EnvironmentVariables"
     )
-    inputArtifacts: Optional[List[dict[str, Any]]] = Field(
+    inputArtifacts: list[dict[str, Any]] | None = Field(
         default=None, alias="InputArtifacts"
     )
     name: str = Field(default_factory=str, alias="Name")
-    namespace: Optional[str] = Field(default=None, alias="Namespace")
-    outputArtifacts: Optional[List[dict[str, Any]]] = Field(
+    namespace: str | None = Field(default=None, alias="Namespace")
+    outputArtifacts: list[dict[str, Any]] | None = Field(
         default=None, alias="OutputArtifacts"
     )
-    outputVariables: Optional[List[str]] = Field(default=None, alias="OutputVariables")
-    pipelineName: Optional[str] = Field(default=None, alias="PipelineName")
-    pipelineArn: Optional[str] = Field(default=None, alias="PipelineArn")
-    pipelineVersion: Optional[int] = Field(default=None, alias="PipelineVersion")
-    region: Optional[str] = Field(default=None, alias="Region")
-    roleArn: Optional[str] = Field(default=None, alias="RoleArn")
-    runOrder: Optional[int] = Field(default=None, alias="RunOrder")
-    stageName: Optional[str] = Field(default=None, alias="StageName")
-    timeoutInMinutes: Optional[int] = Field(default=None, alias="TimeoutInMinutes")
+    outputVariables: list[str] | None = Field(default=None, alias="OutputVariables")
+    pipelineName: str | None = Field(default=None, alias="PipelineName")
+    pipelineArn: str | None = Field(default=None, alias="PipelineArn")
+    pipelineVersion: int | None = Field(default=None, alias="PipelineVersion")
+    region: str | None = Field(default=None, alias="Region")
+    roleArn: str | None = Field(default=None, alias="RoleArn")
+    runOrder: int | None = Field(default=None, alias="RunOrder")
+    stageName: str | None = Field(default=None, alias="StageName")
+    timeoutInMinutes: int | None = Field(default=None, alias="TimeoutInMinutes")
 
     class Config:
         extra = "ignore"
