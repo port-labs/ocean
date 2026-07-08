@@ -79,7 +79,14 @@ def deploy_stack(
             raise RuntimeError(
                 f"Stack {stack_name} already exists. Set UPDATE_STACK = True to update it."
             )
-        cloudformation.update_stack(**kwargs)
+        try:
+            cloudformation.update_stack(**kwargs)
+        except ClientError as error:
+            if error.response["Error"]["Code"] == "ValidationError":
+                message = error.response["Error"].get("Message", "")
+                if "No updates are to be performed" in message:
+                    return
+            raise
         waiter = cloudformation.get_waiter("stack_update_complete")
         waiter_name = "stack_update_complete"
     else:

@@ -41,6 +41,12 @@ def install_port_ocean_chart(
     run_helm_command(["helm", "repo", "update", "port-labs"])
 
     account_role_arns_json = json.dumps(account_role_arns or [])
+    registry, _, repository_path = image_repository.partition("/")
+    if not repository_path:
+        repository_path = image_repository
+        registry = "ghcr.io/port-labs"
+    full_image_name = f"{repository_path}:{image_tag}"
+
     command = [
         "helm",
         "upgrade",
@@ -67,7 +73,7 @@ def install_port_ocean_chart(
         "--set",
         "integration.type=aws-v3",
         "--set",
-        'integration.eventListener.type="POLLING"',
+        "integration.eventListener.type=POLLING",
         "--set",
         "integration.eventListener.resync_on_start=true",
         "--set",
@@ -85,16 +91,16 @@ def install_port_ocean_chart(
         )
     command.extend(
         [
-        "--set",
-        f"image.repository={image_repository}",
-        "--set",
-        f"image.tag={image_tag}",
-        "--set",
-        f"podServiceAccount.name={service_account_name}",
-        "--set",
-        "podServiceAccount.create=true",
-        "--set",
-        f"podServiceAccount.annotations.eks\\.amazonaws\\.com/role-arn={service_account_role_arn}",
+            "--set-string",
+            f"imageRegistry={registry}",
+            "--set-string",
+            f"image={full_image_name}",
+            "--set",
+            f"podServiceAccount.name={service_account_name}",
+            "--set",
+            "podServiceAccount.create=true",
+            "--set",
+            f"podServiceAccount.annotations.eks\\.amazonaws\\.com/role-arn={service_account_role_arn}",
         ]
     )
     run_helm_command(command)
