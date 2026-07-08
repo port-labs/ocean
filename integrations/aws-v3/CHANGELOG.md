@@ -7,6 +7,167 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.15.5-beta (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 2.15.4-beta (2026-07-07)
+
+
+### Improvements
+
+- Supported account_role_arns in partition extraction
+
+
+## 2.15.3-beta (2026-07-05)
+
+
+### Improvements
+
+- Added static examples
+
+
+## 2.15.2-beta (2026-07-05)
+
+
+### Improvements
+
+- Added missing/fixed existing internal examples
+
+
+## 2.15.1-beta (2026-07-05)
+
+
+### Improvements
+
+- Typing for models uses new syntax rather than the deprecated format
+
+
+## 2.15.0-beta (2026-07-02)
+
+
+### Improvements
+
+- Added support for GovCloud environments
+
+
+## 2.14.3-beta (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 2.14.2-beta (2026-07-01)
+
+
+### Improvements
+
+- Fixed typo in alias kwarg which caused ExportedEnvironmentVariables field in CodeBuild Build Run to not be ingested properly
+
+
+## 2.14.1-beta (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 2.14.0-beta (2026-06-29)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::DeploymentTarget resource kind, enabling ingestion of CodeDeploy Deployment Targets into the Port catalog
+
+
+## 2.13.0-beta (2026-06-29)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::ActionExecution resource kind, enabling ingestion of CodePipeline Action Executions into the Port catalog
+
+
+
+## 2.12.0-beta (2026-06-28)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::PipelineExecution resource kind, enabling ingestion of CodePipeline Pipeline Executions into the Port catalog
+
+
+## 2.11.3-beta (2026-06-28)
+
+
+### Improvements
+
+- Optimized the shared `ResourceBuilder` (used by all AWS kinds, notably the property-heavy `AWS::EC2::Instance`) to remove redundant per-resource work: it no longer instantiates and discards an empty default `Properties` model, now validates `Properties` exactly once by constructing the resource model in a single pass, and replaces the per-resource JSON serialize/deserialize round-trip with an in-place dict conversion (only non-JSON-native leaves are rewritten). Output is byte-for-byte identical.
+
+
+## 2.11.2-beta (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 2.11.1-beta (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 2.11.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::Stage resource kind, enabling ingestion of CodePipeline Stages into the Port catalog
+
+
+## 2.10.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::Deployment resource kind, enabling ingestion of CodeDeploy Deployment into the Port catalog
+
+
+## 2.9.4-beta (2026-06-25)
+
+
+### Improvements
+
+- Added base (and used in CodePipeline) to allow for Action merge by id rather than index
+
+
+## 2.9.3-beta (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 2.9.2-beta (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
 ## 2.9.1-beta (2026-06-22)
 
 

@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.50 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.7.49 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.7.48 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.7.47 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.7.46 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.7.45 (2026-06-24)
+
+### Features
+
+- Added project-level webhook registration for GitLab projects in personal namespaces, enabling live events for projects not belonging to any group
+
+
+## 0.7.44 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.7.43 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
 ## 0.7.42 (2026-06-22)
 
 

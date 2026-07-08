@@ -1,6 +1,6 @@
 from typing import List, NamedTuple, Optional
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 class RestrictionPolicyResource(NamedTuple):
@@ -11,12 +11,14 @@ class RestrictionPolicyResource(NamedTuple):
 class OrgCredentials(BaseModel):
     """Per-organization Datadog credentials as supplied in datadogCredentialMap.
 
-    The org's identity (id/name) isn't configured — it's discovered from Datadog
-    at startup while validating the keys (see DatadogClientManager.validate_credentials).
+    The org's identity (id/name) is optional: when omitted it's fetched from Datadog
+    at startup (see DatadogClientManager.validate_credentials).
     """
 
     api_key: str = Field(..., alias="datadogApiKey")
     app_key: str = Field(..., alias="datadogApplicationKey")
+    org_name: Optional[str] = Field(default=None, alias="datadogOrgName")
+    org_id: Optional[str] = Field(default=None, alias="datadogOrgPublicId")
     base_url: Optional[str] = Field(None, alias="datadogBaseUrl")
 
 

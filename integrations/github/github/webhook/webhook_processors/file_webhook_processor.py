@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import cast, Any
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
@@ -6,8 +7,9 @@ from github.webhook.webhook_processors.base_repository_webhook_processor import 
 from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
+    FileDiffStatus,
     get_matching_files,
-    group_files_by_status,
+    split_files_by_content_presence,
 )
 from github.core.options import FileContentOptions
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -79,6 +81,8 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        should_fetch_old_content = bool(resource_config.port.items_to_parse)
+
         updated_raw_results, deleted_raw_results = await self._process_matching_files(
             organization,
             repo_name,
@@ -87,6 +91,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             matching_patterns,
             repository,
             current_branch,
+            should_fetch_old_content,
         )
 
         if updated_raw_results and selector.included_files:
@@ -151,6 +156,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         matching_patterns: list["GithubFilePattern"],
         repository: dict[str, Any],
         current_branch: str,
+        should_fetch_old_content: bool,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         logger.info(
             f"Fetching commit diff for repository {repo_name} of organization: {organization} from {before_sha} to {after_sha}"
@@ -170,42 +176,115 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
             return [], []
 
-        deleted_files, updated_files = group_files_by_status(matching_files)
+        files_with_new_content, files_with_old_content = (
+            split_files_by_content_presence(matching_files)
+        )
         logger.info(
-            f"Found {len(deleted_files)} deleted files and {len(updated_files)} updated files of organization: {organization}"
+            f"Found {len(files_with_new_content)} files with new content and "
+            f"{len(files_with_old_content)} files with old content of organization: {organization}"
         )
 
-        updated_raw_results = await self._process_updated_files(
-            organization, updated_files, exporter, repository, repo_name, current_branch
-        )
+        if not should_fetch_old_content:
+            updated_raw_results = await self._process_files_at_ref(
+                organization,
+                files_with_new_content,
+                exporter,
+                repository,
+                repo_name,
+                current_branch=current_branch,
+            )
+            deleted_raw_results = self._build_metadata_deletions(
+                organization, files_with_old_content, repository, current_branch
+            )
+            return updated_raw_results, deleted_raw_results
 
-        deleted_raw_results = [
-            {
-                "organization": organization,
-                "path": file["filename"],
-                "metadata": {"path": file["filename"]},
-                "repository": repository,
-                "branch": current_branch,
-                "name": Path(file["filename"]).name,
-            }
-            for file in deleted_files
-        ]
+        updated_raw_results, deleted_raw_results = await asyncio.gather(
+            self._process_files_at_ref(
+                organization,
+                files_with_new_content,
+                exporter,
+                repository,
+                repo_name,
+                current_branch=current_branch,
+            ),
+            self._process_files_at_ref(
+                organization,
+                files_with_old_content,
+                exporter,
+                repository,
+                repo_name,
+                current_branch=current_branch,
+                content_ref=before_sha,
+                should_resolve_references=False,
+                should_use_previous_filename=True,
+            ),
+        )
 
         return updated_raw_results, deleted_raw_results
 
-    async def _process_updated_files(
+    def _build_metadata_deletions(
         self,
         organization: str,
-        updated_files: list[dict[str, Any]],
+        files: list[dict[str, Any]],
+        repository: dict[str, Any],
+        branch: str,
+    ) -> list[dict[str, Any]]:
+        """Emit metadata-only deletions for removed files and the old paths of renamed files."""
+        results = []
+        for file_info in files:
+            if file_info.get("status") == FileDiffStatus.REMOVED:
+                deleted_path = file_info["filename"]
+            elif file_info.get("status") == FileDiffStatus.RENAMED:
+                deleted_path = file_info.get("previous_filename")
+                if not deleted_path:
+                    continue
+            else:
+                continue
+
+            results.append(
+                self._build_deletion_metadata_result(
+                    organization, deleted_path, repository, branch
+                )
+            )
+        return results
+
+    def _build_deletion_metadata_result(
+        self,
+        organization: str,
+        file_path: str,
+        repository: dict[str, Any],
+        branch: str,
+    ) -> dict[str, Any]:
+        """Metadata-only deletion entry used when old content cannot be fetched."""
+        return {
+            "organization": organization,
+            "path": file_path,
+            "metadata": {"path": file_path},
+            "repository": repository,
+            "branch": branch,
+            "name": Path(file_path).name,
+        }
+
+    async def _process_files_at_ref(
+        self,
+        organization: str,
+        files: list[dict[str, Any]],
         exporter: "RestFileExporter",
         repository: dict[str, Any],
         repo_name: str,
         current_branch: str,
+        content_ref: str | None = None,
+        should_resolve_references: bool = True,
+        should_use_previous_filename: bool = False,
     ) -> list[dict[str, Any]]:
+        """Fetch content from ``content_ref`` (defaults to ``current_branch``) but always stamp ``current_branch`` so upsert and delete identifiers match."""
+        content_ref = content_ref or current_branch
         results = []
 
-        for file_info in updated_files:
+        for file_info in files:
             file_path = file_info["filename"]
+            if should_use_previous_filename:
+                file_path = file_info.get("previous_filename") or file_path
             patterns: list["GithubFilePattern"] = file_info["patterns"]
 
             for pattern in patterns:
@@ -215,19 +294,19 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                             organization=organization,
                             repo_name=repo_name,
                             file_path=file_path,
-                            branch=current_branch,
+                            branch=content_ref,
                         )
                     )
-                    if not file_content_response:
-                        logger.warning(
-                            f"No response for file {file_path} from {organization}"
-                        )
-                        continue
 
-                    content = file_content_response.get("content")
+                    content = (
+                        file_content_response.get("content")
+                        if file_content_response
+                        else None
+                    )
                     if content is None:
                         logger.warning(
-                            f"File {file_path} has no content or is too large from {organization}"
+                            f"File {file_path} has no content or is too large at ref {content_ref} from {organization}; "
+                            "cannot compute sub-entity deletions for this file"
                         )
                         continue
 
@@ -239,19 +318,20 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                         skip_parsing=pattern.skip_parsing,
                         branch=current_branch,
                         metadata=file_content_response,
+                        should_resolve_references=should_resolve_references,
                     )
 
                     results.append(dict(file_obj))
                     logger.debug(
-                        f"Successfully processed file {file_path} with pattern {pattern.path} from {organization}"
+                        f"Successfully processed file {file_path} with pattern {pattern.path} at ref {content_ref} from {organization}"
                     )
 
                 except Exception as e:
                     logger.error(
-                        f"Error processing file {file_path} with pattern {pattern.path}: {e} from {organization}"
+                        f"Error processing file {file_path} with pattern {pattern.path} at ref {content_ref}: {e} from {organization}"
                     )
 
         logger.info(
-            f"Successfully processed {len(results)} file results from {organization}"
+            f"Successfully processed {len(results)} file results at ref {content_ref} from {organization}"
         )
         return results

@@ -8,7 +8,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.handlers.port_app_config.validators import (
     validate_and_get_config_schema,
 )
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 from integration import GitlabPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import GitLabDeploymentStatus

@@ -79,6 +79,11 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
             f"Reporting pipeline {pipeline_id} completion for run {run.id}: "
             f"status={status}, success={success}"
         )
+        await ocean.port_client.post_run_log(
+            run,
+            f"Pipeline completed with status: {status}",
+            should_raise=False,
+        )
         await ocean.port_client.report_run_completed(
             run, success, f"Pipeline completed: {status}"
         )

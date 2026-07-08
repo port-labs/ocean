@@ -718,34 +718,35 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repository_exporter = RestRepositoryExporter(rest_client)
         deployment_exporter = RestDeploymentExporter(rest_client)
 
-        async for organizations in _iter_resync_organization_batches(scope):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
-                )
+    async for organizations in _iter_resync_organization_batches(scope):
+        for org in organizations:
+            org_name = org["login"]
+            repo_options = ListRepositoryOptions(
+                organization=org_name,
+                organization_type=org["type"],
+                type=port_app_config.repository_type,
+                search_params=config.selector.repo_search,
+            )
 
-                async for repositories in repository_exporter.get_paginated_resources(
-                    repo_options
-                ):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            deployment_exporter.get_paginated_resources(
-                                ListDeploymentsOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    task=config.selector.task,
-                                    environment=config.selector.environment,
-                                )
+            async for repositories in repository_exporter.get_paginated_resources(
+                repo_options
+            ):
+                tasks = []
+                for repo in repositories:
+                    tasks.append(
+                        deployment_exporter.get_paginated_resources(
+                            ListDeploymentsOptions(
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                task=config.selector.task,
+                                environment=config.selector.environment,
+                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
                             )
                         )
+                    )
 
-                    async for deployments in stream_async_iterators_tasks(*tasks):
-                        yield deployments
+                async for deployments in stream_async_iterators_tasks(*tasks):
+                    yield deployments
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
@@ -1073,6 +1074,7 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 
                     async for alerts in stream_async_iterators_tasks(*tasks):
                         yield alerts
+
 
 # Register webhook processors
 register_live_events_webhooks()

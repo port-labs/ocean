@@ -7,12 +7,147 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.1.0 (2026-06-23)
+## 6.3.0 (2026-07-09)
+
+
+### Improvements
+
+- Added installation-scoped GitHub client factory with `create_github_clients` and `create_github_client_for_org` for multi-installation app auth.
+
+
+## 6.2.5 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 6.2.4 (2026-07-07)
+
+
+### Improvements
+
+- Use GitHub workflow run ID returned on dispatch to track workflow runs, enabling concurrent dispatch workflow action executions.
+
+
+## 6.2.3 (2026-07-02)
+
+
+### Bug Fixes
+
+- Fixed file-kind live events not deleting entities when a file is deleted or renamed, or an item is removed from a file that uses `items_to_parse`. When `items_to_parse` is configured, old content is fetched from the before commit (concurrently with new content) so the delete path carries real content. When `items_to_parse` is not configured, deletions for removed and renamed files are emitted from metadata only, avoiding extra Contents API calls.
+
+
+## 6.2.2 (2026-07-02)
+
+
+### Improvements
+
+- Improve log message in the GraphQL error handler
+
+
+## 6.2.1 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 6.2.0 (2026-07-01)
 
 
 ### Features
 
-- Added installation-scoped GitHub client factory with `create_github_clients` and `create_github_client_for_org` for multi-installation app auth.
+- Added `update_repo_external_properties` action that pushes Port blueprint property values to GitHub repository external properties.
+
+
+## 6.1.3 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 6.1.2 (2026-06-29)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `deployment` kind that attaches the earliest commit since the previous deployment under `__firstCommit`, powering the DORA Lead Time for Changes metric (defaults to false; adds one API call per deployment when enabled).
+
+
+## 6.1.1 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 6.1.0 (2026-06-28)
+
+
+### Improvements
+
+- Added integration tests for all kinds of resources
+
+## 6.0.14 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 6.0.13 (2026-06-25)
+
+
+### Bug Fixes
+
+- Implemented rate limit reservation threshold to prevent resync deadlocks
+
+
+## 6.0.12 (2026-06-25)
+
+
+### Improvements
+
+- Reduce GraphQL API minimum page size to 1, add tests to formalize page-recovery behavior
+
+
+## 6.0.11 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 6.0.10 (2026-06-25)
+
+
+### Improvements
+
+- Added a warning log when a GraphQL query's page size is reduced on retry
+
+
+## 6.0.9 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 6.0.8 (2026-06-23)
+
+
+### Bug Fixes
+
+- Fix semaphore permit leak in `GitHubRateLimiter.__aenter__` on cancellation
 
 
 ## 6.0.7 (2026-06-22)
