@@ -4,6 +4,6 @@ An integration used to import aws-v3 resources into Port.
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installation/)
 
-#### GovCloud self-hosted ECS setup - [scripts/govcloud/self_hosted_ecs/README.md](scripts/govcloud/self_hosted_ecs/README.md)
+#### GovCloud self-hosted setup - [scripts/govcloud/README.md](scripts/govcloud/README.md)
 
 #### Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
