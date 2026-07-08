@@ -495,7 +495,7 @@ class TestExecutionManager:
             limit=ANY,
             visibility_timeout_ms=execution_manager._visibility_timeout_ms,
             exclude_action_identifiers=["test-action-identifier"],
-            exclude_workflow_invocation_types=[],
+            exclude_wf_nodes_uid=[],
         )
 
     @pytest.mark.asyncio
@@ -521,7 +521,7 @@ class TestExecutionManager:
             limit=ANY,
             visibility_timeout_ms=execution_manager._visibility_timeout_ms,
             exclude_action_identifiers=[],
-            exclude_workflow_invocation_types=[run.buffer_utilization_key],
+            exclude_wf_nodes_uid=[run.buffer_utilization_key],
         )
 
     @pytest.mark.asyncio
@@ -554,7 +554,7 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_workflow_invocation_types=None: [
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
             generate_mock_action_run()
         ]
 
@@ -579,7 +579,7 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_workflow_invocation_types=None: [
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
             generate_mock_action_run(action_type="unregistered_action")
         ]
 
@@ -720,7 +720,7 @@ class TestExecutionManager:
             "_handle_partition_queue_once",
             wrapped_handle_partition_queue_once,
         )
-        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_workflow_invocation_types=None: [
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
             *[
                 generate_mock_action_run(
                     action_type=mock_test_partition_executor.ACTION_NAME,
@@ -857,7 +857,7 @@ class TestExecutionManager:
             limit: int,
             visibility_timeout_ms: int,
             exclude_action_identifiers: list[str] | None = None,
-            exclude_workflow_invocation_types: list[str] | None = None,
+            exclude_wf_nodes_uid: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal poll_count
             poll_count += 1
@@ -959,7 +959,7 @@ class TestExecutionManager:
             limit: int,
             visibility_timeout_ms: int,
             exclude_action_identifiers: list[str] | None = None,
-            exclude_workflow_invocation_types: list[str] | None = None,
+            exclude_wf_nodes_uid: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal call_count
             call_count += 1
