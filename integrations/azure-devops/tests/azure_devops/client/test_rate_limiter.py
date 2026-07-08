@@ -266,6 +266,7 @@ class TestAzureDevOpsRateLimiter:
         assert rate_limiter._limit is None
         assert rate_limiter._remaining is None
         assert rate_limiter._reset_time is None
+        assert rate_limiter._throttle_until is None
 
     async def test_custom_initialization_values(self) -> None:
         """
@@ -416,3 +417,59 @@ class TestAzureDevOpsRateLimiter:
         assert rate_limiter._limit == 200
         assert rate_limiter._remaining == 50
         assert rate_limiter._reset_time is not None
+
+    async def test_signal_throttle_sets_throttle_until(self) -> None:
+        rate_limiter = AzureDevOpsRateLimiter()
+
+        with patch("time.time", return_value=1000.0):
+            await rate_limiter.signal_throttle(300)
+
+        assert rate_limiter._throttle_until == 1300.0
+
+    async def test_signal_throttle_does_not_reduce_existing_throttle(self) -> None:
+        rate_limiter = AzureDevOpsRateLimiter()
+
+        with patch("time.time", return_value=1000.0):
+            await rate_limiter.signal_throttle(300)
+            await rate_limiter.signal_throttle(60)
+
+        assert rate_limiter._throttle_until == 1300.0
+
+    async def test_signal_throttle_extends_existing_throttle(self) -> None:
+        rate_limiter = AzureDevOpsRateLimiter()
+
+        with patch("time.time", return_value=1000.0):
+            await rate_limiter.signal_throttle(60)
+            await rate_limiter.signal_throttle(300)
+
+        assert rate_limiter._throttle_until == 1300.0
+
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    async def test_aenter_sleeps_on_active_throttle(
+        self, mock_sleep: AsyncMock
+    ) -> None:
+        rate_limiter = AzureDevOpsRateLimiter()
+        throttle_end = 1300.0
+
+        rate_limiter._throttle_until = throttle_end
+
+        with patch("time.time", return_value=1000.0):
+            async with rate_limiter:
+                pass
+
+        mock_sleep.assert_awaited_once_with(300.0)
+        assert rate_limiter._throttle_until is None
+
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    async def test_aenter_skips_throttle_when_expired(
+        self, mock_sleep: AsyncMock
+    ) -> None:
+        rate_limiter = AzureDevOpsRateLimiter()
+        rate_limiter._throttle_until = 900.0
+
+        with patch("time.time", return_value=1000.0):
+            async with rate_limiter:
+                pass
+
+        mock_sleep.assert_not_awaited()
+        assert rate_limiter._throttle_until is None

@@ -1,4 +1,7 @@
 import asyncio
+from port_ocean.exceptions.context import EventContextNotFoundError
+from port_ocean.context.event import event, EventType
+from port_ocean.context.ocean import ocean
 import time
 from typing import Optional, Any, Type
 
@@ -11,6 +14,8 @@ from github.clients.rate_limiter.utils import (
     is_rate_limit_response,
 )
 
+_DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD: float = 95.0
+
 
 class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
@@ -22,8 +27,16 @@ class GitHubRateLimiter:
 
     async def __aenter__(self) -> "GitHubRateLimiter":
         await self._semaphore.acquire()
-        async with self._lock:
-            await self._enforce_rate_limit()
+        try:
+            async with self._lock:
+                await self._enforce_rate_limit()
+        except BaseException as ctx_error:
+            logger.debug(
+                "github:clients:rate_limiter:GitHubRateLimiter::Error occurred while enforcing rate limit: {error}",
+                error=ctx_error,
+            )
+            self._semaphore.release()
+            raise
         return self
 
     async def __aexit__(
@@ -42,17 +55,79 @@ class GitHubRateLimiter:
             self._initialized = False
             return
 
+        if self._is_resync_event():
+            ratelimit_threshold = self._get_validated_resync_threshold()
+            if self.rate_limit_info.utilization_percentage >= ratelimit_threshold:
+                await self._sleep_for_resync_threshold(ratelimit_threshold)
+                return
+
         if self.rate_limit_info.remaining <= 1:
-            delay = self.rate_limit_info.seconds_until_reset
-            if delay > 0:
-                logger.bind(api_type=self.api_type, delay=delay).warning(
-                    f"Requests paused for {delay:.1f}s due to rate limit"
-                )
-                await asyncio.sleep(delay)
-            self._initialized = False
+            await self._sleep()
             return
 
         self.rate_limit_info.remaining -= 1
+
+    async def _sleep(self) -> None:
+        if self.rate_limit_info is None:
+            return
+        delay = self.rate_limit_info.seconds_until_reset
+        if delay > 0:
+            logger.bind(api_type=self.api_type, delay=delay).warning(
+                f"Requests paused for {delay:.1f}s due to rate limit exhaustion."
+            )
+            await asyncio.sleep(delay)
+        self._initialized = False
+
+    @staticmethod
+    def _is_resync_event() -> bool:
+        try:
+            return event.event_type == EventType.RESYNC
+        except EventContextNotFoundError:
+            # we are not in an event context, we assume this is a standard action/webhook and should not be throttled
+            return False
+
+    @staticmethod
+    def _get_validated_resync_threshold() -> float:
+        raw_threshold = ocean.integration_config.get(
+            "resync_ratelimit_reservation_threshold",
+            _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD,
+        )
+
+        try:
+            threshold = float(raw_threshold)
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Invalid ratelimit_reservation_threshold value: {raw_threshold}. Using default {_DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD}%."
+            )
+            threshold = _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD
+
+        if not 0 <= threshold <= 100:
+            logger.warning(
+                f"resyncRatelimitReservationThreshold must be between 0 and 100, "
+                f"got {threshold}. Falling back to default of "
+                f"{_DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD}%."
+            )
+            return _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD
+        return threshold
+
+    async def _sleep_for_resync_threshold(self, threshold: float) -> None:
+        if self.rate_limit_info is None:
+            logger.debug("No rate limit info available, cannot check threshold.")
+            return
+
+        delay = self.rate_limit_info.seconds_until_reset
+        if delay > 0:
+            logger.bind(
+                api_type=self.api_type,
+                delay=delay,
+                current_utilization=self.rate_limit_info.utilization_percentage,
+                threshold=threshold,
+            ).warning(
+                "Rate limit utilization exceeds threshold during resync. "
+                "Pausing execution to save remaining budget for webhooks/actions."
+            )
+            await asyncio.sleep(delay)
+        self._initialized = False
 
     def is_rate_limit_response(self, response: httpx.Response) -> bool:
         return is_rate_limit_response(response)

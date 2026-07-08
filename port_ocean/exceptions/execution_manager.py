@@ -20,3 +20,13 @@ class PartitionKeyNotFoundError(Exception):
     """
 
     pass
+
+
+class ActionExecutionError(Exception):
+    """
+    Raised by integration executors for expected action failures such as invalid
+    input or upstream API rejections. The execution manager logs these without a
+    stack trace and reports the message directly to Port.
+    """
+
+    pass
