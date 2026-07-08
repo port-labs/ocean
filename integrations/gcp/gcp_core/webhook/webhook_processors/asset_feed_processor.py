@@ -25,7 +25,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class AssetFeedProcessor(AbstractWebhookProcessor):
-    # Strictly typed cache to prevent mypy errors
     _cached_asset_data: dict[str, Any] | None = None
 
     async def _get_parsed_event(self, payload: EventPayload) -> dict[str, Any] | None:

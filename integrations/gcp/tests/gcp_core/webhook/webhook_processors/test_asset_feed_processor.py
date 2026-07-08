@@ -40,7 +40,6 @@ def mock_ocean_context() -> Generator[None, None, None]:
 
 @pytest.fixture
 def processor(mock_ocean_context: None, mock_webhook_event: WebhookEvent) -> Any:
-    # UPDATED IMPORT PATH
     from gcp_core.webhook.webhook_processors.asset_feed_processor import (
         AssetFeedProcessor,
     )
