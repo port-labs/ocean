@@ -204,9 +204,9 @@ async def resolve_dynamic_endpoints(
     path_parameters = getattr(selector, "path_parameters", None) or {}
     query_parameters = getattr(selector, "query_parameters", None) or {}
 
-    async def _resolve_dynamic_query_values() -> Optional[
-        Tuple[List[str], List[List[str]]]
-    ]:
+    async def _resolve_dynamic_query_values() -> (
+        Optional[Tuple[List[str], List[List[str]]]]
+    ):
         if not query_parameters:
             return None
 
@@ -290,9 +290,8 @@ async def resolve_dynamic_endpoints(
                 f"{estimated_combinations} request variants; streaming in "
                 f"chunks of {RESOLVED_REQUEST_BATCH_SIZE}"
             )
-        static_endpoint: List[tuple[str, Dict[str, str]]] = [(kind, {})]
         for resolved_batch in _iter_resolved_request_batches(
-            static_endpoint, query_keys, query_values
+            [(kind, {})], query_keys, query_values
         ):
             yield resolved_batch
         return
@@ -306,9 +305,8 @@ async def resolve_dynamic_endpoints(
             return
 
         query_keys, query_values = query_value_matrix
-        static_endpoint: List[tuple[str, Dict[str, str]]] = [(kind, {})]
         for resolved_batch in _iter_resolved_request_batches(
-            static_endpoint, query_keys, query_values
+            [(kind, {})], query_keys, query_values
         ):
             yield resolved_batch
         return
@@ -332,9 +330,7 @@ async def resolve_dynamic_endpoints(
         # Use existing helper to generate all endpoints for this batch
         endpoints = generate_resolved_endpoints(kind, param_name, value_batch)
         if query_value_matrix is None:
-            for resolved_batch in _iter_resolved_request_batches(
-                endpoints, None, None
-            ):
+            for resolved_batch in _iter_resolved_request_batches(endpoints, None, None):
                 yield resolved_batch
             continue
 

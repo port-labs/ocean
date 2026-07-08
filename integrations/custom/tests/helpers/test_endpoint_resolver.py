@@ -87,9 +87,7 @@ class TestGenerateResolvedEndpoints:
         param_name = "team_id"
         values = ["team-123"]
         result = generate_resolved_endpoints(template, param_name, values)
-        assert result == [
-            ("/api/v1/teams/team-123/members", {"team_id": "team-123"})
-        ]
+        assert result == [("/api/v1/teams/team-123/members", {"team_id": "team-123"})]
 
     def test_generate_multiple_endpoints(self) -> None:
         """Test generating multiple resolved endpoints"""
@@ -258,9 +256,7 @@ class TestResolveDynamicEndpoints:
         kind = "/api/v1/users"
 
         # Collect yielded batches from async generator
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Returns single batch with static endpoint
         assert result == [[("/api/v1/users", {}, {})]]
@@ -271,9 +267,7 @@ class TestResolveDynamicEndpoints:
         kind = ""
 
         # Collect yielded batches from async generator
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         assert result == []
 
@@ -283,9 +277,7 @@ class TestResolveDynamicEndpoints:
         kind = "/api/v1/teams/{team_id}/members"
 
         # Collect yielded batches from async generator
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Returns single batch with template as-is when config is missing
         assert result == [[("/api/v1/teams/{team_id}/members", {}, {})]]
@@ -317,9 +309,7 @@ class TestResolveDynamicEndpoints:
         kind = "/api/v1/teams/{team_id}/members"
 
         # Execute - collect yielded batches from async generator
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Assert - single batch with all resolved endpoints
         assert result == [
@@ -358,9 +348,7 @@ class TestResolveDynamicEndpoints:
         kind = "/api/v1/teams/{team_id}/members"
 
         # Execute - collect yielded batches from async generator
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Assert - returns empty list when no values found
         assert result == []
@@ -402,9 +390,7 @@ class TestResolveDynamicEndpoints:
         kind = "/api/v1/orgs/{org_id}/teams/{team_id}/members"
 
         # Execute - collect yielded batches from async generator
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Assert - single batch, only first parameter resolved (current limitation)
         assert result == [
@@ -443,9 +429,7 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/users"
 
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         assert result == [
             [
@@ -483,9 +467,7 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/teams/{team_id}/members"
 
-        result = [
-            batch async for batch in resolve_dynamic_endpoints(selector, kind)
-        ]
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         assert result == [
             [
