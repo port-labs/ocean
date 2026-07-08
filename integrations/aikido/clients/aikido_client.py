@@ -130,9 +130,12 @@ class AikidoClient:
                 response = await self._execute_request(
                     endpoint, params=params, ignore_default_errors=False
                 )
-                resources: List[Dict[str, Any]] = (
-                    response.json() if response is not None else []
-                )
+                if response is None:
+                    logger.info(
+                        f"No {resource_name} returned for page {params['page']}"
+                    )
+                    break
+                resources: List[Dict[str, Any]] = response.json()
             except Exception as e:
                 logger.error(f"Error fetching {resource_name}: {e}")
                 raise
