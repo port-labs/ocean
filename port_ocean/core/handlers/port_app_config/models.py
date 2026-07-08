@@ -163,7 +163,7 @@ class PortAppConfig(_FieldMetadataEnforcer):
         ge=0,
         le=1,
         title="Allow entity deletion",
-        description="On: deletes entities missing from the source, keeping the catalog in sync. Off: no deletions; stale entities may remain.",
+        description="On: deletes entities missing from the source, keeping the catalog in sync. Off: no deletions, stale entities may remain.",
     )
     resources: list[ResourceConfig] = Field(
         default_factory=list,
