@@ -1,11 +1,8 @@
-import asyncio
 import os
 import tempfile
 import typing
 from asyncio import BoundedSemaphore
-import gcp_core.webhooks.asset_feed_processor as _feed_processor
-from gcp_core.webhooks.asset_feed_processor import AssetFeedProcessor
-
+from gcp_core.webhook.registry import register_webhook_processors
 from loguru import logger
 
 import gcp_core.clients as clients
@@ -31,7 +28,6 @@ from gcp_core.utils import (
     get_current_resource_config,
     get_credentials_json,
     resolve_request_controllers,
-    get_initial_quota_for_project_via_rest,
 )
 
 RATE_LIMITER_TIME_PERIOD_SECONDS: float = 60.0
@@ -94,27 +90,6 @@ async def setup_application_default_credentials() -> None:
 
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
     logger.info("Created Application Default Credentials configuration")
-
-
-@ocean.on_start()
-async def setup_real_time_request_controllers() -> None:
-    global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
-    global PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE
-    global BACKGROUND_TASK_THRESHOLD
-    if not ocean.event_listener_type == "ONCE":
-        effective_quota = await get_initial_quota_for_project_via_rest()
-        PROJECT_V3_GET_REQUESTS_RATE_LIMITER = FixedWindowLimiter(
-            max_rate=effective_quota, time_period=RATE_LIMITER_TIME_PERIOD_SECONDS
-        )
-        PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE = asyncio.BoundedSemaphore(
-            effective_quota
-        )
-        BACKGROUND_TASK_THRESHOLD = float(
-            PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 10
-        )
-
-        _feed_processor.rate_limiter = PROJECT_V3_GET_REQUESTS_RATE_LIMITER
-        _feed_processor.semaphore = PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
@@ -188,4 +163,4 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield resources_batch
 
 
-ocean.add_webhook_processor("/events", AssetFeedProcessor)
+register_webhook_processors()

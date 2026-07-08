@@ -40,7 +40,10 @@ def mock_ocean_context() -> Generator[None, None, None]:
 
 @pytest.fixture
 def processor(mock_ocean_context: None, mock_webhook_event: WebhookEvent) -> Any:
-    from gcp_core.webhooks.asset_feed_processor import AssetFeedProcessor
+    # UPDATED IMPORT PATH
+    from gcp_core.webhook.webhook_processors.asset_feed_processor import (
+        AssetFeedProcessor,
+    )
 
     return AssetFeedProcessor(event=mock_webhook_event)
 
@@ -92,7 +95,7 @@ class TestShouldProcessEvent:
         asset_payload: dict[str, Any],
     ) -> None:
         with patch(
-            "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
+            "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
             new=AsyncMock(return_value=asset_payload),
         ):
             assert await processor.should_process_event(mock_webhook_event) is True
@@ -106,7 +109,7 @@ class TestShouldProcessEvent:
         from gcp_core.errors import GotFeedCreatedSuccessfullyMessageError
 
         with patch(
-            "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
+            "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
             new=AsyncMock(side_effect=GotFeedCreatedSuccessfullyMessageError),
         ):
             assert await processor.should_process_event(mock_webhook_event) is False
@@ -132,9 +135,20 @@ class TestGetMatchingKinds:
         mock_webhook_event: WebhookEvent,
         asset_payload: dict[str, Any],
     ) -> None:
-        with patch(
-            "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
-            new=AsyncMock(return_value=asset_payload),
+        mock_resource_config = MagicMock()
+        mock_resource_config.kind = ASSET_TYPE
+
+        mock_event = MagicMock()
+        mock_event.port_app_config.resources = [mock_resource_config]
+        with (
+            patch(
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+                new=AsyncMock(return_value=asset_payload),
+            ),
+            patch(
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.port_event",
+                new=mock_event,
+            ),
         ):
             kinds = await processor.get_matching_kinds(mock_webhook_event)
 
@@ -169,7 +183,11 @@ class TestValidatePayload:
         payload: EventPayload,
         expected: bool,
     ) -> None:
-        assert await processor.validate_payload(payload) is expected
+        with patch(
+            "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+            new=AsyncMock(return_value={"some": "data"}),
+        ):
+            assert await processor.validate_payload(payload) is expected
 
 
 class TestAuthenticate:
@@ -192,24 +210,21 @@ class TestHandleEvent:
         resource_config: MagicMock,
     ) -> None:
         with (
+            # NEW: Mock resolve_request_controllers instead of global variables
             patch(
-                "gcp_core.webhooks.asset_feed_processor.rate_limiter",
-                new=MagicMock(),
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.resolve_request_controllers",
+                new=AsyncMock(return_value=(MagicMock(), MagicMock())),
             ),
             patch(
-                "gcp_core.webhooks.asset_feed_processor.semaphore",
-                new=MagicMock(),
-            ),
-            patch(
-                "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
                 new=AsyncMock(return_value=asset_payload),
             ),
             patch(
-                "gcp_core.webhooks.asset_feed_processor.get_project_name_from_ancestors",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.get_project_name_from_ancestors",
                 return_value=ASSET_PROJECT,
             ),
             patch(
-                "gcp_core.webhooks.asset_feed_processor.feed_event_to_resource",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.feed_event_to_resource",
                 new=AsyncMock(return_value=ASSET_RESOURCE_DATA),
             ),
         ):
@@ -232,23 +247,19 @@ class TestHandleEvent:
 
         with (
             patch(
-                "gcp_core.webhooks.asset_feed_processor.rate_limiter",
-                new=MagicMock(),
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.resolve_request_controllers",
+                new=AsyncMock(return_value=(MagicMock(), MagicMock())),
             ),
             patch(
-                "gcp_core.webhooks.asset_feed_processor.semaphore",
-                new=MagicMock(),
-            ),
-            patch(
-                "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
                 new=AsyncMock(return_value=deleted_payload),
             ),
             patch(
-                "gcp_core.webhooks.asset_feed_processor.get_project_name_from_ancestors",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.get_project_name_from_ancestors",
                 return_value=ASSET_PROJECT,
             ),
             patch(
-                "gcp_core.webhooks.asset_feed_processor.feed_event_to_resource",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.feed_event_to_resource",
                 new=AsyncMock(return_value=ASSET_RESOURCE_DATA),
             ),
         ):
@@ -269,11 +280,11 @@ class TestHandleEvent:
 
         with (
             patch(
-                "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
                 new=AsyncMock(return_value=asset_payload),
             ),
             patch(
-                "gcp_core.webhooks.asset_feed_processor.get_project_name_from_ancestors",
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.get_project_name_from_ancestors",
                 side_effect=AssetHasNoProjectAncestorError,
             ),
         ):

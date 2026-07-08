@@ -1,4 +1,4 @@
-from asyncio import BoundedSemaphore
+from typing import Any, cast
 
 from loguru import logger
 
@@ -7,9 +7,11 @@ from gcp_core.errors import (
     GotFeedCreatedSuccessfullyMessageError,
 )
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
-from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
-from gcp_core.overrides import ProtoConfig
+from gcp_core.overrides import GCPPortAppConfig, ProtoConfig
 from gcp_core.search.resource_searches import feed_event_to_resource
+from gcp_core.utils import resolve_request_controllers
+from port_ocean.context.event import event as port_event
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -21,52 +23,65 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-rate_limiter: FixedWindowLimiter | None = None
-semaphore: BoundedSemaphore | None = None
-
 
 class AssetFeedProcessor(AbstractWebhookProcessor):
-    """
-    This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once
-    the events are inserted into the Assets Inventory.
+    # Strictly typed cache to prevent mypy errors
+    _cached_asset_data: dict[str, Any] | None = None
 
-    NOTICE that there might be a 10 minute delay here, as documented:
-    https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#limitations
+    async def _get_parsed_event(self, payload: EventPayload) -> dict[str, Any] | None:
+        if self._cached_asset_data is not None:
+            return self._cached_asset_data
 
-    The request has a message, which contains a 64based data of the asset.
-    The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
-    The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
+        if (
+            not isinstance(payload.get("message"), dict)
+            or "data" not in payload["message"]
+        ):
+            return None
 
-    The handler will reject the request if the background processing threshold is reached, to avoid overloading the system.
-    The subscription has a retry policy, so the event will be retried later if it's rejected.
-    Documentation: https://cloud.google.com/pubsub/docs/handling-failures#subscription_retry_policy
-    """
-
-    async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
-            await parse_asset_data(event.payload["message"]["data"])
-            return True
+            parsed_data = await parse_asset_data(payload["message"]["data"])
+            self._cached_asset_data = parsed_data
+            return parsed_data
         except GotFeedCreatedSuccessfullyMessageError:
             logger.info("Assets Feed created successfully")
-            return False
-        except Exception:
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to process asset feed event: {e}")
+            return None
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        if ocean.event_listener_type == "ONCE":
             return False
 
+        asset_data = await self._get_parsed_event(event.payload)
+        return asset_data is not None
+
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        asset_data = await parse_asset_data(event.payload["message"]["data"])
-        return [asset_data["asset"]["assetType"]]
+        asset_data = await self._get_parsed_event(event.payload)
+        if not asset_data:
+            return []
+
+        asset_type = asset_data["asset"]["assetType"]
+        resource_configs = cast(GCPPortAppConfig, port_event.port_app_config).resources
+
+        return [config.kind for config in resource_configs if config.kind == asset_type]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        message = payload.get("message")
-        return isinstance(message, dict) and "data" in message
+        asset_data = await self._get_parsed_event(payload)
+        return asset_data is not None
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        asset_data = await parse_asset_data(payload["message"]["data"])
+        asset_data = await self._get_parsed_event(payload)
+        if not asset_data:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
 
@@ -90,16 +105,10 @@ class AssetFeedProcessor(AbstractWebhookProcessor):
                 )
             )
         )
-
         logger.info(
             f"Processing real-time event for {asset_type}: {asset_name} in {asset_project}"
         )
-
-        if rate_limiter is None or semaphore is None:
-            raise RuntimeError(
-                "Rate limiter and semaphore must be initialized before processing events."
-            )
-
+        rate_limiter, semaphore = await resolve_request_controllers(asset_type)
         asset_resource_data = await feed_event_to_resource(
             asset_type,
             asset_name,
