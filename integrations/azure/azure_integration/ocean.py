@@ -26,7 +26,7 @@ from azure_integration.utils import (
     is_sub_resource,
     get_current_resource_config,
 )
-from azure_integration.webhooks.resource_event_processor import (
+from azure_integration.webhook_processors.resource_event_processor import (
     AzureResourceEventProcessor,
 )
 
