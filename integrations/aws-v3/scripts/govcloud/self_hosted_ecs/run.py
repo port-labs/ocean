@@ -58,9 +58,9 @@ from scripts.utils.validation import (
 REGION = "us-gov-west-1"
 AWS_PROFILE: str | None = "govcloud"
 
-VPC_ID = "vpc-0c1a88cd67f73aa5b"
+VPC_ID = "vpc-xxxxxxxx"
 # Must be subnet IDs (subnet-xxxxxxxx), not subnet display names.
-SUBNET_IDS = ["subnet-02c3ca90b111008bb", "subnet-03e81dd85cc89659d"]
+SUBNET_IDS = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
 
 TEMPLATE_BUCKET: str | None = (
     None  # auto-created as port-cfn-templates-<account>-<region>
