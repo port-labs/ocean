@@ -234,4 +234,4 @@ async def on_start() -> None:
     logger.info("Azure client credentials set up")
 
 
-ocean.add_webhook_processor("/events", AzureResourceEventProcessor)
+ocean.add_webhook_processor("/webhook", AzureResourceEventProcessor)
