@@ -45,7 +45,3 @@ class RepositoryDefaultBranchNotFoundException(Exception):
 
 class InvalidActionParametersException(Exception):
     """Exception for invalid action parameters."""
-
-
-class NoWorkflowRunsFoundException(Exception):
-    """Exception for no workflow runs found."""

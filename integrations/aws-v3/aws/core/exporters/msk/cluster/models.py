@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Any
 from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 from datetime import datetime
@@ -9,25 +9,25 @@ class MskClusterProperties(BaseModel):
 
     ClusterArn: str = Field(default_factory=str)
     ClusterName: str = Field(default_factory=str)
-    State: Optional[str] = None
-    CreationTime: Optional[datetime] = None
-    CurrentVersion: Optional[str] = None
+    State: str | None = None
+    CreationTime: datetime | None = None
+    CurrentVersion: str | None = None
 
-    BrokerNodeGroupInfo: Optional[Dict[str, Any]] = None
-    ClientAuthentication: Optional[Dict[str, Any]] = None
-    EncryptionInfo: Optional[Dict[str, Any]] = None
-    CurrentBrokerSoftwareInfo: Optional[Dict[str, Any]] = None
-    LoggingInfo: Optional[Dict[str, Any]] = None
-    OpenMonitoring: Optional[Dict[str, Any]] = None
+    BrokerNodeGroupInfo: dict[str, Any] | None = None
+    ClientAuthentication: dict[str, Any] | None = None
+    EncryptionInfo: dict[str, Any] | None = None
+    CurrentBrokerSoftwareInfo: dict[str, Any] | None = None
+    LoggingInfo: dict[str, Any] | None = None
+    OpenMonitoring: dict[str, Any] | None = None
 
-    NumberOfBrokerNodes: Optional[int] = None
-    EnhancedMonitoring: Optional[str] = None
-    StorageMode: Optional[str] = None
+    NumberOfBrokerNodes: int | None = None
+    EnhancedMonitoring: str | None = None
+    StorageMode: str | None = None
 
-    ZookeeperConnectString: Optional[str] = None
-    ZookeeperConnectStringTls: Optional[str] = None
+    ZookeeperConnectString: str | None = None
+    ZookeeperConnectStringTls: str | None = None
 
-    Tags: Dict[str, str] = Field(default_factory=dict)
+    Tags: dict[str, str] = Field(default_factory=dict)
 
     class Config:
         extra = "allow"

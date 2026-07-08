@@ -7,6 +7,52 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.6 (2026-07-08)
+
+### Improvements
+
+- Improved action processor fairness: each claim-pending poll now considers both action runs and workflow node runs in the same cycle (instead of alternating), preventing one run type from waiting up to twice the poll interval while the other is claimed.
+- Added per-action-type buffer limits in the execution manager. When a run type fills its share of the queue, it is temporarily excluded from claim-pending so high-volume actions cannot starve other action types.
+- Added descriptions and validation bounds to `ActionsProcessorSettings` (`runs_buffer_high_watermark`, `visibility_timeout_ms`, `poll_check_interval_seconds`, `workers_count`).
+
+### Bug Fixes
+
+- Fixed `task_done() called too many times` when a worker timed out on an empty queue by only calling `commit()` after a run was successfully dequeued.
+
+
+## 0.44.5 (2026-06-30)
+
+### Improvements
+
+- Added Redis stream consumer observability: logs now include `stream_key`, `time_until_consumed_ms` (queue-to-consume latency from `queuedAt`), and `time_until_acked_ms` (queue-to-ack latency) for each message.
+
+
+## 0.44.4 (2026-06-28)
+
+### Improvements
+
+- Added a Redis PEL requeue worker (enabled by default, disable with `OCEAN__LIVE_EVENTS__REDIS__PEL_REQUEUE_WORKER_ENABLED=false`) that reclaims stuck pending stream messages and re-enqueues them for reprocessing. All pods scan concurrently, `XAUTOCLAIM` ensures only one pod claims each message.
+
+## 0.44.3 (2026-06-28)
+
+### Improvements
+
+- Added Redis stream consumption for live events when the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag is enabled. Integrations can consume webhook events directly from a Redis stream instead of the local HTTP queue.
+- Introduced `AbstractLiveEventsConsumer` and `LiveEventsConsumerType` so live-events transport backends are selected via typed configuration, following the same pattern as event listeners.
+- Added `OCEAN__LIVE_EVENTS__REDIS__*` settings for Redis connection, TLS, and stream read tuning (`block_ms`, `read_count`).
+
+## 0.44.2 (2026-06-25)
+
+### Improvements
+
+- Skip action webhook results (no mapped resource) during live-events catalog sync and lakehouse export, so integrations no longer need custom `sync_raw_results` filtering.
+- Added `ActionExecutionError` so integration executors can fail expected action runs with a clean user-facing message, logged without a stack trace.
+
+### Bug Fixes
+
+- Preserve workflow node run `output` when reporting completion or failure, so Port no longer overwrites integration-set values (e.g. `workflowRunUrl`) with `{}`.
+
+
 ## 0.44.1 (2026-06-25)
 
 ### Improvements

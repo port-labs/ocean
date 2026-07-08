@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "cursor"
-version = "0.1.2"
+version = "0.1.8"
 description = "Cursor ocean integration"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.43.19", extras = ["cli"]}
+port_ocean = {version = "^0.44.6", extras = ["cli"]}
 aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
@@ -68,7 +68,8 @@ exclude = [
     '.venv',
 ]
 plugins = [
-    "pydantic.mypy"
+    "pydantic.mypy",
+    "pydantic.v1.mypy"
 ]
 
 follow_imports = "silent"

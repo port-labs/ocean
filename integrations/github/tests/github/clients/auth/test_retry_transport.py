@@ -438,6 +438,39 @@ class TestGitHubRetryTransportPageSizeBackoff:
         assert new_body["variables"]["first"] == 100 - GRAPHQL_REDUCTION_SIZE
 
     @pytest.mark.asyncio
+    async def test_graphql_reduction_does_not_persist_across_requests(self) -> None:
+        """The transport keeps no cross-request page-size state.
+
+        Each reduction is derived solely from the request it is handed, so once a
+        request succeeds the next full-size request is shrunk from full size
+        again rather than continuing to step down from a prior request's reduced
+        size. This is what lets the page size return to its original value (the
+        client rebuilds the payload at PAGE_SIZE per page) instead of ratcheting
+        ever smaller across pages.
+        """
+        transport = _make_transport()
+        body = {"query": "{ viewer { login } }", "variables": {"first": 100}}
+
+        first_req = httpx.Request("POST", "https://api.github.com/graphql", json=body)
+        reduced = await transport._reduced_page_request(
+            first_req, httpx.Response(500, request=first_req)
+        )
+        assert (
+            json.loads(reduced.content)["variables"]["first"]
+            == 100 - GRAPHQL_REDUCTION_SIZE
+        )
+
+        # A brand-new full-size request reduces from 100 again, not from 95.
+        fresh_req = httpx.Request("POST", "https://api.github.com/graphql", json=body)
+        reduced_again = await transport._reduced_page_request(
+            fresh_req, httpx.Response(500, request=fresh_req)
+        )
+        assert (
+            json.loads(reduced_again.content)["variables"]["first"]
+            == 100 - GRAPHQL_REDUCTION_SIZE
+        )
+
+    @pytest.mark.asyncio
     async def test_reduced_graphql_request_has_consistent_content_length(self) -> None:
         """The rebuilt GraphQL request's Content-Length matches its new body
         (regression: copying the original header described the wrong byte count)."""

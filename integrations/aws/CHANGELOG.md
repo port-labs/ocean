@@ -7,12 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.78 (2026-06-25)
+## 0.3.84 (2026-07-08)
 
 
 ### Bug Fixes
 
 - Fixed S3 buckets (and other global resources) not syncing when the first attempted region denied access; region iteration now prioritises standard regions over opt-in ones and falls back to the next region when one returns an access-denied error
+
+
+## 0.3.83 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.3.82 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.3.81 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.3.80 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.3.79 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.3.78 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
 
 
 ## 0.3.77 (2026-06-25)

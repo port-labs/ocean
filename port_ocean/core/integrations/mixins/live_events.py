@@ -70,6 +70,8 @@ class LiveEventsMixin(HandlerMixin):
         entities_not_passed: list[Entity] = []
         entities_to_delete: list[Entity] = []
         for webhook_event_raw_result in webhook_events_raw_result:
+            if not webhook_event_raw_result.has_resource:
+                continue
             resource = webhook_event_raw_result.resource
             for raw_item in webhook_event_raw_result.updated_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
@@ -118,6 +120,8 @@ class LiveEventsMixin(HandlerMixin):
         try:
             data_entries: list[LakehouseDataEntry] = []
             for webhook_event_raw_result in webhook_events_raw_result:
+                if not webhook_event_raw_result.has_resource:
+                    continue
                 event_id = webhook_event_raw_result._webhook_trace_id
                 if not event_id:
                     logger.warning("Skipping lakehouse send - no trace_id available")
