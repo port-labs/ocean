@@ -14,7 +14,7 @@ The commercial installation docs rely on CloudFormation templates and container 
 - [ ] Ensure Docker is available (unless `SKIP_ECR_MIRROR = True`).
 - [ ] Identify your VPC ID and subnet IDs (`subnet-xxxxxxxx`, not display names).
 - [ ] Use **public subnets** with internet access (the template sets `AssignPublicIp: ENABLED`).
-- [ ] Edit the configuration section at the top of `setup.py`.
+- [ ] Edit the configuration section at the top of `run.py`.
 
 ### What the script does
 
@@ -64,7 +64,7 @@ The commercial installation docs rely on CloudFormation templates and container 
 
 ## Usage
 
-1. Open `setup.py` and edit the configuration section at the top (`REGION`, `VPC_ID`, `SUBNET_IDS`, and so on).
+1. Open `run.py` and edit the configuration section at the top (`REGION`, `VPC_ID`, `SUBNET_IDS`, and so on).
 2. Export your Port credentials:
 
 ```bash
@@ -80,7 +80,7 @@ poetry run python scripts/govcloud/self_hosted_ecs/run.py
 
 ## Configuration
 
-All settings are defined as module-level variables at the top of `setup.py`. Port credentials are read from environment variables only.
+All settings are defined as module-level variables at the top of `run.py`. Port credentials are read from environment variables only.
 
 | Variable | Description |
 |----------|-------------|
