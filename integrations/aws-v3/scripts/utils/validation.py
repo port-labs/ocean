@@ -26,14 +26,19 @@ def validate_vpc_id(vpc_id: str) -> None:
         raise ValueError(f"VPC_ID must look like vpc-xxxxxxxx, got: {vpc_id!r}")
 
 
-def validate_subnet_ids(subnet_ids: list[str], *, vpc_id: str) -> None:
+def validate_subnet_ids(subnet_ids: list[str], *, vpc_id: str | None = None) -> None:
     if not subnet_ids or subnet_ids == ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]:
         raise ValueError("Set SUBNET_IDS in the configuration section")
     for subnet_id in subnet_ids:
         if not SUBNET_ID_PATTERN.match(subnet_id):
+            hint = (
+                "Run: aws ec2 describe-subnets --filters Name=vpc-id,Values="
+                f"{vpc_id} --query 'Subnets[].{{Id:SubnetId,Name:Tags[?Key==`Name`].Value|[0]}}' "
+                "--output table"
+                if vpc_id
+                else "Use subnet IDs (subnet-xxxxxxxx), not console display names."
+            )
             raise ValueError(
                 f"Each SUBNET_IDS entry must be a subnet ID like subnet-xxxxxxxx, got: {subnet_id!r}. "
-                "Subnet names from the console are not valid. "
-                "Run: aws ec2 describe-subnets --filters Name=vpc-id,Values="
-                f"{vpc_id} --query 'Subnets[].{{Id:SubnetId,Name:Tags[?Key==`Name`].Value|[0]}}' --output table"
+                f"Subnet names from the console are not valid. {hint}"
             )
