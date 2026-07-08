@@ -163,7 +163,7 @@ class PortAppConfig(_FieldMetadataEnforcer):
         ge=0,
         le=1,
         title="Allow entity deletion",
-        description="When enabled, entities that are no longer returned by the integration during sync may be removed from the catalog. When disabled, deletions are skipped to protect against accidental data loss.",
+        description="When on, removes catalog entities that the integration no longer returns during resync, keeping the catalog aligned with the source. When off, leaves those entities in the catalog without deleting them.",
     )
     resources: list[ResourceConfig] = Field(
         default_factory=list,
