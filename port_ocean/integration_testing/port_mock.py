@@ -94,6 +94,12 @@ class PortMockResponder:
             {"json": {"migrationId": "test-migration"}},
         )
 
+        self.transport.add_route(
+            "POST",
+            r"/v1/blueprints/[^/]+/bulk/entities/delete",
+            self._handle_bulk_delete,
+        )
+
         # Migration status
         self.transport.add_route(
             "GET",
@@ -246,6 +252,32 @@ class PortMockResponder:
             self.deleted_entities.append(deleted_entity)
 
         return {"json": {"ok": True}}
+
+    def _handle_bulk_delete(self, request: httpx.Request) -> dict[str, Any]:
+        url_path = str(request.url.path)
+        url_segments = [
+            segment for segment in url_path.strip("/").split("/") if segment
+        ]
+
+        # extract blueprint from /v1/blueprints/{blueprint}/bulk/entities/delete
+        BLUEPRINT_ID_INDEX = 2
+        blueprint = (
+            url_segments[BLUEPRINT_ID_INDEX]
+            if len(url_segments) > BLUEPRINT_ID_INDEX
+            else "unknown"
+        )
+
+        body = json_lib.loads(request.content.decode("utf-8"))
+        identifiers = body.get("entities", [])
+
+        for identifier in identifiers:
+            deleted_entity = {
+                "identifier": identifier,
+                "blueprint": blueprint,
+            }
+            self.deleted_entity_ids.append(identifier)
+            self.deleted_entities.append(deleted_entity)
+        return {"json": {"ok": True, "deletedEntities": identifiers}}
 
     def _handle_blueprint(self, request: httpx.Request) -> dict[str, Any]:
         url_path = str(request.url.path)

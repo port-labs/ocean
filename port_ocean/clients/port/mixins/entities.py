@@ -527,6 +527,7 @@ class EntityClientMixin:
                     ).lower(),
                     **get_event_context_params(),
                 },
+                extensions={"retryable": True},
             )
 
         if response.is_error:
@@ -557,13 +558,20 @@ class EntityClientMixin:
         if not entity_identifiers:
             return []
 
-        batch_size_to_delete = min(
-            ocean.config.delete_entities_max_batch_size,
-            ENTITIES_BULK_DELETE_MAX_BATCH_SIZE,
+        batch_size_to_delete = max(
+            1,
+            min(
+                ocean.config.delete_entities_max_batch_size,
+                ENTITIES_BULK_DELETE_MAX_BATCH_SIZE,
+            ),
         )
         batches = [
-            entity_identifiers[i : i + batch_size_to_delete]
-            for i in range(0, len(entity_identifiers), batch_size_to_delete)
+            entity_identifiers[
+                batch_start_index : batch_start_index + batch_size_to_delete
+            ]
+            for batch_start_index in range(
+                0, len(entity_identifiers), batch_size_to_delete
+            )
         ]
 
         batch_results = await asyncio.gather(
