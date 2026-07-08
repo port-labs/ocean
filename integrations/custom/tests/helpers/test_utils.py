@@ -16,14 +16,16 @@ class TestProcessEndpointsConcurrently:
 
     async def test_processes_multiple_endpoints(self) -> None:
         """Test that multiple endpoints are processed"""
-        endpoints = [
+        endpoints: List[Tuple[str, Dict[str, str], Dict[str, Any]]] = [
             ("/api/teams/1", {"team_id": "1"}, {}),
             ("/api/teams/2", {"team_id": "2"}, {}),
             ("/api/teams/3", {"team_id": "3"}, {}),
         ]
 
         async def mock_fetch(
-            endpoint: str, path_params: Dict[str, str], dynamic_query_params: Dict[str, Any]
+            endpoint: str,
+            path_params: Dict[str, str],
+            dynamic_query_params: Dict[str, Any],
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [{"endpoint": endpoint, "params": path_params}]
 
@@ -44,7 +46,9 @@ class TestProcessEndpointsConcurrently:
         results: List[List[Dict[str, Any]]] = []
 
         async def mock_fetch(
-            endpoint: str, path_params: Dict[str, str], dynamic_query_params: Dict[str, Any]
+            endpoint: str,
+            path_params: Dict[str, str],
+            dynamic_query_params: Dict[str, Any],
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [{"endpoint": endpoint}]
 
@@ -68,7 +72,9 @@ class TestProcessEndpointsConcurrently:
         ]
 
         async def mock_fetch(
-            endpoint: str, path_params: Dict[str, str], dynamic_query_params: Dict[str, Any]
+            endpoint: str,
+            path_params: Dict[str, str],
+            dynamic_query_params: Dict[str, Any],
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             nonlocal max_concurrent, current_concurrent
 
@@ -103,7 +109,9 @@ class TestProcessEndpointsConcurrently:
         ]
 
         async def mock_fetch(
-            endpoint: str, path_params: Dict[str, str], dynamic_query_params: Dict[str, Any]
+            endpoint: str,
+            path_params: Dict[str, str],
+            dynamic_query_params: Dict[str, Any],
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [{"page": 1}]
             yield [{"page": 2}]
