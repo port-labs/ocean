@@ -536,3 +536,66 @@ class TestResolveDynamicEndpoints:
                 ("/api/v1/users", {}, {"team_id": "team-2", "status": "pending"}),
             ],
         ]
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    async def test_dynamic_query_values_are_capped_per_key(
+        self: "TestResolveDynamicEndpoints", mock_query: MagicMock
+    ) -> None:
+        """Test capping discovered query values to avoid unbounded memory growth."""
+
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            if param_config.endpoint == "/api/teams":
+                yield ["team-1", "team-2", "team-3"]
+
+        mock_query.side_effect = mock_query_gen
+
+        selector = HttpServerSelector(
+            query="true",
+            query_parameters={
+                "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
+            },
+        )
+        kind = "/api/v1/users"
+
+        with patch(
+            "http_server.helpers.endpoint_resolver.MAX_DISCOVERED_QUERY_VALUES_PER_KEY",
+            2,
+        ):
+            result = [
+                batch async for batch in resolve_dynamic_endpoints(selector, kind)
+            ]
+
+        assert result == [
+            [
+                ("/api/v1/users", {}, {"team_id": "team-1"}),
+                ("/api/v1/users", {}, {"team_id": "team-2"}),
+            ]
+        ]
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    async def test_missing_path_parameters_skips_dynamic_query_expansion(
+        self: "TestResolveDynamicEndpoints", mock_query: MagicMock
+    ) -> None:
+        """Test unresolved path params do not fan out dynamic query combinations."""
+
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            if param_config.endpoint == "/api/teams":
+                yield ["team-1", "team-2"]
+
+        mock_query.side_effect = mock_query_gen
+
+        selector = HttpServerSelector(
+            query="true",
+            query_parameters={
+                "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
+            },
+        )
+        kind = "/api/v1/teams/{team_id}/members"
+
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
+
+        assert result == [[("/api/v1/teams/{team_id}/members", {}, {})]]

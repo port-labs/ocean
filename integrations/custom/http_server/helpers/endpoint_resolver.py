@@ -17,6 +17,7 @@ from http_server.overrides import HttpServerSelector, ApiPathParameter
 from http_server.helpers.endpoint_cache import get_endpoint_cache
 
 RESOLVED_REQUEST_BATCH_SIZE = 1000
+MAX_DISCOVERED_QUERY_VALUES_PER_KEY = 5000
 
 
 def extract_path_parameters(endpoint: str) -> List[str]:
@@ -215,6 +216,22 @@ async def resolve_dynamic_endpoints(
         for query_key, query_param_config in query_parameters.items():
             values: List[str] = []
             async for value_batch in query_api_for_parameters(query_param_config):
+                remaining = MAX_DISCOVERED_QUERY_VALUES_PER_KEY - len(values)
+                if remaining <= 0:
+                    logger.warning(
+                        f"Reached max discovered values ({MAX_DISCOVERED_QUERY_VALUES_PER_KEY}) "
+                        f"for query parameter '{query_key}'. Truncating additional values."
+                    )
+                    break
+
+                if len(value_batch) > remaining:
+                    logger.warning(
+                        f"Truncating discovered values for query parameter '{query_key}' "
+                        f"to {MAX_DISCOVERED_QUERY_VALUES_PER_KEY} to limit memory growth."
+                    )
+                    values.extend(value_batch[:remaining])
+                    break
+
                 values.extend(value_batch)
 
             unique_values = list(dict.fromkeys(values))
@@ -300,15 +317,13 @@ async def resolve_dynamic_endpoints(
     missing_params = validate_endpoint_parameters(param_names, path_parameters)
     if missing_params:
         logger.error(f"Missing configuration for path parameters: {missing_params}")
-        if query_value_matrix is None:
-            yield [(kind, {}, {})]
-            return
-
-        query_keys, query_values = query_value_matrix
-        for resolved_batch in _iter_resolved_request_batches(
-            [(kind, {})], query_keys, query_values
-        ):
-            yield resolved_batch
+        if query_value_matrix is not None:
+            logger.warning(
+                "Skipping dynamic query parameter expansion because path parameters "
+                "are unresolved in endpoint template"
+            )
+        # Avoid fan-out on unresolved endpoint templates.
+        yield [(kind, {}, {})]
         return
 
     # For now, handle single parameter (can extend for multiple later)
