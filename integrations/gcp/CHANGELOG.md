@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.345 (2026-07-05)
+## 0.1.346 (2026-07-08)
 
 
 ### Bug Fixes
 
 - Migrated GCP integration to AbstractWebhookProcessor for live event handling
+
+
+## 0.1.345 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
 
 
 ## 0.1.344 (2026-07-02)
