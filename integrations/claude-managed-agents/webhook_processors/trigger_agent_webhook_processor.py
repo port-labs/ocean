@@ -36,7 +36,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.models import (
-    ActionRun,
+    IntegrationRun,
     WorkflowNodeRun,
     WorkflowNodeRunLog,
     WorkflowNodeRunResult,
@@ -127,7 +127,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
     @staticmethod
     async def _complete_port_run(
-        run: ActionRun | WorkflowNodeRun,
+        run: IntegrationRun,
         success: bool,
         *,
         extra_output: dict[str, str] | None = None,
@@ -368,7 +368,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
     @staticmethod
     async def _post_run_logs(
-        run: ActionRun | WorkflowNodeRun, entries: list[tuple[LogLevel, str]]
+        run: IntegrationRun, entries: list[tuple[LogLevel, str]]
     ) -> None:
         """Write a batch of log lines to the run, in a single request when possible."""
         if not entries:

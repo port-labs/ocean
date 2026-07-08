@@ -8,7 +8,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
@@ -42,7 +42,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     WEBHOOK_PROCESSOR_CLASS = TriggerAgentWebhookProcessor
     WEBHOOK_PATH = WEBHOOK_PATH
 
-    async def _get_partition_key(self, run: ActionRun | WorkflowNodeRun) -> str | None:
+    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         session_id = run.execution_properties.get("sessionId")
         if session_id:
             return session_id
@@ -75,7 +75,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         return session
 
-    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
+    async def execute(self, run: IntegrationRun) -> None:
         props = run.execution_properties
         agent_id = props.get("agentId")
         environment_id = props.get("environmentId")

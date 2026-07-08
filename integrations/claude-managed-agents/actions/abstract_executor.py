@@ -7,7 +7,7 @@ from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 
 from clients.anthropic_client import RateLimitInfo
 from clients.client_factory import create_anthropic_client
@@ -70,22 +70,30 @@ class AbstractAnthropicExecutor(AbstractExecutor):
         return max(waits, default=0.0)
 
     async def register_entity(
-        self, kind: str, raw: dict[str, Any], run: ActionRun | WorkflowNodeRun
+        self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
         """Best-effort upsert of a raw object into the catalog.
 
-        `register_raw` requires an active event context with the port app config
-        loaded: it reads `event.event_type` and `event.port_app_config`
-        internally, both of which raise outside of one. The action execution
-        manager does not provide such a context, so we open a fresh one here.
+        `register_raw` reads `event.event_type`, and Port's API rejects the
+        execution manager's own `ACTION_RUN` event type for entity upserts, so
+        we open a nested `HTTP_REQUEST` context here.
+
+        The port app config must be fetched *before* opening that nested
+        context, not inside it: entering a nested `event_context` eagerly
+        inherits `port_app_config` from whichever context is already active,
+        raising immediately if that parent's config was never populated -
+        which is always true for the action-run context the execution manager
+        provides. Fetching it first sets it on the still-active outer context,
+        so the nested context inherits it successfully instead of raising.
+
         Catalog reflection must never fail the action run, so failures are
         logged and reported as a run log, never raised.
         """
         try:
+            await ocean.integration.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
             async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-                await ocean.integration.port_app_config_handler.get_port_app_config(
-                    use_cache=False
-                )
                 await ocean.register_raw(kind, [raw])
         except Exception as error:
             message = f"Failed to upsert {kind} into the catalog (continuing): {error}"

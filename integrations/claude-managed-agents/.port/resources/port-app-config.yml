@@ -100,7 +100,6 @@ resources:
             durationSeconds: .stats.duration_seconds
             agentVersion: .agent.version
             githubRepositories: '[.resources[]? | select(.type == "github_repository") | .url]'
-            vaultIds: .vault_ids
             metadata: .metadata
             createdAt: .created_at
             updatedAt: .updated_at
@@ -109,3 +108,4 @@ resources:
             agent: .agent.id
             environment: .environment_id
             memoryStores: '[.resources[]? | select(.type == "memory_store") | .memory_store_id]'
+            vaults: .vault_ids

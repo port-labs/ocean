@@ -1,6 +1,6 @@
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
@@ -18,7 +18,7 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
 
     ACTION_NAME = "create_agent"
 
-    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
+    async def execute(self, run: IntegrationRun) -> None:
         props = run.execution_properties
         name = props.get("name")
         model = props.get("model")

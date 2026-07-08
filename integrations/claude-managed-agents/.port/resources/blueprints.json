@@ -269,13 +269,6 @@
                         "type": "string"
                     }
                 },
-                "vaultIds": {
-                    "type": "array",
-                    "title": "Vault IDs",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "metadata": {
                     "type": "object",
                     "title": "Metadata"
@@ -314,6 +307,12 @@
             "memoryStores": {
                 "title": "Memory stores",
                 "target": "claude_memory_store",
+                "required": false,
+                "many": true
+            },
+            "vaults": {
+                "title": "Vaults",
+                "target": "claude_vault",
                 "required": false,
                 "many": true
             }
