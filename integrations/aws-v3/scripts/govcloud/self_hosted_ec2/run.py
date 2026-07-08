@@ -35,8 +35,8 @@ from scripts.utils.validation import (
 REGION = "us-gov-west-1"
 AWS_PROFILE: str | None = "govcloud"
 
-VPC_ID = "vpc-0c1a88cd67f73aa5b"
-SUBNET_ID = "subnet-03e81dd85cc89659d"
+VPC_ID = "vpc-xxxxxxxx"
+SUBNET_ID = "subnet-aaaaaaaa"
 
 TEMPLATE_BUCKET: str | None = None
 TEMPLATE_S3_KEY = "stable/ocean/aws-v3/self-hosted/single-account/ec2.yaml"
