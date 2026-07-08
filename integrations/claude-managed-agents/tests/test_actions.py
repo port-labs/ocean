@@ -24,6 +24,7 @@ from actions.utils import (
     normalize_session_config,
 )
 from clients.anthropic_client import RateLimitInfo
+from port_ocean.core.models import ActionRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 T = TypeVar("T", bound=AbstractAnthropicExecutor)
@@ -259,6 +260,60 @@ async def test_create_agent_executor_creates_and_completes() -> None:
     )
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_create_agent_executor_sets_agent_id_output_for_workflow_nodes() -> None:
+    client_mock = MagicMock()
+    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.output = {}
+    run.execution_properties = {"name": "n", "model": "m"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    assert run.output == {"agentId": "agent_1"}
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, True, "Created agent agent_1"
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_agent_executor_skips_output_for_classic_action_runs() -> None:
+    """Classic self-service action runs have no structured output field, so the
+    executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
+    client_mock = MagicMock()
+    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    run = MagicMock(spec=ActionRun)
+    run.id = "run_1"
+    run.execution_properties = {"name": "n", "model": "m"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, True, "Created agent agent_1"
+    )
 
 
 @pytest.mark.asyncio

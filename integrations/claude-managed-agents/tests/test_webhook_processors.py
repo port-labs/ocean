@@ -48,11 +48,7 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from port_ocean.core.models import (
-    WorkflowNodeRun,
-    WorkflowNodeRunResult,
-    WorkflowNodeRunStatus,
-)
+from port_ocean.core.models import WorkflowNodeRun
 
 from actions.utils import build_external_id
 from webhook_processors.session_webhook_processor import SessionWebhookProcessor
@@ -302,7 +298,7 @@ async def test_trigger_reports_success_without_error_logs() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     batch: list[BetaManagedAgentsSessionEvent] = [
@@ -318,7 +314,7 @@ async def test_trigger_reports_success_without_error_logs() -> None:
     mock_ocean.port_client.find_run_by_external_id.assert_awaited_once_with(
         build_external_id("s1", _ANCHOR_ID)
     )
-    mock_ocean.port_client.post_wf_node_run_logs.assert_not_awaited()
+    mock_ocean.port_client.post_run_logs.assert_not_awaited()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
     assert mock_ocean.port_client.report_run_completed.call_args.kwargs == {}
@@ -334,9 +330,8 @@ async def test_trigger_reports_response_on_success() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    mock_ocean.port_client.patch_wf_node_run = AsyncMock()
 
     batch: list[BetaManagedAgentsSessionEvent] = [
         _idle(BetaManagedAgentsSessionEndTurn(type="end_turn")),
@@ -352,19 +347,12 @@ async def test_trigger_reports_response_on_success() -> None:
     ):
         await processor.handle_event(payload, None)
 
-    mock_ocean.port_client.report_run_completed.assert_not_awaited()
-    mock_ocean.port_client.patch_wf_node_run.assert_awaited_once_with(
-        "run_1",
-        {
-            "status": WorkflowNodeRunStatus.COMPLETED,
-            "result": WorkflowNodeRunResult.SUCCESS,
-            "output": {
-                "sessionId": "s1",
-                "userMessageEventId": _ANCHOR_ID,
-                "response": "All done.",
-            },
-        },
-    )
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, True)
+    assert run.output == {
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
+        "response": "All done.",
+    }
 
 
 @pytest.mark.asyncio
@@ -378,9 +366,8 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    mock_ocean.port_client.patch_wf_node_run = AsyncMock()
 
     batch: list[BetaManagedAgentsSessionEvent] = [
         _billing_error(),
@@ -397,21 +384,14 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
     ):
         await processor.handle_event(payload, None)
 
-    logs = mock_ocean.port_client.post_wf_node_run_logs.call_args.args[1]
+    logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert [log.level for log in logs] == ["ERROR"]
-    mock_ocean.port_client.report_run_completed.assert_not_awaited()
-    mock_ocean.port_client.patch_wf_node_run.assert_awaited_once_with(
-        "run_1",
-        {
-            "status": WorkflowNodeRunStatus.COMPLETED,
-            "result": WorkflowNodeRunResult.SUCCESS,
-            "output": {
-                "sessionId": "s1",
-                "userMessageEventId": _ANCHOR_ID,
-                "response": "Recovered.",
-            },
-        },
-    )
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, True)
+    assert run.output == {
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
+        "response": "Recovered.",
+    }
 
 
 @pytest.mark.asyncio
@@ -424,9 +404,8 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    mock_ocean.port_client.patch_wf_node_run = AsyncMock()
 
     batch: list[BetaManagedAgentsSessionEvent] = [
         _billing_error(),
@@ -439,26 +418,19 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
     ):
         await processor.handle_event(payload, None)
 
-    logs = mock_ocean.port_client.post_wf_node_run_logs.call_args.args[1]
+    logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert [log.message for log in logs] == [
         "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
     ]
     assert [log.level for log in logs] == ["ERROR"]
-    mock_ocean.port_client.report_run_completed.assert_not_awaited()
-    mock_ocean.port_client.patch_wf_node_run.assert_awaited_once_with(
-        "run_1",
-        {
-            "status": WorkflowNodeRunStatus.COMPLETED,
-            "result": WorkflowNodeRunResult.FAILED,
-            "output": {
-                "sessionId": "s1",
-                "userMessageEventId": _ANCHOR_ID,
-                "error": "Session error (billing_error): Your credit balance is too low "
-                "to access the Anthropic API.",
-            },
-        },
-    )
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, False)
+    assert run.output == {
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
+        "error": "Session error (billing_error): Your credit balance is too low "
+        "to access the Anthropic API.",
+    }
 
 
 @pytest.mark.asyncio
@@ -471,7 +443,7 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     batch: list[BetaManagedAgentsSessionEvent] = [
@@ -485,7 +457,7 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     ):
         await processor.handle_event(payload, None)
 
-    logs = mock_ocean.port_client.post_wf_node_run_logs.call_args.args[1]
+    logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert [log.message for log in logs] == [
         "Session error (model_rate_limited_error): Rate limited",
     ]
@@ -500,7 +472,7 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     failed_batch: list[BetaManagedAgentsSessionEvent] = [
@@ -523,7 +495,7 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
@@ -545,7 +517,7 @@ async def test_trigger_completes_run_when_error_inspection_fails() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     client = MagicMock()
@@ -569,7 +541,7 @@ async def test_trigger_completes_run_when_error_inspection_fails() -> None:
     ):
         await processor.handle_event(payload, None)
 
-    mock_ocean.port_client.post_wf_node_run_logs.assert_not_awaited()
+    mock_ocean.port_client.post_run_logs.assert_not_awaited()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
 
@@ -607,7 +579,7 @@ async def test_trigger_new_session_skips_prior_idle_lookup() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     batch: list[BetaManagedAgentsSessionEvent] = [
@@ -658,7 +630,7 @@ async def test_trigger_delayed_webhook_anchors_prior_run() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     batch_a: list[BetaManagedAgentsSessionEvent] = [
@@ -696,7 +668,7 @@ async def test_trigger_delayed_webhook_anchors_prior_run() -> None:
     mock_ocean.port_client.find_run_by_external_id.assert_awaited_once_with(
         build_external_id("s1", "msg_a")
     )
-    mock_ocean.port_client.post_wf_node_run_logs.assert_not_awaited()
+    mock_ocean.port_client.post_run_logs.assert_not_awaited()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
 
 
@@ -718,9 +690,8 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    mock_ocean.port_client.patch_wf_node_run = AsyncMock()
 
     turn_one_idle = BetaManagedAgentsSessionStatusIdleEvent(
         id="idle_turn_1",
@@ -775,11 +746,16 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
     mock_ocean.port_client.find_run_by_external_id.assert_awaited_once_with(
         build_external_id("s1", "msg_turn_2")
     )
-    logs = mock_ocean.port_client.post_wf_node_run_logs.call_args.args[1]
+    logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert len(logs) == 1
     assert "billing_error" in logs[0].message
-    mock_ocean.port_client.report_run_completed.assert_not_awaited()
-    mock_ocean.port_client.patch_wf_node_run.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, False)
+    assert run.output == {
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
+        "error": "Session error (billing_error): Your credit balance is too low "
+        "to access the Anthropic API.",
+    }
 
 
 @pytest.mark.asyncio
@@ -804,9 +780,8 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    mock_ocean.port_client.patch_wf_node_run = AsyncMock()
 
     prior_idle = BetaManagedAgentsSessionStatusIdleEvent(
         id="idle_turn_1",
@@ -860,8 +835,13 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
     ):
         await processor.handle_event(payload, None)
 
-    logs = mock_ocean.port_client.post_wf_node_run_logs.call_args.args[1]
+    logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert len(logs) == 1
     assert "billing_error" in logs[0].message
-    mock_ocean.port_client.report_run_completed.assert_not_awaited()
-    mock_ocean.port_client.patch_wf_node_run.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, False)
+    assert run.output == {
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
+        "error": "Session error (billing_error): Your credit balance is too low "
+        "to access the Anthropic API.",
+    }

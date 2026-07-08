@@ -36,11 +36,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.models import (
-    IntegrationRun,
     WorkflowNodeRun,
     WorkflowNodeRunLog,
-    WorkflowNodeRunResult,
-    WorkflowNodeRunStatus,
 )
 
 from actions.utils import build_external_id
@@ -49,16 +46,7 @@ from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
 
-LogLevel = Literal["INFO", "WARNING", "ERROR", "DEBUG"]
-WfLogLevel = Literal["INFO", "WARN", "ERROR", "DEBUG"]
-
-# The workflow node logs API expects "WARN" where the action API uses "WARNING".
-_WF_LOG_LEVEL: dict[LogLevel, WfLogLevel] = {
-    "INFO": "INFO",
-    "WARNING": "WARN",
-    "ERROR": "ERROR",
-    "DEBUG": "DEBUG",
-}
+LogLevel = Literal["INFO", "WARN", "ERROR", "DEBUG"]
 
 SESSION_SUCCESS_WEBHOOK_DATA = (
     BetaWebhookSessionIdledEventData,
@@ -89,7 +77,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     ) -> LogLevel:
         """Transient errors the server is still retrying are warnings, not hard failures."""
         if error_event.error.retry_status.type == "retrying":
-            return "WARNING"
+            return "WARN"
         return "ERROR"
 
     @staticmethod
@@ -124,32 +112,6 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             if isinstance(block, BetaManagedAgentsTextBlock):
                 parts.append(block.text)
         return "\n".join(parts)
-
-    @staticmethod
-    async def _complete_port_run(
-        run: IntegrationRun,
-        success: bool,
-        *,
-        extra_output: dict[str, str] | None = None,
-    ) -> None:
-        """Complete a Port run, merging ``extra_output`` into workflow node output when set."""
-        if isinstance(run, WorkflowNodeRun) and extra_output is not None:
-            existing_output: dict[str, Any] = run.output
-            await ocean.port_client.patch_wf_node_run(
-                run.id,
-                {
-                    "status": WorkflowNodeRunStatus.COMPLETED,
-                    "result": (
-                        WorkflowNodeRunResult.SUCCESS
-                        if success
-                        else WorkflowNodeRunResult.FAILED
-                    ),
-                    "output": {**existing_output, **extra_output},
-                },
-            )
-            return
-
-        await ocean.port_client.report_run_completed(run, success)
 
     @classmethod
     def get_processor_type(cls) -> WebhookProcessorType:
@@ -206,7 +168,14 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             session_id, prior_idle_time, webhook_time
         )
         interaction_failed, log_entries = self._detect_failure_and_log_entries(events)
-        await self._post_run_logs(run, log_entries)
+        if log_entries:
+            await ocean.port_client.post_run_logs(
+                run,
+                [
+                    WorkflowNodeRunLog(level=level, message=message)
+                    for level, message in log_entries
+                ],
+            )
         last_error = self._last_error_log_message(log_entries)
 
         webhook_succeeded = isinstance(data, SESSION_SUCCESS_WEBHOOK_DATA)
@@ -230,10 +199,9 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             run_id=run.id,
             session_id=session_id,
         )
-        if extra_output:
-            await self._complete_port_run(run, success, extra_output=extra_output)
-        else:
-            await self._complete_port_run(run, success)
+        if extra_output and isinstance(run, WorkflowNodeRun):
+            run.output.update(extra_output)
+        await ocean.port_client.report_run_completed(run, success)
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
@@ -365,20 +333,3 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             if text:
                 last_response = text
         return last_response
-
-    @staticmethod
-    async def _post_run_logs(
-        run: IntegrationRun, entries: list[tuple[LogLevel, str]]
-    ) -> None:
-        """Write a batch of log lines to the run, in a single request when possible."""
-        if not entries:
-            return
-        if isinstance(run, WorkflowNodeRun):
-            logs = [
-                WorkflowNodeRunLog(level=_WF_LOG_LEVEL[level], message=message)
-                for level, message in entries
-            ]
-            await ocean.port_client.post_wf_node_run_logs(run.id, logs)
-        else:
-            for level, message in entries:
-                await ocean.port_client.post_run_log(run, message, level=level)

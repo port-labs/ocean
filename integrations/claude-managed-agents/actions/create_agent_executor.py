@@ -1,6 +1,6 @@
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
@@ -46,6 +46,12 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         # mapping. Agents have no webhook events, so without this the entity would
         # not appear until the next resync. Best-effort: never fails the run.
         await self.register_entity(ObjectKind.AGENT, agent, run)
+
+        if isinstance(run, WorkflowNodeRun):
+            # Expose the created agent's id as a workflow output so later nodes
+            # (e.g. `trigger_agent`) can reference it. Classic self-service action
+            # runs have no structured output field, so this only applies here.
+            run.output["agentId"] = agent_id
 
         await ocean.port_client.report_run_completed(
             run, True, f"Created agent {agent_id}"
