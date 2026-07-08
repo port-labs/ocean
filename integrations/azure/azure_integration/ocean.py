@@ -26,7 +26,7 @@ from azure_integration.utils import (
     is_sub_resource,
     get_current_resource_config,
 )
-from azure_integration.webhook_processors.resource_event_processor import (
+from azure_integration.webhook.webhook_processors.resource_event_processor import (
     AzureResourceEventProcessor,
 )
 
@@ -234,4 +234,4 @@ async def on_start() -> None:
     logger.info("Azure client credentials set up")
 
 
-ocean.add_webhook_processor("/webhook", AzureResourceEventProcessor)
+ocean.add_webhook_processor("/events", AzureResourceEventProcessor)
