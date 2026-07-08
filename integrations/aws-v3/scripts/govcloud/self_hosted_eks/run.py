@@ -34,7 +34,7 @@ from scripts.utils.validation import require_port_credentials, validate_subnet_i
 REGION = "us-gov-west-1"
 AWS_PROFILE: str | None = "govcloud"
 
-SUBNET_IDS = ["subnet-02c3ca90b111008bb", "subnet-03e81dd85cc89659d"]
+SUBNET_IDS = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
 CLUSTER_NAME = "port-ocean-eks"
 KUBERNETES_VERSION = "1.34"
 NODE_INSTANCE_TYPE = "t3.medium"
