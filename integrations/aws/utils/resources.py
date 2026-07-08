@@ -309,6 +309,9 @@ async def resync_s3_bucket(
         )
         async for resources_batch in paginator.paginate(TypeName=kind):
             if not resources_batch:
+                logger.info(
+                    f"No {kind} resources found in region {region} in account {account_id}, skipping batch"
+                )
                 continue
             logger.info(
                 f"Received {len(resources_batch)} {kind} resources in region {region}"
