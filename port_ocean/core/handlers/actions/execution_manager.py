@@ -192,7 +192,7 @@ class ExecutionManager:
                     limit=poll_limit,
                     visibility_timeout_ms=self._visibility_timeout_ms,
                     exclude_action_identifiers=exclude_action_identifiers,
-                    exclude_workflow_node_uids=exclude_workflow_invocation_types,
+                    exclude_wf_nodes_uid=exclude_workflow_invocation_types,
                 )
 
                 if not runs:
@@ -296,6 +296,13 @@ class ExecutionManager:
         key = run.buffer_utilization_key
         queue_counts = self._buffer_queue_counts[run.run_kind]
         queue_counts[key] = queue_counts.get(key, 0) + 1
+        logger.debug(
+            f"Buffer count updated after enqueue for {run.run_kind.value}: {key} is now {queue_counts[key]}",
+            run_id=run.id,
+            run_kind=run.run_kind,
+            buffer_key=key,
+            buffer_count=queue_counts[key],
+        )
 
     def _track_buffer_dequeue(self, run: IntegrationRun) -> None:
         if run.id in self._deduplication_set:
@@ -308,6 +315,14 @@ class ExecutionManager:
             queue_counts.pop(key, None)
         else:
             queue_counts[key] = count
+
+        logger.debug(
+            f"Buffer count updated after dequeue for {run.run_kind.value}: {key} is now {count}",
+            run_id=run.id,
+            run_kind=run.run_kind,
+            buffer_key=key,
+            buffer_count=count,
+        )
 
     async def _add_run_to_queue(
         self,
