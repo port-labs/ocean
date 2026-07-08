@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.390 (2026-07-07)
+
+
+### Bug Fixes
+
+- Handled SonarQube projects with missing main branch data, preventing stale or inaccessible projects from failing resyncs
+
+
 ## 0.1.389 (2026-07-02)
 
 
