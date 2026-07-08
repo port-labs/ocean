@@ -5,7 +5,8 @@ Handles dynamic endpoint resolution for path parameters.
 """
 
 import re
-from typing import AsyncGenerator, List, Dict, Any, Optional
+from itertools import product
+from typing import AsyncGenerator, List, Dict, Any, Optional, Iterator, Tuple
 
 from loguru import logger
 
@@ -14,6 +15,8 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
 )
 from http_server.overrides import HttpServerSelector, ApiPathParameter
 from http_server.helpers.endpoint_cache import get_endpoint_cache
+
+RESOLVED_REQUEST_BATCH_SIZE = 1000
 
 
 def extract_path_parameters(endpoint: str) -> List[str]:
@@ -182,7 +185,7 @@ async def query_api_for_parameters(
 
 async def resolve_dynamic_endpoints(
     selector: HttpServerSelector, kind: str
-) -> AsyncGenerator[List[tuple[str, Dict[str, str]]], None]:
+) -> AsyncGenerator[List[tuple[str, Dict[str, str], Dict[str, Any]]], None]:
     """Resolve dynamic endpoints with path parameter values
 
     Args:
@@ -190,8 +193,8 @@ async def resolve_dynamic_endpoints(
         kind: The endpoint path (e.g., "/api/v1/users" or "/api/v1/teams/{team_id}")
 
     Yields:
-        Batches of tuples: (resolved_url, {param_name: param_value})
-        For static endpoints, yields [(kind, {})]
+        Batches of tuples: (resolved_url, path_params, dynamic_query_params)
+        For static endpoints, yields [(kind, {}, {})]
     """
     if not kind:
         logger.error("Kind (endpoint) is empty")
@@ -199,20 +202,111 @@ async def resolve_dynamic_endpoints(
 
     # Get path_parameters from selector if they exist
     path_parameters = getattr(selector, "path_parameters", None) or {}
+    query_parameters = getattr(selector, "query_parameters", None) or {}
+
+    async def _resolve_dynamic_query_values() -> Optional[Tuple[List[str], List[List[str]]]]:
+        if not query_parameters:
+            return None
+
+        values_by_key: Dict[str, List[str]] = {}
+
+        for query_key, query_param_config in query_parameters.items():
+            values: List[str] = []
+            async for value_batch in query_api_for_parameters(query_param_config):
+                values.extend(value_batch)
+
+            unique_values = list(dict.fromkeys(values))
+            if not unique_values:
+                logger.error(
+                    f"No valid values found for query parameter '{query_key}' from "
+                    f"{query_param_config.endpoint}"
+                )
+                return None
+
+            values_by_key[query_key] = unique_values
+
+        query_keys = list(values_by_key.keys())
+        query_values = [values_by_key[key] for key in query_keys]
+        return query_keys, query_values
+
+    def _iter_dynamic_query_combinations(
+        query_keys: List[str], query_values: List[List[str]]
+    ) -> Iterator[Dict[str, Any]]:
+        for query_tuple in product(*query_values):
+            yield dict(zip(query_keys, query_tuple))
+
+    def _iter_resolved_request_batches(
+        endpoints: List[tuple[str, Dict[str, str]]],
+        query_keys: Optional[List[str]],
+        query_values: Optional[List[List[str]]],
+    ) -> Iterator[List[tuple[str, Dict[str, str], Dict[str, Any]]]]:
+        """Yield resolved requests in bounded chunks to control memory growth."""
+        batch: List[tuple[str, Dict[str, str], Dict[str, Any]]] = []
+
+        if query_keys is None or query_values is None:
+            for endpoint, path_params in endpoints:
+                batch.append((endpoint, path_params, {}))
+                if len(batch) >= RESOLVED_REQUEST_BATCH_SIZE:
+                    yield batch
+                    batch = []
+            if batch:
+                yield batch
+            return
+
+        for endpoint, path_params in endpoints:
+            for dynamic_query in _iter_dynamic_query_combinations(query_keys, query_values):
+                batch.append((endpoint, path_params, dynamic_query))
+                if len(batch) >= RESOLVED_REQUEST_BATCH_SIZE:
+                    yield batch
+                    batch = []
+
+        if batch:
+            yield batch
+
+    query_value_matrix = await _resolve_dynamic_query_values()
+    if query_parameters and query_value_matrix is None:
+        return
 
     # Find path parameters in endpoint template
     param_names = extract_path_parameters(kind)
 
     if not param_names:
         # No path parameters - yield static endpoint with empty params as single-item batch
-        yield [(kind, {})]
+        if query_value_matrix is None:
+            yield [(kind, {}, {})]
+            return
+
+        query_keys, query_values = query_value_matrix
+        estimated_combinations = 1
+        for values in query_values:
+            estimated_combinations *= len(values)
+        if estimated_combinations > RESOLVED_REQUEST_BATCH_SIZE:
+            logger.info(
+                f"Large dynamic query expansion detected for '{kind}': "
+                f"{estimated_combinations} request variants; streaming in "
+                f"chunks of {RESOLVED_REQUEST_BATCH_SIZE}"
+            )
+        static_endpoint = [(kind, {})]
+        for resolved_batch in _iter_resolved_request_batches(
+            static_endpoint, query_keys, query_values
+        ):
+            yield resolved_batch
         return
 
     # Validate that all parameters are configured
     missing_params = validate_endpoint_parameters(param_names, path_parameters)
     if missing_params:
         logger.error(f"Missing configuration for path parameters: {missing_params}")
-        yield [(kind, {})]
+        if query_value_matrix is None:
+            yield [(kind, {}, {})]
+            return
+
+        query_keys, query_values = query_value_matrix
+        static_endpoint = [(kind, {})]
+        for resolved_batch in _iter_resolved_request_batches(
+            static_endpoint, query_keys, query_values
+        ):
+            yield resolved_batch
         return
 
     # For now, handle single parameter (can extend for multiple later)
@@ -233,7 +327,16 @@ async def resolve_dynamic_endpoints(
         has_values = True
         # Use existing helper to generate all endpoints for this batch
         endpoints = generate_resolved_endpoints(kind, param_name, value_batch)
-        yield endpoints
+        if query_value_matrix is None:
+            for resolved_batch in _iter_resolved_request_batches(endpoints, None, None):
+                yield resolved_batch
+            continue
+
+        query_keys, query_values = query_value_matrix
+        for resolved_batch in _iter_resolved_request_batches(
+            endpoints, query_keys, query_values
+        ):
+            yield resolved_batch
 
     if not has_values:
         logger.error(f"No valid values found for path parameter '{param_name}'")

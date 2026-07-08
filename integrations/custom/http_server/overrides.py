@@ -83,6 +83,11 @@ class HttpServerSelector(Selector):
         description="Dynamic path parameters",
         default=None,
     )
+    query_parameters: Optional[Dict[str, ApiPathParameter]] = Field(
+        title="Query Parameters Sources",
+        description="Dynamic query parameters resolved from discovery endpoints",
+        default=None,
+    )
     data_path: Optional[str] = Field(
         title="Data Path",
         description="JQ path to extract data array from response (e.g., '.members', '.data.items')",

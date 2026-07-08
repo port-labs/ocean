@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.59 (2026-07-08)
+
+### Features
+
+- Added dynamic query parameter discovery via `selector.query_parameters`, including Cartesian request expansion and dynamic-over-static query precedence
+- Added support for combined resolution of one path parameter and dynamic query parameters in the same ingestion flow
+
 ## 0.6.58 (2026-07-02)
 
 

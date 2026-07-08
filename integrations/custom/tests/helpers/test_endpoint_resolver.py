@@ -259,7 +259,7 @@ class TestResolveDynamicEndpoints:
         result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Returns single batch with static endpoint
-        assert result == [[("/api/v1/users", {})]]
+        assert result == [[("/api/v1/users", {}, {})]]
 
     async def test_empty_kind(self) -> None:
         """Test handling empty kind"""
@@ -280,7 +280,7 @@ class TestResolveDynamicEndpoints:
         result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Returns single batch with template as-is when config is missing
-        assert result == [[("/api/v1/teams/{team_id}/members", {})]]
+        assert result == [[("/api/v1/teams/{team_id}/members", {}, {})]]
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_resolve_with_single_parameter(self, mock_query: MagicMock) -> None:
@@ -314,8 +314,8 @@ class TestResolveDynamicEndpoints:
         # Assert - single batch with all resolved endpoints
         assert result == [
             [
-                ("/api/v1/teams/team-1/members", {"team_id": "team-1"}),
-                ("/api/v1/teams/team-2/members", {"team_id": "team-2"}),
+                ("/api/v1/teams/team-1/members", {"team_id": "team-1"}, {}),
+                ("/api/v1/teams/team-2/members", {"team_id": "team-2"}, {}),
             ]
         ]
         mock_query.assert_called_once_with(param_config)
@@ -394,6 +394,143 @@ class TestResolveDynamicEndpoints:
 
         # Assert - single batch, only first parameter resolved (current limitation)
         assert result == [
-            [("/api/v1/orgs/org-1/teams/{team_id}/members", {"org_id": "org-1"})]
+            [
+                (
+                    "/api/v1/orgs/org-1/teams/{team_id}/members",
+                    {"org_id": "org-1"},
+                    {},
+                )
+            ]
         ]
         mock_query.assert_called_once()
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    async def test_static_endpoint_with_dynamic_query_parameters(
+        self, mock_query: MagicMock
+    ) -> None:
+        """Test resolving dynamic query parameter combinations for static endpoints."""
+
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            if param_config.endpoint == "/api/teams":
+                yield ["team-1", "team-2"]
+            elif param_config.endpoint == "/api/states":
+                yield ["active", "pending"]
+
+        mock_query.side_effect = mock_query_gen
+
+        selector = HttpServerSelector(
+            query="true",
+            query_parameters={
+                "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
+                "status": ApiPathParameter(endpoint="/api/states", field=".name"),
+            },
+        )
+        kind = "/api/v1/users"
+
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
+
+        assert result == [
+            [
+                ("/api/v1/users", {}, {"team_id": "team-1", "status": "active"}),
+                ("/api/v1/users", {}, {"team_id": "team-1", "status": "pending"}),
+                ("/api/v1/users", {}, {"team_id": "team-2", "status": "active"}),
+                ("/api/v1/users", {}, {"team_id": "team-2", "status": "pending"}),
+            ]
+        ]
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    async def test_path_parameter_with_dynamic_query_parameters(
+        self, mock_query: MagicMock
+    ) -> None:
+        """Test combined single path parameter and dynamic query parameters."""
+
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            if param_config.endpoint == "/api/teams":
+                yield ["team-1", "team-2"]
+            elif param_config.endpoint == "/api/states":
+                yield ["active", "pending"]
+
+        mock_query.side_effect = mock_query_gen
+
+        selector = HttpServerSelector(
+            query="true",
+            path_parameters={
+                "team_id": ApiPathParameter(endpoint="/api/teams", field=".id")
+            },
+            query_parameters={
+                "status": ApiPathParameter(endpoint="/api/states", field=".name")
+            },
+        )
+        kind = "/api/v1/teams/{team_id}/members"
+
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
+
+        assert result == [
+            [
+                (
+                    "/api/v1/teams/team-1/members",
+                    {"team_id": "team-1"},
+                    {"status": "active"},
+                ),
+                (
+                    "/api/v1/teams/team-1/members",
+                    {"team_id": "team-1"},
+                    {"status": "pending"},
+                ),
+                (
+                    "/api/v1/teams/team-2/members",
+                    {"team_id": "team-2"},
+                    {"status": "active"},
+                ),
+                (
+                    "/api/v1/teams/team-2/members",
+                    {"team_id": "team-2"},
+                    {"status": "pending"},
+                ),
+            ]
+        ]
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    async def test_dynamic_query_expansion_is_chunked_for_large_result_sets(
+        self, mock_query: MagicMock
+    ) -> None:
+        """Test dynamic query combinations are emitted in bounded chunks."""
+
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            if param_config.endpoint == "/api/teams":
+                yield ["team-1", "team-2"]
+            elif param_config.endpoint == "/api/states":
+                yield ["active", "pending"]
+
+        mock_query.side_effect = mock_query_gen
+
+        selector = HttpServerSelector(
+            query="true",
+            query_parameters={
+                "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
+                "status": ApiPathParameter(endpoint="/api/states", field=".name"),
+            },
+        )
+        kind = "/api/v1/users"
+
+        with patch(
+            "http_server.helpers.endpoint_resolver.RESOLVED_REQUEST_BATCH_SIZE", 2
+        ):
+            result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
+
+        assert result == [
+            [
+                ("/api/v1/users", {}, {"team_id": "team-1", "status": "active"}),
+                ("/api/v1/users", {}, {"team_id": "team-1", "status": "pending"}),
+            ],
+            [
+                ("/api/v1/users", {}, {"team_id": "team-2", "status": "active"}),
+                ("/api/v1/users", {}, {"team_id": "team-2", "status": "pending"}),
+            ],
+        ]
