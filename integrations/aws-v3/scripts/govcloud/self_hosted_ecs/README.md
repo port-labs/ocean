@@ -32,13 +32,13 @@ The commercial installation docs rely on CloudFormation templates and container 
 
 ### What CloudFormation creates
 
-- [ ] CloudWatch log group: `/ecs/port-aws-ecs-integration-port-ocean-aws-v3`
-- [ ] IAM execution role: `port-aws-ecs-integration-ExecutionRole`
-- [ ] IAM task role: `port-aws-ecs-integration-TaskRole`
-- [ ] IAM read-only role: `port-aws-ecs-integration-ReadRole` (with `ReadOnlyAccess`)
-- [ ] ECS cluster: `port-aws-ecs-integration-cluster`
-- [ ] ECS Fargate service: `port-ocean-aws-v3`
-- [ ] Security group for outbound HTTPS from the task
+- [ ] CloudWatch log group: `/ecs/port-aws-ecs-integration-port-ocean-aws-v3`.
+- [ ] IAM execution role: `port-aws-ecs-integration-ExecutionRole`.
+- [ ] IAM task role: `port-aws-ecs-integration-TaskRole`.
+- [ ] IAM read-only role: `port-aws-ecs-integration-ReadRole` (with `ReadOnlyAccess`).
+- [ ] ECS cluster: `port-aws-ecs-integration-cluster`.
+- [ ] ECS Fargate service: `port-ocean-aws-v3`.
+- [ ] Security group for outbound HTTPS from the task.
 
 ### After the script succeeds
 
@@ -48,11 +48,11 @@ The commercial installation docs rely on CloudFormation templates and container 
 
 ### To tear down and start over
 
-- [ ] Delete the CloudFormation stack: `port-aws-ecs-integration`
-- [ ] Empty and delete the S3 template bucket: `port-cfn-templates-<account-id>-<region>`
-- [ ] Delete the ECR repository: `port-ocean-aws-v3`
-- [ ] Optionally delete the integration and synced entities in Port
-- [ ] Optionally remove the local cache: `~/.cache/port-aws-govcloud-setup`
+- [ ] Delete the CloudFormation stack: `port-aws-ecs-integration`.
+- [ ] Empty and delete the S3 template bucket: `port-cfn-templates-<account-id>-<region>`.
+- [ ] Delete the ECR repository: `port-ocean-aws-v3`.
+- [ ] Optionally delete the integration and synced entities in Port.
+- [ ] Optionally remove the local cache: `~/.cache/port-aws-govcloud-setup`.
 
 ## Prerequisites
 
@@ -67,14 +67,14 @@ The commercial installation docs rely on CloudFormation templates and container 
 1. Open `run.py` and edit the configuration section at the top (`REGION`, `VPC_ID`, `SUBNET_IDS`, and so on).
 2. Export your Port credentials:
 
-```bash
+```bash showLineNumbers
 export PORT_CLIENT_ID="your-client-id"
 export PORT_CLIENT_SECRET="your-client-secret"
 ```
 
 3. Run the script from the `integrations/aws-v3` directory:
 
-```bash
+```bash showLineNumbers
 poetry run python scripts/govcloud/self_hosted_ecs/run.py
 ```
 
