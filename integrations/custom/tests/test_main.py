@@ -217,7 +217,7 @@ class TestListResponseHandling:
 
     @pytest.mark.asyncio
     async def test_dynamic_query_parameters_override_static_selector_values(
-        self, monkeypatch: pytest.MonkeyPatch
+        self: "TestListResponseHandling", monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test dynamic query parameter values override static selector.query_params."""
         with patch(

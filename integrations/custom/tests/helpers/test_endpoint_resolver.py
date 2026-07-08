@@ -406,7 +406,7 @@ class TestResolveDynamicEndpoints:
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_static_endpoint_with_dynamic_query_parameters(
-        self, mock_query: MagicMock
+        self: "TestResolveDynamicEndpoints", mock_query: MagicMock
     ) -> None:
         """Test resolving dynamic query parameter combinations for static endpoints."""
 
@@ -442,7 +442,7 @@ class TestResolveDynamicEndpoints:
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_path_parameter_with_dynamic_query_parameters(
-        self, mock_query: MagicMock
+        self: "TestResolveDynamicEndpoints", mock_query: MagicMock
     ) -> None:
         """Test combined single path parameter and dynamic query parameters."""
 
@@ -496,7 +496,7 @@ class TestResolveDynamicEndpoints:
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_dynamic_query_expansion_is_chunked_for_large_result_sets(
-        self, mock_query: MagicMock
+        self: "TestResolveDynamicEndpoints", mock_query: MagicMock
     ) -> None:
         """Test dynamic query combinations are emitted in bounded chunks."""
 
