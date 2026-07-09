@@ -10,6 +10,7 @@ import loguru
 from loguru import logger
 
 from port_ocean.config.settings import LogLevelType
+from port_ocean.context.event import EventType
 from port_ocean.log.handlers import HTTPMemoryHandler
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.utils.signal import signal_handler
@@ -74,6 +75,8 @@ def _http_loguru_handler(level: LogLevelType) -> None:
 
 def _http_log_filter(record: "loguru.Record") -> bool:
     if record["extra"].get("local_only"):
+        return False
+    if record["extra"].get("event_kind") == EventType.INCREMENTAL_RESYNC:
         return False
     return _sensitive_http_log_filter(record)
 

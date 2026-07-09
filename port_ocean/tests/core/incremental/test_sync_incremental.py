@@ -52,7 +52,28 @@ def mock_port_client() -> MagicMock:
     client.get_integration_cursor = AsyncMock(return_value=None)
     client.upsert_integration_cursor = AsyncMock()
     client.delete_integration_cursors = AsyncMock()
+    client.auth = MagicMock()
     return client
+
+
+@pytest.fixture(autouse=True)
+def mock_integration_events_reporter() -> MagicMock:
+    reporter = MagicMock()
+    reporter.report_kind_started = AsyncMock()
+    reporter.report_kind_ended = AsyncMock()
+    reporter.report_batch_started = AsyncMock()
+    reporter.report_batch_ended = AsyncMock()
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            new=AsyncMock(return_value=False),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.IntegrationEventsReporter",
+            return_value=reporter,
+        ) as mock_cls,
+    ):
+        yield mock_cls
 
 
 @pytest.fixture
@@ -278,3 +299,67 @@ class TestEventsMixinIncrementalRegistration:
         mixin.on_incremental_resync(handler, kind="issue")
         mixin.on_incremental_resync(handler, kind="pull-request")
         assert set(mixin.available_incremental_kinds) == {"issue", "pull-request"}
+
+
+class TestSyncIncrementalLifecycle:
+    async def test_skips_lifecycle_api_when_dsp_disabled(
+        self,
+        mock_mixin: SyncRawMixin,
+        mock_port_client: MagicMock,
+        mock_integration_events_reporter: MagicMock,
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        lifecycle_client = MagicMock()
+        lifecycle_client.notify_resync_started = AsyncMock()
+        lifecycle_client.notify_resync_finished = AsyncMock()
+        lifecycle_client.notify_resync_failed = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                new=AsyncMock(return_value=False),
+            ),
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+        ):
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            mock_ocean.app.lifecycle_client = lifecycle_client
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        lifecycle_client.notify_resync_started.assert_not_called()
+        lifecycle_client.notify_resync_finished.assert_not_called()
+        lifecycle_client.notify_resync_failed.assert_not_called()
+        mock_integration_events_reporter.assert_called_once()
+
+    async def test_calls_lifecycle_api_when_dsp_enabled(
+        self,
+        mock_mixin: SyncRawMixin,
+        mock_port_client: MagicMock,
+        mock_integration_events_reporter: MagicMock,
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        lifecycle_client = MagicMock()
+        lifecycle_client.notify_resync_started = AsyncMock()
+        lifecycle_client.notify_resync_finished = AsyncMock()
+        lifecycle_client.notify_resync_failed = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                new=AsyncMock(return_value=True),
+            ),
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+        ):
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            mock_ocean.app.lifecycle_client = lifecycle_client
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        lifecycle_client.notify_resync_started.assert_called_once()
+        lifecycle_client.notify_resync_finished.assert_called_once()
+        lifecycle_client.notify_resync_failed.assert_not_called()
+        mock_integration_events_reporter.assert_called_once()

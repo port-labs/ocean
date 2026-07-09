@@ -64,6 +64,14 @@ from port_ocean.helpers.metric.metric import (
 from port_ocean.helpers.metric.utils import TimeMetric, TimeMetricWithResourceKind
 from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 from port_ocean.utils.ipc import FileIPC
+from port_ocean.version import __integration_version__
+from port_ocean.core.integrations.reporters.integration_events import (
+    IntegrationEventsReporter,
+    KindToBlueprint,
+    make_batch_id,
+    BatchTimer,
+    ExtractMetrics,
+)
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
@@ -474,7 +482,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         number_of_transformed_entities = 0
         batch_index = 0
 
+        events_reporter: IntegrationEventsReporter | None = event.attributes.get(
+            "events_reporter"
+        )
+        kind_identifier = f"{resource_config.kind}-{index}"
+
         if raw_results:
+            batch_id = make_batch_id()
+            batch_timer = BatchTimer()
+            if events_reporter:
+                await events_reporter.report_batch_started(
+                    correlation_id=event.id,
+                    batch_id=batch_id,
+                    kind_identifier=kind_identifier,
+                )
+
             if lakehouse_data_enabled and buffer:
                 metadata = LakehouseDataEntryMetadata(
                     operation=LakehouseOperation.UPSERT,
@@ -490,6 +512,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 await buffer.add(lakehouse_data_entry)
             batch_index += 1
             number_of_raw_results += len(raw_results)
+
+            if events_reporter:
+                await events_reporter.report_batch_ended(
+                    correlation_id=event.id,
+                    batch_id=batch_id,
+                    kind_identifier=kind_identifier,
+                    metrics=ExtractMetrics(
+                        fetched=len(raw_results),
+                        duration_seconds=batch_timer.elapsed_seconds(),
+                    ),
+                )
 
             if not await is_dsp_mode_enabled():
                 calculation_result = await self._register_resource_raw(
@@ -511,6 +544,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             try:
                 async for items in generator:
                     batch_index += 1
+                    batch_id = make_batch_id()
+                    batch_timer = BatchTimer()
+                    if events_reporter:
+                        await events_reporter.report_batch_started(
+                            correlation_id=event.id,
+                            batch_id=batch_id,
+                            kind_identifier=kind_identifier,
+                        )
+
                     if lakehouse_data_enabled and buffer:
                         metadata = LakehouseDataEntryMetadata(
                             operation=LakehouseOperation.UPSERT,
@@ -525,6 +567,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         )
                         await buffer.add(lakehouse_data_entry)
                     number_of_raw_results += len(items)
+
+                    if events_reporter:
+                        await events_reporter.report_batch_ended(
+                            correlation_id=event.id,
+                            batch_id=batch_id,
+                            kind_identifier=kind_identifier,
+                            metrics=ExtractMetrics(
+                                fetched=len(items),
+                                duration_seconds=batch_timer.elapsed_seconds(),
+                            ),
+                        )
 
                     if not await is_dsp_mode_enabled():
                         calculation_result = await self._register_resource_raw(
@@ -1195,9 +1248,24 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         next_cursor: datetime,
         cursor_store: CursorStore,
         user_agent_type: UserAgentType,
+        events_reporter: IntegrationEventsReporter | None = None,
     ) -> bool:
         """Sync one kind incrementally. Returns True when the cursor was advanced."""
         integration_id = ocean.config.integration.identifier
+        kind_identifier = f"{resource.kind}-{index}"
+
+        if events_reporter:
+            kind_to_blueprint = KindToBlueprint(
+                kind=resource.kind,
+                blueprint=resource.port.entity.mappings.blueprint,
+                kind_identifier=kind_identifier,
+            )
+            await events_reporter.report_kind_started(
+                correlation_id=event.id,
+                kind_to_blueprint=kind_to_blueprint,
+                kind_index=index,
+            )
+
         try:
             with with_active_incremental_cursor(cursor):
                 _, errors = await self.process_resource(
@@ -1230,6 +1298,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 error=str(exc),
             )
             return False
+        finally:
+            if events_reporter:
+                await events_reporter.report_kind_ended(
+                    correlation_id=event.id,
+                    kind_to_blueprint=kind_to_blueprint,
+                    kind_index=index,
+                )
 
     async def sync_incremental(
         self,
@@ -1276,6 +1351,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             cursor_store = CursorStore(ocean.port_client)
             run_started_at = datetime.now(timezone.utc)
 
+            events_reporter = IntegrationEventsReporter(
+                auth=ocean.port_client.auth,
+                integration_identifier=ocean.config.integration.identifier,
+                integration_type=ocean.config.integration.type,
+                integration_version=__integration_version__,
+            )
+            event.attributes["events_reporter"] = events_reporter
+
             if dsp_enabled:
                 await ocean.app.lifecycle_client.notify_resync_started(
                     resync_id=event.id,
@@ -1305,20 +1388,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     run_started_at,
                     cursor_store,
                     user_agent_type,
+                    events_reporter=events_reporter,
                 )
                 if not success:
-                    await ocean.app.lifecycle_client.notify_resync_failed(
-                        resync_id=event.id,
-                        integration_id=ocean.config.integration.identifier,
-                        integration_type=ocean.config.integration.type,
-                    )
+                    if dsp_enabled:
+                        await ocean.app.lifecycle_client.notify_resync_failed(
+                            resync_id=event.id,
+                            integration_id=ocean.config.integration.identifier,
+                            integration_type=ocean.config.integration.type,
+                        )
                     return
 
-            await ocean.app.lifecycle_client.notify_resync_finished(
-                resync_id=event.id,
-                integration_id=ocean.config.integration.identifier,
-                integration_type=ocean.config.integration.type,
-            )
+            if dsp_enabled:
+                await ocean.app.lifecycle_client.notify_resync_finished(
+                    resync_id=event.id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                )
 
             logger.info(
                 "Incremental sync completed",

@@ -51,6 +51,17 @@ def test_http_log_filter_excludes_local_only_logs() -> None:
     assert _http_log_filter(regular_record) is True  # type: ignore[arg-type]
 
 
+def test_http_log_filter_excludes_incremental_resync_logs() -> None:
+    incremental_record = {
+        "extra": {"event_kind": "incremental_resync"},
+        "message": "Incremental sync kind completed",
+    }
+    resync_record = {"extra": {"event_kind": "resync"}, "message": "Event finished"}
+
+    assert _http_log_filter(incremental_record) is False  # type: ignore[arg-type]
+    assert _http_log_filter(resync_record) is True  # type: ignore[arg-type]
+
+
 def test_local_only_info_never_reaches_http_sink() -> None:
     queue: Queue[LogRecord] = Queue()
     queue_handler = QueueHandler(queue)
