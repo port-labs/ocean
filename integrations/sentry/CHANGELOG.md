@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.106 (2026-07-09)
+
+
+### Bug Fixes
+
+- Stopped paginated Sentry resources from yielding invalid batches when ignored permission errors return empty API responses
+
+
 ## 0.3.105 (2026-07-08)
 
 
