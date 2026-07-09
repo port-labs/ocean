@@ -16,9 +16,9 @@ from datadog.webhook.webhook_client import (
 async def test_create_webhook_and_append_recipient_when_webhook_is_new(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             httpx.HTTPStatusError(
@@ -99,7 +99,7 @@ async def test_create_webhook_and_append_recipient_when_webhook_is_new(
 async def test_skip_webhook_update_when_config_is_unchanged(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     webhook_name = "org_123-dd-integration"
     base_url = "https://example.com"
     secret = "test_secret"
@@ -109,7 +109,7 @@ async def test_skip_webhook_update_when_config_is_unchanged(
     from datadog.webhook.webhook_client import _WEBHOOK_PAYLOAD_TEMPLATE
 
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             {
@@ -140,13 +140,13 @@ async def test_skip_webhook_update_when_config_is_unchanged(
 async def test_update_webhook_config_and_append_recipient_when_webhook_already_exists(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     webhook_name = "org_123-dd-integration"
     new_base_url = "https://new-url.example.com"
     new_secret = "new_secret"
 
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             {
@@ -193,9 +193,9 @@ async def test_update_webhook_config_and_append_recipient_when_webhook_already_e
 async def test_create_webhook_without_secret_omits_custom_headers(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             httpx.HTTPStatusError(
@@ -234,12 +234,12 @@ async def test_create_webhook_without_secret_omits_custom_headers(
 async def test_notification_rule_not_updated_when_already_in_sync(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     rule_name = _PORT_MONITOR_NOTIFICATION_RULE_PREFIX
     recipient = "webhook-org_123-dd-integration"
 
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             {
@@ -257,7 +257,9 @@ async def test_notification_rule_not_updated_when_already_in_sync(
         ]
 
         await webhook_client._sync_notification_rule(
-            "org_123-dd-integration", notification_rule_scope="service:*"
+            mock_datadog_client,
+            "org_123-dd-integration",
+            notification_rule_scope="service:*",
         )
 
     # only the initial GET — no PATCH because recipient is already present
@@ -270,13 +272,13 @@ async def test_notification_rule_not_updated_when_already_in_sync(
 async def test_notification_rule_new_recipient_appended_to_existing_rule(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     rule_name = _PORT_MONITOR_NOTIFICATION_RULE_PREFIX
     existing_recipient = "webhook-other-integration"
     new_recipient = "webhook-org_123-dd-integration"
 
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             {
@@ -295,7 +297,9 @@ async def test_notification_rule_new_recipient_appended_to_existing_rule(
         ]
 
         await webhook_client._sync_notification_rule(
-            "org_123-dd-integration", notification_rule_scope="service:*"
+            mock_datadog_client,
+            "org_123-dd-integration",
+            notification_rule_scope="service:*",
         )
 
     assert mock_send.await_count == 2
@@ -314,14 +318,16 @@ async def test_notification_rule_new_recipient_appended_to_existing_rule(
 async def test_notification_rule_created_when_missing(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [{"data": []}, {"status": "created"}]
 
         await webhook_client._sync_notification_rule(
-            "org_123-dd-integration", notification_rule_scope="service:*"
+            mock_datadog_client,
+            "org_123-dd-integration",
+            notification_rule_scope="service:*",
         )
 
     post_call = mock_send.await_args_list[1].kwargs
@@ -338,16 +344,18 @@ async def test_notification_rule_created_when_missing(
 async def test_notification_rule_created_with_custom_scope(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     custom_scope = "service:payments AND env:prod"
 
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [{"data": []}, {"status": "created"}]
 
         await webhook_client._sync_notification_rule(
-            "org_123-dd-integration", notification_rule_scope=custom_scope
+            mock_datadog_client,
+            "org_123-dd-integration",
+            notification_rule_scope=custom_scope,
         )
 
     post_call = mock_send.await_args_list[1].kwargs
@@ -361,13 +369,13 @@ async def test_notification_rule_appended_when_rule_found_by_scope_and_prefix(
     mock_datadog_client: DatadogClient,
 ) -> None:
     """Rule with matching scope and name prefix is found — recipient gets appended."""
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     rule_name = f"{_PORT_MONITOR_NOTIFICATION_RULE_PREFIX} (custom)"
     existing_recipient = "webhook-other-integration"
     new_recipient = "webhook-org_123-dd-integration"
 
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             {
@@ -386,6 +394,7 @@ async def test_notification_rule_appended_when_rule_found_by_scope_and_prefix(
         ]
 
         await webhook_client._sync_notification_rule(
+            mock_datadog_client,
             "org_123-dd-integration",
             notification_rule_scope="service:payments AND env:prod",
         )
@@ -408,11 +417,11 @@ async def test_notification_rule_not_matched_when_scope_differs(
     mock_datadog_client: DatadogClient,
 ) -> None:
     """A rule with matching prefix but DIFFERENT scope must not be matched — a new rule is created."""
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     rule_name = _PORT_MONITOR_NOTIFICATION_RULE_PREFIX
 
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         mock_send.side_effect = [
             {
@@ -431,7 +440,9 @@ async def test_notification_rule_not_matched_when_scope_differs(
         ]
 
         await webhook_client._sync_notification_rule(
-            "org_123-dd-integration", notification_rule_scope="service:*"
+            mock_datadog_client,
+            "org_123-dd-integration",
+            notification_rule_scope="service:*",
         )
 
     assert mock_send.await_count == 2
@@ -446,9 +457,9 @@ async def test_notification_rule_not_matched_when_scope_differs(
 async def test_find_existing_webhook_by_name_returns_none_on_404(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    webhook_client = DatadogWebhookClient([mock_datadog_client])
     with patch.object(
-        webhook_client.client, "send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_send:
         request = httpx.Request(
             "GET",
@@ -458,6 +469,8 @@ async def test_find_existing_webhook_by_name_returns_none_on_404(
             "not found", request=request, response=httpx.Response(404, request=request)
         )
 
-        result = await webhook_client._find_existing_webhook(webhook_name="missing")
+        result = await webhook_client._find_existing_webhook(
+            mock_datadog_client, webhook_name="missing"
+        )
 
     assert result is None

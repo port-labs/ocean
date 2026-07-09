@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic.v1 import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import handle_port_status_code

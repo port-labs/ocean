@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
+from abc import ABC, abstractmethod
 from typing import Any, Literal, NotRequired, TypedDict
-from pydantic import BaseModel
-from pydantic.fields import Field
+from pydantic.v1 import BaseModel, Extra, root_validator
+from pydantic.v1.fields import Field
 
 
 class EventListenerType(StrEnum):
@@ -13,6 +14,10 @@ class EventListenerType(StrEnum):
     ONCE = "ONCE"
     WEBHOOKS_ONLY = "WEBHOOKS_ONLY"
     ACTIONS_ONLY = "ACTIONS_ONLY"
+
+
+class LiveEventsConsumerType(StrEnum):
+    REDIS = "REDIS"
 
 
 class CreatePortResourcesOrigin(StrEnum):
@@ -141,6 +146,7 @@ class IntegrationFeatureFlag(StrEnum):
         "OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED"
     )
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
+    LIVE_EVENTS_REDIS_STREAM_ENABLED = "LIVE_EVENTS_REDIS_STREAM_ENABLED"
 
 
 class ProcessingMode(StrEnum):
@@ -164,6 +170,10 @@ class RunStatus(StrEnum):
     FAILURE = "FAILURE"
 
 
+# TODO: Remove this once the ActionRunStatus is removed from the integrations code
+ActionRunStatus = RunStatus
+
+
 class WorkflowNodeRunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
@@ -180,17 +190,79 @@ class WorkflowNodeRunLog(BaseModel):
     message: str
 
 
+class RunKind(StrEnum):
+    ACTION = "action"
+    WORKFLOW_NODE = "workflow_node"
+
+
 class IntegrationActionInvocationPayload(BaseModel):
     type: Literal["INTEGRATION_ACTION"]
     installationId: str
     integrationActionType: str
-    integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
+    integrationActionExecutionProperties: dict[str, Any]
 
 
-class ActionRun(BaseModel):
+class WorkflowIntegrationActionConfig(BaseModel):
+    type: Literal["INTEGRATION_ACTION"]
+    installationId: str
+    integrationProvider: str
+    integrationInvocationType: str
+    integrationActionExecutionProperties: dict[str, Any]
+
+    class Config:
+        extra = Extra.allow
+
+
+class IntegrationRun(ABC):
+    """Abstract contract for integration runs (action runs and workflow node runs).
+
+    Consumers operate through this interface and stay agnostic to the concrete
+    run type. Use ``run_kind`` only for the rare cases that need to branch on type.
+    """
+
     id: str
-    status: RunStatus
+
+    @property
+    @abstractmethod
+    def run_kind(self) -> RunKind: ...
+
+    @property
+    @abstractmethod
+    def action_type(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def execution_properties(self) -> dict[str, Any]: ...
+
+    @property
+    @abstractmethod
+    def buffer_utilization_key(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def is_in_progress(self) -> bool: ...
+
+
+class ActionRun(BaseModel, IntegrationRun):
+
+    class Action(BaseModel):
+        identifier: str
+
+    class Config:
+        allow_population_by_field_name = True
+
+    id: str
+    status: ActionRunStatus
     payload: IntegrationActionInvocationPayload
+    action: Action
+
+    @property
+    def run_kind(self) -> RunKind:
+        return RunKind.ACTION
+
+    @property
+    def action_identifier(self) -> str:
+        return self.action.identifier
 
     @property
     def action_type(self) -> str:
@@ -200,43 +272,68 @@ class ActionRun(BaseModel):
     def execution_properties(self) -> dict[str, Any]:
         return self.payload.integrationActionExecutionProperties
 
+    @property
+    def buffer_utilization_key(self) -> str:
+        return self.action_identifier
 
-class WorkflowNodeRun(BaseModel):
-    identifier: str
+    @property
+    def is_in_progress(self) -> bool:
+        return self.status == ActionRunStatus.IN_PROGRESS
+
+
+class WorkflowNodeRun(BaseModel, IntegrationRun):
+    class WorkflowNode(BaseModel):
+        config: WorkflowIntegrationActionConfig
+
+    class Config:
+        allow_population_by_field_name = True
+        extra = Extra.allow
+
+    id: str = Field(alias="identifier")
+    node_uid: str | None = Field(default=None, alias="nodeUid")
     status: WorkflowNodeRunStatus
-    node: dict[str, Any] | None = None
-
-    @property
-    def id(self) -> str:
-        return self.identifier
-
-    @property
-    def action_type(self) -> str:
-        if not self.node:
-            return ""
-        return self.node.get("config", {}).get("integrationInvocationType", "")
-
-    @property
-    def execution_properties(self) -> dict[str, Any]:
-        if not self.node:
-            return {}
-        return self.node.get("config", {}).get(
-            "integrationActionExecutionProperties", {}
-        )
-
-
-class ClaimedWorkflowNodeRun(WorkflowNodeRun):
-    config: dict[str, Any]
-    result: WorkflowNodeRunResult | None = None
+    config: WorkflowIntegrationActionConfig | None = None
+    node: WorkflowNode | None = None
     output: dict[str, Any] = Field(default_factory=dict)
 
+    @root_validator(skip_on_failure=True)
+    def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:
+        config = values.get("config")
+        node = values.get("node")
+        has_node_config = node is not None and (
+            node.config is not None or node.nodeConfig is not None
+        )
+        if config is None and not has_node_config:
+            raise ValueError("either config or node.config must be provided")
+        return values
+
+    @property
+    def integration_config(self) -> WorkflowIntegrationActionConfig:
+        if self.config is not None:
+            return self.config
+        if self.node is not None:
+            return self.node.config
+        raise ValueError("either config or node.config must be provided")
+
+    @property
+    def run_kind(self) -> RunKind:
+        return RunKind.WORKFLOW_NODE
+
     @property
     def action_type(self) -> str:
-        return self.config["integrationInvocationType"]
+        return self.integration_config.integrationInvocationType
 
     @property
     def execution_properties(self) -> dict[str, Any]:
-        return self.config.get("integrationActionExecutionProperties", {})
+        return self.integration_config.integrationActionExecutionProperties
+
+    @property
+    def buffer_utilization_key(self) -> str:
+        return self.node_uid or self.id
+
+    @property
+    def is_in_progress(self) -> bool:
+        return self.status == WorkflowNodeRunStatus.IN_PROGRESS
 
 
 class LakehouseDataEntryMetadata(TypedDict):

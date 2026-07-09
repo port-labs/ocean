@@ -1,67 +1,67 @@
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+from typing import Any
+from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 from datetime import datetime
 
 
 class ServiceProperties(BaseModel):
-    availabilityZoneRebalancing: Optional[str] = Field(
+    availabilityZoneRebalancing: str | None = Field(
         default=None, alias="AvailabilityZoneRebalancing"
     )
-    capacityProviderStrategy: List[Dict[str, Any]] = Field(
+    capacityProviderStrategy: list[dict[str, Any]] = Field(
         default_factory=list, alias="CapacityProviderStrategy"
     )
     clusterArn: str = Field(default_factory=str, alias="ClusterArn")
-    createdAt: Optional[datetime] = Field(default=None, alias="CreatedAt")
-    createdBy: Optional[str] = Field(default=None, alias="CreatedBy")
-    deploymentConfiguration: Optional[Dict[str, Any]] = Field(
+    createdAt: datetime | None = Field(default=None, alias="CreatedAt")
+    createdBy: str | None = Field(default=None, alias="CreatedBy")
+    deploymentConfiguration: dict[str, Any] | None = Field(
         default=None, alias="DeploymentConfiguration"
     )
-    deploymentController: Optional[Dict[str, Any]] = Field(
+    deploymentController: dict[str, Any] | None = Field(
         default=None, alias="DeploymentController"
     )
-    deployments: List[Dict[str, Any]] = Field(default_factory=list, alias="Deployments")
+    deployments: list[dict[str, Any]] = Field(default_factory=list, alias="Deployments")
     desiredCount: int = Field(default=0, alias="DesiredCount")
-    enableECSManagedTags: Optional[bool] = Field(
+    enableECSManagedTags: bool | None = Field(
         default=None, alias="EnableECSManagedTags"
     )
-    enableExecuteCommand: Optional[bool] = Field(
+    enableExecuteCommand: bool | None = Field(
         default=None, alias="EnableExecuteCommand"
     )
-    events: List[Dict[str, Any]] = Field(default_factory=list, alias="Events")
-    healthCheckGracePeriodSeconds: Optional[int] = Field(
+    events: list[dict[str, Any]] = Field(default_factory=list, alias="Events")
+    healthCheckGracePeriodSeconds: int | None = Field(
         default=None, alias="HealthCheckGracePeriodSeconds"
     )
-    launchType: Optional[str] = Field(default=None, alias="LaunchType")
-    loadBalancers: List[Dict[str, Any]] = Field(
+    launchType: str | None = Field(default=None, alias="LaunchType")
+    loadBalancers: list[dict[str, Any]] = Field(
         default_factory=list, alias="LoadBalancers"
     )
-    networkConfiguration: Optional[Dict[str, Any]] = Field(
+    networkConfiguration: dict[str, Any] | None = Field(
         default=None, alias="NetworkConfiguration"
     )
     pendingCount: int = Field(default=0, alias="PendingCount")
-    placementConstraints: List[Dict[str, Any]] = Field(
+    placementConstraints: list[dict[str, Any]] = Field(
         default_factory=list, alias="PlacementConstraints"
     )
-    placementStrategy: List[Dict[str, Any]] = Field(
+    placementStrategy: list[dict[str, Any]] = Field(
         default_factory=list, alias="PlacementStrategy"
     )
-    platformFamily: Optional[str] = Field(default=None, alias="PlatformFamily")
-    platformVersion: Optional[str] = Field(default=None, alias="PlatformVersion")
-    propagateTags: Optional[str] = Field(default=None, alias="PropagateTags")
-    roleArn: Optional[str] = Field(default=None, alias="RoleArn")
+    platformFamily: str | None = Field(default=None, alias="PlatformFamily")
+    platformVersion: str | None = Field(default=None, alias="PlatformVersion")
+    propagateTags: str | None = Field(default=None, alias="PropagateTags")
+    roleArn: str | None = Field(default=None, alias="RoleArn")
     runningCount: int = Field(default=0, alias="RunningCount")
-    schedulingStrategy: Optional[str] = Field(default=None, alias="SchedulingStrategy")
+    schedulingStrategy: str | None = Field(default=None, alias="SchedulingStrategy")
     serviceArn: str = Field(default_factory=str, alias="ServiceArn")
     serviceName: str = Field(default_factory=str, alias="ServiceName")
-    serviceRegistries: List[Dict[str, Any]] = Field(
+    serviceRegistries: list[dict[str, Any]] = Field(
         default_factory=list, alias="ServiceRegistries"
     )
-    status: Optional[str] = Field(default=None, alias="Status")
-    tags: List[Dict[str, Any]] = Field(default_factory=list, alias="Tags")
+    status: str | None = Field(default=None, alias="Status")
+    tags: list[dict[str, Any]] = Field(default_factory=list, alias="Tags")
     taskDefinition: str = Field(default_factory=str, alias="TaskDefinition")
-    taskSets: List[Dict[str, Any]] = Field(default_factory=list, alias="TaskSets")
-    updatedAt: Optional[datetime] = Field(default=None, alias="UpdatedAt")
+    taskSets: list[dict[str, Any]] = Field(default_factory=list, alias="TaskSets")
+    updatedAt: datetime | None = Field(default=None, alias="UpdatedAt")
 
     class Config:
         allow_population_by_field_name = True

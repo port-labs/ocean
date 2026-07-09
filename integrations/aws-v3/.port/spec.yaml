@@ -21,7 +21,14 @@ features:
       - kind: AWS::CodeBuild::Project
       - kind: AWS::CodeBuild::BuildRun
       - kind: AWS::CodeDeploy::Application
+      - kind: AWS::CodeDeploy::DeploymentGroup
+      - kind: AWS::CodeDeploy::Deployment
+      - kind: AWS::CodeDeploy::DeploymentTarget
       - kind: AWS::CodePipeline::Pipeline
+      - kind: AWS::CodePipeline::Stage
+      - kind: AWS::CodePipeline::Action
+      - kind: AWS::CodePipeline::PipelineExecution
+      - kind: AWS::CodePipeline::ActionExecution
 configurations:
   - name: credentialProviderPriority
     required: false
@@ -64,6 +71,12 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: aws_partition
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Partition, defaults to "aws" which is the standard global one (optional).
+    enum: ["aws", "aws-us-gov", "aws-cn"]
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from fastapi import APIRouter, FastAPI
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 import pytest
 import httpx
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -16,6 +16,7 @@ from port_ocean.core.handlers.actions.execution_manager import (
     ExecutionManager,
     GLOBAL_SOURCE,
 )
+from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -24,12 +25,15 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.models import (
     ActionRun,
-    ClaimedWorkflowNodeRun,
     IntegrationActionInvocationPayload,
-    RunStatus,
+    RunKind,
+    ActionRunStatus,
+    WorkflowIntegrationActionConfig,
+    WorkflowNodeRun,
     WorkflowNodeRunStatus,
 )
 from port_ocean.exceptions.execution_manager import (
+    ActionExecutionError,
     DuplicateActionExecutorError,
     RunAlreadyAcknowledgedError,
 )
@@ -39,13 +43,15 @@ from port_ocean.utils.signal import SignalHandler
 
 def generate_mock_action_run(
     action_type: str = "test_action",
+    action_identifier: str = "test-action-identifier",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
 ) -> ActionRun:
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
     return ActionRun(
         id=f"test-run-id-{uuid.uuid4()}",
-        status=RunStatus.IN_PROGRESS,
+        status=ActionRunStatus.IN_PROGRESS,
+        action=ActionRun.Action(identifier=action_identifier),
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
             installationId="test-installation-id",
@@ -58,18 +64,23 @@ def generate_mock_action_run(
 def generate_mock_wf_node_run(
     action_type: str = "test_action",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
-) -> ClaimedWorkflowNodeRun:
+    run_id: str | None = None,
+    node_uid: str = "test-node-uid",
+) -> WorkflowNodeRun:
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
-    return ClaimedWorkflowNodeRun(
-        identifier=f"test-wf-node-run-id-{uuid.uuid4()}",
+    return WorkflowNodeRun(
+        id=run_id or f"test-wf-node-run-id-{uuid.uuid4()}",
+        node_uid=node_uid,
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        config={
-            "type": "INTEGRATION_ACTION",
-            "installationId": "test-installation-id",
-            "integrationInvocationType": action_type,
-            "integrationActionExecutionProperties": integrationActionExecutionProperties,
-        },
+        config=WorkflowIntegrationActionConfig(
+            type="INTEGRATION_ACTION",
+            installationId="test-installation-id",
+            integrationProvider="gitlab",
+            integrationInvocationType=action_type,
+            integrationActionExecutionProperties=integrationActionExecutionProperties,
+        ),
+        output={},
     )
 
 
@@ -89,7 +100,7 @@ def mock_port_client() -> MagicMock:
     mock_port_client.claim_pending_runs = AsyncMock(return_value=[])
     mock_port_client.acknowledge_run = AsyncMock()
     mock_port_client.post_run_log = AsyncMock()
-    mock_port_client.report_run_failure = AsyncMock()
+    mock_port_client.report_run_completed = AsyncMock()
     mock_port_client.auth = AsyncMock(spec=PortAuthentication)
     mock_port_client.auth.is_machine_user = AsyncMock(return_value=True)
     return mock_port_client
@@ -417,6 +428,103 @@ class TestExecutionManager:
             mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
+    async def test_handle_global_queue_once_does_not_commit_on_timeout(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        await execution_manager._handle_global_queue_once()
+
+    @pytest.mark.asyncio
+    async def test_handle_partition_queue_once_does_not_commit_on_timeout(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        partition_name = "test_action:empty-partition"
+        execution_manager._partition_queues[partition_name] = LocalQueue()
+        execution_manager._queues_locks[partition_name] = asyncio.Lock()
+
+        await execution_manager._handle_partition_queue_once(partition_name)
+
+    @pytest.mark.asyncio
+    async def test_action_identifier_queue_count_tracks_queued_runs(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        run = generate_mock_action_run()
+        await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
+
+        assert execution_manager._buffer_queue_counts[RunKind.ACTION] == {
+            "test-action-identifier": 1
+        }
+
+        await execution_manager._handle_global_queue_once()
+
+        assert execution_manager._buffer_queue_counts[RunKind.ACTION] == {}
+
+    @pytest.mark.asyncio
+    async def test_workflow_buffer_queue_count_tracks_workflow_node_runs_separately(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        run = generate_mock_wf_node_run()
+        await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
+
+        assert execution_manager._buffer_queue_counts[RunKind.ACTION] == {}
+        assert execution_manager._buffer_queue_counts[RunKind.WORKFLOW_NODE] == {
+            run.buffer_utilization_key: 1
+        }
+
+        await execution_manager._handle_global_queue_once()
+
+        assert execution_manager._buffer_queue_counts[RunKind.WORKFLOW_NODE] == {}
+
+    @pytest.mark.asyncio
+    async def test_poll_action_runs_excludes_saturated_action_identifiers(
+        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
+    ) -> None:
+        execution_manager._max_runs_buffer_util_pct_per_action = 2
+        execution_manager._poll_check_interval_seconds = 0
+        mock_port_client.claim_pending_runs.return_value = []
+
+        for _ in range(2):
+            await execution_manager._add_run_to_queue(
+                generate_mock_action_run(), GLOBAL_SOURCE
+            )
+
+        polling_task = asyncio.create_task(execution_manager._poll_action_runs())
+        await asyncio.sleep(0.1)
+        await execution_manager._gracefully_cancel_task(polling_task)
+
+        mock_port_client.claim_pending_runs.assert_called_with(
+            limit=ANY,
+            visibility_timeout_ms=execution_manager._visibility_timeout_ms,
+            exclude_action_identifiers=["test-action-identifier"],
+            exclude_wf_nodes_uid=[],
+        )
+
+    @pytest.mark.asyncio
+    async def test_poll_action_runs_excludes_saturated_workflow_invocation_types(
+        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
+    ) -> None:
+        execution_manager._max_runs_buffer_util_pct_per_action = 2
+        execution_manager._poll_check_interval_seconds = 0
+        mock_port_client.claim_pending_runs.return_value = []
+
+        run = generate_mock_wf_node_run(run_id="saturated-wf-run")
+        limit = execution_manager._get_max_runs_buffer_util_per_action()
+        assert limit is not None
+        execution_manager._buffer_queue_counts[RunKind.WORKFLOW_NODE][
+            run.buffer_utilization_key
+        ] = limit
+
+        polling_task = asyncio.create_task(execution_manager._poll_action_runs())
+        await asyncio.sleep(0.1)
+        await execution_manager._gracefully_cancel_task(polling_task)
+
+        mock_port_client.claim_pending_runs.assert_called_with(
+            limit=ANY,
+            visibility_timeout_ms=execution_manager._visibility_timeout_ms,
+            exclude_action_identifiers=[],
+            exclude_wf_nodes_uid=[run.buffer_utilization_key],
+        )
+
+    @pytest.mark.asyncio
     async def test_poll_action_runs_should_respect_high_watermark(
         self, execution_manager: ExecutionManager, mock_port_client: MagicMock
     ) -> None:
@@ -446,9 +554,9 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms: [generate_mock_action_run()]
-        )
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
+            generate_mock_action_run()
+        ]
 
         # Act
         polling_task: asyncio.Task[None] = asyncio.create_task(
@@ -471,11 +579,9 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms: [
-                generate_mock_action_run(action_type="unregistered_action")
-            ]
-        )
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
+            generate_mock_action_run(action_type="unregistered_action")
+        ]
 
         # Act
         polling_task: asyncio.Task[None] = asyncio.create_task(
@@ -614,29 +720,23 @@ class TestExecutionManager:
             "_handle_partition_queue_once",
             wrapped_handle_partition_queue_once,
         )
-        mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms: [
-                *[
-                    generate_mock_action_run(
-                        action_type=mock_test_partition_executor.ACTION_NAME,
-                        integrationActionExecutionProperties={
-                            "partition_name": partition1
-                        },
-                    )
-                    for _ in range(5)
-                ],
-                *[
-                    generate_mock_action_run(
-                        action_type=mock_test_partition_executor.ACTION_NAME,
-                        integrationActionExecutionProperties={
-                            "partition_name": partition2
-                        },
-                    )
-                    for _ in range(5)
-                ],
-                *[generate_mock_action_run() for _ in range(5)],
-            ]
-        )
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
+            *[
+                generate_mock_action_run(
+                    action_type=mock_test_partition_executor.ACTION_NAME,
+                    integrationActionExecutionProperties={"partition_name": partition1},
+                )
+                for _ in range(5)
+            ],
+            *[
+                generate_mock_action_run(
+                    action_type=mock_test_partition_executor.ACTION_NAME,
+                    integrationActionExecutionProperties={"partition_name": partition2},
+                )
+                for _ in range(5)
+            ],
+            *[generate_mock_action_run() for _ in range(5)],
+        ]
 
         def check_global_queue_measurements() -> None:
             queue_measurements = run_measurements[GLOBAL_SOURCE]
@@ -684,11 +784,33 @@ class TestExecutionManager:
         await execution_manager._execute_run(run)
 
         # Assert
-        assert mock_port_client.report_run_failure.call_count == 1
-        called_args, called_kwargs = mock_port_client.report_run_failure.call_args
+        assert mock_port_client.report_run_completed.call_count == 1
+        called_args, called_kwargs = mock_port_client.report_run_completed.call_args
         assert called_args[0] == run
-        assert error_msg in called_args[1]
+        assert called_kwargs["success"] is False
+        assert error_msg in called_kwargs["message"]
         assert called_kwargs.get("should_raise") is False
+
+    @pytest.mark.asyncio
+    async def test_execute_run_handles_action_execution_error_without_stack_trace(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        mock_test_executor: MagicMock,
+    ) -> None:
+        run = generate_mock_action_run()
+        error_msg = (
+            "Could not trigger pipeline for project 'x' on ref 'y': Reference not found"
+        )
+        mock_test_executor.execute.side_effect = ActionExecutionError(error_msg)
+
+        with patch.object(logger, "exception") as mock_exception_log:
+            await execution_manager._execute_run(run)
+
+        mock_exception_log.assert_not_called()
+        mock_port_client.report_run_completed.assert_called_once_with(
+            run, success=False, message=error_msg, should_raise=False
+        )
 
     @pytest.mark.asyncio
     async def test_execute_run_handles_acknowledge_run_api_error(
@@ -708,15 +830,15 @@ class TestExecutionManager:
         )
         mock_port_client.acknowledge_run.side_effect = http_error
 
-        # Act
-        await execution_manager._execute_run(run)
+        with patch.object(
+            execution_manager._actions_executors["test_action"], "execute"
+        ) as mock_execute:
+            with pytest.raises(httpx.HTTPStatusError):
+                await execution_manager._execute_run(run)
 
-        # Assert
-        assert mock_port_client.report_run_failure.call_count == 1
-        called_args, called_kwargs = mock_port_client.report_run_failure.call_args
-        assert called_args[0] == run
-        assert "Failed to trigger run execution" == called_args[1]
-        assert called_kwargs.get("should_raise") is False
+            mock_execute.assert_not_called()
+
+        mock_port_client.report_run_completed.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_polling_continues_after_api_errors(
@@ -732,7 +854,10 @@ class TestExecutionManager:
         poll_count = 0
 
         async def claim_runs_with_errors(
-            limit: int, visibility_timeout_ms: int
+            limit: int,
+            visibility_timeout_ms: int,
+            exclude_action_identifiers: list[str] | None = None,
+            exclude_wf_nodes_uid: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal poll_count
             poll_count += 1
@@ -774,7 +899,7 @@ class TestExecutionManager:
         # Arrange
         run = generate_mock_action_run()
 
-        # Make execute raise an exception, and report_run_failure also fail
+        # Make execute raise an exception, and report_run_completed also fail
         mock_test_executor.execute.side_effect = Exception("Execution failed")
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 503
@@ -783,7 +908,7 @@ class TestExecutionManager:
             request=MagicMock(),
             response=mock_response,
         )
-        mock_port_client.report_run_failure.side_effect = patch_error
+        mock_port_client.report_run_completed.side_effect = patch_error
 
         # Add run to queue
         await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
@@ -812,8 +937,8 @@ class TestExecutionManager:
         # Exception should have been caught by worker loop, not crashed
         # Run should have been acknowledged before execution failed
         mock_port_client.acknowledge_run.assert_called_once_with(run)
-        # report_run_failure should have been attempted (even if it failed)
-        mock_port_client.report_run_failure.assert_called_once()
+        # report_run_completed should have been attempted (even if it failed)
+        mock_port_client.report_run_completed.assert_called_once()
         # Worker task should have completed (either naturally or cancelled), not crashed
         assert worker_task.done()
 
@@ -831,7 +956,10 @@ class TestExecutionManager:
         call_count = 0
 
         async def claim_runs_side_effect(
-            limit: int, visibility_timeout_ms: int
+            limit: int,
+            visibility_timeout_ms: int,
+            exclude_action_identifiers: list[str] | None = None,
+            exclude_wf_nodes_uid: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal call_count
             call_count += 1

@@ -3,7 +3,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 from typing import List, Literal
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
@@ -238,10 +238,59 @@ class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeDeployDeploymentGroupResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::DeploymentGroup"] = Field(
+        title="AWS CodeDeploy Deployment Group",
+        description="AWS CodeDeploy Deployment Group resource kind.",
+    )
+
+
+class AWSCodeDeployDeploymentResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::Deployment"] = Field(
+        title="AWS CodeDeploy Deployment",
+        description="AWS CodeDeploy Deployment resource kind.",
+    )
+
+
+class AWSCodeDeployDeploymentTargetResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::DeploymentTarget"] = Field(
+        title="AWS CodeDeploy DeploymentTarget",
+        description="AWS CodeDeploy Deployment Target resource kind.",
+    )
+
+
 class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
         title="AWS CodePipeline Pipeline",
         description="AWS CodePipeline Pipeline resource kind.",
+    )
+
+
+class AWSCodePipelineStageResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Stage"] = Field(
+        title="AWS CodePipeline Stage",
+        description="AWS CodePipeline Stage resource kind.",
+    )
+
+
+class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Action"] = Field(
+        title="AWS CodePipeline Action",
+        description="AWS CodePipeline Action resource kind.",
+    )
+
+
+class AWSCodePipelinePipelineExecutionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::PipelineExecution"] = Field(
+        title="AWS CodePipeline Pipeline Execution",
+        description="AWS CodePipeline Pipeline Execution resource kind.",
+    )
+
+
+class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::ActionExecution"] = Field(
+        title="AWS CodePipeline Action Execution",
+        description="AWS CodePipeline Action Execution resource kind.",
     )
 
 
@@ -268,7 +317,14 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodeBuildProjectResourceConfig
         | AWSCodeBuildBuildRunResourceConfig
         | AWSCodeDeployApplicationResourceConfig
+        | AWSCodeDeployDeploymentGroupResourceConfig
+        | AWSCodeDeployDeploymentResourceConfig
+        | AWSCodeDeployDeploymentTargetResourceConfig
         | AWSCodePipelinePipelineResourceConfig
+        | AWSCodePipelineStageResourceConfig
+        | AWSCodePipelineActionResourceConfig
+        | AWSCodePipelinePipelineExecutionResourceConfig
+        | AWSCodePipelineActionExecutionResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

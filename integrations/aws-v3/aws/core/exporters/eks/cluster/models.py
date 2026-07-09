@@ -1,35 +1,35 @@
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Any
+from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 from datetime import datetime
 
 
 class EksClusterProperties(BaseModel):
-    accessConfig: Optional[Dict[str, Any]] = Field(default=None, alias="AccessConfig")
+    accessConfig: dict[str, Any] | None = Field(default=None, alias="AccessConfig")
     arn: str = Field(default_factory=str, alias="Arn")
-    certificateAuthority: Optional[Dict[str, Any]] = Field(
+    certificateAuthority: dict[str, Any] | None = Field(
         default=None, alias="CertificateAuthority"
     )
-    computeConfig: Optional[Dict[str, Any]] = Field(default=None, alias="ComputeConfig")
-    createdAt: Optional[datetime] = Field(default=None, alias="CreatedAt")
-    endpoint: Optional[str] = Field(default=None, alias="Endpoint")
-    identity: Optional[Dict[str, Any]] = Field(default=None, alias="Identity")
-    kubernetesNetworkConfig: Optional[Dict[str, Any]] = Field(
+    computeConfig: dict[str, Any] | None = Field(default=None, alias="ComputeConfig")
+    createdAt: datetime | None = Field(default=None, alias="CreatedAt")
+    endpoint: str | None = Field(default=None, alias="Endpoint")
+    identity: dict[str, Any] | None = Field(default=None, alias="Identity")
+    kubernetesNetworkConfig: dict[str, Any] | None = Field(
         default=None, alias="KubernetesNetworkConfig"
     )
-    logging: Optional[Dict[str, Any]] = Field(default=None, alias="Logging")
+    logging: dict[str, Any] | None = Field(default=None, alias="Logging")
     name: str = Field(default_factory=str, alias="Name")
-    platformVersion: Optional[str] = Field(default=None, alias="PlatformVersion")
-    resourcesVpcConfig: Optional[Dict[str, Any]] = Field(
+    platformVersion: str | None = Field(default=None, alias="PlatformVersion")
+    resourcesVpcConfig: dict[str, Any] | None = Field(
         default=None, alias="ResourcesVpcConfig"
     )
     roleArn: str = Field(default_factory=str, alias="RoleArn")
     status: str = Field(default_factory=str, alias="Status")
-    storageConfig: Optional[Dict[str, Any]] = Field(default=None, alias="StorageConfig")
-    tags: Optional[Dict[str, str]] = Field(default=None, alias="Tags")
-    upgradePolicy: Optional[Dict[str, Any]] = Field(default=None, alias="UpgradePolicy")
+    storageConfig: dict[str, Any] | None = Field(default=None, alias="StorageConfig")
+    tags: dict[str, str] | None = Field(default=None, alias="Tags")
+    upgradePolicy: dict[str, Any] | None = Field(default=None, alias="UpgradePolicy")
     version: str = Field(default_factory=str, alias="Version")
-    zonalShiftConfig: Optional[Dict[str, Any]] = Field(
+    zonalShiftConfig: dict[str, Any] | None = Field(
         default=None, alias="ZonalShiftConfig"
     )
 
