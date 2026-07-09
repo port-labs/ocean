@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added installation-scoped GitHub client factory with `create_github_clients` and `create_github_client_for_org` for multi-installation app auth.
+- Added multi-organization auto-discovery for GitHub App authentication.
 
 
 ## 6.2.6 (2026-07-08)
