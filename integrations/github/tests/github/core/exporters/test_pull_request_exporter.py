@@ -83,6 +83,56 @@ class TestPullRequestExporter:
                 f"{rest_client.base_url}/repos/test-org/repo1/pulls/101"
             )
 
+    async def test_get_paginated_open_prs_with_incremental_cursor(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestPullRequestExporter(rest_client)
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+        mixed_prs = [
+            {
+                "id": 1,
+                "number": 101,
+                "title": "New PR",
+                "state": "open",
+                "updated_at": "2026-06-02T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "number": 102,
+                "title": "Old PR",
+                "state": "open",
+                "updated_at": "2026-05-01T00:00:00Z",
+            },
+        ]
+
+        async def mock_prs_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield mixed_prs
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_prs_request
+        ) as mock_paginated:
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    states=["open"],
+                    max_results=10,
+                    incremental_cursor=cursor,
+                )
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+            assert len(results) == 1
+            assert len(results[0]) == 1
+            assert results[0][0]["number"] == 101
+            mock_paginated.assert_called_once_with(
+                f"{rest_client.base_url}/repos/test-org/repo1/pulls",
+                {"state": "open", "sort": "updated", "direction": "desc"},
+            )
+
     @pytest.mark.parametrize(
         "states, expected_calls",
         [

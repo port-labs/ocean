@@ -1271,8 +1271,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kinds=[cfg.kind for _, cfg in incremental_resources],
             )
 
+            dsp_enabled = await is_dsp_mode_enabled()
+
             cursor_store = CursorStore(ocean.port_client)
             run_started_at = datetime.now(timezone.utc)
+
+            if dsp_enabled:
+                await ocean.app.lifecycle_client.notify_resync_started(
+                    resync_id=event.id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                    started_at=datetime.now(timezone.utc),
+                )
 
             for index, resource_cfg in incremental_resources:
                 stored_cursor = await cursor_store.get(resource_cfg.kind, index)
@@ -1297,7 +1307,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     user_agent_type,
                 )
                 if not success:
+                    await ocean.app.lifecycle_client.notify_resync_failed(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
                     return
+
+            await ocean.app.lifecycle_client.notify_resync_finished(
+                resync_id=event.id,
+                integration_id=ocean.config.integration.identifier,
+                integration_type=ocean.config.integration.type,
+            )
 
             logger.info(
                 "Incremental sync completed",

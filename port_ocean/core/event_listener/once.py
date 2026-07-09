@@ -12,8 +12,12 @@ from port_ocean.core.event_listener.base import (
 from port_ocean.core.models import EventListenerType
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.time import convert_str_to_utc_datetime, convert_to_minutes
+from port_ocean.utils.integration import (
+    read_app_spec_interval,
+    resolve_app_spec_interval_minutes,
+)
 from port_ocean.utils.misc import IntegrationStateStatus
+from port_ocean.utils.time import convert_str_to_utc_datetime, parse_interval_to_minutes
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -72,11 +76,7 @@ class OnceEventListener(BaseEventListener):
             logger.exception(f"Error occurred while getting current integration {e}")
             return (None, None)
 
-        interval_str = (
-            integration.get("spec", {})
-            .get("appSpec", {})
-            .get("scheduledResyncInterval")
-        )
+        interval_str = read_app_spec_interval(integration, "scheduledResyncInterval")
 
         if not interval_str:
             logger.error(
@@ -96,7 +96,7 @@ class OnceEventListener(BaseEventListener):
             return (None, None)
 
         return (
-            convert_to_minutes(interval_str),
+            parse_interval_to_minutes(interval_str),
             convert_str_to_utc_datetime(last_updated_saas_integration_config_str),
         )
 
@@ -146,9 +146,20 @@ class OnceEventListener(BaseEventListener):
             try:
                 integration_settings = ocean.config.integration
                 if integration_settings.incremental_sync_enabled:
-                    interval_seconds = (
-                        integration_settings.incremental_sync_interval * 60
-                    )
+                    interval_minutes = integration_settings.incremental_sync_interval
+                    if ocean.app.is_saas():
+                        try:
+                            integration = await self.get_current_integration_cached()
+                            interval_minutes = resolve_app_spec_interval_minutes(
+                                integration,
+                                "incrementalSyncInterval",
+                                fallback_minutes=interval_minutes,
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Failed to resolve incremental sync interval from Port API"
+                            )
+                    interval_seconds = interval_minutes * 60
                     logger.info(
                         "Incremental sync mode — running sync_incremental",
                         interval_seconds=interval_seconds,
