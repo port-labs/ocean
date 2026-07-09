@@ -54,9 +54,7 @@ class TestGithubAuthenticator:
         mock_jwt_token = GitHubToken(token="mock-jwt-token", expires_at=None)
         mock_new_token = GitHubToken(
             token="mock-new-installation-token",
-            expires_at=(
-                datetime.now(timezone.utc) + timedelta(minutes=11)
-            ).isoformat(),
+            expires_at=(datetime.now(timezone.utc) + timedelta(minutes=11)).isoformat(),
         )
 
         expired_time = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()

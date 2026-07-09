@@ -127,7 +127,9 @@ class GitHubAppInstallationRegistry:
         return scopes
 
     @classmethod
-    def for_org(cls, config: dict[str, Any], organization: str) -> GitHubAppAuthenticator:
+    def for_org(
+        cls, config: dict[str, Any], organization: str
+    ) -> GitHubAppAuthenticator:
         if _scopes_by_org and organization in _scopes_by_org:
             return cast(
                 GitHubAppAuthenticator,

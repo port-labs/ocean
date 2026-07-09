@@ -9,13 +9,11 @@ from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
     AuthScope,
 )
-from github.clients.auth.githuba_app.github_app_installation_registry import (
-    GitHubAppInstallationRegistry,
+from github.clients.auth.auth_backend import GitHubAuthBackend, resolve_auth_backend
+from github.clients.auth.github_app_installation_registry import (
     reset_installation_index,
 )
-from github.clients.auth.githuba_app.github_app_jwt_client import GitHubAppJwtClient
 from github.clients.auth.personal_access_token_authenticator import (
-    PersonalTokenAuthenticator,
     reset_pat_instances,
 )
 from github.clients.http.base_client import AbstractGithubClient
@@ -23,7 +21,6 @@ from github.clients.http.graphql_client import GithubGraphQLClient
 from github.clients.http.rest_client import GithubRestClient
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 from github.clients.utils import integration_config
-from github.helpers.exceptions import MissingCredentials
 from github.helpers.utils import GithubClientType
 
 _CLIENT_CLASSES: Dict[GithubClientType, Type[AbstractGithubClient]] = {
@@ -67,26 +64,18 @@ class GithubClientScope:
         return _client_for(self.authenticator, client_type)
 
 
+def _auth_backend() -> type[GitHubAuthBackend]:
+    return resolve_auth_backend(ocean.integration_config)
+
+
 async def _list_auth_scopes() -> list[AuthScope]:
-    config = ocean.integration_config
-    if config.get("github_token"):
-        return await PersonalTokenAuthenticator.list_scopes(config)
-    if config.get("github_app_id") and config.get("github_app_private_key"):
-        return await GitHubAppInstallationRegistry.list_scopes(config)
-    raise MissingCredentials("No valid GitHub credentials provided.")
+    backend = _auth_backend()
+    return await backend.list_scopes(ocean.integration_config)
 
 
 def _authenticator_for_org(organization: str | None) -> AbstractGitHubAuthenticator:
-    config = ocean.integration_config
-    if config.get("github_token"):
-        return PersonalTokenAuthenticator.for_org(config, organization)
-    if config.get("github_app_id") and config.get("github_app_private_key"):
-        if organization is None:
-            raise MissingCredentials(
-                "Organization is required for GitHub App authentication."
-            )
-        return GitHubAppInstallationRegistry.for_org(config, organization)
-    raise MissingCredentials("No valid GitHub credentials provided.")
+    backend = _auth_backend()
+    return backend.for_org(ocean.integration_config, organization)
 
 
 def _client_for(
@@ -117,14 +106,8 @@ async def create_github_clients() -> list[GithubClientScope]:
 
 
 async def get_authenticated_actor() -> str:
-    config = ocean.integration_config
-    if config.get("github_token"):
-        authenticator = PersonalTokenAuthenticator.for_org(config, None)
-    if config.get("github_app_id") and config.get("github_app_private_key"):
-        authenticator = GitHubAppJwtClient.from_config(config)
-
-    if not authenticator:
-        raise MissingCredentials("No valid GitHub credentials provided.")
+    backend = _auth_backend()
+    authenticator = backend.for_actor(ocean.integration_config)
     return await authenticator.get_authenticated_actor()
 
 

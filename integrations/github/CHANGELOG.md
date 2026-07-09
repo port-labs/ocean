@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added multi-organization auto-discovery for GitHub App authentication.
 
+### Bug Fixes
+
+- Fixed action executors to use per-organization GitHub clients after the auth refactor.
+- Fixed `get_authenticated_actor` to prefer PAT credentials when both PAT and app credentials are configured.
+
 
 ## 6.2.6 (2026-07-08)
 

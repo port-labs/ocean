@@ -2,6 +2,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from github.clients.auth.auth_backend import (
+    AppAuthBackend,
+    PatAuthBackend,
+    resolve_auth_backend,
+)
 from github.clients.auth.github_app_installation_registry import (
     GitHubAppInstallationRegistry,
     reset_installation_index,
@@ -12,6 +17,7 @@ from github.clients.auth.personal_access_token_authenticator import (
 )
 from github.clients.client_factory import _list_auth_scopes
 from github.helpers.exceptions import MissingCredentials
+from port_ocean.context.ocean import ocean
 
 PAT_CONFIG = {
     "github_token": "pat",
@@ -32,29 +38,45 @@ def _clear_installation_index() -> None:
     reset_installation_index()
 
 
-class TestAuthDispatch:
+class TestAuthBackendResolution:
     @pytest.mark.asyncio
     async def test_raises_when_no_credentials(self) -> None:
-        with patch(
-            "github.clients.client_factory._config",
-            return_value={"github_host": "https://api.github.com"},
-        ):
+        config = ocean.integration_config
+        saved = dict(config)
+        try:
+            config.clear()
+            config["github_host"] = "https://api.github.com"
+            with pytest.raises(MissingCredentials):
+                resolve_auth_backend(config)
             with pytest.raises(MissingCredentials):
                 await _list_auth_scopes()
+        finally:
+            config.clear()
+            config.update(saved)
+
+    def test_prefers_pat_when_both_configured(self) -> None:
+        assert resolve_auth_backend(PAT_CONFIG) is PatAuthBackend
+
+    def test_resolves_app_backend(self) -> None:
+        assert resolve_auth_backend(APP_CONFIG) is AppAuthBackend
+
+    def test_app_for_actor_uses_jwt_client(self) -> None:
+        auth = AppAuthBackend.for_actor(APP_CONFIG)
+        assert isinstance(auth, GitHubAppJwtClient)
 
 
 class TestPersonalTokenAuthenticator:
     @pytest.mark.asyncio
     async def test_list_scopes_returns_single_generic_scope(self) -> None:
-        scopes = await PersonalTokenAuthenticator.list_scopes(PAT_CONFIG)
+        scopes = await PatAuthBackend.list_scopes(PAT_CONFIG)
 
         assert len(scopes) == 1
         assert scopes[0].organization is None
         assert isinstance(scopes[0].authenticator, PersonalTokenAuthenticator)
 
     def test_for_org_ignores_org(self) -> None:
-        a = PersonalTokenAuthenticator.for_org(PAT_CONFIG, "org-a")
-        b = PersonalTokenAuthenticator.for_org(PAT_CONFIG, "org-b")
+        a = PatAuthBackend.for_org(PAT_CONFIG, "org-a")
+        b = PatAuthBackend.for_org(PAT_CONFIG, "org-b")
         assert a is b
 
 
@@ -66,7 +88,7 @@ class TestGitHubAppInstallationRegistry:
             "github_app_installation_id": "123",
             "github_organization": "my-org",
         }
-        scopes = await GitHubAppInstallationRegistry.list_scopes(config)
+        scopes = await AppAuthBackend.list_scopes(config)
 
         assert len(scopes) == 1
         assert scopes[0].installation_id == "123"
@@ -85,7 +107,7 @@ class TestGitHubAppInstallationRegistry:
             "fetch_installation",
             AsyncMock(return_value=installation),
         ):
-            scopes = await GitHubAppInstallationRegistry.list_scopes(config)
+            scopes = await AppAuthBackend.list_scopes(config)
 
         assert len(scopes) == 1
         assert scopes[0].organization == "resolved-org"
@@ -118,6 +140,24 @@ class TestGitHubAppInstallationRegistry:
             "_ensure_index",
             AsyncMock(return_value=index),
         ):
-            scopes = await GitHubAppInstallationRegistry.list_scopes(APP_CONFIG)
+            scopes = await AppAuthBackend.list_scopes(APP_CONFIG)
 
         assert {scope.organization for scope in scopes} == {"org-a", "org-b"}
+
+    def test_for_org_returns_indexed_authenticator(self) -> None:
+        import github.clients.auth.github_app_installation_registry as registry
+
+        config = {
+            **APP_CONFIG,
+            "github_app_installation_id": "123",
+            "github_organization": "my-org",
+        }
+        scope = GitHubAppInstallationRegistry._scope_from_installation(
+            config,
+            {"id": 123, "account": {"login": "my-org", "type": "Organization"}},
+        )
+        registry._scopes_by_org = {"my-org": scope}
+
+        auth = AppAuthBackend.for_org(config, "my-org")
+        assert auth.installation_id == "123"
+        assert auth.organization == "my-org"

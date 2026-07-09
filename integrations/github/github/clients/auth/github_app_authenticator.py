@@ -79,8 +79,6 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             ) from e
 
     @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:
-        jwt_client = GitHubAppJwtClient(
-            self.app_id, self.private_key, self.github_host
-        )
+    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
+        jwt_client = GitHubAppJwtClient(self.app_id, self.private_key, self.github_host)
         return await jwt_client.get_authenticated_actor()

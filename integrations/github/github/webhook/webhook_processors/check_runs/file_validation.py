@@ -1,12 +1,11 @@
 from dataclasses import dataclass
-import this
 from typing import Any, Dict, List, Optional, TypedDict, cast
 from loguru import logger
 from github.core.exporters.file_exporter.utils import (
     FileObject,
 )
 from integration import GithubFileResourceConfig, GithubFilePattern, GithubPortAppConfig
-from integrations.github.github.clients.http.rest_client import GithubRestClient
+from github.clients.http.rest_client import GithubRestClient
 from port_ocean.clients.port.types import RequestOptions
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity

@@ -9,7 +9,6 @@ from github.clients.auth.abstract_authenticator import (
     GitHubHeaders,
     GitHubToken,
 )
-from github.helpers.exceptions import AuthenticationException
 from port_ocean.utils.cache import cache_coroutine_result
 
 JWT_EXPIRY_MINUTES = 10
@@ -108,6 +107,6 @@ class GitHubAppJwtClient(AbstractGitHubAuthenticator):
         return response.json()
 
     @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:
+    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
         app = await self.get_app()
         return f"{app['slug']}[bot]"
