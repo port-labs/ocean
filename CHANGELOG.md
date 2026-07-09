@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.8 (2026-07-09)
+
+### Improvements
+
+- Bumped FastAPI to ^0.133.0 and Starlette to >=1.3.1 to address known Starlette security vulnerabilities (including CVE-2026-48710 / BadHost).
+
 ## 0.44.7 (2026-07-08)
 
 ### Improvements
