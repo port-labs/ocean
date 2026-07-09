@@ -1,7 +1,7 @@
 import time
 from typing import Dict, Set
 from loguru import logger
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun, RunKind
 import asyncio
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
@@ -9,6 +9,7 @@ from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
+from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.execution_manager import (
     ActionExecutionError,
@@ -33,22 +34,25 @@ class ExecutionManager:
     - Round-robin worker distribution
     - Deduplication of runs
     - High watermark-based flow control
+    - Per-action buffer utilization limits; saturated identifiers are excluded from claim-pending per run kind
 
     Attributes:
         _webhook_manager (LiveEventsProcessorManager): Manages webhook processors for async updates
         _polling_task (asyncio.Task[None] | None): Task that polls for new action runs
         _workers_pool (set[asyncio.Task[None]]): Pool of worker tasks processing runs
-        _actions_executors (Dict[str, AbstractExecutor]): Registered action executors
+        _actions_executors (Dict[str, AbstractExecutor]): Registered action executors keyed by integration action type
         _is_shutting_down (asyncio.Event): Event flag for graceful shutdown
-        _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned actions
-        _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned actions
-        _deduplication_set (Set[str]): Set of run IDs for deduplication
+        _global_queue (LocalQueue[IntegrationRun]): Queue for non-partitioned runs
+        _partition_queues (Dict[str, AbstractQueue[IntegrationRun]]): Queues for partitioned runs
+        _deduplication_set (Set[str]): Set of run IDs currently queued or in-flight
+        _buffer_queue_counts (Dict[RunKind, Dict[str, int]]): Queued run counts per buffer key, by run kind
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
-        _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
-        _workers_count (int): Number of workers to start
-        _high_watermark (int): Maximum total runs in all queues
-        _poll_check_interval_seconds (int): Seconds between polling attempts
-        _visibility_timeout_ms (int): Visibility timeout for runs
+        _active_sources (AbstractQueue[str]): Round-robin source queue (global or partition name)
+        _workers_count (int): Number of worker tasks to start
+        _high_watermark (int): Maximum total runs buffered before throttling claim-pending polls
+        _max_runs_buffer_util_pct_per_action (int | None): Per-identifier buffer cap as % of high watermark; saturated keys are excluded from claim-pending per run kind
+        _poll_check_interval_seconds (int): Seconds between claim-pending polls when idle or at high watermark
+        _visibility_timeout_ms (int): Claim visibility timeout passed to Port
         _max_wait_seconds_before_shutdown (float): Maximum wait time during shutdown
 
     Example:
@@ -58,10 +62,11 @@ class ExecutionManager:
             webhook_manager=webhook_mgr,
             signal_handler=signal_handler,
             workers_count=3,
-            runs_buffer_high_watermark=1000,
-            poll_check_interval_seconds=5,
+            runs_buffer_high_watermark=300,
+            poll_check_interval_seconds=10,
             visibility_timeout_ms=30000,
-            max_wait_seconds_before_shutdown=30.0
+            max_wait_seconds_before_shutdown=30.0,
+            max_runs_buffer_util_pct_per_action=30,
         )
 
         # Register action executors
@@ -81,17 +86,20 @@ class ExecutionManager:
         poll_check_interval_seconds: int,
         visibility_timeout_ms: int,
         max_wait_seconds_before_shutdown: float,
+        max_runs_buffer_util_pct_per_action: int | None = None,
     ):
         self._webhook_manager = webhook_manager
         self._polling_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set[asyncio.Task[None]]()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
-        self._global_queue: LocalQueue[ActionRun | WorkflowNodeRun] = LocalQueue()
-        self._partition_queues: Dict[
-            str, AbstractQueue[ActionRun | WorkflowNodeRun]
-        ] = {}
+        self._global_queue: LocalQueue[IntegrationRun] = LocalQueue()
+        self._partition_queues: Dict[str, AbstractQueue[IntegrationRun]] = {}
         self._deduplication_set: Set[str] = set[str]()
+        self._buffer_queue_counts: dict[RunKind, dict[str, int]] = {
+            RunKind.ACTION: {},
+            RunKind.WORKFLOW_NODE: {},
+        }
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
         self._workers_count: int = workers_count
@@ -99,6 +107,9 @@ class ExecutionManager:
         self._poll_check_interval_seconds: int = poll_check_interval_seconds
         self._visibility_timeout_ms: int = visibility_timeout_ms
         self._max_wait_seconds_before_shutdown: float = max_wait_seconds_before_shutdown
+        self._max_runs_buffer_util_pct_per_action: int | None = (
+            max_runs_buffer_util_pct_per_action
+        )
 
         signal_handler.register(self.shutdown)
 
@@ -140,8 +151,8 @@ class ExecutionManager:
         self._polling_task = asyncio.create_task(self._poll_action_runs())
 
         workers_count = max(1, self._workers_count)
-        for _ in range(workers_count):
-            task = asyncio.create_task(self._process_actions_runs())
+        for i in range(workers_count):
+            task = asyncio.create_task(self._process_actions_runs(), name=f"worker_{i}")
             self._workers_pool.add(task)
             task.add_done_callback(self._workers_pool.discard)
 
@@ -165,10 +176,23 @@ class ExecutionManager:
                     continue
 
                 poll_limit = self._high_watermark - queues_size
+                exclude_action_identifiers, exclude_workflow_invocation_types = (
+                    self._claim_exclusions()
+                )
+                if exclude_action_identifiers or exclude_workflow_invocation_types:
+                    logger.info(
+                        "Excluding saturated runs from claim-pending",
+                        exclude_action_identifiers=exclude_action_identifiers,
+                        exclude_workflow_invocation_types=exclude_workflow_invocation_types,
+                        max_runs_buffer_util_per_action=self._get_max_runs_buffer_util_per_action(),
+                        max_runs_buffer_util_pct_per_action=self._max_runs_buffer_util_pct_per_action,
+                    )
 
                 runs = await ocean.port_client.claim_pending_runs(
                     limit=poll_limit,
                     visibility_timeout_ms=self._visibility_timeout_ms,
+                    exclude_action_identifiers=exclude_action_identifiers,
+                    exclude_wf_nodes_uid=exclude_workflow_invocation_types,
                 )
 
                 if not runs:
@@ -223,6 +247,7 @@ class ExecutionManager:
                             action_type=action_type,
                             error=str(e),
                         )
+
             except Exception as e:
                 logger.exception(
                     "Unexpected error in poll action runs, will attempt to re-poll",
@@ -241,9 +266,67 @@ class ExecutionManager:
             partition_sizes.append(await queue.size())
         return global_size + sum(partition_sizes)
 
+    def _get_max_runs_buffer_util_per_action(self) -> int | None:
+        if self._max_runs_buffer_util_pct_per_action is None:
+            return None
+        return max(
+            1,
+            self._high_watermark * self._max_runs_buffer_util_pct_per_action // 100,
+        )
+
+    def _claim_exclusions(self) -> tuple[list[str], list[str]]:
+        limit = self._get_max_runs_buffer_util_per_action()
+        if limit is None:
+            return [], []
+        return (
+            self._saturated_buffer_keys(RunKind.ACTION, limit),
+            self._saturated_buffer_keys(RunKind.WORKFLOW_NODE, limit),
+        )
+
+    def _saturated_buffer_keys(self, kind: RunKind, limit: int) -> list[str]:
+        return [
+            key
+            for key, count in self._buffer_queue_counts[kind].items()
+            if key and count >= limit
+        ]
+
+    def _track_buffer_enqueue(self, run: IntegrationRun) -> None:
+        self._deduplication_set.add(run.id)
+
+        key = run.buffer_utilization_key
+        queue_counts = self._buffer_queue_counts[run.run_kind]
+        queue_counts[key] = queue_counts.get(key, 0) + 1
+        logger.debug(
+            f"Buffer count updated after enqueue for {run.run_kind.value}: {key} is now {queue_counts[key]}",
+            run_id=run.id,
+            run_kind=run.run_kind,
+            buffer_key=key,
+            buffer_count=queue_counts[key],
+        )
+
+    def _track_buffer_dequeue(self, run: IntegrationRun) -> None:
+        if run.id in self._deduplication_set:
+            self._deduplication_set.remove(run.id)
+
+        key = run.buffer_utilization_key
+        queue_counts = self._buffer_queue_counts[run.run_kind]
+        count = queue_counts.get(key, 0) - 1
+        if count <= 0 and key in queue_counts:
+            queue_counts.pop(key, None)
+        else:
+            queue_counts[key] = count
+
+        logger.debug(
+            f"Buffer count updated after dequeue for {run.run_kind.value}: {key} is now {count}",
+            run_id=run.id,
+            run_kind=run.run_kind,
+            buffer_key=key,
+            buffer_count=count,
+        )
+
     async def _add_run_to_queue(
         self,
-        run: ActionRun | WorkflowNodeRun,
+        run: IntegrationRun,
         queue_name: str,
     ) -> None:
         """
@@ -261,7 +344,7 @@ class ExecutionManager:
         async with self._queues_locks[queue_name]:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
-            self._deduplication_set.add(run.id)
+            self._track_buffer_enqueue(run)
             logger.info(
                 f"Adding run to queue {queue_name}",
                 run_id=run.id,
@@ -293,33 +376,39 @@ class ExecutionManager:
         """
         Round-robin worker across global and partitions queues.
         """
-        while not self._is_shutting_down.is_set():
-            try:
-                # Enable graceful worker shutdown when there are no active sources to process
-                # Using asyncio.Queue.get without a timeout would block indefinitely if active sources are empty
+        current_task = asyncio.current_task()
+        worker_id = current_task.get_name() if current_task else "unknown"
+        with logger.contextualize(worker_id=worker_id):
+            while not self._is_shutting_down.is_set():
                 try:
-                    source = await asyncio.wait_for(
-                        self._active_sources.get(),
-                        timeout=self._max_wait_seconds_before_shutdown / 3,
-                    )
-                    logger.debug(
-                        f"Processing run from {source} queue",
-                        queue_size=await self._get_queues_size(),
-                    )
-                except asyncio.TimeoutError:
-                    continue
+                    # Enable graceful worker shutdown when there are no active sources to process
+                    # Using asyncio.Queue.get without a timeout would block indefinitely if active sources are empty
+                    try:
+                        source = await asyncio.wait_for(
+                            self._active_sources.get(),
+                            timeout=self._max_wait_seconds_before_shutdown / 3,
+                        )
+                        logger.debug(
+                            f"Processing run from {source} queue",
+                            queue_size=await self._get_queues_size(),
+                        )
+                    except asyncio.TimeoutError:
+                        continue
 
-                if source == GLOBAL_SOURCE:
-                    await self._handle_global_queue_once()
-                else:
-                    await self._handle_partition_queue_once(source)
-            except Exception as e:
-                logger.exception("Worker processing error", source=source, error=str(e))
+                    if source == GLOBAL_SOURCE:
+                        await self._handle_global_queue_once()
+                    else:
+                        await self._handle_partition_queue_once(source)
+                except Exception as e:
+                    logger.exception(
+                        "Worker processing error", source=source, error=str(e)
+                    )
 
     async def _handle_global_queue_once(self) -> None:
         """
         Try to process a single run from the global queue.
         """
+        got_run = False
         try:
             async with self._queues_locks[GLOBAL_SOURCE]:
                 try:
@@ -327,22 +416,24 @@ class ExecutionManager:
                     run = await asyncio.wait_for(
                         self._global_queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
                     )
+                    got_run = True
                 except asyncio.TimeoutError:
                     logger.debug("Global queue is empty, skipping")
                     return
 
-                if run.id in self._deduplication_set:
-                    self._deduplication_set.remove(run.id)
+                self._track_buffer_dequeue(run)
 
             await self._add_source_if_not_empty(GLOBAL_SOURCE)
             await self._execute_run(run)
         finally:
-            await self._global_queue.commit()
+            if got_run:
+                await self._global_queue.commit()
 
     async def _handle_partition_queue_once(self, partition_name: str) -> None:
         """
         Try to process a single run from the given partition queue.
         """
+        got_run = False
         queue = self._partition_queues[partition_name]
         try:
             async with self._queues_locks[partition_name]:
@@ -351,81 +442,91 @@ class ExecutionManager:
                     run = await asyncio.wait_for(
                         queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
                     )
-                    if run.id in self._deduplication_set:
-                        self._deduplication_set.remove(run.id)
+                    got_run = True
+                    self._track_buffer_dequeue(run)
                 except asyncio.TimeoutError:
                     logger.debug(f"Partition queue {partition_name} is empty, skipping")
                     return
 
             await self._execute_run(run)
         finally:
-            await queue.commit()
+            if got_run:
+                await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
-    async def _execute_run(self, run: ActionRun | WorkflowNodeRun) -> None:
+    async def _execute_run(self, run: IntegrationRun) -> None:
         """
         Execute a run using its registered executor.
         """
-        with logger.contextualize(run_id=run.id, action=run.action_type):
-            error_summary: str | None = None
-            try:
-                executor = self._actions_executors[run.action_type]
-                while (
-                    await executor.is_close_to_rate_limit()
-                    and not self._is_shutting_down.is_set()
-                ):
-                    backoff_seconds = min(
-                        RATE_LIMIT_MAX_BACKOFF_SECONDS,
-                        await executor.get_remaining_seconds_until_rate_limit(),
-                    )
-                    logger.info(
-                        "Encountered rate limit, will attempt to re-run in {backoff_seconds} seconds",
-                        backoff_seconds=backoff_seconds,
-                    )
-                    msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
-                    await ocean.port_client.post_run_log(
-                        run, msg, level="WARNING", should_raise=False
-                    )
-                    await asyncio.sleep(backoff_seconds)
+        async with event_context(
+            EventType.ACTION_RUN,
+            trigger_type="machine",
+            attributes={
+                "run_id": run.id,
+                "action_type": run.action_type,
+                "run_kind": run.run_kind.value,
+            },
+        ):
+            with logger.contextualize(run_id=run.id, action=run.action_type):
+                try:
+                    executor = self._actions_executors[run.action_type]
+                    while (
+                        await executor.is_close_to_rate_limit()
+                        and not self._is_shutting_down.is_set()
+                    ):
+                        backoff_seconds = min(
+                            RATE_LIMIT_MAX_BACKOFF_SECONDS,
+                            await executor.get_remaining_seconds_until_rate_limit(),
+                        )
+                        logger.info(
+                            "Encountered rate limit, will attempt to re-run in {backoff_seconds} seconds",
+                            backoff_seconds=backoff_seconds,
+                        )
+                        msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
+                        await ocean.port_client.post_run_log(
+                            run, msg, level="WARNING", should_raise=False
+                        )
+                        await asyncio.sleep(backoff_seconds)
 
-                if self._is_shutting_down.is_set():
+                    if self._is_shutting_down.is_set():
+                        logger.warning(
+                            "Shutting down execution manager, skipping execution"
+                        )
+                        return
+
+                    await ocean.port_client.acknowledge_run(run)
+                    logger.info("Run acknowledged successfully")
+                except RunAlreadyAcknowledgedError:
                     logger.warning(
-                        "Shutting down execution manager, skipping execution"
+                        "Run already being processed by another worker, skipping execution",
                     )
                     return
+                except Exception as e:
+                    logger.exception(
+                        "Error occurred while trying to acknowledge run",
+                        error=str(e),
+                    )
+                    raise
 
-                await ocean.port_client.acknowledge_run(run)
-                logger.info("Run acknowledged successfully")
-            except RunAlreadyAcknowledgedError:
-                logger.warning(
-                    "Run already being processed by another worker, skipping execution",
-                )
-                return
-            except Exception as e:
-                logger.exception(
-                    "Error occurred while trying to trigger run execution",
-                    error=str(e),
-                )
-                error_summary = "Failed to trigger run execution"
+                error_summary: str | None = None
+                try:
+                    start_time = time.monotonic()
+                    await executor.execute(run)
+                    logger.info(
+                        "Run executed successfully",
+                        elapsed_ms=(time.monotonic() - start_time) * 1000,
+                    )
+                except ActionExecutionError as e:
+                    logger.warning("Action run failed: {}", str(e))
+                    error_summary = str(e)
+                except Exception as e:
+                    logger.exception("Error executing run", error=str(e))
+                    error_summary = f"Failed to execute run: {str(e)}"
 
-            try:
-                start_time = time.monotonic()
-                await executor.execute(run)
-                logger.info(
-                    "Run executed successfully",
-                    elapsed_ms=(time.monotonic() - start_time) * 1000,
-                )
-            except ActionExecutionError as e:
-                logger.warning("Action run failed: {}", str(e))
-                error_summary = str(e)
-            except Exception as e:
-                logger.exception("Error executing run", error=str(e))
-                error_summary = f"Failed to execute run: {str(e)}"
-
-            if error_summary:
-                await ocean.port_client.report_run_failure(
-                    run, error_summary, should_raise=False
-                )
+                if error_summary:
+                    await ocean.port_client.report_run_completed(
+                        run, success=False, message=error_summary, should_raise=False
+                    )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:
         """

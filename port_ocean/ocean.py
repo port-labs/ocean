@@ -100,6 +100,7 @@ class Ocean:
             poll_check_interval_seconds=self.config.actions_processor.poll_check_interval_seconds,
             visibility_timeout_ms=self.config.actions_processor.visibility_timeout_ms,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+            max_runs_buffer_util_pct_per_action=self.config.actions_processor.max_runs_buffer_util_pct_per_action,
         )
 
         self.integration = (
