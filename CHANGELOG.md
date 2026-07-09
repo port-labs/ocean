@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.7 (2026-07-08)
+
+### Improvements
+
+- Renamed the `entityDeletionThreshold` port-app-config field title and description to "Allow entity deletion" so the Advanced Config mapping UI can present it as an on/off toggle.
+
 ## 0.44.6 (2026-07-08)
 
 ### Improvements
