@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.2.5 (2026-07-07)
+## 6.2.6 (2026-07-08)
 
 
-### Features
+### Improvements
 
-- Expanded team member ingestion to support GitHub Enterprise (`ent:*`) teams by falling back to the REST members API when GraphQL returns null, enabling Port to display members for EMU organisations.
+- Bumped ocean version to ^0.44.7
+
+
+## 6.2.5 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
 
 
 ## 6.2.4 (2026-07-07)
