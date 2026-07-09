@@ -71,9 +71,6 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> list[dict[str, Any]]:
         for team in teams:
             if not team["slug"].startswith("ent:"):
-                logger.debug(
-                    f"Skipping non-enterprise team {team['slug']} for REST member enrichment"
-                )
                 continue
             all_members: list[dict[str, Any]] = []
             async for batch in self.get_team_members_by_slug(

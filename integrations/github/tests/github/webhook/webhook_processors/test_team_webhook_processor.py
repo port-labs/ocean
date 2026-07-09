@@ -282,6 +282,17 @@ class TestTeamWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         assert result.updated_raw_results == [enriched_team]
         assert result.deleted_raw_results == []
+        assert mock_create_client.call_args_list == [
+            call(GithubClientType.REST),
+            call(GithubClientType.GRAPHQL),
+        ]
+        mock_graphql_get_resource.assert_awaited_once_with(
+            SingleTeamOptions(
+                organization="test-org",
+                slug="ent:security-team",
+                include_saml_email=False,
+            )
+        )
         mock_enrich_enterprise.assert_awaited_once()
         mock_enrich_saml.assert_awaited_once_with(
             mock_graphql_client,
