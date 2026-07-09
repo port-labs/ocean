@@ -62,7 +62,9 @@ class PatAuthBackend(GitHubAuthBackend):
 class AppAuthBackend(GitHubAuthBackend):
     @classmethod
     def matches(cls, config: dict[str, Any]) -> bool:
-        return bool(config.get("github_app_id") and config.get("github_app_private_key"))
+        return bool(
+            config.get("github_app_id") and config.get("github_app_private_key")
+        )
 
     @classmethod
     async def list_scopes(cls, config: dict[str, Any]) -> list[AuthScope]:

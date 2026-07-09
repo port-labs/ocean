@@ -7,6 +7,7 @@ from github.clients.auth.auth_backend import (
     PatAuthBackend,
     resolve_auth_backend,
 )
+from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app_installation_registry import (
     GitHubAppInstallationRegistry,
     reset_installation_index,
@@ -159,5 +160,6 @@ class TestGitHubAppInstallationRegistry:
         registry._scopes_by_org = {"my-org": scope}
 
         auth = AppAuthBackend.for_org(config, "my-org")
+        assert isinstance(auth, GitHubAppAuthenticator)
         assert auth.installation_id == "123"
         assert auth.organization == "my-org"
