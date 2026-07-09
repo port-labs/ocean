@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.371 (2026-07-09)
+
+### Improvements
+
+- Replaced legacy Azure event handlers with AbstractWebhookProcessor-based webhook processing
+
+
 0.1.370 (2026-07-08)
 
 ### Improvements
