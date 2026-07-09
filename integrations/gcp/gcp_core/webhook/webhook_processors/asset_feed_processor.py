@@ -13,8 +13,8 @@ from gcp_core.utils import resolve_request_controllers
 from port_ocean.context.event import event as port_event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
+from gcp_core.webhook.webhook_processors.base_webhook_processor import (
+    BaseWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
@@ -24,7 +24,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class AssetFeedProcessor(AbstractWebhookProcessor):
+class AssetFeedProcessor(BaseWebhookProcessor):
     _cached_asset_data: dict[str, Any] | None = None
 
     async def _get_parsed_event(self, payload: EventPayload) -> dict[str, Any] | None:

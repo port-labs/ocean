@@ -189,16 +189,6 @@ class TestValidatePayload:
             assert await processor.validate_payload(payload) is expected
 
 
-class TestAuthenticate:
-    async def test_always_returns_true(
-        self,
-        mock_ocean_context: None,
-        processor: MagicMock,
-        pubsub_payload: EventPayload,
-    ) -> None:
-        assert await processor.authenticate(pubsub_payload, {}) is True
-
-
 class TestHandleEvent:
     async def test_returns_updated_results_for_created_resource(
         self,
