@@ -1,9 +1,11 @@
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
 from port_ocean.core.integrations.mixins.lakehouse_buffer import LakehouseBuffer
+from port_ocean.core.models import LakehouseOperation
 
 
 def _make_buffer(*, fatal: bool = False) -> LakehouseBuffer:
@@ -51,6 +53,35 @@ async def test_flush_fatal_reraises_connect_error() -> None:
             await buffer.flush()
 
     mock_ocean.port_client.post_integration_raw_data_batch.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_add_handles_datetime_in_items() -> None:
+    buffer = LakehouseBuffer(
+        sync_id="sync-123",
+        kind="file",
+        resync_start_time=None,
+    )
+    entry = {
+        "request": {},
+        "response": {},
+        "metadata": {
+            "operation": LakehouseOperation.UPSERT,
+            "resource_index": 0,
+            "extraction_timestamp": 123,
+        },
+        "items": [{"id": "1", "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc)}],
+    }
+
+    with patch(
+        "port_ocean.core.integrations.mixins.lakehouse_buffer.ocean"
+    ) as mock_ocean:
+        mock_ocean.port_client.post_integration_raw_data_batch = AsyncMock()
+
+        await buffer.add(entry)
+
+    assert buffer._current_size_bytes > 0
+    assert len(buffer._buffer) == 1
 
 
 @pytest.mark.asyncio
