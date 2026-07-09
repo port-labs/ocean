@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.8 (2026-07-09)
+
+### Bug Fixes
+
+- Fixed `LakehouseBuffer.add()` buffer size calculation when batch items contain datetime values by serializing entries with `make_json_compatible` before `json.dumps`.
+
 ## 0.44.7 (2026-07-08)
 
 ### Improvements
