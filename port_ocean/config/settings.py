@@ -26,6 +26,7 @@ from port_ocean.utils.misc import (
     get_integration_name,
     get_spec_file,
 )
+from port_ocean.utils.time import parse_interval_to_minutes
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -80,7 +81,15 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     type: str
     config: Any = Field(default_factory=dict)
     incremental_sync_enabled: bool = False
-    incremental_sync_interval: int = 15  # minutes
+    incremental_sync_interval: int = (
+        15  # minutes; env may be "15m", "1h", or bare minutes
+    )
+
+    @validator("incremental_sync_interval", pre=True)
+    def parse_incremental_sync_interval(cls, value: Any) -> int:
+        if value is None:
+            return 15
+        return parse_interval_to_minutes(value)
 
     @root_validator(pre=True)
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
