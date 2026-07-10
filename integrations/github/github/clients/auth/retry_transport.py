@@ -7,6 +7,7 @@ from loguru import logger
 
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
 from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
+from github.clients.graphql_page_reduction import reduce_graphql_page_size
 from github.clients.rate_limiter.utils import is_rate_limit_response
 
 
@@ -15,11 +16,9 @@ from github.clients.rate_limiter.utils import is_rate_limit_response
 # "stop once we can't shrink further" check key off this same set.
 RETRYABLE_5XX_STATUS_CODES = (500, 502, 504)
 
-# Floors for the 5xx-recovery page-size backoff. We shrink the page on each retry
-# down to these sizes before giving up, since smaller pages reliably succeed.
+# Floor for the REST 5xx-recovery page-size backoff; the GraphQL floor and step
+# live in graphql_page_reduction, shared with the GraphQL client.
 MIN_REST_PAGE_SIZE = 25
-MIN_GRAPHQL_PAGE_SIZE = 1
-GRAPHQL_REDUCTION_SIZE = 5
 
 
 class GitHubRetryTransport(RetryTransport):
@@ -120,12 +119,12 @@ class GitHubRetryTransport(RetryTransport):
 
     async def _reduce_page_for_graphql(self, request: httpx.Request) -> httpx.Request:
         current_page_size = self._graphql_first(request)
-        if not current_page_size or current_page_size <= MIN_GRAPHQL_PAGE_SIZE:
+        if not current_page_size:
+            return request
+        reduced_page_size = reduce_graphql_page_size(current_page_size)
+        if reduced_page_size is None:
             return request
         request_body = json.loads(await self._read_request_body(request))
-        reduced_page_size = max(
-            current_page_size - GRAPHQL_REDUCTION_SIZE, MIN_GRAPHQL_PAGE_SIZE
-        )
         logger.warning(
             f"GitHub returned a server error for {request.method} "
             f"{request.url.path} at first={current_page_size}; "
@@ -273,7 +272,7 @@ class GitHubRetryTransport(RetryTransport):
             return False
         if self._is_graphql_request(request):
             first = self._graphql_first(request)
-            return first is not None and first <= MIN_GRAPHQL_PAGE_SIZE
+            return first is not None and reduce_graphql_page_size(first) is None
         per_page = self._paginated_per_page(request.url)
         return per_page is not None and per_page <= MIN_REST_PAGE_SIZE
 

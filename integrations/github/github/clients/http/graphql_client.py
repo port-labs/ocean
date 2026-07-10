@@ -4,6 +4,7 @@ import httpx
 from loguru import logger
 
 from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
+from github.clients.graphql_page_reduction import reduce_graphql_page_size
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
@@ -50,43 +51,30 @@ class GithubGraphQLClient(AbstractGithubClient):
             max_concurrent=5,
         )
 
-    def _handle_graphql_errors(
+    def _non_ignored_errors(
         self,
-        response: httpx.Response,
-        ignored_errors: Optional[List[IgnoredError]] = None,
-        query_path: Optional[str] = None,
-        query_params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        body = response.json()
+        body: Dict[str, Any],
+        ignored_errors: Optional[List[IgnoredError]],
+        status_code: int,
+    ) -> List[GraphQLClientError]:
+        """Non-ignored errors in a GraphQL body, logging and dropping ignored ones."""
         if "errors" not in body:
-            return body
+            return []
 
-        ignored_errors = ignored_errors or []
-        ignored_errors.extend(self._DEFAULT_IGNORED_ERRORS)
-        ignored_types = {e.type: e.message for e in ignored_errors}
+        all_ignored = [*(ignored_errors or []), *self._DEFAULT_IGNORED_ERRORS]
+        ignored_types = {e.type: e.message for e in all_ignored}
 
-        status_code = response.status_code
         non_ignored_exceptions = []
-
         for error in body["errors"]:
             error_type = error.get("type")
             if error_type in ignored_types:
-                log_message = f"{ignored_types[error_type]} due to {error['message']} for {error.get('path', [])} (status {status_code})"
-                logger.warning(log_message)
+                logger.warning(
+                    f"{ignored_types[error_type]} due to {error['message']} "
+                    f"for {error.get('path', [])} (status {status_code})"
+                )
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
-
-        if non_ignored_exceptions:
-            # The transport can rewrite variables between retries (e.g. shrinking
-            # `variables.first`); prefer what it actually sent over the caller's copy.
-            variables = self._sent_variables(response) or query_params
-            logger.error(
-                f"[GraphQL] Query failed with status {status_code} for path "
-                f"{query_path} with variables {variables}"
-            )
-            raise GraphQLErrorGroup(non_ignored_exceptions)
-
-        return {}
+        return non_ignored_exceptions
 
     @staticmethod
     def _sent_variables(response: httpx.Response) -> Optional[Dict[str, Any]]:
@@ -121,12 +109,22 @@ class GithubGraphQLClient(AbstractGithubClient):
             ignore_default_errors=ignore_default_errors,
             authenticator_headers_params=authenticator_headers_params,
         )
-        return self._handle_graphql_errors(
-            response,
-            ignored_errors,
-            query_path=query_path,
-            query_params=query_params,
-        )
+        body = response.json()
+        errors = self._non_ignored_errors(body, ignored_errors, response.status_code)
+
+        if errors:
+            variables = (
+                self._sent_variables(response)
+                or (json_data or {}).get("variables")
+                or query_params
+            )
+            logger.error(
+                f"[GraphQL] Query failed with status {response.status_code} for "
+                f"path {query_path} with variables {variables}"
+            )
+            raise GraphQLErrorGroup(errors)
+
+        return {} if "errors" in body else body
 
     def build_graphql_payload(
         self,
@@ -158,18 +156,33 @@ class GithubGraphQLClient(AbstractGithubClient):
             )
 
         cursor = None
+        page_size = PAGE_SIZE
         logger.info(f"[GraphQL] Starting pagination for query with path {path}")
 
         while True:
-            payload = self.build_graphql_payload(resource, params, cursor=cursor)
-            response = await self.send_api_request(
-                self.base_url,
-                method=method,
-                json_data=payload,
-                ignored_errors=ignored_errors,
-                query_path=path,
-                query_params=params,
+            payload = self.build_graphql_payload(
+                resource, params, page_size=page_size, cursor=cursor
             )
+            try:
+                response = await self.send_api_request(
+                    self.base_url,
+                    method=method,
+                    json_data=payload,
+                    ignored_errors=ignored_errors,
+                    query_path=path,
+                    query_params=params,
+                )
+            except GraphQLErrorGroup:
+                reduced_page_size = reduce_graphql_page_size(page_size)
+                if reduced_page_size is None:
+                    raise
+                logger.warning(
+                    f"[GraphQL] Query for path {path} failed at first={page_size}; "
+                    f"retrying at first={reduced_page_size}"
+                )
+                page_size = reduced_page_size
+                continue
+
             if not response:
                 break
 
@@ -184,6 +197,7 @@ class GithubGraphQLClient(AbstractGithubClient):
                 break
 
             cursor = page_info.get("endCursor")
+            page_size = PAGE_SIZE
             logger.debug(f"[GraphQL] Next page cursor: {cursor}")
 
     def _extract_nodes(
