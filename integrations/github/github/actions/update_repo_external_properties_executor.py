@@ -7,7 +7,7 @@ from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.clients.rate_limiter.utils import is_rate_limit_response
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
@@ -32,7 +32,7 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
     ACTION_NAME = "update_repo_external_properties"
     WEBHOOK_PROCESSOR_CLASS = None
 
-    async def _get_partition_key(self, run: ActionRun | WorkflowNodeRun) -> str | None:
+    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         """
         Repository update operations should be executed sequentially to avoid conflicts.
         We use the organization and repository as the partition key.
@@ -41,7 +41,7 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
         repo = run.execution_properties.get("repo")
         return f"{org}/{repo}"
 
-    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
+    async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
         repo = run.execution_properties.get("repo")
         external_properties_mapping = run.execution_properties.get(
