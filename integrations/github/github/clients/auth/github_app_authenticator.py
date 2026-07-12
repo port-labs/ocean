@@ -1,40 +1,47 @@
 import asyncio
-import base64
 from typing import Any, Optional
+
 from loguru import logger
-from datetime import datetime, timedelta, timezone
-import jwt
+
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
-    GitHubToken,
     GitHubHeaders,
+    GitHubToken,
+)
+from github.clients.auth.github_app_jwt_client import (
+    GitHubAppJwtClient,
+    generate_app_jwt,
 )
 from github.helpers.exceptions import AuthenticationException
+from port_ocean.utils.cache import cache_coroutine_result
 
 
 class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
-    JWT_EXPIRY_MINUTES = 10
+    """Installation-bound GitHub App auth. installation_id is always required."""
 
     def __init__(
         self,
         app_id: str,
         private_key: str,
-        organization: str,
+        installation_id: str,
         github_host: str,
-        installation_id: Optional[str] = None,
+        organization: Optional[str] = None,
     ):
         self.app_id = app_id
-        self.installation_id = installation_id
         self.private_key = private_key
+        self.installation_id = installation_id
         self.organization = organization
         self.github_host = github_host.rstrip("/")
         self.cached_installation_token: Optional[GitHubToken] = None
         self.installation_token_lock = asyncio.Lock()
 
+    @property
+    def rate_limit_scope(self) -> str:
+        return f"installation:{self.installation_id}"
+
     async def get_token(self, **kwargs: Any) -> GitHubToken:
-        jwt_token = self._generate_jwt()
         if kwargs.get("return_jwt", False):
-            return jwt_token
+            return generate_app_jwt(self.app_id, self.private_key)
 
         async with self.installation_token_lock:
             if (
@@ -43,11 +50,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             ):
                 return self.cached_installation_token
 
-            if not self.installation_id:
-                self.installation_id = await self._fetch_installation_id(
-                    jwt_token.token
-                )
-
+            jwt_token = generate_app_jwt(self.app_id, self.private_key)
             self.cached_installation_token = await self._fetch_installation_token(
                 jwt_token.token
             )
@@ -62,18 +65,6 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             X_GitHub_Api_Version="2022-11-28",
         )
 
-    async def _fetch_installation_id(self, jwt_token: str) -> str:
-        try:
-            url = f"{self.github_host}/users/{self.organization}/installation"
-            headers = {"Authorization": f"Bearer {jwt_token}"}
-            response = await self.client.get(url, headers=headers)
-            response.raise_for_status()
-            return str(response.json()["id"])
-        except Exception as e:
-            raise AuthenticationException(
-                f"Failed to fetch installation ID: {e}"
-            ) from e
-
     async def _fetch_installation_token(self, jwt_token: str) -> GitHubToken:
         try:
             url = f"{self.github_host}/app/installations/{self.installation_id}/access_tokens"
@@ -87,18 +78,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
                 f"Failed to fetch installation token: {e}"
             ) from e
 
-    def _generate_jwt(self) -> GitHubToken:
-        now = datetime.now(timezone.utc)
-        expires_at = now + timedelta(minutes=self.JWT_EXPIRY_MINUTES)
-        payload = {
-            "iss": self.app_id,
-            "iat": now,
-            "exp": expires_at,
-        }
-        if self.private_key.startswith("-----BEGIN"):
-            decoded_private_key = self.private_key
-        else:
-            decoded_private_key = base64.b64decode(self.private_key).decode()
-
-        token = jwt.encode(payload, decoded_private_key, algorithm="RS256")
-        return GitHubToken(token=token, expires_at=str(int(expires_at.timestamp())))
+    @cache_coroutine_result()
+    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
+        jwt_client = GitHubAppJwtClient(self.app_id, self.private_key, self.github_host)
+        return await jwt_client.get_authenticated_actor()
