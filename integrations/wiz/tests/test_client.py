@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any, AsyncGenerator, List, cast
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.core import OceanAbortException
@@ -8,6 +8,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 from wiz.client import WizClient
 from wiz.options import SbomArtifactOptions, VulnerabilityFindingOptions
+from wiz.pagination import PaginationPartition, VulnerabilityFindingPartitionStrategy
 
 
 def mock_paginated_generator(
@@ -181,6 +182,101 @@ async def test_get_paginated_resources_raises_on_missing_resource_data(
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_resources_fans_out_to_partitions(
+    mock_wiz_client: WizClient,
+) -> None:
+    partitions = [
+        PaginationPartition(
+            label="partition-a",
+            filter_overlay={"severity": ["CRITICAL"]},
+        ),
+        PaginationPartition(
+            label="partition-b",
+            filter_overlay={"severity": ["HIGH"]},
+        ),
+    ]
+
+    async def _chain_side_effect(
+        resource: str,
+        variables: dict[str, Any],
+        max_pages: int | None = None,
+        partition_label: str | None = None,
+    ) -> AsyncGenerator[list[Any], None]:
+        severity = variables["filterBy"]["severity"][0]
+        yield [{"id": f"{severity}-1"}]
+
+    with (
+        patch.object(
+            mock_wiz_client,
+            "_fetch_cursor_chain",
+            side_effect=_chain_side_effect,
+        ) as mock_fetch_chain,
+        patch(
+            "wiz.client.semaphore_async_iterator",
+            side_effect=lambda semaphore, fetcher: fetcher(),
+        ),
+    ):
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client._get_paginated_resources(
+            resource="vulnerabilityFindings",
+            variables={"first": 100, "filterBy": {}},
+            partitions=partitions,
+            max_concurrent=2,
+        ):
+            results.extend(batch)
+
+        assert mock_fetch_chain.call_count == 2
+        assert len(results) == 2
+        assert {result["id"] for result in results} == {"CRITICAL-1", "HIGH-1"}
+
+
+@pytest.mark.asyncio
+async def test_get_vulnerability_findings_with_parallelism(
+    mock_wiz_client: WizClient,
+) -> None:
+    options: VulnerabilityFindingOptions = {
+        "max_pages": 2,
+        "parallelism": {
+            "max_concurrent": 3,
+            "strategy": "severity",
+            "date_interval_days": 30,
+            "lookback_days": None,
+        },
+    }
+
+    with (
+        patch.object(
+            mock_wiz_client,
+            "_get_paginated_resources",
+        ) as mock_paginated,
+        patch.object(
+            VulnerabilityFindingPartitionStrategy,
+            "build_partitions",
+            return_value=[
+                PaginationPartition(
+                    label="severity-critical",
+                    filter_overlay={"severity": ["CRITICAL"]},
+                )
+            ],
+        ),
+    ):
+        mock_paginated.return_value = mock_paginated_generator([{"id": "vuln-1"}])
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client.get_vulnerability_findings(options):
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="vulnerabilityFindings",
+            variables={"first": 100, "filterBy": {}},
+            max_pages=2,
+            partitions=ANY,
+            max_concurrent=3,
+        )
+        assert results == [{"id": "vuln-1"}]
+
+
+@pytest.mark.asyncio
 async def test_get_vulnerability_findings_with_filters(
     mock_wiz_client: WizClient,
 ) -> None:
@@ -213,6 +309,8 @@ async def test_get_vulnerability_findings_with_filters(
                 },
             },
             max_pages=2,
+            partitions=None,
+            max_concurrent=None,
         )
 
         assert results == mock_findings
@@ -243,6 +341,8 @@ async def test_get_vulnerability_findings_without_filters(
                 "filterBy": {},
             },
             max_pages=None,
+            partitions=None,
+            max_concurrent=None,
         )
 
 
