@@ -65,9 +65,7 @@ async def request_handler(
             )
             else "INFO"
         )
-        logger.bind(path=path, method=request.method).log(
-            log_level, f"Request to {path} started"
-        )
+        logger.bind(method=request.method).log(log_level, f"Request to {path} started")
         response = await _handle_silently(call_next, request)
 
         end_time = get_time(seconds_precision=False)
