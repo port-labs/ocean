@@ -1,6 +1,6 @@
 """Tests for UpdateRepoExternalPropertiesExecutor."""
 
-from typing import Any
+from typing import Any, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -14,15 +14,15 @@ from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from port_ocean.core.models import (
     ActionRun,
+    ActionRunStatus,
     IntegrationActionInvocationPayload,
-    RunStatus,
 )
 
 
 def make_run(execution_properties: dict[str, Any]) -> ActionRun:
     return ActionRun(
         id="run-123",
-        status=RunStatus.IN_PROGRESS,
+        status=ActionRunStatus.IN_PROGRESS,
         action=ActionRun.Action(identifier="update_repo_external_properties"),
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
@@ -74,12 +74,14 @@ def mock_port_client() -> MagicMock:
 
 
 @pytest.fixture
-def executor(mock_rest_client: MagicMock) -> UpdateRepoExternalPropertiesExecutor:
+def executor(
+    mock_rest_client: MagicMock,
+) -> Iterator[UpdateRepoExternalPropertiesExecutor]:
     with patch(
-        "github.actions.abstract_github_executor.create_github_client",
+        "github.actions.update_repo_external_properties_executor.create_github_client_for_org",
         return_value=mock_rest_client,
     ):
-        return UpdateRepoExternalPropertiesExecutor()
+        yield UpdateRepoExternalPropertiesExecutor()
 
 
 class TestUpdateRepoExternalPropertiesExecutor:

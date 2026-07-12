@@ -25,6 +25,8 @@ from port_ocean.core.models import IntegrationRun
 from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
 )
+from github.clients.client_factory import create_github_client_for_org
+from github.clients.http.rest_client import GithubRestClient
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
@@ -91,11 +93,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
     _default_ref_cache: dict[str, str] = {}
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._workflow_run_exporter = RestWorkflowRunExporter(self.rest_client)
-
-    async def _get_default_ref(self, organization: str, repo_name: str) -> str:
+    async def _get_default_ref(
+        self, client: GithubRestClient, organization: str, repo_name: str
+    ) -> str:
         """
         Get the default branch name for a repository, using cache when available.
         """
@@ -109,7 +109,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             )
             return self._default_ref_cache[key]
 
-        repoExporter = RestRepositoryExporter(self.rest_client)
+        repoExporter = RestRepositoryExporter(client)
         repo = await repoExporter.get_resource(
             SingleRepositoryOptions(organization=organization, name=repo_name)
         )
@@ -158,15 +158,17 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 "organization, repo and workflow are required"
             )
 
+        client = create_github_client_for_org(organization)
+        workflow_run_exporter = RestWorkflowRunExporter(client)
         inputs: dict[str, str] = self._parse_inputs(
             run.execution_properties.get("workflowInputs", {})
         )
         ref = inputs.pop("ref", None)
         if not ref:
-            ref = await self._get_default_ref(organization, repo)
+            ref = await self._get_default_ref(client, organization, repo)
         try:
-            response = await self.rest_client.make_request(
-                f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
+            response = await client.make_request(
+                f"{client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
                 method="POST",
                 json_data={
                     "ref": ref,
@@ -179,7 +181,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             if not workflow_run_id:
                 raise ActionExecutionError("Workflow run ID not found")
 
-            workflow_run = await self._workflow_run_exporter.get_resource(
+            workflow_run = await workflow_run_exporter.get_resource(
                 SingleWorkflowRunOptions(
                     organization=organization,
                     repo_name=repo,

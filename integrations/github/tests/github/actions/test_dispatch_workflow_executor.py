@@ -1,6 +1,6 @@
 """Tests for DispatchWorkflowExecutor."""
 
-from typing import Any
+from typing import Any, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -14,7 +14,7 @@ from github.helpers.exceptions import (
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
-    RunStatus,
+    ActionRunStatus,
 )
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
@@ -22,7 +22,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 def make_run(execution_properties: dict[str, Any]) -> ActionRun:
     return ActionRun(
         id="run-123",
-        status=RunStatus.IN_PROGRESS,
+        status=ActionRunStatus.IN_PROGRESS,
         action=ActionRun.Action(identifier="dispatch_workflow"),
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
@@ -60,12 +60,12 @@ def mock_port_client() -> MagicMock:
 
 
 @pytest.fixture
-def executor(mock_rest_client: MagicMock) -> DispatchWorkflowExecutor:
+def executor(mock_rest_client: MagicMock) -> Iterator[DispatchWorkflowExecutor]:
     with patch(
-        "github.actions.abstract_github_executor.create_github_client",
+        "github.actions.dispatch_workflow_executor.create_github_client_for_org",
         return_value=mock_rest_client,
     ):
-        return DispatchWorkflowExecutor()
+        yield DispatchWorkflowExecutor()
 
 
 class TestDispatchWorkflowExecutor:
@@ -89,17 +89,16 @@ class TestDispatchWorkflowExecutor:
         dispatch_response.json.return_value = {"workflow_run_id": 12345}
         mock_rest_client.make_request.return_value = dispatch_response
 
-        get_resource_mock = AsyncMock(return_value=WORKFLOW_RUN)
-
         with (
             patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
-            patch.object(
-                executor._workflow_run_exporter,
-                "get_resource",
-                get_resource_mock,
-            ),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter"
+            ) as exporter_cls,
             patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean,
         ):
+            exporter_cls.return_value.get_resource = AsyncMock(
+                return_value=WORKFLOW_RUN
+            )
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
@@ -116,7 +115,7 @@ class TestDispatchWorkflowExecutor:
             "return_run_details": True,
         }
 
-        get_resource_mock.assert_awaited_once()
+        exporter_cls.return_value.get_resource.assert_awaited_once()
         mock_port_client.update_run_started.assert_awaited_once_with(
             run,
             WORKFLOW_RUN["html_url"],
@@ -145,13 +144,14 @@ class TestDispatchWorkflowExecutor:
         mock_rest_client.make_request.return_value = dispatch_response
 
         with (
-            patch.object(
-                executor._workflow_run_exporter,
-                "get_resource",
-                AsyncMock(return_value=WORKFLOW_RUN),
-            ),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter"
+            ) as exporter_cls,
             patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean,
         ):
+            exporter_cls.return_value.get_resource = AsyncMock(
+                return_value=WORKFLOW_RUN
+            )
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 

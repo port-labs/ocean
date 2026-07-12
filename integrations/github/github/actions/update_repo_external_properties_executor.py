@@ -4,6 +4,7 @@ import httpx
 from loguru import logger
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.clients.client_factory import create_github_client_for_org
 from github.clients.rate_limiter.utils import is_rate_limit_response
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
@@ -64,8 +65,9 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
             )
 
             try:
-                await self.rest_client.make_request(
-                    f"{self.rest_client.base_url}/orgs/{org}/properties/external/values",
+                client = create_github_client_for_org(org)
+                await client.make_request(
+                    f"{client.base_url}/orgs/{org}/properties/external/values",
                     method="PATCH",
                     json_data={
                         "repository_names": [str(repo)],
