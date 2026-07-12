@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.11 (2026-07-12)
+
+
+### Improvements
+
+- Renamed the `update_repo_external_properties` action to `update_repo_external_custom_properties` and updated it to use GitHub's `/properties/installations/values` API endpoint.
+
+
+### Bug Fixes
+
+- Handle non-JSON GitHub API error responses when updating external custom properties.
+
+
 ## 6.2.10 (2026-07-12)
 
 

@@ -106,7 +106,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
 
         mock_rest_client.make_request.assert_awaited_once()
         call_kwargs = mock_rest_client.make_request.call_args
-        assert "orgs/port-labs/properties/external/values" in call_kwargs.args[0]
+        assert "orgs/port-labs/properties/installations/values" in call_kwargs.args[0]
         assert call_kwargs.kwargs["method"] == "PATCH"
         json_data = call_kwargs.kwargs["json_data"]
         assert json_data["repository_names"] == ["ocean"]
@@ -117,7 +117,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
-            message="Updated 1 external properties on port-labs/ocean.",
+            message="Updated 1 external custom properties on port-labs/ocean.",
         )
 
     @pytest.mark.asyncio
@@ -311,7 +311,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
             "403", request=request, response=response
         )
 
-        with pytest.raises(ActionExecutionError, match="external properties write"):
+        with pytest.raises(ActionExecutionError, match="external custom properties write"):
             with patch(
                 "github.actions.update_repo_external_properties_executor.ocean"
             ) as mock_ocean:
@@ -328,4 +328,4 @@ class TestUpdateRepoExternalPropertiesExecutor:
     def test_action_name(
         self, executor: UpdateRepoExternalCustomPropertiesExecutor
     ) -> None:
-        assert executor.ACTION_NAME == "update_repo_external_properties"
+        assert executor.ACTION_NAME == "update_repo_external_custom_properties"
