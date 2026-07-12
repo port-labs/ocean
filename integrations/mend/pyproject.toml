@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mend"
-version = "0.1.9"
+version = "0.1.10"
 description = "An integration for Mend.io project and scan results types"
 authors = ["Het Saliya <het.saliya@crestdata.ai>"]
 
