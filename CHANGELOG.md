@@ -7,11 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.44.8 (2026-07-09)
+## 0.44.9 (2026-07-12)
 
 ### Bug Fixes
 
-- Fixed lakehouse raw-data batch serialization when buffered items contain datetime values by applying `make_json_compatible` in `post_integration_raw_data_batch()` before HTTP JSON encoding.
+- Fixed lakehouse buffer datetime serialization by applying `make_json_compatible` in `LakehouseBuffer.add()` for buffer size tracking and in `post_integration_raw_data_batch()` before HTTP JSON encoding.
 
 ## 0.44.7 (2026-07-08)
 
