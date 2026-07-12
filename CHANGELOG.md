@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.8 (2026-07-12)
+
+
+### Improvements
+
+- Bump FastAPI to 0.133+ and Starlette to 1.0.1+ to fix CVE-2026-48710 (malformed Host header bypass). Middleware path checks now use the ASGI scope path instead of ``request.url.path``.
+
+
 ## 0.44.7 (2026-07-08)
 
 ### Improvements

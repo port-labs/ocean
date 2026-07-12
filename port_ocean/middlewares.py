@@ -14,7 +14,7 @@ async def _handle_silently(
 ) -> Response:
     response: Response
     try:
-        if request.url.path.startswith("/integration"):
+        if request.scope["path"].startswith("/integration"):
             async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
                 await ocean.integration.port_app_config_handler.get_port_app_config()
                 response = await call_next(request)
@@ -53,9 +53,10 @@ async def request_handler(
 
     with logger.contextualize(request_id=request_id):
         route_prefix = ocean.app.route_prefix if ocean.initialized else ""
+        path = request.scope["path"]
         log_level = (
             "DEBUG"
-            if request.url.path
+            if path
             in (
                 "/docs",
                 "/openapi.json",
