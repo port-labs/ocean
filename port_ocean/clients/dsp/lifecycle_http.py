@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from loguru import logger
@@ -12,7 +12,6 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
 _lifecycle_http_client: LocalStack["OceanResyncHttpClient"] = LocalStack()
-_lifecycle_http_proxy: "OceanResyncHttpClient" | None = None
 
 
 def _truncate(text: str, max_len: int = 256) -> str:
@@ -77,9 +76,7 @@ def _get_lifecycle_http_client_context(
 
 
 def get_lifecycle_http_client(auth: PortAuthentication) -> OceanResyncHttpClient:
-    global _lifecycle_http_proxy
-    if _lifecycle_http_proxy is None:
-        _lifecycle_http_proxy = LocalProxy(
-            lambda: _get_lifecycle_http_client_context(auth)
-        )
-    return _lifecycle_http_proxy
+    return cast(
+        OceanResyncHttpClient,
+        LocalProxy(lambda: _get_lifecycle_http_client_context(auth)),
+    )

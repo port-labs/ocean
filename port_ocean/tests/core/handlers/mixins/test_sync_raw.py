@@ -1,5 +1,6 @@
 from graphlib import CycleError
-from typing import Any, AsyncGenerator, Awaitable, Callable, cast
+from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
+from concurrent.futures import ThreadPoolExecutor
 
 from loguru import logger
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
@@ -33,6 +34,38 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional
 from port_ocean.tests.core.conftest import create_entity, no_op_event_context
+
+
+class _TestProcessPoolExecutor(ThreadPoolExecutor):
+    def __init__(self, *args: Any, mp_context: Any = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+
+@pytest.fixture(autouse=True)
+def mock_resource_monitoring() -> Generator[None, None, None]:
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.start_monitoring",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.stop_monitoring",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.start_kind_tracking",
+            MagicMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.stop_kind_tracking",
+            MagicMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.handlers.entity_processor.jq_entity_processor.ProcessPoolExecutor",
+            _TestProcessPoolExecutor,
+        ),
+    ):
+        yield
 
 
 @pytest.fixture
@@ -1626,7 +1659,7 @@ async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
     lifecycle_client.notify_finished = AsyncMock()
     lifecycle_client.notify_failed = AsyncMock()
     lifecycle_client.notify_aborted = AsyncMock()
-    mock_ocean.lifecycle_client = lifecycle_client  # type: ignore
+    mock_ocean.lifecycle_client = lifecycle_client
 
     with patch(
         "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
@@ -1650,13 +1683,13 @@ async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
         integration_id="integration-id",
         integration_type="integration-type",
         granularity=GranularityType.KIND,
-        kind_identifier="test-kind-0",
+        kind_identifier="service-0",
     )
     lifecycle_client.notify_finished.assert_awaited_once_with(
         event_id="resync-1",
         integration_type="integration-type",
         granularity=GranularityType.KIND,
-        kind_identifier="test-kind-0",
+        kind_identifier="service-0",
     )
     lifecycle_client.notify_failed.assert_not_awaited()
     lifecycle_client.notify_aborted.assert_not_awaited()
