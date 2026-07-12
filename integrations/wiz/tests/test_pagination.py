@@ -2,6 +2,7 @@ import datetime
 from typing import Any, cast
 
 from wiz.options import ParallelismConfig
+from wiz.pagination.utils import build_date_partitions
 from wiz.pagination import (
     PaginationPartition,
     VulnerabilityFindingPartitionStrategy,
@@ -46,7 +47,20 @@ def test_vulnerability_finding_strategy_uses_date_partitions_by_default() -> Non
 
     assert len(partitions) > 1
     assert all("firstSeenAt" in partition.filter_overlay for partition in partitions)
-    assert all("updatedAt" in partition.filter_overlay for partition in partitions)
+    assert all("updatedAt" not in partition.filter_overlay for partition in partitions)
+
+
+def test_build_date_partitions_only_narrows_partition_date_field() -> None:
+    partitions = build_date_partitions(
+        resource_label="vulnerabilityFindings",
+        date_field="firstSeenAt",
+        lookback_days=14,
+        interval_days=7,
+    )
+
+    assert len(partitions) == 2
+    for partition in partitions:
+        assert set(partition.filter_overlay) == {"firstSeenAt"}
 
 
 def test_vulnerability_finding_strategy_skips_severity_when_already_filtered() -> None:
