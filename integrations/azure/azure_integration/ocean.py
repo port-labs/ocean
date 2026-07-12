@@ -192,9 +192,7 @@ async def cloud_event_validation_middleware_handler(
     Azure topic subscription expects a 200 response with specific headers
     https://github.com/cloudevents/spec/blob/v1.0/http-webhook.md#42-validation-response
     """
-    if request.method == "OPTIONS" and request.scope["path"].startswith(
-        "/integration"
-    ):
+    if request.method == "OPTIONS" and request.scope["path"].startswith("/integration"):
         logger.info("Detected cloud event validation request")
         headers = {
             "WebHook-Allowed-Rate": "100",
