@@ -1,6 +1,13 @@
 from typing import Any, List, Literal, TypedDict, Required, NotRequired, Optional
 
 
+class ParallelismConfig(TypedDict):
+    max_concurrent: int
+    strategy: Literal["auto", "date", "severity"]
+    date_interval_days: int
+    lookback_days: NotRequired[Optional[int]]
+
+
 class IssueOptions(TypedDict):
     max_pages: Required[int]
     status_list: Required[List[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]]]
@@ -29,6 +36,7 @@ class VulnerabilityFindingOptions(TypedDict):
     severity_list: NotRequired[
         Optional[List[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]]
     ]
+    parallelism: NotRequired[ParallelismConfig]
 
 
 class SbomArtifactOptions(TypedDict):
