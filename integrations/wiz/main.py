@@ -93,16 +93,24 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     status_list = selector.status_list
     severity_list = selector.severity_list
     max_pages = selector.max_pages
+    parallelism_selector = selector.parallelism
 
     logger.info(
-        f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, max pages: {max_pages}"
+        f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, max pages: {max_pages}, parallelism: {parallelism_selector}"
     )
 
-    options = VulnerabilityFindingOptions(
-        max_pages=max_pages,
-        status_list=status_list,
-        severity_list=severity_list,
-    )
+    options: VulnerabilityFindingOptions = {
+        "max_pages": max_pages,
+        "status_list": status_list,
+        "severity_list": severity_list,
+    }
+    if parallelism_selector is not None:
+        options["parallelism"] = {
+            "max_concurrent": parallelism_selector.max_concurrent,
+            "strategy": parallelism_selector.strategy,
+            "date_interval_days": parallelism_selector.date_interval_days,
+            "lookback_days": parallelism_selector.lookback_days,
+        }
 
     async for vulnerability_findings in wiz_client.get_vulnerability_findings(options):
         yield vulnerability_findings

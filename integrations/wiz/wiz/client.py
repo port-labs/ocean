@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import functools
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
@@ -27,6 +28,10 @@ from .constants import (
     GRAPH_QUERIES,
     ISSUES_GQL,
     PAGE_SIZE,
+)
+from wiz.pagination import (
+    PaginationPartition,
+    merge_partition_filters, VulnerabilityFindingPartitionStrategy,
 )
 
 
@@ -162,18 +167,24 @@ class WizClient:
             logger.error(f"Error while making GraphQL query: {str(e)}")
             raise
 
-    async def _get_paginated_resources(
-        self, resource: str, variables: dict[str, Any], max_pages: Optional[int] = None
+    async def _fetch_cursor_chain(
+        self,
+        resource: str,
+        variables: dict[str, Any],
+        max_pages: Optional[int] = None,
+        partition_label: str | None = None,
     ) -> AsyncGenerator[list[Any], None]:
-        logger.info(f"Fetching {resource} data from Wiz API")
+        chain_variables = copy.deepcopy(variables)
         page_num = 1
+        partition_suffix = f" ({partition_label})" if partition_label else ""
 
         while True:
             logger.info(
-                f"Fetching page {page_num} {f"of {max_pages}" if max_pages else ''}"
+                f"Fetching page {page_num}{partition_suffix} "
+                f"{f'of {max_pages}' if max_pages else ''}"
             )
             gql = GRAPH_QUERIES[resource]
-            data = await self.make_graphql_query(gql, variables)
+            data = await self.make_graphql_query(gql, chain_variables)
             resource_data = data.get(resource)
             if not isinstance(resource_data, dict):
                 raise OceanAbortException(
@@ -190,13 +201,48 @@ class WizClient:
 
             cursor = resource_data.get("pageInfo") or {}
             if not cursor.get("hasNextPage", False):
-                break  # Break out of the loop if no more pages
-
-            # Set the cursor for the next page request
-            variables["after"] = cursor.get("endCursor", "")
-            page_num += 1
-            if max_pages and page_num >= max_pages:
                 break
+
+            chain_variables["after"] = cursor.get("endCursor", "")
+            page_num += 1
+            if max_pages and page_num > max_pages:
+                break
+
+    async def _get_paginated_resources(
+        self,
+        resource: str,
+        variables: dict[str, Any],
+        max_pages: Optional[int] = None,
+        partitions: list[PaginationPartition] | None = None,
+        max_concurrent: int | None = None,
+    ) -> AsyncGenerator[list[Any], None]:
+        logger.info(f"Fetching {resource} data from Wiz API")
+
+        if not partitions:
+            async for nodes in self._fetch_cursor_chain(resource, variables, max_pages):
+                yield nodes
+            return
+
+        logger.info(f"Fetching {resource} using {len(partitions)} parallel partitions")
+        semaphore = asyncio.BoundedSemaphore(
+            max_concurrent or self._MAX_CONCURRENT_SBOM_GROUP_FETCHES
+        )
+        partition_streams = [
+            semaphore_async_iterator(
+                semaphore,
+                functools.partial(
+                    self._fetch_cursor_chain,
+                    resource,
+                    merge_partition_filters(variables, partition),
+                    max_pages,
+                    partition.label,
+                ),
+            )
+            for partition in partitions
+        ]
+
+        async for nodes in stream_async_iterators_tasks(*partition_streams):
+            yield nodes
 
     async def get_issues(
         self,
@@ -292,10 +338,21 @@ class WizClient:
         if options.get("severity_list"):
             variables["filterBy"]["severity"] = options["severity_list"]
 
+        parallelism = options.get("parallelism")
+        partitions = (
+            VulnerabilityFindingPartitionStrategy().build_partitions("vulnerabilityFindings", variables, parallelism)
+            if parallelism is not None
+            else None
+        )
+
         async for findings in self._get_paginated_resources(
             resource="vulnerabilityFindings",
             variables=variables,
             max_pages=options.get("max_pages"),
+            partitions=partitions or None,
+            max_concurrent=(
+                parallelism.get("max_concurrent") if parallelism is not None else None
+            ),
         ):
             yield findings
 
