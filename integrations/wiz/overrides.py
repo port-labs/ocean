@@ -97,6 +97,39 @@ class ProjectResourceConfig(ResourceConfig):
     )
 
 
+class ParallelismSelector(BaseModel):
+    max_concurrent: int = Field(
+        alias="maxConcurrent",
+        title="Max Concurrent Requests",
+        description="Maximum number of concurrent Wiz API requests when using parallel pagination.",
+        default=10,
+    )
+    strategy: Literal["auto", "date", "severity"] = Field(
+        alias="strategy",
+        title="Strategy",
+        description=(
+            "Partition strategy. 'auto' prefers date windows then severity shards. "
+            "'date' uses firstSeenAt windows. 'severity' shards by severity."
+        ),
+        default="auto",
+    )
+    date_interval_days: int = Field(
+        alias="dateIntervalDays",
+        title="Date Interval Days",
+        description="Size of each date partition window in days.",
+        default=30,
+    )
+    lookback_days: Optional[int] = Field(
+        alias="lookbackDays",
+        title="Lookback Days",
+        description=(
+            "How many days back to partition when using date strategy. "
+            "When unset with auto strategy, severity partitioning is used instead."
+        ),
+        default=365,
+    )
+
+
 class VulnerabilityFindingSelector(Selector):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
         alias="statusList",
@@ -117,6 +150,12 @@ class VulnerabilityFindingSelector(Selector):
         title="Max Pages",
         description="Maximum number of pages to fetch for vulnerability findings.",
         default=500,
+    )
+    parallelism: Optional[ParallelismSelector] = Field(
+        alias="parallelism",
+        title="Parallelism",
+        description="Optional parallel pagination settings for vulnerability findings.",
+        default=None,
     )
 
 
