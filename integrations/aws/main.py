@@ -1,6 +1,6 @@
 import json
 import typing
-from typing import Optional, Iterable, Callable, Any, AsyncIterator
+from typing import Optional, Iterable, Iterator, Callable, Any, AsyncIterator
 
 from fastapi import Response, status
 import fastapi
@@ -55,12 +55,15 @@ from aioboto3 import Session
 import functools
 
 
-def select_s3_region(allowed_regions: list[str]) -> str:
-    """Select the best region for S3 list_resources calls."""
+def get_available_regions(allowed_regions: list[str]) -> Iterator[str]:
+    """Yield regions preferring standard regions over opt-in ones."""
+    opt_in_regions = []
     for region in allowed_regions:
-        if region not in OPT_IN_REGIONS:
-            return region
-    return allowed_regions[0]
+        if region in OPT_IN_REGIONS:
+            opt_in_regions.append(region)
+        else:
+            yield region
+    yield from opt_in_regions
 
 
 CONCURRENT_RESYNC_ACCOUNTS = 10
@@ -73,7 +76,14 @@ async def _handle_global_resource_resync(
     resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
     allowed_regions: Optional[Iterable[str]] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in credentials.create_session_for_each_region(allowed_regions):
+    regions = (
+        list(allowed_regions)
+        if allowed_regions is not None
+        else credentials.enabled_regions
+    )
+    async for session in credentials.create_session_for_each_region(
+        get_available_regions(regions)
+    ):
         region = session.region_name
         try:
             async for batch in resync_func(kind, session):
@@ -387,22 +397,9 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.S3_BUCKET)
 async def resync_s3(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = []
     async for credentials in get_accounts():
-        allowed_regions = list(
-            filter(
-                aws_resource_config.selector.is_region_allowed,
-                credentials.enabled_regions,
-            )
-        )
-        if allowed_regions:
-            s3_region = select_s3_region(allowed_regions)
-            async for session in credentials.create_session_for_each_region(
-                [s3_region]
-            ):
-                tasks.append(resync_s3_bucket(kind, session))
-                break  # Only one session per account for S3
+        tasks.append(resync_resources_for_account(credentials, kind, resync_s3_bucket))
 
         if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
