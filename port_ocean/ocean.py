@@ -48,7 +48,7 @@ class Ocean:
         config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
-        self.fast_api_app = app or FastAPI(strict_content_type=False)
+        self.fast_api_app = app or FastAPI()
         self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
