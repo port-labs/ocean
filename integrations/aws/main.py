@@ -5,7 +5,7 @@ from typing import Optional, Iterable, Iterator, Callable, Any, AsyncIterator
 from fastapi import Response, status
 import fastapi
 from starlette import responses
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from aws.aws_credentials import AwsCredentials
 from port_ocean.core.models import Entity
@@ -453,7 +453,8 @@ async def cloud_event_validation_middleware_handler(
     request: fastapi.Request,
     call_next: typing.Callable[[fastapi.Request], typing.Awaitable[responses.Response]],
 ) -> responses.Response:
-    if request.url.path.startswith("/integration"):
+    path = request.scope["path"]
+    if path.startswith("/integration"):
         if request.method == "OPTIONS":
             logger.info("Detected cloud event validation request")
             headers = {
