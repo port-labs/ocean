@@ -27,6 +27,7 @@ from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ETLPhase
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.clients.dsp.lifecycle import GranularityType
 from port_ocean.helpers.metric.metric import SyncState
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -1605,3 +1606,57 @@ async def test_process_resource_unexpected_exception_returns_error_in_results(
     assert isinstance(errors[0], RuntimeError)
     assert str(errors[0]) == "crash"
     assert mock_ocean.metrics.sync_state == SyncState.FAILED
+
+
+@pytest.mark.asyncio
+async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(return_value=([], []))
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.event_id = "resync-1"
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_started = AsyncMock()
+    lifecycle_client.notify_finished = AsyncMock()
+    lifecycle_client.notify_failed = AsyncMock()
+    lifecycle_client.notify_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client  # type: ignore
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ):
+            entities, errors = await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert entities == []
+    assert errors == []
+    lifecycle_client.notify_started.assert_awaited_once_with(
+        event_id="resync-1",
+        integration_id="integration-id",
+        integration_type="integration-type",
+        granularity=GranularityType.KIND,
+        kind_identifier="test-kind-0",
+    )
+    lifecycle_client.notify_finished.assert_awaited_once_with(
+        event_id="resync-1",
+        integration_type="integration-type",
+        granularity=GranularityType.KIND,
+        kind_identifier="test-kind-0",
+    )
+    lifecycle_client.notify_failed.assert_not_awaited()
+    lifecycle_client.notify_aborted.assert_not_awaited()
