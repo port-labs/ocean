@@ -40,15 +40,63 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     """
     Executor for dispatching GitHub workflow runs and tracking their execution.
 
+    This executor implements the Port action for triggering GitHub Actions workflows.
+    It supports:
+    - Dispatching workflows with custom inputs
+    - Tracking workflow execution status via the returned workflow run ID
+    - Reporting workflow completion back to Port
+    - Rate limit handling for GitHub API
+    - Webhook processing for async status updates
+
     By default, GitHub returns a workflow run ID when `return_run_details` is set.
     The executor fetches that run and builds a unique external ID from it, so
-    multiple dispatches of the same workflow can run concurrently.
+    multiple dispatches of the same workflow can run concurrently without collision.
 
-    When `legacyDispatchWorkflowTracking` is enabled, the executor polls GitHub
-    for the dispatched workflow run and uses `{organization}/{repo}/{workflow}` as
-    the partition key to serialize dispatches of the same workflow. Use this for
-    GitHub Enterprise Server versions older than 3.21 that do not support
-    `return_run_details` on workflow dispatch.
+    When `legacyDispatchWorkflowTracking` is enabled (for GitHub Enterprise Server
+    versions older than 3.21 that do not support `return_run_details` on workflow
+    dispatch), the executor polls GitHub for the dispatched workflow run and uses
+    `{organization}/{repo}/{workflow}` as the partition key to serialize dispatches
+    of the same workflow.
+
+    Attributes:
+        ACTION_NAME (str): The name of this action in Port's spec ("dispatch_workflow")
+        WEBHOOK_PROCESSOR_CLASS (Type[AbstractWebhookProcessor]): Processor for workflow_run events
+        WEBHOOK_PATH (str): Path for receiving GitHub webhook events
+        _default_ref_cache (dict[str, str]): Cache of repository default branch names
+        _workflow_run_exporter (RestWorkflowRunExporter): Fetches dispatched workflow runs by ID
+
+    Example Usage in Port:
+        ```yaml
+        actions:
+          dispatch_workflow:
+            displayName: Trigger Workflow
+            trigger: PORT
+            inputs:
+              repo:
+                type: string
+                description: Repository name
+              workflow:
+                type: string
+                description: Workflow file name or ID
+              workflowInputs:
+                type: object
+                description: Optional workflow inputs
+        ```
+
+    Example API Usage:
+        ```python
+        executor = DispatchWorkflowExecutor()
+        await executor.execute(ActionRun(
+            payload=IntegrationActionInvocationPayload(
+                actionType="dispatch_workflow",
+                integrationActionExecutionProperties={
+                    "repo": "my-repo",
+                    "workflow": "deploy.yml",
+                    "workflowInputs": {"environment": "prod"}
+                }
+            )
+        ))
+        ```
     """
 
     ACTION_NAME = "dispatch_workflow"
@@ -113,14 +161,14 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         return self._default_ref_cache[key]
 
     async def _get_workflow_run(
-        self, organization: str, repo: str, ref: str, iso_date: str
+        self, organization: str, repo: str, workflow: str, ref: str, iso_date: str
     ) -> dict[str, Any]:
         workflow_runs: list[dict[str, Any]] = []
         actor = await get_authenticated_actor()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
             response = await self.rest_client.send_api_request(
-                f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/runs",
+                f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/runs",
                 params={
                     "actor": actor,
                     "event": "workflow_dispatch",
@@ -159,6 +207,24 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 inputs[key] = json.dumps(value)
         return inputs
 
+    async def _dispatch_workflow_legacy(
+        self,
+        organization: str,
+        repo: str,
+        workflow: str,
+        ref: str,
+        inputs: dict[str, str],
+    ) -> None:
+        await self.rest_client.make_request(
+            f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
+            method="POST",
+            json_data={
+                "ref": ref,
+                "inputs": inputs,
+            },
+            ignore_default_errors=False,
+        )
+
     async def _dispatch_workflow(
         self,
         organization: str,
@@ -170,9 +236,8 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         dispatch_payload: dict[str, Any] = {
             "ref": ref,
             "inputs": inputs,
+            "return_run_details": True,
         }
-        if not self._use_legacy_dispatch_workflow_tracking():
-            dispatch_payload["return_run_details"] = True
 
         response = await self.rest_client.make_request(
             f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
@@ -202,9 +267,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         try:
             if self._use_legacy_dispatch_workflow_tracking():
                 iso_date = datetime.now(timezone.utc).isoformat()
-                await self._dispatch_workflow(organization, repo, workflow, ref, inputs)
+                await self._dispatch_workflow_legacy(organization, repo, workflow, ref, inputs)
                 workflow_run = await self._get_workflow_run(
-                    organization, repo, ref, iso_date
+                    organization, repo, workflow, ref, iso_date
                 )
                 workflow_run_id = workflow_run["id"]
             else:
