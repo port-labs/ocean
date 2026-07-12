@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from github.actions.update_repo_external_properties_executor import (
-    UpdateRepoExternalPropertiesExecutor,
+    UpdateRepoExternalCustomPropertiesExecutor,
     external_properties_from_mapping,
 )
 from github.helpers.exceptions import InvalidActionParametersException
@@ -74,19 +74,19 @@ def mock_port_client() -> MagicMock:
 
 
 @pytest.fixture
-def executor(mock_rest_client: MagicMock) -> UpdateRepoExternalPropertiesExecutor:
+def executor(mock_rest_client: MagicMock) -> UpdateRepoExternalCustomPropertiesExecutor:
     with patch(
         "github.actions.abstract_github_executor.create_github_client",
         return_value=mock_rest_client,
     ):
-        return UpdateRepoExternalPropertiesExecutor()
+        return UpdateRepoExternalCustomPropertiesExecutor()
 
 
 class TestUpdateRepoExternalPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_happy_path(
         self,
-        executor: UpdateRepoExternalPropertiesExecutor,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
@@ -123,7 +123,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_empty_mapping_fails(
         self,
-        executor: UpdateRepoExternalPropertiesExecutor,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
@@ -151,7 +151,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_missing_mapping_fails(
         self,
-        executor: UpdateRepoExternalPropertiesExecutor,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
@@ -173,7 +173,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_missing_org_fails(
         self,
-        executor: UpdateRepoExternalPropertiesExecutor,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
@@ -199,7 +199,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_missing_repo_fails(
         self,
-        executor: UpdateRepoExternalPropertiesExecutor,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
@@ -225,7 +225,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_github_http_error_raises(
         self,
-        executor: UpdateRepoExternalPropertiesExecutor,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
@@ -255,9 +255,44 @@ class TestUpdateRepoExternalPropertiesExecutor:
                 await executor.execute(run)
 
     @pytest.mark.asyncio
+    async def test_github_http_error_with_non_json_body_raises(
+        self,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "externalPropertiesMapping": {"tier": "1"},
+            }
+        )
+
+        request = httpx.Request(
+            "PATCH", "https://api.github.com/orgs/port-labs/properties/external/values"
+        )
+        response = httpx.Response(
+            502,
+            text="Bad Gateway",
+            headers={"content-type": "application/json; charset=utf-8"},
+            request=request,
+        )
+        mock_rest_client.make_request.side_effect = httpx.HTTPStatusError(
+            "502", request=request, response=response
+        )
+
+        with pytest.raises(ActionExecutionError, match="Bad Gateway"):
+            with patch(
+                "github.actions.update_repo_external_properties_executor.ocean"
+            ) as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
+
+    @pytest.mark.asyncio
     async def test_forbidden_raises_missing_permission_error(
         self,
-        executor: UpdateRepoExternalPropertiesExecutor,
+        executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
@@ -285,10 +320,12 @@ class TestUpdateRepoExternalPropertiesExecutor:
 
     @pytest.mark.asyncio
     async def test_partition_key(
-        self, executor: UpdateRepoExternalPropertiesExecutor
+        self, executor: UpdateRepoExternalCustomPropertiesExecutor
     ) -> None:
         run = make_run({"org": "port-labs", "repo": "ocean"})
         assert await executor._get_partition_key(run) == "port-labs/ocean"
 
-    def test_action_name(self, executor: UpdateRepoExternalPropertiesExecutor) -> None:
+    def test_action_name(
+        self, executor: UpdateRepoExternalCustomPropertiesExecutor
+    ) -> None:
         assert executor.ACTION_NAME == "update_repo_external_properties"

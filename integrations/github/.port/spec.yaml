@@ -121,9 +121,9 @@ actions:
         title: Workflow inputs
         type: jqObject
         description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
-  - name: update_repo_external_properties
+  - name: update_repo_external_custom_properties
     icon: Github
-    description: Update GitHub repository external properties based on Port entity changes
+    description: Update GitHub repository external custom properties based on Port entity changes
     inputs:
       - name: org
         title: Organization
@@ -138,7 +138,7 @@ actions:
       - name: externalPropertiesMapping
         title: External Properties Mapping
         type: jqObject
-        description: 'Defines the mapping of Port blueprint properties to GitHub external properties. Example: { "buisness_criticality": "{{ .properties.buisness_criticality }}"}'
+        description: 'Defines the mapping of Port blueprint properties to GitHub external custom properties. Example: { "buisness_criticality": "{{ .properties.buisness_criticality }}"}'
         required: true
 installationDocs:
   saas:
