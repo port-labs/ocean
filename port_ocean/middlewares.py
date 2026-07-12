@@ -65,8 +65,8 @@ async def request_handler(
             )
             else "INFO"
         )
-        logger.bind(url=str(request.url), method=request.method).log(
-            log_level, f"Request to {request.url.path} started"
+        logger.bind(path=path, method=request.method).log(
+            log_level, f"Request to {path} started"
         )
         response = await _handle_silently(call_next, request)
 
@@ -76,6 +76,6 @@ async def request_handler(
         response.headers["X-Process-Time"] = str(time_elapsed)
         logger.bind(
             time_elapsed=time_elapsed, response_status=response.status_code
-        ).log(log_level, f"Request to {request.url.path} ended")
+        ).log(log_level, f"Request to {path} ended")
 
         return response
