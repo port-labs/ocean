@@ -71,7 +71,6 @@ def build_date_partitions(
                 label=f"{resource_label}-date-{index}",
                 filter_overlay={
                     date_field: date_filter,
-                    "updatedAt": date_filter,
                 },
             )
         )
