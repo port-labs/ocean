@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - Migrated the AWS webhook request model to Pydantic v2 for compatibility with Ocean 0.44.8 (FastAPI 0.133+)
+- CloudEvents validation middleware now uses the ASGI scope path instead of `request.url.path` for route matching
 
 
 ### Improvements
