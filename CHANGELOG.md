@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.9 (2026-07-12)
+
+### Bug Fixes
+
+- Improved Port API error logging in `handle_port_status_code()`: response errors are now logged as structured fields (`error`, `status_code`, `method`, `url`, `trace_id`) instead of being embedded in the log message, avoiding malformed output from JSON brace escaping.
+
 ## 0.44.8 (2026-07-09)
 
 ### Bug Fixes

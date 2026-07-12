@@ -1,4 +1,3 @@
-from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,21 +26,12 @@ class TestHandlePortStatusCode:
         mock_response.headers = {}
         mock_response.raise_for_status = MagicMock()
 
-        log_capture = StringIO()
-        logger_id = logger.add(
-            log_capture,
-            level="ERROR",
-            format="{message}",
-            diagnose=False,
-        )
-
-        try:
+        with patch.object(logger, "error") as mock_logger_error:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
-            log_output = log_capture.getvalue()
-            assert "Request failed with status code: 500" in log_output
-            assert "ok" in log_output.lower() or "error" in log_output.lower()
-        finally:
-            logger.remove(logger_id)
+            mock_logger_error.assert_called_once()
+            kwargs = mock_logger_error.call_args.kwargs
+            assert kwargs["status_code"] == 500
+            assert "Internal server error" in kwargs["error"]
 
     def test_handle_port_status_code_with_json_error_response_and_trace_id(
         self,
@@ -56,21 +46,13 @@ class TestHandlePortStatusCode:
         mock_response.headers = {"x-trace-id": "trace-123-456"}
         mock_response.raise_for_status = MagicMock()
 
-        log_capture = StringIO()
-        logger_id = logger.add(
-            log_capture,
-            level="ERROR",
-            format="{message}",
-            diagnose=False,
-        )
-
-        try:
+        with patch.object(logger, "error") as mock_logger_error:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
-            log_output = log_capture.getvalue()
-            assert "Request failed with status code: 500" in log_output
-            assert "status" in log_output.lower() or "error" in log_output.lower()
-        finally:
-            logger.remove(logger_id)
+            mock_logger_error.assert_called_once()
+            kwargs = mock_logger_error.call_args.kwargs
+            assert kwargs["status_code"] == 500
+            assert kwargs["trace_id"] == "trace-123-456"
+            assert "Something went wrong" in kwargs["error"]
 
     def test_handle_port_status_code_with_nested_json_error(self) -> None:
         """Test that deeply nested JSON with many curly braces is handled correctly."""
@@ -81,23 +63,15 @@ class TestHandlePortStatusCode:
         mock_response.headers = {}
         mock_response.raise_for_status = MagicMock()
 
-        log_capture = StringIO()
-        logger_id = logger.add(
-            log_capture,
-            level="ERROR",
-            format="{message}",
-            diagnose=False,
-        )
-
-        try:
+        with patch.object(logger, "error") as mock_logger_error:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
-            log_output = log_capture.getvalue()
-            assert "Request failed with status code: 400" in log_output
-            assert "errors" in log_output.lower() or "field" in log_output.lower()
-        except KeyError as e:
-            pytest.fail(f"KeyError was raised (bug not fixed): {e}")
-        finally:
-            logger.remove(logger_id)
+            mock_logger_error.assert_called_once()
+            kwargs = mock_logger_error.call_args.kwargs
+            assert kwargs["status_code"] == 400
+            assert (
+                "errors" in kwargs["error"].lower()
+                or "field" in kwargs["error"].lower()
+            )
 
     def test_handle_port_status_code_with_plain_text_error(self) -> None:
         """Test that plain text error responses still work correctly."""
@@ -112,8 +86,7 @@ class TestHandlePortStatusCode:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
             mock_logger_error.assert_called_once()
             call_args = mock_logger_error.call_args
-            error_message = call_args[0][0]
-            assert "Resource not found" in error_message
+            assert call_args.kwargs["error"] == "Resource not found"
 
     def test_handle_port_status_code_raises_when_should_raise_true(self) -> None:
         """Test that the function raises when should_raise is True."""
@@ -164,8 +137,8 @@ class TestHandlePortStatusCode:
 
         This test specifically verifies the fix for the KeyError: '"ok"' issue.
         When response.text contains JSON like '{"ok": false}', loguru would try to
-        interpret {"ok"} as a format placeholder and look for a 'ok' key in kwargs,
-        causing a KeyError. The fix escapes curly braces to prevent this.
+        interpret {"ok"} as a format placeholder if embedded in the format string.
+        Passing response.text as a log argument prevents this.
         """
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 500
@@ -174,23 +147,41 @@ class TestHandlePortStatusCode:
         mock_response.headers = {}
         mock_response.raise_for_status = MagicMock()
 
-        log_capture = StringIO()
-        logger_id = logger.add(
-            log_capture,
-            level="ERROR",
-            format="{message}",
-            diagnose=False,
-        )
-
-        try:
+        with patch.object(logger, "error") as mock_logger_error:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
-            log_output = log_capture.getvalue()
-            assert "Request failed with status code: 500" in log_output
-            assert "ok" in log_output.lower()
-        except KeyError as e:
-            pytest.fail(f"KeyError was raised (bug not fixed or fix was removed): {e}")
-        finally:
-            logger.remove(logger_id)
+            mock_logger_error.assert_called_once()
+            kwargs = mock_logger_error.call_args.kwargs
+            assert kwargs["status_code"] == 500
+            assert kwargs["error"] == '{"ok": false}'
+            assert (
+                mock_logger_error.call_args[0][0]
+                == "Request failed with status code: {}"
+            )
+            assert mock_logger_error.call_args[0][1] == 500
+
+    def test_handle_port_status_code_logs_request_context(self) -> None:
+        """Test that request method, url, and trace_id are logged as structured fields."""
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_request.method = "POST"
+        mock_request.url = "https://api.getport.io/v1/integration/foo"
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 500
+        mock_response.text = '{"ok": false, "error": "[object Object]"}'
+        mock_response.is_error = True
+        mock_response.headers = {"x-trace-id": "trace-abc"}
+        mock_response.request = mock_request
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(logger, "error") as mock_logger_error:
+            handle_port_status_code(mock_response, should_raise=False, should_log=True)
+            mock_logger_error.assert_called_once()
+            kwargs = mock_logger_error.call_args.kwargs
+            assert kwargs["status_code"] == 500
+            assert kwargs["method"] == "POST"
+            assert kwargs["url"] == "https://api.getport.io/v1/integration/foo"
+            assert kwargs["trace_id"] == "trace-abc"
+            assert kwargs["error"] == '{"ok": false, "error": "[object Object]"}'
 
 
 class TestGetEventContextParams:

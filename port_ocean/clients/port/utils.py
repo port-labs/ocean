@@ -87,18 +87,28 @@ def get_event_context_params() -> dict[str, str]:
     return {}
 
 
+def _get_port_request_context(
+    response: httpx.Response,
+) -> tuple[str | None, str | None]:
+    request = response.request
+    if request is None:
+        return None, None
+    return request.method, str(request.url)
+
+
 def handle_port_status_code(
     response: httpx.Response, should_raise: bool = True, should_log: bool = True
 ) -> None:
     if should_log and response.is_error:
-        escaped_response_text = response.text.replace("{", "{{").replace("}", "}}")
-        error_message = f"Request failed with status code: {response.status_code}, Error: {escaped_response_text}"
-        if response.status_code >= 500 and response.headers.get("x-trace-id"):
-            logger.error(
-                error_message,
-                trace_id=response.headers.get("x-trace-id"),
-            )
-        else:
-            logger.error(error_message)
+        method, url = _get_port_request_context(response)
+        logger.error(
+            "Request failed with status code: {}",
+            response.status_code,
+            status_code=response.status_code,
+            error=response.text,
+            method=method,
+            url=url,
+            trace_id=response.headers.get("x-trace-id"),
+        )
     if should_raise:
         response.raise_for_status()
