@@ -311,7 +311,9 @@ class TestUpdateRepoExternalPropertiesExecutor:
             "403", request=request, response=response
         )
 
-        with pytest.raises(ActionExecutionError, match="external custom properties write"):
+        with pytest.raises(
+            ActionExecutionError, match="external custom properties write"
+        ):
             with patch(
                 "github.actions.update_repo_external_properties_executor.ocean"
             ) as mock_ocean:
