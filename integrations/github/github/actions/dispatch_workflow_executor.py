@@ -267,7 +267,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         try:
             if self._use_legacy_dispatch_workflow_tracking():
                 iso_date = datetime.now(timezone.utc).isoformat()
-                await self._dispatch_workflow_legacy(organization, repo, workflow, ref, inputs)
+                await self._dispatch_workflow_legacy(
+                    organization, repo, workflow, ref, inputs
+                )
                 workflow_run = await self._get_workflow_run(
                     organization, repo, workflow, ref, iso_date
                 )
