@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.86 (2026-07-12)
+
+
+### Bug Fixes
+
+- Migrated the AWS webhook request model to Pydantic v2 for compatibility with Ocean 0.44.8 (FastAPI 0.133+)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
 ## 0.3.85 (2026-07-10)
 
 
