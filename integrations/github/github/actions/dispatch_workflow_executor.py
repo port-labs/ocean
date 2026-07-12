@@ -46,7 +46,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
 
     When `legacyDispatchWorkflowTracking` is enabled, the executor polls GitHub
     for the dispatched workflow run and uses `{organization}/{repo}/{workflow}` as
-    the partition key to serialize dispatches of the same workflow.
+    the partition key to serialize dispatches of the same workflow. Use this for
+    GitHub Enterprise Server versions older than 3.21 that do not support
+    `return_run_details` on workflow dispatch.
     """
 
     ACTION_NAME = "dispatch_workflow"
