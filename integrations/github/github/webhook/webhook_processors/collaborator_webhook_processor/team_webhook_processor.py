@@ -1,7 +1,7 @@
 from typing import Any
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.team_exporter import RestTeamExporter
 from github.helpers.utils import (
     ObjectKind,
@@ -66,7 +66,7 @@ class CollaboratorTeamWebhookProcessor(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client_for_org(organization)
         team_exporter = RestTeamExporter(rest_client)
         members: list[dict[str, Any]] = []
         async for batch in team_exporter.get_team_members_by_slug(

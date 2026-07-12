@@ -9,7 +9,7 @@ from github.webhook.events import (
     TEAM_MEMBERSHIP_EVENTS,
 )
 from github.helpers.utils import GithubClientType, ObjectKind
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
@@ -72,7 +72,9 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        graphql_client = create_github_client(GithubClientType.GRAPHQL)
+        graphql_client = create_github_client_for_org(
+            organization, GithubClientType.GRAPHQL
+        )
         exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
         data_to_upsert = await exporter.get_resource(

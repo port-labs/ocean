@@ -5,12 +5,13 @@ from github.core.exporters.file_exporter.utils import (
     FileObject,
 )
 from integration import GithubFileResourceConfig, GithubFilePattern, GithubPortAppConfig
+from github.clients.http.rest_client import GithubRestClient
 from port_ocean.clients.port.types import RequestOptions
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 from port_ocean.core.handlers.entity_processor import JQEntityProcessor
 from datetime import datetime, timezone
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.helpers.exceptions import CheckRunsException
 
 
@@ -32,17 +33,18 @@ class MatchedFile:
     file_info: Dict[str, Any]
 
 
-class CheckRuns:
+class _CheckRuns:
     """Handles GitHub check run operations for file validation."""
 
-    def __init__(self) -> None:
-        self.client = create_github_client()
+    def __init__(self, organization: str, client: GithubRestClient) -> None:
+        self.organization = organization
+        self.client = client
 
-    async def create_validation_check(
-        self, organization: str, repo_name: str, head_sha: str
-    ) -> str:
+    async def create_validation_check(self, repo_name: str, head_sha: str) -> str:
         """Create a new check run for validation."""
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/check-runs"
+        endpoint = (
+            f"{self.client.base_url}/repos/{self.organization}/{repo_name}/check-runs"
+        )
 
         payload = {
             "name": "File Kind validation",
@@ -58,21 +60,20 @@ class CheckRuns:
             endpoint, method="POST", json_data=payload
         )
         if not response:
-            log_message = f"Failed to create check run for {repo_name} of organization: {organization}"
+            log_message = f"Failed to create check run for {repo_name} of organization: {self.organization}"
             logger.error(log_message)
             raise CheckRunsException(log_message)
 
         check_run_id = response["id"]
 
         logger.info(
-            f"Created check run {check_run_id} for {repo_name} of organization: {organization}"
+            f"Created check run {check_run_id} for {repo_name} of organization: {self.organization}"
         )
 
         return str(check_run_id)
 
     async def update_check_run(
         self,
-        organization: str,
         repo_name: str,
         check_run_id: str,
         status: str,
@@ -82,7 +83,7 @@ class CheckRuns:
         details: str,
     ) -> None:
         """Update check run with results."""
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/check-runs/{check_run_id}"
+        endpoint = f"{self.client.base_url}/repos/{self.organization}/{repo_name}/check-runs/{check_run_id}"
 
         payload = {
             "status": status,
@@ -94,7 +95,7 @@ class CheckRuns:
         await self.client.send_api_request(endpoint, method="PATCH", json_data=payload)
 
         logger.info(
-            f"Updated check run {check_run_id} for {repo_name} with {conclusion} status of organization: {organization}"
+            f"Updated check run {check_run_id} for {repo_name} with {conclusion} status of organization: {self.organization}"
         )
 
 
@@ -103,7 +104,8 @@ class FileValidationService:
 
     def __init__(self, organization: str) -> None:
         self.organization = organization
-        self.check_runs = CheckRuns()
+        self.client = create_github_client_for_org(organization)
+        self.check_runs = _CheckRuns(organization, self.client)
 
     async def validate_pull_request_files(
         self,
@@ -129,7 +131,7 @@ class FileValidationService:
 
         try:
             check_run_id = await self.check_runs.create_validation_check(
-                organization=self.organization, repo_name=repo_name, head_sha=head_sha
+                repo_name=repo_name, head_sha=head_sha
             )
         except Exception as e:
             logger.error(
@@ -169,7 +171,6 @@ class FileValidationService:
             validation_check_details = str(e)
 
         await self.check_runs.update_check_run(
-            self.organization,
             repo_name,
             check_run_id,
             validation_check_status,

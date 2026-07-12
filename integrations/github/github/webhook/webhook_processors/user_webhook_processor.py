@@ -6,7 +6,7 @@ from github.webhook.events import (
     USER_UPSERT_EVENTS,
 )
 from github.helpers.utils import GithubClientType, ObjectKind
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
@@ -51,7 +51,7 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[user]
             )
 
-        client = create_github_client(GithubClientType.GRAPHQL)
+        client = create_github_client_for_org(organization, GithubClientType.GRAPHQL)
         exporter = GraphQLUserExporter(client)
         selector = cast(GithubUserConfig, resource_config).selector
 

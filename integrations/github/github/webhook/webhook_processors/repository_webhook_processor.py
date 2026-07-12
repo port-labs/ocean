@@ -7,7 +7,7 @@ from github.webhook.events import (
     TEAM_COLLABORATOR_EVENTS,
 )
 from github.helpers.utils import ObjectKind
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
     CollaboratorEventValidator,
@@ -97,7 +97,7 @@ class RepositoryWebhookProcessor(
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client_for_org(organization)
         exporter = RestRepositoryExporter(rest_client)
         included_relations = resource_config.selector.normalized_relations
 

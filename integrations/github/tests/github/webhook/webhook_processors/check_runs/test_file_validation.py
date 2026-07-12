@@ -168,7 +168,7 @@ class TestFileValidation:
             )
 
             mock_create_check.assert_called_once_with(
-                organization="test-org", repo_name="test-repo", head_sha="head-sha-456"
+                repo_name="test-repo", head_sha="head-sha-456"
             )
             mock_update_check.assert_called_once()
 
@@ -213,7 +213,7 @@ class TestFileValidation:
             )
 
             mock_create_check.assert_called_once_with(
-                organization="test-org", repo_name="test-repo", head_sha="head-sha-456"
+                repo_name="test-repo", head_sha="head-sha-456"
             )
             mock_update_check.assert_called_once()
 
