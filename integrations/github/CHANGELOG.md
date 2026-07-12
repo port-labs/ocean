@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.8 (2026-07-12)
+
+
+### Improvements
+
+- Added `legacyDispatchWorkflowTracking` configuration to restore pre-6.2.4 dispatch workflow tracking behavior that polls GitHub for workflow runs and serializes dispatches per organization/repository/workflow.
+
+
 ## 6.2.7 (2026-07-10)
 
 

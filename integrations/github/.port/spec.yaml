@@ -71,6 +71,11 @@ configurations:
     required: false
     default: 95
     description: GitHub REST rate-limit utilization percentage (0-100) at which resync processes pause to reserve quota for webhooks. Does not throttle webhooks or actions.
+  - name: legacyDispatchWorkflowTracking
+    type: boolean
+    required: false
+    default: false
+    description: When enabled, the dispatch_workflow action polls GitHub for the triggered workflow run and serializes dispatches per organization/repository/workflow instead of using the workflow run ID returned on dispatch.
 saas:
   enabled: true
   liveEvents:
