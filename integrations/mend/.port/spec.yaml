@@ -19,3 +19,5 @@ configurations:
     type: integer
     default: 720
     description: Interval in minutes between forced full resyncs. Between forced full resyncs, the integration only fetches findings whose project changed since the last sync. A forced full resync bypasses that delta filter so findings updated independently of their project (status changes, suppressions, etc.) are picked up. Set 0 to always perform a full resync.
+provider:
+  type: community

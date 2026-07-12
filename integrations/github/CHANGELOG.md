@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.8 (2026-07-12)
+
+
+### Improvements
+
+- Added `legacyDispatchWorkflowTracking` configuration for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch. When enabled, the dispatch_workflow action polls GitHub for workflow runs and serializes dispatches per organization/repository/workflow.
+
+
 ## 6.2.7 (2026-07-10)
 
 
