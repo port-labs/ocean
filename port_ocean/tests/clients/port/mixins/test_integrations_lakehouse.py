@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -530,3 +530,29 @@ async def test_post_integration_raw_data_batch_includes_selector_hash(
     lakehouse_integration_client.client.post.assert_called_once()
     body = lakehouse_integration_client.client.post.call_args[1]["json"]
     assert body["data"][0]["metadata"]["selectorHash"] == "abc123"
+
+
+async def test_post_integration_raw_data_batch_serializes_datetime_values(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Datetime values in items/request/response are ISO-formatted in the POST body."""
+    created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    raw_data = [{"id": "1", "created_at": created_at}]
+    sync_id = "test-sync-123"
+    kind = "file"
+
+    event = make_single_entry_lakehouse_batch(raw_data, kind=kind, index=0)
+    event["data"][0]["request"] = {"fetched_at": created_at}
+    event["data"][0]["response"] = {"received_at": created_at}
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+    lakehouse_integration_client.client.post.assert_called_once()
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    entry = body["data"][0]
+    assert entry["items"][0]["created_at"] == created_at.isoformat()
+    assert entry["request"]["fetched_at"] == created_at.isoformat()
+    assert entry["response"]["received_at"] == created_at.isoformat()
