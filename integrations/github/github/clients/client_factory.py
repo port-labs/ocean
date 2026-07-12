@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Dict, Literal, Optional, Type, overload
+from typing import Dict, Literal, Type, overload
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -139,45 +139,3 @@ def create_github_client_for_org(
     return _client_for(
         _authenticator_for_org(organization), client_type or GithubClientType.REST
     )
-
-
-class GitHubAuthenticatorFactory:
-    """Backward-compatible factory for webhook setup until main.py is migrated."""
-
-    @staticmethod
-    def create(
-        github_host: str,
-        organization: Optional[str] = None,
-        token: Optional[str] = None,
-        app_id: Optional[str] = None,
-        installation_id: Optional[str] = None,
-        private_key: Optional[str] = None,
-    ) -> AbstractGitHubAuthenticator:
-        del github_host, token, app_id, installation_id, private_key
-        return _authenticator_for_org(organization)
-
-
-@overload
-def create_github_client(
-    client_type: Literal[GithubClientType.REST],
-) -> GithubRestClient: ...
-
-
-@overload
-def create_github_client(client_type: None = None) -> GithubRestClient: ...
-
-
-@overload
-def create_github_client(
-    client_type: Literal[GithubClientType.GRAPHQL],
-) -> GithubGraphQLClient: ...
-
-
-def create_github_client(
-    client_type: GithubClientType | None = None,
-) -> AbstractGithubClient:
-    organization = ocean.integration_config.get("github_organization")
-    resolved = client_type or GithubClientType.REST
-    if resolved == GithubClientType.GRAPHQL:
-        return create_github_client_for_org(organization, GithubClientType.GRAPHQL)
-    return create_github_client_for_org(organization, GithubClientType.REST)

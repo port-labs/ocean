@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.2.7 (2026-07-10)
+## 6.3.0 (2026-07-09)
 
+
+### Improvements
+
+- Added multi-organization auto-discovery for GitHub App authentication.
 
 ### Bug Fixes
 
-- Reverted the file-kind live event deletion changes introduced in 6.2.3 that fetched old file content for `items_to_parse` deletions.
+- Fixed action executors to use per-organization GitHub clients after the auth refactor.
+- Fixed `get_authenticated_actor` to prefer PAT credentials when both PAT and app credentials are configured.
 
 
 ## 6.2.6 (2026-07-08)
