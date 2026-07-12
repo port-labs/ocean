@@ -1,4 +1,4 @@
-"""Tests for UpdateRepoExternalPropertiesExecutor."""
+"""Tests for UpdateRepoExternalCustomPropertiesExecutor."""
 
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from github.actions.update_repo_external_properties_executor import (
+from github.actions.update_repo_external_custom_properties_executor import (
     UpdateRepoExternalCustomPropertiesExecutor,
     external_properties_from_mapping,
 )
@@ -23,11 +23,11 @@ def make_run(execution_properties: dict[str, Any]) -> ActionRun:
     return ActionRun(
         id="run-123",
         status=RunStatus.IN_PROGRESS,
-        action=ActionRun.Action(identifier="update_repo_external_properties"),
+        action=ActionRun.Action(identifier="update_repo_external_custom_properties"),
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
             installationId="inst-1",
-            integrationActionType="update_repo_external_properties",
+            integrationActionType="update_repo_external_custom_properties",
             integrationActionExecutionProperties=execution_properties,
         ),
     )
@@ -82,7 +82,7 @@ def executor(mock_rest_client: MagicMock) -> UpdateRepoExternalCustomPropertiesE
         return UpdateRepoExternalCustomPropertiesExecutor()
 
 
-class TestUpdateRepoExternalPropertiesExecutor:
+class TestUpdateRepoExternalCustomPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_happy_path(
         self,
@@ -99,7 +99,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
         )
 
         with patch(
-            "github.actions.update_repo_external_properties_executor.ocean"
+            "github.actions.update_repo_external_custom_properties_executor.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
@@ -140,7 +140,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
             match="externalPropertiesMapping is required and must not be empty",
         ):
             with patch(
-                "github.actions.update_repo_external_properties_executor.ocean"
+                "github.actions.update_repo_external_custom_properties_executor.ocean"
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
@@ -162,7 +162,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
             match="externalPropertiesMapping is required and must not be empty",
         ):
             with patch(
-                "github.actions.update_repo_external_properties_executor.ocean"
+                "github.actions.update_repo_external_custom_properties_executor.ocean"
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
@@ -188,7 +188,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
             InvalidActionParametersException, match="org and repo are required"
         ):
             with patch(
-                "github.actions.update_repo_external_properties_executor.ocean"
+                "github.actions.update_repo_external_custom_properties_executor.ocean"
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
@@ -214,7 +214,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
             InvalidActionParametersException, match="org and repo are required"
         ):
             with patch(
-                "github.actions.update_repo_external_properties_executor.ocean"
+                "github.actions.update_repo_external_custom_properties_executor.ocean"
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
@@ -249,7 +249,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
 
         with pytest.raises(Exception, match="Unprocessable Entity"):
             with patch(
-                "github.actions.update_repo_external_properties_executor.ocean"
+                "github.actions.update_repo_external_custom_properties_executor.ocean"
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
@@ -284,7 +284,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
 
         with pytest.raises(ActionExecutionError, match="Bad Gateway"):
             with patch(
-                "github.actions.update_repo_external_properties_executor.ocean"
+                "github.actions.update_repo_external_custom_properties_executor.ocean"
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
@@ -315,7 +315,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
             ActionExecutionError, match="external custom properties write"
         ):
             with patch(
-                "github.actions.update_repo_external_properties_executor.ocean"
+                "github.actions.update_repo_external_custom_properties_executor.ocean"
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
