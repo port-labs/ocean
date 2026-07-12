@@ -22,13 +22,14 @@ This method has two account contexts:
 
 1. [ ] **Validates configuration** - checks Port credentials, VPC ID, and subnet ID formats.
 2. [ ] **Mirrors container image to integration ECR** - prepares GovCloud `linux/amd64` image URI.
-3. [ ] **Transforms and uploads StackSet template** - uploads `stackset/iam-roles.yaml` into GovCloud S3.
-4. [ ] **Transforms and uploads IAM roles template** - injects GovCloud StackSet URL into `iam-roles.yaml`.
-5. [ ] **Deploys management stack** - creates or updates `port-ocean-iam-roles` and captures `ManagementAccountRoleArn`.
-6. [ ] **Transforms and uploads integration ECS template** - injects GovCloud partition and container image settings.
-7. [ ] **Deploys integration ECS stack** - creates or updates `port-aws-ecs-integration` with `AccountRoleArn`.
-8. [ ] **Verifies ECS service** - waits for desired running task count.
-9. [ ] **Triggers an initial Port resync** - calls the Port API so first sync starts automatically.
+3. [ ] **Creates one integration-account template bucket** - applies cross-account read policy for management and member CloudFormation.
+4. [ ] **Transforms and uploads StackSet template** - uploads `stackset/iam-roles.yaml` into integration-account S3.
+5. [ ] **Transforms and uploads IAM roles template** - injects integration S3 StackSet URL into `iam-roles.yaml`.
+6. [ ] **Deploys management stack** - creates or updates `port-ocean-iam-roles` and captures `ManagementAccountRoleArn`.
+7. [ ] **Transforms and uploads integration ECS template** - injects GovCloud partition and container image settings.
+8. [ ] **Deploys integration ECS stack** - creates or updates `port-aws-ecs-integration` with `AccountRoleArn`.
+9. [ ] **Verifies ECS service** - waits for desired running task count.
+10. [ ] **Triggers an initial Port resync** - calls the Port API so first sync starts automatically.
 
 ### What CloudFormation creates
 
@@ -47,7 +48,7 @@ This method has two account contexts:
 
 - [ ] Delete integration ECS stack: `port-aws-ecs-integration`.
 - [ ] Delete management IAM roles stack: `port-ocean-iam-roles`.
-- [ ] Delete template bucket objects in both accounts.
+- [ ] Delete the integration-account template bucket: `port-cfn-templates-<integration-account-id>-<region>`.
 - [ ] Delete integration ECR repository: `port-ocean-aws-v3`.
 - [ ] Optionally delete integration and synced entities in Port.
 
@@ -86,13 +87,15 @@ All settings are defined as module-level variables at the top of `run.py`.
 | `INTEGRATION_ACCOUNT_ID` | GovCloud account ID where ECS integration runs. |
 | `TRUSTED_ROLE_NAME` | Integration role trusted by member account read roles. |
 | `STACKSET_NAME` | Name for StackSet resource in management account. |
+| `ORGANIZATION_ID` | AWS Organizations ID (`o-...`). Leave `None` to resolve from the management account. |
 | `UPDATE_STACK` | Set to `True` to update existing stacks. |
 
 ## Troubleshooting
 
 | Issue | What to check |
 |-------|----------------|
-| StackSet operation fails | Confirm OU IDs are valid and management account has Organizations plus StackSet permissions. |
+| `You must enable organizations access to operate a service managed stack set` | Run from the **management** account: `aws cloudformation activate-organizations-access --region <region> --profile <management-profile>`. The script also enables this automatically before StackSet deployment. |
+| StackSet operation fails | Confirm OU IDs are valid, management account has Organizations plus StackSet permissions, and integration bucket policy allows management and member CloudFormation access. |
 | Integration stack cannot assume role | Confirm `TRUSTED_ROLE_NAME` matches the integration task role name exactly. |
 | ECS service unhealthy | Verify subnet routing, image URI, and task role permissions in integration account. |
 | Member account resources missing in Port | Confirm StackSet finished in member accounts and `ManagementAccountRoleArn` was passed as `AccountRoleArn`. |

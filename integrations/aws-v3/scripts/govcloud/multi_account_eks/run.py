@@ -23,6 +23,7 @@ from scripts.govcloud.utils.templates import (
 )
 from scripts.utils.cloudformation import (
     deploy_stack,
+    ensure_cloudformation_organizations_access,
     ensure_stack_can_be_deployed,
     get_stack_outputs,
 )
@@ -32,7 +33,13 @@ from scripts.utils.eks import verify_eks_cluster
 from scripts.utils.helm import install_port_ocean_chart, wait_for_port_ocean_pod
 from scripts.utils.logging import logger
 from scripts.utils.port_api import trigger_port_resync
-from scripts.utils.s3 import ensure_template_bucket, upload_template
+from scripts.utils.s3 import (
+    apply_template_bucket_cross_account_policy,
+    ensure_integration_template_bucket,
+    get_account_id,
+    resolve_organization_id,
+    upload_template,
+)
 from scripts.utils.ssl import SslConfig
 from scripts.utils.validation import require_port_credentials, validate_subnet_ids
 
@@ -40,7 +47,7 @@ REGION = "us-gov-west-1"
 MANAGEMENT_AWS_PROFILE: str | None = "govcloud-management"
 INTEGRATION_AWS_PROFILE: str | None = "govcloud"
 
-SUBNET_IDS = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+SUBNET_IDS = ["subnet-03e81dd85cc89659d", "subnet-02c3ca90b111008bb"]
 CLUSTER_NAME = "port-ocean-eks"
 KUBERNETES_VERSION = "1.34"
 NODE_INSTANCE_TYPE = "t3.medium"
@@ -49,12 +56,13 @@ NAMESPACE = HELM_NAMESPACE
 SERVICE_ACCOUNT_NAME = "port-ocean-aws-v3"
 
 TEMPLATE_BUCKET: str | None = None
+ORGANIZATION_ID: str | None = None
 EKS_STACK_NAME = "port-aws-eks-integration"
 IRSA_STACK_NAME = "port-ocean-irsa"
-UPDATE_STACK = False
+UPDATE_STACK = True
 DEPLOY_HELM = True
 
-TARGET_OU_IDS = "r-xxxx"
+TARGET_OU_IDS = "r-p6q4"
 ACCOUNT_SCOPE = "ALL"
 TARGET_ACCOUNT_IDS = ""
 ROLE_NAME = "PortOceanReadRole"
@@ -183,12 +191,13 @@ def deploy_eks_stack(integration_session: boto3.Session, bucket: str) -> dict[st
 
 def deploy_irsa_stack(
     management_session: boto3.Session,
+    upload_session: boto3.Session,
     bucket: str,
     oidc_provider_url: str,
 ) -> str:
     stackset_body = prepare_stackset_irsa_template(ssl_config=ssl_config())
     stackset_url = upload_template(
-        management_session,
+        upload_session,
         region=REGION,
         bucket=bucket,
         key=STACKSET_S3_KEY,
@@ -205,7 +214,7 @@ def deploy_irsa_stack(
     cache_path.write_text(irsa_body, encoding="utf-8")
 
     irsa_url = upload_template(
-        management_session,
+        upload_session,
         region=REGION,
         bucket=bucket,
         key=IRSA_S3_KEY,
@@ -258,19 +267,36 @@ def main() -> None:
     integration_session = session(INTEGRATION_AWS_PROFILE)
     image_repository, image_tag = resolve_container_image(integration_session)
 
-    integration_bucket = ensure_template_bucket(integration_session, REGION, TEMPLATE_BUCKET)
+    template_bucket = ensure_integration_template_bucket(
+        integration_session,
+        management_session,
+        REGION,
+        TEMPLATE_BUCKET,
+        organization_id=ORGANIZATION_ID,
+    )
     logger.info("Deploying EKS stack in the integration account...")
-    eks_outputs = deploy_eks_stack(integration_session, integration_bucket)
+    eks_outputs = deploy_eks_stack(integration_session, template_bucket)
 
     oidc_provider_url = eks_outputs["OidcProviderUrl"]
     service_account_role_arn = eks_outputs["ServiceAccountRoleArn"]
     logger.info(f"OidcProviderUrl: {oidc_provider_url}")
 
-    management_bucket = ensure_template_bucket(management_session, REGION, TEMPLATE_BUCKET)
     logger.info("Deploying IRSA roles stack in the management account...")
+    ensure_cloudformation_organizations_access(management_session, REGION)
+    apply_template_bucket_cross_account_policy(
+        integration_session,
+        region=REGION,
+        bucket=template_bucket,
+        management_account_id=get_account_id(management_session),
+        organization_id=resolve_organization_id(
+            management_session,
+            ORGANIZATION_ID,
+        ),
+    )
     management_role_arn = deploy_irsa_stack(
         management_session,
-        management_bucket,
+        integration_session,
+        template_bucket,
         oidc_provider_url,
     )
     logger.info(f"ManagementAccountRoleArn: {management_role_arn}")

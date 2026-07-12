@@ -21,6 +21,7 @@ from scripts.govcloud.utils.templates import (
 )
 from scripts.utils.cloudformation import (
     deploy_stack,
+    ensure_cloudformation_organizations_access,
     ensure_stack_can_be_deployed,
     get_stack_outputs,
 )
@@ -29,7 +30,7 @@ from scripts.utils.ecr import ensure_ecr_repository, mirror_image_to_ecr
 from scripts.utils.ecs import verify_ecs_service
 from scripts.utils.logging import logger
 from scripts.utils.port_api import trigger_port_resync
-from scripts.utils.s3 import ensure_template_bucket, upload_template
+from scripts.utils.s3 import ensure_integration_template_bucket, upload_template
 from scripts.utils.ssl import SslConfig
 from scripts.utils.validation import (
     require_port_credentials,
@@ -45,6 +46,7 @@ VPC_ID = "vpc-xxxxxxxx"
 SUBNET_IDS = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
 
 TEMPLATE_BUCKET: str | None = None
+ORGANIZATION_ID: str | None = None
 IAM_ROLES_STACK_NAME = "port-ocean-iam-roles"
 INTEGRATION_STACK_NAME = "port-aws-ecs-integration"
 UPDATE_STACK = False
@@ -96,10 +98,14 @@ def resolve_container_image(integration_session: boto3.Session) -> str:
     return mirror_image_to_ecr(integration_session, REGION, ECR_REPOSITORY)
 
 
-def deploy_iam_roles_stack(management_session: boto3.Session, bucket: str) -> str:
+def deploy_iam_roles_stack(
+    management_session: boto3.Session,
+    upload_session: boto3.Session,
+    bucket: str,
+) -> str:
     stackset_body = prepare_stackset_iam_roles_template(ssl_config=ssl_config())
     stackset_url = upload_template(
-        management_session,
+        upload_session,
         region=REGION,
         bucket=bucket,
         key=STACKSET_S3_KEY,
@@ -116,7 +122,7 @@ def deploy_iam_roles_stack(management_session: boto3.Session, bucket: str) -> st
     cache_path.write_text(iam_roles_body, encoding="utf-8")
 
     iam_roles_url = upload_template(
-        management_session,
+        upload_session,
         region=REGION,
         bucket=bucket,
         key=IAM_ROLES_S3_KEY,
@@ -230,16 +236,26 @@ def main() -> None:
     container_image = resolve_container_image(integration_session)
     logger.info(f"Using container image: {container_image}")
 
-    management_bucket = ensure_template_bucket(management_session, REGION, TEMPLATE_BUCKET)
+    template_bucket = ensure_integration_template_bucket(
+        integration_session,
+        management_session,
+        REGION,
+        TEMPLATE_BUCKET,
+        organization_id=ORGANIZATION_ID,
+    )
     logger.info("Deploying IAM roles stack in the management account...")
-    account_role_arn = deploy_iam_roles_stack(management_session, management_bucket)
+    ensure_cloudformation_organizations_access(management_session, REGION)
+    account_role_arn = deploy_iam_roles_stack(
+        management_session,
+        integration_session,
+        template_bucket,
+    )
     logger.info(f"ManagementAccountRoleArn: {account_role_arn}")
 
-    integration_bucket = ensure_template_bucket(integration_session, REGION, TEMPLATE_BUCKET)
     logger.info("Deploying ECS integration stack in the integration account...")
     deploy_integration_stack(
         integration_session,
-        integration_bucket,
+        template_bucket,
         account_role_arn,
         port_client_id,
         port_client_secret,

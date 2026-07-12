@@ -21,6 +21,7 @@ from scripts.govcloud.utils.templates import (
 )
 from scripts.utils.cloudformation import (
     deploy_stack,
+    ensure_cloudformation_organizations_access,
     ensure_stack_can_be_deployed,
     get_stack_outputs,
 )
@@ -28,7 +29,7 @@ from scripts.utils.ec2 import verify_ec2_instance
 from scripts.utils.ecr import ensure_ecr_repository, mirror_image_to_ecr
 from scripts.utils.logging import logger
 from scripts.utils.port_api import trigger_port_resync
-from scripts.utils.s3 import ensure_template_bucket, upload_template
+from scripts.utils.s3 import ensure_integration_template_bucket, upload_template
 from scripts.utils.ssl import SslConfig
 from scripts.utils.validation import (
     require_port_credentials,
@@ -44,6 +45,7 @@ VPC_ID = "vpc-xxxxxxxx"
 SUBNET_ID = "subnet-aaaaaaaa"
 
 TEMPLATE_BUCKET: str | None = None
+ORGANIZATION_ID: str | None = None
 IAM_ROLES_STACK_NAME = "port-ocean-iam-roles"
 INTEGRATION_STACK_NAME = "port-aws-ec2-integration"
 UPDATE_STACK = False
@@ -93,9 +95,13 @@ def resolve_container_image(integration_session: boto3.Session) -> str:
     return mirror_image_to_ecr(integration_session, REGION, ECR_REPOSITORY)
 
 
-def deploy_iam_roles_stack(management_session: boto3.Session, bucket: str) -> str:
+def deploy_iam_roles_stack(
+    management_session: boto3.Session,
+    upload_session: boto3.Session,
+    bucket: str,
+) -> str:
     stackset_url = upload_template(
-        management_session,
+        upload_session,
         region=REGION,
         bucket=bucket,
         key=STACKSET_S3_KEY,
@@ -106,7 +112,7 @@ def deploy_iam_roles_stack(management_session: boto3.Session, bucket: str) -> st
         ssl_config=ssl_config(),
     )
     iam_roles_url = upload_template(
-        management_session,
+        upload_session,
         region=REGION,
         bucket=bucket,
         key=IAM_ROLES_S3_KEY,
@@ -154,9 +160,18 @@ def main() -> None:
     integration_session = session(INTEGRATION_AWS_PROFILE)
     container_image = resolve_container_image(integration_session)
 
+    template_bucket = ensure_integration_template_bucket(
+        integration_session,
+        management_session,
+        REGION,
+        TEMPLATE_BUCKET,
+        organization_id=ORGANIZATION_ID,
+    )
+    ensure_cloudformation_organizations_access(management_session, REGION)
     account_role_arn = deploy_iam_roles_stack(
         management_session,
-        ensure_template_bucket(management_session, REGION, TEMPLATE_BUCKET),
+        integration_session,
+        template_bucket,
     )
 
     template_body = prepare_ec2_multi_account_template(
@@ -170,7 +185,7 @@ def main() -> None:
     template_url = upload_template(
         integration_session,
         region=REGION,
-        bucket=ensure_template_bucket(integration_session, REGION, TEMPLATE_BUCKET),
+        bucket=template_bucket,
         key=EC2_S3_KEY,
         template_body=template_body,
     )

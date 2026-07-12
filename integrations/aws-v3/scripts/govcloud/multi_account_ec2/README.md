@@ -44,7 +44,7 @@ This method uses the same management-account IAM roles rollout as multi-account 
 
 - [ ] Delete integration EC2 stack: `port-aws-ec2-integration`.
 - [ ] Delete management IAM roles stack: `port-ocean-iam-roles`.
-- [ ] Delete template bucket objects in both accounts.
+- [ ] Delete the integration-account template bucket: `port-cfn-templates-<integration-account-id>-<region>`.
 - [ ] Delete integration ECR repository: `port-ocean-aws-v3`.
 - [ ] Optionally delete integration and synced entities in Port.
 
@@ -84,12 +84,14 @@ All settings are defined as module-level variables at the top of `run.py`.
 | `TRUSTED_ROLE_NAME` | Must match EC2 instance role name, usually `port-aws-ec2-integration-InstanceRole`. |
 | `VPC_ID` | VPC where EC2 integration instance runs. |
 | `SUBNET_ID` | Subnet where EC2 integration instance runs. |
+| `ORGANIZATION_ID` | AWS Organizations ID (`o-...`). Leave `None` to resolve from the management account. |
 
 ## Troubleshooting
 
 | Issue | What to check |
 |-------|----------------|
-| StackSet operation fails | Confirm OU IDs are valid and management account has Organizations plus StackSet permissions. |
+| `You must enable organizations access to operate a service managed stack set` | Run from the **management** account: `aws cloudformation activate-organizations-access --region <region> --profile <management-profile>`. The script also enables this automatically before StackSet deployment. |
+| StackSet operation fails | Confirm OU IDs are valid, management account has Organizations plus StackSet permissions, and integration bucket policy allows management and member CloudFormation access. |
 | Integration stack cannot assume role | Confirm `TRUSTED_ROLE_NAME` matches integration instance role name exactly. |
 | EC2 instance unhealthy | Verify subnet route table, security group egress, and image architecture. |
 | Member account resources missing in Port | Confirm StackSet finished in member accounts and `ManagementAccountRoleArn` was passed as `AccountRoleArn`. |

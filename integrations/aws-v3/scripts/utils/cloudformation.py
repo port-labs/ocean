@@ -8,6 +8,35 @@ import boto3
 from botocore.exceptions import ClientError, WaiterError
 
 from scripts.utils.constants import STACK_CREATE_TIMEOUT_SECONDS, TERMINAL_STACK_FAILURE_STATUSES
+from scripts.utils.logging import logger
+
+
+def ensure_cloudformation_organizations_access(
+    session: boto3.Session,
+    region: str,
+) -> None:
+    """Enable trusted access required for service-managed StackSets."""
+    cloudformation = session.client("cloudformation", region_name=region)
+    status = cloudformation.describe_organizations_access().get("Status", "DISABLED")
+    if status == "ENABLED":
+        logger.info("CloudFormation Organizations trusted access is already enabled.")
+        return
+
+    logger.info(
+        "Enabling CloudFormation Organizations trusted access "
+        "(required for service-managed StackSets)..."
+    )
+    try:
+        cloudformation.activate_organizations_access()
+    except ClientError as error:
+        error_code = error.response.get("Error", {}).get("Code", "")
+        if error_code != "InvalidOperation":
+            raise
+        # Another activation may have completed between describe and activate.
+        status = cloudformation.describe_organizations_access().get("Status", "DISABLED")
+        if status != "ENABLED":
+            raise
+    logger.info("CloudFormation Organizations trusted access is enabled.")
 
 
 def ensure_stack_can_be_deployed(

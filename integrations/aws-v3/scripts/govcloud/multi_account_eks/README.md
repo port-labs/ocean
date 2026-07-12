@@ -52,7 +52,7 @@ This method has three phases:
 - [ ] Uninstall Helm release: `helm uninstall aws-v3 -n port-ocean`.
 - [ ] Delete integration EKS stack: `port-aws-eks-integration`.
 - [ ] Delete management IRSA stack: `port-ocean-irsa`.
-- [ ] Delete template bucket objects in both accounts.
+- [ ] Delete the integration-account template bucket: `port-cfn-templates-<integration-account-id>-<region>`.
 - [ ] Delete integration ECR repository: `port-ocean-aws-v3`.
 - [ ] Optionally delete integration and synced entities in Port.
 
@@ -94,12 +94,14 @@ All settings are defined as module-level variables at the top of `run.py`.
 | `TARGET_OU_IDS` | OU or root IDs targeted by StackSet role rollout. |
 | `DEPLOY_HELM` | Set to `False` to stop after CloudFormation and skip Helm deployment. |
 | `HELM_CHART_VERSION` | Set to a chart version string to pin Helm; leave `None` to install latest. |
+| `ORGANIZATION_ID` | AWS Organizations ID (`o-...`). Leave `None` to resolve from the management account. |
 
 ## Troubleshooting
 
 | Issue | What to check |
 |-------|----------------|
+| `You must enable organizations access to operate a service managed stack set` | Run from the **management** account: `aws cloudformation activate-organizations-access --region <region> --profile <management-profile>`. The script also enables this automatically before StackSet deployment. |
 | `OIDCIssuerURL` errors in management stack | Ensure the script receives `OidcProviderUrl` from integration stack outputs and strips `https://`. |
-| StackSet rollout fails in member accounts | Confirm OU IDs and Organizations permissions in management account. |
+| StackSet rollout fails in member accounts | Confirm OU IDs, Organizations permissions, and integration bucket policy for cross-account template access. |
 | Helm deploy fails | Ensure kubeconfig points to the integration account cluster and `helm repo update` succeeds. |
 | Member account resources missing in Port | Confirm `ManagementAccountRoleArn` was set in Helm values as `accountRoleArn` and StackSet completed. |

@@ -65,7 +65,7 @@ See the README in each method directory for method-specific parameters.
 | `listRegions` / commercial Account API errors | Container or pod needs `OCEAN__INTEGRATION__CONFIG__AWS_PARTITION=aws-us-gov`. Scripts add this automatically for ECS/EC2/Helm. |
 | `exec format error` | Re-mirror the image as `linux/amd64` (scripts do this by default). |
 | Invalid subnet ID | Use `subnet-xxxxxxxx` IDs, not console display names. |
-| Multi-account StackSet failures | Confirm `StackSetTemplateURL` points to your GovCloud S3 upload (scripts handle this). |
+| Multi-account StackSet failures | Confirm `StackSetTemplateURL` points to your integration-account S3 upload (scripts handle this). Management account does not need its own template bucket. |
 | EKS Helm deploy fails | Run `UpdateKubeconfigCommand` from stack outputs; ensure `helm` and `kubectl` are installed. |
 
 See the [AWS v3 installation docs](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installation/) for the standard commercial flows these scripts adapt for GovCloud.
