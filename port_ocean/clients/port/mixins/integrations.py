@@ -8,6 +8,7 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.core.utils.json_compat import make_json_compatible
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     LakehouseDataEntryBatch,
@@ -380,9 +381,9 @@ class IntegrationClientMixin:
         data = []
         for entry in event["data"]:
             entry_data: dict[str, Any] = {
-                "request": entry["request"],
-                "response": entry["response"],
-                "items": entry["items"],
+                "request": make_json_compatible(entry["request"]),
+                "response": make_json_compatible(entry["response"]),
+                "items": make_json_compatible(entry["items"]),
                 "metadata": {
                     "operation": entry["metadata"]["operation"].value,
                     "extractionTimestamp": entry["metadata"]["extraction_timestamp"],
@@ -391,7 +392,7 @@ class IntegrationClientMixin:
                 },
             }
             if environment_data := entry.get("environment_data"):
-                entry_data["environment_data"] = environment_data
+                entry_data["environment_data"] = make_json_compatible(environment_data)
             data.append(entry_data)
 
         body: dict[str, Any] = {
