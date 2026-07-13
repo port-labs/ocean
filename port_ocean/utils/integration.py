@@ -13,14 +13,14 @@ def read_app_spec_interval(integration: dict[str, Any], key: str) -> str | None:
     """Read a spec-level interval value from the integration object.
 
     Looks in integration["config"][key] first (portal-configured overrides),
-    then integration["spec"]["saas"][key] (app spec defaults).
+    then integration["spec"]["appSpec"][key] (app spec defaults).
     Returns the raw string value or None if not found.
     """
     config_value = integration.get("config", {}).get(key)
     if config_value:
         return str(config_value)
 
-    spec_value = integration.get("spec", {}).get("saas", {}).get(key)
+    spec_value = integration.get("spec", {}).get("appSpec", {}).get(key)
     if spec_value:
         return str(spec_value)
 

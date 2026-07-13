@@ -21,7 +21,7 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from port_ocean.context.ocean import ocean
 
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
 )
@@ -141,7 +141,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 inputs[key] = json.dumps(value)
         return inputs
 
-    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
+    async def execute(self, run: IntegrationRun) -> None:
         """
         Dispatch a GitHub Actions workflow and register the returned run with Port.
 
