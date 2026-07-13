@@ -79,7 +79,7 @@ class AbstractGitHubAuthenticator(ABC):
                 "X-RateLimit-Reset",
             ],
             retryable_methods=default_methods | extra_retryable_methods,
-            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR, 499],
             ignore_retry_after_status_codes=[
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 HTTPStatus.BAD_GATEWAY,
