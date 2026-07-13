@@ -61,10 +61,11 @@ class ReadyPartitionCrawlStream:
                     raise item
                 yield item
         finally:
-            if self._refine_task is not None and not self._refine_task.done():
+            if not self._refine_task:
+                return
+            if not self._refine_task.done():
                 self._refine_task.cancel()
-            if self._refine_task is not None:
-                await asyncio.gather(self._refine_task, return_exceptions=True)
+            await asyncio.gather(self._refine_task, return_exceptions=True)
 
     async def _mark_crawl_finished(self) -> None:
         self._active_crawls -= 1
