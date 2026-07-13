@@ -22,10 +22,10 @@ class PartitionRefiner:
     def __init__(
         self,
         client: WizClient,
-        max_entities: int = DEFAULT_MAX_PARTITION_ENTITIES,
+        config: ParallelismConfig
     ) -> None:
         self._client = client
-        self._max_entities = max_entities
+        self._config = config
         self._splitter = PartitionSplitter()
 
     async def iter_ready_partitions(
@@ -63,17 +63,16 @@ class PartitionRefiner:
             logger.info(f"Skipping empty partition {partition.label}")
             return
 
-        if count <= self._max_entities:
+        max_entities = config["max_partition_entities"]
+        if count <= max_entities:
             logger.info(
-                f"Partition {partition.label} has {count} entities "
-                f"(within limit of {self._max_entities})"
+                f"Partition {partition.label} has {count} entities (within limit of {max_entities})"
             )
             yield partition
             return
 
         logger.info(
-            f"Partition {partition.label} has {count} entities, splitting "
-            f"(limit {self._max_entities})"
+            f"Partition {partition.label} has {count} entities, splitting (limit {max_entities})"
         )
         children = self._splitter.split(partition, config)
         if not children:

@@ -36,9 +36,7 @@ class ReadyPartitionCrawlStream:
         self._config = config
         self._get_resources = get_resources
         self._max_pages = max_pages
-        self._refiner = PartitionRefiner(
-            client, max_entities=config["max_partition_entities"]
-        )
+        self._refiner = PartitionRefiner(client, config)
         self._result_queue: asyncio.Queue[Any] = asyncio.Queue()
         self._active_crawls = 0
         self._refinement_complete = False

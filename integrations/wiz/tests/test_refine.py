@@ -105,13 +105,14 @@ async def test_refine_partitions_skips_empty_partitions() -> None:
         PaginationPartition(label="partition-a", filter_overlay={"severity": ["CRITICAL"]}),
         PaginationPartition(label="partition-b", filter_overlay={"severity": ["HIGH"]}),
     ]
+    config = _parallelism_config()
 
     refined = await _collect_ready_partitions(
-        PartitionRefiner(client),
+        PartitionRefiner(client, config),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         partitions,
-        _parallelism_config(),
+        config,
     )
 
     assert refined == []
@@ -127,15 +128,16 @@ async def test_refine_partitions_keeps_partitions_within_limit() -> None:
         filter_overlay={"severity": ["CRITICAL"]},
     )
 
+    config = _parallelism_config()
     refined = await _collect_ready_partitions(
         PartitionRefiner(
             client,
-            max_entities=PartitionRefiner.DEFAULT_MAX_PARTITION_ENTITIES,
+            config,
         ),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
-        _parallelism_config(),
+        config,
     )
 
     assert refined == [partition]
@@ -156,13 +158,13 @@ async def test_refine_partitions_splits_large_date_partition() -> None:
             }
         },
     )
-
+    config = _parallelism_config()
     refined = await _collect_ready_partitions(
-        PartitionRefiner(client, max_entities=500),
+        PartitionRefiner(client, config),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
-        _parallelism_config(),
+        config,
     )
 
     assert len(refined) == 2
@@ -183,12 +185,13 @@ async def test_refine_partitions_splits_severity_partition_with_date_subwindows(
         filter_overlay={"severity": ["CRITICAL"]},
     )
 
+    config = _parallelism_config(lookback_days=60, date_interval_days=30)
     refined = await _collect_ready_partitions(
-        PartitionRefiner(client, max_entities=500),
+        PartitionRefiner(client, config),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
-        _parallelism_config(lookback_days=60, date_interval_days=30),
+        config,
     )
 
     assert len(refined) == 2
