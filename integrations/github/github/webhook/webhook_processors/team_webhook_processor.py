@@ -88,10 +88,18 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
                 ),
             )
             data_to_upsert = extras_result[0]
+            if not data_to_upsert:
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
             enriched = await exporter.enrich_enterprise_teams_with_members(
                 [data_to_upsert], organization
             )
             data_to_upsert = enriched[0]
+            if not data_to_upsert:
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
             if data_to_upsert["slug"].startswith("ent:"):
                 await enrich_members_with_saml_email(
                     graphql_exporter.client,
