@@ -23,11 +23,10 @@ class PartitionRefiner:
         self,
         client: WizClient,
         max_entities: int = DEFAULT_MAX_PARTITION_ENTITIES,
-        splitter: PartitionSplitter | None = None,
     ) -> None:
         self._client = client
         self._max_entities = max_entities
-        self._splitter = splitter or PartitionSplitter()
+        self._splitter = PartitionSplitter()
 
     async def iter_ready_partitions(
         self,

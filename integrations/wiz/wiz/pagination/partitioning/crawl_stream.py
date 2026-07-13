@@ -28,7 +28,6 @@ class ReadyPartitionCrawlStream:
         config: ParallelismConfig,
         fetch_chain: Callable[..., AsyncIterator[list[Any]]],
         max_pages: int | None = None,
-        refiner: PartitionRefiner | None = None,
     ) -> None:
         self._client = client
         self._resource = resource
@@ -37,7 +36,7 @@ class ReadyPartitionCrawlStream:
         self._config = config
         self._fetch_chain = fetch_chain
         self._max_pages = max_pages
-        self._refiner = refiner or PartitionRefiner(
+        self._refiner = PartitionRefiner(
             client, max_entities=config["max_partition_entities"]
         )
         self._result_queue: asyncio.Queue[Any] = asyncio.Queue()
