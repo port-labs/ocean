@@ -14,6 +14,7 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
+from azure_devops.misc import is_advanced_security_alerts_list_url
 
 
 class AzureDevOpsRetryTransport(RetryTransport):
@@ -169,3 +170,14 @@ class AzureDevOpsRetryTransport(RetryTransport):
                 f"Azure DevOps transport error hit, retrying {request.method} {request.url} in {sleep_time}s{retry_context}"
             )
         super()._log_before_retry(request, sleep_time, response, error)
+
+    def _should_retry(self, response: httpx.Response) -> bool:
+        if (
+            response.status_code == HTTPStatus.BAD_REQUEST
+            and is_advanced_security_alerts_list_url(str(response.url))
+        ):
+            return False
+        return super()._should_retry(response)
+
+    async def _should_retry_async(self, response: httpx.Response) -> bool:
+        return self._should_retry(response)

@@ -109,6 +109,8 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+  incrementalSync:
+    enabled: true
 installationDocs:
   saas:
     - name: SaasOAuth2

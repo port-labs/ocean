@@ -513,17 +513,6 @@ class AzureDevopsBuildConfig(ResourceConfig):
     )
 
 
-class AzureDevopsPipelineStageConfig(ResourceConfig):
-    kind: Literal[Kind.PIPELINE_STAGE] = Field(
-        title="Azure Devops Pipeline Stage",
-        description="Azure Devops pipeline stage resource kind.",
-    )
-    selector: AzureDevopsSelector = Field(
-        title="Pipeline stage selector",
-        description="Selector for the pipeline stage resource.",
-    )
-
-
 class AzureDevopsPipelineRunConfig(ResourceConfig):
     kind: Literal[Kind.PIPELINE_RUN] = Field(
         title="Azure Devops Pipeline Run",
@@ -532,6 +521,17 @@ class AzureDevopsPipelineRunConfig(ResourceConfig):
     selector: AzureDevopsSelector = Field(
         title="Pipeline run selector",
         description="Selector for the pipeline run resource.",
+    )
+
+
+class AzureDevopsPipelineStageConfig(ResourceConfig):
+    kind: Literal[Kind.PIPELINE_STAGE] = Field(
+        title="Azure Devops Pipeline Stage",
+        description="Azure Devops pipeline stage resource kind.",
+    )
+    selector: AzureDevopsSelector = Field(
+        title="Pipeline stage selector",
+        description="Selector for the pipeline stage resource.",
     )
 
 
