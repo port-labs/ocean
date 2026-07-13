@@ -25,7 +25,7 @@ class ReplaceRepositoriesExternalCustomPropertiesExecutor(AbstractGithubExecutor
     WEBHOOK_PROCESSOR_CLASS = None
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
-        # ponytail: global lock for replace; per-org keys if concurrent orgs matter
+        # Runs should be sequential to avoid race conditions
         return self.ACTION_NAME
 
     async def execute(self, run: IntegrationRun) -> None:
