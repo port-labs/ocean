@@ -29,26 +29,6 @@ class PartitionRefiner:
         self._max_entities = max_entities
         self._splitter = splitter or PartitionSplitter()
 
-    async def refine_partitions(
-        self,
-        resource: str,
-        base_variables: dict[str, Any],
-        partitions: list[PaginationPartition],
-        config: ParallelismConfig,
-    ) -> list[PaginationPartition]:
-        refined_partitions = [
-            partition
-            async for partition in self.iter_ready_partitions(
-                resource, base_variables, partitions, config
-            )
-        ]
-
-        logger.info(
-            f"Refined {len(partitions)} initial partitions into "
-            f"{len(refined_partitions)} crawl partitions"
-        )
-        return refined_partitions
-
     async def iter_ready_partitions(
         self,
         resource: str,

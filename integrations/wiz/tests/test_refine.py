@@ -23,6 +23,21 @@ def _parallelism_config(**overrides: Any) -> ParallelismConfig:
     return config  # type: ignore[return-value]
 
 
+async def _collect_ready_partitions(
+    refiner: PartitionRefiner,
+    resource: str,
+    base_variables: dict[str, Any],
+    partitions: list[PaginationPartition],
+    config: ParallelismConfig,
+) -> list[PaginationPartition]:
+    return [
+        partition
+        async for partition in refiner.iter_ready_partitions(
+            resource, base_variables, partitions, config
+        )
+    ]
+
+
 def test_bisect_date_partition_splits_window_in_half() -> None:
     splitter = PartitionSplitter()
     partition = PaginationPartition(
@@ -89,7 +104,8 @@ async def test_refine_partitions_skips_empty_partitions() -> None:
         PaginationPartition(label="partition-b", filter_overlay={"severity": ["HIGH"]}),
     ]
 
-    refined = await PartitionRefiner(client).refine_partitions(
+    refined = await _collect_ready_partitions(
+        PartitionRefiner(client),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         partitions,
@@ -109,10 +125,11 @@ async def test_refine_partitions_keeps_partitions_within_limit() -> None:
         filter_overlay={"severity": ["CRITICAL"]},
     )
 
-    refined = await PartitionRefiner(
-        client,
-        max_entities=PartitionRefiner.DEFAULT_MAX_PARTITION_ENTITIES,
-    ).refine_partitions(
+    refined = await _collect_ready_partitions(
+        PartitionRefiner(
+            client,
+            max_entities=PartitionRefiner.DEFAULT_MAX_PARTITION_ENTITIES,
+        ),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
@@ -138,7 +155,8 @@ async def test_refine_partitions_splits_large_date_partition() -> None:
         },
     )
 
-    refined = await PartitionRefiner(client, max_entities=500).refine_partitions(
+    refined = await _collect_ready_partitions(
+        PartitionRefiner(client, max_entities=500),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
@@ -163,7 +181,8 @@ async def test_refine_partitions_splits_severity_partition_with_date_subwindows(
         filter_overlay={"severity": ["CRITICAL"]},
     )
 
-    refined = await PartitionRefiner(client, max_entities=500).refine_partitions(
+    refined = await _collect_ready_partitions(
+        PartitionRefiner(client, max_entities=500),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
