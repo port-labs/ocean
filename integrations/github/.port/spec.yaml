@@ -123,7 +123,7 @@ actions:
         description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
   - name: update_repo_external_custom_properties
     icon: Github
-    description: Update GitHub repository external custom properties based on Port entity changes
+    description: Update GitHub repository external custom properties without removing unspecified properties
     inputs:
       - name: org
         title: Organization
@@ -138,7 +138,16 @@ actions:
       - name: externalPropertiesMapping
         title: External Properties Mapping
         type: jqObject
-        description: 'Defines the mapping of Port blueprint properties to GitHub external custom properties. Example: { "buisness_criticality": "{{ .properties.buisness_criticality }}"}'
+        description: 'Property names and values to update on the repository. Example: { "scorecard": "{{ .properties.scorecard }}" }'
+        required: true
+  - name: replace_repositories_external_custom_properties
+    icon: Github
+    description: Replace GitHub repositories external custom properties. Properties not included are removed from each repository.
+    inputs:
+      - name: repositories
+        title: Repository Items
+        type: array
+        description: 'List of repositories items to replace. Each item includes repo and externalPropertiesMapping. org is optional and falls back to github_organization. Example: [{ "org": "my-org", "repo": "my-repo", "externalPropertiesMapping": { "scorecard": "red" } }]'
         required: true
 installationDocs:
   saas:
