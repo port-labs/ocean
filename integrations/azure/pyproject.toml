@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "azure"
-version = "0.1.375"
+version = "0.1.376"
 description = "Azure integration"
 authors = ["Tom Tankilevitch <tom@getport.io>"]
 
