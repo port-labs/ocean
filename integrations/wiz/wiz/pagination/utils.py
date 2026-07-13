@@ -6,7 +6,6 @@ from .base import PaginationPartition
 
 
 def generate_date_windows(
-    *,
     lookback_days: int,
     interval_days: int,
     now: datetime.datetime | None = None,
