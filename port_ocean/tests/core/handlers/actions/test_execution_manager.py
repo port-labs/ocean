@@ -572,14 +572,22 @@ class TestExecutionManager:
             == execution_manager._high_watermark
         )
 
+    @pytest.mark.parametrize(
+        "generate_run",
+        [generate_mock_action_run, generate_mock_wf_node_run],
+        ids=["action_run", "workflow_node_run"],
+    )
     @pytest.mark.asyncio
     async def test_poll_action_runs_should_ack_and_fail_unregistered_actions(
-        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        generate_run: Any,
     ) -> None:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        unregistered_run = generate_mock_action_run(action_type="unregistered_action")
+        unregistered_run = generate_run(action_type="unregistered_action")
         claim_count = 0
 
         async def claim_runs_once(
@@ -587,7 +595,7 @@ class TestExecutionManager:
             visibility_timeout_ms: int,
             exclude_action_identifiers: list[str] | None = None,
             exclude_wf_nodes_uid: list[str] | None = None,
-        ) -> list[ActionRun]:
+        ) -> list[ActionRun | WorkflowNodeRun]:
             nonlocal claim_count
             claim_count += 1
             if claim_count == 1:
