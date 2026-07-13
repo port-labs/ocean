@@ -3,18 +3,11 @@ import datetime
 from wiz.options import ParallelismConfig
 
 from wiz.pagination.base import PaginationPartition
-from wiz.pagination.utils import build_date_partitions, to_iso8601
+from wiz.pagination.utils import build_date_partitions, parse_iso8601, to_iso8601
 
 
 class PartitionSplitter:
     MIN_DATE_WINDOW = datetime.timedelta(seconds=1)
-
-    @staticmethod
-    def parse_iso8601(value: str) -> datetime.datetime:
-        if value.endswith("Z"):
-            value = f"{value[:-1]}+00:00"
-        parsed = datetime.datetime.fromisoformat(value)
-        return parsed.replace(tzinfo=datetime.UTC) if parsed.tzinfo is None else parsed.astimezone(datetime.UTC)
 
     def bisect_date_partition(
         self, partition: PaginationPartition
@@ -28,8 +21,8 @@ class PartitionSplitter:
         if not isinstance(after_raw, str) or not isinstance(before_raw, str):
             return None
 
-        window_start = self.parse_iso8601(after_raw)
-        window_end = self.parse_iso8601(before_raw)
+        window_start = parse_iso8601(after_raw)
+        window_end = parse_iso8601(before_raw)
         if window_end - window_start <= self.MIN_DATE_WINDOW:
             return None
 

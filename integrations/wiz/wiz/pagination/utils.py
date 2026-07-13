@@ -32,6 +32,15 @@ def to_iso8601(timestamp: datetime.datetime) -> str:
     return timestamp.isoformat().replace("+00:00", "Z")
 
 
+def parse_iso8601(value: str) -> datetime.datetime:
+    if value.endswith("Z"):
+        value = f"{value[:-1]}+00:00"
+    parsed = datetime.datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=datetime.UTC)
+    return parsed.astimezone(datetime.UTC)
+
+
 def merge_partition_filters(
     variables: dict[str, Any], partition: PaginationPartition
 ) -> dict[str, Any]:
