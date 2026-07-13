@@ -148,6 +148,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                     "status": WorkflowNodeRunStatus.IN_PROGRESS,
                     "externalRunId": external_id,
                     "output": output,
+                    "links": [link],
                 },
             )
             run.output = output
