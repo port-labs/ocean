@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.369 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.1.368 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.1.367 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.1.366 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.1.365 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.1.364 (2026-07-05)
+
+
+### Improvements
+
+- Migrated New Relic issue webhook handling to Ocean's webhook processor manager with dedicated issue and entity processors
+- Replaced per-request `httpx.AsyncClient` instances with shared HTTP client usage across handlers
+
+
+### Bug Fixes
+
+- Restored config gating for issue relation enrichment so `__{entityType}` keys are only added for configured `newRelicTypes`
+
+
+## 0.1.363 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
 ## 0.1.362 (2026-06-30)
 
 

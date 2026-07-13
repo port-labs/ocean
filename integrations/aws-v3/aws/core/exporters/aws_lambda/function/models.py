@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
@@ -7,40 +7,40 @@ class LambdaFunctionProperties(BaseModel):
     Architectures: list[str] = Field(default_factory=list)
     CodeSha256: str = Field(default_factory=str)
     CodeSize: int = Field(default=0)
-    DeadLetterConfig: Optional[dict[str, Any]] = None
+    DeadLetterConfig: dict[str, Any] | None = None
     Description: str = Field(default_factory=str)
-    Environment: Optional[dict[str, Any]] = None
-    EphemeralStorage: Optional[dict[str, Any]] = None
+    Environment: dict[str, Any] | None = None
+    EphemeralStorage: dict[str, Any] | None = None
     FileSystemConfigs: list[dict[str, Any]] = Field(default_factory=list)
     FunctionArn: str = Field(default_factory=str)
     FunctionName: str = Field(default_factory=str)
     Handler: str = Field(default_factory=str)
-    ImageConfigResponse: Optional[dict[str, Any]] = None
-    KmsKeyArn: Optional[str] = Field(default=None, alias="KMSKeyArn")
+    ImageConfigResponse: dict[str, Any] | None = None
+    KmsKeyArn: str | None = Field(default=None, alias="KMSKeyArn")
     LastModified: str = Field(default_factory=str)
     LastUpdateStatus: str = Field(default_factory=str)
     LastUpdateStatusReason: str = Field(default_factory=str)
     LastUpdateStatusReasonCode: str = Field(default_factory=str)
     Layers: list[dict[str, Any]] = Field(default_factory=list)
-    LoggingConfig: Optional[dict[str, Any]] = None
-    MasterArn: Optional[str] = None
+    LoggingConfig: dict[str, Any] | None = None
+    MasterArn: str | None = None
     MemorySize: int = Field(default=128)
     PackageType: str = Field(default="Zip")
     RevisionId: str = Field(default_factory=str)
     Role: str = Field(default_factory=str)
     Runtime: str = Field(default_factory=str)
-    RuntimeVersionConfig: Optional[dict[str, Any]] = None
-    SigningJobArn: Optional[str] = None
-    SigningProfileVersionArn: Optional[str] = None
-    SnapStart: Optional[dict[str, Any]] = None
+    RuntimeVersionConfig: dict[str, Any] | None = None
+    SigningJobArn: str | None = None
+    SigningProfileVersionArn: str | None = None
+    SnapStart: dict[str, Any] | None = None
     State: str = Field(default_factory=str)
-    StateReason: Optional[str] = None
-    StateReasonCode: Optional[str] = None
+    StateReason: str | None = None
+    StateReasonCode: str | None = None
     Tags: dict[str, Any] = Field(default_factory=dict)
     Timeout: int = Field(default=3)
-    TracingConfig: Optional[dict[str, Any]] = None
+    TracingConfig: dict[str, Any] | None = None
     Version: str = Field(default_factory=str)
-    VpcConfig: Optional[dict[str, Any]] = None
+    VpcConfig: dict[str, Any] | None = None
 
     class Config:
         allow_population_by_field_name = True

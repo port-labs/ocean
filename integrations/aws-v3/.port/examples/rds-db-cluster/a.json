@@ -1,0 +1,67 @@
+{
+  "Type": "AWS::RDS::DBCluster",
+  "Properties": {
+    "ActivityStreamStatus": "stopped",
+    "AssociatedRoles": [],
+    "AutoMinorVersionUpgrade": true,
+    "AvailabilityZones": ["us-east-1a", "us-east-1b", "us-east-1c"],
+    "BackupRetentionPeriod": 7,
+    "ClusterCreateTime": "2024-03-15T10:22:33.456Z",
+    "CopyTagsToSnapshot": true,
+    "CrossAccountClone": false,
+    "DatabaseName": "myappdb",
+    "DBClusterArn": "arn:aws:rds:us-east-1:123456789012:cluster:my-aurora-cluster",
+    "DBClusterIdentifier": "my-aurora-cluster",
+    "DBClusterMembers": [
+      {
+        "DBInstanceIdentifier": "my-aurora-cluster-instance-1",
+        "IsClusterWriter": true,
+        "DBClusterParameterGroupStatus": "in-sync",
+        "PromotionTier": 1
+      },
+      {
+        "DBInstanceIdentifier": "my-aurora-cluster-instance-2",
+        "IsClusterWriter": false,
+        "DBClusterParameterGroupStatus": "in-sync",
+        "PromotionTier": 1
+      }
+    ],
+    "DbClusterResourceId": "cluster-ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "DeletionProtection": true,
+    "EarliestRestorableTime": "2024-03-15T10:30:00.000Z",
+    "Endpoint": "my-aurora-cluster.cluster-abcdefgh1234.us-east-1.rds.amazonaws.com",
+    "Engine": "aurora-mysql",
+    "EngineMode": "provisioned",
+    "EngineVersion": "8.0.mysql_aurora.3.04.0",
+    "GlobalWriteForwardingStatus": "disabled",
+    "HttpEndpointEnabled": false,
+    "IAMDatabaseAuthenticationEnabled": true,
+    "KmsKeyId": "arn:aws:kms:us-east-1:123456789012:key/mrk-abcdef1234567890",
+    "LatestRestorableTime": "2024-03-20T08:15:00.000Z",
+    "MasterUsername": "admin",
+    "MultiAZ": true,
+    "NetworkType": "IPV4",
+    "Port": 3306,
+    "PreferredBackupWindow": "02:00-03:00",
+    "PreferredMaintenanceWindow": "sun:05:00-sun:06:00",
+    "ReaderEndpoint": "my-aurora-cluster.cluster-ro-abcdefgh1234.us-east-1.rds.amazonaws.com",
+    "Status": "available",
+    "StorageEncrypted": true,
+    "StorageType": "aurora",
+    "Tags": [
+      {"Key": "Environment", "Value": "production"},
+      {"Key": "Team", "Value": "platform"}
+    ],
+    "VpcSecurityGroups": [
+      {
+        "VpcSecurityGroupId": "sg-0123456789abcdef0",
+        "Status": "active"
+      }
+    ],
+    "DBSubnetGroup": "my-db-subnet-group"
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

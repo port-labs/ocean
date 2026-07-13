@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.15.9-beta (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 2.15.8-beta (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 2.15.7-beta (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 2.15.6-beta (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 2.15.5-beta (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 2.15.4-beta (2026-07-07)
+
+
+### Improvements
+
+- Supported account_role_arns in partition extraction
+
+
+## 2.15.3-beta (2026-07-05)
+
+
+### Improvements
+
+- Added static examples
+
+
+## 2.15.2-beta (2026-07-05)
+
+
+### Improvements
+
+- Added missing/fixed existing internal examples
+
+
+## 2.15.1-beta (2026-07-05)
+
+
+### Improvements
+
+- Typing for models uses new syntax rather than the deprecated format
+
+
+## 2.15.0-beta (2026-07-02)
+
+
+### Improvements
+
+- Added support for GovCloud environments
+
+
+## 2.14.3-beta (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
 ## 2.14.2-beta (2026-07-01)
 
 

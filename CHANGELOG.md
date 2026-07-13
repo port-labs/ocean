@@ -7,6 +7,49 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.10 (2026-07-12)
+
+### Improvements
+
+- Refactored `LifecycleClient` to delegate lifecycle API POST requests to a dedicated `lifecycle_http_client` instead of inheriting HTTP transport behavior, improving separation of concerns and testability.
+
+### Bug Fixes
+
+- Fixed lifecycle HTTP client proxy resolution to return a context-bound client per access, preventing stale proxy reuse across different event loops.
+- Extended HTTP client context cleanup to include DSP lifecycle clients and aligned related tests, fixing flaky lifecycle/sync-raw test behavior.
+
+## 0.44.9 (2026-07-09)
+
+### Bug Fixes
+
+- Fixed lakehouse raw-data batch serialization when buffered items contain datetime values by applying `make_json_compatible` in `post_integration_raw_data_batch()` before HTTP JSON encoding.
+
+## 0.44.7 (2026-07-08)
+
+### Improvements
+
+- Renamed the `entityDeletionThreshold` port-app-config field title and description to "Allow entity deletion" so the Advanced Config mapping UI can present it as an on/off toggle.
+
+## 0.44.6 (2026-07-08)
+
+### Improvements
+
+- Improved action processor fairness: each claim-pending poll now considers both action runs and workflow node runs in the same cycle (instead of alternating), preventing one run type from waiting up to twice the poll interval while the other is claimed.
+- Added per-action-type buffer limits in the execution manager. When a run type fills its share of the queue, it is temporarily excluded from claim-pending so high-volume actions cannot starve other action types.
+- Added descriptions and validation bounds to `ActionsProcessorSettings` (`runs_buffer_high_watermark`, `visibility_timeout_ms`, `poll_check_interval_seconds`, `workers_count`).
+
+### Bug Fixes
+
+- Fixed `task_done() called too many times` when a worker timed out on an empty queue by only calling `commit()` after a run was successfully dequeued.
+
+
+## 0.44.5 (2026-06-30)
+
+### Improvements
+
+- Added Redis stream consumer observability: logs now include `stream_key`, `time_until_consumed_ms` (queue-to-consume latency from `queuedAt`), and `time_until_acked_ms` (queue-to-ack latency) for each message.
+
+
 ## 0.44.4 (2026-06-28)
 
 ### Improvements

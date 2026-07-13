@@ -71,6 +71,11 @@ configurations:
     required: false
     default: 95
     description: GitHub REST rate-limit utilization percentage (0-100) at which resync processes pause to reserve quota for webhooks. Does not throttle webhooks or actions.
+  - name: legacyDispatchWorkflowTracking
+    type: boolean
+    required: false
+    default: false
+    description: Enable for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch (see https://github.com/github/roadmap/issues/1188). Polls GitHub for the triggered workflow run and serializes dispatches per organization/repository/workflow.
 saas:
   enabled: true
   liveEvents:
@@ -116,6 +121,25 @@ actions:
         title: Workflow inputs
         type: jqObject
         description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
+  - name: update_repo_external_custom_properties
+    icon: Github
+    description: Update GitHub repository external custom properties based on Port entity changes
+    inputs:
+      - name: org
+        title: Organization
+        type: string
+        description: The GitHub organization that owns the repository
+        required: true
+      - name: repo
+        title: Repository
+        type: string
+        description: The name of the GitHub repository to update
+        required: true
+      - name: externalPropertiesMapping
+        title: External Properties Mapping
+        type: jqObject
+        description: 'Defines the mapping of Port blueprint properties to GitHub external custom properties. Example: { "buisness_criticality": "{{ .properties.buisness_criticality }}"}'
+        required: true
 installationDocs:
   saas:
     - name: SaasOAuth2

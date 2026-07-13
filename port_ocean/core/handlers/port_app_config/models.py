@@ -162,8 +162,8 @@ class PortAppConfig(_FieldMetadataEnforcer):
         default=0.9,
         ge=0,
         le=1,
-        title="Deletion safety limit",
-        description="Skip deletion if the number of entities to delete exceeds this percentage of total entities. Set between 0 and 1. Protects against accidental mass deletion from misconfigurations.",
+        title="Allow entity deletion",
+        description="When on - deletes entities missing from the source, keeping the catalog in sync. When off - no deletions, stale entities may remain.",
     )
     resources: list[ResourceConfig] = Field(
         default_factory=list,

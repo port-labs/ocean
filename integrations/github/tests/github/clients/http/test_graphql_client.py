@@ -65,6 +65,7 @@ class TestGithubGraphQLClient:
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
         mock_response.headers = {}  # Add headers attribute
+        mock_response.extensions = {}  # Carries the transport's sent variables
         mock_response.json.return_value = {
             "errors": [
                 {"message": "Error 1", "path": ["field1"], "type": "CUSTOM_ERROR_1"},

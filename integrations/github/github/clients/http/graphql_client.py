@@ -7,6 +7,7 @@ from github.clients.auth.retry_transport import (
     GATEWAY_TIMEOUT_STATUS_CODES,
     MIN_GRAPHQL_PAGE_SIZE,
 )
+from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
@@ -55,35 +56,53 @@ class GithubGraphQLClient(AbstractGithubClient):
 
     def _handle_graphql_errors(
         self,
-        response: Dict[str, Any],
+        response: httpx.Response,
         ignored_errors: Optional[List[IgnoredError]] = None,
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        if "errors" not in response:
-            return response
+        body = response.json()
+        if "errors" not in body:
+            return body
 
         ignored_errors = ignored_errors or []
         ignored_errors.extend(self._DEFAULT_IGNORED_ERRORS)
         ignored_types = {e.type: e.message for e in ignored_errors}
 
+        status_code = response.status_code
         non_ignored_exceptions = []
 
-        for error in response["errors"]:
+        for error in body["errors"]:
             error_type = error.get("type")
             if error_type in ignored_types:
-                log_message = f"{ignored_types[error_type]} due to {error['message']} for {error.get('path', [])})"
+                log_message = f"{ignored_types[error_type]} due to {error['message']} for {error.get('path', [])} (status {status_code})"
                 logger.warning(log_message)
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
 
         if non_ignored_exceptions:
+            # The transport can rewrite variables between retries (e.g. shrinking
+            # `variables.first`); prefer what it actually sent over the caller's copy.
+            variables = self._sent_variables(response) or query_params
             logger.error(
-                f"[GraphQL] Query failed for path {query_path} with variables {query_params}"
+                f"[GraphQL] Query failed with status {status_code} for path "
+                f"{query_path} with variables {variables}"
             )
             raise GraphQLErrorGroup(non_ignored_exceptions)
 
         return {}
+
+    @staticmethod
+    def _sent_variables(response: httpx.Response) -> Optional[Dict[str, Any]]:
+        """Variables from the request that actually produced this response.
+
+        The retry transport can rewrite a GraphQL request body between attempts
+        (e.g. shrinking `variables.first` on a retryable 5xx), and httpx resets
+        `response.request` to the caller's original request once the transport
+        returns — so the transport records the variables it truly sent in the
+        response extensions, which is what we read here for error logs.
+        """
+        return response.extensions.get(GRAPHQL_SENT_VARIABLES_EXTENSION)
 
     async def send_api_request(
         self,
@@ -97,18 +116,21 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        response = await super().send_api_request(
+        response = await self.make_request(
             resource=resource,
             params=params,
             method=method,
             json_data=json_data,
             ignored_errors=ignored_errors,
+            ignore_default_errors=ignore_default_errors,
             authenticator_headers_params=authenticator_headers_params,
         )
-        response = self._handle_graphql_errors(
-            response, ignored_errors, query_path=query_path, query_params=query_params
+        return self._handle_graphql_errors(
+            response,
+            ignored_errors,
+            query_path=query_path,
+            query_params=query_params,
         )
-        return response
 
     def build_graphql_payload(
         self,

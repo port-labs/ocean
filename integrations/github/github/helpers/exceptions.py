@@ -48,4 +48,4 @@ class InvalidActionParametersException(Exception):
 
 
 class NoWorkflowRunsFoundException(Exception):
-    """Exception for no workflow runs found."""
+    """Exception for workflow runs not found after dispatch."""
