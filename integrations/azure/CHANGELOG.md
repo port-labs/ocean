@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.376 (2026-07-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+0.1.375 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+0.1.374 (2026-07-12)
+
+### Bug Fixes
+
+- CloudEvents OPTIONS validation middleware now uses the ASGI scope path instead of `request.url.path` for route matching
+
+0.1.373 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+0.1.372 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
 0.1.371 (2026-07-09)
 
 ### Improvements
