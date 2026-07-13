@@ -176,11 +176,11 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             else EntityTopologicalSorter.order_by_entities_dependencies(entities)
         )
 
-        blueprint_groups: dict[str, list[str]] = defaultdict(list)
-        for entity in ordered_entities:
-            blueprint_groups[entity.blueprint].append(entity.identifier)
-
         if delete_dependent_entities:
+            blueprint_groups: dict[str, list[str]] = defaultdict(list)
+            for entity in ordered_entities:
+                blueprint_groups[entity.blueprint].append(entity.identifier)
+
             # port cascades deletion of dependent entities, so we can delete in bulk
             await asyncio.gather(
                 *(
