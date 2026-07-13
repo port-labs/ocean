@@ -198,48 +198,6 @@ async def test_get_paginated_resources_raises_on_missing_resource_data(
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_resources_fans_out_to_partitions(
-    mock_wiz_client: WizClient,
-) -> None:
-    partitions = [
-        PaginationPartition(
-            label="partition-a",
-            filter_overlay={"severity": ["CRITICAL"]},
-        ),
-        PaginationPartition(
-            label="partition-b",
-            filter_overlay={"severity": ["HIGH"]},
-        ),
-    ]
-
-    async def _chain_side_effect(
-        resource: str,
-        variables: dict[str, Any],
-        max_pages: int | None = None,
-        partition_label: str | None = None,
-    ) -> AsyncGenerator[list[Any], None]:
-        severity = variables["filterBy"]["severity"][0]
-        yield [{"id": f"{severity}-1"}]
-
-    with patch.object(
-        mock_wiz_client,
-        "_fetch_cursor_chain",
-        side_effect=_chain_side_effect,
-    ) as mock_fetch_chain:
-        results: list[dict[str, Any]] = []
-        async for batch in mock_wiz_client._get_paginated_resources(
-            resource="vulnerabilityFindings",
-            variables={"first": 100, "filterBy": {}},
-            partitions=partitions,
-        ):
-            results.extend(batch)
-
-        assert mock_fetch_chain.call_count == 2
-        assert len(results) == 2
-        assert {result["id"] for result in results} == {"CRITICAL-1", "HIGH-1"}
-
-
-@pytest.mark.asyncio
 async def test_get_resource_total_count(mock_wiz_client: WizClient) -> None:
     with patch.object(
         mock_wiz_client,
@@ -309,7 +267,7 @@ async def test_get_vulnerability_findings_with_parallelism(
                 )
             ],
             options["parallelism"],
-            mock_wiz_client._fetch_cursor_chain,
+            mock_wiz_client._get_paginated_resources,
             max_pages=2,
         )
         assert results == [{"id": "vuln-1"}]

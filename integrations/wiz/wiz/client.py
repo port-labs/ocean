@@ -27,10 +27,8 @@ from wiz.constants import (
 )
 from wiz.rate_limiter import TokenBucketRateLimiter
 from wiz.pagination import (
-    PaginationPartition,
     ReadyPartitionCrawlStream,
     VulnerabilityFindingPartitionStrategy,
-    merge_partition_filters,
 )
 
 
@@ -201,7 +199,7 @@ class WizClient:
 
         return total_count
 
-    async def _fetch_cursor_chain(
+    async def _get_paginated_resources(
         self,
         resource: str,
         variables: dict[str, Any],
@@ -212,7 +210,11 @@ class WizClient:
         page_num = 1
         counter = 0
         partition_suffix = f" ({partition_label})" if partition_label else ""
-        logger.info(f'Starting partition {partition_label}')
+
+        if partition_label:
+            logger.info(f"Starting partition {partition_label}")
+        else:
+            logger.info(f"Fetching {resource} data from Wiz API")
 
         while True:
             logger.info(
@@ -238,41 +240,17 @@ class WizClient:
 
             cursor = resource_data.get("pageInfo") or {}
             if not cursor.get("hasNextPage", False):
-                logger.info(f'Finished partition {partition_label} after {page_num} pages and {counter} entities')
+                if partition_label:
+                    logger.info(
+                        f"Finished partition {partition_label} after {page_num} pages "
+                        f"and {counter} entities"
+                    )
                 break
 
             chain_variables["after"] = cursor.get("endCursor", "")
             page_num += 1
             if max_pages and page_num > max_pages:
                 break
-
-    async def _get_paginated_resources(
-        self,
-        resource: str,
-        variables: dict[str, Any],
-        max_pages: Optional[int] = None,
-        partitions: list[PaginationPartition] | None = None,
-    ) -> AsyncGenerator[list[Any], None]:
-        logger.info(f"Fetching {resource} data from Wiz API")
-
-        if not partitions:
-            async for nodes in self._fetch_cursor_chain(resource, variables, max_pages):
-                yield nodes
-            return
-
-        logger.info(f"Fetching {resource} using {len(partitions)} parallel partitions")
-        partition_streams = [
-            self._fetch_cursor_chain(
-                resource,
-                merge_partition_filters(variables, partition),
-                max_pages,
-                partition.label,
-            )
-            for partition in partitions
-        ]
-
-        async for nodes in stream_async_iterators_tasks(*partition_streams):
-            yield nodes
 
     async def get_issues(
         self,
@@ -380,7 +358,7 @@ class WizClient:
                     variables,
                     initial_partitions,
                     parallelism,
-                    self._fetch_cursor_chain,
+                    self._get_paginated_resources,
                     max_pages=options.get("max_pages"),
                 ):
                     yield findings
