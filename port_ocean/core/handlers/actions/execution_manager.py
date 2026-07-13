@@ -209,10 +209,8 @@ class ExecutionManager:
                     try:
                         action_type = run.action_type
                         if action_type not in self._actions_executors:
-                            logger.warning(
-                                "No Executors registered to handle this action, skipping run...",
-                                action_type=action_type,
-                                run_id=run.id,
+                            await self._ack_and_fail_run_without_executor(
+                                run, action_type
                             )
                             continue
 
@@ -255,6 +253,35 @@ class ExecutionManager:
                 )
                 # Backoff to avoid overwhelming the API with requests
                 await asyncio.sleep(self._poll_check_interval_seconds)
+
+    async def _ack_and_fail_run_without_executor(
+        self, run: IntegrationRun, action_type: str
+    ) -> None:
+        logger.warning(
+            "No Executors registered to handle this action, failing run...",
+            action_type=action_type,
+            run_id=run.id,
+        )
+        try:
+            await ocean.port_client.acknowledge_run(run)
+            await ocean.port_client.report_run_completed(
+                run,
+                success=False,
+                message=f"No executor registered for action type '{action_type}'",
+                should_raise=False,
+            )
+        except RunAlreadyAcknowledgedError:
+            logger.warning(
+                "Run already being processed by another worker, skipping",
+                run_id=run.id,
+            )
+        except Exception as e:
+            logger.exception(
+                "Error failing run with no registered executor",
+                run_id=run.id,
+                action_type=action_type,
+                error=str(e),
+            )
 
     async def _get_queues_size(self) -> int:
         """
