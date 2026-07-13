@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.3.0 (2026-07-13)
+
+
+### Features
+
+- Implement property-reduction optimization for expensive GraphQL paginated requests
+
+
 ## 6.2.12 (2026-07-12)
 
 
