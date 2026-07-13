@@ -8,6 +8,9 @@ from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 
 from loguru import logger
 
+from port_ocean.clients.dsp.lifecycle_http import (
+    _lifecycle_http_client as _dsp_lifecycle_http_client,
+)
 from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
@@ -381,6 +384,12 @@ def clear_http_client_context() -> None:
     try:
         while _port_http_client.top is not None:
             _port_http_client.pop()
+    except (RuntimeError, AttributeError):
+        pass
+
+    try:
+        while _dsp_lifecycle_http_client.top is not None:
+            _dsp_lifecycle_http_client.pop()
     except (RuntimeError, AttributeError):
         pass
 

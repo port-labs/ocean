@@ -1,7 +1,6 @@
 import base64
 import binascii
 from collections import defaultdict
-from enum import StrEnum
 import json
 from pathlib import Path
 import re
@@ -105,12 +104,6 @@ def parse_content(content: str, file_path: str) -> Any:
     return content
 
 
-class FileDiffStatus(StrEnum):
-    ADDED = "added"
-    REMOVED = "removed"
-    RENAMED = "renamed"
-
-
 def group_files_by_status(
     files: List[Dict[str, Any]],
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -118,29 +111,12 @@ def group_files_by_status(
     updated_files: List[Dict[str, Any]] = []
 
     for file in files:
-        if file.get("status") == FileDiffStatus.REMOVED:
+        if file.get("status") == "removed":
             deleted_files.append(file)
         else:
             updated_files.append(file)
 
     return deleted_files, updated_files
-
-
-def split_files_by_content_presence(
-    files: List[Dict[str, Any]],
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Return ``(files_with_new_content, files_with_old_content)`` (not-removed for upserts, not-added for deletions)."""
-    files_with_new_content: List[Dict[str, Any]] = []
-    files_with_old_content: List[Dict[str, Any]] = []
-
-    for file in files:
-        status = file.get("status")
-        if status != FileDiffStatus.REMOVED:
-            files_with_new_content.append(file)
-        if status != FileDiffStatus.ADDED:
-            files_with_old_content.append(file)
-
-    return files_with_new_content, files_with_old_content
 
 
 def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:

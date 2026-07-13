@@ -6,6 +6,7 @@ import uuid
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseEventType
+from port_ocean.core.utils.json_compat import make_json_compatible
 
 _DEFAULT_MAX_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
 _DEFAULT_MAX_BUFFER_COUNT = 50
@@ -92,7 +93,9 @@ class LakehouseBuffer:
     async def add(self, batch_items: LakehouseDataEntry) -> None:
         """Append items to the buffer, flushing if the interval or size cap is reached."""
         self._buffer.append(batch_items)
-        self._current_size_bytes += len(json.dumps(batch_items).encode("utf-8"))
+        self._current_size_bytes += len(
+            json.dumps(make_json_compatible(batch_items)).encode("utf-8")
+        )
 
         now = time.monotonic()
         if self._last_flush_at is None:
