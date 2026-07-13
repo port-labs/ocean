@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.3 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.2.2 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.2.1 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.2.0 (2026-07-09)
+
+
+### Breaking Changes
+
+- Renamed the Claude Platform kinds to the `claude-platform-*` pattern (old names kept as deprecated aliases).
+- Default resources and blueprints now target Claude AI (Enterprise) instead of Claude Platform.
+
+
+### Features
+
+- Added an `isClaudeEnterprise` toggle (default enabled) to switch between Claude AI (Enterprise) and Claude Platform.
+- Added Claude AI (Enterprise) kinds for the per-user analytics endpoints: `claude-ai-user-activity`, `claude-ai-user-usage`, and `claude-ai-user-cost`.
+
+
+### Improvements
+
+- Skip and log resyncs for kinds that don't match the configured deployment instead of failing with 401/403.
+- Validate and clamp analytics date ranges to Anthropic's limits.
+
+
 ## 0.1.43 (2026-07-08)
 
 
