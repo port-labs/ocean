@@ -1,4 +1,6 @@
+import asyncio
 import copy
+import functools
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 
@@ -6,7 +8,7 @@ import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks, semaphore_async_iterator
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
 from pydantic.v1 import BaseModel, Field, PrivateAttr
@@ -63,6 +65,8 @@ class TokenResponse(BaseModel):
 
 
 class WizClient:
+    _MAX_CONCURRENT_SBOM_GROUP_FETCHES = 10  # Wiz has 10 concurrent requests limit per service account according to https://docs.stellarcyber.ai/6.3.x/Configure/Connectors/Wiz-Connectors.htm
+
     _SBOM_TYPE_FILTER_KEYS = (
         "codeLibraryLanguage",
         "osPackageManager",
@@ -540,17 +544,25 @@ class WizClient:
         grouped_variables: dict[str, Any] = {
             "first": page_size,
         }
+        sbom_group_semaphore = asyncio.BoundedSemaphore(
+            self._MAX_CONCURRENT_SBOM_GROUP_FETCHES
+        )
+
         async for grouped_nodes in self._get_paginated_resources(
             resource="sbomArtifactsGroupedByName",
             variables=grouped_variables,
             max_pages=max_pages,
         ):
             grouped_artifact_streams = [
-                self._get_sbom_artifacts_for_grouped_name(
-                    grouped_node=grouped_node,
-                    page_size=page_size,
-                    max_pages=max_pages,
-                    resource_filter=resource_filter,
+                semaphore_async_iterator(
+                    sbom_group_semaphore,
+                    functools.partial(
+                        self._get_sbom_artifacts_for_grouped_name,
+                        grouped_node=grouped_node,
+                        page_size=page_size,
+                        max_pages=max_pages,
+                        resource_filter=resource_filter,
+                    ),
                 )
                 for grouped_node in grouped_nodes
                 if allow_all_groups
