@@ -17,8 +17,6 @@ if TYPE_CHECKING:
 
 
 class PartitionRefiner:
-    DEFAULT_MAX_PARTITION_ENTITIES = 500
-
     def __init__(
         self,
         client: WizClient,
