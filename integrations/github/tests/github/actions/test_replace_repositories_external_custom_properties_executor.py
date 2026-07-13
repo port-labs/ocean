@@ -56,7 +56,9 @@ def executor(
 class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
     @pytest.mark.asyncio
     async def test_happy_path(
-        self, executor: ReplaceRepositoriesExternalCustomPropertiesExecutor, mock_rest_client: MagicMock
+        self,
+        executor: ReplaceRepositoriesExternalCustomPropertiesExecutor,
+        mock_rest_client: MagicMock,
     ) -> None:
         run = make_run(
             {
@@ -88,11 +90,12 @@ class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
 
     @pytest.mark.asyncio
     async def test_batches_repositories_and_properties(
-        self, executor: ReplaceRepositoriesExternalCustomPropertiesExecutor, mock_rest_client: MagicMock
+        self,
+        executor: ReplaceRepositoriesExternalCustomPropertiesExecutor,
+        mock_rest_client: MagicMock,
     ) -> None:
         properties = {
-            f"prop-{index}": str(index)
-            for index in range(PROPERTIES_BATCH_SIZE + 5)
+            f"prop-{index}": str(index) for index in range(PROPERTIES_BATCH_SIZE + 5)
         }
         repositories = [
             {
@@ -126,7 +129,9 @@ class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
 
     @pytest.mark.asyncio
     async def test_empty_input_fails(
-        self, executor: ReplaceRepositoriesExternalCustomPropertiesExecutor, mock_rest_client: MagicMock
+        self,
+        executor: ReplaceRepositoriesExternalCustomPropertiesExecutor,
+        mock_rest_client: MagicMock,
     ) -> None:
         with pytest.raises(
             InvalidActionParametersException,
@@ -143,7 +148,17 @@ class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
     async def test_partition_key_is_global(
         self, executor: ReplaceRepositoriesExternalCustomPropertiesExecutor
     ) -> None:
-        run = make_run({"repositories": [{"org": "port-labs", "repo": "ocean", "externalPropertiesMapping": {"a": "1"}}]})
+        run = make_run(
+            {
+                "repositories": [
+                    {
+                        "org": "port-labs",
+                        "repo": "ocean",
+                        "externalPropertiesMapping": {"a": "1"},
+                    }
+                ]
+            }
+        )
         assert (
             await executor._get_partition_key(run)
             == "replace_repositories_external_custom_properties"
