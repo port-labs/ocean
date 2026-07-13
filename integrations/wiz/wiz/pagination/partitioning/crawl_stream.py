@@ -26,7 +26,7 @@ class ReadyPartitionCrawlStream:
         base_variables: dict[str, Any],
         initial_partitions: list[PaginationPartition],
         config: ParallelismConfig,
-        fetch_chain: Callable[..., AsyncIterator[list[Any]]],
+        get_resources: Callable[..., AsyncIterator[list[Any]]],
         max_pages: int | None = None,
     ) -> None:
         self._client = client
@@ -34,7 +34,7 @@ class ReadyPartitionCrawlStream:
         self._base_variables = base_variables
         self._initial_partitions = initial_partitions
         self._config = config
-        self._fetch_chain = fetch_chain
+        self._get_resources = get_resources
         self._max_pages = max_pages
         self._refiner = PartitionRefiner(
             client, max_entities=config["max_partition_entities"]
@@ -77,7 +77,7 @@ class ReadyPartitionCrawlStream:
         self._active_crawls += 1
         try:
             variables = merge_partition_filters(self._base_variables, partition)
-            async for batch in self._fetch_chain(
+            async for batch in self._get_resources(
                 self._resource,
                 variables,
                 self._max_pages,
