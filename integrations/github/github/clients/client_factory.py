@@ -178,6 +178,4 @@ def create_github_client(
 ) -> AbstractGithubClient:
     organization = ocean.integration_config.get("github_organization")
     resolved = client_type or GithubClientType.REST
-    if resolved == GithubClientType.GRAPHQL:
-        return create_github_client_for_org(organization, GithubClientType.GRAPHQL)
-    return create_github_client_for_org(organization, GithubClientType.REST)
+    return create_github_client_for_org(organization, resolved)
