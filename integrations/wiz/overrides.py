@@ -113,14 +113,12 @@ class ParallelismSelector(BaseModel):
         description="Size of each date partition window in days.",
         default=30,
     )
-    lookback_days: Optional[int] = Field(
+    lookback_days: int = Field(
         alias="lookbackDays",
         title="Lookback Days",
-        description=(
-            "How many days back to partition when using date strategy. "
-            "When unset with auto strategy, severity partitioning is used instead."
-        ),
+        description="How many days back to partition when using date strategy.",
         default=365,
+        ge=1,
     )
 
 

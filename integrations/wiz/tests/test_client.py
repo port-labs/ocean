@@ -229,7 +229,7 @@ async def test_get_vulnerability_findings_with_parallelism(
         "parallelism": {
             "strategy": "severity",
             "date_interval_days": 30,
-            "lookback_days": None,
+            "lookback_days": 365,
         },
     }
 

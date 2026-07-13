@@ -70,30 +70,10 @@ def test_vulnerability_finding_strategy_skips_severity_when_already_filtered() -
     partitions = VulnerabilityFindingPartitionStrategy().build_partitions(
         "vulnerabilityFindings",
         variables,
-        _parallelism_config(strategy="severity", lookback_days=None),
+        _parallelism_config(strategy="severity"),
     )
 
     assert partitions == []
-
-
-def test_vulnerability_finding_strategy_falls_back_to_severity_without_lookback() -> (
-    None
-):
-    variables = {"first": 100, "filterBy": {}}
-    partitions = VulnerabilityFindingPartitionStrategy().build_partitions(
-        "vulnerabilityFindings",
-        variables,
-        _parallelism_config(strategy="auto", lookback_days=None),
-    )
-
-    assert len(partitions) == 5
-    assert {partition.filter_overlay["severity"][0] for partition in partitions} == {
-        "CRITICAL",
-        "HIGH",
-        "MEDIUM",
-        "LOW",
-        "NONE",
-    }
 
 
 def test_merge_partition_filters_deep_merges_filters_and_clears_cursor() -> None:

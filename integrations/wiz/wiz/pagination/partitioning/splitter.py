@@ -63,14 +63,10 @@ class PartitionSplitter:
             bisected = self.bisect_date_partition(partition)
             return bisected or []
 
-        lookback_days = config.get("lookback_days")
-        if lookback_days is None or lookback_days <= 0:
-            lookback_days = 365
-
         date_partitions = build_date_partitions(
             resource_label=partition.label,
             date_field="firstSeenAt",
-            lookback_days=lookback_days,
+            lookback_days=config["lookback_days"],
             interval_days=config["date_interval_days"],
         )
         if len(date_partitions) <= 1:

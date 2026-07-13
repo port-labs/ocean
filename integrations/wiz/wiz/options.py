@@ -4,7 +4,7 @@ from typing import Any, List, Literal, TypedDict, Required, NotRequired, Optiona
 class ParallelismConfig(TypedDict):
     strategy: Literal["auto", "date", "severity"]
     date_interval_days: int
-    lookback_days: NotRequired[Optional[int]]
+    lookback_days: int
 
 
 class IssueOptions(TypedDict):
