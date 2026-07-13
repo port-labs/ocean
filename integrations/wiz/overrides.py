@@ -112,6 +112,7 @@ class ParallelismSelector(BaseModel):
         title="Date Interval Days",
         description="Size of each date partition window in days.",
         default=30,
+        ge=1,
     )
     lookback_days: int = Field(
         alias="lookbackDays",
