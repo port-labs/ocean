@@ -75,17 +75,3 @@ def build_date_partitions(
             )
         )
     return partitions
-
-
-def build_severity_partitions(
-    *,
-    resource_label: str,
-    severities: tuple[str, ...],
-) -> list[PaginationPartition]:
-    return [
-        PaginationPartition(
-            label=f"{resource_label}-severity-{severity.lower()}",
-            filter_overlay={"severity": [severity]},
-        )
-        for severity in severities
-    ]
