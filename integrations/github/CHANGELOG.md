@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.12 (2026-07-12)
+
+
+### Improvements
+
+- Renamed the `update_repo_external_properties` action to `update_repo_external_custom_properties` and updated it to use GitHub's `/properties/installations/values` API endpoint.
+
+
+### Bug Fixes
+
+- Handle non-JSON GitHub API error responses when updating external custom properties.
+
+
+## 6.2.11 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 6.2.10 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 6.2.9 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 6.2.8 (2026-07-12)
+
+
+### Improvements
+
+- Added `legacyDispatchWorkflowTracking` configuration for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch. When enabled, the dispatch_workflow action polls GitHub for workflow runs and serializes dispatches per organization/repository/workflow.
+
+
 ## 6.2.7 (2026-07-10)
 
 
