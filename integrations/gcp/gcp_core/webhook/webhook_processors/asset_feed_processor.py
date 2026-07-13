@@ -17,7 +17,6 @@ from gcp_core.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
-    EventHeaders,
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
@@ -64,9 +63,6 @@ class AssetFeedProcessor(BaseWebhookProcessor):
         resource_configs = cast(GCPPortAppConfig, port_event.port_app_config).resources
 
         return [config.kind for config in resource_configs if config.kind == asset_type]
-
-    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         asset_data = await self._get_parsed_event(payload)

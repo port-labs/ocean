@@ -1,12 +1,10 @@
 import os
 import tempfile
 import typing
-from asyncio import BoundedSemaphore
 from gcp_core.webhook.registry import register_webhook_processors
 from loguru import logger
 
 import gcp_core.clients as clients
-from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.signal import signal_handler
@@ -29,12 +27,6 @@ from gcp_core.utils import (
     get_credentials_json,
     resolve_request_controllers,
 )
-
-RATE_LIMITER_TIME_PERIOD_SECONDS: float = 60.0
-
-PROJECT_V3_GET_REQUESTS_RATE_LIMITER: FixedWindowLimiter
-PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE: BoundedSemaphore
-BACKGROUND_TASK_THRESHOLD: float
 
 
 async def _resolve_resync_method_for_resource(
