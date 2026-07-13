@@ -89,31 +89,7 @@ class TestUpdateRepoExternalCustomPropertiesExecutor:
         }
 
     @pytest.mark.asyncio
-    async def test_falls_back_to_integration_org(
-        self,
-        executor: UpdateRepoExternalCustomPropertiesExecutor,
-        mock_rest_client: MagicMock,
-    ) -> None:
-        run = make_run(
-            {
-                "repo": "ocean",
-                "externalPropertiesMapping": {"lifecycle": "Deprecated"},
-            }
-        )
-
-        with patch(
-            "github.actions.external_custom_properties.update_repo_external_custom_properties_executor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client = MagicMock(report_run_completed=AsyncMock())
-            mock_ocean.integration_config = {"github_organization": "port-labs"}
-            await executor.execute(run)
-
-        assert "orgs/port-labs/properties/installations/values" in (
-            mock_rest_client.make_request.call_args.args[0]
-        )
-
-    @pytest.mark.asyncio
-    async def test_missing_org_without_config_fails(
+    async def test_missing_org_or_repo_fails(
         self,
         executor: UpdateRepoExternalCustomPropertiesExecutor,
         mock_rest_client: MagicMock,
@@ -127,7 +103,7 @@ class TestUpdateRepoExternalCustomPropertiesExecutor:
 
         with pytest.raises(
             InvalidActionParametersException,
-            match="org is required when github_organization is not configured",
+            match="org and repo are required",
         ):
             with patch(
                 "github.actions.external_custom_properties.update_repo_external_custom_properties_executor.ocean"

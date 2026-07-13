@@ -60,7 +60,7 @@ class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
     ) -> None:
         run = make_run(
             {
-                "externalPropertiesMapping": [
+                "repositories": [
                     {
                         "org": "port-labs",
                         "repo": "ocean",
@@ -104,7 +104,7 @@ class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
         ]
         run = make_run(
             {
-                "externalPropertiesMapping": [
+                "repositories": [
                     {
                         "org": "port-labs",
                         "repo": "ocean",
@@ -130,12 +130,12 @@ class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
     ) -> None:
         with pytest.raises(
             InvalidActionParametersException,
-            match="externalPropertiesMapping is required and must not be empty",
+            match="repositories is required and must not be empty",
         ):
             with patch(
                 "github.actions.external_custom_properties.replace_repositories_external_custom_properties_executor.ocean"
             ):
-                await executor.execute(make_run({"externalPropertiesMapping": []}))
+                await executor.execute(make_run({"repositories": []}))
 
         mock_rest_client.make_request.assert_not_awaited()
 
@@ -143,7 +143,7 @@ class TestReplaceRepositoriesExternalCustomPropertiesExecutor:
     async def test_partition_key_is_global(
         self, executor: ReplaceRepositoriesExternalCustomPropertiesExecutor
     ) -> None:
-        run = make_run({"externalPropertiesMapping": [{"org": "port-labs", "repo": "ocean", "externalPropertiesMapping": {"a": "1"}}]})
+        run = make_run({"repositories": [{"org": "port-labs", "repo": "ocean", "externalPropertiesMapping": {"a": "1"}}]})
         assert (
             await executor._get_partition_key(run)
             == "replace_repositories_external_custom_properties"
