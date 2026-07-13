@@ -158,6 +158,7 @@ class TestWorkflowNodeRunOutputPreservation:
                 "status": WorkflowNodeRunStatus.IN_PROGRESS,
                 "externalRunId": EXTERNAL_ID,
                 "output": {"workflowRunUrl": "https://gitlab.example/pipelines/99"},
+                "links": ["https://gitlab.example/pipelines/99"],
             },
         )
 
