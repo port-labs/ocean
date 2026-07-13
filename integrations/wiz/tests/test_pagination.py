@@ -41,7 +41,6 @@ def test_generate_date_windows_creates_half_open_intervals() -> None:
 def test_vulnerability_finding_strategy_uses_date_partitions_by_default() -> None:
     variables = {"first": 100, "filterBy": {"status": ["OPEN"]}}
     partitions = VulnerabilityFindingPartitionStrategy().build_partitions(
-        "vulnerabilityFindings",
         variables,
         _parallelism_config(strategy="auto"),
     )
@@ -70,7 +69,6 @@ def test_vulnerability_finding_strategy_skips_severity_when_already_filtered() -
         "filterBy": {"severity": ["CRITICAL"]},
     }
     partitions = VulnerabilityFindingPartitionStrategy().build_partitions(
-        "vulnerabilityFindings",
         variables,
         _parallelism_config(strategy="severity"),
     )
