@@ -348,7 +348,7 @@ class WizClient:
                 parallelism["api_requests_per_second"]
             )
             initial_partitions = VulnerabilityFindingPartitionStrategy().build_partitions(
-                "vulnerabilityFindings", variables, parallelism
+                variables, parallelism
             )
             if initial_partitions:
                 async for findings in ReadyPartitionCrawlStream(

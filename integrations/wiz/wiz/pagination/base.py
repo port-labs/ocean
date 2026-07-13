@@ -12,10 +12,13 @@ class PaginationPartition:
 
 
 class PartitionStrategy(ABC):
+    @property
+    @abstractmethod
+    def resource_name(self) -> str: pass
+
     @abstractmethod
     def build_partitions(
         self,
-        resource: str,
         variables: dict[str, Any],
         config: ParallelismConfig,
     ) -> list[PaginationPartition]:
