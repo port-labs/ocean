@@ -31,6 +31,8 @@ from wiz.pagination import (
     VulnerabilityFindingPartitionStrategy,
 )
 
+DEFAULT_API_REQUESTS_PER_SECOND = 10
+
 
 class CacheKeys(StrEnum):
     ISSUES = "wiz_issues"
@@ -61,10 +63,6 @@ class TokenResponse(BaseModel):
 
 
 class WizClient:
-    # Wiz allows 10 API calls per second per service account.
-    # https://docs.wiz.io/wiz-docs/docs/rate-limiting
-    _DEFAULT_API_REQUESTS_PER_SECOND = 10
-
     _SBOM_TYPE_FILTER_KEYS = (
         "codeLibraryLanguage",
         "osPackageManager",
@@ -87,9 +85,7 @@ class WizClient:
         self.last_token_object: TokenResponse | None = None
 
         self.http_client = http_async_client
-        self._api_rate_limiter = TokenBucketRateLimiter(
-            self._DEFAULT_API_REQUESTS_PER_SECOND
-        )
+        self._api_rate_limiter = TokenBucketRateLimiter(DEFAULT_API_REQUESTS_PER_SECOND)
 
     @property
     def auth_request_params(self) -> dict[str, Any]:
@@ -348,6 +344,9 @@ class WizClient:
 
         parallelism = options.get("parallelism")
         if parallelism is not None:
+            self._api_rate_limiter = TokenBucketRateLimiter(
+                parallelism["api_requests_per_second"]
+            )
             initial_partitions = VulnerabilityFindingPartitionStrategy().build_partitions(
                 "vulnerabilityFindings", variables, parallelism
             )

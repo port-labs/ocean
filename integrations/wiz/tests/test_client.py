@@ -230,6 +230,8 @@ async def test_get_vulnerability_findings_with_parallelism(
             "strategy": "severity",
             "date_interval_days": 30,
             "lookback_days": 365,
+            "api_requests_per_second": 10,
+            "max_partition_entities": 500,
         },
     }
 

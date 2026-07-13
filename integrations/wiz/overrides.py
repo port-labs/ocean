@@ -120,6 +120,28 @@ class ParallelismSelector(BaseModel):
         default=365,
         ge=1,
     )
+    api_requests_per_second: int = Field(
+        alias="apiRequestsPerSecond",
+        title="API Requests Per Second",
+        description=(
+            "Maximum Wiz API requests per second while parallel pagination is enabled. "
+            "Wiz allows up to 10 requests per second per service account."
+        ),
+        default=10,
+        ge=1,
+        le=10,
+    )
+    max_partition_entities: int = Field(
+        alias="maxPartitionEntities",
+        title="Max Partition Entities",
+        description=(
+            "Maximum entities allowed in a partition before it is split further "
+            "during probe/refine."
+        ),
+        default=500,
+        ge=1,
+        le=10_000,
+    )
 
 
 class VulnerabilityFindingSelector(Selector):

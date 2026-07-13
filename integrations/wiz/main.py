@@ -109,6 +109,8 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             "strategy": parallelism_selector.strategy,
             "date_interval_days": parallelism_selector.date_interval_days,
             "lookback_days": parallelism_selector.lookback_days,
+            "api_requests_per_second": parallelism_selector.api_requests_per_second,
+            "max_partition_entities": parallelism_selector.max_partition_entities,
         }
 
     upsert_batch: list[dict] = []

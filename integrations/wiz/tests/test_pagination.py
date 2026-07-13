@@ -16,6 +16,8 @@ def _parallelism_config(**overrides: Any) -> ParallelismConfig:
         "strategy": "auto",
         "date_interval_days": 30,
         "lookback_days": 365,
+        "api_requests_per_second": 10,
+        "max_partition_entities": 500,
     }
     config.update(overrides)
     return cast(ParallelismConfig, config)
