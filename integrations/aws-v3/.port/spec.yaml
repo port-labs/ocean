@@ -1,5 +1,5 @@
-title: AWS Hosted by Port
-description: AWS integration for Port Ocean Hosted by Port
+title: AWS v3
+description: Port's AWS integration
 icon: AWS
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3
 formMappingEnabled: true

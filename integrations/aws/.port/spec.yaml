@@ -1,5 +1,5 @@
-title: AWS Self Hosted
-description: AWS Self hosted integration for Port Ocean
+title: AWS
+description: AWS
 icon: AWS
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws
 formMappingEnabled: true
