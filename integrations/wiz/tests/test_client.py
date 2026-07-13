@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, List, cast
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.core import OceanAbortException
@@ -215,6 +215,7 @@ async def test_get_resource_total_count(mock_wiz_client: WizClient) -> None:
 
         assert count == 42
         mock_graphql.assert_awaited_once()
+        assert mock_graphql.await_args is not None
         assert mock_graphql.await_args.args[1] == {
             "filterBy": {"severity": ["CRITICAL"]},
         }

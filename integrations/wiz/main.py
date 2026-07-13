@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -113,7 +113,7 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             "max_partition_entities": parallelism_selector.max_partition_entities,
         }
 
-    upsert_batch: list[dict] = []
+    upsert_batch: list[dict[str, Any]] = []
     upsert_batch_size = 100
 
     async for vulnerability_findings in wiz_client.get_vulnerability_findings(options):

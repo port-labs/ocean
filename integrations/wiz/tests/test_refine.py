@@ -1,9 +1,10 @@
 import asyncio
-from typing import Any
-from unittest.mock import AsyncMock
+from typing import Any, AsyncGenerator, cast
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from wiz.client import WizClient
 from wiz.options import ParallelismConfig
 from wiz.pagination import (
     PaginationPartition,
@@ -102,7 +103,9 @@ async def test_refine_partitions_skips_empty_partitions() -> None:
     client = AsyncMock()
     client.get_resource_total_count = AsyncMock(return_value=0)
     partitions = [
-        PaginationPartition(label="partition-a", filter_overlay={"severity": ["CRITICAL"]}),
+        PaginationPartition(
+            label="partition-a", filter_overlay={"severity": ["CRITICAL"]}
+        ),
         PaginationPartition(label="partition-b", filter_overlay={"severity": ["HIGH"]}),
     ]
     config = _parallelism_config()
@@ -175,7 +178,9 @@ async def test_refine_partitions_splits_large_date_partition() -> None:
 
 
 @pytest.mark.asyncio
-async def test_refine_partitions_splits_severity_partition_with_date_subwindows() -> None:
+async def test_refine_partitions_splits_severity_partition_with_date_subwindows() -> (
+    None
+):
     client = AsyncMock()
     client.get_resource_total_count = AsyncMock(
         side_effect=[1200, 300, 400],
@@ -200,27 +205,29 @@ async def test_refine_partitions_splits_severity_partition_with_date_subwindows(
 
 
 @pytest.mark.asyncio
-async def test_ready_partition_crawl_stream_starts_before_all_partitions_ready() -> None:
+async def test_ready_partition_crawl_stream_starts_before_all_partitions_ready() -> (
+    None
+):
     release_second_probe = asyncio.Event()
     high_probe_waiting = asyncio.Event()
     crawl_started = asyncio.Event()
 
-    class CountClient:
-        async def get_resource_total_count(
-            self, resource: str, variables: dict[str, Any]
-        ) -> int:
-            severity = (variables.get("filterBy") or {}).get("severity", [""])[0]
-            if severity == "HIGH":
-                high_probe_waiting.set()
-                await release_second_probe.wait()
-            return 100
+    async def get_resource_total_count(resource: str, variables: dict[str, Any]) -> int:
+        severity = (variables.get("filterBy") or {}).get("severity", [""])[0]
+        if severity == "HIGH":
+            high_probe_waiting.set()
+            await release_second_probe.wait()
+        return 100
+
+    client = MagicMock(spec=WizClient)
+    client.get_resource_total_count = AsyncMock(side_effect=get_resource_total_count)
 
     async def fetch_chain(
         resource: str,
         variables: dict[str, Any],
         max_pages: int | None,
         partition_label: str | None,
-    ):
+    ) -> AsyncGenerator[list[Any], None]:
         crawl_started.set()
         yield [{"id": partition_label}]
 
@@ -236,7 +243,7 @@ async def test_ready_partition_crawl_stream_starts_before_all_partitions_ready()
     ]
 
     stream = ReadyPartitionCrawlStream(
-        CountClient(),
+        cast(WizClient, client),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         partitions,

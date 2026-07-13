@@ -1,3 +1,4 @@
+# mypy: implicit_reexport
 from wiz.pagination.base import (
     PaginationPartition,
     PartitionStrategy,

@@ -14,7 +14,8 @@ class PaginationPartition:
 class PartitionStrategy(ABC):
     @property
     @abstractmethod
-    def resource_name(self) -> str: pass
+    def resource_name(self) -> str:
+        pass
 
     @abstractmethod
     def build_partitions(

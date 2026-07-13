@@ -17,11 +17,7 @@ if TYPE_CHECKING:
 
 
 class PartitionRefiner:
-    def __init__(
-        self,
-        client: WizClient,
-        config: ParallelismConfig
-    ) -> None:
+    def __init__(self, client: WizClient, config: ParallelismConfig) -> None:
         self._client = client
         self._config = config
         self._splitter = PartitionSplitter()
