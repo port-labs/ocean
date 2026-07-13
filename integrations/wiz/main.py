@@ -106,14 +106,22 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     }
     if parallelism_selector is not None:
         options["parallelism"] = {
-            "max_concurrent": parallelism_selector.max_concurrent,
             "strategy": parallelism_selector.strategy,
             "date_interval_days": parallelism_selector.date_interval_days,
             "lookback_days": parallelism_selector.lookback_days,
         }
 
+    upsert_batch: list[dict] = []
+    upsert_batch_size = 100
+
     async for vulnerability_findings in wiz_client.get_vulnerability_findings(options):
-        yield vulnerability_findings
+        upsert_batch.extend(vulnerability_findings)
+        while len(upsert_batch) >= upsert_batch_size:
+            yield upsert_batch[:upsert_batch_size]
+            upsert_batch = upsert_batch[upsert_batch_size:]
+
+    if upsert_batch:
+        yield upsert_batch
 
 
 @ocean.on_resync(ObjectKindWithSpecialHandling.SBOM_ARTIFACT)

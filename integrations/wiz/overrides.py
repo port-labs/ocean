@@ -98,12 +98,6 @@ class ProjectResourceConfig(ResourceConfig):
 
 
 class ParallelismSelector(BaseModel):
-    max_concurrent: int = Field(
-        alias="maxConcurrent",
-        title="Max Concurrent Requests",
-        description="Maximum number of concurrent Wiz API requests when using parallel pagination.",
-        default=10,
-    )
     strategy: Literal["auto", "date", "severity"] = Field(
         alias="strategy",
         title="Strategy",

@@ -197,6 +197,15 @@ query VulnerabilityFindingsTable(
       hasNextPage
       endCursor
     }
+    totalCount
+  }
+}
+"""
+
+VULNERABILITY_FINDINGS_COUNT_GQL = """
+query VulnerabilityFindingsCount($filterBy: VulnerabilityFindingFilters) {
+  vulnerabilityFindings(first: 1, filterBy: $filterBy) {
+    totalCount
   }
 }
 """
@@ -459,4 +468,8 @@ GRAPH_QUERIES = {
     "repositories": REPOSITORIES_GQL,
     "sbomArtifactsGroupedByName": SBOM_ARTIFACTS_GROUPED_BY_NAME_GQL,
     "sbomArtifacts": SBOM_ARTIFACTS_GQL,
+}
+
+RESOURCE_TOTAL_COUNT_QUERIES = {
+    "vulnerabilityFindings": VULNERABILITY_FINDINGS_COUNT_GQL,
 }

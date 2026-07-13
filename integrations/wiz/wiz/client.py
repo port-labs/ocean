@@ -1,6 +1,4 @@
-import asyncio
 import copy
-import functools
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 
@@ -8,10 +6,7 @@ import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.utils.async_iterators import (
-    semaphore_async_iterator,
-    stream_async_iterators_tasks,
-)
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
 from pydantic.v1 import BaseModel, Field, PrivateAttr
@@ -28,10 +23,14 @@ from .constants import (
     GRAPH_QUERIES,
     ISSUES_GQL,
     PAGE_SIZE,
+    RESOURCE_TOTAL_COUNT_QUERIES,
 )
+from .rate_limiter import TokenBucketRateLimiter
 from wiz.pagination import (
     PaginationPartition,
-    merge_partition_filters, VulnerabilityFindingPartitionStrategy,
+    merge_partition_filters,
+    stream_ready_partition_crawls,
+    VulnerabilityFindingPartitionStrategy,
 )
 
 
@@ -64,7 +63,9 @@ class TokenResponse(BaseModel):
 
 
 class WizClient:
-    _MAX_CONCURRENT_SBOM_GROUP_FETCHES = 10  # Wiz has 10 concurrent requests limit per service account according to https://docs.stellarcyber.ai/6.3.x/Configure/Connectors/Wiz-Connectors.htm
+    # Wiz allows 10 API calls per second per service account.
+    # https://docs.wiz.io/wiz-docs/docs/rate-limiting
+    _DEFAULT_API_REQUESTS_PER_SECOND = 10
 
     _SBOM_TYPE_FILTER_KEYS = (
         "codeLibraryLanguage",
@@ -75,7 +76,11 @@ class WizClient:
     )
 
     def __init__(
-        self, api_url: str, client_id: str, client_secret: str, token_url: str
+        self,
+        api_url: str,
+        client_id: str,
+        client_secret: str,
+        token_url: str,
     ):
         self.api_url = api_url
         self.client_id = client_id
@@ -84,6 +89,9 @@ class WizClient:
         self.last_token_object: TokenResponse | None = None
 
         self.http_client = http_async_client
+        self._api_rate_limiter = TokenBucketRateLimiter(
+            self._DEFAULT_API_REQUESTS_PER_SECOND
+        )
 
     @property
     def auth_request_params(self) -> dict[str, Any]:
@@ -109,6 +117,7 @@ class WizClient:
     async def _get_token(self) -> TokenResponse:
         logger.info(f"Fetching access token for Wiz clientId: {self.client_id}")
 
+        await self._api_rate_limiter.acquire()
         response = await self.http_client.post(
             self.token_url,
             data=self.auth_request_params,
@@ -139,8 +148,8 @@ class WizClient:
         self, query: str, variables: dict[str, Any]
     ) -> dict[str, Any]:
         try:
+            await self._api_rate_limiter.acquire()
             logger.info(f"Fetching graphql query with variables {variables}")
-
             response = await self.http_client.post(
                 url=self.api_url,
                 json={"query": query, "variables": variables},
@@ -167,6 +176,31 @@ class WizClient:
             logger.error(f"Error while making GraphQL query: {str(e)}")
             raise
 
+    async def get_resource_total_count(
+        self, resource: str, variables: dict[str, Any]
+    ) -> int:
+        query = RESOURCE_TOTAL_COUNT_QUERIES.get(resource)
+        if query is None:
+            raise OceanAbortException(
+                f"Total count queries are not supported for resource '{resource}'"
+            )
+
+        count_variables = {"filterBy": variables.get("filterBy") or {}}
+        data = await self.make_graphql_query(query, count_variables)
+        resource_data = data.get(resource)
+        if not isinstance(resource_data, dict):
+            raise OceanAbortException(
+                f"Wiz GraphQL response is missing '{resource}' object for count query"
+            )
+
+        total_count = resource_data.get("totalCount")
+        if not isinstance(total_count, int):
+            raise OceanAbortException(
+                f"Wiz GraphQL response for '{resource}' includes invalid 'totalCount'"
+            )
+
+        return total_count
+
     async def _fetch_cursor_chain(
         self,
         resource: str,
@@ -176,7 +210,9 @@ class WizClient:
     ) -> AsyncGenerator[list[Any], None]:
         chain_variables = copy.deepcopy(variables)
         page_num = 1
+        counter = 0
         partition_suffix = f" ({partition_label})" if partition_label else ""
+        logger.info(f'Starting partition {partition_label}')
 
         while True:
             logger.info(
@@ -198,9 +234,11 @@ class WizClient:
                 )
 
             yield nodes
+            counter += len(nodes)
 
             cursor = resource_data.get("pageInfo") or {}
             if not cursor.get("hasNextPage", False):
+                logger.info(f'Finished partition {partition_label} after {page_num} pages and {counter} entities')
                 break
 
             chain_variables["after"] = cursor.get("endCursor", "")
@@ -214,7 +252,6 @@ class WizClient:
         variables: dict[str, Any],
         max_pages: Optional[int] = None,
         partitions: list[PaginationPartition] | None = None,
-        max_concurrent: int | None = None,
     ) -> AsyncGenerator[list[Any], None]:
         logger.info(f"Fetching {resource} data from Wiz API")
 
@@ -224,19 +261,12 @@ class WizClient:
             return
 
         logger.info(f"Fetching {resource} using {len(partitions)} parallel partitions")
-        semaphore = asyncio.BoundedSemaphore(
-            max_concurrent or self._MAX_CONCURRENT_SBOM_GROUP_FETCHES
-        )
         partition_streams = [
-            semaphore_async_iterator(
-                semaphore,
-                functools.partial(
-                    self._fetch_cursor_chain,
-                    resource,
-                    merge_partition_filters(variables, partition),
-                    max_pages,
-                    partition.label,
-                ),
+            self._fetch_cursor_chain(
+                resource,
+                merge_partition_filters(variables, partition),
+                max_pages,
+                partition.label,
             )
             for partition in partitions
         ]
@@ -339,20 +369,27 @@ class WizClient:
             variables["filterBy"]["severity"] = options["severity_list"]
 
         parallelism = options.get("parallelism")
-        partitions = (
-            VulnerabilityFindingPartitionStrategy().build_partitions("vulnerabilityFindings", variables, parallelism)
-            if parallelism is not None
-            else None
-        )
+        if parallelism is not None:
+            initial_partitions = VulnerabilityFindingPartitionStrategy().build_partitions(
+                "vulnerabilityFindings", variables, parallelism
+            )
+            if initial_partitions:
+                async for findings in stream_ready_partition_crawls(
+                    self,
+                    "vulnerabilityFindings",
+                    variables,
+                    initial_partitions,
+                    parallelism,
+                    self._fetch_cursor_chain,
+                    max_pages=options.get("max_pages"),
+                ):
+                    yield findings
+                return
 
         async for findings in self._get_paginated_resources(
             resource="vulnerabilityFindings",
             variables=variables,
             max_pages=options.get("max_pages"),
-            partitions=partitions or None,
-            max_concurrent=(
-                parallelism.get("max_concurrent") if parallelism is not None else None
-            ),
         ):
             yield findings
 
@@ -526,25 +563,17 @@ class WizClient:
         grouped_variables: dict[str, Any] = {
             "first": page_size,
         }
-        sbom_group_semaphore = asyncio.BoundedSemaphore(
-            self._MAX_CONCURRENT_SBOM_GROUP_FETCHES
-        )
-
         async for grouped_nodes in self._get_paginated_resources(
             resource="sbomArtifactsGroupedByName",
             variables=grouped_variables,
             max_pages=max_pages,
         ):
             grouped_artifact_streams = [
-                semaphore_async_iterator(
-                    sbom_group_semaphore,
-                    functools.partial(
-                        self._get_sbom_artifacts_for_grouped_name,
-                        grouped_node=grouped_node,
-                        page_size=page_size,
-                        max_pages=max_pages,
-                        resource_filter=resource_filter,
-                    ),
+                self._get_sbom_artifacts_for_grouped_name(
+                    grouped_node=grouped_node,
+                    page_size=page_size,
+                    max_pages=max_pages,
+                    resource_filter=resource_filter,
                 )
                 for grouped_node in grouped_nodes
                 if allow_all_groups

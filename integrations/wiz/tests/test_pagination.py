@@ -13,7 +13,6 @@ from wiz.pagination import (
 
 def _parallelism_config(**overrides: Any) -> ParallelismConfig:
     config: dict[str, Any] = {
-        "max_concurrent": 10,
         "strategy": "auto",
         "date_interval_days": 30,
         "lookback_days": 365,
