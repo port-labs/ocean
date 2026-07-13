@@ -2,7 +2,7 @@ import copy
 import datetime
 from typing import Any
 
-from .base import PaginationPartition
+from wiz.pagination.base import PaginationPartition
 
 
 def generate_date_windows(
@@ -47,7 +47,6 @@ def merge_partition_filters(
 
 
 def build_date_partitions(
-    *,
     resource_label: str,
     date_field: str,
     lookback_days: int,
