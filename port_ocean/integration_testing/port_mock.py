@@ -72,6 +72,13 @@ class PortMockResponder:
             self._handle_bulk_upsert,
         )
 
+        # Bulk entity delete — must be before single entity upsert
+        self.transport.add_route(
+            "POST",
+            r"/v1/blueprints/[^/]+/bulk/entities/delete",
+            self._handle_bulk_delete,
+        )
+
         # Single entity upsert (fallback)
         self.transport.add_route(
             "POST",
@@ -92,12 +99,6 @@ class PortMockResponder:
             "DELETE",
             "/all-entities",
             {"json": {"migrationId": "test-migration"}},
-        )
-
-        self.transport.add_route(
-            "POST",
-            r"/v1/blueprints/[^/]+/bulk/entities/delete",
-            self._handle_bulk_delete,
         )
 
         # Migration status
