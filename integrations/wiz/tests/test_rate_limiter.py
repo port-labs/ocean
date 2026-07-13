@@ -7,8 +7,8 @@ from wiz.rate_limiter import TokenBucketRateLimiter
 
 
 @pytest.mark.asyncio
-async def test_token_bucket_limits_burst() -> None:
-    limiter = TokenBucketRateLimiter(rate=10, burst=10)
+async def test_token_bucket_allows_initial_burst() -> None:
+    limiter = TokenBucketRateLimiter(rate=10)
     start = time.monotonic()
 
     for _ in range(10):
@@ -20,10 +20,10 @@ async def test_token_bucket_limits_burst() -> None:
 
 @pytest.mark.asyncio
 async def test_token_bucket_paces_sustained_requests() -> None:
-    limiter = TokenBucketRateLimiter(rate=10, burst=1)
+    limiter = TokenBucketRateLimiter(rate=10)
     start = time.monotonic()
 
-    for _ in range(3):
+    for _ in range(12):
         await limiter.acquire()
 
     elapsed = time.monotonic() - start
@@ -32,17 +32,10 @@ async def test_token_bucket_paces_sustained_requests() -> None:
 
 @pytest.mark.asyncio
 async def test_token_bucket_serializes_concurrent_acquires() -> None:
-    limiter = TokenBucketRateLimiter(rate=5, burst=1)
+    limiter = TokenBucketRateLimiter(rate=5)
     start = time.monotonic()
 
-    await asyncio.gather(*(limiter.acquire() for _ in range(3)))
+    await asyncio.gather(*(limiter.acquire() for _ in range(6)))
 
     elapsed = time.monotonic() - start
-    assert elapsed >= 0.3
-
-
-def test_set_rate_updates_burst_by_default() -> None:
-    limiter = TokenBucketRateLimiter(rate=10, burst=10)
-    limiter.set_rate(5)
-
-    assert limiter.rate == 5
+    assert elapsed >= 0.15

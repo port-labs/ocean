@@ -17,7 +17,7 @@ from wiz.options import (
     VulnerabilityFindingOptions,
 )
 
-from .constants import (
+from wiz.constants import (
     AUTH0_URLS,
     COGNITO_URLS,
     GRAPH_QUERIES,
@@ -25,12 +25,12 @@ from .constants import (
     PAGE_SIZE,
     RESOURCE_TOTAL_COUNT_QUERIES,
 )
-from .rate_limiter import TokenBucketRateLimiter
+from wiz.rate_limiter import TokenBucketRateLimiter
 from wiz.pagination import (
     PaginationPartition,
-    merge_partition_filters,
-    stream_ready_partition_crawls,
+    ReadyPartitionCrawlStream,
     VulnerabilityFindingPartitionStrategy,
+    merge_partition_filters,
 )
 
 
@@ -374,7 +374,7 @@ class WizClient:
                 "vulnerabilityFindings", variables, parallelism
             )
             if initial_partitions:
-                async for findings in stream_ready_partition_crawls(
+                async for findings in ReadyPartitionCrawlStream(
                     self,
                     "vulnerabilityFindings",
                     variables,

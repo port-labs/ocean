@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -8,12 +7,10 @@ import pytest
 from wiz.options import ParallelismConfig
 from wiz.pagination import (
     PaginationPartition,
-    bisect_date_partition,
-    refine_partitions,
-    split_partition,
-    stream_ready_partition_crawls,
+    PartitionRefiner,
+    PartitionSplitter,
+    ReadyPartitionCrawlStream,
 )
-from wiz.pagination.refine import DEFAULT_MAX_PARTITION_ENTITIES
 
 
 def _parallelism_config(**overrides: Any) -> ParallelismConfig:
@@ -27,6 +24,7 @@ def _parallelism_config(**overrides: Any) -> ParallelismConfig:
 
 
 def test_bisect_date_partition_splits_window_in_half() -> None:
+    splitter = PartitionSplitter()
     partition = PaginationPartition(
         label="vulnerabilityFindings-date-1",
         filter_overlay={
@@ -37,7 +35,7 @@ def test_bisect_date_partition_splits_window_in_half() -> None:
         },
     )
 
-    children = bisect_date_partition(partition)
+    children = splitter.bisect_date_partition(partition)
 
     assert children is not None
     assert len(children) == 2
@@ -48,6 +46,7 @@ def test_bisect_date_partition_splits_window_in_half() -> None:
 
 
 def test_bisect_date_partition_preserves_other_overlay_fields() -> None:
+    splitter = PartitionSplitter()
     partition = PaginationPartition(
         label="vulnerabilityFindings-severity-critical",
         filter_overlay={
@@ -59,19 +58,22 @@ def test_bisect_date_partition_preserves_other_overlay_fields() -> None:
         },
     )
 
-    children = bisect_date_partition(partition)
+    children = splitter.bisect_date_partition(partition)
 
     assert children is not None
     assert all(child.filter_overlay["severity"] == ["CRITICAL"] for child in children)
 
 
 def test_split_partition_adds_date_windows_for_severity_partition() -> None:
+    splitter = PartitionSplitter()
     partition = PaginationPartition(
         label="vulnerabilityFindings-severity-critical",
         filter_overlay={"severity": ["CRITICAL"]},
     )
 
-    children = split_partition(partition, _parallelism_config(lookback_days=60, date_interval_days=30))
+    children = splitter.split(
+        partition, _parallelism_config(lookback_days=60, date_interval_days=30)
+    )
 
     assert len(children) == 2
     assert all("firstSeenAt" in child.filter_overlay for child in children)
@@ -87,8 +89,7 @@ async def test_refine_partitions_skips_empty_partitions() -> None:
         PaginationPartition(label="partition-b", filter_overlay={"severity": ["HIGH"]}),
     ]
 
-    refined = await refine_partitions(
-        client,
+    refined = await PartitionRefiner(client).refine_partitions(
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         partitions,
@@ -108,13 +109,14 @@ async def test_refine_partitions_keeps_partitions_within_limit() -> None:
         filter_overlay={"severity": ["CRITICAL"]},
     )
 
-    refined = await refine_partitions(
+    refined = await PartitionRefiner(
         client,
+        max_entities=PartitionRefiner.DEFAULT_MAX_PARTITION_ENTITIES,
+    ).refine_partitions(
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
         _parallelism_config(),
-        max_entities=DEFAULT_MAX_PARTITION_ENTITIES,
     )
 
     assert refined == [partition]
@@ -136,13 +138,11 @@ async def test_refine_partitions_splits_large_date_partition() -> None:
         },
     )
 
-    refined = await refine_partitions(
-        client,
+    refined = await PartitionRefiner(client, max_entities=500).refine_partitions(
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
         _parallelism_config(),
-        max_entities=500,
     )
 
     assert len(refined) == 2
@@ -163,13 +163,11 @@ async def test_refine_partitions_splits_severity_partition_with_date_subwindows(
         filter_overlay={"severity": ["CRITICAL"]},
     )
 
-    refined = await refine_partitions(
-        client,
+    refined = await PartitionRefiner(client, max_entities=500).refine_partitions(
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
         _parallelism_config(lookback_days=60, date_interval_days=30),
-        max_entities=500,
     )
 
     assert len(refined) == 2
@@ -178,7 +176,7 @@ async def test_refine_partitions_splits_severity_partition_with_date_subwindows(
 
 
 @pytest.mark.asyncio
-async def test_stream_ready_partition_crawls_starts_before_all_partitions_ready() -> None:
+async def test_ready_partition_crawl_stream_starts_before_all_partitions_ready() -> None:
     release_second_probe = asyncio.Event()
     high_probe_waiting = asyncio.Event()
     crawl_started = asyncio.Event()
@@ -213,7 +211,7 @@ async def test_stream_ready_partition_crawls_starts_before_all_partitions_ready(
         ),
     ]
 
-    stream = stream_ready_partition_crawls(
+    stream = ReadyPartitionCrawlStream(
         CountClient(),
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
@@ -234,8 +232,8 @@ async def test_stream_ready_partition_crawls_starts_before_all_partitions_ready(
     assert len(results) == 2
 
 
-async def _collect_async_iterator(stream):
-    items = []
+async def _collect_async_iterator(stream: ReadyPartitionCrawlStream) -> list[Any]:
+    items: list[Any] = []
     async for item in stream:
         items.append(item)
     return items

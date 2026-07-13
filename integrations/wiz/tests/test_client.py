@@ -24,6 +24,19 @@ def mock_paginated_generator(
     return _gen()
 
 
+def _mock_ready_partition_crawl_stream(
+    generator: AsyncGenerator[List[Any], None],
+) -> type:
+    class MockReadyPartitionCrawlStream:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+        def __aiter__(self) -> AsyncGenerator[List[Any], None]:
+            return generator
+
+    return MockReadyPartitionCrawlStream
+
+
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
@@ -264,8 +277,8 @@ async def test_get_vulnerability_findings_with_parallelism(
 
     with (
         patch(
-            "wiz.client.stream_ready_partition_crawls",
-        ) as mock_stream_partitions,
+            "wiz.client.ReadyPartitionCrawlStream",
+        ) as mock_stream_class,
         patch.object(
             VulnerabilityFindingPartitionStrategy,
             "build_partitions",
@@ -277,15 +290,15 @@ async def test_get_vulnerability_findings_with_parallelism(
             ],
         ),
     ):
-        mock_stream_partitions.side_effect = (
-            lambda *args, **kwargs: mock_paginated_generator([{"id": "vuln-1"}])
+        mock_stream_class.side_effect = _mock_ready_partition_crawl_stream(
+            mock_paginated_generator([{"id": "vuln-1"}])
         )
 
         results: list[dict[str, Any]] = []
         async for batch in mock_wiz_client.get_vulnerability_findings(options):
             results.extend(batch)
 
-        mock_stream_partitions.assert_called_once_with(
+        mock_stream_class.assert_called_once_with(
             mock_wiz_client,
             "vulnerabilityFindings",
             {"first": 100, "filterBy": {}},
