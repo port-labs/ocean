@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, cast, Optional
 from datetime import datetime
 
@@ -13,6 +14,7 @@ from github.core.options import (
 )
 from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
+    generate_pr_nested_fields_gql,
     generate_pull_request_details_gql,
 )
 from github.helpers.utils import (
@@ -267,6 +269,10 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             if not pr_nodes:
                 continue
 
+            pr_nodes = await self._maybe_enrich_with_nested_fields(
+                pr_nodes, organization, repo_name, pr_gql_options
+            )
+
             batch = [
                 self._normalize_pr_node(
                     pr_node,
@@ -312,6 +318,13 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 pr, repo, organization, gql_options=pr_gql_options
             )
 
+        async def enrich_batch_async(
+            pr_nodes: list[dict[str, Any]],
+        ) -> list[dict[str, Any]]:
+            return await self._maybe_enrich_with_nested_fields(
+                pr_nodes, organization, repo_name, pr_gql_options
+            )
+
         async for batch in paginate_closed_pull_requests(
             self.client.send_paginated_request(
                 generate_list_pull_requests_gql(
@@ -327,8 +340,50 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             log_prefix="[GraphQL]",
             repo_name=repo_name,
             organization=organization,
+            enrich_batch_async=enrich_batch_async,
         ):
             yield batch
+
+    async def _maybe_enrich_with_nested_fields(
+        self,
+        pr_nodes: list[dict[str, Any]],
+        organization: str,
+        repo_name: str,
+        pr_gql_options: PullRequestGraphQLOptions,
+    ) -> list[dict[str, Any]]:
+        """Fetch deferred nested fields per PR in parallel and merge them into the list response.
+
+        No-op unless ``enrich_nested_fields_separately`` is set on the options.
+        """
+        if not pr_gql_options.enrich_nested_fields_separately or not pr_nodes:
+            return pr_nodes
+
+        query = generate_pr_nested_fields_gql(pr_gql_options)
+
+        async def fetch_one(pr_node: dict[str, Any]) -> dict[str, Any]:
+            payload = self.client.build_graphql_payload(
+                query,
+                {
+                    "organization": organization,
+                    "repo": repo_name,
+                    "prNumber": pr_node["number"],
+                },
+            )
+            response = await self.client.send_api_request(
+                self.client.base_url,
+                method="POST",
+                json_data=payload,
+            )
+            nested = (
+                response.get("data", {}).get("repository", {}).get("pullRequest") or {}
+            )
+            return {**pr_node, **nested}
+
+        logger.info(
+            f"[GraphQL] Enriching {len(pr_nodes)} PRs from {organization}/{repo_name} "
+            "with nested fields in parallel"
+        )
+        return await asyncio.gather(*(fetch_one(pr) for pr in pr_nodes))
 
     def _normalize_pr_node(
         self,

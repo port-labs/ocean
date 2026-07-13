@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any, Awaitable, AsyncIterator, Callable, Optional
 
 from loguru import logger
 
@@ -30,6 +30,9 @@ async def paginate_closed_pull_requests(
     log_prefix: str,
     repo_name: str,
     organization: str,
+    enrich_batch_async: Optional[
+        Callable[[list[dict[str, Any]]], Awaitable[list[dict[str, Any]]]]
+    ] = None,
 ) -> AsyncIterator[list[dict[str, Any]]]:
     """Paginate closed pull requests for both the REST and GraphQL exporters.
 
@@ -55,6 +58,9 @@ async def paginate_closed_pull_requests(
             if remaining <= 0:
                 break
             in_window = in_window[:remaining]
+
+        if enrich_batch_async is not None and in_window:
+            in_window = await enrich_batch_async(in_window)
 
         batch = [enrich(pr) for pr in in_window]
         if batch:

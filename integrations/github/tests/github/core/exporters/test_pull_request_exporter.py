@@ -1381,6 +1381,63 @@ class TestGraphQLPullRequestExporterInternals:
         assert normalized["__repository_object"] == {"name": "repo1"}
         assert normalized["__organization"] == "org"
 
+    @pytest.mark.asyncio
+    async def test_maybe_enrich_with_nested_fields_no_op_when_flag_disabled(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        pr_nodes = [{"number": 1, "id": "PR_1"}]
+
+        with patch.object(
+            graphql_client, "send_api_request", AsyncMock()
+        ) as mock_request:
+            result = await exporter._maybe_enrich_with_nested_fields(
+                pr_nodes,
+                organization="test-org",
+                repo_name="repo1",
+                pr_gql_options=PullRequestGraphQLOptions(),
+            )
+
+        assert result is pr_nodes
+        mock_request.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_maybe_enrich_with_nested_fields_merges_per_pr_response(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        pr_nodes = [
+            {"number": 101, "id": "PR_1", "title": "first"},
+            {"number": 102, "id": "PR_2", "title": "second"},
+        ]
+        responses = {
+            101: {"assignees": {"nodes": [{"login": "alice"}]}, "labels": {"nodes": []}},
+            102: {"assignees": {"nodes": [{"login": "bob"}]}, "labels": {"nodes": []}},
+        }
+
+        async def fake_send(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            pr_number = kwargs["json_data"]["variables"]["prNumber"]
+            return {"data": {"repository": {"pullRequest": responses[pr_number]}}}
+
+        with patch.object(
+            graphql_client, "send_api_request", side_effect=fake_send
+        ) as mock_request:
+            merged = await exporter._maybe_enrich_with_nested_fields(
+                pr_nodes,
+                organization="test-org",
+                repo_name="repo1",
+                pr_gql_options=PullRequestGraphQLOptions(
+                    enrich_nested_fields_separately=True
+                ),
+            )
+
+        assert mock_request.call_count == 2
+        # Original scalar fields are preserved; nested fields are merged in.
+        assert merged[0]["title"] == "first"
+        assert merged[0]["assignees"] == {"nodes": [{"login": "alice"}]}
+        assert merged[1]["title"] == "second"
+        assert merged[1]["assignees"] == {"nodes": [{"login": "bob"}]}
+
 
 def test_filter_prs_by_date_skips_items_missing_field() -> None:
     prs: list[dict[str, Any]] = [
