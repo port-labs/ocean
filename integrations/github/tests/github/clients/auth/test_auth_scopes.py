@@ -15,7 +15,7 @@ from github.clients.auth.github_app.installation_authenticator import (
 )
 from github.clients.auth.github_app.installation_registry import (
     GitHubAppInstallationRegistry,
-    reset_installation_index,
+    reset_authenticators_by_org,
 )
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
@@ -39,7 +39,7 @@ APP_CONFIG = {
 
 @pytest.fixture(autouse=True)
 def _clear_installation_index() -> None:
-    reset_installation_index()
+    reset_authenticators_by_org()
 
 
 class TestAuthBackendResolution:
@@ -128,28 +128,18 @@ class TestGitHubAppInstallationRegistry:
 
     @pytest.mark.asyncio
     async def test_list_authenticators_discovers_installations(self) -> None:
-        installation_page = [
-            {
-                "id": 1,
-                "account": {"login": "org-a", "type": "Organization"},
-            },
-            {
-                "id": 2,
-                "account": {"login": "org-b", "type": "Organization"},
-            },
-        ]
         index = {
-            "org-a": GitHubAppInstallationRegistry._authenticator_from_installation(
-                APP_CONFIG, installation_page[0]
+            "org-a": GitHubAppInstallationRegistry._authenticator(
+                APP_CONFIG, installation_id="1"
             ),
-            "org-b": GitHubAppInstallationRegistry._authenticator_from_installation(
-                APP_CONFIG, installation_page[1]
+            "org-b": GitHubAppInstallationRegistry._authenticator(
+                APP_CONFIG, installation_id="2"
             ),
         }
 
         with patch.object(
             GitHubAppInstallationRegistry,
-            "_ensure_index",
+            "_get_authenticators_by_org",
             AsyncMock(return_value=index),
         ):
             authenticators = await AppAuthBackend.list_authenticators(APP_CONFIG)
@@ -171,9 +161,8 @@ class TestGitHubAppInstallationRegistry:
             "github_app_installation_id": "123",
             "github_organization": "my-org",
         }
-        auth = GitHubAppInstallationRegistry._authenticator_from_installation(
-            config,
-            {"id": 123, "account": {"login": "my-org", "type": "Organization"}},
+        auth = GitHubAppInstallationRegistry._authenticator(
+            config, installation_id="123"
         )
         registry._authenticators_by_org = {"my-org": auth}
 

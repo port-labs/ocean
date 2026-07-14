@@ -10,7 +10,7 @@ from github.clients.auth.auth_backend import (
 )
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.github_app.installation_registry import (
-    reset_installation_index,
+    reset_authenticators_by_org,
 )
 from github.clients.auth.personal_access_token_authenticator import (
     reset_pat_instances,
@@ -33,7 +33,7 @@ def _reset_after_fork() -> None:
     for client in _clients.values():
         client.authenticator._http_client = None
     _clients.clear()
-    reset_installation_index()
+    reset_authenticators_by_org()
     reset_pat_instances()
     GitHubRateLimiterRegistry.reset_for_fork()
 

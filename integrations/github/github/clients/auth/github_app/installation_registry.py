@@ -1,7 +1,6 @@
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
 from loguru import logger
-from port_ocean.context.event import event
 
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_authenticator import (
@@ -9,36 +8,15 @@ from github.clients.auth.github_app.installation_authenticator import (
 )
 from github.helpers.exceptions import AuthenticationException
 
-if TYPE_CHECKING:
-    from integration import GithubPortAppConfig
-
 _authenticators_by_org: dict[str, GitHubAppInstallationAuthenticator] | None = None
 
 
-def reset_installation_index() -> None:
+def reset_authenticators_by_org() -> None:
     global _authenticators_by_org
     _authenticators_by_org = None
 
 
 class GitHubAppInstallationRegistry:
-    @classmethod
-    def _allowed_organizations(cls) -> list[str]:
-        try:
-            port_app_config = cast("GithubPortAppConfig", event.port_app_config)
-            return port_app_config.organizations or []
-        except Exception:
-            return []
-
-    @classmethod
-    def _is_allowed_org(
-        cls, config: dict[str, Any], login: str, allowed: list[str]
-    ) -> bool:
-        if config.get("github_organization") and login != config["github_organization"]:
-            return False
-        if allowed and login not in allowed:
-            return False
-        return True
-
     @classmethod
     def _authenticator(
         cls,
@@ -54,14 +32,7 @@ class GitHubAppInstallationRegistry:
         )
 
     @classmethod
-    def _authenticator_from_installation(
-        cls, config: dict[str, Any], installation: dict[str, Any]
-    ) -> GitHubAppInstallationAuthenticator:
-        installation_id = str(installation["id"])
-        return cls._authenticator(config, installation_id=installation_id)
-
-    @classmethod
-    async def _ensure_index(
+    async def _get_authenticators_by_org(
         cls, config: dict[str, Any]
     ) -> dict[str, GitHubAppInstallationAuthenticator]:
         global _authenticators_by_org
@@ -88,17 +59,16 @@ class GitHubAppInstallationRegistry:
             _authenticators_by_org = {organization: authenticator}
             return _authenticators_by_org
 
-        allowed_orgs = cls._allowed_organizations()
         index: dict[str, GitHubAppInstallationAuthenticator] = {}
 
         async for page in app_auth.iter_app_installations():
             for installation in page:
                 account = installation.get("account") or {}
                 login = account.get("login")
-                if not login or not cls._is_allowed_org(config, login, allowed_orgs):
+                if not login:
                     continue
-                index[login] = cls._authenticator_from_installation(
-                    config, installation
+                index[login] = cls._authenticator(
+                    config, installation_id=str(installation["id"])
                 )
 
         _authenticators_by_org = index
@@ -108,7 +78,7 @@ class GitHubAppInstallationRegistry:
     async def list_authenticators(
         cls, config: dict[str, Any]
     ) -> list[GitHubAppInstallationAuthenticator]:
-        authenticators = list((await cls._ensure_index(config)).values())
+        authenticators = list((await cls._get_authenticators_by_org(config)).values())
         if not authenticators:
             raise AuthenticationException("No GitHub App installations found")
         logger.info(f"Discovered {len(authenticators)} GitHub App installation(s)")
