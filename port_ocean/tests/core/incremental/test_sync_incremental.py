@@ -309,7 +309,7 @@ class TestIncrementalKindLifecycle:
         self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
     ) -> None:
         resource = make_resource_config("issue")
-        mock_mixin._register_in_batches = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
+        mock_mixin._register_in_batches = AsyncMock(return_value=([], []))
         lifecycle_client = MagicMock()
         lifecycle_client.notify_started = AsyncMock()
         lifecycle_client.notify_finished = AsyncMock()
