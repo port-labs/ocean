@@ -6,15 +6,22 @@ import httpx
 
 from github.helpers.utils import has_exhausted_rate_limit_headers
 
-RATE_LIMIT_STATUS_CODES = {403, 429}
+REST_RATE_LIMIT_STATUS_CODES = {403, 429}
+GRAPHQL_RATE_LIMIT_STATUS_CODES = REST_RATE_LIMIT_STATUS_CODES | {200}
 
 
-def is_rate_limit_response(response: httpx.Response) -> bool:
-    if response.status_code not in RATE_LIMIT_STATUS_CODES:
+def is_rest_rate_limit_response(response: httpx.Response) -> bool:
+    if response.status_code not in REST_RATE_LIMIT_STATUS_CODES:
         return False
     return response.status_code == 429 or has_exhausted_rate_limit_headers(
         response.headers
     )
+
+
+def is_graphql_rate_limit_response(response: httpx.Response) -> bool:
+    if response.status_code not in GRAPHQL_RATE_LIMIT_STATUS_CODES:
+        return False
+    return has_exhausted_rate_limit_headers(response.headers)
 
 
 @dataclass

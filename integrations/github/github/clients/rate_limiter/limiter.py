@@ -11,7 +11,8 @@ from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
     RateLimitInfo,
     RateLimiterRequiredHeaders,
-    is_rate_limit_response,
+    is_graphql_rate_limit_response,
+    is_rest_rate_limit_response,
 )
 
 _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD: float = 95.0
@@ -130,7 +131,11 @@ class GitHubRateLimiter:
         self._initialized = False
 
     def is_rate_limit_response(self, response: httpx.Response) -> bool:
-        return is_rate_limit_response(response)
+        match self.api_type:
+            case "graphql":
+                return is_graphql_rate_limit_response(response)
+            case _:
+                return is_rest_rate_limit_response(response)
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders

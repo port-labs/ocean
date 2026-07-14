@@ -429,46 +429,54 @@ class TestRateLimiterOnResponse:
 
     @pytest.mark.asyncio
     async def test_handle_rate_limit_response_retry_after_only(
-        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+        self, github_host: str, mock_sleep: Mock
     ) -> None:
-        """When only retry-after is present (no x-ratelimit headers), a fallback RateLimitInfo is created."""
-        client = MockGitHubClient(github_host, client_config)
-        retry_after_seconds = 30
+        """When only retry-after is present (no x-ratelimit headers), a fallback RateLimitInfo is created (REST/Search only)."""
+        # Only test REST and Search APIs — GraphQL uses HTTP 200 for rate-limiting, not 429
+        for api_type in ("rest", "search"):
+            config = GitHubRateLimiterConfig(api_type=api_type, max_concurrent=5)
+            GitHubRateLimiterRegistry._instances.clear()
+            client = MockGitHubClient(github_host, config)
+            retry_after_seconds = 30
 
-        mock_response = Mock()
-        mock_response.status_code = 429
-        mock_response.headers = {"retry-after": str(retry_after_seconds)}
-        await client.rate_limiter.on_response(mock_response, "/search")
+            mock_response = Mock()
+            mock_response.status_code = 429
+            mock_response.headers = {"retry-after": str(retry_after_seconds)}
+            await client.rate_limiter.on_response(mock_response, "/search")
 
-        assert client.rate_limiter._initialized is True
-        info = client.rate_limiter.rate_limit_info
-        assert info is not None
-        assert info.remaining == 0
-        assert info.seconds_until_reset >= retry_after_seconds - 2
+            assert client.rate_limiter._initialized is True
+            info = client.rate_limiter.rate_limit_info
+            assert info is not None
+            assert info.remaining == 0
+            assert info.seconds_until_reset >= retry_after_seconds - 2
 
     @pytest.mark.asyncio
     async def test_handle_rate_limit_response_retry_after_overrides_x_ratelimit_reset(
-        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+        self, github_host: str, mock_sleep: Mock
     ) -> None:
-        """When both x-ratelimit-reset and retry-after are present, retry-after wins."""
-        client = MockGitHubClient(github_host, client_config)
-        retry_after_seconds = 60
+        """When both x-ratelimit-reset and retry-after are present, retry-after wins (REST/Search only)."""
+        # Only test REST and Search APIs — GraphQL uses HTTP 200 for rate-limiting, not 429
+        for api_type in ("rest", "search"):
+            config = GitHubRateLimiterConfig(api_type=api_type, max_concurrent=5)
+            GitHubRateLimiterRegistry._instances.clear()
+            client = MockGitHubClient(github_host, config)
+            retry_after_seconds = 60
 
-        mock_response = Mock()
-        mock_response.status_code = 429
-        mock_response.headers = {
-            "x-ratelimit-limit": "1000",
-            "x-ratelimit-remaining": "0",
-            "x-ratelimit-reset": str(int(time.time()) + 3600),
-            "retry-after": str(retry_after_seconds),
-        }
-        await client.rate_limiter.on_response(mock_response, "/repos")
+            mock_response = Mock()
+            mock_response.status_code = 429
+            mock_response.headers = {
+                "x-ratelimit-limit": "1000",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": str(int(time.time()) + 3600),
+                "retry-after": str(retry_after_seconds),
+            }
+            await client.rate_limiter.on_response(mock_response, "/repos")
 
-        info = client.rate_limiter.rate_limit_info
-        assert info is not None
-        assert info.remaining == 0
-        # reset_time must reflect retry-after (≈60s), not x-ratelimit-reset (≈3600s)
-        assert info.seconds_until_reset <= retry_after_seconds + 2
+            info = client.rate_limiter.rate_limit_info
+            assert info is not None
+            assert info.remaining == 0
+            # reset_time must reflect retry-after (≈60s), not x-ratelimit-reset (≈3600s)
+            assert info.seconds_until_reset <= retry_after_seconds + 2
 
 
 class TestRateLimiterLogging:
@@ -939,3 +947,125 @@ class TestRateLimiterSemaphorePermitLeak:
         assert len(acquired_permits) == client_config.max_concurrent
         for _ in acquired_permits:
             client.rate_limiter._semaphore.release()
+
+
+class TestIsRateLimitResponseDispatch:
+    """Tests for is_rate_limit_response routing to the correct check function."""
+
+    def test_graphql_uses_graphql_rate_limit_check(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """GraphQL API type should use is_graphql_rate_limit_response."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # GraphQL rate-limit: HTTP 200 with exhausted headers
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_graphql_ignores_429_without_exhausted_headers(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """GraphQL API should not treat 429 as rate-limited without exhausted headers."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # 429 without exhausted headers should not be treated as rate-limited by GraphQL check
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.headers = {}
+
+        assert limiter.is_rate_limit_response(mock_response) is False
+
+    def test_rest_uses_rest_rate_limit_check(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """REST API type should use is_rest_rate_limit_response."""
+        config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # REST rate-limit: HTTP 429
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.headers = {}
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_rest_rate_limit_403_with_exhausted_headers(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """REST API should treat 403 with exhausted headers as rate-limited."""
+        config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # REST rate-limit: HTTP 403 with exhausted headers
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 403
+        mock_response.headers = {
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_search_uses_rest_rate_limit_check(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """Search API type should use is_rest_rate_limit_response (falls to default case)."""
+        config = GitHubRateLimiterConfig(api_type="search", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # Search API should use REST check: treat 429 as rate-limited
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.headers = {}
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_graphql_http_200_without_exhausted_headers_not_rate_limited(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """GraphQL HTTP 200 without exhausted headers should not be treated as rate-limited."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # Normal successful response
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-remaining": "500",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        assert limiter.is_rate_limit_response(mock_response) is False
+
+    @pytest.mark.asyncio
+    async def test_graphql_rate_limit_response_handled_by_on_response(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """Verify that GraphQL rate-limit responses (HTTP 200 with exhausted headers) are handled."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        client = MockGitHubClient(github_host, config)
+
+        # Simulate a GraphQL rate-limit response
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        await client.rate_limiter.on_response(mock_response, "/graphql")
+
+        # Verify the limiter recognized it as rate-limited and updated state
+        assert client.rate_limiter._initialized is True
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 0
+        assert client.rate_limiter.rate_limit_info.limit == 5000
