@@ -22,11 +22,9 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
         private_key: str,
         installation_id: str,
         github_host: str,
-        organization: Optional[str] = None,
     ):
         self.app_auth = GitHubAppAuthenticator(app_id, private_key, github_host)
         self.installation_id = installation_id
-        self.organization = organization
         self.cached_installation_token: Optional[GitHubToken] = None
         self.installation_token_lock = asyncio.Lock()
 

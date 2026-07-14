@@ -13,7 +13,6 @@ class TestGithubAuthenticator:
     @pytest.fixture
     def github_auth(self) -> GitHubAppInstallationAuthenticator:
         return GitHubAppInstallationAuthenticator(
-            organization="test-org",
             github_host="https://api.github.com",
             app_id="test-app-id",
             installation_id="12345",
@@ -138,14 +137,12 @@ class TestGithubAuthenticator:
     @pytest.mark.asyncio
     async def test_different_authenticators_have_different_clients(self) -> None:
         auth1 = GitHubAppInstallationAuthenticator(
-            organization="org1",
             github_host="https://api.github.com",
             app_id="app1",
             installation_id="111",
             private_key="key1",
         )
         auth2 = GitHubAppInstallationAuthenticator(
-            organization="org2",
             github_host="https://api.github.com",
             app_id="app2",
             installation_id="222",

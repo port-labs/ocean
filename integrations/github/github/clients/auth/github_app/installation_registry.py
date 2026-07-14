@@ -45,26 +45,20 @@ class GitHubAppInstallationRegistry:
         config: dict[str, Any],
         *,
         installation_id: str,
-        organization: str | None = None,
     ) -> GitHubAppInstallationAuthenticator:
         return GitHubAppInstallationAuthenticator(
             app_id=config["github_app_id"],
             private_key=config["github_app_private_key"],
             installation_id=installation_id,
             github_host=config["github_host"],
-            organization=organization,
         )
 
     @classmethod
     def _authenticator_from_installation(
         cls, config: dict[str, Any], installation: dict[str, Any]
     ) -> GitHubAppInstallationAuthenticator:
-        account = installation["account"]
-        login = account["login"]
         installation_id = str(installation["id"])
-        return cls._authenticator(
-            config, installation_id=installation_id, organization=login
-        )
+        return cls._authenticator(config, installation_id=installation_id)
 
     @classmethod
     async def _ensure_index(
@@ -90,7 +84,6 @@ class GitHubAppInstallationRegistry:
             authenticator = cls._authenticator(
                 config,
                 installation_id=str(installation_id),
-                organization=organization,
             )
             _authenticators_by_org = {organization: authenticator}
             return _authenticators_by_org
@@ -136,7 +129,6 @@ class GitHubAppInstallationRegistry:
             return cls._authenticator(
                 config,
                 installation_id=str(installation_id),
-                organization=organization,
             )
 
         raise AuthenticationException(

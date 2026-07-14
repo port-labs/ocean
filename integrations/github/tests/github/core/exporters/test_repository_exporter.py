@@ -359,7 +359,6 @@ class TestRestRepositoryExporter:
             rest_client.authenticator = GitHubAppInstallationAuthenticator(
                 app_id="app",
                 private_key="key",
-                organization="test-org",
                 github_host=rest_client.base_url,
                 installation_id="123",
             )

@@ -185,7 +185,6 @@ class TestGithubPersonalAccountWebhookClient:
             authenticator=GitHubAppInstallationAuthenticator(
                 app_id="app",
                 private_key="key",
-                organization="test-org",
                 github_host="https://api.github.com",
                 installation_id="123",
             ),

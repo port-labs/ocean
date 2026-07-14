@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Optional
 
 import jwt
-from port_ocean.utils.cache import cache_coroutine_result
+from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -78,6 +78,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         response.raise_for_status()
         return response.json()
 
+    @cache_iterator_result()
     async def iter_app_installations(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -97,15 +98,13 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             link_header = response.headers.get("Link", "")
             url = self._parse_next_link(link_header)
 
-    async def get_app(self) -> dict[str, Any]:
+    @cache_coroutine_result()
+    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
         response = await self.client.get(
             f"{self.github_host}/app",
             headers=(await self.get_headers()).as_dict(),
         )
         response.raise_for_status()
-        return response.json()
+        app = response.json()
 
-    @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
-        app = await self.get_app()
         return f"{app['slug']}[bot]"

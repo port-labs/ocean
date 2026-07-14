@@ -104,7 +104,6 @@ class TestGitHubAppInstallationRegistry:
         assert len(authenticators) == 1
         auth = authenticators[0]
         assert isinstance(auth, GitHubAppInstallationAuthenticator)
-        assert auth.organization == "my-org"
         assert auth.installation_id == "123"
 
     @pytest.mark.asyncio
@@ -125,7 +124,6 @@ class TestGitHubAppInstallationRegistry:
         assert len(authenticators) == 1
         auth = authenticators[0]
         assert isinstance(auth, GitHubAppInstallationAuthenticator)
-        assert auth.organization == "resolved-org"
         assert auth.installation_id == "123"
 
     @pytest.mark.asyncio
@@ -158,10 +156,10 @@ class TestGitHubAppInstallationRegistry:
 
         assert len(authenticators) == 2
         assert {
-            auth.organization
+            auth.installation_id
             for auth in authenticators
             if isinstance(auth, GitHubAppInstallationAuthenticator)
-        } == {"org-a", "org-b"}
+        } == {"1", "2"}
 
     def test_get_authenticator_for_organization_returns_indexed_authenticator(
         self,
@@ -182,4 +180,3 @@ class TestGitHubAppInstallationRegistry:
         resolved = AppAuthBackend.get_authenticator_for_organization(config, "my-org")
         assert isinstance(resolved, GitHubAppInstallationAuthenticator)
         assert resolved.installation_id == "123"
-        assert resolved.organization == "my-org"
