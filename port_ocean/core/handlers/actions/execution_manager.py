@@ -14,7 +14,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.execution_manager import (
     ActionExecutionError,
     DuplicateActionExecutorError,
-    PartitionKeyNotFoundError,
     RunAlreadyAcknowledgedError,
 )
 from port_ocean.utils.signal import SignalHandler
@@ -207,12 +206,9 @@ class ExecutionManager:
                 logger.info(f"Adding {len(runs)} runs to queues", runs_count=len(runs))
                 for run in runs:
                     try:
-                        action_type = run.action_type
-                        if action_type not in self._actions_executors:
-                            logger.warning(
-                                "No Executors registered to handle this action, skipping run...",
-                                action_type=action_type,
-                                run_id=run.id,
+                        if run.action_type not in self._actions_executors:
+                            await self._ack_and_fail_run_without_executor(
+                                run, run.action_type
                             )
                             continue
 
@@ -224,27 +220,20 @@ class ExecutionManager:
                             continue
 
                         partition_key = await self._actions_executors[
-                            action_type
+                            run.action_type
                         ]._get_partition_key(run)
 
                         queue_name = (
                             GLOBAL_SOURCE
                             if not partition_key
-                            else f"{action_type}:{partition_key}"
+                            else f"{run.action_type}:{partition_key}"
                         )
                         await self._add_run_to_queue(run, queue_name)
-                    except PartitionKeyNotFoundError as e:
-                        logger.warning(
-                            "Partition key not found in invocation payload, skipping run...",
-                            run_id=run.id,
-                            action_type=action_type,
-                            error=str(e),
-                        )
                     except Exception as e:
                         logger.exception(
                             "Error adding run to queue",
                             run_id=run.id,
-                            action_type=action_type,
+                            action_type=run.action_type,
                             error=str(e),
                         )
 
@@ -255,6 +244,36 @@ class ExecutionManager:
                 )
                 # Backoff to avoid overwhelming the API with requests
                 await asyncio.sleep(self._poll_check_interval_seconds)
+
+    async def _ack_and_fail_run_without_executor(
+        self, run: IntegrationRun, action_type: str
+    ) -> None:
+        logger.warning(
+            "No Executors registered to handle this action, failing run...",
+            action_type=action_type,
+            run_id=run.id,
+        )
+        try:
+            await ocean.port_client.acknowledge_run(run)
+        except RunAlreadyAcknowledgedError:
+            logger.warning(
+                "Run already being processed by another worker, skipping",
+                run_id=run.id,
+            )
+            return
+        except Exception as e:
+            logger.exception(
+                "Error occurred while trying to acknowledge run",
+                error=str(e),
+            )
+            raise
+
+        await ocean.port_client.report_run_completed(
+            run,
+            success=False,
+            message=f"No executor registered for action type '{action_type}'",
+            should_raise=False,
+        )
 
     async def _get_queues_size(self) -> int:
         """
