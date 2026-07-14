@@ -22,8 +22,8 @@ class ProjectOptions(BaseModel):
 
 class VulnerabilityFindingOptions(BaseModel):
     max_pages: int
-    status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
-        default=None,  # type: ignore[arg-type]
+    status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] | None = (
+        None
     )
     severity_list: list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]] | None = (
         None
