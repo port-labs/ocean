@@ -1,9 +1,11 @@
+import asyncio
 from collections.abc import Generator
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+import pytest_asyncio
 
 from port_ocean.clients.dsp.lifecycle import (
     GranularityType,
@@ -11,6 +13,11 @@ from port_ocean.clients.dsp.lifecycle import (
     SYNC_TYPE_FULL_SYNC,
     SYNC_TYPE_INCREMENTAL_RESYNC,
 )
+from port_ocean.clients.dsp.lifecycle_http import (
+    OceanResyncHttpClient,
+    get_lifecycle_http_client,
+)
+from port_ocean.core.integrations.mixins.utils import clear_http_client_context
 from port_ocean.helpers.retry import RetryTransport
 from port_ocean.version import __version__
 
@@ -20,6 +27,13 @@ def mock_ocean_context() -> Generator[MagicMock, None, None]:
     with patch("port_ocean.helpers.async_client.ocean") as mock_ocean:
         mock_ocean.app.is_saas = MagicMock(return_value=False)
         yield mock_ocean
+
+
+@pytest.fixture(autouse=True)
+def reset_lifecycle_http_context() -> Generator[None, None, None]:
+    clear_http_client_context()
+    yield
+    clear_http_client_context()
 
 
 @pytest.fixture
@@ -49,15 +63,16 @@ def _patch_lifecycle_ingest_url(
     )
 
 
-@pytest.fixture
-def lifecycle_client(
+@pytest_asyncio.fixture
+async def lifecycle_client(
     mock_auth: MagicMock,
     mock_post: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> LifecycleClient:
     client = LifecycleClient(auth=mock_auth)
+    client._lifecycle_http_client = OceanResyncHttpClient(auth=mock_auth)
     _patch_lifecycle_ingest_url(client)
-    monkeypatch.setattr(client, "_raw_post", mock_post)
+    monkeypatch.setattr(client._lifecycle_http_client, "_raw_post", mock_post)
     return client
 
 
@@ -274,7 +289,7 @@ class TestNotifyResyncAborted:
         error_response.text = "internal error"
         mock_post.return_value = error_response
 
-        with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
+        with patch("port_ocean.clients.dsp.lifecycle_http.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
             )
@@ -292,7 +307,7 @@ class TestNotifyResyncAborted:
         error_response.text = "x" * 1000
         mock_post.return_value = error_response
 
-        with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
+        with patch("port_ocean.clients.dsp.lifecycle_http.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
             )
@@ -567,8 +582,9 @@ class TestRetryBehavior:
 
     @staticmethod
     def _transport(client: LifecycleClient) -> RetryTransport:
-        assert isinstance(client._transport, RetryTransport)
-        return client._transport
+        lifecycle_http_client = client._lifecycle_http_client
+        assert isinstance(lifecycle_http_client._transport, RetryTransport)
+        return lifecycle_http_client._transport
 
     @staticmethod
     def _inner_transport(transport: RetryTransport) -> httpx.AsyncHTTPTransport:
@@ -578,6 +594,7 @@ class TestRetryBehavior:
     @pytest.mark.asyncio
     async def test_post_retried_on_503(self, mock_auth: MagicMock) -> None:
         client = LifecycleClient(auth=mock_auth)
+        client._lifecycle_http_client = OceanResyncHttpClient(auth=mock_auth)
         _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
@@ -596,6 +613,7 @@ class TestRetryBehavior:
     @pytest.mark.asyncio
     async def test_post_retried_on_connect_error(self, mock_auth: MagicMock) -> None:
         client = LifecycleClient(auth=mock_auth)
+        client._lifecycle_http_client = OceanResyncHttpClient(auth=mock_auth)
         _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
@@ -616,6 +634,7 @@ class TestRetryBehavior:
         self, mock_auth: MagicMock
     ) -> None:
         client = LifecycleClient(auth=mock_auth)
+        client._lifecycle_http_client = OceanResyncHttpClient(auth=mock_auth)
         _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
@@ -627,13 +646,28 @@ class TestRetryBehavior:
         with (
             patch.object(transport, "_calculate_sleep", return_value=0.0),
             patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
-            patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
+            patch("port_ocean.clients.dsp.lifecycle_http.logger") as mock_logger,
         ):
             await client.notify_resync_started(
                 resync_id="r1", integration_id="i1", integration_type="github"
             )
         assert inner.handle_async_request.await_count == max_attempts + 1
         mock_logger.warning.assert_called_once()
+
+
+class TestLifecycleClientLoopSafety:
+    def test_lifecycle_http_client_recreated_after_context_clear(
+        self, mock_auth: MagicMock
+    ) -> None:
+        async def _client_instance_id() -> int:
+            client = get_lifecycle_http_client(mock_auth)
+            return id(client._transport)
+
+        first_id = asyncio.run(_client_instance_id())
+        clear_http_client_context()
+        second_id = asyncio.run(_client_instance_id())
+
+        assert first_id != second_id
 
 
 class TestGetLifecycleAttributes:

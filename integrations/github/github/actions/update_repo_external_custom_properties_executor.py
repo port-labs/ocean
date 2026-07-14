@@ -23,13 +23,13 @@ def external_properties_from_mapping(
     ]
 
 
-class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
+class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
     """
     Writes changed Port entity properties back to GitHub as repository
-    external / custom properties.
+    external custom properties.
     """
 
-    ACTION_NAME = "update_repo_external_properties"
+    ACTION_NAME = "update_repo_external_custom_properties"
     WEBHOOK_PROCESSOR_CLASS = None
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
@@ -58,14 +58,14 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
             )
 
         with logger.contextualize(org=org, repo=repo):
-            logger.info("Processing external properties update")
+            logger.info("Processing external custom properties update")
             github_properties = external_properties_from_mapping(
                 external_properties_mapping
             )
 
             try:
                 await self.rest_client.make_request(
-                    f"{self.rest_client.base_url}/orgs/{org}/properties/external/values",
+                    f"{self.rest_client.base_url}/orgs/{org}/properties/installations/values",
                     method="PATCH",
                     json_data={
                         "repository_names": [str(repo)],
@@ -80,22 +80,25 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
                         e.response
                     ):
                         raise ActionExecutionError(
-                            "Missing external properties write permission on the organization. "
+                            "Missing external custom properties write permission on the organization. "
                             "Update the integration permissions in order to enable this action."
                         )
-                    error_message = e.response.json().get("message", str(e))
+                    try:
+                        error_message = e.response.json().get("message", str(e))
+                    except ValueError:
+                        error_message = e.response.text or str(e)
                     logger.error(
-                        "GitHub API error while updating external properties",
+                        "GitHub API error while updating external custom properties",
                         status_code=e.response.status_code,
                         message=error_message,
                     )
                 raise ActionExecutionError(
-                    f"Error updating external properties: {error_message}"
+                    f"Error updating external custom properties: {error_message}"
                 )
 
-            logger.info("Successfully updated external properties")
+            logger.info("Successfully updated external custom properties")
             await ocean.port_client.report_run_completed(
                 run,
                 success=True,
-                message=f"Updated {len(github_properties)} external properties on {org}/{repo}.",
+                message=f"Updated {len(github_properties)} external custom properties on {org}/{repo}.",
             )
