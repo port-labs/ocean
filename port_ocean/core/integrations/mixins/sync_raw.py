@@ -1290,6 +1290,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
                     sync_type=SYNC_TYPE_INCREMENTAL_RESYNC,
+                    kind_identifiers=[
+                        f"{resource_cfg.kind}-{index}"
+                        for index, resource_cfg in incremental_resources
+                    ],
                 )
 
             for index, resource_cfg in incremental_resources:

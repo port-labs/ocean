@@ -132,6 +132,7 @@ class LifecycleClient(OceanResyncHttpClient):
         integration_type: str,
         started_at: datetime | None = None,
         sync_type: str = SYNC_TYPE_FULL_SYNC,
+        kind_identifiers: list[str] | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
         body = self._build_body(
@@ -143,6 +144,8 @@ class LifecycleClient(OceanResyncHttpClient):
             started_at=started_at.isoformat(),
             sync_type=sync_type,
         )
+        if kind_identifiers:
+            body["kind_identifiers"] = kind_identifiers
         logger.info(f"Notifying lifecycle API resync started, resync_id={resync_id}")
         await self._do_post(await self._resync_url(resync_id), json=body)
 

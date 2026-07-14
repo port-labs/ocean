@@ -163,6 +163,20 @@ class TestNotifyResyncStarted:
         assert body["sync_type"] == SYNC_TYPE_INCREMENTAL_RESYNC
 
     @pytest.mark.asyncio
+    async def test_body_includes_kind_identifiers_when_provided(
+        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
+    ) -> None:
+        await lifecycle_client.notify_resync_started(
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_INCREMENTAL_RESYNC,
+            kind_identifiers=["issue-0", "pull-request-1"],
+        )
+        body = mock_post.call_args[1]["json"]
+        assert body["kind_identifiers"] == ["issue-0", "pull-request-1"]
+
+    @pytest.mark.asyncio
     async def test_defaults_sync_type_to_full_sync(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:

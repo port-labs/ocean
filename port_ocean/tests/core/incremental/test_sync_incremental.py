@@ -270,6 +270,7 @@ class TestSyncIncrementalDspLifecycle:
         started_kwargs = lifecycle_client.notify_resync_started.call_args.kwargs
         assert started_kwargs["sync_type"] == SYNC_TYPE_INCREMENTAL_RESYNC
         assert started_kwargs["integration_id"] == "test-integration"
+        assert started_kwargs["kind_identifiers"] == ["issue-0"]
         lifecycle_client.notify_resync_finished.assert_called_once()
         finished_kwargs = lifecycle_client.notify_resync_finished.call_args.kwargs
         assert finished_kwargs["sync_type"] == SYNC_TYPE_INCREMENTAL_RESYNC
