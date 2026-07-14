@@ -23,7 +23,7 @@ def _parallelism_config(**overrides: Any) -> ParallelismConfig:
         "max_partition_entities": 500,
     }
     config.update(overrides)
-    return config  # type: ignore[return-value]
+    return ParallelismConfig(**config)
 
 
 async def _collect_ready_partitions(
