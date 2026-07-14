@@ -50,7 +50,7 @@ async def _discover_authenticators() -> dict[str, GitHubAppInstallationAuthentic
     return _authenticators_by_org
 
 
-async def list_authenticators() -> list[GitHubAppInstallationAuthenticator]:
+async def list_installations_authenticators() -> list[GitHubAppInstallationAuthenticator]:
     by_org = await _discover_authenticators()
     authenticators = list(by_org.values())
     if not authenticators:
@@ -60,7 +60,7 @@ async def list_authenticators() -> list[GitHubAppInstallationAuthenticator]:
     return authenticators
 
 
-async def get_authenticator_for_organization(
+async def get_installation_authenticator_for_organization(
     organization: str,
 ) -> GitHubAppInstallationAuthenticator:
     by_org = await _discover_authenticators()

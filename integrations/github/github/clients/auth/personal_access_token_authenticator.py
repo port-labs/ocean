@@ -1,5 +1,3 @@
-from typing import Any
-
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_coroutine_result
@@ -27,22 +25,8 @@ class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
         return "pat"
 
     @classmethod
-    def _for_token(cls, token: str) -> "PersonalTokenAuthenticator":
-        if token not in _by_token:
-            _by_token[token] = cls(token)
-        return _by_token[token]
-
-    @classmethod
-    async def list_authenticators(
-        cls, config: dict[str, Any]
-    ) -> list[AbstractGitHubAuthenticator]:
-        return [cls._for_token(config["github_token"])]
-
-    @classmethod
-    def get_authenticator_for_organization(
-        cls, config: dict[str, Any], organization: str | None
-    ) -> "PersonalTokenAuthenticator":
-        return cls._for_token(config["github_token"])
+    def from_config(cls) -> "PersonalTokenAuthenticator":
+        return cls(ocean.integration_config["github_token"])
 
     async def get_token(self) -> GitHubToken:
         logger.info("Using personal access token.")
@@ -57,7 +41,7 @@ class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
         )
 
     @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
+    async def get_authenticated_actor(self) -> str:
         github_host = ocean.integration_config["github_host"]
         response = await self.client.get(
             f"{github_host}/user",

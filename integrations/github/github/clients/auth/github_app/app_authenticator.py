@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Optional
 
 import jwt
+from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 
 from github.clients.auth.abstract_authenticator import (
@@ -28,11 +29,11 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         return f"app:{self.app_id}"
 
     @classmethod
-    def from_config(cls, config: dict[str, Any]) -> "GitHubAppAuthenticator":
+    def from_config(cls) -> "GitHubAppAuthenticator":
         return cls(
-            app_id=config["github_app_id"],
-            private_key=config["github_app_private_key"],
-            github_host=config["github_host"],
+            app_id=ocean.integration_config["github_app_id"],
+            private_key=ocean.integration_config["github_app_private_key"],
+            github_host=ocean.integration_config["github_host"],
         )
 
     def _generate_jwt(self) -> GitHubToken:

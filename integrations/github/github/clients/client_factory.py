@@ -72,7 +72,7 @@ def get_github_client(
 
 
 async def get_authenticated_actor() -> str:
-    return await get_integration_actor(ocean.integration_config)
+    return await get_integration_actor()
 
 
 @overload
@@ -107,9 +107,7 @@ def create_github_client_for_org(
     organization: str | None,
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    authenticator = _run_async(
-        get_authenticator_for_organization(ocean.integration_config, organization)
-    )
+    authenticator = _run_async(get_authenticator_for_organization(organization))
     return get_github_client(authenticator, client_type or GithubClientType.REST)
 
 
