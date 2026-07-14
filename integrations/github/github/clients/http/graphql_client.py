@@ -1,4 +1,5 @@
 import asyncio
+from http import HTTPStatus
 from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -50,7 +51,10 @@ class GithubGraphQLClient(AbstractGithubClient):
     @property
     def client(self) -> httpx.AsyncClient:
         if self._graphql_client is None:
-            self._graphql_client = self.authenticator._make_client(frozenset({"POST"}))
+            self._graphql_client = self.authenticator._make_client(
+                extra_retryable_methods=frozenset({"POST"}),
+                extra_retryable_status=frozenset({HTTPStatus.FORBIDDEN}),
+            )
         return self._graphql_client
 
     @property
