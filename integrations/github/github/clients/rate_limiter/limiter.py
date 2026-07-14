@@ -21,23 +21,17 @@ _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD: float = 95.0
 class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
         self.api_type = config.api_type
-        self._semaphore = asyncio.Semaphore(config.max_concurrent)
+        self._semaphore = asyncio.BoundedSemaphore(config.max_concurrent)
         self.rate_limit_info: Optional[RateLimitInfo] = None
         self._lock = asyncio.Lock()
         self._initialized: bool = False
 
     async def __aenter__(self) -> "GitHubRateLimiter":
+        # Enforce rate limit BEFORE acquiring semaphore so sleep doesn't hold up the permit
+        async with self._lock:
+            await self._enforce_rate_limit()
+
         await self._semaphore.acquire()
-        try:
-            async with self._lock:
-                await self._enforce_rate_limit()
-        except BaseException as ctx_error:
-            logger.debug(
-                "github:clients:rate_limiter:GitHubRateLimiter::Error occurred while enforcing rate limit: {error}",
-                error=ctx_error,
-            )
-            self._semaphore.release()
-            raise
         return self
 
     async def __aexit__(

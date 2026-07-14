@@ -20,8 +20,7 @@ from github.helpers.exceptions import (
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
-    is_graphql_rate_limit_response,
-    RateLimitInfo,
+    extract_graphql_rate_limit_info,
 )
 from urllib.parse import urlparse, urlunparse
 
@@ -75,13 +74,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        if is_graphql_rate_limit_response(response):
-            limit = int(response.headers.get("x-ratelimit-limit", 0))
-            remaining = int(response.headers.get("x-ratelimit-remaining", 0))
-            reset_time = int(response.headers.get("x-ratelimit-reset", 0))
-            rate_limit_info = RateLimitInfo(
-                remaining=remaining, reset_time=reset_time, limit=limit
-            )
+        rate_limit_info = extract_graphql_rate_limit_info(response)
+        if rate_limit_info is not None:
             raise RateLimitException(rate_limit_info)
 
         try:

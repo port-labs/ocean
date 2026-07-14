@@ -11,7 +11,11 @@ import httpx
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
-from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
+from github.clients.rate_limiter.utils import (
+    GitHubRateLimiterConfig,
+    RateLimitInfo,
+    extract_graphql_rate_limit_info,
+)
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
 
@@ -890,6 +894,122 @@ class TestRateLimiterSemaphorePermitLeak:
         assert len(acquired_permits) == max_concurrent_slots
         for _ in acquired_permits:
             limiter._semaphore.release()
+
+
+class TestExtractGraphQLRateLimitInfo:
+    """Tests for the extract_graphql_rate_limit_info utility function."""
+
+    def test_extract_primary_rate_limit_exhausted_headers(self) -> None:
+        """Extract primary rate limit from exhausted x-ratelimit headers."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        assert info.limit == 5000
+        assert info.remaining == 0
+        assert info.reset_time == int(time.time()) + 3600
+
+    def test_extract_secondary_rate_limit_numeric_retry_after(self) -> None:
+        """Extract secondary rate limit from numeric retry-after header."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "60"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        assert info.remaining == 0
+        assert info.limit == 1  # Secondary limits don't have a limit
+        assert 59 <= (info.reset_time - int(time.time())) <= 61  # Allow 1s timing skew
+
+    def test_extract_secondary_rate_limit_date_retry_after(self) -> None:
+        """Extract secondary rate limit from date-format retry-after header."""
+        future_time = int(time.time()) + 120
+        from datetime import datetime as dt, timezone
+
+        future_datetime = dt.fromtimestamp(future_time, tz=timezone.utc)
+        date_str = future_datetime.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": date_str}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        assert info.remaining == 0
+        assert info.limit == 1
+        # Allow 2s timing skew for slow tests
+        assert 118 <= (info.reset_time - int(time.time())) <= 122
+
+    def test_extract_ignores_invalid_retry_after_format(self) -> None:
+        """Invalid retry-after format returns None."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "invalid-date-format"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
+
+    def test_extract_ignores_zero_retry_after(self) -> None:
+        """Zero or negative retry-after is ignored."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "0"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
+
+    def test_extract_ignores_negative_retry_after(self) -> None:
+        """Negative retry-after is ignored."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "-10"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
+
+    def test_extract_primary_takes_precedence_over_secondary(self) -> None:
+        """Primary rate limit (exhausted headers) takes precedence over retry-after."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+            "retry-after": "60",
+        }
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        # Should use primary rate limit, not retry-after
+        assert info.limit == 5000
+        assert info.reset_time == int(time.time()) + 3600
+
+    def test_extract_returns_none_for_normal_response(self) -> None:
+        """Normal response without rate-limit indicators returns None."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "100",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
 
     @pytest.mark.asyncio
     async def test_non_cancelled_exception_during_aenter_also_releases_acquired_semaphore_permit(
