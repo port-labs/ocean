@@ -57,7 +57,7 @@ class PartitionRefiner:
             logger.info(f"Skipping empty partition {partition.label}")
             return
 
-        max_entities = config["max_partition_entities"]
+        max_entities = config.max_partition_entities
         if count <= max_entities:
             logger.info(
                 f"Partition {partition.label} has {count} entities (within limit of {max_entities})"

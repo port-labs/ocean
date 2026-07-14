@@ -6,7 +6,11 @@ from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from wiz.client import WizClient
-from wiz.options import SbomArtifactOptions, VulnerabilityFindingOptions
+from wiz.options import (
+    SbomArtifactOptions,
+    VulnerabilityFindingOptions,
+    ParallelismConfig,
+)
 from wiz.pagination import PaginationPartition, VulnerabilityFindingPartitionStrategy
 
 
@@ -225,16 +229,16 @@ async def test_get_resource_total_count(mock_wiz_client: WizClient) -> None:
 async def test_get_vulnerability_findings_with_parallelism(
     mock_wiz_client: WizClient,
 ) -> None:
-    options: VulnerabilityFindingOptions = {
-        "max_pages": 2,
-        "parallelism": {
-            "strategy": "severity",
-            "date_interval_days": 30,
-            "lookback_days": 365,
-            "api_requests_per_second": 10,
-            "max_partition_entities": 500,
-        },
-    }
+    options = VulnerabilityFindingOptions(
+        max_pages=2,
+        parallelism=ParallelismConfig(
+            strategy="severity",
+            date_interval_days=30,
+            lookback_days=365,
+            api_requests_per_second=10,
+            max_partition_entities=500,
+        ),
+    )
 
     with (
         patch(
@@ -269,7 +273,7 @@ async def test_get_vulnerability_findings_with_parallelism(
                     filter_overlay={"severity": ["CRITICAL"]},
                 )
             ],
-            options["parallelism"],
+            options.parallelism,
             mock_wiz_client._get_paginated_resources,
             max_pages=2,
         )

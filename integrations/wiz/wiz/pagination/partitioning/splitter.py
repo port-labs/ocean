@@ -66,8 +66,8 @@ class PartitionSplitter:
         date_partitions = build_date_partitions(
             resource_label=partition.label,
             date_field="firstSeenAt",
-            lookback_days=config["lookback_days"],
-            interval_days=config["date_interval_days"],
+            lookback_days=config.lookback_days,
+            interval_days=config.date_interval_days,
         )
         if len(date_partitions) <= 1:
             return []

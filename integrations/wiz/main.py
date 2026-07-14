@@ -16,6 +16,7 @@ from wiz.options import (
     ProjectOptions,
     SbomArtifactOptions,
     VulnerabilityFindingOptions,
+    ParallelismConfig,
 )
 from initialize_client import init_client
 from integration import ObjectKindWithSpecialHandling, ObjectKind
@@ -99,19 +100,19 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, max pages: {max_pages}, parallelism: {parallelism_selector}"
     )
 
-    options: VulnerabilityFindingOptions = {
-        "max_pages": max_pages,
-        "status_list": status_list,
-        "severity_list": severity_list,
-    }
+    options: VulnerabilityFindingOptions = VulnerabilityFindingOptions(
+        max_pages=max_pages,
+        status_list=status_list,
+        severity_list=severity_list,
+    )
     if parallelism_selector is not None:
-        options["parallelism"] = {
-            "strategy": parallelism_selector.strategy,
-            "date_interval_days": parallelism_selector.date_interval_days,
-            "lookback_days": parallelism_selector.lookback_days,
-            "api_requests_per_second": parallelism_selector.api_requests_per_second,
-            "max_partition_entities": parallelism_selector.max_partition_entities,
-        }
+        options.parallelism = ParallelismConfig(
+            strategy=parallelism_selector.strategy,
+            date_interval_days=parallelism_selector.date_interval_days,
+            lookback_days=parallelism_selector.lookback_days,
+            api_requests_per_second=parallelism_selector.api_requests_per_second,
+            max_partition_entities=parallelism_selector.max_partition_entities,
+        )
 
     upsert_batch: list[dict[str, Any]] = []
     upsert_batch_size = 100

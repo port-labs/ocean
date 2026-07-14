@@ -349,14 +349,13 @@ class WizClient:
         if options.severity_list:
             variables["filterBy"]["severity"] = options.severity_list
 
-        parallelism = options.get("parallelism")
-        if parallelism is not None:
+        if options.parallelism is not None:
             self._api_rate_limiter = TokenBucketRateLimiter(
-                parallelism["api_requests_per_second"]
+                options.parallelism.api_requests_per_second
             )
             initial_partitions = (
                 VulnerabilityFindingPartitionStrategy().build_partitions(
-                    variables, parallelism
+                    variables, options.parallelism
                 )
             )
             if initial_partitions:
@@ -365,9 +364,9 @@ class WizClient:
                     "vulnerabilityFindings",
                     variables,
                     initial_partitions,
-                    parallelism,
+                    options.parallelism,
                     self._get_paginated_resources,
-                    max_pages=options.get("max_pages"),
+                    max_pages=options.max_pages,
                 ):
                     yield findings
                 return
