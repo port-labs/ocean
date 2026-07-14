@@ -7,7 +7,36 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.44.8 (2026-07-09)
+## 0.44.13 (2026-07-13)
+
+### Improvements
+
+- Added structured context (`status_code`, `method`, `url`, `reason`, `trace_id`) to Port API error logs to make failed requests easier to debug.
+
+## 0.44.12 (2026-07-14)
+
+### Improvements
+
+- Fail unregistered Ocean integration runs immediately by acknowledging and reporting them as failed instead of skipping them until the claim visibility timeout expires.
+
+## 0.44.11 (2026-07-13)
+
+### Bug Fixes
+
+- Fixed missing `links` field in `WorkflowNodeRun` patch on run start, so the GitHub Actions run URL now appears as a clickable link on workflow node runs in the Port UI.
+
+## 0.44.10 (2026-07-12)
+
+### Improvements
+
+- Refactored `LifecycleClient` to delegate lifecycle API POST requests to a dedicated `lifecycle_http_client` instead of inheriting HTTP transport behavior, improving separation of concerns and testability.
+
+### Bug Fixes
+
+- Fixed lifecycle HTTP client proxy resolution to return a context-bound client per access, preventing stale proxy reuse across different event loops.
+- Extended HTTP client context cleanup to include DSP lifecycle clients and aligned related tests, fixing flaky lifecycle/sync-raw test behavior.
+
+## 0.44.9 (2026-07-09)
 
 ### Bug Fixes
 

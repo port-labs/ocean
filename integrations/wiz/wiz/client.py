@@ -267,7 +267,7 @@ class WizClient:
         variables.update(self._enrich_variables_with_issue_options(variables, options))
 
         async for issues in self._get_paginated_resources(
-            resource="issues", variables=variables, max_pages=options["max_pages"]
+            resource="issues", variables=variables, max_pages=options.max_pages
         ):
             yield issues
 
@@ -286,11 +286,11 @@ class WizClient:
             "filterBy": {},
         }
 
-        if options["include_archived"]:
-            variables["filterBy"]["includeArchived"] = options["include_archived"]
+        if options.include_archived:
+            variables["filterBy"]["includeArchived"] = options.include_archived
 
-        if options["impact"]:
-            variables["filterBy"]["impact"] = options["impact"]
+        if options.impact:
+            variables["filterBy"]["impact"] = options.impact
 
         async for projects in self._get_paginated_resources(
             resource="projects", variables=variables
@@ -323,13 +323,13 @@ class WizClient:
         if "filterBy" not in variables:
             variables["filterBy"] = {}
 
-        variables["filterBy"]["status"] = options["status_list"]
+        variables["filterBy"]["status"] = options.status_list
 
-        if options["severity_list"]:
-            variables["filterBy"]["severity"] = options["severity_list"]
+        if options.severity_list:
+            variables["filterBy"]["severity"] = options.severity_list
 
-        if options["type_list"]:
-            variables["filterBy"]["type"] = options["type_list"]
+        if options.type_list:
+            variables["filterBy"]["type"] = options.type_list
 
         return variables
 
@@ -343,11 +343,11 @@ class WizClient:
             "filterBy": {},
         }
 
-        if options.get("status_list"):
-            variables["filterBy"]["status"] = options["status_list"]
+        if options.status_list:
+            variables["filterBy"]["status"] = options.status_list
 
-        if options.get("severity_list"):
-            variables["filterBy"]["severity"] = options["severity_list"]
+        if options.severity_list:
+            variables["filterBy"]["severity"] = options.severity_list
 
         parallelism = options.get("parallelism")
         if parallelism is not None:
@@ -375,7 +375,7 @@ class WizClient:
         async for findings in self._get_paginated_resources(
             resource="vulnerabilityFindings",
             variables=variables,
-            max_pages=options.get("max_pages"),
+            max_pages=options.max_pages,
         ):
             yield findings
 
@@ -535,10 +535,10 @@ class WizClient:
         options: SbomArtifactOptions,
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        max_pages = options.get("max_pages", 500)
-        selected_groups = set(options.get("group_list") or [])
+        max_pages = options.max_pages
+        selected_groups = set(options.group_list or [])
         resource_filter = self._build_sbom_artifact_resource_filter(
-            options.get("resource_filter")
+            options.resource_filter
         )
         allow_all_groups = not selected_groups
 
