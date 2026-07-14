@@ -10,7 +10,7 @@ from github.clients.auth.abstract_authenticator import (
     AuthScope,
 )
 from github.clients.auth.auth_backend import GitHubAuthBackend, resolve_auth_backend
-from github.clients.auth.github_app_installation_registry import (
+from github.clients.auth.github_app.installation_registry import (
     reset_installation_index,
 )
 from github.clients.auth.personal_access_token_authenticator import (

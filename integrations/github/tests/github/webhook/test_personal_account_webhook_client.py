@@ -3,7 +3,9 @@ from typing import Any, AsyncGenerator, Dict, List
 from unittest.mock import AsyncMock, patch
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.installation_authenticator import (
+    GitHubAppInstallationAuthenticator,
+)
 from github.webhook.clients.base_webhook_client import HookTarget
 from github.webhook.clients.personal_account_webhook_client import (
     GithubPersonalAccountWebhookClient,
@@ -180,7 +182,7 @@ class TestGithubPersonalAccountWebhookClient:
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
-            authenticator=GitHubAppAuthenticator(
+            authenticator=GitHubAppInstallationAuthenticator(
                 app_id="app",
                 private_key="key",
                 organization="test-org",

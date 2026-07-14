@@ -7,12 +7,14 @@ from github.clients.auth.auth_backend import (
     PatAuthBackend,
     resolve_auth_backend,
 )
-from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
-from github.clients.auth.github_app_installation_registry import (
+from github.clients.auth.github_app.authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.installation_authenticator import (
+    GitHubAppInstallationAuthenticator,
+)
+from github.clients.auth.github_app.installation_registry import (
     GitHubAppInstallationRegistry,
     reset_installation_index,
 )
-from github.clients.auth.github_app_jwt_client import GitHubAppJwtClient
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
@@ -61,9 +63,9 @@ class TestAuthBackendResolution:
     def test_resolves_app_backend(self) -> None:
         assert resolve_auth_backend(APP_CONFIG) is AppAuthBackend
 
-    def test_app_for_actor_uses_jwt_client(self) -> None:
+    def test_app_for_actor_uses_app_authenticator(self) -> None:
         auth = AppAuthBackend.for_actor(APP_CONFIG)
-        assert isinstance(auth, GitHubAppJwtClient)
+        assert isinstance(auth, GitHubAppAuthenticator)
 
 
 class TestPersonalTokenAuthenticator:
@@ -104,7 +106,7 @@ class TestGitHubAppInstallationRegistry:
         }
 
         with patch.object(
-            GitHubAppJwtClient,
+            GitHubAppAuthenticator,
             "fetch_installation",
             AsyncMock(return_value=installation),
         ):
@@ -146,7 +148,7 @@ class TestGitHubAppInstallationRegistry:
         assert {scope.organization for scope in scopes} == {"org-a", "org-b"}
 
     def test_for_org_returns_indexed_authenticator(self) -> None:
-        import github.clients.auth.github_app_installation_registry as registry
+        import github.clients.auth.github_app.installation_registry as registry
 
         config = {
             **APP_CONFIG,
@@ -160,6 +162,6 @@ class TestGitHubAppInstallationRegistry:
         registry._scopes_by_org = {"my-org": scope}
 
         auth = AppAuthBackend.for_org(config, "my-org")
-        assert isinstance(auth, GitHubAppAuthenticator)
+        assert isinstance(auth, GitHubAppInstallationAuthenticator)
         assert auth.installation_id == "123"
         assert auth.organization == "my-org"

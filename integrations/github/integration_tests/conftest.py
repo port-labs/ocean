@@ -13,7 +13,7 @@ if INTEGRATION_PATH not in sys.path:
 @pytest.fixture(autouse=True)
 def _reset_github_client_cache() -> Iterator[None]:
     import github.clients.client_factory as client_factory
-    from github.clients.auth.github_app_installation_registry import (
+    from github.clients.auth.github_app.installation_registry import (
         reset_installation_index,
     )
     from github.clients.auth.personal_access_token_authenticator import (

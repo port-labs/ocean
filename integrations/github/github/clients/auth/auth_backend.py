@@ -5,10 +5,10 @@ from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
     AuthScope,
 )
-from github.clients.auth.github_app_installation_registry import (
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.installation_registry import (
     GitHubAppInstallationRegistry,
 )
-from github.clients.auth.github_app_jwt_client import GitHubAppJwtClient
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
@@ -82,7 +82,7 @@ class AppAuthBackend(GitHubAuthBackend):
 
     @classmethod
     def for_actor(cls, config: dict[str, Any]) -> AbstractGitHubAuthenticator:
-        return GitHubAppJwtClient.from_config(config)
+        return GitHubAppAuthenticator.from_config(config)
 
 
 _BACKENDS: tuple[type[GitHubAuthBackend], ...] = (PatAuthBackend, AppAuthBackend)

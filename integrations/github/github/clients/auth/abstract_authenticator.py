@@ -57,11 +57,11 @@ class AbstractGitHubAuthenticator(ABC):
         return type(self).__name__
 
     @abstractmethod
-    async def get_token(self, **kwargs: Any) -> GitHubToken:
+    async def get_token(self) -> GitHubToken:
         pass
 
     @abstractmethod
-    async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
+    async def get_headers(self) -> GitHubHeaders:
         pass
 
     @abstractmethod
