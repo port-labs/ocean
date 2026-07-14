@@ -6,7 +6,6 @@ from port_ocean.utils.cache import cache_coroutine_result
 
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
-    AuthScope,
     GitHubHeaders,
     GitHubToken,
 )
@@ -34,12 +33,13 @@ class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
         return _by_token[token]
 
     @classmethod
-    async def list_scopes(cls, config: dict[str, Any]) -> list[AuthScope]:
-        auth = cls._for_token(config["github_token"])
-        return [AuthScope(None, None, None, auth)]
+    async def list_authenticators(
+        cls, config: dict[str, Any]
+    ) -> list[AbstractGitHubAuthenticator]:
+        return [cls._for_token(config["github_token"])]
 
     @classmethod
-    def for_org(
+    def get_authenticator_for_organization(
         cls, config: dict[str, Any], organization: str | None
     ) -> "PersonalTokenAuthenticator":
         return cls._for_token(config["github_token"])

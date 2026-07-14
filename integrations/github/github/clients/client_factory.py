@@ -1,15 +1,14 @@
 import os
-from dataclasses import dataclass
-from typing import Dict, Literal, Optional, Type, cast, overload
+from typing import Dict, Literal, Type, cast, overload
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from github.clients.auth.abstract_authenticator import (
-    AbstractGitHubAuthenticator,
-    AuthScope,
+from github.clients.auth.auth_backend import (
+    get_authenticator_for_organization,
+    get_integration_actor,
 )
-from github.clients.auth.auth_backend import GitHubAuthBackend, resolve_auth_backend
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.github_app.installation_registry import (
     reset_installation_index,
 )
@@ -43,42 +42,7 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_reset_after_fork)
 
 
-@dataclass(frozen=True)
-class GithubClientScope:
-    organization: str | None
-    account_type: str | None
-    installation_id: str | None
-    authenticator: AbstractGitHubAuthenticator
-
-    @overload
-    def get_client(
-        self, client_type: Literal[GithubClientType.REST]
-    ) -> GithubRestClient: ...
-
-    @overload
-    def get_client(
-        self, client_type: Literal[GithubClientType.GRAPHQL]
-    ) -> GithubGraphQLClient: ...
-
-    def get_client(self, client_type: GithubClientType) -> AbstractGithubClient:
-        return _client_for(self.authenticator, client_type)
-
-
-def _auth_backend() -> type[GitHubAuthBackend]:
-    return resolve_auth_backend(ocean.integration_config)
-
-
-async def _list_auth_scopes() -> list[AuthScope]:
-    backend = _auth_backend()
-    return await backend.list_scopes(ocean.integration_config)
-
-
-def _authenticator_for_org(organization: str | None) -> AbstractGitHubAuthenticator:
-    backend = _auth_backend()
-    return backend.for_org(ocean.integration_config, organization)
-
-
-def _client_for(
+def get_github_client(
     authenticator: AbstractGitHubAuthenticator, client_type: GithubClientType
 ) -> AbstractGithubClient:
     cache_key = (authenticator.rate_limit_scope, client_type)
@@ -92,23 +56,8 @@ def _client_for(
     return _clients[cache_key]
 
 
-def _to_client_scope(scope: AuthScope) -> GithubClientScope:
-    return GithubClientScope(
-        scope.organization,
-        scope.account_type,
-        scope.installation_id,
-        scope.authenticator,
-    )
-
-
-async def create_github_clients() -> list[GithubClientScope]:
-    return [_to_client_scope(scope) for scope in await _list_auth_scopes()]
-
-
 async def get_authenticated_actor() -> str:
-    backend = _auth_backend()
-    authenticator = backend.for_actor(ocean.integration_config)
-    return await authenticator.get_authenticated_actor()
+    return await get_integration_actor(ocean.integration_config)
 
 
 @overload
@@ -143,25 +92,10 @@ def create_github_client_for_org(
     organization: str | None,
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    return _client_for(
-        _authenticator_for_org(organization), client_type or GithubClientType.REST
+    authenticator = get_authenticator_for_organization(
+        ocean.integration_config, organization
     )
-
-
-class GitHubAuthenticatorFactory:
-    """Backward-compatible factory for webhook setup until main.py is migrated."""
-
-    @staticmethod
-    def create(
-        github_host: str,
-        organization: Optional[str] = None,
-        token: Optional[str] = None,
-        app_id: Optional[str] = None,
-        installation_id: Optional[str] = None,
-        private_key: Optional[str] = None,
-    ) -> AbstractGitHubAuthenticator:
-        del github_host, token, app_id, installation_id, private_key
-        return _authenticator_for_org(organization)
+    return get_github_client(authenticator, client_type or GithubClientType.REST)
 
 
 @overload

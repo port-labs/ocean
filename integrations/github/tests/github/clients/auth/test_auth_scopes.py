@@ -5,6 +5,8 @@ import pytest
 from github.clients.auth.auth_backend import (
     AppAuthBackend,
     PatAuthBackend,
+    get_integration_actor,
+    list_authenticators,
     resolve_auth_backend,
 )
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
@@ -18,7 +20,6 @@ from github.clients.auth.github_app.installation_registry import (
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
-from github.clients.client_factory import _list_auth_scopes
 from github.helpers.exceptions import MissingCredentials
 from port_ocean.context.ocean import ocean
 
@@ -52,7 +53,7 @@ class TestAuthBackendResolution:
             with pytest.raises(MissingCredentials):
                 resolve_auth_backend(config)
             with pytest.raises(MissingCredentials):
-                await _list_auth_scopes()
+                await list_authenticators(config)
         finally:
             config.clear()
             config.update(saved)
@@ -63,42 +64,51 @@ class TestAuthBackendResolution:
     def test_resolves_app_backend(self) -> None:
         assert resolve_auth_backend(APP_CONFIG) is AppAuthBackend
 
-    def test_app_for_actor_uses_app_authenticator(self) -> None:
-        auth = AppAuthBackend.for_actor(APP_CONFIG)
-        assert isinstance(auth, GitHubAppAuthenticator)
+    @pytest.mark.asyncio
+    async def test_get_integration_actor_uses_app_authenticator(self) -> None:
+        with patch.object(
+            GitHubAppAuthenticator,
+            "get_authenticated_actor",
+            AsyncMock(return_value="my-app[bot]"),
+        ) as mock_actor:
+            actor = await get_integration_actor(APP_CONFIG)
+
+        assert actor == "my-app[bot]"
+        mock_actor.assert_awaited_once()
 
 
 class TestPersonalTokenAuthenticator:
     @pytest.mark.asyncio
-    async def test_list_scopes_returns_single_generic_scope(self) -> None:
-        scopes = await PatAuthBackend.list_scopes(PAT_CONFIG)
+    async def test_list_authenticators_returns_single_pat_authenticator(self) -> None:
+        authenticators = await PatAuthBackend.list_authenticators(PAT_CONFIG)
 
-        assert len(scopes) == 1
-        assert scopes[0].organization is None
-        assert isinstance(scopes[0].authenticator, PersonalTokenAuthenticator)
+        assert len(authenticators) == 1
+        assert isinstance(authenticators[0], PersonalTokenAuthenticator)
 
-    def test_for_org_ignores_org(self) -> None:
-        a = PatAuthBackend.for_org(PAT_CONFIG, "org-a")
-        b = PatAuthBackend.for_org(PAT_CONFIG, "org-b")
+    def test_get_authenticator_for_organization_ignores_org(self) -> None:
+        a = PatAuthBackend.get_authenticator_for_organization(PAT_CONFIG, "org-a")
+        b = PatAuthBackend.get_authenticator_for_organization(PAT_CONFIG, "org-b")
         assert a is b
 
 
 class TestGitHubAppInstallationRegistry:
     @pytest.mark.asyncio
-    async def test_list_scopes_uses_configured_installation(self) -> None:
+    async def test_list_authenticators_uses_configured_installation(self) -> None:
         config = {
             **APP_CONFIG,
             "github_app_installation_id": "123",
             "github_organization": "my-org",
         }
-        scopes = await AppAuthBackend.list_scopes(config)
+        authenticators = await AppAuthBackend.list_authenticators(config)
 
-        assert len(scopes) == 1
-        assert scopes[0].installation_id == "123"
-        assert scopes[0].organization == "my-org"
+        assert len(authenticators) == 1
+        auth = authenticators[0]
+        assert isinstance(auth, GitHubAppInstallationAuthenticator)
+        assert auth.organization == "my-org"
+        assert auth.installation_id == "123"
 
     @pytest.mark.asyncio
-    async def test_list_scopes_resolves_org_from_installation_id(self) -> None:
+    async def test_list_authenticators_resolves_org_from_installation_id(self) -> None:
         config = {**APP_CONFIG, "github_app_installation_id": "123"}
         installation = {
             "id": 123,
@@ -110,15 +120,16 @@ class TestGitHubAppInstallationRegistry:
             "fetch_installation",
             AsyncMock(return_value=installation),
         ):
-            scopes = await AppAuthBackend.list_scopes(config)
+            authenticators = await AppAuthBackend.list_authenticators(config)
 
-        assert len(scopes) == 1
-        assert scopes[0].organization == "resolved-org"
-        assert scopes[0].account_type == "Organization"
-        assert scopes[0].installation_id == "123"
+        assert len(authenticators) == 1
+        auth = authenticators[0]
+        assert isinstance(auth, GitHubAppInstallationAuthenticator)
+        assert auth.organization == "resolved-org"
+        assert auth.installation_id == "123"
 
     @pytest.mark.asyncio
-    async def test_list_scopes_discovers_installations(self) -> None:
+    async def test_list_authenticators_discovers_installations(self) -> None:
         installation_page = [
             {
                 "id": 1,
@@ -130,10 +141,10 @@ class TestGitHubAppInstallationRegistry:
             },
         ]
         index = {
-            "org-a": GitHubAppInstallationRegistry._scope_from_installation(
+            "org-a": GitHubAppInstallationRegistry._authenticator_from_installation(
                 APP_CONFIG, installation_page[0]
             ),
-            "org-b": GitHubAppInstallationRegistry._scope_from_installation(
+            "org-b": GitHubAppInstallationRegistry._authenticator_from_installation(
                 APP_CONFIG, installation_page[1]
             ),
         }
@@ -143,11 +154,18 @@ class TestGitHubAppInstallationRegistry:
             "_ensure_index",
             AsyncMock(return_value=index),
         ):
-            scopes = await AppAuthBackend.list_scopes(APP_CONFIG)
+            authenticators = await AppAuthBackend.list_authenticators(APP_CONFIG)
 
-        assert {scope.organization for scope in scopes} == {"org-a", "org-b"}
+        assert len(authenticators) == 2
+        assert {
+            auth.organization
+            for auth in authenticators
+            if isinstance(auth, GitHubAppInstallationAuthenticator)
+        } == {"org-a", "org-b"}
 
-    def test_for_org_returns_indexed_authenticator(self) -> None:
+    def test_get_authenticator_for_organization_returns_indexed_authenticator(
+        self,
+    ) -> None:
         import github.clients.auth.github_app.installation_registry as registry
 
         config = {
@@ -155,13 +173,13 @@ class TestGitHubAppInstallationRegistry:
             "github_app_installation_id": "123",
             "github_organization": "my-org",
         }
-        scope = GitHubAppInstallationRegistry._scope_from_installation(
+        auth = GitHubAppInstallationRegistry._authenticator_from_installation(
             config,
             {"id": 123, "account": {"login": "my-org", "type": "Organization"}},
         )
-        registry._scopes_by_org = {"my-org": scope}
+        registry._authenticators_by_org = {"my-org": auth}
 
-        auth = AppAuthBackend.for_org(config, "my-org")
-        assert isinstance(auth, GitHubAppInstallationAuthenticator)
-        assert auth.installation_id == "123"
-        assert auth.organization == "my-org"
+        resolved = AppAuthBackend.get_authenticator_for_organization(config, "my-org")
+        assert isinstance(resolved, GitHubAppInstallationAuthenticator)
+        assert resolved.installation_id == "123"
+        assert resolved.organization == "my-org"

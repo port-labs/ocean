@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, cast
 from loguru import logger
 from port_ocean.context.event import event
 
-from github.clients.auth.abstract_authenticator import AuthScope
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
@@ -13,12 +12,12 @@ from github.helpers.exceptions import AuthenticationException
 if TYPE_CHECKING:
     from integration import GithubPortAppConfig
 
-_scopes_by_org: dict[str, AuthScope] | None = None
+_authenticators_by_org: dict[str, GitHubAppInstallationAuthenticator] | None = None
 
 
 def reset_installation_index() -> None:
-    global _scopes_by_org
-    _scopes_by_org = None
+    global _authenticators_by_org
+    _authenticators_by_org = None
 
 
 class GitHubAppInstallationRegistry:
@@ -57,57 +56,47 @@ class GitHubAppInstallationRegistry:
         )
 
     @classmethod
-    def _scope_from_installation(
+    def _authenticator_from_installation(
         cls, config: dict[str, Any], installation: dict[str, Any]
-    ) -> AuthScope:
+    ) -> GitHubAppInstallationAuthenticator:
         account = installation["account"]
         login = account["login"]
         installation_id = str(installation["id"])
-        return AuthScope(
-            organization=login,
-            account_type=account.get("type"),
-            installation_id=installation_id,
-            authenticator=cls._authenticator(
-                config, installation_id=installation_id, organization=login
-            ),
+        return cls._authenticator(
+            config, installation_id=installation_id, organization=login
         )
 
     @classmethod
-    async def _ensure_index(cls, config: dict[str, Any]) -> dict[str, AuthScope]:
-        global _scopes_by_org
-        if _scopes_by_org is not None:
-            return _scopes_by_org
+    async def _ensure_index(
+        cls, config: dict[str, Any]
+    ) -> dict[str, GitHubAppInstallationAuthenticator]:
+        global _authenticators_by_org
+        if _authenticators_by_org is not None:
+            return _authenticators_by_org
 
         app_auth = GitHubAppAuthenticator.from_config(config)
         installation_id = config.get("github_app_installation_id")
 
         if installation_id:
             organization = config.get("github_organization")
-            account_type = None
             if not organization:
                 installation = await app_auth.fetch_installation(str(installation_id))
                 account = installation.get("account") or {}
                 organization = account.get("login")
-                account_type = account.get("type")
                 if not organization:
                     raise AuthenticationException(
                         "GitHub App installation has no account login"
                     )
-            scope = AuthScope(
-                organization=organization,
-                account_type=account_type,
+            authenticator = cls._authenticator(
+                config,
                 installation_id=str(installation_id),
-                authenticator=cls._authenticator(
-                    config,
-                    installation_id=str(installation_id),
-                    organization=organization,
-                ),
+                organization=organization,
             )
-            _scopes_by_org = {organization: scope}
-            return _scopes_by_org
+            _authenticators_by_org = {organization: authenticator}
+            return _authenticators_by_org
 
         allowed_orgs = cls._allowed_organizations()
-        index: dict[str, AuthScope] = {}
+        index: dict[str, GitHubAppInstallationAuthenticator] = {}
 
         async for page in app_auth.iter_app_installations():
             for installation in page:
@@ -115,28 +104,29 @@ class GitHubAppInstallationRegistry:
                 login = account.get("login")
                 if not login or not cls._is_allowed_org(config, login, allowed_orgs):
                     continue
-                index[login] = cls._scope_from_installation(config, installation)
+                index[login] = cls._authenticator_from_installation(
+                    config, installation
+                )
 
-        _scopes_by_org = index
-        return _scopes_by_org
+        _authenticators_by_org = index
+        return _authenticators_by_org
 
     @classmethod
-    async def list_scopes(cls, config: dict[str, Any]) -> list[AuthScope]:
-        scopes = list((await cls._ensure_index(config)).values())
-        if not scopes:
+    async def list_authenticators(
+        cls, config: dict[str, Any]
+    ) -> list[GitHubAppInstallationAuthenticator]:
+        authenticators = list((await cls._ensure_index(config)).values())
+        if not authenticators:
             raise AuthenticationException("No GitHub App installations found")
-        logger.info(f"Discovered {len(scopes)} GitHub App installation(s)")
-        return scopes
+        logger.info(f"Discovered {len(authenticators)} GitHub App installation(s)")
+        return authenticators
 
     @classmethod
-    def for_org(
+    def get_authenticator_for_organization(
         cls, config: dict[str, Any], organization: str
     ) -> GitHubAppInstallationAuthenticator:
-        if _scopes_by_org and organization in _scopes_by_org:
-            return cast(
-                GitHubAppInstallationAuthenticator,
-                _scopes_by_org[organization].authenticator,
-            )
+        if _authenticators_by_org and organization in _authenticators_by_org:
+            return _authenticators_by_org[organization]
 
         installation_id = config.get("github_app_installation_id")
         if installation_id and (
