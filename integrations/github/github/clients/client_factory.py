@@ -1,5 +1,8 @@
+import asyncio
+import concurrent.futures
 import os
-from typing import Dict, Literal, Type, cast, overload
+from collections.abc import Coroutine
+from typing import Any, Dict, Literal, Type, TypeVar, cast, overload
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -22,11 +25,23 @@ from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 from github.clients.utils import integration_config
 from github.helpers.utils import GithubClientType
 
+T = TypeVar("T")
+
 _CLIENT_CLASSES: Dict[GithubClientType, Type[AbstractGithubClient]] = {
     GithubClientType.REST: GithubRestClient,
     GithubClientType.GRAPHQL: GithubGraphQLClient,
 }
 _clients: Dict[tuple[str, GithubClientType], AbstractGithubClient] = {}
+
+
+def _run_async(coro: Coroutine[Any, Any, T]) -> T:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(asyncio.run, coro).result()
 
 
 def _reset_after_fork() -> None:
@@ -92,8 +107,8 @@ def create_github_client_for_org(
     organization: str | None,
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    authenticator = get_authenticator_for_organization(
-        ocean.integration_config, organization
+    authenticator = _run_async(
+        get_authenticator_for_organization(ocean.integration_config, organization)
     )
     return get_github_client(authenticator, client_type or GithubClientType.REST)
 
@@ -115,8 +130,9 @@ def create_github_client(
 
 
 def create_github_client(
-    client_type: GithubClientType | None = None,
+    client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
     organization = cast(str | None, ocean.integration_config.get("github_organization"))
-    resolved = client_type or GithubClientType.REST
-    return create_github_client_for_org(organization, resolved)
+    return create_github_client_for_org(
+        organization, client_type or GithubClientType.REST
+    )

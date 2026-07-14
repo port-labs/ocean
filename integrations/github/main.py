@@ -119,7 +119,7 @@ MAX_CONCURRENT_REPOS = 10
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     webhook_secret = ocean.integration_config["webhook_secret"]
     skip_patching = ocean.integration_config["skip_webhook_patching"]
-    authenticator = get_authenticator_for_organization(
+    authenticator = await get_authenticator_for_organization(
         ocean.integration_config, org_name
     )
 

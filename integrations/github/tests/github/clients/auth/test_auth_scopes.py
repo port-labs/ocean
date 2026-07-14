@@ -1,3 +1,6 @@
+from collections.abc import AsyncGenerator, Iterator
+from contextlib import contextmanager
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -5,6 +8,7 @@ import pytest
 from github.clients.auth.auth_backend import (
     AppAuthBackend,
     PatAuthBackend,
+    get_authenticator_for_organization,
     get_integration_actor,
     list_authenticators,
     resolve_auth_backend,
@@ -13,14 +17,14 @@ from github.clients.auth.github_app.app_authenticator import GitHubAppAuthentica
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
+from github.clients.auth.github_app import installation_registry
 from github.clients.auth.github_app.installation_registry import (
-    GitHubAppInstallationRegistry,
     reset_authenticators_by_org,
 )
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
-from github.helpers.exceptions import MissingCredentials
+from github.helpers.exceptions import AuthenticationException, MissingCredentials
 from port_ocean.context.ocean import ocean
 
 PAT_CONFIG = {
@@ -35,6 +39,19 @@ APP_CONFIG = {
     "github_app_private_key": "key",
     "github_host": "https://api.github.com",
 }
+
+
+@contextmanager
+def _app_integration_config(overrides: dict[str, Any] | None = None) -> Iterator[None]:
+    target = ocean.integration_config
+    saved = dict(target)
+    try:
+        target.clear()
+        target.update({**APP_CONFIG, **(overrides or {})})
+        yield
+    finally:
+        target.clear()
+        target.update(saved)
 
 
 @pytest.fixture(autouse=True)
@@ -85,87 +102,132 @@ class TestPersonalTokenAuthenticator:
         assert len(authenticators) == 1
         assert isinstance(authenticators[0], PersonalTokenAuthenticator)
 
-    def test_get_authenticator_for_organization_ignores_org(self) -> None:
-        a = PatAuthBackend.get_authenticator_for_organization(PAT_CONFIG, "org-a")
-        b = PatAuthBackend.get_authenticator_for_organization(PAT_CONFIG, "org-b")
+    @pytest.mark.asyncio
+    async def test_get_authenticator_for_organization_ignores_org(self) -> None:
+        a = await PatAuthBackend.get_authenticator_for_organization(
+            PAT_CONFIG, "org-a"
+        )
+        b = await PatAuthBackend.get_authenticator_for_organization(
+            PAT_CONFIG, "org-b"
+        )
         assert a is b
 
 
-class TestGitHubAppInstallationRegistry:
+class TestInstallationRegistry:
     @pytest.mark.asyncio
-    async def test_list_authenticators_uses_configured_installation(self) -> None:
-        config = {
-            **APP_CONFIG,
-            "github_app_installation_id": "123",
-            "github_organization": "my-org",
-        }
-        authenticators = await AppAuthBackend.list_authenticators(config)
+    async def test_list_authenticators_discovers_all_installations(self) -> None:
+        async def _installations() -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [
+                {
+                    "id": 1,
+                    "account": {"login": "org-a", "type": "Organization"},
+                },
+                {
+                    "id": 2,
+                    "account": {"login": "org-b", "type": "Organization"},
+                },
+            ]
 
-        assert len(authenticators) == 1
-        auth = authenticators[0]
-        assert isinstance(auth, GitHubAppInstallationAuthenticator)
-        assert auth.installation_id == "123"
-
-    @pytest.mark.asyncio
-    async def test_list_authenticators_resolves_org_from_installation_id(self) -> None:
-        config = {**APP_CONFIG, "github_app_installation_id": "123"}
-        installation = {
-            "id": 123,
-            "account": {"login": "resolved-org", "type": "Organization"},
-        }
-
-        with patch.object(
-            GitHubAppAuthenticator,
-            "fetch_installation",
-            AsyncMock(return_value=installation),
+        with _app_integration_config(
+            {
+                "github_app_installation_id": "999",
+                "github_organization": "ignored-org",
+            }
         ):
-            authenticators = await AppAuthBackend.list_authenticators(config)
+            with patch.object(
+                GitHubAppAuthenticator,
+                "iter_app_installations",
+                return_value=_installations(),
+            ) as mock_iter:
+                authenticators = await AppAuthBackend.list_authenticators(APP_CONFIG)
 
-        assert len(authenticators) == 1
-        auth = authenticators[0]
-        assert isinstance(auth, GitHubAppInstallationAuthenticator)
-        assert auth.installation_id == "123"
+            mock_iter.assert_called_once()
+            assert len(authenticators) == 2
+            assert {
+                auth.installation_id
+                for auth in authenticators
+                if isinstance(auth, GitHubAppInstallationAuthenticator)
+            } == {"1", "2"}
 
     @pytest.mark.asyncio
     async def test_list_authenticators_discovers_installations(self) -> None:
-        index = {
-            "org-a": GitHubAppInstallationRegistry._authenticator(
-                APP_CONFIG, installation_id="1"
-            ),
-            "org-b": GitHubAppInstallationRegistry._authenticator(
-                APP_CONFIG, installation_id="2"
-            ),
-        }
+        with _app_integration_config():
+            index = {
+                "org-a": installation_registry._authenticator(
+                    installation_id="1"
+                ),
+                "org-b": installation_registry._authenticator(
+                    installation_id="2"
+                ),
+            }
 
-        with patch.object(
-            GitHubAppInstallationRegistry,
-            "_get_authenticators_by_org",
-            AsyncMock(return_value=index),
-        ):
-            authenticators = await AppAuthBackend.list_authenticators(APP_CONFIG)
+            with patch.object(
+                installation_registry,
+                "_discover_authenticators",
+                AsyncMock(return_value=index),
+            ):
+                authenticators = await AppAuthBackend.list_authenticators(APP_CONFIG)
 
-        assert len(authenticators) == 2
-        assert {
-            auth.installation_id
-            for auth in authenticators
-            if isinstance(auth, GitHubAppInstallationAuthenticator)
-        } == {"1", "2"}
+            assert len(authenticators) == 2
+            assert {
+                auth.installation_id
+                for auth in authenticators
+                if isinstance(auth, GitHubAppInstallationAuthenticator)
+            } == {"1", "2"}
 
-    def test_get_authenticator_for_organization_returns_indexed_authenticator(
+    @pytest.mark.asyncio
+    async def test_get_authenticator_for_organization_discovers_on_demand(
         self,
     ) -> None:
-        import github.clients.auth.github_app.installation_registry as registry
+        async def _installations() -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [
+                {
+                    "id": 123,
+                    "account": {"login": "my-org", "type": "Organization"},
+                }
+            ]
 
-        config = {
-            **APP_CONFIG,
-            "github_app_installation_id": "123",
-            "github_organization": "my-org",
-        }
-        auth = GitHubAppInstallationRegistry._authenticator(
-            config, installation_id="123"
-        )
-        registry._authenticators_by_org = {"my-org": auth}
+        with _app_integration_config(
+            {
+                "github_app_installation_id": "999",
+                "github_organization": "ignored-org",
+            }
+        ):
+            with patch.object(
+                GitHubAppAuthenticator,
+                "iter_app_installations",
+                return_value=_installations(),
+            ):
+                resolved = await get_authenticator_for_organization(
+                    APP_CONFIG, "my-org"
+                )
 
-        resolved = AppAuthBackend.get_authenticator_for_organization(config, "my-org")
         assert isinstance(resolved, GitHubAppInstallationAuthenticator)
         assert resolved.installation_id == "123"
+
+    @pytest.mark.asyncio
+    async def test_get_authenticator_for_organization_returns_indexed_authenticator(
+        self,
+    ) -> None:
+        with _app_integration_config():
+            auth = installation_registry._authenticator(installation_id="123")
+            installation_registry._authenticators_by_org = {"my-org": auth}
+
+            resolved = await AppAuthBackend.get_authenticator_for_organization(
+                APP_CONFIG, "my-org"
+            )
+
+        assert isinstance(resolved, GitHubAppInstallationAuthenticator)
+        assert resolved.installation_id == "123"
+
+    @pytest.mark.asyncio
+    async def test_get_authenticator_for_organization_raises_for_unknown_org(
+        self,
+    ) -> None:
+        with _app_integration_config():
+            installation_registry._authenticators_by_org = {}
+
+            with pytest.raises(AuthenticationException, match="my-org"):
+                await AppAuthBackend.get_authenticator_for_organization(
+                    APP_CONFIG, "my-org"
+                )
