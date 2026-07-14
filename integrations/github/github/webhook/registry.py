@@ -55,6 +55,12 @@ from github.webhook.webhook_processors.code_scanning_alert_webhook_processor imp
 from github.webhook.webhook_processors.file_webhook_processor import (
     FileWebhookProcessor,
 )
+from github.webhook.webhook_processors.skill_webhook_processor import (
+    SkillWebhookProcessor,
+)
+from github.webhook.webhook_processors.plugin_webhook_processor import (
+    PluginWebhookProcessor,
+)
 from github.webhook.webhook_processors.collaborator_webhook_processor import (
     CollaboratorMemberWebhookProcessor,
     CollaboratorMembershipWebhookProcessor,
@@ -95,6 +101,8 @@ def register_live_events_webhooks() -> None:
     ocean.add_webhook_processor(WEBHOOK_PATH, TeamMemberWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, UserWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, FileWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, SkillWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, PluginWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, CollaboratorMemberWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, CollaboratorMembershipWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, CollaboratorTeamWebhookProcessor)

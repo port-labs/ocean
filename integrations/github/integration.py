@@ -281,6 +281,101 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class GithubSkillSelector(Selector, RepositorySourceModel):
+    content: Literal["frontmatter", "skill.md"] = Field(
+        title="Content",
+        default="skill.md",
+        description=(
+            "How much of each SKILL.md to ingest. "
+            "`frontmatter` returns name/description only; "
+            "`skill.md` also includes the markdown body as instructions."
+        ),
+    )
+    roots: list[str] = Field(
+        title="Roots",
+        default_factory=lambda: [
+            ".agents/skills",
+            ".agent/skills",
+            ".cursor/skills",
+            ".claude/skills",
+            ".codex/skills",
+            ".github/skills",
+            ".opencode/skills",
+            "skills",
+        ],
+        description=(
+            "Skill parent directories to scan recursively for SKILL.md. "
+            "Defaults cover .agents, Antigravity (.agent), Cursor, Claude, "
+            "Codex, GitHub Copilot (.github/skills), OpenCode, and marketplace "
+            "skills/ layouts."
+        ),
+    )
+    paths: list[str] = Field(
+        title="Paths",
+        default_factory=list,
+        description=(
+            "Optional extra glob patterns for SKILL.md files outside the "
+            "configured roots (e.g. '**/legacy-skills/*/SKILL.md')."
+        ),
+    )
+
+
+class GithubSkillResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.SKILL] = Field(
+        title="Github Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GithubSkillSelector = Field(
+        title="Skill selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GithubPluginSelector(Selector, RepositorySourceModel):
+    providers: list[
+        Literal[
+            "claude",
+            "cursor",
+            "codex",
+            "agents",
+            "kimi",
+            "opencode",
+            "pi",
+            "antigravity",
+        ]
+    ] = Field(
+        title="Providers",
+        default_factory=lambda: [
+            "claude",
+            "cursor",
+            "codex",
+            "agents",
+            "kimi",
+            "opencode",
+            "pi",
+            "antigravity",
+        ],
+        description=(
+            "Agent plugin providers to detect (aligned with obra/superpowers). "
+            "A repository is treated as a plugin when any matching manifest/dir "
+            "exists (.claude-plugin/, .cursor-plugin/, .codex-plugin/, "
+            ".agents/plugins/, .kimi-plugin/, .opencode/plugins/, "
+            ".pi/extensions/, gemini-extension.json)."
+        ),
+    )
+
+
+class GithubPluginResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PLUGIN] = Field(
+        title="Github Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GithubPluginSelector = Field(
+        title="Plugin selector",
+        description="Selector for discovering agent plugin repositories.",
+    )
+
+
 class IncludeSAMLEmailSelector(Selector):
     include_saml_email: bool = Field(
         title="Include SAML email",
@@ -816,6 +911,8 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubSkillResourceConfig
+        | GithubPluginResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig

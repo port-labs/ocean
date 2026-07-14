@@ -50,6 +50,8 @@ class ObjectKind(StrEnum):
     RELEASE = "release"
     BRANCH = "branch"
     DEPLOYMENT = "deployment"
+    SKILL = "skill"
+    PLUGIN = "plugin"
 
 
 def parse_file_content(
