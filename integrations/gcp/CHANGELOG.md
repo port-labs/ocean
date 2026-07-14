@@ -5,15 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 <!-- towncrier release notes start -->
 
-## 0.1.350 (2026-07-13)
+## 0.1.353 (2026-07-14)
 
 
 ### Bug Fixes
 
 - Migrated GCP integration to AbstractWebhookProcessor for live event handling
+
+
+## 0.1.352 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.1.351 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.1.350 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
 
 
 ## 0.1.349 (2026-07-12)
