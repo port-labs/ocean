@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.validate.outputs.version }}
-      core_changed: ${{ steps.changed-files.outputs.any_changed }}
+      core_changed: 'true'
     steps:
       - name: Validate RC number
         run: |
@@ -44,27 +44,9 @@ jobs:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
 
-      - name: Resolve merge-base with main
-        id: merge-base
+      - name: Log core change policy
         run: |
-          git fetch origin main
-          echo "sha=$(git merge-base HEAD origin/main)" >> $GITHUB_OUTPUT
-
-      - name: Detect core changes in port_ocean
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          base_sha: ${{ steps.merge-base.outputs.sha }}
-          files: |
-            port_ocean/**
-
-      - name: Log core change detection result
-        run: |
-          if [[ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]]; then
-            echo "::notice::Changes detected in port_ocean/ — will publish core RC to PyPI and create GitHub release"
-          else
-            echo "::notice::No changes in port_ocean/ since merge-base with main — skipping core PyPI publish and GitHub release"
-          fi
+          echo "::notice::core_changed=true (forced) — will publish core RC to PyPI, pin integrations to the RC core, and create GitHub release"
 
       - name: Log dry run mode
         if: inputs.dry_run
@@ -73,7 +55,6 @@ jobs:
 
       - name: Validate core version format and pyproject.toml
         id: validate
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           RC_NUMBER="${{ inputs.rc_number }}"
           BASE_VERSION=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
@@ -88,7 +69,6 @@ jobs:
           echo "Core version validation passed: $VERSION (base: $BASE_VERSION, rc: $RC_NUMBER)"
 
       - name: Check tag status
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           VERSION="${{ steps.validate.outputs.version }}"
           if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
