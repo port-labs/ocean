@@ -12,8 +12,10 @@
   port:
     entity:
       mappings:
-        identifier: .repository.path_with_namespace + "/" + .skill.name
-        title: .skill.name
+        # Use skillMdPath (not .skill.name) so webhook deletes match upserts when
+        # frontmatter name differs from the folder name.
+        identifier: .repository.path_with_namespace + "/" + .skill.skillMdPath
+        title: .skill.name // .skill.skillMdPath
         blueprint: '"skill"'
         properties:
           description: .skill.description

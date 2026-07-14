@@ -5,6 +5,8 @@ from loguru import logger
 
 from gitlab.helpers.skill_plugin import (
     DEFAULT_PLUGIN_PROVIDERS,
+    PLUGIN_DIRECTORY_PREFIXES,
+    PluginProvider,
     all_manifest_paths,
     detect_directory_providers,
     normalize_plugin,
@@ -37,6 +39,7 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         branch = payload.get("ref", "").replace("refs/heads/", "")
         repo_path = payload["project"]["path_with_namespace"]
         project = payload["project"]
+        ref = payload.get("after") or branch
 
         config = cast(GitLabPluginResourceConfig, resource_config)
         selector = config.selector
@@ -67,7 +70,7 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             {
                 "project_id": str(project_id),
                 "path": path,
-                "ref": payload.get("after") or branch,
+                "ref": ref,
             }
             for path in sorted(manifest_paths)
         ]
@@ -91,14 +94,12 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 except json.JSONDecodeError:
                     logger.warning(f"Invalid plugin manifest JSON at {path}")
 
-        # Directory-only providers: infer from non-removed touched plugin paths.
-        # Webhook can't cheaply list the full tree, so use live push paths.
-        live_paths = {
-            p
-            for p in (changed_files - removed_files)
-            if path_touches_plugin(p, providers)
-        }
-        directory_supports = detect_directory_providers(live_paths, providers)
+        # Directory-only providers: re-list trees under known prefixes so we do
+        # not false-delete when the push only touched unrelated plugin paths.
+        directory_paths = await self._list_directory_plugin_paths(
+            repo_path, ref, providers
+        )
+        directory_supports = detect_directory_providers(directory_paths, providers)
 
         plugin = normalize_plugin(
             repository=project,
@@ -151,3 +152,33 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 }
             ],
         )
+
+    async def _list_directory_plugin_paths(
+        self,
+        project_path: str,
+        ref: str,
+        providers: list[PluginProvider],
+    ) -> set[str]:
+        paths: set[str] = set()
+        for provider in providers:
+            prefix = PLUGIN_DIRECTORY_PREFIXES.get(provider)
+            if not prefix:
+                continue
+            bare = prefix.rstrip("/")
+            try:
+                async for batch in (
+                    self._gitlab_webhook_client.rest.get_paginated_project_resource(
+                        project_path,
+                        "repository/tree",
+                        {"path": bare, "ref": ref, "recursive": True},
+                    )
+                ):
+                    for item in batch:
+                        item_path = item.get("path")
+                        if isinstance(item_path, str) and item_path:
+                            paths.add(item_path)
+            except Exception as exc:
+                logger.warning(
+                    f"Failed listing plugin directory {bare} in {project_path}: {exc}"
+                )
+        return paths

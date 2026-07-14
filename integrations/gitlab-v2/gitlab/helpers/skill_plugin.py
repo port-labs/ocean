@@ -97,11 +97,6 @@ def matches_skill_path(path: str, roots: list[str], extra_paths: list[str]) -> b
         if _simple_match(normalized, pattern):
             return True
 
-    # Broad match: any nested .../skills/.../SKILL.md (marketplace / monorepo)
-    parts = normalized.split("/")
-    if "skills" in parts:
-        return True
-
     return False
 
 
@@ -192,6 +187,7 @@ def enrich_file_to_skill(
     *,
     content_mode: SkillContentMode,
     roots: list[str],
+    extra_paths: list[str] | None = None,
 ) -> dict[str, Any] | None:
     """Convert GitLab `{file, repo}` enrichment into normalized skill raw item."""
     file_data = file_entity.get("file") or {}
@@ -200,7 +196,7 @@ def enrich_file_to_skill(
     content = file_data.get("content")
     if not isinstance(content, str):
         return None
-    if not matches_skill_path(path, roots, []):
+    if not matches_skill_path(path, roots, extra_paths or []):
         return None
 
     return {
@@ -228,7 +224,7 @@ def provider_for_manifest_path(path: str) -> PluginProvider | None:
         if normalized in manifests:
             return provider
     for provider, prefix in PLUGIN_DIRECTORY_PREFIXES.items():
-        if normalized.startswith(prefix) or normalized.startswith(prefix.rstrip("/")):
+        if normalized == prefix.rstrip("/") or normalized.startswith(prefix):
             return provider
     return None
 
@@ -241,17 +237,15 @@ def detect_directory_providers(
         prefix = PLUGIN_DIRECTORY_PREFIXES.get(provider)
         if not prefix:
             continue
-        if any(path.startswith(prefix) or path == prefix.rstrip("/") for path in paths):
+        bare = prefix.rstrip("/")
+        if any(path == bare or path.startswith(prefix) for path in paths):
             found.add(provider)
     return found
 
 
 def path_touches_plugin(path: str, providers: list[PluginProvider]) -> bool:
-    return provider_for_manifest_path(path) in set(providers) or any(
-        path.startswith(PLUGIN_DIRECTORY_PREFIXES[p])
-        for p in providers
-        if p in PLUGIN_DIRECTORY_PREFIXES
-    )
+    provider = provider_for_manifest_path(path)
+    return provider is not None and provider in providers
 
 
 def plugin_search_paths(providers: list[PluginProvider]) -> list[str]:
@@ -306,9 +300,6 @@ def normalize_plugin(
     if not any(supports.values()):
         return {}
 
-    marketplace_name = _str_field(claude_marketplace, "name") or _str_field(
-        agents_marketplace, "name"
-    )
     marketplace_plugins = claude_marketplace.get("plugins")
     if isinstance(marketplace_plugins, list) and marketplace_plugins:
         first = marketplace_plugins[0]
@@ -361,35 +352,32 @@ def normalize_plugin(
         or _str_field(antigravity_ext, "version")
     )
 
-    claude_block: dict[str, Any] = {}
-    if supports["claude"]:
-        claude_block = {
-            **claude_plugin,
-            "name": claude_name or name,
-            "marketplaceName": marketplace_name
-            if marketplace_name and claude_marketplace
-            else _str_field(claude_marketplace, "name"),
-            "marketplace": claude_marketplace or None,
-        }
-
-    agents_block: dict[str, Any] = {}
-    if supports["agents"]:
-        agents_block = {
-            **agents_marketplace,
-            "name": agents_plugin_name or name,
-            "marketplaceName": _str_field(agents_marketplace, "name"),
-        }
-
     return {
         "name": name,
         "displayName": display_name,
         "description": description,
         "version": version,
         "supports": supports,
-        "claude": claude_block if supports["claude"] else {},
+        "claude": (
+            {
+                **claude_plugin,
+                "name": claude_name or name,
+                "marketplaceName": _str_field(claude_marketplace, "name"),
+            }
+            if supports["claude"]
+            else {}
+        ),
         "cursor": cursor_plugin if supports["cursor"] else {},
         "codex": codex_plugin if supports["codex"] else {},
-        "agents": agents_block if supports["agents"] else {},
+        "agents": (
+            {
+                **agents_marketplace,
+                "name": agents_plugin_name or name,
+                "marketplaceName": _str_field(agents_marketplace, "name"),
+            }
+            if supports["agents"]
+            else {}
+        ),
         "kimi": kimi_plugin if supports["kimi"] else {},
         "opencode": {"detected": True} if supports["opencode"] else {},
         "pi": {"detected": True} if supports["pi"] else {},

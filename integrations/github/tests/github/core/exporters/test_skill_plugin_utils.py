@@ -2,6 +2,7 @@ from github.core.exporters.skill_exporter.utils import (
     build_skill_object,
     match_skill_root,
     parse_skill_markdown,
+    path_under_roots_or_extra,
     roots_to_globs,
 )
 from github.core.exporters.plugin_exporter.utils import normalize_plugin
@@ -22,6 +23,18 @@ class TestSkillUtils:
             == ".cursor/skills"
         )
         assert match_skill_root("other/SKILL.md", roots) is None
+
+    def test_path_under_roots_or_extra(self) -> None:
+        roots = ["skills"]
+        assert path_under_roots_or_extra("skills/hello/SKILL.md", roots, [])
+        assert path_under_roots_or_extra(
+            "packages/ai/skills/x/SKILL.md",
+            roots,
+            ["packages/**/SKILL.md"],
+        )
+        assert not path_under_roots_or_extra(
+            "packages/ai/skills/x/SKILL.md", roots, []
+        )
 
     def test_parse_skill_markdown(self) -> None:
         content = """---
@@ -62,6 +75,7 @@ description: A minimal example
         assert skill["instructions"] is not None
         assert "# Hello" in skill["instructions"]
         assert skill["path"] == "skills/hello-skill"
+        assert skill["skillMdPath"] == "skills/hello-skill/SKILL.md"
         assert skill["root"] == "skills"
 
     def test_build_skill_object_frontmatter_mode(self) -> None:

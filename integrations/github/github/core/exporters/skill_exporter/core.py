@@ -5,8 +5,8 @@ from loguru import logger
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.file_exporter.core import RestFileExporter
-from github.core.exporters.skill_exporter.constants import DEFAULT_SKILL_ROOTS
 from github.core.exporters.skill_exporter.utils import (
+    DEFAULT_SKILL_ROOTS,
     SkillContentMode,
     build_skill_raw_item,
     roots_to_globs,

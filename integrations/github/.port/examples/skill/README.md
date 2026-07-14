@@ -1,56 +1,11 @@
-# Example mapping (not applied by default — add to your GitHub Ocean mapping to enable)
+# Example mapping for skill + agentPlugin kinds.
 #
-# Validated mapping fragment (ready to append): see `mapping.yml` in this folder.
+# Not applied by default — append the fragment in `mapping.yml` to your Ocean
+# integration mapping in Port to enable.
 #
-# Blueprints (created in Port): `skill`, `agentPlugin`
+# Blueprints: `skill`, `agentPlugin`
 # Relation: skill → agentPlugin (many skills per plugin repo)
-# Note: blueprint id is `agentPlugin` (not `plugin`) to avoid Port's /plugins UI route.
+# Identifier for skills uses `.skill.skillMdPath` (stable across renames of
+# frontmatter `name`).
 #
-# resources:
-#   - kind: skill
-#     selector:
-#       query: 'true'
-#       content: skill.md
-#     port:
-#       entity:
-#         mappings:
-#           identifier: .repository.full_name + "/" + .skill.name
-#           title: .skill.name
-#           blueprint: '"skill"'
-#           properties:
-#             description: .skill.description
-#             instructions: .skill.instructions
-#             path: .skill.skillMdPath
-#             root: .skill.root
-#             repo: .repository.full_name
-#             repoUrl: .repository.html_url
-#             branch: .branch
-#             source: '"github"'
-#           relations:
-#             plugin: .repository.full_name
-#
-#   - kind: plugin
-#     selector:
-#       query: 'true'
-#     port:
-#       entity:
-#         mappings:
-#           identifier: .repository.full_name
-#           title: .plugin.displayName // .plugin.name
-#           blueprint: '"plugin"'
-#           properties:
-#             description: .plugin.description
-#             version: .plugin.version
-#             url: .repository.html_url
-#             repo: .repository.full_name
-#             source: '"github"'
-#             supportsClaudeCode: .plugin.supports.claude
-#             supportsCursor: .plugin.supports.cursor
-#             supportsCodex: .plugin.supports.codex
-#             supportsAgents: .plugin.supports.agents
-#             supportsKimi: .plugin.supports.kimi
-#             supportsOpenCode: .plugin.supports.opencode
-#             supportsPi: .plugin.supports.pi
-#             supportsAntigravity: .plugin.supports.antigravity
-#             claudeMarketplace: .plugin.claude.marketplaceName
-#             claudePlugin: .plugin.claude.name
+# See: mapping.yml

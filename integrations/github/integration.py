@@ -32,6 +32,8 @@ from typing import Any, Dict, List, Optional, Type, Literal
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
+from github.core.exporters.skill_exporter import DEFAULT_SKILL_ROOTS
+from github.core.exporters.plugin_exporter import DEFAULT_PLUGIN_PROVIDERS
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
@@ -293,16 +295,7 @@ class GithubSkillSelector(Selector, RepositorySourceModel):
     )
     roots: list[str] = Field(
         title="Roots",
-        default_factory=lambda: [
-            ".agents/skills",
-            ".agent/skills",
-            ".cursor/skills",
-            ".claude/skills",
-            ".codex/skills",
-            ".github/skills",
-            ".opencode/skills",
-            "skills",
-        ],
+        default_factory=lambda: list(DEFAULT_SKILL_ROOTS),
         description=(
             "Skill parent directories to scan recursively for SKILL.md. "
             "Defaults cover .agents, Antigravity (.agent), Cursor, Claude, "
@@ -345,16 +338,7 @@ class GithubPluginSelector(Selector, RepositorySourceModel):
         ]
     ] = Field(
         title="Providers",
-        default_factory=lambda: [
-            "claude",
-            "cursor",
-            "codex",
-            "agents",
-            "kimi",
-            "opencode",
-            "pi",
-            "antigravity",
-        ],
+        default_factory=lambda: list(DEFAULT_PLUGIN_PROVIDERS),
         description=(
             "Agent plugin providers to detect (aligned with obra/superpowers). "
             "A repository is treated as a plugin when any matching manifest/dir "

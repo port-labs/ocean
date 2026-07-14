@@ -6,10 +6,18 @@ from typing import Any, Literal
 from loguru import logger
 from ruamel.yaml import YAML
 
-from github.core.exporters.skill_exporter.constants import (
-    DEFAULT_SKILL_ROOTS,
-    SKILL_MD_FILENAME,
-)
+DEFAULT_SKILL_ROOTS: list[str] = [
+    ".agents/skills",
+    ".agent/skills",
+    ".cursor/skills",
+    ".claude/skills",
+    ".codex/skills",
+    ".github/skills",
+    ".opencode/skills",
+    "skills",
+]
+
+SKILL_MD_FILENAME = "SKILL.md"
 
 SkillContentMode = Literal["frontmatter", "skill.md"]
 
@@ -77,13 +85,14 @@ def parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
     try:
         yaml = YAML(typ="safe")
         parsed = yaml.load(raw_fm)
-        if isinstance(parsed, dict):
-            return parsed, body
-        logger.warning("Skill frontmatter did not parse to a mapping; ignoring")
-        return {}, body
     except Exception as exc:
         logger.warning(f"Failed to parse skill frontmatter: {exc}")
         return {}, body
+
+    if isinstance(parsed, dict):
+        return parsed, body
+    logger.warning("Skill frontmatter did not parse to a mapping; ignoring")
+    return {}, body
 
 
 def build_skill_object(

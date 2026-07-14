@@ -88,7 +88,10 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             )
             for entity in enriched:
                 skill_item = enrich_file_to_skill(
-                    entity, content_mode=selector.content, roots=roots
+                    entity,
+                    content_mode=selector.content,
+                    roots=roots,
+                    extra_paths=extra_paths,
                 )
                 if skill_item:
                     updated_results.append(skill_item)

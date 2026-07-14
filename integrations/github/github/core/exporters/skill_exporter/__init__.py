@@ -1,12 +1,10 @@
-from github.core.exporters.skill_exporter.constants import (
-    DEFAULT_SKILL_ROOTS,
-    SKILL_MD_FILENAME,
-)
 from github.core.exporters.skill_exporter.core import (
     SkillExporter,
     build_skill_file_patterns,
 )
 from github.core.exporters.skill_exporter.utils import (
+    DEFAULT_SKILL_ROOTS,
+    SKILL_MD_FILENAME,
     SkillContentMode,
     build_skill_object,
     build_skill_raw_item,

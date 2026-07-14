@@ -75,7 +75,6 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
             f
             for f in changed
             if path_touches_plugin(f.get("filename", ""), providers)
-            or f.get("filename") in manifest_paths
         ]
         if not touched:
             return WebhookEventRawResults(

@@ -9,11 +9,10 @@ from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter.utils import (
     PluginProvider,
     all_manifest_paths,
-    build_plugin_raw_item,
     detect_directory_providers,
+    normalize_plugin,
 )
 from github.core.options import FileContentOptions
-from github.helpers.utils import get_repository_metadata
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 
@@ -87,11 +86,10 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         tree_paths = {
             entry["path"]
             for entry in tree
-            if entry.get("path")
-            and entry.get("type") in ("blob", "tree")
+            if entry.get("path") and entry.get("type") in ("blob", "tree")
         }
         directory_supports = detect_directory_providers(tree_paths, providers)
-        present = sorted(manifest_paths & {p for p in tree_paths})
+        present = sorted(manifest_paths & tree_paths)
         if not present and not directory_supports:
             return None
 
@@ -121,14 +119,17 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         if not manifests and not directory_supports:
             return None
 
-        repo_meta = await get_repository_metadata(
-            self.client, organization, repo_name
-        )
-        return build_plugin_raw_item(
-            repository=repo_meta or repository,
+        plugin = normalize_plugin(
+            repository=repository,
             manifests=manifests,
             providers=providers,
-            branch=branch,
-            organization=organization,
             directory_supports=directory_supports,
         )
+        if not plugin:
+            return None
+        return {
+            "plugin": plugin,
+            "repository": repository,
+            "branch": branch,
+            "organization": organization,
+        }

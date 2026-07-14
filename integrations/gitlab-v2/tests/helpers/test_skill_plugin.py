@@ -2,6 +2,7 @@ from gitlab.helpers.skill_plugin import (
     DEFAULT_SKILL_ROOTS,
     build_skill_object,
     detect_directory_providers,
+    enrich_file_to_skill,
     matches_skill_path,
     normalize_plugin,
     parse_skill_markdown,
@@ -38,8 +39,39 @@ def test_matches_skill_path() -> None:
     assert matches_skill_path("skills/hello/SKILL.md", roots, [])
     assert matches_skill_path(".cursor/skills/a/SKILL.md", roots, [])
     assert matches_skill_path(".github/skills/copilot/SKILL.md", roots, [])
-    assert matches_skill_path("packages/ai/skills/x/SKILL.md", roots, [])
+    # Broad nested "skills" segment is no longer accepted — use selector.paths
+    assert not matches_skill_path("packages/ai/skills/x/SKILL.md", roots, [])
+    assert matches_skill_path(
+        "packages/ai/skills/x/SKILL.md",
+        roots,
+        ["packages/**/SKILL.md"],
+    )
     assert not matches_skill_path("README.md", roots, [])
+
+
+def test_enrich_file_to_skill_respects_extra_paths() -> None:
+    entity = {
+        "file": {
+            "path": "packages/ai/skills/x/SKILL.md",
+            "content": "---\nname: x\n---\n\n# X\n",
+            "ref": "main",
+        },
+        "repo": {"path_with_namespace": "group/repo", "default_branch": "main"},
+    }
+    assert (
+        enrich_file_to_skill(
+            entity, content_mode="skill.md", roots=["skills"], extra_paths=[]
+        )
+        is None
+    )
+    skill = enrich_file_to_skill(
+        entity,
+        content_mode="skill.md",
+        roots=["skills"],
+        extra_paths=["packages/**/SKILL.md"],
+    )
+    assert skill is not None
+    assert skill["skill"]["skillMdPath"] == "packages/ai/skills/x/SKILL.md"
 
 
 def test_parse_and_build_skill() -> None:
@@ -60,6 +92,7 @@ description: desc
     )
     assert skill["instructions"] is not None
     assert "# Body" in skill["instructions"]
+    assert skill["skillMdPath"] == "skills/hello/SKILL.md"
 
 
 def test_normalize_plugin() -> None:

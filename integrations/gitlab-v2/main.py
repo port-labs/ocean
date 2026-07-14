@@ -559,7 +559,10 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 if not matches_skill_path(path, roots, extra_paths):
                     continue
                 skill_item = enrich_file_to_skill(
-                    entity, content_mode=selector.content, roots=roots
+                    entity,
+                    content_mode=selector.content,
+                    roots=roots,
+                    extra_paths=extra_paths,
                 )
                 if not skill_item:
                     continue

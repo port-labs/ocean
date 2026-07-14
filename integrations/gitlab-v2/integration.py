@@ -17,6 +17,7 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
 from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
+from gitlab.helpers.skill_plugin import DEFAULT_PLUGIN_PROVIDERS, DEFAULT_SKILL_ROOTS
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
@@ -376,16 +377,7 @@ class GitLabSkillSelector(GroupSelector):
     )
     roots: list[str] = Field(
         title="Roots",
-        default_factory=lambda: [
-            ".agents/skills",
-            ".agent/skills",
-            ".cursor/skills",
-            ".claude/skills",
-            ".codex/skills",
-            ".github/skills",
-            ".opencode/skills",
-            "skills",
-        ],
+        default_factory=lambda: list(DEFAULT_SKILL_ROOTS),
         description=(
             "Skill parent directories to scan for SKILL.md. Defaults cover "
             ".agents, Antigravity (.agent), Cursor, Claude, Codex, GitHub "
@@ -429,16 +421,7 @@ class GitLabPluginSelector(GroupSelector):
         ]
     ] = Field(
         title="Providers",
-        default_factory=lambda: [
-            "claude",
-            "cursor",
-            "codex",
-            "agents",
-            "kimi",
-            "opencode",
-            "pi",
-            "antigravity",
-        ],
+        default_factory=lambda: list(DEFAULT_PLUGIN_PROVIDERS),
         description=(
             "Agent plugin providers to detect (aligned with obra/superpowers): "
             ".claude-plugin/, .cursor-plugin/, .codex-plugin/, .agents/plugins/, "

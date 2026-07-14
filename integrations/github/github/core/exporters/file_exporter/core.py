@@ -400,6 +400,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             )
             return []
 
+        if response.get("truncated"):
+            logger.warning(
+                f"Git tree for {organization}/{repo}@{branch} was truncated by "
+                f"GitHub; plugin/file detection may be incomplete"
+            )
+
         tree_items = response["tree"]
         logger.info(
             f"Retrieved tree for {repo}@{branch}: {len(tree_items)} items from {organization}"
