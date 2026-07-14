@@ -13,7 +13,7 @@ import port_ocean.helpers.metric.metric
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
-from port_ocean.clients.dsp.lifecycle import LifecycleClient
+from port_ocean.clients.dsp.lifecycle import LifecycleClient, SYNC_TYPE_FULL_SYNC
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import (
@@ -159,6 +159,7 @@ class Ocean:
                                 resync_id=resync_id,
                                 integration_id=self.config.integration.identifier,
                                 integration_type=self.config.integration.type,
+                                sync_type=SYNC_TYPE_FULL_SYNC,
                             )
                 else:
                     logger.info(

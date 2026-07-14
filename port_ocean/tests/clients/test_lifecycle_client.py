@@ -123,6 +123,7 @@ class TestNotifyResyncStarted:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
             started_at=started_at,
         )
         url = mock_post.call_args[0][0]
@@ -137,6 +138,7 @@ class TestNotifyResyncStarted:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
             started_at=started_at,
         )
         body = mock_post.call_args[1]["json"]
@@ -177,11 +179,14 @@ class TestNotifyResyncStarted:
         assert body["kind_identifiers"] == ["issue-0", "pull-request-1"]
 
     @pytest.mark.asyncio
-    async def test_defaults_sync_type_to_full_sync(
+    async def test_body_includes_required_sync_type(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
         await lifecycle_client.notify_resync_started(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         body = mock_post.call_args[1]["json"]
         assert body["sync_type"] == SYNC_TYPE_FULL_SYNC
@@ -192,7 +197,10 @@ class TestNotifyResyncStarted:
     ) -> None:
         before = datetime.now(tz=timezone.utc)
         await lifecycle_client.notify_resync_started(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         after = datetime.now(tz=timezone.utc)
 
@@ -206,7 +214,10 @@ class TestNotifyResyncStarted:
     ) -> None:
         mock_post.side_effect = httpx.ConnectError("refused")
         await lifecycle_client.notify_resync_started(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
 
 
@@ -216,7 +227,10 @@ class TestNotifyResyncFinished:
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
         await lifecycle_client.notify_resync_finished(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
@@ -234,7 +248,10 @@ class TestNotifyResyncFailed:
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
         await lifecycle_client.notify_resync_failed(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
@@ -247,7 +264,10 @@ class TestNotifyResyncFailed:
     ) -> None:
         mock_post.side_effect = Exception("network error")
         await lifecycle_client.notify_resync_failed(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
 
 
@@ -257,7 +277,10 @@ class TestNotifyResyncAborted:
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
         await lifecycle_client.notify_resync_aborted(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
@@ -276,7 +299,10 @@ class TestNotifyResyncAborted:
 
         with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
-                resync_id="r1", integration_id="i1", integration_type="github"
+                resync_id="r1",
+                integration_id="i1",
+                integration_type="github",
+                sync_type=SYNC_TYPE_FULL_SYNC,
             )
 
         mock_logger.warning.assert_called_once()
@@ -294,7 +320,10 @@ class TestNotifyResyncAborted:
 
         with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
-                resync_id="r1", integration_id="i1", integration_type="github"
+                resync_id="r1",
+                integration_id="i1",
+                integration_type="github",
+                sync_type=SYNC_TYPE_FULL_SYNC,
             )
 
         logged_body = mock_logger.warning.call_args[1]["response_body"]
@@ -375,17 +404,26 @@ class TestLifecycleClientIntegration:
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
         await lifecycle_client.notify_resync_started(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         assert mock_post.call_count == 1
 
         await lifecycle_client.notify_resync_finished(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         assert mock_post.call_count == 2
 
         await lifecycle_client.notify_resync_failed(
-            resync_id="r1", integration_id="i1", integration_type="github"
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_FULL_SYNC,
         )
         assert mock_post.call_count == 3
 
@@ -589,7 +627,10 @@ class TestRetryBehavior:
             patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
         ):
             await client.notify_resync_started(
-                resync_id="r1", integration_id="i1", integration_type="github"
+                resync_id="r1",
+                integration_id="i1",
+                integration_type="github",
+                sync_type=SYNC_TYPE_FULL_SYNC,
             )
         assert inner.handle_async_request.await_count == 2
 
@@ -607,7 +648,10 @@ class TestRetryBehavior:
             patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
         ):
             await client.notify_resync_started(
-                resync_id="r1", integration_id="i1", integration_type="github"
+                resync_id="r1",
+                integration_id="i1",
+                integration_type="github",
+                sync_type=SYNC_TYPE_FULL_SYNC,
             )
         assert inner.handle_async_request.await_count == 2
 
@@ -630,7 +674,10 @@ class TestRetryBehavior:
             patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
         ):
             await client.notify_resync_started(
-                resync_id="r1", integration_id="i1", integration_type="github"
+                resync_id="r1",
+                integration_id="i1",
+                integration_type="github",
+                sync_type=SYNC_TYPE_FULL_SYNC,
             )
         assert inner.handle_async_request.await_count == max_attempts + 1
         mock_logger.warning.assert_called_once()

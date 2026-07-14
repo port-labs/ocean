@@ -130,8 +130,8 @@ class LifecycleClient(OceanResyncHttpClient):
         resync_id: str,
         integration_id: str,
         integration_type: str,
+        sync_type: str,
         started_at: datetime | None = None,
-        sync_type: str = SYNC_TYPE_FULL_SYNC,
         kind_identifiers: list[str] | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
@@ -154,7 +154,7 @@ class LifecycleClient(OceanResyncHttpClient):
         resync_id: str,
         integration_id: str,
         integration_type: str,
-        sync_type: str = SYNC_TYPE_FULL_SYNC,
+        sync_type: str,
     ) -> None:
         body = self._build_body(
             "finished",
@@ -172,7 +172,7 @@ class LifecycleClient(OceanResyncHttpClient):
         resync_id: str,
         integration_id: str,
         integration_type: str,
-        sync_type: str = SYNC_TYPE_FULL_SYNC,
+        sync_type: str,
     ) -> None:
         body = self._build_body("failed", sync_type=sync_type)
         logger.info(f"Notifying lifecycle API resync failed, resync_id={resync_id}")
@@ -183,7 +183,7 @@ class LifecycleClient(OceanResyncHttpClient):
         resync_id: str,
         integration_id: str,
         integration_type: str,
-        sync_type: str = SYNC_TYPE_FULL_SYNC,
+        sync_type: str,
     ) -> None:
         body = self._build_body("aborted", sync_type=sync_type)
         logger.info(f"Notifying lifecycle API resync aborted, resync_id={resync_id}")

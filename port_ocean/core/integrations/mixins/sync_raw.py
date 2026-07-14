@@ -10,7 +10,11 @@ import multiprocessing
 import httpx
 import json
 from loguru import logger
-from port_ocean.clients.dsp.lifecycle import GranularityType, SYNC_TYPE_INCREMENTAL_RESYNC
+from port_ocean.clients.dsp.lifecycle import (
+    GranularityType,
+    SYNC_TYPE_FULL_SYNC,
+    SYNC_TYPE_INCREMENTAL_RESYNC,
+)
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import (
     TriggerType,
@@ -1418,6 +1422,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     resync_id=event.id,
                     integration_id=ocean.config.integration.identifier,
                     integration_type=ocean.config.integration.type,
+                    sync_type=SYNC_TYPE_FULL_SYNC,
                     started_at=datetime.now(timezone.utc),
                 )
 
@@ -1465,6 +1470,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
+                        sync_type=SYNC_TYPE_FULL_SYNC,
                     )
                 raise
             except Exception as e:
@@ -1477,6 +1483,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
+                        sync_type=SYNC_TYPE_FULL_SYNC,
                     )
                 raise
             else:
@@ -1523,6 +1530,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
+                        sync_type=SYNC_TYPE_FULL_SYNC,
                     )
                     return True
 
@@ -1557,12 +1565,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
                             integration_type=ocean.config.integration.type,
+                            sync_type=SYNC_TYPE_FULL_SYNC,
                         )
                     else:
                         await ocean.app.lifecycle_client.notify_resync_failed(
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
                             integration_type=ocean.config.integration.type,
+                            sync_type=SYNC_TYPE_FULL_SYNC,
                         )
 
                 return success
