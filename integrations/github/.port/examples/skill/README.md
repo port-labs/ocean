@@ -2,8 +2,9 @@
 #
 # Validated mapping fragment (ready to append): see `mapping.yml` in this folder.
 #
-# Blueprints (created in Port): `skill`, `plugin`
-# Relation: skill → plugin (many skills per plugin repo)
+# Blueprints (created in Port): `skill`, `agentPlugin`
+# Relation: skill → agentPlugin (many skills per plugin repo)
+# Note: blueprint id is `agentPlugin` (not `plugin`) to avoid Port's /plugins UI route.
 #
 # resources:
 #   - kind: skill

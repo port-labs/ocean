@@ -2,7 +2,8 @@
 # Append these resources to your GitHub Ocean integration mapping in Port
 # (or ask the agent to apply after the integration exists).
 #
-# Relation: skill.plugin -> plugin entity identified by repository.full_name
+# Relation: skill.agentPlugin -> agentPlugin entity identified by repository.full_name
+# Note: Port blueprint id is agentPlugin (not "plugin") to avoid clashing with /plugins UI.
 
 - kind: skill
   selector:
@@ -24,7 +25,7 @@
           branch: .branch
           source: '"github"'
         relations:
-          plugin: .repository.full_name
+          agentPlugin: .repository.full_name
 
 - kind: plugin
   selector:
@@ -34,7 +35,7 @@
       mappings:
         identifier: .repository.full_name
         title: .plugin.displayName // .plugin.name
-        blueprint: '"plugin"'
+        blueprint: '"agentPlugin"'
         properties:
           description: .plugin.description
           version: .plugin.version
