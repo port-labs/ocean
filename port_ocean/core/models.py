@@ -116,7 +116,6 @@ class Blueprint(BaseModel):
     team: str | None
     properties_schema: dict[str, Any] = Field(alias="schema")
     relations: dict[str, BlueprintRelation]
-    updated_at: datetime | None = Field(default=None, alias="updatedAt")
 
 
 class Migration(BaseModel):
