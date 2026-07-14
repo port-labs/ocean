@@ -7,6 +7,29 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.11 (2026-07-13)
+
+### Bug Fixes
+
+- Fixed missing `links` field in `WorkflowNodeRun` patch on run start, so the GitHub Actions run URL now appears as a clickable link on workflow node runs in the Port UI.
+
+## 0.44.10 (2026-07-12)
+
+### Improvements
+
+- Refactored `LifecycleClient` to delegate lifecycle API POST requests to a dedicated `lifecycle_http_client` instead of inheriting HTTP transport behavior, improving separation of concerns and testability.
+
+### Bug Fixes
+
+- Fixed lifecycle HTTP client proxy resolution to return a context-bound client per access, preventing stale proxy reuse across different event loops.
+- Extended HTTP client context cleanup to include DSP lifecycle clients and aligned related tests, fixing flaky lifecycle/sync-raw test behavior.
+
+## 0.44.9 (2026-07-09)
+
+### Bug Fixes
+
+- Fixed lakehouse raw-data batch serialization when buffered items contain datetime values by applying `make_json_compatible` in `post_integration_raw_data_batch()` before HTTP JSON encoding.
+
 ## 0.44.7 (2026-07-08)
 
 ### Improvements
