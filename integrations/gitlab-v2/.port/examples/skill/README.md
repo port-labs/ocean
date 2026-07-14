@@ -1,4 +1,9 @@
-# Example mapping (not applied by default — add to your GitLab v2 mapping to enable)
+# Example mapping (not applied by default — add to your GitLab v2 Ocean mapping to enable)
+#
+# Validated mapping fragment (ready to append): see `mapping.yml` in this folder.
+#
+# Blueprints (created in Port): `skill`, `plugin`
+# Relation: skill → plugin (many skills per plugin repo)
 #
 # resources:
 #   - kind: skill
@@ -15,7 +20,13 @@
 #             description: .skill.description
 #             instructions: .skill.instructions
 #             path: .skill.skillMdPath
+#             root: .skill.root
 #             repo: .repository.path_with_namespace
+#             repoUrl: .repository.web_url
+#             branch: .branch
+#             source: '"gitlab"'
+#           relations:
+#             plugin: .repository.path_with_namespace
 #
 #   - kind: plugin
 #     selector:
@@ -23,12 +34,15 @@
 #     port:
 #       entity:
 #         mappings:
-#           identifier: .repository.path
+#           identifier: .repository.path_with_namespace
 #           title: .plugin.displayName // .plugin.name
 #           blueprint: '"plugin"'
 #           properties:
 #             description: .plugin.description
+#             version: .plugin.version
 #             url: .repository.web_url
+#             repo: .repository.path_with_namespace
+#             source: '"gitlab"'
 #             supportsClaudeCode: .plugin.supports.claude
 #             supportsCursor: .plugin.supports.cursor
 #             supportsCodex: .plugin.supports.codex
@@ -37,3 +51,5 @@
 #             supportsOpenCode: .plugin.supports.opencode
 #             supportsPi: .plugin.supports.pi
 #             supportsAntigravity: .plugin.supports.antigravity
+#             claudeMarketplace: .plugin.claude.marketplaceName
+#             claudePlugin: .plugin.claude.name
