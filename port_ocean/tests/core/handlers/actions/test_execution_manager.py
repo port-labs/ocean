@@ -572,16 +572,37 @@ class TestExecutionManager:
             == execution_manager._high_watermark
         )
 
+    @pytest.mark.parametrize(
+        "generate_run",
+        [generate_mock_action_run, generate_mock_wf_node_run],
+        ids=["action_run", "workflow_node_run"],
+    )
     @pytest.mark.asyncio
-    async def test_poll_action_runs_should_skip_unregistered_actions(
-        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
+    async def test_poll_action_runs_should_ack_and_fail_unregistered_actions(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        generate_run: Any,
     ) -> None:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
-            generate_mock_action_run(action_type="unregistered_action")
-        ]
+        unregistered_run = generate_run(action_type="unregistered_action")
+        claim_count = 0
+
+        async def claim_runs_once(
+            limit: int,
+            visibility_timeout_ms: int,
+            exclude_action_identifiers: list[str] | None = None,
+            exclude_wf_nodes_uid: list[str] | None = None,
+        ) -> list[ActionRun | WorkflowNodeRun]:
+            nonlocal claim_count
+            claim_count += 1
+            if claim_count == 1:
+                return [unregistered_run]
+            return []
+
+        mock_port_client.claim_pending_runs.side_effect = claim_runs_once
 
         # Act
         polling_task: asyncio.Task[None] = asyncio.create_task(
@@ -592,6 +613,13 @@ class TestExecutionManager:
 
         # Assert
         assert await execution_manager._get_queues_size() == 0
+        mock_port_client.acknowledge_run.assert_called_once_with(unregistered_run)
+        mock_port_client.report_run_completed.assert_called_once_with(
+            unregistered_run,
+            success=False,
+            message="No executor registered for action type 'unregistered_action'",
+            should_raise=False,
+        )
 
     @pytest.mark.asyncio
     async def test_shutdown_should_cancel_polling_and_waits_for_workers(
