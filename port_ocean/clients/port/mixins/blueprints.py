@@ -4,6 +4,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.blueprint_cache import BlueprintCache
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import (
     get_event_context_params,
@@ -13,20 +14,36 @@ from port_ocean.core.models import Blueprint
 
 
 class BlueprintClientMixin:
-    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
+    def __init__(
+        self,
+        auth: PortAuthentication,
+        client: httpx.AsyncClient,
+        blueprint_cache_ttl_seconds: float = 120.0,
+    ):
         self.auth = auth
         self.client = client
+        self._blueprint_cache = BlueprintCache(blueprint_cache_ttl_seconds)
 
     async def get_blueprint(
-        self, identifier: str, should_log: bool = True
+        self, identifier: str, should_log: bool = True, *, use_cache: bool = True
     ) -> Blueprint:
+        if use_cache:
+            cached_entry = self._blueprint_cache.get(identifier)
+            if cached_entry is not None:
+                return cached_entry.blueprint
+
         logger.info(f"Fetching blueprint with id: {identifier}")
         response = await self.client.get(
             f"{self.auth.api_url}/blueprints/{identifier}",
             headers=await self.auth.headers(),
         )
         handle_port_status_code(response, should_log=should_log)
-        return Blueprint.parse_obj(response.json()["blueprint"])
+        blueprint = Blueprint.parse_obj(response.json()["blueprint"])
+        self._blueprint_cache.set(blueprint)
+        return blueprint
+
+    def invalidate_cached_blueprint(self, identifier: str) -> None:
+        self._blueprint_cache.invalidate(identifier)
 
     async def create_blueprint(
         self,
@@ -39,7 +56,11 @@ class BlueprintClientMixin:
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
         handle_port_status_code(response)
-        return response.json()["blueprint"]
+        blueprint = response.json()["blueprint"]
+        identifier = blueprint.get("identifier")
+        if identifier:
+            self.invalidate_cached_blueprint(identifier)
+        return blueprint
 
     async def patch_blueprint(
         self,
@@ -55,6 +76,7 @@ class BlueprintClientMixin:
             json=raw_blueprint,
         )
         handle_port_status_code(response)
+        self.invalidate_cached_blueprint(identifier)
 
     async def delete_blueprint(
         self,
@@ -74,6 +96,7 @@ class BlueprintClientMixin:
                 headers=headers,
             )
             handle_port_status_code(response, should_raise)
+            self.invalidate_cached_blueprint(identifier)
             return None
         else:
             response = await self.client.delete(
@@ -83,6 +106,7 @@ class BlueprintClientMixin:
             )
 
             handle_port_status_code(response, should_raise)
+            self.invalidate_cached_blueprint(identifier)
             return response.json().get("migrationId", "")
 
     async def create_scorecard(
