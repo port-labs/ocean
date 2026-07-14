@@ -8,6 +8,8 @@ import pytest
 from port_ocean.clients.dsp.lifecycle import (
     GranularityType,
     LifecycleClient,
+    SYNC_TYPE_FULL_SYNC,
+    SYNC_TYPE_INCREMENTAL_RESYNC,
 )
 from port_ocean.helpers.retry import RetryTransport
 from port_ocean.version import __version__
@@ -148,6 +150,29 @@ class TestNotifyResyncStarted:
         assert "event_id" not in body
 
     @pytest.mark.asyncio
+    async def test_body_includes_sync_type_when_provided(
+        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
+    ) -> None:
+        await lifecycle_client.notify_resync_started(
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            sync_type=SYNC_TYPE_INCREMENTAL_RESYNC,
+        )
+        body = mock_post.call_args[1]["json"]
+        assert body["sync_type"] == SYNC_TYPE_INCREMENTAL_RESYNC
+
+    @pytest.mark.asyncio
+    async def test_defaults_sync_type_to_full_sync(
+        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
+    ) -> None:
+        await lifecycle_client.notify_resync_started(
+            resync_id="r1", integration_id="i1", integration_type="github"
+        )
+        body = mock_post.call_args[1]["json"]
+        assert body["sync_type"] == SYNC_TYPE_FULL_SYNC
+
+    @pytest.mark.asyncio
     async def test_defaults_started_at(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
@@ -200,7 +225,7 @@ class TestNotifyResyncFailed:
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
         body = mock_post.call_args[1]["json"]
-        assert body == {"status": "failed"}
+        assert body == {"status": "failed", "sync_type": SYNC_TYPE_FULL_SYNC}
 
     @pytest.mark.asyncio
     async def test_swallows_exception(
@@ -223,7 +248,7 @@ class TestNotifyResyncAborted:
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
         body = mock_post.call_args[1]["json"]
-        assert body == {"status": "aborted"}
+        assert body == {"status": "aborted", "sync_type": SYNC_TYPE_FULL_SYNC}
 
     @pytest.mark.asyncio
     async def test_logs_warning_on_error_response(

@@ -10,9 +10,14 @@ import multiprocessing
 import httpx
 import json
 from loguru import logger
-from port_ocean.clients.dsp.lifecycle import GranularityType
+from port_ocean.clients.dsp.lifecycle import GranularityType, SYNC_TYPE_INCREMENTAL_RESYNC
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import TriggerType, event_context, EventType, event
+from port_ocean.context.event import (
+    TriggerType,
+    event_context,
+    EventType,
+    event,
+)
 from port_ocean.context.metric_resource import metric_resource_context
 from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource_context
@@ -1282,6 +1287,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_id=ocean.config.integration.identifier,
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
+                    sync_type=SYNC_TYPE_INCREMENTAL_RESYNC,
                 )
 
             for index, resource_cfg in incremental_resources:
@@ -1307,18 +1313,22 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     user_agent_type,
                 )
                 if not success:
-                    await ocean.app.lifecycle_client.notify_resync_failed(
-                        resync_id=event.id,
-                        integration_id=ocean.config.integration.identifier,
-                        integration_type=ocean.config.integration.type,
-                    )
+                    if dsp_enabled:
+                        await ocean.app.lifecycle_client.notify_resync_failed(
+                            resync_id=event.id,
+                            integration_id=ocean.config.integration.identifier,
+                            integration_type=ocean.config.integration.type,
+                            sync_type=SYNC_TYPE_INCREMENTAL_RESYNC,
+                        )
                     return
 
-            await ocean.app.lifecycle_client.notify_resync_finished(
-                resync_id=event.id,
-                integration_id=ocean.config.integration.identifier,
-                integration_type=ocean.config.integration.type,
-            )
+            if dsp_enabled:
+                await ocean.app.lifecycle_client.notify_resync_finished(
+                    resync_id=event.id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                    sync_type=SYNC_TYPE_INCREMENTAL_RESYNC,
+                )
 
             logger.info(
                 "Incremental sync completed",

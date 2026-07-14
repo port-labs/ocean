@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from port_ocean.clients.dsp.lifecycle import SYNC_TYPE_INCREMENTAL_RESYNC
 from port_ocean.context.event import EventType
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
@@ -234,6 +235,67 @@ class TestSyncIncrementalFailure:
 class TestEventType:
     def test_incremental_event_type_value(self) -> None:
         assert EventType.INCREMENTAL_RESYNC == "incremental_resync"
+
+
+class TestSyncIncrementalDspLifecycle:
+    async def test_notifies_lifecycle_with_incremental_sync_type_when_dsp_enabled(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        lifecycle_client = MagicMock()
+        lifecycle_client.notify_resync_started = AsyncMock()
+        lifecycle_client.notify_resync_finished = AsyncMock()
+        lifecycle_client.notify_resync_failed = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                new=AsyncMock(return_value=True),
+            ),
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+        ):
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            mock_ocean.app.lifecycle_client = lifecycle_client
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        lifecycle_client.notify_resync_started.assert_called_once()
+        started_kwargs = lifecycle_client.notify_resync_started.call_args.kwargs
+        assert started_kwargs["sync_type"] == SYNC_TYPE_INCREMENTAL_RESYNC
+        assert started_kwargs["integration_id"] == "test-integration"
+        lifecycle_client.notify_resync_finished.assert_called_once()
+        finished_kwargs = lifecycle_client.notify_resync_finished.call_args.kwargs
+        assert finished_kwargs["sync_type"] == SYNC_TYPE_INCREMENTAL_RESYNC
+        lifecycle_client.notify_resync_failed.assert_not_called()
+
+    async def test_skips_lifecycle_when_dsp_disabled(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        lifecycle_client = MagicMock()
+        lifecycle_client.notify_resync_started = AsyncMock()
+        lifecycle_client.notify_resync_finished = AsyncMock()
+        lifecycle_client.notify_resync_failed = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                new=AsyncMock(return_value=False),
+            ),
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+        ):
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            mock_ocean.app.lifecycle_client = lifecycle_client
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        lifecycle_client.notify_resync_started.assert_not_called()
+        lifecycle_client.notify_resync_finished.assert_not_called()
+        lifecycle_client.notify_resync_failed.assert_not_called()
 
 
 class TestEventsMixinIncrementalRegistration:
