@@ -7,12 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.3.0 (2026-07-13)
+## 6.3.0 (2026-07-15)
 
 
 ### Improvements
 
 - Refactored GitHub authentication behind installation-scoped backends, with multi-org installation discovery and per-installation rate limiting.
+
+
+## 6.2.16 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 6.2.15 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 6.2.14 (2026-07-13)
+
+
+### Improvements
+
+- Implement property-reduction optimization for expensive GraphQL paginated requests
+
+
+## 6.2.13 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
 
 
 ## 6.2.12 (2026-07-12)
