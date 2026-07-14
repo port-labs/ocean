@@ -4,7 +4,7 @@ from loguru import logger
 from port_ocean.context.event import event
 
 from github.clients.auth.abstract_authenticator import AuthScope
-from github.clients.auth.github_app.authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )

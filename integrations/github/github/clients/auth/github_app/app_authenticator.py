@@ -106,6 +106,6 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         return response.json()
 
     @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:
+    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
         app = await self.get_app()
         return f"{app['slug']}[bot]"

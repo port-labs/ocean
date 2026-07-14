@@ -71,5 +71,5 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
             ) from e
 
     @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:
+    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
         return await self.app_auth.get_authenticated_actor()

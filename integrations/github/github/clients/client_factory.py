@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Dict, Literal, Optional, Type, overload
+from typing import Dict, Literal, Optional, Type, cast, overload
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -132,6 +132,13 @@ def create_github_client_for_org(
 ) -> GithubGraphQLClient: ...
 
 
+@overload
+def create_github_client_for_org(
+    organization: str | None,
+    client_type: GithubClientType,
+) -> AbstractGithubClient: ...
+
+
 def create_github_client_for_org(
     organization: str | None,
     client_type: GithubClientType | None = GithubClientType.REST,
@@ -176,6 +183,6 @@ def create_github_client(
 def create_github_client(
     client_type: GithubClientType | None = None,
 ) -> AbstractGithubClient:
-    organization = ocean.integration_config.get("github_organization")
+    organization = cast(str | None, ocean.integration_config.get("github_organization"))
     resolved = client_type or GithubClientType.REST
     return create_github_client_for_org(organization, resolved)

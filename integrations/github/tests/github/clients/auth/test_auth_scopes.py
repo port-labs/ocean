@@ -7,7 +7,7 @@ from github.clients.auth.auth_backend import (
     PatAuthBackend,
     resolve_auth_backend,
 )
-from github.clients.auth.github_app.authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
