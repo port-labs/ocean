@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.15 (UNRELEASED)
+
+
+### Improvements
+
+- Added `replace_repositories_external_custom_properties` action that PUT-replaces external custom properties on multiple repositories (batched, per-org).
+- Restored `update_repo_external_custom_properties` as a single-repository PATCH merge action.
+
+
 ## 6.2.14 (2026-07-13)
 
 
