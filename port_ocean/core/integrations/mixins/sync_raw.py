@@ -861,7 +861,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
             resync_id = ocean.metrics.event_id
-            if not is_incremental and dsp_enabled and resync_id:
+            if dsp_enabled and resync_id:
                 await ocean.app.lifecycle_client.notify_started(
                     event_id=resync_id,
                     integration_id=ocean.config.integration.identifier,
@@ -883,7 +883,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError:
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
-                if not is_incremental and dsp_enabled and resync_id:
+                if dsp_enabled and resync_id:
                     await ocean.app.lifecycle_client.notify_aborted(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
@@ -909,20 +909,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     dsp_enabled=dsp_enabled,
                 )
 
-                if dsp_enabled and resync_id:
-                    if ocean.metrics.sync_state == SyncState.FAILED:
-                        await ocean.app.lifecycle_client.notify_failed(
-                            event_id=resync_id,
-                            granularity=GranularityType.KIND,
-                            kind_identifier=resource_kind_id,
-                        )
-                    else:
-                        await ocean.app.lifecycle_client.notify_finished(
-                            event_id=resync_id,
-                            integration_type=ocean.config.integration.type,
-                            granularity=GranularityType.KIND,
-                            kind_identifier=resource_kind_id,
-                        )
+            if dsp_enabled and resync_id:
+                if ocean.metrics.sync_state == SyncState.FAILED:
+                    await ocean.app.lifecycle_client.notify_failed(
+                        event_id=resync_id,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
+                else:
+                    await ocean.app.lifecycle_client.notify_finished(
+                        event_id=resync_id,
+                        integration_type=ocean.config.integration.type,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
 
             return kind_results
 
@@ -1257,6 +1257,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with event_context(
             EventType.INCREMENTAL_RESYNC, trigger_type=trigger_type
         ):
+            ocean.metrics.event_id = event.id
+
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )

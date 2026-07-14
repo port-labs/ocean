@@ -6,7 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from port_ocean.clients.dsp.lifecycle import SYNC_TYPE_INCREMENTAL_RESYNC
+from port_ocean.clients.dsp.lifecycle import (
+    GranularityType,
+    SYNC_TYPE_INCREMENTAL_RESYNC,
+)
 from port_ocean.context.event import EventType
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
@@ -18,6 +21,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.context.event import event_context
+from port_ocean.helpers.metric.metric import SyncState
 
 
 def make_resource_config(kind: str) -> ResourceConfig:
@@ -296,6 +301,85 @@ class TestSyncIncrementalDspLifecycle:
         lifecycle_client.notify_resync_started.assert_not_called()
         lifecycle_client.notify_resync_finished.assert_not_called()
         lifecycle_client.notify_resync_failed.assert_not_called()
+
+
+class TestIncrementalKindLifecycle:
+    async def test_process_resource_notifies_kind_lifecycle_when_dsp_enabled(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        resource = make_resource_config("issue")
+        mock_mixin._register_in_batches = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
+        lifecycle_client = MagicMock()
+        lifecycle_client.notify_started = AsyncMock()
+        lifecycle_client.notify_finished = AsyncMock()
+        lifecycle_client.notify_failed = AsyncMock()
+        lifecycle_client.notify_aborted = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.start_monitoring",
+                new=AsyncMock(),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.stop_monitoring",
+                new=AsyncMock(),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.start_kind_tracking",
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.stop_kind_tracking",
+            ),
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+        ):
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            mock_ocean.app.lifecycle_client = lifecycle_client
+            mock_ocean.metrics.event_id = "incremental-resync-id"
+            mock_ocean.metrics.sync_state = SyncState.SYNCING
+
+            async with event_context(
+                EventType.INCREMENTAL_RESYNC, trigger_type="machine"
+            ) as evt:
+                evt.port_app_config = make_port_app_config(["issue"])
+                await mock_mixin._process_resource(
+                    resource, index=0, user_agent_type=MagicMock()
+                )
+
+        lifecycle_client.notify_started.assert_called_once_with(
+            event_id="incremental-resync-id",
+            integration_id="test-integration",
+            integration_type="fake-integration",
+            granularity=GranularityType.KIND,
+            kind_identifier="issue-0",
+        )
+        lifecycle_client.notify_finished.assert_called_once_with(
+            event_id="incremental-resync-id",
+            integration_type="fake-integration",
+            granularity=GranularityType.KIND,
+            kind_identifier="issue-0",
+        )
+        lifecycle_client.notify_failed.assert_not_called()
+
+    async def test_sync_incremental_sets_metrics_event_id(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+
+        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            mock_ocean.metrics.event_id = ""
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        assert mock_ocean.metrics.event_id != ""
 
 
 class TestEventsMixinIncrementalRegistration:
