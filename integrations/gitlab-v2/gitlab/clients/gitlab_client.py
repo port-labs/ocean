@@ -51,6 +51,9 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+        # Groups where Advanced Search (search_type=advanced) returned 400.
+        # Avoid re-trying that path for every file pattern in the same process.
+        self._groups_without_advanced_search: set[str] = set()
 
     async def get_personal_namespace_projects(
         self,
@@ -953,38 +956,55 @@ class GitLabClient:
         logger.info(
             f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
         )
+
+        # Advanced Search is unavailable for some groups (common on GitLab.com
+        # free tiers). Ocean retries 400s by default (~2 min); skip that dance
+        # once we know the group cannot use advanced blob search.
+        if scope == "blobs" and group_id in self._groups_without_advanced_search:
+            async for batch in self._search_files_in_group_projects(
+                group_id, scope, query, skip_parsing
+            ):
+                yield batch
+            return
+
         params = {"scope": scope, "search": query, "search_type": "advanced"}
         path = f"groups/{quote(group_id, safe='')}/search"
 
         try:
-            async for file_batch in self.rest.get_paginated_resource(
-                path, params=params
-            ):
-                logger.info(f"Found {len(file_batch)} files in group '{group_id}'")
-                processed_batch = await self._process_file_batch(
-                    file_batch, group_id, skip_parsing
-                )
-                if processed_batch:
-                    yield processed_batch
+            # Disable 400 retries for this call only — permanent Advanced Search
+            # failures must fall back immediately, not after max_attempts backoff.
+            retry_codes = self.rest._client._retry_config.retry_status_codes
+            self.rest._client._retry_config.retry_status_codes = frozenset(
+                code for code in retry_codes if code != 400
+            )
+            try:
+                async for file_batch in self.rest.get_paginated_resource(
+                    path, params=params
+                ):
+                    logger.info(f"Found {len(file_batch)} files in group '{group_id}'")
+                    processed_batch = await self._process_file_batch(
+                        file_batch, group_id, skip_parsing
+                    )
+                    if processed_batch:
+                        yield processed_batch
+            finally:
+                self.rest._client._retry_config.retry_status_codes = retry_codes
         except httpx.HTTPStatusError as e:
-            if not self._is_blob_search_unavailable(e):
+            if not (scope == "blobs" and e.response.status_code == 400):
                 raise
+            self._groups_without_advanced_search.add(group_id)
+            try:
+                message = e.response.json().get("message", e)
+            except Exception:
+                message = e
             logger.warning(
-                f"Group search in group {group_id} failed: {e.response.json().get('message')}, "
-                f"falling back to project-level search for group's projects"
+                f"Group advanced search in group {group_id} failed ({message}); "
+                f"falling back to project-level search for remaining queries"
             )
             async for batch in self._search_files_in_group_projects(
                 group_id, scope, query, skip_parsing
             ):
                 yield batch
-
-    def _is_blob_search_unavailable(self, error: httpx.HTTPStatusError) -> bool:
-        if error.response.status_code != 400:
-            return False
-        message = error.response.json().get("message", "")
-        if isinstance(message, list):
-            message = " ".join(message)
-        return "Scope 'blobs' is not available for this search" in message
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str

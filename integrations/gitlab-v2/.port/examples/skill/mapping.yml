@@ -2,8 +2,8 @@
 # Append these resources to your GitLab v2 Ocean integration mapping in Port
 # (or ask the agent to apply after the integration exists).
 #
-# Relation: skill.agentPlugin -> agentPlugin entity identified by repository.path_with_namespace
 # Note: Port blueprint id is agentPlugin (not "plugin") to avoid clashing with /plugins UI.
+# Do not relate skill → agentPlugin by repo path: skill-only repos would become empty stubs.
 
 - kind: skill
   selector:
@@ -26,8 +26,8 @@
           repoUrl: .repository.web_url
           branch: .branch
           source: '"gitlab"'
-        relations:
-          agentPlugin: .repository.path_with_namespace
+        # Intentionally no agentPlugin relation: not every skill repo is a plugin.
+        # createMissingRelatedEntities would otherwise create empty agentPlugin stubs.
 
 - kind: plugin
   selector:

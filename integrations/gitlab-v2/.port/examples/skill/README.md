@@ -4,7 +4,7 @@
 # integration mapping in Port to enable.
 #
 # Blueprints: `skill`, `agentPlugin`
-# Relation: skill → agentPlugin (many skills per plugin repo)
+# Skills and plugins share `repo`; do not map skill→agentPlugin by repo (creates stubs)
 # Identifier for skills uses `.skill.skillMdPath` (stable across renames of
 # frontmatter `name`).
 #
