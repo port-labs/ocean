@@ -72,9 +72,7 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
         manifest_paths = set(all_manifest_paths(providers))
 
         touched = [
-            f
-            for f in changed
-            if path_touches_plugin(f.get("filename", ""), providers)
+            f for f in changed if path_touches_plugin(f.get("filename", ""), providers)
         ]
         if not touched:
             return WebhookEventRawResults(

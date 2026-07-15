@@ -32,9 +32,7 @@ class TestSkillUtils:
             roots,
             ["packages/**/SKILL.md"],
         )
-        assert not path_under_roots_or_extra(
-            "packages/ai/skills/x/SKILL.md", roots, []
-        )
+        assert not path_under_roots_or_extra("packages/ai/skills/x/SKILL.md", roots, [])
 
     def test_parse_skill_markdown(self) -> None:
         content = """---

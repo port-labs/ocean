@@ -26,7 +26,7 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource(self, options: Any) -> RAW_ITEM:
         raise NotImplementedError("PluginExporter does not support get_resource")
 
-    async def get_paginated_resources(self, options: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    def get_paginated_resources(self, options: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise NotImplementedError("Use get_paginated_plugins")
 
     async def get_paginated_plugins(

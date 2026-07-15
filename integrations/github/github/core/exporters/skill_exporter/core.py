@@ -25,7 +25,7 @@ class SkillExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource(self, options: Any) -> RAW_ITEM:
         raise NotImplementedError("SkillExporter does not support get_resource")
 
-    async def get_paginated_resources(
+    def get_paginated_resources(
         self, options: List[ListFileSearchOptions]
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise NotImplementedError("Use get_paginated_skills")

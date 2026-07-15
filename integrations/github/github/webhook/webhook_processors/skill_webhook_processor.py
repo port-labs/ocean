@@ -121,9 +121,11 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                     "frontmatter": {},
                     "path": str(Path(file_info["filename"]).parent),
                     "skillMdPath": file_info["filename"],
-                    "root": Path(file_info["filename"]).parts[0]
-                    if Path(file_info["filename"]).parts
-                    else "",
+                    "root": (
+                        Path(file_info["filename"]).parts[0]
+                        if Path(file_info["filename"]).parts
+                        else ""
+                    ),
                 },
                 "repository": repository,
                 "branch": current_branch,
