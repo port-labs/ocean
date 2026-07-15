@@ -54,9 +54,6 @@ class BlueprintClientMixin:
         )
         return blueprint
 
-    def invalidate_cached_blueprint(self, identifier: str) -> None:
-        self._blueprint_cache.pop(identifier, None)
-
     def invalidate_all_cached_blueprints(self) -> None:
         self._blueprint_cache.clear()
 
@@ -71,11 +68,7 @@ class BlueprintClientMixin:
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
         handle_port_status_code(response)
-        blueprint = response.json()["blueprint"]
-        identifier = blueprint.get("identifier")
-        if identifier:
-            self.invalidate_cached_blueprint(identifier)
-        return blueprint
+        return response.json()["blueprint"]
 
     async def patch_blueprint(
         self,
@@ -91,7 +84,6 @@ class BlueprintClientMixin:
             json=raw_blueprint,
         )
         handle_port_status_code(response)
-        self.invalidate_cached_blueprint(identifier)
 
     async def delete_blueprint(
         self,
@@ -111,7 +103,6 @@ class BlueprintClientMixin:
                 headers=headers,
             )
             handle_port_status_code(response, should_raise)
-            self.invalidate_cached_blueprint(identifier)
             return None
         else:
             response = await self.client.delete(
@@ -121,7 +112,6 @@ class BlueprintClientMixin:
             )
 
             handle_port_status_code(response, should_raise)
-            self.invalidate_cached_blueprint(identifier)
             return response.json().get("migrationId", "")
 
     async def create_scorecard(

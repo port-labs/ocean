@@ -80,30 +80,6 @@ async def test_blueprint_cache_expires_after_ttl(
     blueprint_client.client.get.assert_awaited_once()
 
 
-async def test_blueprint_cache_invalidate_removes_entry(
-    blueprint_client: BlueprintClientMixin,
-) -> None:
-    blueprint = _make_blueprint()
-    _seed_cache(blueprint_client, blueprint)
-    response = MagicMock()
-    response.status_code = 200
-    response.is_error = False
-    response.json.return_value = {
-        "blueprint": {
-            "identifier": blueprint.identifier,
-            "title": blueprint.title,
-            "schema": blueprint.properties_schema,
-            "relations": {},
-        }
-    }
-    blueprint_client.client.get = AsyncMock(return_value=response)  # type: ignore[method-assign]
-    blueprint_client.invalidate_cached_blueprint("test-bp")
-
-    await blueprint_client.get_blueprint("test-bp", should_log=False)
-
-    blueprint_client.client.get.assert_awaited_once()
-
-
 def test_blueprint_cache_invalidate_all_removes_all_entries(
     blueprint_client: BlueprintClientMixin,
 ) -> None:
@@ -135,30 +111,3 @@ async def test_get_blueprint_uses_cache_on_second_call(
     assert first.identifier == "service"
     assert second.identifier == "service"
     assert get_mock.await_count == 1
-
-
-async def test_patch_blueprint_invalidates_cache(
-    blueprint_client: BlueprintClientMixin,
-) -> None:
-    blueprint_payload = {
-        "identifier": "service",
-        "title": "Service",
-        "schema": {"properties": {}},
-        "relations": {},
-    }
-    get_response = MagicMock()
-    get_response.status_code = 200
-    get_response.is_error = False
-    get_response.json.return_value = {"blueprint": blueprint_payload}
-    patch_response = MagicMock()
-    patch_response.status_code = 200
-    patch_response.is_error = False
-    get_mock = AsyncMock(return_value=get_response)
-    blueprint_client.client.get = get_mock  # type: ignore[method-assign]
-    blueprint_client.client.patch = AsyncMock(return_value=patch_response)  # type: ignore[method-assign]
-
-    await blueprint_client.get_blueprint("service", should_log=False)
-    await blueprint_client.patch_blueprint("service", {"title": "Updated"})
-    await blueprint_client.get_blueprint("service", should_log=False)
-
-    assert get_mock.await_count == 2
