@@ -53,10 +53,12 @@ def path_under_roots_or_extra(
 ) -> bool:
     if match_skill_root(skill_md_path, roots) is not None:
         return True
+    from wcmatch import glob
+
     from github.helpers.utils import matches_glob_pattern
 
     for pattern in extra_paths:
-        if matches_glob_pattern(skill_md_path, pattern):
+        if matches_glob_pattern(skill_md_path, pattern, flags=glob.DOTGLOB):
             return True
     return False
 

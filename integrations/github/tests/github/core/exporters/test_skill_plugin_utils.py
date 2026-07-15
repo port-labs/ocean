@@ -32,7 +32,22 @@ class TestSkillUtils:
             roots,
             ["packages/**/SKILL.md"],
         )
+        assert path_under_roots_or_extra(
+            ".cursor/skills/x/SKILL.md",
+            [],
+            [".cursor/**/SKILL.md"],
+        )
         assert not path_under_roots_or_extra("packages/ai/skills/x/SKILL.md", roots, [])
+
+    def test_build_skill_object_multi_segment_root(self) -> None:
+        skill = build_skill_object(
+            skill_md_path=".cursor/skills/hello/SKILL.md",
+            content="# Hello",
+            content_mode="skill.md",
+            roots=[".cursor/skills"],
+        )
+        assert skill["root"] == ".cursor/skills"
+        assert skill["path"] == ".cursor/skills/hello"
 
     def test_parse_skill_markdown(self) -> None:
         content = """---

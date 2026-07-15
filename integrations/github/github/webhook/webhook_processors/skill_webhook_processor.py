@@ -2,13 +2,16 @@ from pathlib import Path
 from typing import Any, cast
 
 from loguru import logger
+from wcmatch import glob
 
 from github.clients.client_factory import create_github_client
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import group_files_by_status
 from github.core.exporters.skill_exporter import (
     DEFAULT_SKILL_ROOTS,
+    SKILL_MD_FILENAME,
     build_skill_raw_item,
+    match_skill_root,
     path_under_roots_or_extra,
     roots_to_globs,
 )
@@ -54,7 +57,7 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         after_sha = payload["after"]
         repo_name = repository["name"]
         default_branch = repository["default_branch"]
-        current_branch = payload["ref"].split("/")[-1]
+        current_branch = payload["ref"].removeprefix("refs/heads/")
 
         selector = cast(GithubSkillResourceConfig, resource_config).selector
         effective_roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
@@ -117,27 +120,28 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                 )
             )
 
-        deleted_raw_results = [
-            {
-                "skill": {
-                    "name": Path(file_info["filename"]).parent.name,
-                    "description": "",
-                    "instructions": None,
-                    "frontmatter": {},
-                    "path": str(Path(file_info["filename"]).parent),
-                    "skillMdPath": file_info["filename"],
-                    "root": (
-                        Path(file_info["filename"]).parts[0]
-                        if Path(file_info["filename"]).parts
-                        else ""
-                    ),
-                },
-                "repository": repository,
-                "branch": current_branch,
-                "organization": organization,
-            }
-            for file_info in deleted_files
-        ]
+        deleted_raw_results = []
+        for file_info in deleted_files:
+            filename = file_info["filename"]
+            path_obj = Path(filename)
+            skill_dir = str(path_obj.parent).replace("\\", "/")
+            deleted_raw_results.append(
+                {
+                    "skill": {
+                        "name": path_obj.parent.name,
+                        "description": "",
+                        "instructions": None,
+                        "frontmatter": {},
+                        "path": skill_dir,
+                        "skillMdPath": filename,
+                        "root": match_skill_root(filename, effective_roots)
+                        or skill_dir.split("/")[0],
+                    },
+                    "repository": repository,
+                    "branch": current_branch,
+                    "organization": organization,
+                }
+            )
 
         logger.info(
             f"Skill webhook processed {len(updated_raw_results)} updates and "
@@ -172,8 +176,11 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         extra_paths: list[str],
         patterns: list[str],
     ) -> bool:
-        if not path.endswith("SKILL.md"):
+        if Path(path).name.lower() != SKILL_MD_FILENAME.lower():
             return False
         if path_under_roots_or_extra(path, roots, extra_paths):
             return True
-        return any(matches_glob_pattern(path, pattern) for pattern in patterns)
+        return any(
+            matches_glob_pattern(path, pattern, flags=glob.DOTGLOB)
+            for pattern in patterns
+        )

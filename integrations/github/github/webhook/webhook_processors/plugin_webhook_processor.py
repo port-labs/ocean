@@ -51,7 +51,7 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
         after_sha = payload["after"]
         repo_name = repository["name"]
         default_branch = repository["default_branch"]
-        current_branch = payload["ref"].split("/")[-1]
+        current_branch = payload["ref"].removeprefix("refs/heads/")
 
         selector = cast(GithubPluginResourceConfig, resource_config).selector
         providers = selector.providers or list(DEFAULT_PLUGIN_PROVIDERS)
