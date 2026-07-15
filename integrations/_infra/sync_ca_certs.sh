@@ -32,7 +32,9 @@ chmod 644 "$USER_CERT_DIR"/* 2>/dev/null || true
 # (e.g. when a system ca-certificates.crt was already copied above), which would
 # otherwise make cat read from and write to the same file at once and grow it unbounded.
 cat "$USER_CERT_DIR"/*.crt "$USER_CERT_DIR"/*.pem 2>/dev/null > "$USER_CERT_DIR/ca-certificates.crt.tmp" || true
-mv "$USER_CERT_DIR/ca-certificates.crt.tmp" "$USER_CERT_DIR/ca-certificates.crt"
+if [ -f "$USER_CERT_DIR/ca-certificates.crt.tmp" ]; then
+    mv "$USER_CERT_DIR/ca-certificates.crt.tmp" "$USER_CERT_DIR/ca-certificates.crt"
+fi
 
 # Export environment variables for SSL
 export SSL_CERT_DIR="$USER_CERT_DIR"
