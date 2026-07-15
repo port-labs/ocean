@@ -18,7 +18,7 @@ from github.core.exporters.team_exporter import (
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.registry import register_live_events_webhooks
 from github.core.exporters.file_exporter.utils import FilePatternMappingBuilder
-from github.clients.auth.auth import auth
+from github.clients.auth import auth
 from github.clients.client_factory import create_github_client
 from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter

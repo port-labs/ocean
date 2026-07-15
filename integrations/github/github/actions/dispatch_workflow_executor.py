@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 from loguru import logger
 from github.actions.utils import build_external_id
-from github.clients.auth.auth import auth
+from github.clients.auth import auth
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )

@@ -4,7 +4,7 @@ from typing import Dict, Literal, Type, TypeVar, overload
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from github.clients.auth.auth import auth
+from github.clients.auth import auth
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.github_app.installation_registry import (
     reset_authenticators_by_org,

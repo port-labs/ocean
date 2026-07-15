@@ -37,7 +37,7 @@ from github.helpers.port_app_config import (
     is_repo_managed_mapping,
     load_org_port_app_config,
 )
-from github.clients.auth.auth import auth
+from github.clients.auth import auth
 
 FILE_PROPERTY_PREFIX = "file://"
 
