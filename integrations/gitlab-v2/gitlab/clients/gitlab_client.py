@@ -1005,8 +1005,7 @@ class GitLabClient:
             message = str(raw).lower()
         # GitLab returns either of these depending on version / plan messaging.
         return (
-            "advanced search" in message
-            or "scope 'blobs' is not available" in message
+            "advanced search" in message or "scope 'blobs' is not available" in message
         )
 
     async def _resolve_file_references(
