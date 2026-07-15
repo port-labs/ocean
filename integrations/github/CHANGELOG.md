@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
   `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`
 
+
+## 6.2.16 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
 ## 6.2.15 (2026-07-14)
 
 
