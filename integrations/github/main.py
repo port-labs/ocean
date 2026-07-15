@@ -26,6 +26,7 @@ from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.utils import (
     get_github_organizations,
+    get_mono_repo_organization,
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
@@ -100,6 +101,8 @@ from integration import (
     GithubTagConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
+    GithubSkillResourceConfig,
+    GithubPluginResourceConfig,
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubDeploymentConfig,
@@ -107,6 +110,18 @@ from integration import (
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
     GithubUserConfig,
+)
+from github.core.exporters.skill_exporter import (
+    SkillExporter,
+    build_skill_file_patterns,
+)
+from github.core.exporters.plugin_exporter import (
+    PluginExporter,
+    DEFAULT_PLUGIN_PROVIDERS,
+)
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+    OrganizationLoginAndTypeGenerator,
 )
 from github.enrichments.included_files import (
     IncludedFilesEnricher,
@@ -1021,6 +1036,84 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if included_files_enricher:
             file_results = await included_files_enricher.enrich_batch(file_results)
         yield file_results
+
+
+@ocean.on_resync(ObjectKind.SKILL)
+async def resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync Agent Skills (SKILL.md) using convention-based discovery."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    skill_exporter = SkillExporter(rest_client)
+
+    config = cast(GithubSkillResourceConfig, event.resource_config)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+    selector = config.selector
+
+    patterns = build_skill_file_patterns(
+        roots=selector.roots,
+        paths=selector.paths,
+        organization=selector.organization,
+        repos=selector.repos,
+    )
+    pattern_builder = FilePatternMappingBuilder(
+        org_exporter=org_exporter,
+        repo_exporter=repo_exporter,
+        repo_type=app_config.repository_type,
+    )
+    repo_path_map = await pattern_builder.build(patterns)
+
+    async for skills in skill_exporter.get_paginated_skills(
+        repo_path_map,
+        content_mode=selector.content,
+        roots=selector.roots,
+    ):
+        yield skills
+
+
+@ocean.on_resync(ObjectKind.PLUGIN)
+async def resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync agent plugin packages detected via provider manifests."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    plugin_exporter = PluginExporter(rest_client)
+
+    config = cast(GithubPluginResourceConfig, event.resource_config)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+    selector = config.selector
+    providers = selector.providers or list(DEFAULT_PLUGIN_PROVIDERS)
+
+    org_generator = OrganizationLoginAndTypeGenerator(org_exporter)
+    repo_selector = CompositeRepositorySelector(app_config.repository_type)
+    organization = get_mono_repo_organization(selector.organization)
+
+    async for org_login, org_type in org_generator(organization):
+        repos_batch: list[tuple[dict[str, Any], str]] = []
+        async for _repo_name, branch, repo_obj in repo_selector.select_repos(
+            selector, repo_exporter, org_login, org_type
+        ):
+            repos_batch.append((repo_obj, branch))
+            if len(repos_batch) >= MAX_CONCURRENT_REPOS:
+                async for plugins in plugin_exporter.get_paginated_plugins(
+                    organization=org_login,
+                    repositories=repos_batch,
+                    providers=providers,
+                ):
+                    yield plugins
+                repos_batch = []
+
+        if repos_batch:
+            async for plugins in plugin_exporter.get_paginated_plugins(
+                organization=org_login,
+                repositories=repos_batch,
+                providers=providers,
+            ):
+                yield plugins
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)

@@ -1,0 +1,63 @@
+# Ready-to-apply Port mapping fragment for skill + plugin kinds.
+# Append these resources to your GitHub Ocean integration mapping in Port
+# (or ask the agent to apply after the integration exists).
+#
+# Note: Port blueprint id is agentPlugin (not "plugin") to avoid clashing with /plugins UI.
+# Map skill→agentPlugin with a search relation (not a bare repo string) so
+# createMissingRelatedEntities does not create empty stubs for skill-only repos.
+# Prefer plugin before skill so plugins exist when skills resolve the search.
+
+- kind: plugin
+  selector:
+    query: 'true'
+  port:
+    entity:
+      mappings:
+        identifier: .repository.full_name
+        title: .plugin.displayName // .plugin.name
+        blueprint: '"agentPlugin"'
+        properties:
+          description: .plugin.description
+          version: .plugin.version
+          url: .repository.html_url
+          repo: .repository.full_name
+          source: '"github"'
+          supportsClaudeCode: .plugin.supports.claude
+          supportsCursor: .plugin.supports.cursor
+          supportsCodex: .plugin.supports.codex
+          supportsAgents: .plugin.supports.agents
+          supportsKimi: .plugin.supports.kimi
+          supportsOpenCode: .plugin.supports.opencode
+          supportsPi: .plugin.supports.pi
+          supportsAntigravity: .plugin.supports.antigravity
+          claudeMarketplace: .plugin.claude.marketplaceName
+          claudePlugin: .plugin.claude.name
+
+- kind: skill
+  selector:
+    query: 'true'
+    content: skill.md
+  port:
+    entity:
+      mappings:
+        # Use skillMdPath (not .skill.name) so webhook deletes match upserts when
+        # frontmatter name differs from the folder name.
+        identifier: .repository.full_name + "/" + .skill.skillMdPath
+        title: .skill.name // .skill.skillMdPath
+        blueprint: '"skill"'
+        properties:
+          description: .skill.description
+          instructions: .skill.instructions
+          path: .skill.skillMdPath
+          root: .skill.root
+          repo: .repository.full_name
+          repoUrl: .repository.html_url
+          branch: .branch
+          source: '"github"'
+        relations:
+          agentPlugin:
+            combinator: '"and"'
+            rules:
+              - property: '"$identifier"'
+                operator: '"="'
+                value: .repository.full_name
