@@ -1,14 +1,18 @@
 import pytest
-from typing import cast
+from typing import cast, List, Optional
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.retry_transport import (
     GitHubRetryTransport,
-    MIN_GRAPHQL_PAGE_SIZE,
 )
+from github.clients.graphql_page_reduction import MIN_GRAPHQL_PAGE_SIZE
 from github.clients.http.graphql_client import GithubGraphQLClient, PAGE_SIZE
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
+from github.helpers.utils import IgnoredError
+from github.helpers.exceptions import (
+    RateLimitException,
+)
 
 _GQL_HOST = "https://api.github.com"
 _GQL_ORG = "test-org"
@@ -465,6 +469,170 @@ class TestGithubGraphQLClient:
             )
         assert not GithubGraphQLClient._is_query_too_expensive(GraphQLErrorGroup([]))
 
+    @pytest.mark.asyncio
+    async def test_handle_graphql_errors_detects_rate_limit_response(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test that _handle_graphql_errors raises RateLimitException for rate-limited responses."""
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        # Mock rate-limit response (HTTP 200 with exhausted headers)
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": "1700000000",
+        }
+        mock_response.extensions = {}
+
+        with pytest.raises(RateLimitException) as exc_info:
+            client._handle_graphql_errors(mock_response)
+
+        assert exc_info.value.rate_limit_info.limit == 5000
+        assert exc_info.value.rate_limit_info.remaining == 0
+        assert exc_info.value.rate_limit_info.reset_time == 1700000000
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_retries_on_rate_limit(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test that send_api_request retries after catching RateLimitException."""
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        # First response: rate-limited
+        rate_limit_response = MagicMock(spec=httpx.Response)
+        rate_limit_response.status_code = 200
+        rate_limit_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": "1700000000",
+        }
+        rate_limit_response.extensions = {}
+
+        # Second response: success
+        success_response = MagicMock(spec=httpx.Response)
+        success_response.status_code = 200
+        success_response.headers = {}
+        success_response.extensions = {}
+        success_response.json.return_value = {
+            "data": {"organization": {"repositories": {"nodes": []}}}
+        }
+
+        make_request_mock = AsyncMock(
+            side_effect=[rate_limit_response, success_response]
+        )
+
+        with patch.object(client, "make_request", make_request_mock):
+            with patch("asyncio.sleep", new_callable=AsyncMock) as sleep_mock:
+                result = await client.send_api_request(
+                    client.base_url, method="POST", json_data={}
+                )
+
+                # Verify retry happened
+                assert make_request_mock.call_count == 2
+                # Verify sleep was called with the correct duration
+                sleep_mock.assert_called_once()
+                sleep_duration = sleep_mock.call_args[0][0]
+                # Sleep duration should be non-negative (reset_time - current_time)
+                assert sleep_duration >= 0
+                # Verify the result is from the successful response
+                assert result == {
+                    "data": {"organization": {"repositories": {"nodes": []}}}
+                }
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_rate_limit_logs_warning(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test that rate-limit retry logs a warning message."""
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        # First response: rate-limited
+        rate_limit_response = MagicMock(spec=httpx.Response)
+        rate_limit_response.status_code = 200
+        rate_limit_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": "1700000000",
+        }
+        rate_limit_response.extensions = {}
+
+        # Second response: success
+        success_response = MagicMock(spec=httpx.Response)
+        success_response.status_code = 200
+        success_response.headers = {}
+        success_response.extensions = {}
+        success_response.json.return_value = {"data": {}}
+
+        make_request_mock = AsyncMock(
+            side_effect=[rate_limit_response, success_response]
+        )
+
+        with patch.object(client, "make_request", make_request_mock):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with patch("github.clients.http.graphql_client.logger") as logger_mock:
+                    await client.send_api_request(
+                        client.base_url,
+                        method="POST",
+                        json_data={},
+                        query_path="test.query",
+                    )
+
+                    # Verify warning was logged
+                    logger_mock.warning.assert_called_once()
+                    warning_msg = logger_mock.warning.call_args[0][0]
+                    assert "Rate limit exceeded" in warning_msg
+                    assert "test.query" in warning_msg
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_bounded_retry_loop(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test that send_api_request retries max 5 times on rate limit before raising."""
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        # Always return rate-limited response
+        rate_limit_response = MagicMock(spec=httpx.Response)
+        rate_limit_response.status_code = 200
+        rate_limit_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": "1700000000",
+        }
+        rate_limit_response.extensions = {}
+
+        make_request_mock = AsyncMock(return_value=rate_limit_response)
+
+        with patch.object(client, "make_request", make_request_mock):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(RateLimitException):
+                    await client.send_api_request(
+                        client.base_url,
+                        method="POST",
+                        json_data={},
+                        query_path="test.query",
+                    )
+
+                # Verify make_request was called 5 times (max retries)
+                assert make_request_mock.call_count == 5
+
 
 class TestGithubGraphQLClientRetryConfig:
     """Tests for client property override — POST retryability and caching."""
@@ -559,3 +727,125 @@ class TestGithubGraphQLClientRetryConfig:
 
         assert resp.status_code == 200
         assert len(calls) == 2
+
+
+class TestGraphQLUnknownErrorPageReduction:
+    """A page whose 200 body carries unknown (non-ignored) errors shrinks `first` and retries."""
+
+    _PATH = "organization.repositories"
+
+    def _error_body(self, message: str = "boom") -> dict[str, list[dict[str, str]]]:
+        return {"errors": [{"message": message, "type": "UNKNOWN"}]}
+
+    def _page_body(
+        self, nodes: list[dict[str, int]], has_next: bool = False, cursor: object = None
+    ) -> dict[str, dict[str, object]]:
+        return {
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "nodes": nodes,
+                        "pageInfo": {"hasNextPage": has_next, "endCursor": cursor},
+                    }
+                }
+            }
+        }
+
+    async def _collect(
+        self,
+        client: GithubGraphQLClient,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+    ) -> list[list[dict[str, int]]]:
+        return [
+            page
+            async for page in client.send_paginated_request(
+                "query",
+                params={"__path": self._PATH},
+                ignored_errors=ignored_errors,
+            )
+        ]
+
+    @pytest.mark.asyncio
+    async def test_reduces_page_size_and_recovers(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        seen_first = []
+
+        async def fake_make_request(**kwargs: object) -> httpx.Response:
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            first = variables["first"]
+            seen_first.append(first)
+            if first == PAGE_SIZE:
+                return httpx.Response(200, json=self._error_body())
+            return httpx.Response(200, json=self._page_body([{"id": 1}]))
+
+        with patch.object(client, "make_request", side_effect=fake_make_request):
+            pages = await self._collect(client)
+
+        assert pages == [[{"id": 1}]]
+        assert seen_first == [PAGE_SIZE, PAGE_SIZE - 5]
+
+    @pytest.mark.asyncio
+    async def test_walks_down_to_floor_then_raises(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        seen_first = []
+
+        async def fake_make_request(**kwargs: object) -> httpx.Response:
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            seen_first.append(variables["first"])
+            return httpx.Response(200, json=self._error_body())
+
+        with patch.object(client, "make_request", side_effect=fake_make_request):
+            with pytest.raises(GraphQLErrorGroup):
+                await self._collect(client)
+
+        assert seen_first == [25, 20, 15, 10, 5, 1]
+
+    @pytest.mark.asyncio
+    async def test_page_size_resets_to_full_on_next_page(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        seen_first = []
+
+        async def fake_make_request(**kwargs: object) -> httpx.Response:
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            seen_first.append(variables["first"])
+            if len(seen_first) == 1:
+                return httpx.Response(200, json=self._error_body())
+            if len(seen_first) == 2:
+                return httpx.Response(
+                    200, json=self._page_body([{"id": 1}], has_next=True, cursor="c1")
+                )
+            return httpx.Response(200, json=self._page_body([{"id": 2}]))
+
+        with patch.object(client, "make_request", side_effect=fake_make_request):
+            pages = await self._collect(client)
+
+        assert pages == [[{"id": 1}], [{"id": 2}]]
+        # 25 fails, 20 succeeds for page 1, then page 2 starts fresh at 25.
+        assert seen_first == [25, 20, 25]
+
+    @pytest.mark.asyncio
+    async def test_ignored_errors_do_not_trigger_reduction(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        ignored_body = {
+            "errors": [{"message": "quota", "type": "IGNORED", "path": ["x"]}]
+        }
+        make_request = AsyncMock(return_value=httpx.Response(200, json=ignored_body))
+
+        with patch.object(client, "make_request", make_request):
+            pages = await self._collect(
+                client, ignored_errors=[IgnoredError(status=200, type="IGNORED")]
+            )
+
+        assert pages == []
+        make_request.assert_awaited_once()

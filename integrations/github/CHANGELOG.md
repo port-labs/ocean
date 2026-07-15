@@ -7,12 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.3.0 (2026-07-15)
+## 6.3.0 (2026-07-16)
 
 
 ### Improvements
 
 - Refactored GitHub authentication behind installation-scoped backends, with multi-org installation discovery and per-installation rate limiting.
+
+
+## 6.2.19 (2026-07-15)
+
+
+### Improvements
+
+- Recover from GraphQL queries that return HTTP 200 with unknown errors by shrinking the page size and retrying until the page succeeds
+
+
+## 6.2.18 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 6.2.17 (2026-07-15)
+
+
+### Improvements
+
+- Properly handle GraphQL rate-limit responses with bounded retry logic (max 5 attempts) and sleep-until-reset backoff
+- Detect both primary rate limits (HTTP 200 with exhausted x-ratelimit-* headers) and secondary rate limits (retry-after header)
 
 
 ## 6.2.16 (2026-07-14)

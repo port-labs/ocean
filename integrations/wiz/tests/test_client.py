@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, AsyncGenerator, List, cast
+from typing import Any, AsyncGenerator, List
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -185,11 +185,11 @@ async def test_get_vulnerability_findings_with_filters(
     mock_wiz_client: WizClient,
 ) -> None:
     """Test that get_vulnerability_findings calls _get_paginated_resources with user overridden params."""
-    options: VulnerabilityFindingOptions = {
-        "status_list": ["OPEN"],
-        "severity_list": ["CRITICAL"],
-        "max_pages": 2,
-    }
+    options = VulnerabilityFindingOptions(
+        status_list=["OPEN"],
+        severity_list=["CRITICAL"],
+        max_pages=2,
+    )
 
     mock_findings = [{"id": "vuln1", "name": "Vulnerability 1"}]
 
@@ -223,7 +223,7 @@ async def test_get_vulnerability_findings_without_filters(
     mock_wiz_client: WizClient,
 ) -> None:
     """Test that get_vulnerability_findings calls _get_paginated_resources with default params."""
-    options = cast(VulnerabilityFindingOptions, {})
+    options = VulnerabilityFindingOptions(max_pages=500)
 
     with patch.object(
         mock_wiz_client,
@@ -242,7 +242,7 @@ async def test_get_vulnerability_findings_without_filters(
                 "first": 100,
                 "filterBy": {},
             },
-            max_pages=None,
+            max_pages=500,
         )
 
 
@@ -359,10 +359,10 @@ async def test_build_sbom_artifact_resource_filter_maps_supported_fields(
 async def test_get_sbom_artifacts_filters_groups_without_capping_max_pages(
     mock_wiz_client: WizClient,
 ) -> None:
-    options: SbomArtifactOptions = {
-        "group_list": ["CODE_LIBRARY"],
-        "max_pages": 999,
-    }
+    options = SbomArtifactOptions(
+        group_list=["CODE_LIBRARY"],
+        max_pages=999,
+    )
     grouped_nodes = [
         {
             "id": "group-1",
@@ -496,10 +496,10 @@ async def test_get_sbom_artifacts_for_grouped_name_adds_resource_filter(
 async def test_get_sbom_artifacts_wraps_group_fetches_with_semaphore(
     mock_wiz_client: WizClient,
 ) -> None:
-    options: SbomArtifactOptions = {
-        "group_list": ["CODE_LIBRARY"],
-        "max_pages": 1,
-    }
+    options = SbomArtifactOptions(
+        group_list=["CODE_LIBRARY"],
+        max_pages=1,
+    )
     grouped_nodes = [
         {
             "id": "group-1",
