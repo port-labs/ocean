@@ -963,6 +963,7 @@ class TestProcessingModes:
             result = await is_redis_live_events_enabled()
 
         assert result is True
+        mock_ocean_context.port_client.get_organization_feature_flags.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_disabled_when_env_opt_in_off(self) -> None:
@@ -980,6 +981,7 @@ class TestProcessingModes:
     @pytest.mark.asyncio
     async def test_is_redis_live_events_disabled_when_flag_off(self) -> None:
         with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = True
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 return_value=[]
             )
@@ -987,6 +989,7 @@ class TestProcessingModes:
             result = await is_redis_live_events_enabled()
 
         assert result is False
+        mock_ocean_context.port_client.get_organization_feature_flags.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_enabled_uses_local_only_warning_on_exception(
