@@ -27,8 +27,12 @@ done
 chmod 755 "$USER_CERT_DIR" 2>/dev/null || true
 chmod 644 "$USER_CERT_DIR"/* 2>/dev/null || true
 
-# Create a consolidated CA bundle file
-cat "$USER_CERT_DIR"/*.crt "$USER_CERT_DIR"/*.pem 2>/dev/null > "$USER_CERT_DIR/ca-certificates.crt" || true
+# Create a consolidated CA bundle file. Written to a temp file first and then
+# renamed into place, since the bundle's own filename can match the *.crt glob
+# (e.g. when a system ca-certificates.crt was already copied above), which would
+# otherwise make cat read from and write to the same file at once and grow it unbounded.
+cat "$USER_CERT_DIR"/*.crt "$USER_CERT_DIR"/*.pem 2>/dev/null > "$USER_CERT_DIR/ca-certificates.crt.tmp" || true
+mv "$USER_CERT_DIR/ca-certificates.crt.tmp" "$USER_CERT_DIR/ca-certificates.crt"
 
 # Export environment variables for SSL
 export SSL_CERT_DIR="$USER_CERT_DIR"
