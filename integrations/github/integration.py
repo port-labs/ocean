@@ -37,6 +37,7 @@ from github.helpers.port_app_config import (
     is_repo_managed_mapping,
     load_org_port_app_config,
 )
+from github.clients.auth.auth_backend import auth
 
 FILE_PROPERTY_PREFIX = "file://"
 
@@ -927,6 +928,10 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
         )
         self.context.app.webhook_manager = processor_manager
         self.context.app.execution_manager._webhook_manager = processor_manager
+
+    async def initialize_handlers(self) -> None:
+        await super().initialize_handlers()
+        await auth.initialize_auth()
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GithubPortAppConfig

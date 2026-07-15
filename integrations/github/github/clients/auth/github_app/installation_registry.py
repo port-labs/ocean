@@ -8,13 +8,13 @@ from github.clients.auth.github_app.installation_authenticator import (
 )
 from github.helpers.exceptions import AuthenticationException
 
-_authenticators_by_org: dict[str, GitHubAppInstallationAuthenticator] | None = None
-_ensure_lock = asyncio.Lock()
+_authenticators_by_org: dict[str, GitHubAppInstallationAuthenticator] = {}
+_discovery_lock = asyncio.Lock()
 
 
 def reset_authenticators_by_org() -> None:
     global _authenticators_by_org
-    _authenticators_by_org = None
+    _authenticators_by_org = {}
 
 
 def _authenticator(installation_id: str) -> GitHubAppInstallationAuthenticator:
@@ -24,48 +24,46 @@ def _authenticator(installation_id: str) -> GitHubAppInstallationAuthenticator:
     )
 
 
-async def _discover_authenticators() -> dict[str, GitHubAppInstallationAuthenticator]:
-    global _authenticators_by_org
-    if _authenticators_by_org is not None:
-        return _authenticators_by_org
+async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator]:
+    app_auth = GitHubAppAuthenticator.from_config()
+    index: dict[str, GitHubAppInstallationAuthenticator] = {}
+    async for page in app_auth.iter_app_installations():
+        for installation in page:
+            login = (installation.get("account") or {}).get("login")
+            if not login:
+                raise AuthenticationException(
+                    f"No login found for installation {installation}"
+                )
+            index[login] = _authenticator(installation_id=str(installation["id"]))
+    return index
 
-    async with _ensure_lock:
-        if _authenticators_by_org is None:
-            app_auth = GitHubAppAuthenticator.from_config()
-            index: dict[str, GitHubAppInstallationAuthenticator] = {}
-            async for page in app_auth.iter_app_installations():
-                for installation in page:
-                    login = (installation.get("account") or {}).get("login")
-                    if not login:
-                        raise AuthenticationException(
-                            f"No login found for installation {installation}"
-                        )
-                    index[login] = _authenticator(
-                        installation_id=str(installation["id"])
-                    )
-            _authenticators_by_org = index
-    return _authenticators_by_org
+
+async def discover_installations() -> None:
+    global _authenticators_by_org
+    async with _discovery_lock:
+        if _authenticators_by_org:
+            return
+
+        _authenticators_by_org = await _fetch_installations()
 
 
 async def list_installations_authenticators() -> (
     list[GitHubAppInstallationAuthenticator]
 ):
-    by_org = await _discover_authenticators()
-    authenticators = list[GitHubAppInstallationAuthenticator](by_org.values())
-    if not authenticators:
+    if not _authenticators_by_org:
         raise AuthenticationException("No GitHub App installations found")
 
+    authenticators = list(_authenticators_by_org.values())
     logger.info(f"Discovered {len(authenticators)} GitHub App installation(s)")
     return authenticators
 
 
-async def get_installation_authenticator_for_organization(
+def get_installation_authenticator_for_organization(
     organization: str,
 ) -> GitHubAppInstallationAuthenticator:
-    by_org = await _discover_authenticators()
-    if organization not in by_org:
+    if organization not in _authenticators_by_org:
         raise AuthenticationException(
             f"No GitHub App installation found for organization '{organization}'"
         )
 
-    return by_org[organization]
+    return _authenticators_by_org[organization]

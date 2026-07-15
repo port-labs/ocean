@@ -6,6 +6,7 @@ from port_ocean.context.ocean import ocean
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_registry import (
+    discover_installations,
     get_installation_authenticator_for_organization,
     list_installations_authenticators,
 )
@@ -36,6 +37,10 @@ class _GitHubAuthBackend(ABC):
     @classmethod
     @abstractmethod
     async def get_integration_actor(cls) -> str:
+        pass
+
+    @classmethod
+    async def initialize_auth(cls) -> None:
         pass
 
 
@@ -84,6 +89,10 @@ class _AppAuthBackend(_GitHubAuthBackend):
     @classmethod
     async def get_integration_actor(cls) -> str:
         return await GitHubAppAuthenticator.from_config().get_authenticated_actor()
+
+    @classmethod
+    async def initialize_auth(cls) -> None:
+        await discover_installations()
 
 
 _backends: tuple[type[_GitHubAuthBackend], ...] = (_PatAuthBackend, _AppAuthBackend)
