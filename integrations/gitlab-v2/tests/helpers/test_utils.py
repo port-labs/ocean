@@ -80,3 +80,19 @@ class TestBuildSearchQuery:
             build_search_query("ci/.gitlab-ci.yml")
             == ".gitlab-ci.yml path:ci filename:.gitlab-ci.yml"
         )
+
+    def test_directory_wildcard_filename(self) -> None:
+        assert (
+            build_search_query(".opencode/plugins/*")
+            == "plugins path:.opencode/plugins filename:*"
+        )
+        assert (
+            build_search_query(".pi/extensions/*")
+            == "extensions path:.pi/extensions filename:*"
+        )
+
+    def test_nested_skill_path(self) -> None:
+        assert (
+            build_search_query(".cursor/skills/*/SKILL.md")
+            == "SKILL.md path:.cursor/skills/* filename:SKILL.md"
+        )

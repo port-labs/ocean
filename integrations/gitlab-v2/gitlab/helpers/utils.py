@@ -118,12 +118,18 @@ def build_search_query(search_path: str) -> str:
         ``src/config/app.json``  -> ``app.json path:src/config filename:app.json``
         ``home/directory/*.txt`` -> ``.txt path:home/directory filename:*.txt``
         ``home/*/*.txt``         -> ``.txt path:home/* filename:*.txt``
+        ``.opencode/plugins/*``  -> ``plugins path:.opencode/plugins filename:*``
     """
     if "/" not in search_path:
         keyword = search_path.replace("*", "")
+        if not keyword:
+            keyword = search_path
         return f"{keyword} filename:{search_path}"
     directory, filename = search_path.rsplit("/", 1)
     keyword = filename.replace("*", "")
+    if not keyword:
+        # Directory wildcards like `.opencode/plugins/*` need a non-empty keyword.
+        keyword = directory.rsplit("/", 1)[-1].replace("*", "") or directory
     return f"{keyword} path:{directory} filename:{filename}"
 
 

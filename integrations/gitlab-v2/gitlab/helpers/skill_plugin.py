@@ -60,6 +60,7 @@ PLUGIN_DIRECTORY_PREFIXES: dict[PluginProvider, str] = {
 }
 
 # GitLab search paths for directory-only plugin packaging.
+# Trailing /* discovers any file under the directory via Advanced Search.
 PLUGIN_DIRECTORY_SEARCH_PATHS: dict[PluginProvider, str] = {
     "opencode": ".opencode/plugins/*",
     "pi": ".pi/extensions/*",
@@ -72,25 +73,27 @@ def skill_search_paths(roots: list[str]) -> list[str]:
     for root in roots:
         clean = root.strip().strip("/")
         if clean:
-            # Search under the root directory for SKILL.md files
+            # Nested skills: <root>/<skill-name>/SKILL.md
+            paths.append(f"{clean}/*/{SKILL_MD_FILENAME}")
+            # Skill at the root directory itself
             paths.append(f"{clean}/{SKILL_MD_FILENAME}")
-    # Broad fallback for nested */skills/*/SKILL.md layouts
+    # Broad fallback for non-standard layouts
     paths.append(SKILL_MD_FILENAME)
     return paths
 
 
 def matches_skill_path(path: str, roots: list[str], extra_paths: list[str]) -> bool:
     normalized = path.strip("/")
-    if not normalized.endswith(SKILL_MD_FILENAME):
+    lower = normalized.lower()
+    skill_md = SKILL_MD_FILENAME.lower()
+    if not lower.endswith(skill_md):
         return False
 
     for root in roots:
-        clean = root.strip().strip("/")
-        if normalized == f"{clean}/{SKILL_MD_FILENAME}":
+        clean = root.strip().strip("/").lower()
+        if lower == f"{clean}/{skill_md}":
             return True
-        if normalized.startswith(f"{clean}/") and normalized.endswith(
-            f"/{SKILL_MD_FILENAME}"
-        ):
+        if lower.startswith(f"{clean}/") and lower.endswith(f"/{skill_md}"):
             return True
 
     for pattern in extra_paths:

@@ -28,8 +28,11 @@ def test_default_skill_roots_cover_documented_agents() -> None:
 
 def test_skill_search_paths() -> None:
     paths = skill_search_paths(["skills", ".cursor/skills", ".github/skills"])
+    assert "skills/*/SKILL.md" in paths
     assert "skills/SKILL.md" in paths
+    assert ".cursor/skills/*/SKILL.md" in paths
     assert ".cursor/skills/SKILL.md" in paths
+    assert ".github/skills/*/SKILL.md" in paths
     assert ".github/skills/SKILL.md" in paths
     assert "SKILL.md" in paths
 
@@ -37,6 +40,7 @@ def test_skill_search_paths() -> None:
 def test_matches_skill_path() -> None:
     roots = ["skills", ".cursor/skills", ".github/skills"]
     assert matches_skill_path("skills/hello/SKILL.md", roots, [])
+    assert matches_skill_path("skills/hello/skill.md", roots, [])
     assert matches_skill_path(".cursor/skills/a/SKILL.md", roots, [])
     assert matches_skill_path(".github/skills/copilot/SKILL.md", roots, [])
     # Broad nested "skills" segment is no longer accepted — use selector.paths
@@ -47,6 +51,13 @@ def test_matches_skill_path() -> None:
         ["packages/**/SKILL.md"],
     )
     assert not matches_skill_path("README.md", roots, [])
+
+
+def test_plugin_search_paths_include_directory_wildcards() -> None:
+    paths = plugin_search_paths(["opencode", "pi", "cursor"])
+    assert ".opencode/plugins/*" in paths
+    assert ".pi/extensions/*" in paths
+    assert ".cursor-plugin/plugin.json" in paths
 
 
 def test_enrich_file_to_skill_respects_extra_paths() -> None:

@@ -848,6 +848,39 @@ class TestGitLabClient:
         assert mock_fallback.call_count == 2
         assert "my-group" in client._groups_without_advanced_search
 
+    async def test_search_files_in_group_blobs_scope_legacy_message(
+        self, client: GitLabClient
+    ) -> None:
+        """Legacy GitLab message still triggers Advanced Search fallback."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "Scope 'blobs' is not available for this search"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ):
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+                return_value=async_mock_generator([]),
+            ) as mock_fallback:
+                results = []
+                async for batch in client._search_files_in_group(
+                    "legacy-group", "blobs", "test.json"
+                ):
+                    results.extend(batch)
+
+        assert results == []
+        assert mock_fallback.call_count == 1
+        assert "legacy-group" in client._groups_without_advanced_search
+
     async def test_search_files_in_group_blob_validation_400_raises(
         self, client: GitLabClient
     ) -> None:

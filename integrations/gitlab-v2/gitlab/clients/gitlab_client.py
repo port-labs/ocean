@@ -996,10 +996,18 @@ class GitLabClient:
         if error.response.status_code != 400:
             return False
         try:
-            message = str(error.response.json().get("message", "")).lower()
+            raw = error.response.json().get("message", "")
         except Exception:
             return False
-        return "advanced search" in message
+        if isinstance(raw, list):
+            message = " ".join(str(part) for part in raw).lower()
+        else:
+            message = str(raw).lower()
+        # GitLab returns either of these depending on version / plan messaging.
+        return (
+            "advanced search" in message
+            or "scope 'blobs' is not available" in message
+        )
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str

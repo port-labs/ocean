@@ -6,6 +6,7 @@ from loguru import logger
 from gitlab.helpers.skill_plugin import (
     DEFAULT_SKILL_ROOTS,
     enrich_file_to_skill,
+    match_skill_root,
     matches_skill_path,
 )
 from gitlab.helpers.utils import ObjectKind
@@ -93,22 +94,26 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 if skill_item:
                     updated_results.append(skill_item)
 
-        deleted_results = [
-            {
-                "skill": {
-                    "name": Path(path).parent.name,
-                    "description": "",
-                    "instructions": None,
-                    "frontmatter": {},
-                    "path": str(Path(path).parent),
-                    "skillMdPath": path,
-                    "root": Path(path).parts[0] if Path(path).parts else "",
-                },
-                "repository": payload["project"],
-                "branch": branch,
-            }
-            for path in matching_removed
-        ]
+        deleted_results = []
+        for path in matching_removed:
+            path_obj = Path(path)
+            skill_dir = str(path_obj.parent).replace("\\", "/")
+            deleted_results.append(
+                {
+                    "skill": {
+                        "name": path_obj.parent.name,
+                        "description": "",
+                        "instructions": None,
+                        "frontmatter": {},
+                        "path": skill_dir,
+                        "skillMdPath": path,
+                        "root": match_skill_root(path, roots)
+                        or (skill_dir.split("/")[0] if skill_dir else ""),
+                    },
+                    "repository": payload["project"],
+                    "branch": branch,
+                }
+            )
 
         logger.info(
             f"Skill push webhook for {repo_path}: "
