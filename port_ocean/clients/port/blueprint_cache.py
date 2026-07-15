@@ -32,3 +32,6 @@ class BlueprintCache:
 
     def invalidate(self, identifier: str) -> None:
         self._entries.pop(identifier, None)
+
+    def invalidate_all(self) -> None:
+        self._entries.clear()

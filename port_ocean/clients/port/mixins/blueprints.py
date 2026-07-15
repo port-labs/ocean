@@ -45,6 +45,9 @@ class BlueprintClientMixin:
     def invalidate_cached_blueprint(self, identifier: str) -> None:
         self._blueprint_cache.invalidate(identifier)
 
+    def invalidate_all_cached_blueprints(self) -> None:
+        self._blueprint_cache.invalidate_all()
+
     async def create_blueprint(
         self,
         raw_blueprint: dict[str, Any],

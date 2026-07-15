@@ -56,6 +56,16 @@ def test_blueprint_cache_invalidate_removes_entry(
     assert blueprint_cache.get("test-bp") is None
 
 
+def test_blueprint_cache_invalidate_all_removes_all_entries(
+    blueprint_cache: BlueprintCache,
+) -> None:
+    blueprint_cache.set(_make_blueprint("bp-a"))
+    blueprint_cache.set(_make_blueprint("bp-b"))
+    blueprint_cache.invalidate_all()
+    assert blueprint_cache.get("bp-a") is None
+    assert blueprint_cache.get("bp-b") is None
+
+
 @pytest.fixture
 async def blueprint_client() -> BlueprintClientMixin:
     auth = MagicMock()

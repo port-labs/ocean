@@ -1008,6 +1008,35 @@ async def test_on_resync_start_hooks_are_called(
 
 
 @pytest.mark.asyncio
+async def test_sync_raw_all_clears_blueprint_cache_on_start_and_finish(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    invalidate_mock = MagicMock(
+        wraps=mock_ocean.port_client.invalidate_all_cached_blueprints
+    )
+    mock_ocean.port_client.invalidate_all_cached_blueprints = invalidate_mock  # type: ignore[method-assign]
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
+        event.port_app_config = mock_port_app_config
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    assert invalidate_mock.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_on_resync_complete_hooks_are_called_on_success(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,

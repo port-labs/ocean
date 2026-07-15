@@ -1247,6 +1247,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             # Clear cache
             await ocean.app.cache_provider.clear()
+            ocean.port_client.invalidate_all_cached_blueprints()
 
             if dsp_enabled:
                 await ocean.app.lifecycle_client.notify_resync_started(
@@ -1403,6 +1404,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 return success
             finally:
                 await ocean.app.cache_provider.clear()
+                ocean.port_client.invalidate_all_cached_blueprints()
                 if (
                     ocean.app.process_execution_mode
                     == ProcessExecutionMode.multi_process
