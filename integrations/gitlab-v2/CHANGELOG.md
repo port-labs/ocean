@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.58 (2026-07-15)
+
+
+### Features
+
+- Added `skill` kind to discover Agent Skills (`SKILL.md`) under convention roots
+  (`.agents/skills`, `.agent/skills`, `.cursor/skills`, `.claude/skills`,
+  `.codex/skills`, `.github/skills`, `.opencode/skills`, `skills`)
+  with `content: frontmatter | skill.md` selectors
+- Added `plugin` kind to detect agent plugin packages (aligned with
+  [obra/superpowers](https://github.com/obra/superpowers)): `.claude-plugin/`,
+  `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
+  `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`
+
+
 ## 0.7.57 (2026-07-14)
 
 

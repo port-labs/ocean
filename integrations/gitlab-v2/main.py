@@ -19,6 +19,8 @@ from gitlab.clients.utils import (
 from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
 from integration import (
     GitLabFilesResourceConfig,
+    GitLabSkillResourceConfig,
+    GitLabPluginResourceConfig,
     GroupResourceConfig,
     ProjectResourceConfig,
     GitLabFoldersResourceConfig,
@@ -63,6 +65,12 @@ from gitlab.webhook.webhook_processors.group_with_member_webhook_processor impor
 )
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.skill_push_webhook_processor import (
+    SkillPushWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.plugin_push_webhook_processor import (
+    PluginPushWebhookProcessor,
 )
 from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
@@ -508,6 +516,166 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield enriched_batch
 
 
+@ocean.on_resync(ObjectKind.SKILL)
+async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    from gitlab.helpers.skill_plugin import (
+        DEFAULT_SKILL_ROOTS,
+        enrich_file_to_skill,
+        matches_skill_path,
+        skill_search_paths,
+    )
+
+    client = create_gitlab_client()
+    selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
+    include_only_active_groups = selector.include_only_active_groups
+    roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
+    extra_paths = selector.paths
+    repositories = selector.repos or None
+    search_paths = skill_search_paths(roots) + list(extra_paths)
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique_paths = []
+    for p in search_paths:
+        if p not in seen:
+            seen.add(p)
+            unique_paths.append(p)
+
+    group_params = build_group_params(
+        include_only_active_groups=include_only_active_groups
+    )
+    emitted_keys: set[str] = set()
+
+    for search_path in unique_paths:
+        async for files_batch in client.search_files(
+            "blobs",
+            search_path,
+            repositories,
+            True,  # skip_parsing — SKILL.md is markdown
+            group_params,
+        ):
+            enriched = await client._enrich_files_with_repos(files_batch)
+            skills: list[dict[str, Any]] = []
+            for entity in enriched:
+                path = (entity.get("file") or {}).get("path") or ""
+                if not matches_skill_path(path, roots, extra_paths):
+                    continue
+                skill_item = enrich_file_to_skill(
+                    entity,
+                    content_mode=selector.content,
+                    roots=roots,
+                    extra_paths=extra_paths,
+                )
+                if not skill_item:
+                    continue
+                key = (
+                    f"{(skill_item.get('repository') or {}).get('id')}:"
+                    f"{skill_item['skill']['skillMdPath']}"
+                )
+                if key in emitted_keys:
+                    continue
+                emitted_keys.add(key)
+                skills.append(skill_item)
+            if skills:
+                yield skills
+
+
+@ocean.on_resync(ObjectKind.PLUGIN)
+async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    from gitlab.helpers.skill_plugin import (
+        PLUGIN_MANIFEST_PATHS,
+        detect_directory_providers,
+        normalize_plugin,
+        plugin_search_paths,
+        provider_for_manifest_path,
+    )
+
+    client = create_gitlab_client()
+    selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
+    include_only_active_groups = selector.include_only_active_groups
+    providers = selector.providers
+    repositories = selector.repos or None
+    group_params = build_group_params(
+        include_only_active_groups=include_only_active_groups
+    )
+    known_manifests = {
+        path for paths in PLUGIN_MANIFEST_PATHS.values() for path in paths
+    }
+
+    # Collect manifests / directory hits per project
+    by_project: dict[str, dict[str, Any]] = {}
+
+    for search_path in plugin_search_paths(providers):
+        is_directory_search = search_path.endswith("/*")
+        async for files_batch in client.search_files(
+            "blobs",
+            search_path,
+            repositories,
+            False,  # parse JSON when applicable
+            group_params,
+        ):
+            enriched = await client._enrich_files_with_repos(files_batch)
+            for entity in enriched:
+                file_data = entity.get("file") or {}
+                repo = entity.get("repo") or {}
+                path = file_data.get("path") or ""
+                provider = provider_for_manifest_path(path)
+                if provider is None or provider not in providers:
+                    continue
+                if not is_directory_search and path != search_path:
+                    continue
+
+                project_key = str(repo.get("id") or repo.get("path_with_namespace"))
+                entry = by_project.setdefault(
+                    project_key,
+                    {
+                        "repository": repo,
+                        "manifests": {},
+                        "paths": set(),
+                        "branch": file_data.get("ref"),
+                    },
+                )
+                entry["paths"].add(path)
+
+                if path not in known_manifests:
+                    continue
+                content = file_data.get("content")
+                if isinstance(content, dict):
+                    entry["manifests"][path] = content
+                elif isinstance(content, str):
+                    try:
+                        import json
+
+                        entry["manifests"][path] = json.loads(content)
+                    except Exception:
+                        logger.warning(f"Invalid plugin manifest JSON at {path}")
+
+    batch: list[dict[str, Any]] = []
+    for entry in by_project.values():
+        directory_supports = detect_directory_providers(entry["paths"], providers)
+        plugin = normalize_plugin(
+            repository=entry["repository"],
+            manifests=entry["manifests"],
+            providers=providers,
+            directory_supports=directory_supports,
+        )
+        if not plugin:
+            continue
+        batch.append(
+            {
+                "plugin": plugin,
+                "repository": entry["repository"],
+                "branch": entry.get("branch")
+                or entry["repository"].get("default_branch")
+                or "main",
+            }
+        )
+        if len(batch) >= 25:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
 @ocean.on_resync(ObjectKind.FOLDER)
 async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -626,6 +794,8 @@ ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", SkillPushWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", PluginPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWithMemberWebhookProcessor)

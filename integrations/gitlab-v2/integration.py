@@ -17,6 +17,7 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
 from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
+from gitlab.helpers.skill_plugin import DEFAULT_PLUGIN_PROVIDERS, DEFAULT_SKILL_ROOTS
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
@@ -364,6 +365,87 @@ class GitLabFilesResourceConfig(ResourceConfig):
     )
 
 
+class GitLabSkillSelector(GroupSelector):
+    content: Literal["frontmatter", "skill.md"] = Field(
+        title="Content",
+        default="skill.md",
+        description=(
+            "How much of each SKILL.md to ingest. "
+            "`frontmatter` returns name/description only; "
+            "`skill.md` also includes the markdown body as instructions."
+        ),
+    )
+    roots: list[str] = Field(
+        title="Roots",
+        default_factory=lambda: list(DEFAULT_SKILL_ROOTS),
+        description=(
+            "Skill parent directories to scan for SKILL.md. Defaults cover "
+            ".agents, Antigravity (.agent), Cursor, Claude, Codex, GitHub "
+            "Copilot (.github/skills), OpenCode, and marketplace skills/ layouts."
+        ),
+    )
+    paths: list[str] = Field(
+        title="Paths",
+        default_factory=list,
+        description="Optional extra path patterns for SKILL.md files.",
+    )
+    repos: list[str] = Field(
+        title="Repositories",
+        default_factory=list,
+        description="Optional list of project path_with_namespace values to scan.",
+    )
+
+
+class GitLabSkillResourceConfig(ResourceConfig):
+    kind: Literal["skill"] = Field(
+        title="GitLab Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GitLabSkillSelector = Field(
+        title="Skill Selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GitLabPluginSelector(GroupSelector):
+    providers: list[
+        Literal[
+            "claude",
+            "cursor",
+            "codex",
+            "agents",
+            "kimi",
+            "opencode",
+            "pi",
+            "antigravity",
+        ]
+    ] = Field(
+        title="Providers",
+        default_factory=lambda: list(DEFAULT_PLUGIN_PROVIDERS),
+        description=(
+            "Agent plugin providers to detect (aligned with obra/superpowers): "
+            ".claude-plugin/, .cursor-plugin/, .codex-plugin/, .agents/plugins/, "
+            ".kimi-plugin/, .opencode/plugins/, .pi/extensions/, gemini-extension.json."
+        ),
+    )
+    repos: list[str] = Field(
+        title="Repositories",
+        default_factory=list,
+        description="Optional list of project path_with_namespace values to scan.",
+    )
+
+
+class GitLabPluginResourceConfig(ResourceConfig):
+    kind: Literal["plugin"] = Field(
+        title="GitLab Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GitLabPluginSelector = Field(
+        title="Plugin Selector",
+        description="Selector for discovering agent plugin repositories.",
+    )
+
+
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
         alias="name",
@@ -706,6 +788,8 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabProjectWithMembersResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
+        | GitLabSkillResourceConfig
+        | GitLabPluginResourceConfig
         | GitlabMergeRequestResourceConfig
         | TagResourceConfig
         | ReleaseResourceConfig
