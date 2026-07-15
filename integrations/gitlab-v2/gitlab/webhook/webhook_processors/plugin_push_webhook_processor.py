@@ -166,12 +166,12 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 continue
             bare = prefix.rstrip("/")
             try:
-                async for batch in (
-                    self._gitlab_webhook_client.rest.get_paginated_project_resource(
-                        project_path,
-                        "repository/tree",
-                        {"path": bare, "ref": ref, "recursive": True},
-                    )
+                async for (
+                    batch
+                ) in self._gitlab_webhook_client.rest.get_paginated_project_resource(
+                    project_path,
+                    "repository/tree",
+                    {"path": bare, "ref": ref, "recursive": True},
                 ):
                     for item in batch:
                         item_path = item.get("path")

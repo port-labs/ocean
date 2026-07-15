@@ -53,14 +53,10 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             removed_files.update(commit.get("removed", []))
 
         matching_changed = sorted(
-            p
-            for p in changed_files
-            if matches_skill_path(p, roots, extra_paths)
+            p for p in changed_files if matches_skill_path(p, roots, extra_paths)
         )
         matching_removed = sorted(
-            p
-            for p in removed_files
-            if matches_skill_path(p, roots, extra_paths)
+            p for p in removed_files if matches_skill_path(p, roots, extra_paths)
         )
 
         if not matching_changed and not matching_removed:

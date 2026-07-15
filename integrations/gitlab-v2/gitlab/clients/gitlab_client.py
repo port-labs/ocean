@@ -973,8 +973,10 @@ class GitLabClient:
         try:
             # Disable 400 retries for this call only — permanent Advanced Search
             # failures must fall back immediately, not after max_attempts backoff.
-            retry_codes = self.rest._client._retry_config.retry_status_codes
-            self.rest._client._retry_config.retry_status_codes = frozenset(
+            retry_config = self.rest._client._retry_config
+            assert retry_config is not None
+            retry_codes = retry_config.retry_status_codes
+            retry_config.retry_status_codes = frozenset(
                 code for code in retry_codes if code != 400
             )
             try:
@@ -988,7 +990,7 @@ class GitLabClient:
                     if processed_batch:
                         yield processed_batch
             finally:
-                self.rest._client._retry_config.retry_status_codes = retry_codes
+                retry_config.retry_status_codes = retry_codes
         except httpx.HTTPStatusError as e:
             if not (scope == "blobs" and e.response.status_code == 400):
                 raise
