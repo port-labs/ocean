@@ -16,17 +16,12 @@ def _reset_github_client_cache() -> Iterator[None]:
     from github.clients.auth.github_app.installation_registry import (
         reset_authenticators_by_org,
     )
-    from github.clients.auth.personal_access_token_authenticator import (
-        reset_pat_instances,
-    )
     from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
     client_factory._clients.clear()
     reset_authenticators_by_org()
-    reset_pat_instances()
     GitHubRateLimiterRegistry.reset_for_fork()
     yield
     client_factory._clients.clear()
     reset_authenticators_by_org()
-    reset_pat_instances()
     GitHubRateLimiterRegistry.reset_for_fork()

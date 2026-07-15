@@ -8,13 +8,6 @@ from github.clients.auth.abstract_authenticator import (
     GitHubToken,
 )
 
-_by_token: dict[str, "PersonalTokenAuthenticator"] = {}
-
-
-def reset_pat_instances() -> None:
-    global _by_token
-    _by_token = {}
-
 
 class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
     def __init__(self, token: str):
