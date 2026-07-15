@@ -1,11 +1,8 @@
 # Example mapping for skill + agentPlugin kinds.
 #
-# Not applied by default — append the fragment in `mapping.yml` to your Ocean
-# integration mapping in Port to enable.
+# Append `mapping.yml` resources to your GitLab v2 Ocean integration in Port.
 #
 # Blueprints: `skill`, `agentPlugin`
-# Skills and plugins share `repo`; do not map skill→agentPlugin by repo (creates stubs)
-# Identifier for skills uses `.skill.skillMdPath` (stable across renames of
-# frontmatter `name`).
-#
-# See: mapping.yml
+# Link skills to plugins with a **search** relation on `$identifier`.
+# A bare repo-path string + createMissingRelatedEntities creates empty stubs.
+# Keep `plugin` before `skill` in the resources list so plugins exist first.
