@@ -7,11 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.45.0 (2026-07-13)
+## 0.45.0 (2026-07-15)
 
 ### Improvements
 
 - Updated entity reconciliation to use bulk delete API
+
+
+## 0.44.14 (2026-07-15)
+
+### Improvements
+
+- Added `OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED` (default `false`) as an integration-level opt-in for Redis live-events stream consumption, in addition to the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag.
+
+## 0.44.13 (2026-07-13)
+
+### Improvements
+
+- Added structured context (`status_code`, `method`, `url`, `reason`, `trace_id`) to Port API error logs to make failed requests easier to debug.
+
+## 0.44.12 (2026-07-14)
+
+### Improvements
+
+- Fail unregistered Ocean integration runs immediately by acknowledging and reporting them as failed instead of skipping them until the claim visibility timeout expires.
 
 ## 0.44.11 (2026-07-13)
 
