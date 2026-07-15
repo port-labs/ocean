@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 6.2.19 (2026-07-15)
+
+
+### Improvements
+
+- Recover from GraphQL queries that return HTTP 200 with unknown errors by shrinking the page size and retrying until the page succeeds
+
+
+## 6.2.18 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 6.2.17 (2026-07-15)
+
+
+### Improvements
+
+- Properly handle GraphQL rate-limit responses with bounded retry logic (max 5 attempts) and sleep-until-reset backoff
+- Detect both primary rate limits (HTTP 200 with exhausted x-ratelimit-* headers) and secondary rate limits (retry-after header)
+
+
+## 6.2.16 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 6.2.15 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
 ## 6.2.14 (2026-07-13)
 
 
