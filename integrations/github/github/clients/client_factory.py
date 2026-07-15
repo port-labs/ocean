@@ -1,10 +1,11 @@
 import os
-from typing import Dict, Literal, Optional, Type, TypeVar, overload
+from typing import Dict, Literal, Type, TypeVar, overload
 
 from loguru import logger
+from github.helpers.exceptions import MissingCredentials
 from port_ocean.context.ocean import ocean
 
-from github.clients.auth import auth
+from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.github_app.installation_registry import (
     reset_authenticators_by_org,
@@ -39,7 +40,7 @@ if hasattr(os, "register_at_fork"):
 
 def _get_client(
     authenticator: AbstractGitHubAuthenticator,
-    client_type: Optional[GithubClientType] = GithubClientType.REST,
+    client_type: GithubClientType = GithubClientType.REST,
 ) -> AbstractGithubClient:
     cache_key = (authenticator.rate_limit_scope, client_type)
     if cache_key not in _clients:
@@ -54,15 +55,10 @@ def _get_client(
 
 def create_github_client_for_org(
     organization: str,
-    client_type: Optional[GithubClientType] = GithubClientType.REST,
+    client_type: GithubClientType = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    authenticator = auth.get_authenticator_for_organization(organization)
+    authenticator = get_auth_provider().get_authenticator_for_organization(organization)
     return _get_client(authenticator, client_type or GithubClientType.REST)
-
-
-# ------------------------------------------------------------------------------------------------
-# create_github_client will be deprecated in favor of create_github_client_for_org
-# ------------------------------------------------------------------------------------------------
 
 
 @overload
@@ -84,6 +80,17 @@ def create_github_client(
 def create_github_client(
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
+    """
+    Create a GitHub client for the current organization.
+    Notice: this function will be deprecated in favor of create_github_client_for_org
+    in the future. for now it will keep same behavior of providing a multi-org client for PAT authentication,
+    and a single-org client for GitHub App authentication.
+    """
+    if get_auth_provider().is_app_auth() and not ocean.integration_config.get(
+        "github_organization"
+    ):
+        raise MissingCredentials("No valid GitHub credentials provided.")
+
     return create_github_client_for_org(
         ocean.integration_config.get("github_organization"),  # type: ignore
         client_type or GithubClientType.REST,

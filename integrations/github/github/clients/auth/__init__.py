@@ -1,3 +1,3 @@
-from .auth import auth
+from .auth import get_auth_provider
 
-__all__ = ["auth"]
+__all__ = ["get_auth_provider"]

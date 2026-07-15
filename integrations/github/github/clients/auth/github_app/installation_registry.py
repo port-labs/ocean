@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 
 from loguru import logger
 
@@ -47,9 +48,18 @@ async def discover_installations() -> None:
         _authenticators_by_org = await _fetch_installations()
 
 
+def _ensure_discovered_sync() -> None:
+    if _authenticators_by_org:
+        return
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(asyncio.run, discover_installations()).result()
+
+
 async def list_installations_authenticators() -> (
     list[GitHubAppInstallationAuthenticator]
 ):
+    await discover_installations()
     if not _authenticators_by_org:
         raise AuthenticationException("No GitHub App installations found")
 
@@ -61,6 +71,7 @@ async def list_installations_authenticators() -> (
 def get_installation_authenticator_for_organization(
     organization: str,
 ) -> GitHubAppInstallationAuthenticator:
+    _ensure_discovered_sync()
     if organization not in _authenticators_by_org:
         raise AuthenticationException(
             f"No GitHub App installation found for organization '{organization}'"

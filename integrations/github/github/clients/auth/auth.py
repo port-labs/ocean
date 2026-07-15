@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Type
+from typing import Sequence
 
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_registry import (
-    discover_installations,
     get_installation_authenticator_for_organization,
     list_installations_authenticators,
 )
@@ -16,7 +15,7 @@ from github.clients.auth.personal_access_token_authenticator import (
 from github.helpers.exceptions import MissingCredentials
 
 
-class _GitHubAuthBackend(ABC):
+class _GitHubAuthProvider(ABC):
     @classmethod
     @abstractmethod
     def matches(cls) -> bool:
@@ -40,11 +39,12 @@ class _GitHubAuthBackend(ABC):
         pass
 
     @classmethod
-    async def initialize_auth(cls) -> None:
+    @abstractmethod
+    def is_app_auth(cls) -> bool:
         pass
 
 
-class _PatAuthBackend(_GitHubAuthBackend):
+class _PatAuthProvider(_GitHubAuthProvider):
     @classmethod
     def _authenticator(cls) -> PersonalTokenAuthenticator:
         return PersonalTokenAuthenticator.from_config()
@@ -67,8 +67,12 @@ class _PatAuthBackend(_GitHubAuthBackend):
     async def get_integration_actor(cls) -> str:
         return await cls._authenticator().get_authenticated_actor()
 
+    @classmethod
+    def is_app_auth(cls) -> bool:
+        return False
 
-class _AppAuthBackend(_GitHubAuthBackend):
+
+class _AppAuthProvider(_GitHubAuthProvider):
     @classmethod
     def matches(cls) -> bool:
         config = ocean.integration_config
@@ -91,18 +95,22 @@ class _AppAuthBackend(_GitHubAuthBackend):
         return await GitHubAppAuthenticator.from_config().get_authenticated_actor()
 
     @classmethod
-    async def initialize_auth(cls) -> None:
-        await discover_installations()
+    def is_app_auth(cls) -> bool:
+        return True
 
 
-_backends: tuple[type[_GitHubAuthBackend], ...] = (_PatAuthBackend, _AppAuthBackend)
+_providers: tuple[type[_GitHubAuthProvider], ...] = (
+    _PatAuthProvider,
+    _AppAuthProvider,
+)
 
 
-def _resolve_backend() -> type[_GitHubAuthBackend]:
-    for backend in _backends:
-        if backend.matches():
-            return backend
+def _resolve_provider() -> type[_GitHubAuthProvider]:
+    for provider in _providers:
+        if provider.matches():
+            return provider
     raise MissingCredentials("No valid GitHub credentials provided.")
 
 
-auth: Type[_GitHubAuthBackend] = _resolve_backend()
+def get_auth_provider() -> type[_GitHubAuthProvider]:
+    return _resolve_provider()

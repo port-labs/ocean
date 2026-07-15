@@ -1,5 +1,5 @@
 from github.actions.utils import build_external_id
-from github.clients.auth import auth
+from github.clients.auth import get_auth_provider
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
@@ -59,7 +59,7 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 logger.debug("Skipping workflow run event as it's not completed yet")
                 return False
 
-            integration_actor = await auth.get_integration_actor()
+            integration_actor = await get_auth_provider().get_integration_actor()
             if workflow_run_actor == integration_actor:
                 return True
 
