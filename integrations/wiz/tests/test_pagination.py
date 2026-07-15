@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, cast
+from typing import Any
 
 from wiz.options import ParallelismConfig
 from wiz.pagination.utils import build_date_partitions
