@@ -52,8 +52,9 @@ class AbstractGitHubAuthenticator(ABC):
     ] = None
 
     @property
+    @abstractmethod
     def rate_limit_scope(self) -> str:
-        return type(self).__name__
+        pass
 
     @abstractmethod
     async def get_token(self) -> GitHubToken:

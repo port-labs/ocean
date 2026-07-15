@@ -1,5 +1,5 @@
 from github.actions.utils import build_external_id
-from github.clients.auth.auth_backend import auth
+from github.clients.auth.auth import auth
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
