@@ -597,6 +597,42 @@ class TestGithubGraphQLClient:
                     assert "Rate limit exceeded" in warning_msg
                     assert "test.query" in warning_msg
 
+    @pytest.mark.asyncio
+    async def test_send_api_request_bounded_retry_loop(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test that send_api_request retries max 5 times on rate limit before raising."""
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        # Always return rate-limited response
+        rate_limit_response = MagicMock(spec=httpx.Response)
+        rate_limit_response.status_code = 200
+        rate_limit_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": "1700000000",
+        }
+        rate_limit_response.extensions = {}
+
+        make_request_mock = AsyncMock(return_value=rate_limit_response)
+
+        with patch.object(client, "make_request", make_request_mock):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(RateLimitException):
+                    await client.send_api_request(
+                        client.base_url,
+                        method="POST",
+                        json_data={},
+                        query_path="test.query",
+                    )
+
+                # Verify make_request was called 5 times (max retries)
+                assert make_request_mock.call_count == 5
+
 
 class TestGithubGraphQLClientRetryConfig:
     """Tests for client property override — POST retryability and caching."""

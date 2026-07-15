@@ -142,7 +142,9 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        while True:
+        max_retries = 5
+        retry_count = 0
+        while retry_count < max_retries:
             response = await self.make_request(
                 resource=resource,
                 params=params,
@@ -160,12 +162,23 @@ class GithubGraphQLClient(AbstractGithubClient):
                     query_params=query_params,
                 )
             except RateLimitException as exc:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error(
+                        f"[GraphQL] Max retries ({max_retries}) exceeded for path {query_path}. "
+                        f"Rate limit reset at {exc.rate_limit_info.reset_time}"
+                    )
+                    raise
+
                 sleep_time = exc.rate_limit_info.seconds_until_reset
                 logger.warning(
-                    f"[GraphQL] Rate limit exceeded for path {query_path}. "
+                    f"[GraphQL] Rate limit exceeded for path {query_path} (attempt {retry_count}/{max_retries}). "
                     f"Sleeping for {sleep_time} seconds until {exc.rate_limit_info.reset_time}"
                 )
                 await asyncio.sleep(sleep_time)
+
+        # Unreachable: raised before loop exits
+        raise AssertionError("Rate limit retry loop should not exit normally")
 
     def build_graphql_payload(
         self,
