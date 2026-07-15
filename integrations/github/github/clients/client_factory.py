@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Literal, Type, TypeVar, overload
+from typing import Dict, Literal, Optional, Type, TypeVar, overload
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -37,8 +37,9 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_reset_after_fork)
 
 
-def get_github_client(
-    authenticator: AbstractGitHubAuthenticator, client_type: GithubClientType
+def _get_client(
+    authenticator: AbstractGitHubAuthenticator,
+    client_type: Optional[GithubClientType] = GithubClientType.REST,
 ) -> AbstractGithubClient:
     cache_key = (authenticator.rate_limit_scope, client_type)
     if cache_key not in _clients:
@@ -51,40 +52,17 @@ def get_github_client(
     return _clients[cache_key]
 
 
-@overload
 def create_github_client_for_org(
     organization: str,
-    client_type: Literal[GithubClientType.REST],
-) -> GithubRestClient: ...
-
-
-@overload
-def create_github_client_for_org(
-    organization: str,
-    client_type: None = None,
-) -> GithubRestClient: ...
-
-
-@overload
-def create_github_client_for_org(
-    organization: str,
-    client_type: Literal[GithubClientType.GRAPHQL],
-) -> GithubGraphQLClient: ...
-
-
-@overload
-def create_github_client_for_org(
-    organization: str,
-    client_type: GithubClientType,
-) -> AbstractGithubClient: ...
-
-
-def create_github_client_for_org(
-    organization: str,
-    client_type: GithubClientType | None = GithubClientType.REST,
+    client_type: Optional[GithubClientType] = GithubClientType.REST,
 ) -> AbstractGithubClient:
     authenticator = auth.get_authenticator_for_organization(organization)
-    return get_github_client(authenticator, client_type or GithubClientType.REST)
+    return _get_client(authenticator, client_type or GithubClientType.REST)
+
+
+# ------------------------------------------------------------------------------------------------
+# create_github_client will be deprecated in favor of create_github_client_for_org
+# ------------------------------------------------------------------------------------------------
 
 
 @overload
