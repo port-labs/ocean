@@ -1,3 +1,6 @@
+import asyncio
+from http import HTTPStatus
+from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
@@ -9,9 +12,16 @@ from github.clients.auth.retry_transport import (
 )
 from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.http.base_client import AbstractGithubClient
-from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
+from github.helpers.exceptions import (
+    GraphQLClientError,
+    GraphQLErrorGroup,
+    RateLimitException,
+)
 from github.helpers.utils import IgnoredError
-from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
+from github.clients.rate_limiter.utils import (
+    GitHubRateLimiterConfig,
+    extract_graphql_rate_limit_info,
+)
 from urllib.parse import urlparse, urlunparse
 
 PAGE_SIZE = 25
@@ -40,7 +50,10 @@ class GithubGraphQLClient(AbstractGithubClient):
     @property
     def client(self) -> httpx.AsyncClient:
         if self._graphql_client is None:
-            self._graphql_client = self.authenticator._make_client(frozenset({"POST"}))
+            self._graphql_client = self.authenticator._make_client(
+                extra_retryable_methods=frozenset({"POST"}),
+                extra_retryable_status=frozenset({HTTPStatus.FORBIDDEN}),
+            )
         return self._graphql_client
 
     @property
@@ -61,7 +74,20 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        body = response.json()
+        rate_limit_info = extract_graphql_rate_limit_info(response)
+        if rate_limit_info is not None:
+            raise RateLimitException(rate_limit_info)
+
+        try:
+            body = response.json()
+        except JSONDecodeError:
+            # Empty/non-JSON 2xx response; treat as no data instead of failing
+            logger.warning(
+                f"[GraphQL] Empty or non-JSON response body (status "
+                f"{response.status_code}) for path {query_path}; treating as no data"
+            )
+            return {}
+
         if "errors" not in body:
             return body
 
@@ -116,21 +142,43 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        response = await self.make_request(
-            resource=resource,
-            params=params,
-            method=method,
-            json_data=json_data,
-            ignored_errors=ignored_errors,
-            ignore_default_errors=ignore_default_errors,
-            authenticator_headers_params=authenticator_headers_params,
-        )
-        return self._handle_graphql_errors(
-            response,
-            ignored_errors,
-            query_path=query_path,
-            query_params=query_params,
-        )
+        max_retries = 5
+        retry_count = 0
+        while retry_count < max_retries:
+            response = await self.make_request(
+                resource=resource,
+                params=params,
+                method=method,
+                json_data=json_data,
+                ignored_errors=ignored_errors,
+                ignore_default_errors=ignore_default_errors,
+                authenticator_headers_params=authenticator_headers_params,
+            )
+            try:
+                return self._handle_graphql_errors(
+                    response,
+                    ignored_errors,
+                    query_path=query_path,
+                    query_params=query_params,
+                )
+            except RateLimitException as exc:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error(
+                        f"[GraphQL] Max retries ({max_retries}) exceeded for path {query_path}. "
+                        f"Rate limit reset at {exc.rate_limit_info.reset_time}"
+                    )
+                    raise
+
+                sleep_time = exc.rate_limit_info.seconds_until_reset
+                logger.warning(
+                    f"[GraphQL] Rate limit exceeded for path {query_path} (attempt {retry_count}/{max_retries}). "
+                    f"Sleeping for {sleep_time} seconds until {exc.rate_limit_info.reset_time}"
+                )
+                await asyncio.sleep(sleep_time)
+
+        # Unreachable: raised before loop exits
+        raise AssertionError("Rate limit retry loop should not exit normally")
 
     def build_graphql_payload(
         self,
