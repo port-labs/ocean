@@ -12,12 +12,14 @@ class TestLiveEventsRedisSettingsValidation:
         assert settings.pel_requeue_worker_enabled is True
         assert settings.stream_ttl_seconds == 3600
 
-    def test_redis_stream_consumer_enabled_from_env(
+    def test_is_redis_stream_consumer_enabled_from_env(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from port_ocean.config.settings import IntegrationConfiguration
 
-        monkeypatch.setenv("OCEAN__LIVE_EVENTS__REDIS_STREAM_CONSUMER_ENABLED", "true")
+        monkeypatch.setenv(
+            "OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED", "true"
+        )
         monkeypatch.setenv("OCEAN__PORT__CLIENT_ID", "test-client-id")
         monkeypatch.setenv("OCEAN__PORT__CLIENT_SECRET", "test-client-secret")
         monkeypatch.setenv("OCEAN__INTEGRATION__TYPE", "test")
@@ -25,7 +27,7 @@ class TestLiveEventsRedisSettingsValidation:
 
         config = IntegrationConfiguration()
 
-        assert config.live_events.redis_stream_consumer_enabled is True
+        assert config.live_events.is_redis_stream_consumer_enabled is True
 
     def test_pel_requeue_worker_enabled_from_env(
         self, monkeypatch: pytest.MonkeyPatch
