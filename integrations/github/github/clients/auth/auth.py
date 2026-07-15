@@ -28,7 +28,7 @@ class _GitHubAuthProvider(ABC):
 
     @classmethod
     @abstractmethod
-    def get_authenticator_for_organization(
+    async def get_authenticator_for_organization(
         cls, organization: str
     ) -> AbstractGitHubAuthenticator:
         pass
@@ -58,7 +58,7 @@ class _PatAuthProvider(_GitHubAuthProvider):
         return [cls._authenticator()]
 
     @classmethod
-    def get_authenticator_for_organization(
+    async def get_authenticator_for_organization(
         cls, organization: str
     ) -> AbstractGitHubAuthenticator:
         return cls._authenticator()
@@ -85,10 +85,10 @@ class _AppAuthProvider(_GitHubAuthProvider):
         return await list_installations_authenticators()
 
     @classmethod
-    def get_authenticator_for_organization(
+    async def get_authenticator_for_organization(
         cls, organization: str
     ) -> AbstractGitHubAuthenticator:
-        return get_installation_authenticator_for_organization(organization)
+        return await get_installation_authenticator_for_organization(organization)
 
     @classmethod
     async def get_integration_actor(cls) -> str:

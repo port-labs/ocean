@@ -1,5 +1,7 @@
+import asyncio
+import concurrent.futures
 import os
-from typing import Dict, Literal, Type, TypeVar, overload
+from typing import Dict, Literal, Type, cast, overload
 
 from loguru import logger
 from github.helpers.exceptions import MissingCredentials
@@ -16,8 +18,6 @@ from github.clients.http.rest_client import GithubRestClient
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 from github.clients.utils import integration_config
 from github.helpers.utils import GithubClientType
-
-T = TypeVar("T")
 
 _CLIENT_CLASSES: Dict[GithubClientType, Type[AbstractGithubClient]] = {
     GithubClientType.REST: GithubRestClient,
@@ -53,11 +53,13 @@ def _get_client(
     return _clients[cache_key]
 
 
-def create_github_client_for_org(
+async def create_github_client_for_org(
     organization: str,
     client_type: GithubClientType = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    authenticator = get_auth_provider().get_authenticator_for_organization(organization)
+    authenticator = await get_auth_provider().get_authenticator_for_organization(
+        organization
+    )
     return _get_client(authenticator, client_type or GithubClientType.REST)
 
 
@@ -91,7 +93,13 @@ def create_github_client(
     ):
         raise MissingCredentials("No valid GitHub credentials provided.")
 
-    return create_github_client_for_org(
-        ocean.integration_config.get("github_organization"),  # type: ignore
-        client_type or GithubClientType.REST,
-    )
+    organization = cast(str, ocean.integration_config.get("github_organization") or "")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(
+            asyncio.run,
+            create_github_client_for_org(
+                organization,
+                client_type or GithubClientType.REST,
+            ),
+        ).result()
