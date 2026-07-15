@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "armorcode"
-version = "0.2.16"
+version = "0.2.17"
 description = "Armorcode Ocean Integration"
 authors = ["Habib Nuhu <habib.nuhu@getport.io>"]
 
