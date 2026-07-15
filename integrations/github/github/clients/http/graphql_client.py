@@ -8,10 +8,12 @@ from loguru import logger
 
 from github.clients.auth.retry_transport import (
     GATEWAY_TIMEOUT_STATUS_CODES,
-    MIN_GRAPHQL_PAGE_SIZE,
 )
 from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
-from github.clients.graphql_page_reduction import reduce_graphql_page_size
+from github.clients.graphql_page_reduction import (
+    MIN_GRAPHQL_PAGE_SIZE,
+    reduce_graphql_page_size,
+)
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import (
     GraphQLClientError,
@@ -68,7 +70,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             max_concurrent=5,
         )
 
-    def _non_ignored_errors(
+    def _handle_graphql_errors(
         self,
         response: httpx.Response,
         ignored_errors: Optional[List[IgnoredError]] = None,
@@ -101,7 +103,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             if error_type in ignored_types:
                 logger.warning(
                     f"{ignored_types[error_type]} due to {error['message']} "
-                    f"for {error.get('path', [])} (status {status_code})"
+                    f"for {error.get('path', [])} (status {response.status_code})"
                 )
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
@@ -110,7 +112,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             # `variables.first`); prefer what it actually sent over the caller's copy.
             variables = self._sent_variables(response) or query_params
             logger.error(
-                f"[GraphQL] Query failed with status {status_code} for path "
+                f"[GraphQL] Query failed with status {response.status_code} for path "
                 f"{query_path} with variables {variables}"
             )
             raise GraphQLErrorGroup(non_ignored_exceptions)
@@ -242,6 +244,7 @@ class GithubGraphQLClient(AbstractGithubClient):
                     ignored_errors=ignored_errors,
                     cursor=cursor,
                     fallbacks=fallbacks,
+                    page_size=page_size,
                 )
             except GraphQLErrorGroup:
                 reduced_page_size = reduce_graphql_page_size(page_size)
@@ -275,11 +278,13 @@ class GithubGraphQLClient(AbstractGithubClient):
         self,
         query: str,
         params: Dict[str, Any],
+        *,
         path: str,
         method: str,
         ignored_errors: Optional[List[IgnoredError]],
         cursor: Optional[str],
         fallbacks: List[str],
+        page_size: int = PAGE_SIZE,
     ) -> Dict[str, Any]:
         """Fetch a single page, escalating to lighter queries only for this page.
 
@@ -291,7 +296,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         full query and page size, so a single expensive page never degrades the
         rest of the pagination.
         """
-        attempts = [(query, PAGE_SIZE)] + [
+        attempts = [(query, page_size)] + [
             (fallback, MIN_GRAPHQL_PAGE_SIZE) for fallback in fallbacks
         ]
         for index, (attempt_query, page_size) in enumerate(attempts):

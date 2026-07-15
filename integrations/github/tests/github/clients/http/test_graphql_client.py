@@ -5,14 +5,12 @@ import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.retry_transport import (
     GitHubRetryTransport,
-    MIN_GRAPHQL_PAGE_SIZE,
 )
+from github.clients.graphql_page_reduction import MIN_GRAPHQL_PAGE_SIZE
 from github.clients.http.graphql_client import GithubGraphQLClient, PAGE_SIZE
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
 from github.helpers.exceptions import (
-    GraphQLClientError,
-    GraphQLErrorGroup,
     RateLimitException,
 )
 
