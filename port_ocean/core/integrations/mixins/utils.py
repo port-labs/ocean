@@ -150,13 +150,16 @@ async def is_dsp_mode_enabled() -> bool:
 async def is_redis_live_events_enabled() -> bool:
     """Check if live events should be consumed from a Redis stream.
 
-    Gated by the organization feature flag.
+    Gated by the organization feature flag and the integration-level
+    ``OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED`` setting (default false).
     Errors are swallowed so this never blocks core flows.
 
     Returns:
         bool: True when Redis stream consumption is enabled, False otherwise.
     """
     try:
+        if not ocean.config.live_events.is_redis_stream_consumer_enabled:
+            return False
         flags = await ocean.port_client.get_organization_feature_flags()
         return IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED in flags
     except Exception as e:
