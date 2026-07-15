@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence
+from typing import Sequence, Type
 
 from port_ocean.context.ocean import ocean
 
@@ -15,7 +15,7 @@ from github.clients.auth.personal_access_token_authenticator import (
 from github.helpers.exceptions import MissingCredentials
 
 
-class GitHubAuthBackend(ABC):
+class _GitHubAuthBackend(ABC):
     @classmethod
     @abstractmethod
     def matches(cls) -> bool:
@@ -23,12 +23,12 @@ class GitHubAuthBackend(ABC):
 
     @classmethod
     @abstractmethod
-    async def list_authenticators(cls) -> list[AbstractGitHubAuthenticator]:
+    async def list_authenticators(cls) -> Sequence[AbstractGitHubAuthenticator]:
         pass
 
     @classmethod
     @abstractmethod
-    async def get_authenticator_for_organization(
+    def get_authenticator_for_organization(
         cls, organization: str
     ) -> AbstractGitHubAuthenticator:
         pass
@@ -39,7 +39,7 @@ class GitHubAuthBackend(ABC):
         pass
 
 
-class PatAuthBackend(GitHubAuthBackend):
+class _PatAuthBackend(_GitHubAuthBackend):
     @classmethod
     def _authenticator(cls) -> PersonalTokenAuthenticator:
         return PersonalTokenAuthenticator.from_config()
@@ -49,11 +49,11 @@ class PatAuthBackend(GitHubAuthBackend):
         return bool(ocean.integration_config.get("github_token"))
 
     @classmethod
-    async def list_authenticators(cls) -> list[AbstractGitHubAuthenticator]:
+    async def list_authenticators(cls) -> Sequence[AbstractGitHubAuthenticator]:
         return [cls._authenticator()]
 
     @classmethod
-    async def get_authenticator_for_organization(
+    def get_authenticator_for_organization(
         cls, organization: str
     ) -> AbstractGitHubAuthenticator:
         return cls._authenticator()
@@ -63,7 +63,7 @@ class PatAuthBackend(GitHubAuthBackend):
         return await cls._authenticator().get_authenticated_actor()
 
 
-class AppAuthBackend(GitHubAuthBackend):
+class _AppAuthBackend(_GitHubAuthBackend):
     @classmethod
     def matches(cls) -> bool:
         config = ocean.integration_config
@@ -72,42 +72,28 @@ class AppAuthBackend(GitHubAuthBackend):
         )
 
     @classmethod
-    async def list_authenticators(cls) -> list[AbstractGitHubAuthenticator]:
+    async def list_authenticators(cls) -> Sequence[AbstractGitHubAuthenticator]:
         return await list_installations_authenticators()
 
     @classmethod
-    async def get_authenticator_for_organization(
+    def get_authenticator_for_organization(
         cls, organization: str
     ) -> AbstractGitHubAuthenticator:
-        return await get_installation_authenticator_for_organization(organization)
+        return get_installation_authenticator_for_organization(organization)
 
     @classmethod
     async def get_integration_actor(cls) -> str:
         return await GitHubAppAuthenticator.from_config().get_authenticated_actor()
 
 
-_BACKENDS: tuple[type[GitHubAuthBackend], ...] = (PatAuthBackend, AppAuthBackend)
+_backends: tuple[type[_GitHubAuthBackend], ...] = (_PatAuthBackend, _AppAuthBackend)
 
 
-def resolve_auth_backend() -> type[GitHubAuthBackend]:
-    for backend in _BACKENDS:
+def _resolve_backend() -> type[_GitHubAuthBackend]:
+    for backend in _backends:
         if backend.matches():
             return backend
     raise MissingCredentials("No valid GitHub credentials provided.")
 
 
-async def list_authenticators() -> list[AbstractGitHubAuthenticator]:
-    backend = resolve_auth_backend()
-    return await backend.list_authenticators()
-
-
-async def get_authenticator_for_organization(
-    organization: str,
-) -> AbstractGitHubAuthenticator:
-    backend = resolve_auth_backend()
-    return await backend.get_authenticator_for_organization(organization)
-
-
-async def get_integration_actor() -> str:
-    backend = resolve_auth_backend()
-    return await backend.get_integration_actor()
+auth: Type[_GitHubAuthBackend] = _resolve_backend()

@@ -7,16 +7,19 @@ from github.clients.auth.abstract_authenticator import GitHubToken
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 
 
 class TestGithubAuthenticator:
     @pytest.fixture
     def github_auth(self) -> GitHubAppInstallationAuthenticator:
         return GitHubAppInstallationAuthenticator(
-            github_host="https://api.github.com",
-            app_id="test-app-id",
+            app_auth=GitHubAppAuthenticator(
+                app_id="test-app-id",
+                private_key="test-private-key",
+                github_host="https://api.github.com",
+            ),
             installation_id="12345",
-            private_key="test-private-key",
         )
 
     def test_rate_limit_scope_uses_installation_id(
@@ -137,16 +140,16 @@ class TestGithubAuthenticator:
     @pytest.mark.asyncio
     async def test_different_authenticators_have_different_clients(self) -> None:
         auth1 = GitHubAppInstallationAuthenticator(
-            github_host="https://api.github.com",
-            app_id="app1",
+            app_auth=GitHubAppAuthenticator(
+                app_id="app1", private_key="key1", github_host="https://api.github.com"
+            ),
             installation_id="111",
-            private_key="key1",
         )
         auth2 = GitHubAppInstallationAuthenticator(
-            github_host="https://api.github.com",
-            app_id="app2",
+            app_auth=GitHubAppAuthenticator(
+                app_id="app2", private_key="key2", github_host="https://api.github.com"
+            ),
             installation_id="222",
-            private_key="key2",
         )
 
         with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:

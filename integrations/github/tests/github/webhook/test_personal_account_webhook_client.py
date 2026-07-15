@@ -11,6 +11,7 @@ from github.webhook.clients.personal_account_webhook_client import (
     GithubPersonalAccountWebhookClient,
 )
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 
 
 @pytest.mark.asyncio
@@ -183,9 +184,11 @@ class TestGithubPersonalAccountWebhookClient:
             organization="test-org",
             github_host="https://api.github.com",
             authenticator=GitHubAppInstallationAuthenticator(
-                app_id="app",
-                private_key="key",
-                github_host="https://api.github.com",
+                app_auth=GitHubAppAuthenticator(
+                    app_id="app",
+                    private_key="key",
+                    github_host="https://api.github.com",
+                ),
                 installation_id="123",
             ),
         )

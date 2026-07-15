@@ -1,7 +1,6 @@
 import asyncio
 
 from loguru import logger
-from port_ocean.context.ocean import ocean
 
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_authenticator import (
@@ -20,10 +19,8 @@ def reset_authenticators_by_org() -> None:
 
 def _authenticator(installation_id: str) -> GitHubAppInstallationAuthenticator:
     return GitHubAppInstallationAuthenticator(
-        app_id=ocean.integration_config["github_app_id"],
-        private_key=ocean.integration_config["github_app_private_key"],
+        app_auth=GitHubAppAuthenticator.from_config(),
         installation_id=installation_id,
-        github_host=ocean.integration_config["github_host"],
     )
 
 
@@ -34,7 +31,7 @@ async def _discover_authenticators() -> dict[str, GitHubAppInstallationAuthentic
 
     async with _ensure_lock:
         if _authenticators_by_org is None:
-            app_auth = GitHubAppAuthenticator.from_config(ocean.integration_config)
+            app_auth = GitHubAppAuthenticator.from_config()
             index: dict[str, GitHubAppInstallationAuthenticator] = {}
             async for page in app_auth.iter_app_installations():
                 for installation in page:
@@ -50,9 +47,11 @@ async def _discover_authenticators() -> dict[str, GitHubAppInstallationAuthentic
     return _authenticators_by_org
 
 
-async def list_installations_authenticators() -> list[GitHubAppInstallationAuthenticator]:
+async def list_installations_authenticators() -> (
+    list[GitHubAppInstallationAuthenticator]
+):
     by_org = await _discover_authenticators()
-    authenticators = list(by_org.values())
+    authenticators = list[GitHubAppInstallationAuthenticator](by_org.values())
     if not authenticators:
         raise AuthenticationException("No GitHub App installations found")
 

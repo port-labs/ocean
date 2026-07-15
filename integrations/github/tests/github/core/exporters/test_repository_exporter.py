@@ -13,6 +13,7 @@ from port_ocean.context.event import event_context
 from github.helpers.models import RepoSearchParams
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubRepositorySelector
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 
 
 TEST_REPOS = [
@@ -357,9 +358,9 @@ class TestRestRepositoryExporter:
         ) as mock_request:
             # Force the exporter to detect App authentication
             rest_client.authenticator = GitHubAppInstallationAuthenticator(
-                app_id="app",
-                private_key="key",
-                github_host=rest_client.base_url,
+                app_auth=GitHubAppAuthenticator(
+                    app_id="app", private_key="key", github_host=rest_client.base_url
+                ),
                 installation_id="123",
             )
 

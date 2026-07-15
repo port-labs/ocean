@@ -2,7 +2,6 @@ import asyncio
 from typing import Optional
 
 from loguru import logger
-from port_ocean.utils.cache import cache_coroutine_result
 
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -18,12 +17,10 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
 
     def __init__(
         self,
-        app_id: str,
-        private_key: str,
+        app_auth: GitHubAppAuthenticator,
         installation_id: str,
-        github_host: str,
     ):
-        self.app_auth = GitHubAppAuthenticator(app_id, private_key, github_host)
+        self.app_auth = app_auth
         self.installation_id = installation_id
         self.cached_installation_token: Optional[GitHubToken] = None
         self.installation_token_lock = asyncio.Lock()
@@ -67,7 +64,3 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
             raise AuthenticationException(
                 f"Failed to fetch installation token: {e}"
             ) from e
-
-    @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
-        return await self.app_auth.get_authenticated_actor()

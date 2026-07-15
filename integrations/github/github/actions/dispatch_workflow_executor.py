@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 from loguru import logger
 from github.actions.utils import build_external_id
-from github.context.auth import get_authenticated_actor
+from github.clients.auth.auth_backend import auth
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
@@ -164,7 +164,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         self, organization: str, repo: str, workflow: str, ref: str, iso_date: str
     ) -> dict[str, Any]:
         workflow_runs: list[dict[str, Any]] = []
-        actor = await get_authenticated_actor()
+        actor = await auth.get_integration_actor()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
             response = await self.rest_client.send_api_request(

@@ -1,16 +1,10 @@
-import asyncio
-import concurrent.futures
 import os
-from collections.abc import Coroutine
-from typing import Any, Dict, Literal, Type, TypeVar, cast, overload
+from typing import Dict, Literal, Type, TypeVar, overload
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from github.clients.auth.auth_backend import (
-    get_authenticator_for_organization,
-    get_integration_actor,
-)
+from github.clients.auth.auth_backend import auth
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.github_app.installation_registry import (
     reset_authenticators_by_org,
@@ -32,16 +26,6 @@ _CLIENT_CLASSES: Dict[GithubClientType, Type[AbstractGithubClient]] = {
     GithubClientType.GRAPHQL: GithubGraphQLClient,
 }
 _clients: Dict[tuple[str, GithubClientType], AbstractGithubClient] = {}
-
-
-def _run_async(coro: Coroutine[Any, Any, T]) -> T:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        return executor.submit(asyncio.run, coro).result()
 
 
 def _reset_after_fork() -> None:
@@ -71,43 +55,39 @@ def get_github_client(
     return _clients[cache_key]
 
 
-async def get_authenticated_actor() -> str:
-    return await get_integration_actor()
-
-
 @overload
 def create_github_client_for_org(
-    organization: str | None,
+    organization: str,
     client_type: Literal[GithubClientType.REST],
 ) -> GithubRestClient: ...
 
 
 @overload
 def create_github_client_for_org(
-    organization: str | None,
+    organization: str,
     client_type: None = None,
 ) -> GithubRestClient: ...
 
 
 @overload
 def create_github_client_for_org(
-    organization: str | None,
+    organization: str,
     client_type: Literal[GithubClientType.GRAPHQL],
 ) -> GithubGraphQLClient: ...
 
 
 @overload
 def create_github_client_for_org(
-    organization: str | None,
+    organization: str,
     client_type: GithubClientType,
 ) -> AbstractGithubClient: ...
 
 
 def create_github_client_for_org(
-    organization: str | None,
+    organization: str,
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    authenticator = _run_async(get_authenticator_for_organization(organization))
+    authenticator = auth.get_authenticator_for_organization(organization)
     return get_github_client(authenticator, client_type or GithubClientType.REST)
 
 
@@ -130,7 +110,7 @@ def create_github_client(
 def create_github_client(
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    organization = cast(str | None, ocean.integration_config.get("github_organization"))
     return create_github_client_for_org(
-        organization, client_type or GithubClientType.REST
+        ocean.integration_config.get("github_organization"),  # type: ignore
+        client_type or GithubClientType.REST,
     )

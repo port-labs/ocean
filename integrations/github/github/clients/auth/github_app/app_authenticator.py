@@ -100,7 +100,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             url = self._parse_next_link(link_header)
 
     @cache_coroutine_result()
-    async def get_authenticated_actor(self) -> str:  # type: ignore[override]
+    async def get_authenticated_actor(self) -> str:
         response = await self.client.get(
             f"{self.github_host}/app",
             headers=(await self.get_headers()).as_dict(),

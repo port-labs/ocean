@@ -63,10 +63,6 @@ class AbstractGitHubAuthenticator(ABC):
     async def get_headers(self) -> GitHubHeaders:
         pass
 
-    @abstractmethod
-    async def get_authenticated_actor(self) -> str:
-        pass
-
     def set_rate_limit_notifier(
         self, notifier: Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ) -> None:
