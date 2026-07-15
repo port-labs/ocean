@@ -7,6 +7,7 @@ from github.clients.client_factory import create_github_client
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import group_files_by_status
 from github.core.exporters.skill_exporter import (
+    DEFAULT_SKILL_ROOTS,
     build_skill_raw_item,
     path_under_roots_or_extra,
     roots_to_globs,
@@ -56,6 +57,7 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         current_branch = payload["ref"].split("/")[-1]
 
         selector = cast(GithubSkillResourceConfig, resource_config).selector
+        effective_roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
 
         if not self._is_applicable_to_repo_branch(
             selector, repo_name, current_branch, default_branch
@@ -71,12 +73,15 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
         changed_files = diff_data.get("files") or []
 
-        patterns = roots_to_globs(selector.roots) + list(selector.paths)
+        patterns = roots_to_globs(effective_roots) + list(selector.paths)
         skill_changes = [
             file_info
             for file_info in changed_files
             if self._is_skill_path(
-                file_info.get("filename", ""), selector.roots, selector.paths, patterns
+                file_info.get("filename", ""),
+                effective_roots,
+                selector.paths,
+                patterns,
             )
         ]
 
@@ -108,7 +113,7 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                     repository=repository,
                     branch=current_branch,
                     organization=organization,
-                    roots=selector.roots,
+                    roots=effective_roots,
                 )
             )
 
@@ -136,7 +141,7 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         logger.info(
             f"Skill webhook processed {len(updated_raw_results)} updates and "
-            f"{len(deleted_raw_results)} deletes for {organization}/{repo_name}"
+            f"{len(deleted_raw_results)} deletes"
         )
         return WebhookEventRawResults(
             updated_raw_results=updated_raw_results,

@@ -519,6 +519,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SKILL)
 async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     from gitlab.helpers.skill_plugin import (
+        DEFAULT_SKILL_ROOTS,
         enrich_file_to_skill,
         matches_skill_path,
         skill_search_paths,
@@ -527,7 +528,7 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
     include_only_active_groups = selector.include_only_active_groups
-    roots = selector.roots
+    roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
     extra_paths = selector.paths
     repositories = selector.repos or None
     search_paths = skill_search_paths(roots) + list(extra_paths)

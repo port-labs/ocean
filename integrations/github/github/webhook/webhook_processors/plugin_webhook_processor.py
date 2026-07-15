@@ -80,7 +80,7 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         plugin_exporter = PluginExporter(rest_client)
-        plugin_item = await plugin_exporter.build_plugin_for_repo(
+        result = await plugin_exporter.build_plugin_for_repo(
             organization=organization,
             repository=repository,
             branch=current_branch,
@@ -88,15 +88,19 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
             providers=providers,
         )
 
-        if plugin_item:
+        if result.plugin_item:
             return WebhookEventRawResults(
-                updated_raw_results=[plugin_item],
+                updated_raw_results=[result.plugin_item],
                 deleted_raw_results=[],
             )
 
-        logger.info(
-            f"Plugin manifests removed for {organization}/{repo_name}; emitting delete"
-        )
+        if result.tree_truncated:
+            logger.warning("Skipping plugin delete: GitHub tree response was truncated")
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        logger.info("Plugin manifests removed; emitting delete")
         return WebhookEventRawResults(
             updated_raw_results=[],
             deleted_raw_results=[

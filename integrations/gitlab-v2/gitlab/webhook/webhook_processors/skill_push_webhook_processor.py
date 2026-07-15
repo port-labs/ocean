@@ -4,6 +4,7 @@ from typing import cast
 from loguru import logger
 
 from gitlab.helpers.skill_plugin import (
+    DEFAULT_SKILL_ROOTS,
     enrich_file_to_skill,
     matches_skill_path,
 )
@@ -37,7 +38,7 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         config = cast(GitLabSkillResourceConfig, resource_config)
         selector = config.selector
         repos = selector.repos
-        roots = selector.roots
+        roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
         extra_paths = selector.paths
 
         if repos and repo_path not in repos:

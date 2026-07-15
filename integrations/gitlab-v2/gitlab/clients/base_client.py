@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, Optional
 
 import httpx
@@ -15,11 +16,19 @@ MAX_BACKOFF_WAIT_IN_SECONDS = 1800
 class HTTPBaseClient:
     def __init__(self, base_url: str, token: str, endpoint: str):
         self.token = token
+        retry_config = RetryConfig(
+            max_backoff_wait=MAX_BACKOFF_WAIT_IN_SECONDS,
+            additional_retry_status_codes=[500],
+        )
+        # Ocean defaults retry HTTP 400. GitLab 400s are permanent (e.g. Advanced
+        # Search unavailable) and must fail fast so callers can fall back.
+        retry_config.retry_status_codes = frozenset(
+            code
+            for code in retry_config.retry_status_codes
+            if code != HTTPStatus.BAD_REQUEST
+        )
         self._client = OceanAsyncClient(
-            retry_config=RetryConfig(
-                max_backoff_wait=MAX_BACKOFF_WAIT_IN_SECONDS,
-                additional_retry_status_codes=[500],
-            ),
+            retry_config=retry_config,
             timeout=ocean.config.client_timeout,
         )
         self.base_url = f"{base_url}/{endpoint.strip('/')}"

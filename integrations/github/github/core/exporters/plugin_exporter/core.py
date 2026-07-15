@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from typing import Any, List, Optional
 
 from loguru import logger
@@ -14,6 +15,12 @@ from github.core.exporters.plugin_exporter.utils import (
 )
 from github.core.options import FileContentOptions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+
+
+@dataclass(frozen=True)
+class PluginBuildResult:
+    plugin_item: Optional[dict[str, Any]]
+    tree_truncated: bool = False
 
 
 class PluginExporter(AbstractGithubExporter[GithubRestClient]):
@@ -33,17 +40,15 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         *,
         organization: str,
-        repositories: List[dict[str, Any]],
+        repositories: List[tuple[dict[str, Any], str]],
         providers: List[PluginProvider],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         manifest_paths = set(all_manifest_paths(providers))
         batch: list[dict[str, Any]] = []
 
-        for repo in repositories:
-            repo_name = repo["name"]
-            branch = repo.get("default_branch") or "main"
+        for repo, branch in repositories:
             try:
-                plugin_item = await self.build_plugin_for_repo(
+                result = await self.build_plugin_for_repo(
                     organization=organization,
                     repository=repo,
                     branch=branch,
@@ -51,14 +56,11 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
                     providers=providers,
                 )
             except Exception as exc:
-                logger.warning(
-                    f"Failed to process plugin manifests for "
-                    f"{organization}/{repo_name}: {exc}"
-                )
+                logger.warning(f"Failed to process plugin manifests: {exc}")
                 continue
 
-            if plugin_item:
-                batch.append(plugin_item)
+            if result.plugin_item:
+                batch.append(result.plugin_item)
 
             if len(batch) >= 25:
                 yield batch
@@ -75,13 +77,13 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         branch: str,
         manifest_paths: set[str],
         providers: List[PluginProvider],
-    ) -> Optional[dict[str, Any]]:
+    ) -> PluginBuildResult:
         repo_name = repository["name"]
-        tree = await self._file_exporter.get_tree_recursive(
+        tree, truncated = await self._file_exporter.get_tree_recursive_meta(
             organization, repo_name, branch
         )
         if not tree:
-            return None
+            return PluginBuildResult(plugin_item=None, tree_truncated=truncated)
 
         tree_paths = {
             entry["path"]
@@ -91,7 +93,7 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         directory_supports = detect_directory_providers(tree_paths, providers)
         present = sorted(manifest_paths & tree_paths)
         if not present and not directory_supports:
-            return None
+            return PluginBuildResult(plugin_item=None, tree_truncated=truncated)
 
         manifests: dict[str, Any] = {}
         for path in present:
@@ -111,13 +113,10 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
             try:
                 manifests[path] = json.loads(content)
             except json.JSONDecodeError as exc:
-                logger.warning(
-                    f"Invalid JSON in plugin manifest "
-                    f"{organization}/{repo_name}/{path}: {exc}"
-                )
+                logger.warning(f"Invalid JSON in plugin manifest {path}: {exc}")
 
         if not manifests and not directory_supports:
-            return None
+            return PluginBuildResult(plugin_item=None, tree_truncated=truncated)
 
         plugin = normalize_plugin(
             repository=repository,
@@ -126,10 +125,13 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
             directory_supports=directory_supports,
         )
         if not plugin:
-            return None
-        return {
-            "plugin": plugin,
-            "repository": repository,
-            "branch": branch,
-            "organization": organization,
-        }
+            return PluginBuildResult(plugin_item=None, tree_truncated=truncated)
+        return PluginBuildResult(
+            plugin_item={
+                "plugin": plugin,
+                "repository": repository,
+                "branch": branch,
+                "organization": organization,
+            },
+            tree_truncated=truncated,
+        )

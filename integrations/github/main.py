@@ -1093,11 +1093,11 @@ async def resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     organization = get_mono_repo_organization(selector.organization)
 
     async for org_login, org_type in org_generator(organization):
-        repos_batch: list[dict[str, Any]] = []
-        async for _repo_name, _branch, repo_obj in repo_selector.select_repos(
+        repos_batch: list[tuple[dict[str, Any], str]] = []
+        async for _repo_name, branch, repo_obj in repo_selector.select_repos(
             selector, repo_exporter, org_login, org_type
         ):
-            repos_batch.append(repo_obj)
+            repos_batch.append((repo_obj, branch))
             if len(repos_batch) >= MAX_CONCURRENT_REPOS:
                 async for plugins in plugin_exporter.get_paginated_plugins(
                     organization=org_login,

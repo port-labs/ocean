@@ -953,13 +953,10 @@ class GitLabClient:
         query: str,
         skip_parsing: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        logger.info(
-            f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
-        )
+        logger.info(f"Starting group search with scope '{scope}'")
 
         # Advanced Search is unavailable for some groups (common on GitLab.com
-        # free tiers). Ocean retries 400s by default (~2 min); skip that dance
-        # once we know the group cannot use advanced blob search.
+        # free tiers). Cache capability misses so later queries skip advanced search.
         if scope == "blobs" and group_id in self._groups_without_advanced_search:
             async for batch in self._search_files_in_group_projects(
                 group_id, scope, query, skip_parsing
@@ -971,42 +968,38 @@ class GitLabClient:
         path = f"groups/{quote(group_id, safe='')}/search"
 
         try:
-            # Disable 400 retries for this call only — permanent Advanced Search
-            # failures must fall back immediately, not after max_attempts backoff.
-            retry_config = self.rest._client._retry_config
-            assert retry_config is not None
-            retry_codes = retry_config.retry_status_codes
-            retry_config.retry_status_codes = frozenset(
-                code for code in retry_codes if code != 400
-            )
-            try:
-                async for file_batch in self.rest.get_paginated_resource(
-                    path, params=params
-                ):
-                    logger.info(f"Found {len(file_batch)} files in group '{group_id}'")
-                    processed_batch = await self._process_file_batch(
-                        file_batch, group_id, skip_parsing
-                    )
-                    if processed_batch:
-                        yield processed_batch
-            finally:
-                retry_config.retry_status_codes = retry_codes
+            async for file_batch in self.rest.get_paginated_resource(
+                path, params=params
+            ):
+                logger.info(f"Found {len(file_batch)} files in group search")
+                processed_batch = await self._process_file_batch(
+                    file_batch, group_id, skip_parsing
+                )
+                if processed_batch:
+                    yield processed_batch
         except httpx.HTTPStatusError as e:
-            if not (scope == "blobs" and e.response.status_code == 400):
+            if not (scope == "blobs" and self._is_advanced_search_unavailable(e)):
                 raise
             self._groups_without_advanced_search.add(group_id)
-            try:
-                message = e.response.json().get("message", e)
-            except Exception:
-                message = e
             logger.warning(
-                f"Group advanced search in group {group_id} failed ({message}); "
-                f"falling back to project-level search for remaining queries"
+                "Group advanced search unavailable; "
+                "falling back to project-level search for remaining queries"
             )
             async for batch in self._search_files_in_group_projects(
                 group_id, scope, query, skip_parsing
             ):
                 yield batch
+
+    @staticmethod
+    def _is_advanced_search_unavailable(error: httpx.HTTPStatusError) -> bool:
+        """True only for capability 400s, not request-specific validation errors."""
+        if error.response.status_code != 400:
+            return False
+        try:
+            message = str(error.response.json().get("message", "")).lower()
+        except Exception:
+            return False
+        return "advanced search" in message
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str
