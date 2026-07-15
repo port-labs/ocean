@@ -1,16 +1,23 @@
+import time
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.blueprint_cache import BlueprintCache
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import (
     get_event_context_params,
     handle_port_status_code,
 )
 from port_ocean.core.models import Blueprint
+
+
+@dataclass
+class BlueprintCacheEntry:
+    blueprint: Blueprint
+    cached_at: float = field(default_factory=time.monotonic)
 
 
 class BlueprintClientMixin:
@@ -22,15 +29,18 @@ class BlueprintClientMixin:
     ):
         self.auth = auth
         self.client = client
-        self._blueprint_cache = BlueprintCache(blueprint_cache_ttl_seconds)
+        self._blueprint_cache_ttl_seconds = blueprint_cache_ttl_seconds
+        self._blueprint_cache: dict[str, BlueprintCacheEntry] = {}
 
     async def get_blueprint(
         self, identifier: str, should_log: bool = True, *, use_cache: bool = True
     ) -> Blueprint:
-        if use_cache:
-            cached_entry = self._blueprint_cache.get(identifier)
-            if cached_entry is not None:
-                return cached_entry.blueprint
+        if (
+            use_cache
+            and (entry := self._blueprint_cache.get(identifier)) is not None
+            and time.monotonic() - entry.cached_at < self._blueprint_cache_ttl_seconds
+        ):
+            return entry.blueprint
 
         logger.info(f"Fetching blueprint with id: {identifier}")
         response = await self.client.get(
@@ -39,14 +49,16 @@ class BlueprintClientMixin:
         )
         handle_port_status_code(response, should_log=should_log)
         blueprint = Blueprint.parse_obj(response.json()["blueprint"])
-        self._blueprint_cache.set(blueprint)
+        self._blueprint_cache[blueprint.identifier] = BlueprintCacheEntry(
+            blueprint=blueprint
+        )
         return blueprint
 
     def invalidate_cached_blueprint(self, identifier: str) -> None:
-        self._blueprint_cache.invalidate(identifier)
+        self._blueprint_cache.pop(identifier, None)
 
     def invalidate_all_cached_blueprints(self) -> None:
-        self._blueprint_cache.invalidate_all()
+        self._blueprint_cache.clear()
 
     async def create_blueprint(
         self,
