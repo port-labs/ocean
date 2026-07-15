@@ -734,12 +734,12 @@ class TestGraphQLUnknownErrorPageReduction:
 
     _PATH = "organization.repositories"
 
-    def _error_body(self, message: str = "boom") -> dict:
+    def _error_body(self, message: str = "boom") -> dict[str, list[dict[str, str]]]:
         return {"errors": [{"message": message, "type": "UNKNOWN"}]}
 
     def _page_body(
-        self, nodes: list, has_next: bool = False, cursor: object = None
-    ) -> dict:
+        self, nodes: list[dict[str, int]], has_next: bool = False, cursor: object = None
+    ) -> dict[str, dict[str, object]]:
         return {
             "data": {
                 "organization": {
@@ -755,7 +755,7 @@ class TestGraphQLUnknownErrorPageReduction:
         self,
         client: GithubGraphQLClient,
         ignored_errors: Optional[List[IgnoredError]] = None,
-    ) -> list:
+    ) -> list[list[dict[str, int]]]:
         return [
             page
             async for page in client.send_paginated_request(
@@ -773,7 +773,9 @@ class TestGraphQLUnknownErrorPageReduction:
         seen_first = []
 
         async def fake_make_request(**kwargs: object) -> httpx.Response:
-            first = cast(dict, kwargs["json_data"])["variables"]["first"]
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            first = variables["first"]
             seen_first.append(first)
             if first == PAGE_SIZE:
                 return httpx.Response(200, json=self._error_body())
@@ -793,7 +795,9 @@ class TestGraphQLUnknownErrorPageReduction:
         seen_first = []
 
         async def fake_make_request(**kwargs: object) -> httpx.Response:
-            seen_first.append(cast(dict, kwargs["json_data"])["variables"]["first"])
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            seen_first.append(variables["first"])
             return httpx.Response(200, json=self._error_body())
 
         with patch.object(client, "make_request", side_effect=fake_make_request):
@@ -810,7 +814,9 @@ class TestGraphQLUnknownErrorPageReduction:
         seen_first = []
 
         async def fake_make_request(**kwargs: object) -> httpx.Response:
-            seen_first.append(cast(dict, kwargs["json_data"])["variables"]["first"])
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            seen_first.append(variables["first"])
             if len(seen_first) == 1:
                 return httpx.Response(200, json=self._error_body())
             if len(seen_first) == 2:
