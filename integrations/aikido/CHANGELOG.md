@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Increased `ISSUES_PAGE_SIZE` from 100 to 1000, reducing the number of API requests for a 350k-issue resync from ~3,500 to ~350 and cutting expected sync time from ~9 hours to ~23 minutes.
 
 
+## 0.2.19 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.2.18 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
 ## 0.2.17 (2026-07-14)
 
 
