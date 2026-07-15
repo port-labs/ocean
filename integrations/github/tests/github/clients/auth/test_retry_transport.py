@@ -10,9 +10,11 @@ import pytest
 from port_ocean.helpers.retry import RetryConfig
 from github.clients.auth.retry_transport import (
     GitHubRetryTransport,
+    MIN_REST_PAGE_SIZE,
+)
+from github.clients.graphql_page_reduction import (
     GRAPHQL_REDUCTION_SIZE,
     MIN_GRAPHQL_PAGE_SIZE,
-    MIN_REST_PAGE_SIZE,
 )
 
 
