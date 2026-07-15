@@ -12,7 +12,10 @@ from port_ocean.core.integrations.base import BaseIntegration
 class GenerateQueryParamMixin(BaseModel):
     def generate_query_params(self) -> dict[str, Any]:
         params = self.dict(exclude_none=True, exclude_unset=True)
-        return params
+        return {
+            key: ",".join(map(str, value)) if isinstance(value, list) else str(value)
+            for key, value in params.items()
+        }
 
     def merge_with(self, other: dict[str, Any]) -> dict[str, Any]:
         query_params = self.generate_query_params()
