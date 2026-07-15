@@ -7,7 +7,7 @@ from loguru import logger
 
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
 from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
-from github.clients.rate_limiter.utils import is_rate_limit_response
+from github.clients.rate_limiter.utils import is_rest_rate_limit_response
 
 
 # Gateway errors that signal a query exceeded GitHub's GraphQL execution budget:
@@ -190,7 +190,7 @@ class GitHubRetryTransport(RetryTransport):
         response: httpx.Response,
         attempt: int,
     ) -> None:
-        if is_rate_limit_response(response) and self._rate_limit_notifier:
+        if is_rest_rate_limit_response(response) and self._rate_limit_notifier:
             await self._rate_limit_notifier(response)
 
         if self._is_graphql_request(request):
@@ -205,7 +205,7 @@ class GitHubRetryTransport(RetryTransport):
         response: Optional[httpx.Response],
         error: Optional[Exception],
     ) -> None:
-        if response and is_rate_limit_response(response):
+        if response and is_rest_rate_limit_response(response):
             logger.bind(
                 remaining=response.headers.get("x-ratelimit-remaining"),
                 limit=response.headers.get("x-ratelimit-limit"),
@@ -285,11 +285,11 @@ class GitHubRetryTransport(RetryTransport):
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return await super()._should_retry_async(response) or is_rate_limit_response(
+        return await super()._should_retry_async(
             response
-        )
+        ) or is_rest_rate_limit_response(response)
 
     def _should_retry(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return super()._should_retry(response) or is_rate_limit_response(response)
+        return super()._should_retry(response) or is_rest_rate_limit_response(response)
