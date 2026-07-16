@@ -6,6 +6,7 @@ import re
 import httpx
 from collections import defaultdict
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
@@ -196,6 +197,15 @@ def _flatten_area_path_tree(
     for child in node.get("children", []):
         result.extend(_flatten_area_path_tree(child, project, node.get("identifier")))
     return result
+
+
+@dataclass
+class RunPipelineOptions:
+    """Optional inputs for triggering a pipeline run."""
+
+    branch: Optional[str] = None
+    template_parameters: Optional[dict[str, Any]] = None
+    variables: Optional[dict[str, Any]] = None
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -1716,6 +1726,83 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         pipeline_run_data = response.json()
         return pipeline_run_data
+
+    async def run_pipeline(
+        self,
+        project_id: str,
+        pipeline_id: str,
+        options: RunPipelineOptions,
+    ) -> dict[str, Any]:
+        """Trigger a pipeline run and return the created run.
+
+        API: POST {org}/{project}/_apis/pipelines/{pipelineId}/runs
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/run-pipeline
+        """
+        run_pipeline_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/pipelines/{pipeline_id}/runs"
+        )
+        body: dict[str, Any] = {}
+        if options.branch:
+            ref_name = (
+                options.branch
+                if options.branch.startswith("refs/")
+                else f"refs/heads/{options.branch}"
+            )
+            body["resources"] = {"repositories": {"self": {"refName": ref_name}}}
+        if options.template_parameters:
+            body["templateParameters"] = options.template_parameters
+        if options.variables:
+            # The Run Pipeline API expects each variable as { "value": <value> }.
+            # Values already in that shape are passed through to allow advanced
+            # inputs (e.g. { "value": x, "isSecret": true }).
+            body["variables"] = {
+                name: (
+                    value
+                    if isinstance(value, dict) and "value" in value
+                    else {"value": value}
+                )
+                for name, value in options.variables.items()
+            }
+
+        logger.info(
+            f"Sending Run Pipeline request for pipeline {pipeline_id} in project {project_id}",
+            project_id=project_id,
+            pipeline_id=pipeline_id,
+            url=run_pipeline_url,
+        )
+        response = await self.send_request(
+            "POST",
+            run_pipeline_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to trigger pipeline {pipeline_id} in project {project_id}: no response from Azure DevOps",
+                project_id=project_id,
+                pipeline_id=pipeline_id,
+            )
+            raise RuntimeError(
+                f"Failed to trigger pipeline {pipeline_id} in project {project_id}"
+            )
+        run = response.json()
+        logger.info(
+            f"Run Pipeline request succeeded for pipeline {pipeline_id} in project {project_id}: run {run.get('id')}",
+            project_id=project_id,
+            pipeline_id=pipeline_id,
+            run_id=run.get("id"),
+            state=run.get("state"),
+        )
+        return run
+
+    def is_close_to_rate_limit(self) -> bool:
+        return self._rate_limiter.is_close_to_limit
+
+    def seconds_until_rate_limit_reset(self) -> float:
+        return self._rate_limiter.seconds_until_reset
 
     async def get_pipeline_stage(
         self, project: dict[str, Any], pipeline_id: str, run_id: str, stage_id: str

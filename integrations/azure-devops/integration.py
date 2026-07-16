@@ -719,12 +719,14 @@ class AzureDevopsIntegration(BaseIntegration, AzureDevopsHandlerMixin):
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
         # Replace the Ocean's webhook manager with our custom one
-        self.context.app.webhook_manager = AzureDevopsLiveEventsProcessorManager(
+        processor_manager = AzureDevopsLiveEventsProcessorManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
+        self.context.app.webhook_manager = processor_manager
+        self.context.app.execution_manager._webhook_manager = processor_manager
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitPortAppConfig
