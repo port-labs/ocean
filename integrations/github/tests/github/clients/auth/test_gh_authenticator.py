@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import pytest
 import httpx
-from unittest.mock import AsyncMock, patch, PropertyMock
+from unittest.mock import AsyncMock, Mock, patch, PropertyMock
 
 from github.clients.auth.abstract_authenticator import GitHubToken
 from github.clients.auth.github_app.installation_authenticator import (
@@ -19,40 +19,32 @@ class TestGithubAuthenticator:
                 private_key="test-private-key",
                 github_host="https://api.github.com",
             ),
+            organization="test-org",
             installation_id="12345",
         )
 
-    def test_rate_limit_scope_uses_installation_id(
+    def test_rate_limit_scope_uses_organization(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
-        assert github_auth.rate_limit_scope == "installation:12345"
+        assert github_auth.rate_limit_scope == "installation:test-org"
 
     @pytest.mark.asyncio
     async def test_token_generated(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
-        mock_jwt_token = GitHubToken(token="mock-jwt-token", expires_at=None)
         mock_install_token = GitHubToken(
             token="mock-installation-token",
             expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
         )
 
-        with (
-            patch.object(
-                github_auth.app_auth,
-                "get_token",
-                AsyncMock(return_value=mock_jwt_token),
-            ) as mock_get_app_token,
-            patch.object(
-                github_auth,
-                "_fetch_installation_token",
-                AsyncMock(return_value=mock_install_token),
-            ) as mock_get_install_token,
-        ):
+        with patch.object(
+            github_auth,
+            "_fetch_installation_token",
+            AsyncMock(return_value=mock_install_token),
+        ) as mock_get_install_token:
             await github_auth.get_token()
 
-            mock_get_app_token.assert_called_once()
-            mock_get_install_token.assert_called_once()
+            mock_get_install_token.assert_called_once_with("12345")
 
     @pytest.mark.asyncio
     async def test_token_refreshed_on_expiry(
@@ -90,7 +82,6 @@ class TestGithubAuthenticator:
     async def test_installation_id_provided_no_fetch_call(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
-        mock_jwt_token = GitHubToken(token="mock-jwt-token", expires_at=None)
         mock_install_token = GitHubToken(
             token="mock-installation-token",
             expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
@@ -100,9 +91,52 @@ class TestGithubAuthenticator:
 
         with (
             patch.object(
+                github_auth,
+                "_fetch_installation_token",
+                AsyncMock(return_value=mock_install_token),
+            ) as mock_get_install_token,
+            patch.object(
+                type(github_auth),
+                "client",
+                new_callable=PropertyMock,
+                return_value=mock_client,
+            ),
+        ):
+            token = await github_auth.get_token()
+
+            mock_get_install_token.assert_called_once_with("12345")
+            mock_client.get.assert_not_called()
+            assert token == mock_install_token
+
+    @pytest.mark.asyncio
+    async def test_installation_id_fetched_when_not_provided(self) -> None:
+        github_auth = GitHubAppInstallationAuthenticator(
+            app_auth=GitHubAppAuthenticator(
+                app_id="test-app-id",
+                private_key="test-private-key",
+                github_host="https://api.github.com",
+            ),
+            organization="my-org",
+        )
+        mock_install_token = GitHubToken(
+            token="mock-installation-token",
+            expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        )
+        mock_client = AsyncMock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"id": 99999}
+        mock_response.raise_for_status = Mock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        with (
+            patch.object(
                 github_auth.app_auth,
-                "get_token",
-                AsyncMock(return_value=mock_jwt_token),
+                "get_headers",
+                AsyncMock(
+                    return_value=AsyncMock(
+                        as_dict=lambda: {"Authorization": "Bearer jwt"}
+                    )
+                ),
             ),
             patch.object(
                 github_auth,
@@ -118,8 +152,11 @@ class TestGithubAuthenticator:
         ):
             token = await github_auth.get_token()
 
-            mock_get_install_token.assert_called_once_with(mock_jwt_token.token)
-            mock_client.get.assert_not_called()
+            mock_client.get.assert_called_once_with(
+                "https://api.github.com/users/my-org/installation",
+                headers={"Authorization": "Bearer jwt"},
+            )
+            mock_get_install_token.assert_called_once_with("99999")
             assert token == mock_install_token
 
     @pytest.mark.asyncio
@@ -143,12 +180,14 @@ class TestGithubAuthenticator:
             app_auth=GitHubAppAuthenticator(
                 app_id="app1", private_key="key1", github_host="https://api.github.com"
             ),
+            organization="org1",
             installation_id="111",
         )
         auth2 = GitHubAppInstallationAuthenticator(
             app_auth=GitHubAppAuthenticator(
                 app_id="app2", private_key="key2", github_host="https://api.github.com"
             ),
+            organization="org2",
             installation_id="222",
         )
 

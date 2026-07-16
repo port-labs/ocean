@@ -17,9 +17,12 @@ def reset_authenticators_by_org() -> None:
     _authenticators_by_org = {}
 
 
-def _authenticator(installation_id: str) -> GitHubAppInstallationAuthenticator:
+def _authenticator(
+    organization: str, installation_id: str
+) -> GitHubAppInstallationAuthenticator:
     return GitHubAppInstallationAuthenticator(
         app_auth=GitHubAppAuthenticator.from_config(),
+        organization=organization,
         installation_id=installation_id,
     )
 
@@ -34,7 +37,9 @@ async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator
                 raise AuthenticationException(
                     f"No login found for installation {installation}"
                 )
-            index[login] = _authenticator(installation_id=str(installation["id"]))
+            index[login] = _authenticator(
+                organization=login, installation_id=str(installation["id"])
+            )
     return index
 
 

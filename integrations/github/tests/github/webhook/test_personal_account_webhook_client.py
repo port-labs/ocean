@@ -189,6 +189,7 @@ class TestGithubPersonalAccountWebhookClient:
                     private_key="key",
                     github_host="https://api.github.com",
                 ),
+                organization="test-org",
                 installation_id="123",
             ),
         )
