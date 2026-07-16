@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, cast
 
 from loguru import logger
-from wcmatch import glob
 
 from github.clients.client_factory import create_github_client
 from github.core.exporters.file_exporter.core import RestFileExporter
@@ -13,11 +12,10 @@ from github.core.exporters.skill_exporter import (
     build_skill_raw_item,
     match_skill_root,
     path_under_roots_or_extra,
-    roots_to_globs,
 )
 from github.core.options import FileContentOptions
 from github.helpers.port_app_config import ORG_CONFIG_REPO
-from github.helpers.utils import ObjectKind, matches_glob_pattern
+from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -76,7 +74,6 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
         changed_files = diff_data.get("files") or []
 
-        patterns = roots_to_globs(effective_roots) + list(selector.paths)
         skill_changes = [
             file_info
             for file_info in changed_files
@@ -84,7 +81,6 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                 file_info.get("filename", ""),
                 effective_roots,
                 selector.paths,
-                patterns,
             )
         ]
 
@@ -152,35 +148,12 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
             deleted_raw_results=deleted_raw_results,
         )
 
-    def _is_applicable_to_repo_branch(
-        self,
-        selector: Any,
-        repo_name: str,
-        current_branch: str,
-        default_branch: str,
-    ) -> bool:
-        if selector.repos is None:
-            return current_branch == default_branch
-        for mapping in selector.repos:
-            if mapping.name == repo_name and (
-                mapping.branch == current_branch
-                or (mapping.branch is None and current_branch == default_branch)
-            ):
-                return True
-        return False
-
     def _is_skill_path(
         self,
         path: str,
         roots: list[str],
         extra_paths: list[str],
-        patterns: list[str],
     ) -> bool:
         if Path(path).name.lower() != SKILL_MD_FILENAME.lower():
             return False
-        if path_under_roots_or_extra(path, roots, extra_paths):
-            return True
-        return any(
-            matches_glob_pattern(path, pattern, flags=glob.DOTGLOB)
-            for pattern in patterns
-        )
+        return path_under_roots_or_extra(path, roots, extra_paths)

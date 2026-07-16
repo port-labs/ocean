@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
 
@@ -8,6 +8,7 @@ from github.core.exporters.plugin_exporter import (
     DEFAULT_PLUGIN_PROVIDERS,
     PluginExporter,
     all_manifest_paths,
+    empty_plugin,
     path_touches_plugin,
 )
 from github.helpers.port_app_config import ORG_CONFIG_REPO
@@ -105,50 +106,10 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
             updated_raw_results=[],
             deleted_raw_results=[
                 {
-                    "plugin": {
-                        "name": repo_name,
-                        "displayName": repo_name,
-                        "description": "",
-                        "version": None,
-                        "supports": {
-                            "claude": False,
-                            "cursor": False,
-                            "codex": False,
-                            "agents": False,
-                            "kimi": False,
-                            "opencode": False,
-                            "pi": False,
-                            "antigravity": False,
-                        },
-                        "claude": {},
-                        "cursor": {},
-                        "codex": {},
-                        "agents": {},
-                        "kimi": {},
-                        "opencode": {},
-                        "pi": {},
-                        "antigravity": {},
-                    },
+                    "plugin": empty_plugin(name=repo_name),
                     "repository": repository,
                     "branch": current_branch,
                     "organization": organization,
                 }
             ],
         )
-
-    def _is_applicable_to_repo_branch(
-        self,
-        selector: Any,
-        repo_name: str,
-        current_branch: str,
-        default_branch: str,
-    ) -> bool:
-        if selector.repos is None:
-            return current_branch == default_branch
-        for mapping in selector.repos:
-            if mapping.name == repo_name and (
-                mapping.branch == current_branch
-                or (mapping.branch is None and current_branch == default_branch)
-            ):
-                return True
-        return False

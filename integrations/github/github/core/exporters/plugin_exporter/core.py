@@ -1,3 +1,4 @@
+import asyncio
 import json
 from dataclasses import dataclass
 from typing import Any, List, Optional
@@ -43,31 +44,50 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         repositories: List[tuple[dict[str, Any], str]],
         providers: List[PluginProvider],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        # Callers (see resync_plugins) already chunk `repositories` to
+        # MAX_CONCURRENT_REPOS, so fetching each repo's tree concurrently here
+        # keeps plugin resync in line with the org's other per-repo resyncs
+        # instead of scanning repos one at a time.
         manifest_paths = set(all_manifest_paths(providers))
-        batch: list[dict[str, Any]] = []
-
-        for repo, branch in repositories:
-            try:
-                result = await self.build_plugin_for_repo(
+        results = await asyncio.gather(
+            *(
+                self._build_plugin_item(
                     organization=organization,
                     repository=repo,
                     branch=branch,
                     manifest_paths=manifest_paths,
                     providers=providers,
                 )
-            except Exception as exc:
-                logger.warning(f"Failed to process plugin manifests: {exc}")
-                continue
-
-            if result.plugin_item:
-                batch.append(result.plugin_item)
-
-            if len(batch) >= 25:
-                yield batch
-                batch = []
-
+                for repo, branch in repositories
+            )
+        )
+        batch = [item for item in results if item]
         if batch:
             yield batch
+
+    async def _build_plugin_item(
+        self,
+        *,
+        organization: str,
+        repository: dict[str, Any],
+        branch: str,
+        manifest_paths: set[str],
+        providers: List[PluginProvider],
+    ) -> Optional[dict[str, Any]]:
+        try:
+            result = await self.build_plugin_for_repo(
+                organization=organization,
+                repository=repository,
+                branch=branch,
+                manifest_paths=manifest_paths,
+                providers=providers,
+            )
+        except Exception as exc:
+            logger.warning(
+                f"Failed to process plugin manifests for {repository.get('name')}: {exc}"
+            )
+            return None
+        return result.plugin_item
 
     async def build_plugin_for_repo(
         self,

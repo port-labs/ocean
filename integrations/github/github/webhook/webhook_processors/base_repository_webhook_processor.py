@@ -11,11 +11,28 @@ from github.helpers.models import RepoSearchParams
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
-from integration import GithubPortAppConfig, RepoSearchSelector
+from integration import GithubPortAppConfig, RepoSearchSelector, RepositorySourceModel
 from loguru import logger
 
 
 class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
+    def _is_applicable_to_repo_branch(
+        self,
+        selector: RepositorySourceModel,
+        repo_name: str,
+        current_branch: str,
+        default_branch: str,
+    ) -> bool:
+        if selector.repos is None:
+            return current_branch == default_branch
+        for mapping in selector.repos:
+            if mapping.name == repo_name and (
+                mapping.branch == current_branch
+                or (mapping.branch is None and current_branch == default_branch)
+            ):
+                return True
+        return False
+
     async def validate_payload(self, payload: EventPayload) -> bool:
         return (
             await super().validate_payload(payload)

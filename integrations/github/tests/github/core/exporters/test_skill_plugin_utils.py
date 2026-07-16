@@ -204,3 +204,15 @@ class TestPluginUtils:
         assert found == {"opencode"}
         assert path_touches_plugin(".pi/extensions/superpowers.ts", ["pi"])
         assert not path_touches_plugin("skills/foo/SKILL.md", ["pi"])
+
+    def test_empty_plugin_shape(self) -> None:
+        from github.core.exporters.plugin_exporter.utils import empty_plugin
+
+        plugin = empty_plugin(name="my-repo")
+        assert plugin["name"] == "my-repo"
+        assert plugin["displayName"] == "my-repo"
+        assert all(value is False for value in plugin["supports"].values())
+        assert all(plugin[provider] == {} for provider in plugin["supports"])
+
+        named = empty_plugin(name="my-repo", display_name="My Repo")
+        assert named["displayName"] == "My Repo"
