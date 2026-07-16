@@ -1,5 +1,8 @@
-from typing import List
+from typing import List, TYPE_CHECKING
 from port_ocean.exceptions.core import OceanAbortException
+
+if TYPE_CHECKING:
+    from github.clients.rate_limiter.utils import RateLimitInfo
 
 
 class AuthenticationException(OceanAbortException):
@@ -49,3 +52,14 @@ class InvalidActionParametersException(Exception):
 
 class NoWorkflowRunsFoundException(Exception):
     """Exception for workflow runs not found after dispatch."""
+
+
+class RateLimitException(Exception):
+    """Raised when GitHub API rate limit is exceeded."""
+
+    def __init__(self, rate_limit_info: "RateLimitInfo"):
+        self.rate_limit_info = rate_limit_info
+        super().__init__(
+            f"Rate limit exceeded. Reset at {rate_limit_info.reset_time}. "
+            f"Remaining: {rate_limit_info.remaining}/{rate_limit_info.limit}"
+        )

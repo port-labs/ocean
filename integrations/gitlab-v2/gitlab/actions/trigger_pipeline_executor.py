@@ -3,7 +3,7 @@ import json
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
 from gitlab.actions.utils import build_external_id
@@ -21,7 +21,7 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
     WEBHOOK_PROCESSOR_CLASS = TriggerPipelineWebhookProcessor
     WEBHOOK_PATH = "/hook/{group_id}"
 
-    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
+    async def execute(self, run: IntegrationRun) -> None:
         project = run.execution_properties.get("project")
         ref = run.execution_properties.get("ref")
 
