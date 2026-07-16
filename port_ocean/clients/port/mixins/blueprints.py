@@ -64,7 +64,9 @@ class BlueprintClientMixin:
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
         handle_port_status_code(response)
-        return response.json()["blueprint"]
+        blueprint = response.json()["blueprint"]
+        self._blueprint_cache.pop(blueprint["identifier"], None)
+        return blueprint
 
     async def patch_blueprint(
         self,
@@ -80,6 +82,7 @@ class BlueprintClientMixin:
             json=raw_blueprint,
         )
         handle_port_status_code(response)
+        self._blueprint_cache.pop(identifier, None)
 
     async def delete_blueprint(
         self,
@@ -99,6 +102,7 @@ class BlueprintClientMixin:
                 headers=headers,
             )
             handle_port_status_code(response, should_raise)
+            self._blueprint_cache.pop(identifier, None)
             return None
         else:
             response = await self.client.delete(
@@ -108,6 +112,7 @@ class BlueprintClientMixin:
             )
 
             handle_port_status_code(response, should_raise)
+            self._blueprint_cache.pop(identifier, None)
             return response.json().get("migrationId", "")
 
     async def create_scorecard(
