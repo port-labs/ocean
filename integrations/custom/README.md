@@ -457,7 +457,7 @@ resources:
       method: GET
       query_params:
         status: "active"   # Static default
-      query_parameters:
+      dynamic_query_params:
         team_id:
           endpoint: "/api/v1/teams"
           field: ".id"
@@ -469,7 +469,7 @@ resources:
 
 ### Behavior
 
-- Dynamic query values are discovered per configured key in `query_parameters`.
+- Dynamic query values are discovered per configured key in `dynamic_query_params`.
 - If multiple values are discovered, requests are generated using Cartesian expansion.
 - Dynamic query values override conflicting keys from static `query_params`.
 - Combined flows are supported: one path parameter + dynamic query parameters.

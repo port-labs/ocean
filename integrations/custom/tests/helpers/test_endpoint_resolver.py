@@ -422,7 +422,7 @@ class TestResolveDynamicEndpoints:
 
         selector = HttpServerSelector(
             query="true",
-            query_parameters={
+            dynamic_query_params={
                 "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
                 "status": ApiPathParameter(endpoint="/api/states", field=".name"),
             },
@@ -461,7 +461,7 @@ class TestResolveDynamicEndpoints:
             path_parameters={
                 "team_id": ApiPathParameter(endpoint="/api/teams", field=".id")
             },
-            query_parameters={
+            dynamic_query_params={
                 "status": ApiPathParameter(endpoint="/api/states", field=".name")
             },
         )
@@ -512,7 +512,7 @@ class TestResolveDynamicEndpoints:
 
         selector = HttpServerSelector(
             query="true",
-            query_parameters={
+            dynamic_query_params={
                 "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
                 "status": ApiPathParameter(endpoint="/api/states", field=".name"),
             },
@@ -553,7 +553,7 @@ class TestResolveDynamicEndpoints:
 
         selector = HttpServerSelector(
             query="true",
-            query_parameters={
+            dynamic_query_params={
                 "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
             },
         )
@@ -590,7 +590,7 @@ class TestResolveDynamicEndpoints:
 
         selector = HttpServerSelector(
             query="true",
-            query_parameters={
+            dynamic_query_params={
                 "team_id": ApiPathParameter(endpoint="/api/teams", field=".id"),
             },
         )

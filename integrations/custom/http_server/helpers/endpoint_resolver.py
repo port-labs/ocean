@@ -203,17 +203,17 @@ async def resolve_dynamic_endpoints(
 
     # Get path_parameters from selector if they exist
     path_parameters = getattr(selector, "path_parameters", None) or {}
-    query_parameters = getattr(selector, "query_parameters", None) or {}
+    dynamic_query_params = getattr(selector, "dynamic_query_params", None) or {}
 
     async def _resolve_dynamic_query_values() -> (
         Optional[Tuple[List[str], List[List[str]]]]
     ):
-        if not query_parameters:
+        if not dynamic_query_params:
             return None
 
         values_by_key: Dict[str, List[str]] = {}
 
-        for query_key, query_param_config in query_parameters.items():
+        for query_key, query_param_config in dynamic_query_params.items():
             values: List[str] = []
             async for value_batch in query_api_for_parameters(query_param_config):
                 remaining = MAX_DISCOVERED_QUERY_VALUES_PER_KEY - len(values)
@@ -285,7 +285,7 @@ async def resolve_dynamic_endpoints(
             yield batch
 
     query_value_matrix = await _resolve_dynamic_query_values()
-    if query_parameters and query_value_matrix is None:
+    if dynamic_query_params and query_value_matrix is None:
         return
 
     # Find path parameters in endpoint template

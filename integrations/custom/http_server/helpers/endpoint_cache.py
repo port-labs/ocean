@@ -46,7 +46,7 @@ def analyze_cacheable_endpoints(
     """Scan all resource configs and return cache keys that appear 2+ times.
 
     Counts direct kind endpoints and discovery endpoints from both
-    path_parameters and query_parameters.
+    path_parameters and dynamic_query_params.
     """
     key_counts: Counter[str] = Counter()
     key_to_endpoint: Dict[str, str] = {}
@@ -76,8 +76,8 @@ def analyze_cacheable_endpoints(
                 f"{param_config.method.upper()} {param_config.endpoint}"
             )
 
-        query_parameters = selector.query_parameters or {}
-        for param_config in query_parameters.values():
+        dynamic_query_params = selector.dynamic_query_params or {}
+        for param_config in dynamic_query_params.values():
             param_key = make_cache_key(
                 endpoint=param_config.endpoint,
                 method=param_config.method,

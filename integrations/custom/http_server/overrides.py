@@ -83,8 +83,9 @@ class HttpServerSelector(Selector):
         description="Dynamic path parameters",
         default=None,
     )
-    query_parameters: Optional[Dict[str, ApiPathParameter]] = Field(
-        title="Query Parameters Sources",
+    dynamic_query_params: Optional[Dict[str, ApiPathParameter]] = Field(
+        title="Dynamic Query Parameters",
+        alias="dynamicQueryParams",
         description="Dynamic query parameters resolved from discovery endpoints",
         default=None,
     )

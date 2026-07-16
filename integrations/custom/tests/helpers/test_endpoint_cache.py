@@ -46,14 +46,14 @@ def _make_resource(
     method: str = "GET",
     query_params: dict[str, Any] | None = None,
     path_parameters: dict[str, Any] | None = None,
-    query_parameters: dict[str, Any] | None = None,
+    dynamic_query_params: dict[str, Any] | None = None,
 ) -> HttpServerResourceConfig:
     selector = HttpServerSelector(
         query="true",
         method=method,
         query_params=query_params,
         path_parameters=path_parameters,
-        query_parameters=query_parameters,
+        dynamic_query_params=dynamic_query_params,
     )
     return HttpServerResourceConfig(
         kind=kind,
@@ -161,7 +161,7 @@ class TestAnalyzeCacheableEndpoints:
             _make_resource("/api/v2/teams.json"),
             _make_resource(
                 "/api/v2/members.json",
-                query_parameters={"team_id": param},
+                dynamic_query_params={"team_id": param},
             ),
         ]
         cacheable = analyze_cacheable_endpoints(resources)
