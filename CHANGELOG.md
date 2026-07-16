@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.45.2 (2026-07-16)
+
+### Bug Fixes
+
+- Added in memory temporary caching for fetching blueprints. Cached blueprints are cleared when a resync is triggered/finished, and the cache has a default TTL of two minutes.
+
 ## 0.45.1 (2026-07-16)
 
 ### Bug Fixes
