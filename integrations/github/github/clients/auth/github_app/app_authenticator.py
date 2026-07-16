@@ -36,7 +36,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             github_host=ocean.integration_config["github_host"],
         )
 
-    def _generate_jwt(self) -> GitHubToken:
+    async def get_token(self) -> GitHubToken:
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(minutes=self._JWT_EXPIRY_MINUTES)
         payload = {
@@ -51,9 +51,6 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
 
         token = jwt.encode(payload, decoded_private_key, algorithm="RS256")
         return GitHubToken(token=token, expires_at=str(int(expires_at.timestamp())))
-
-    async def get_token(self) -> GitHubToken:
-        return self._generate_jwt()
 
     async def get_headers(self) -> GitHubHeaders:
         token = await self.get_token()

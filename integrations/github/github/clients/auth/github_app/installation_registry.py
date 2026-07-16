@@ -32,7 +32,7 @@ async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator
     index: dict[str, GitHubAppInstallationAuthenticator] = {}
     async for page in app_auth.iter_app_installations():
         for installation in page:
-            login = (installation.get("account") or {}).get("login")
+            login = installation.get("account", {}).get("login")
             if not login:
                 raise AuthenticationException(
                     f"No login found for installation {installation}"

@@ -105,12 +105,8 @@ _providers: tuple[type[_GitHubAuthProvider], ...] = (
 )
 
 
-def _resolve_provider() -> type[_GitHubAuthProvider]:
+def get_auth_provider() -> type[_GitHubAuthProvider]:
     for provider in _providers:
         if provider.matches():
             return provider
     raise MissingCredentials("No valid GitHub credentials provided.")
-
-
-def get_auth_provider() -> type[_GitHubAuthProvider]:
-    return _resolve_provider()
