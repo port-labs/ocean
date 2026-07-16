@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.59 (2026-07-15)
+## 0.7.61 (2026-07-16)
 
 
 ### Features
@@ -20,6 +20,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [obra/superpowers](https://github.com/obra/superpowers)): `.claude-plugin/`,
   `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
   `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`
+
+
+## 0.7.60 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.7.59 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
 
 
 ## 0.7.58 (2026-07-15)
