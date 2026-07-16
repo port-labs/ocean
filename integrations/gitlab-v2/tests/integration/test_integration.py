@@ -136,9 +136,11 @@ def test_files_selector_accepts_project_search_discovery_strategy() -> None:
 
 def test_files_selector_rejects_unknown_discovery_strategy() -> None:
     with pytest.raises(ValidationError):
-        FilesSelector(
-            path="**/skills/**/*",
-            discoveryStrategy="tree",
+        FilesSelector.parse_obj(
+            {
+                "path": "**/skills/**/*",
+                "discoveryStrategy": "tree",
+            }
         )
 
 
