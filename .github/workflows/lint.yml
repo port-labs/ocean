@@ -31,7 +31,14 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         run: |
-          make install
+          if [ "${{ matrix.folder }}" = "." ]; then
+            make install
+          elif [ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
+               [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]; then
+            make install/local-core
+          else
+            make install
+          fi
 
       - name: Lint
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
