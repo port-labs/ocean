@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restructured GitHub App authentication internals behind installation-scoped backends and a central installation registry. No user-facing behavior change.
 
 
+## 6.2.22 (2026-07-17)
+
+
+### Features
+
+- Expanded team member ingestion to support GitHub Enterprise (`ent:*`) teams by falling back to the REST members API when GraphQL returns null, enabling Port to display members for EMU organisations.
+
+
 ## 6.2.21 (2026-07-16)
 
 

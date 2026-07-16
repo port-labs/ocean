@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 
@@ -63,3 +63,19 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched {len(members)} members for team {options['slug']} from {organization}"
             )
             yield members
+
+    async def enrich_enterprise_teams_with_members(
+        self,
+        teams: list[dict[str, Any]],
+        organization: str,
+    ) -> list[dict[str, Any]]:
+        for team in teams:
+            if not team["slug"].startswith("ent:"):
+                continue
+            all_members: list[dict[str, Any]] = []
+            async for batch in self.get_team_members_by_slug(
+                SingleTeamOptions(organization=organization, slug=team["slug"])
+            ):
+                all_members.extend(batch)
+            team["members"] = {"nodes": all_members}
+        return teams
