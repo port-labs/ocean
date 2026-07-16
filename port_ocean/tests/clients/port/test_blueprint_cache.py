@@ -3,31 +3,22 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from port_ocean.clients.port.mixins.blueprints import (
-    BlueprintCacheEntry,
-    BlueprintClientMixin,
-)
-from port_ocean.core.models import Blueprint, BlueprintRelation
+from port_ocean.clients.port.mixins.blueprints import BlueprintClientMixin
 
 
-def _make_blueprint(identifier: str = "test-bp") -> Blueprint:
-    return Blueprint(
-        identifier=identifier,
-        title="Test",
-        team=None,
-        schema={"properties": {"name": {"type": "string"}}, "required": ["name"]},
-        relations={
-            "owner": BlueprintRelation(
-                many=False, required=True, target="team", title="Owner"
-            )
-        },
-    )
-
-
-def _seed_cache(blueprint_client: BlueprintClientMixin, blueprint: Blueprint) -> None:
-    blueprint_client._blueprint_cache[blueprint.identifier] = BlueprintCacheEntry(
-        blueprint=blueprint
-    )
+def _blueprint_api_response(identifier: str) -> MagicMock:
+    response = MagicMock()
+    response.status_code = 200
+    response.is_error = False
+    response.json.return_value = {
+        "blueprint": {
+            "identifier": identifier,
+            "title": identifier,
+            "schema": {"properties": {}},
+            "relations": {},
+        }
+    }
+    return response
 
 
 @pytest.fixture
@@ -45,64 +36,55 @@ def blueprint_client() -> BlueprintClientMixin:
 async def test_blueprint_cache_returns_cached_entry_within_ttl(
     blueprint_client: BlueprintClientMixin,
 ) -> None:
-    _seed_cache(blueprint_client, _make_blueprint())
+    get_mock = AsyncMock(return_value=_blueprint_api_response("test-bp"))
+    blueprint_client.client.get = get_mock  # type: ignore[method-assign]
 
-    cached_blueprint = await blueprint_client.get_blueprint("test-bp", should_log=False)
+    first = await blueprint_client.get_blueprint("test-bp", should_log=False)
+    second = await blueprint_client.get_blueprint("test-bp", should_log=False)
 
-    assert cached_blueprint.identifier == "test-bp"
-    blueprint_client.client.get.assert_not_called()  # type: ignore[attr-defined]
+    assert first.identifier == "test-bp"
+    assert second.identifier == "test-bp"
+    assert get_mock.await_count == 1
 
 
 async def test_blueprint_cache_expires_after_ttl(
     blueprint_client: BlueprintClientMixin,
 ) -> None:
-    blueprint = _make_blueprint()
-    _seed_cache(blueprint_client, blueprint)
-    response = MagicMock()
-    response.status_code = 200
-    response.is_error = False
-    response.json.return_value = {
-        "blueprint": {
-            "identifier": blueprint.identifier,
-            "title": blueprint.title,
-            "schema": blueprint.properties_schema,
-            "relations": {},
-        }
-    }
-    blueprint_client.client.get = AsyncMock(return_value=response)  # type: ignore[method-assign]
+    get_mock = AsyncMock(return_value=_blueprint_api_response("test-bp"))
+    blueprint_client.client.get = get_mock  # type: ignore[method-assign]
+
+    await blueprint_client.get_blueprint("test-bp", should_log=False)
 
     with pytest.MonkeyPatch.context() as monkeypatch:
-        original_monotonic = time.monotonic
-        start = original_monotonic()
+        start = time.monotonic()
         monkeypatch.setattr(time, "monotonic", lambda: start + 61)
         await blueprint_client.get_blueprint("test-bp", should_log=False)
 
-    blueprint_client.client.get.assert_awaited_once()
+    assert get_mock.await_count == 2
 
 
-def test_blueprint_cache_invalidate_all_removes_all_entries(
+async def test_blueprint_cache_invalidate_all_removes_all_entries(
     blueprint_client: BlueprintClientMixin,
 ) -> None:
-    _seed_cache(blueprint_client, _make_blueprint("bp-a"))
-    _seed_cache(blueprint_client, _make_blueprint("bp-b"))
+    get_mock = AsyncMock(
+        side_effect=[
+            _blueprint_api_response("bp-a"),
+            _blueprint_api_response("bp-b"),
+        ]
+    )
+    blueprint_client.client.get = get_mock  # type: ignore[method-assign]
+
+    await blueprint_client.get_blueprint("bp-a", should_log=False)
+    await blueprint_client.get_blueprint("bp-b", should_log=False)
     blueprint_client.clear_blueprint_cache()
+
     assert blueprint_client._blueprint_cache == {}
 
 
 async def test_get_blueprint_uses_cache_on_second_call(
     blueprint_client: BlueprintClientMixin,
 ) -> None:
-    blueprint_payload = {
-        "identifier": "service",
-        "title": "Service",
-        "schema": {"properties": {}},
-        "relations": {},
-    }
-    response = MagicMock()
-    response.status_code = 200
-    response.is_error = False
-    response.json.return_value = {"blueprint": blueprint_payload}
-    get_mock = AsyncMock(return_value=response)
+    get_mock = AsyncMock(return_value=_blueprint_api_response("service"))
     blueprint_client.client.get = get_mock  # type: ignore[method-assign]
 
     first = await blueprint_client.get_blueprint("service", should_log=False)
