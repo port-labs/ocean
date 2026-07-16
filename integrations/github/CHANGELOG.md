@@ -12,7 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Refactored GitHub authentication behind installation-scoped backends, with multi-org installation discovery and per-installation rate limiting.
+- Restructured GitHub App authentication internals behind installation-scoped backends and a central installation registry. No user-facing behavior change.
+
+
+## 6.2.21 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
 
 
 ## 6.2.20 (2026-07-15)

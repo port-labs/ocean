@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.45.1 (2026-07-16)
+
+### Bug Fixes
+
+- Fixed missing DSP KIND lifecycle notifications in multi-process mode by passing the parent resync id into kind subprocesses
+
+
 ## 0.45.0 (2026-07-15)
 
 ### Improvements
