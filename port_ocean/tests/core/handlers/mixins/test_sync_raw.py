@@ -1708,6 +1708,20 @@ async def test_process_resource_passes_resync_id_to_subprocess(
     process.start = MagicMock()
     process.join_async = AsyncMock()
 
+    process_resource_ipc = MagicMock()
+    process_resource_ipc.load.return_value = ([], [])
+    topological_entities_ipc = MagicMock()
+    topological_entities_ipc.load.return_value = []
+
+    def file_ipc_factory(
+        _process_id: str, name: str, _default: Any = None
+    ) -> MagicMock:
+        if name == "process_resource":
+            return process_resource_ipc
+        if name == "topological_entities":
+            return topological_entities_ipc
+        raise AssertionError(f"Unexpected FileIPC channel: {name}")
+
     with (
         patch(
             "port_ocean.core.integrations.mixins.sync_raw.ProcessWrapper",
@@ -1715,18 +1729,15 @@ async def test_process_resource_passes_resync_id_to_subprocess(
         ) as process_cls,
         patch(
             "port_ocean.core.integrations.mixins.sync_raw.FileIPC",
-        ) as file_ipc_cls,
+            side_effect=file_ipc_factory,
+        ),
     ):
-        ipc_instance = MagicMock()
-        ipc_instance.load.return_value = ([], [])
-        file_ipc_cls.return_value = ipc_instance
-
         async with event_context(
             EventType.RESYNC,
             trigger_type="machine",
             attributes={"resync_start_time": datetime.now(timezone.utc)},
         ):
-            await mock_sync_raw_mixin.process_resource(
+            result = await mock_sync_raw_mixin.process_resource(
                 mock_resource_config,
                 index=0,
                 user_agent_type=UserAgentType.exporter,
@@ -1735,6 +1746,9 @@ async def test_process_resource_passes_resync_id_to_subprocess(
     process_cls.assert_called_once()
     assert process_cls.call_args.kwargs["args"][4] == "resync-from-parent"
     process.start.assert_called_once()
+    process_resource_ipc.load.assert_called_once()
+    topological_entities_ipc.load.assert_called_once()
+    assert result == ([], [])
 
 
 def test_process_resource_in_subprocess_sets_metrics_event_id(
