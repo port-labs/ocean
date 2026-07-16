@@ -49,9 +49,7 @@ class BlueprintClientMixin:
         )
         handle_port_status_code(response, should_log=should_log)
         blueprint = Blueprint.parse_obj(response.json()["blueprint"])
-        self._blueprint_cache[blueprint.identifier] = BlueprintCacheEntry(
-            blueprint=blueprint
-        )
+        self._blueprint_cache[identifier] = BlueprintCacheEntry(blueprint=blueprint)
         return blueprint
 
     def invalidate_all_cached_blueprints(self) -> None:
