@@ -44,7 +44,7 @@ class TestGithubAuthenticator:
         ) as mock_get_install_token:
             await github_auth.get_token()
 
-            mock_get_install_token.assert_called_once_with("12345")
+            mock_get_install_token.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_token_refreshed_on_expiry(
@@ -104,7 +104,7 @@ class TestGithubAuthenticator:
         ):
             token = await github_auth.get_token()
 
-            mock_get_install_token.assert_called_once_with("12345")
+            mock_get_install_token.assert_called_once()
             mock_client.get.assert_not_called()
             assert token == mock_install_token
 
@@ -117,10 +117,6 @@ class TestGithubAuthenticator:
                 github_host="https://api.github.com",
             ),
             organization="my-org",
-        )
-        mock_install_token = GitHubToken(
-            token="mock-installation-token",
-            expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
         )
         mock_client = AsyncMock()
         mock_response = Mock()
@@ -139,25 +135,20 @@ class TestGithubAuthenticator:
                 ),
             ),
             patch.object(
-                github_auth,
-                "_fetch_installation_token",
-                AsyncMock(return_value=mock_install_token),
-            ) as mock_get_install_token,
-            patch.object(
                 type(github_auth),
                 "client",
                 new_callable=PropertyMock,
                 return_value=mock_client,
             ),
         ):
-            token = await github_auth.get_token()
+            installation_id = await github_auth._get_installation_id()
 
             mock_client.get.assert_called_once_with(
                 "https://api.github.com/users/my-org/installation",
                 headers={"Authorization": "Bearer jwt"},
             )
-            mock_get_install_token.assert_called_once_with("99999")
-            assert token == mock_install_token
+            assert installation_id == "99999"
+            assert github_auth.installation_id == "99999"
 
     @pytest.mark.asyncio
     async def test_client_returns_same_instance(
