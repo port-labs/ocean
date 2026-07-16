@@ -811,12 +811,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource: ResourceConfig,
         index: int,
         user_agent_type: UserAgentType,
+        resync_id: str,
     ) -> None:
         logger.info(
             f"process started successfully for {resource.kind} with index {index}"
         )
 
         clear_http_client_context()
+        ocean.metrics.event_id = resync_id
 
         async def process_resource_task() -> None:
 
@@ -976,7 +978,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 }
                 process = ProcessWrapper(
                     target=self.process_resource_in_subprocess,
-                    args=(file_ipc_map, resource, index, user_agent_type),
+                    args=(
+                        file_ipc_map,
+                        resource,
+                        index,
+                        user_agent_type,
+                        ocean.metrics.event_id,
+                    ),
                 )
                 process.start()
                 await process.join_async()
