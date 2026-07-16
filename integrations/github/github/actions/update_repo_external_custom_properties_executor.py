@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
-from github.clients.rate_limiter.utils import is_rate_limit_response
+from github.clients.rate_limiter.utils import is_rest_rate_limit_response
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
@@ -76,8 +76,9 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
             except Exception as e:
                 error_message = str(e)
                 if isinstance(e, httpx.HTTPStatusError):
-                    if e.response.status_code == 403 and not is_rate_limit_response(
-                        e.response
+                    if (
+                        e.response.status_code == 403
+                        and not is_rest_rate_limit_response(e.response)
                     ):
                         raise ActionExecutionError(
                             "Missing external custom properties write permission on the organization. "
