@@ -85,7 +85,7 @@ def test_blueprint_cache_invalidate_all_removes_all_entries(
 ) -> None:
     _seed_cache(blueprint_client, _make_blueprint("bp-a"))
     _seed_cache(blueprint_client, _make_blueprint("bp-b"))
-    blueprint_client.invalidate_all_cached_blueprints()
+    blueprint_client.clear_blueprint_cache()
     assert blueprint_client._blueprint_cache == {}
 
 

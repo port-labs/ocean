@@ -50,7 +50,7 @@ class BlueprintClientMixin:
         self._blueprint_cache[identifier] = BlueprintCacheEntry(blueprint=blueprint)
         return blueprint
 
-    def invalidate_all_cached_blueprints(self) -> None:
+    def clear_blueprint_cache(self) -> None:
         self._blueprint_cache.clear()
 
     async def create_blueprint(

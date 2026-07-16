@@ -1013,10 +1013,8 @@ async def test_sync_raw_all_clears_blueprint_cache_on_start_and_finish(
     mock_port_app_config: PortAppConfig,
     mock_ocean: Ocean,
 ) -> None:
-    invalidate_mock = MagicMock(
-        wraps=mock_ocean.port_client.invalidate_all_cached_blueprints
-    )
-    mock_ocean.port_client.invalidate_all_cached_blueprints = invalidate_mock  # type: ignore[method-assign]
+    invalidate_mock = MagicMock(wraps=mock_ocean.port_client.clear_blueprint_cache)
+    mock_ocean.port_client.clear_blueprint_cache = invalidate_mock  # type: ignore[method-assign]
     mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
