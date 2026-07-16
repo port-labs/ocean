@@ -214,6 +214,18 @@ def enrich_file_to_skill(
     }
 
 
+def empty_plugin(*, name: str, display_name: str | None = None) -> dict[str, Any]:
+    """Shape of a plugin with no manifests left, used for webhook-driven deletes."""
+    return {
+        "name": name,
+        "displayName": display_name or name,
+        "description": "",
+        "version": None,
+        "supports": {provider: False for provider in DEFAULT_PLUGIN_PROVIDERS},
+        **{provider: {} for provider in DEFAULT_PLUGIN_PROVIDERS},
+    }
+
+
 def all_manifest_paths(providers: list[PluginProvider]) -> list[str]:
     paths: list[str] = []
     for provider in providers:

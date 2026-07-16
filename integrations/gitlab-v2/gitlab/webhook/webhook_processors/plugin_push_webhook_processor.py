@@ -9,6 +9,7 @@ from gitlab.helpers.skill_plugin import (
     PluginProvider,
     all_manifest_paths,
     detect_directory_providers,
+    empty_plugin,
     normalize_plugin,
     path_touches_plugin,
 )
@@ -123,30 +124,10 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             updated_raw_results=[],
             deleted_raw_results=[
                 {
-                    "plugin": {
-                        "name": project.get("path") or project.get("name"),
-                        "displayName": project.get("name"),
-                        "description": "",
-                        "version": None,
-                        "supports": {
-                            "claude": False,
-                            "cursor": False,
-                            "codex": False,
-                            "agents": False,
-                            "kimi": False,
-                            "opencode": False,
-                            "pi": False,
-                            "antigravity": False,
-                        },
-                        "claude": {},
-                        "cursor": {},
-                        "codex": {},
-                        "agents": {},
-                        "kimi": {},
-                        "opencode": {},
-                        "pi": {},
-                        "antigravity": {},
-                    },
+                    "plugin": empty_plugin(
+                        name=project.get("path") or project.get("name"),
+                        display_name=project.get("name"),
+                    ),
                     "repository": project,
                     "branch": branch,
                 }

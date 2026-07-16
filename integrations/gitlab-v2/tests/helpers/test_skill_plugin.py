@@ -2,6 +2,7 @@ from gitlab.helpers.skill_plugin import (
     DEFAULT_SKILL_ROOTS,
     build_skill_object,
     detect_directory_providers,
+    empty_plugin,
     enrich_file_to_skill,
     matches_skill_path,
     normalize_plugin,
@@ -138,3 +139,14 @@ def test_plugin_directory_helpers() -> None:
     assert ".claude-plugin/plugin.json" in paths
     assert ".opencode/plugins/*" in paths
     assert "gemini-extension.json" in paths
+
+
+def test_empty_plugin_shape() -> None:
+    plugin = empty_plugin(name="my-repo")
+    assert plugin["name"] == "my-repo"
+    assert plugin["displayName"] == "my-repo"
+    assert all(value is False for value in plugin["supports"].values())
+    assert all(plugin[provider] == {} for provider in plugin["supports"])
+
+    named = empty_plugin(name="my-repo", display_name="My Repo")
+    assert named["displayName"] == "My Repo"

@@ -601,11 +601,19 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         path for paths in PLUGIN_MANIFEST_PATHS.values() for path in paths
     }
 
-    # Collect manifests / directory hits per project
+    # A plugin can aggregate manifests discovered across several search paths
+    # (e.g. claude's plugin.json and marketplace.json), so we keep accumulating
+    # per project across search paths. We flush projects touched by each
+    # search path as soon as it finishes, instead of buffering the whole org
+    # in memory and only yielding after every search path has completed.
+    # Re-normalizing and re-yielding a project when it gains another manifest
+    # is safe: later batches simply upsert over earlier ones.
     by_project: dict[str, dict[str, Any]] = {}
 
     for search_path in plugin_search_paths(providers):
         is_directory_search = search_path.endswith("/*")
+        touched_project_keys: set[str] = set()
+
         async for files_batch in client.search_files(
             "blobs",
             search_path,
@@ -635,6 +643,7 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     },
                 )
                 entry["paths"].add(path)
+                touched_project_keys.add(project_key)
 
                 if path not in known_manifests:
                     continue
@@ -649,31 +658,32 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     except Exception:
                         logger.warning(f"Invalid plugin manifest JSON at {path}")
 
-    batch: list[dict[str, Any]] = []
-    for entry in by_project.values():
-        directory_supports = detect_directory_providers(entry["paths"], providers)
-        plugin = normalize_plugin(
-            repository=entry["repository"],
-            manifests=entry["manifests"],
-            providers=providers,
-            directory_supports=directory_supports,
-        )
-        if not plugin:
-            continue
-        batch.append(
-            {
-                "plugin": plugin,
-                "repository": entry["repository"],
-                "branch": entry.get("branch")
-                or entry["repository"].get("default_branch")
-                or "main",
-            }
-        )
-        if len(batch) >= 25:
+        batch: list[dict[str, Any]] = []
+        for project_key in touched_project_keys:
+            entry = by_project[project_key]
+            directory_supports = detect_directory_providers(entry["paths"], providers)
+            plugin = normalize_plugin(
+                repository=entry["repository"],
+                manifests=entry["manifests"],
+                providers=providers,
+                directory_supports=directory_supports,
+            )
+            if not plugin:
+                continue
+            batch.append(
+                {
+                    "plugin": plugin,
+                    "repository": entry["repository"],
+                    "branch": entry.get("branch")
+                    or entry["repository"].get("default_branch")
+                    or "main",
+                }
+            )
+            if len(batch) >= 25:
+                yield batch
+                batch = []
+        if batch:
             yield batch
-            batch = []
-    if batch:
-        yield batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
