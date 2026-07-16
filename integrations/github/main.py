@@ -18,8 +18,10 @@ from github.core.exporters.team_exporter import (
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.registry import register_live_events_webhooks
 from github.core.exporters.file_exporter.utils import FilePatternMappingBuilder
-from github.clients.auth import get_auth_provider
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import (
+    GitHubAuthenticatorFactory,
+    create_github_client,
+)
 from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.utils import (
@@ -117,10 +119,16 @@ MAX_CONCURRENT_REPOS = 10
 
 
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
+    github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
     skip_patching = ocean.integration_config["skip_webhook_patching"]
-    authenticator = await get_auth_provider().get_authenticator_for_organization(
-        org_name
+    authenticator = GitHubAuthenticatorFactory.create(
+        github_host=github_host,
+        organization=org_name,
+        token=ocean.integration_config.get("github_token"),
+        app_id=ocean.integration_config.get("github_app_id"),
+        installation_id=ocean.integration_config.get("github_app_installation_id"),
+        private_key=ocean.integration_config.get("github_app_private_key"),
     )
 
     client = await GithubWebhookClientFactory.create(
