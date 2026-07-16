@@ -859,14 +859,12 @@ class TestRateLimiterSemaphorePermitLeak:
             await client.rate_limiter.__aenter__()
 
         acquired_permits = [
-            await asyncio.wait_for(
-                client.rate_limiter._semaphore.acquire(), timeout=0.1
-            )
+            await asyncio.wait_for(client.rate_limiter.semaphore.acquire(), timeout=0.1)
             for _ in range(client_config.max_concurrent)
         ]
         assert len(acquired_permits) == client_config.max_concurrent
         for _ in acquired_permits:
-            client.rate_limiter._semaphore.release()
+            client.rate_limiter.semaphore.release()
 
     @pytest.mark.asyncio
     async def test_ten_consecutive_cancelled_sleeps_leave_every_permit_acquirable_afterward(
@@ -888,12 +886,12 @@ class TestRateLimiterSemaphorePermitLeak:
                 await limiter.__aenter__()
 
         acquired_permits = [
-            await asyncio.wait_for(limiter._semaphore.acquire(), timeout=0.1)
+            await asyncio.wait_for(limiter.semaphore.acquire(), timeout=0.1)
             for _ in range(max_concurrent_slots)
         ]
         assert len(acquired_permits) == max_concurrent_slots
         for _ in acquired_permits:
-            limiter._semaphore.release()
+            limiter.semaphore.release()
 
 
 class TestExtractGraphQLRateLimitInfo:
@@ -1026,14 +1024,12 @@ class TestExtractGraphQLRateLimitInfo:
             await client.rate_limiter.__aenter__()
 
         acquired_permits = [
-            await asyncio.wait_for(
-                client.rate_limiter._semaphore.acquire(), timeout=0.1
-            )
+            await asyncio.wait_for(client.rate_limiter.semaphore.acquire(), timeout=0.1)
             for _ in range(client_config.max_concurrent)
         ]
         assert len(acquired_permits) == client_config.max_concurrent
         for _ in acquired_permits:
-            client.rate_limiter._semaphore.release()
+            client.rate_limiter.semaphore.release()
 
     @pytest.mark.asyncio
     async def test_uncancelled_aenter_and_aexit_still_round_trips_permit_as_before(
@@ -1044,7 +1040,7 @@ class TestExtractGraphQLRateLimitInfo:
         async with client.rate_limiter:
             remaining_after_one_held_permit = [
                 await asyncio.wait_for(
-                    client.rate_limiter._semaphore.acquire(), timeout=0.1
+                    client.rate_limiter.semaphore.acquire(), timeout=0.1
                 )
                 for _ in range(client_config.max_concurrent - 1)
             ]
@@ -1053,20 +1049,18 @@ class TestExtractGraphQLRateLimitInfo:
             )
             with pytest.raises(asyncio.TimeoutError):
                 await asyncio.wait_for(
-                    client.rate_limiter._semaphore.acquire(), timeout=0.05
+                    client.rate_limiter.semaphore.acquire(), timeout=0.05
                 )
             for _ in remaining_after_one_held_permit:
-                client.rate_limiter._semaphore.release()
+                client.rate_limiter.semaphore.release()
 
         acquired_permits = [
-            await asyncio.wait_for(
-                client.rate_limiter._semaphore.acquire(), timeout=0.1
-            )
+            await asyncio.wait_for(client.rate_limiter.semaphore.acquire(), timeout=0.1)
             for _ in range(client_config.max_concurrent)
         ]
         assert len(acquired_permits) == client_config.max_concurrent
         for _ in acquired_permits:
-            client.rate_limiter._semaphore.release()
+            client.rate_limiter.semaphore.release()
 
 
 class TestIsRateLimitResponseDispatch:

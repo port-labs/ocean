@@ -25,7 +25,7 @@ from port_ocean.integration_testing import InterceptTransport
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
-from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.graphql_client import GithubGraphQLClient, GraphQLFallback
 from github.clients.http.rest_client import GithubRestClient
 
 HOST = "https://api.github.com"
@@ -151,6 +151,80 @@ class TestGraphQLTransportReduction:
 
         # 25 -> 20 -> 15 -> 10 -> 5 -> 1, then the floor stops further retries.
         assert sent_first == [25, 20, 15, 10, 5, 1]
+
+
+async def _drain_prs(
+    client: GithubGraphQLClient, fallback_queries: list[str]
+) -> list[list[dict[str, Any]]]:
+    return [
+        page
+        async for page in client.send_paginated_request(
+            "PRIMARY",
+            params={"__path": "organization.repositories"},
+            fallbacks=[GraphQLFallback(q) for q in fallback_queries],
+        )
+    ]
+
+
+class TestGraphQLFieldReduction:
+    """Once the page size bottoms out on a gateway 5xx, escalate to a lighter query.
+
+    The transport shrinks the page to the floor and re-raises; the client then
+    retries the page with each fallback query at the floor. The 502 is keyed off
+    query content so the escalation is deterministic.
+    """
+
+    @pytest.mark.asyncio
+    async def test_gateway_timeout_at_floor_strips_to_fallback(
+        self, wire_transport: Callable[[InterceptTransport], None]
+    ) -> None:
+        sent: list[tuple[str, int]] = []
+
+        def respond(request: httpx.Request) -> dict[str, Any]:
+            body = json.loads(request.content)
+            query = body["query"]
+            sent.append((query, body["variables"]["first"]))
+            if query == "PRIMARY":
+                return {"status_code": 502, "json": {"message": "boom"}}
+            return _graphql_success([{"id": 1}])
+
+        intercept = InterceptTransport(strict=False)
+        intercept.add_route("POST", lambda r: "/graphql" in str(r.url), respond)
+        wire_transport(intercept)
+
+        client = GithubGraphQLClient(
+            organization=ORG, github_host=HOST, authenticator=_authenticator()
+        )
+        pages = await _drain_prs(client, fallback_queries=["FALLBACK"])
+
+        assert pages == [[{"id": 1}]]
+        # Primary walks the page size to the floor, then the lighter query runs there.
+        assert [first for q, first in sent if q == "PRIMARY"] == [25, 20, 15, 10, 5, 1]
+        assert ("FALLBACK", 1) in sent
+
+    @pytest.mark.asyncio
+    async def test_all_fallbacks_time_out_then_raises(
+        self, wire_transport: Callable[[InterceptTransport], None]
+    ) -> None:
+        seen_queries: list[str] = []
+
+        def respond(request: httpx.Request) -> dict[str, Any]:
+            seen_queries.append(json.loads(request.content)["query"])
+            return {"status_code": 502, "json": {"message": "boom"}}
+
+        intercept = InterceptTransport(strict=False)
+        intercept.add_route("POST", lambda r: "/graphql" in str(r.url), respond)
+        wire_transport(intercept)
+
+        client = GithubGraphQLClient(
+            organization=ORG, github_host=HOST, authenticator=_authenticator()
+        )
+        with pytest.raises(httpx.HTTPStatusError):
+            await _drain_prs(client, fallback_queries=["FALLBACK"])
+
+        # Both the primary and the fallback were attempted before giving up.
+        assert "PRIMARY" in seen_queries
+        assert "FALLBACK" in seen_queries
 
 
 class TestRestTransportReduction:
