@@ -232,6 +232,7 @@ async def test_search_entities_uses_datasource_route_when_query_is_none(
     sent_json = call_args[1]["json"]
     assert sent_json["datasource_prefix"] == "port-ocean/test-integration/"
     assert sent_json["datasource_suffix"] == "/test-identifier/sync"
+    assert sent_json["limit"] == 5000
 
 
 async def test_search_entities_passes_before_to_datasource_route(
@@ -322,6 +323,7 @@ async def test_search_entities_uses_datasource_route_when_query_is_none_two_page
     first_sent_json = first_call_args[1]["json"]
     assert first_sent_json["datasource_prefix"] == "port-ocean/test-integration/"
     assert first_sent_json["datasource_suffix"] == "/test-identifier/sync"
+    assert first_sent_json["limit"] == 5000
 
     # Check second call
     second_call_args = entity_client.client.post.call_args_list[1]
@@ -332,6 +334,7 @@ async def test_search_entities_uses_datasource_route_when_query_is_none_two_page
     second_sent_json = second_call_args[1]["json"]
     assert second_sent_json["datasource_prefix"] == "port-ocean/test-integration/"
     assert second_sent_json["datasource_suffix"] == "/test-identifier/sync"
+    assert second_sent_json["limit"] == 5000
 
 
 async def test_upsert_entities_in_batches_with_dictionary_identifier(
