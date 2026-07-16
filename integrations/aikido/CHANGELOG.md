@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2026-07-14)
+
+
+### Improvements
+
+- Added `IssueSelector` to the issues kind configuration, exposing three server-side filter fields: `filterStatus`, `filterSeverities`, and `filterIssueType`. Users can set these in their Port integration config to sync only the issues they care about.
+- Increased `ISSUES_PAGE_SIZE` from 100 to 1000, reducing the number of API requests and sync time.
+
+
+## 0.2.21 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.2.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.2.19 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.2.18 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.2.17 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
 ## 0.2.16 (2026-07-13)
 
 

@@ -268,6 +268,7 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
+    is_redis_stream_consumer_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):
