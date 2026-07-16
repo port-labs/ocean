@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored GitHub authentication behind installation-scoped backends, with multi-org installation discovery and per-installation rate limiting.
 
 
+## 6.2.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
 ## 6.2.19 (2026-07-15)
 
 

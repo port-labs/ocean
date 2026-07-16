@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.45.0 (2026-07-15)
+
+### Improvements
+
+- Updated entity reconciliation to use bulk delete API
+
+
 ## 0.44.14 (2026-07-15)
 
 ### Improvements
