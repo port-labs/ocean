@@ -31,10 +31,9 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         run: |
-          if [ "${{ matrix.folder }}" = "." ]; then
-            make install
-          elif [ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
-               [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]; then
+          if [ "${{ matrix.folder }}" != "." ] && \
+             ([ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
+              [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]); then
             make install/local-core
           else
             make install
