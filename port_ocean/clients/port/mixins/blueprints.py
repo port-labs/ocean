@@ -33,13 +33,11 @@ class BlueprintClientMixin:
         self._blueprint_cache: dict[str, BlueprintCacheEntry] = {}
 
     async def get_blueprint(
-        self, identifier: str, should_log: bool = True, *, use_cache: bool = True
+        self, identifier: str, should_log: bool = True
     ) -> Blueprint:
         if (
-            use_cache
-            and (entry := self._blueprint_cache.get(identifier)) is not None
-            and time.monotonic() - entry.cached_at < self._blueprint_cache_ttl_seconds
-        ):
+            entry := self._blueprint_cache.get(identifier)
+        ) is not None and time.monotonic() - entry.cached_at < self._blueprint_cache_ttl_seconds:
             return entry.blueprint
 
         logger.info(f"Fetching blueprint with id: {identifier}")
