@@ -63,6 +63,7 @@ jobs:
               - '.github/workflows/core-test.yml'
               - '.github/workflows/integration-tests.yml'
               - '.github/workflows/integrations-unit-test.yml'
+              - '.github/workflows/lint.yml'
               - '.github/workflows/detect-changes-matrix.yml'
               - '.github/workflows/actions/build-docker-image/**'
               - 'scripts/run-smoke-test.sh'
