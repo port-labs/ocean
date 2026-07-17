@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `discoveryStrategy` to GitLab file selectors, allowing project-level file search to be selected explicitly for broad repository scans.
+- Added `searchStrategy` to GitLab file selectors, allowing project-level file search to be selected explicitly for broad repository scans.
 
 
 ## 0.7.62 (2026-07-16)

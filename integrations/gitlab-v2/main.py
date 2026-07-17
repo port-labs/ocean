@@ -451,7 +451,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     search_path = selector.files.path
     scope = "blobs"
     skip_parsing = selector.files.skip_parsing
-    discovery_strategy = selector.files.discovery_strategy
+    search_strategy = selector.files.search_strategy
 
     repositories = (
         selector.files.repos
@@ -477,16 +477,16 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 file_entity["__includedFiles"] = files_cache[repo_key]
         return enriched_batch
 
-    use_project_search = discovery_strategy == "projectSearch" and not repositories
+    should_use_project_search = search_strategy == "projectSearch" and not repositories
 
-    if use_project_search:
+    if should_use_project_search:
         logger.info(
             f"Using project-level file search for path pattern '{search_path}' "
-            "based on selector discoveryStrategy."
+            "based on selector searchStrategy."
         )
         logger.info(
-            "Project-level file search scans every accessible project because "
-            "no file repositories were explicitly configured."
+            "Project-level file search scans accessible projects according to "
+            "the file selector filters because no file repositories were explicitly configured."
         )
         params = build_project_params(
             include_only_active_projects=include_only_active_groups
@@ -515,7 +515,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             found_any_files = True
             yield enriched_batch
 
-    if not use_project_search and not found_any_files and not repositories:
+    if not should_use_project_search and not found_any_files and not repositories:
         logger.info(
             "Group-level file search returned no results. "
             "Falling back to project-level file search."

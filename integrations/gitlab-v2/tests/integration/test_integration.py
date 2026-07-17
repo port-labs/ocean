@@ -119,27 +119,27 @@ def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() 
     assert not missing_kinds, f"Missing resource kinds in schema: {missing_kinds}"
 
 
-def test_files_selector_defaults_to_group_search_discovery_strategy() -> None:
+def test_files_selector_defaults_to_group_search_strategy() -> None:
     selector = FilesSelector(path="**/skills/**/*")
 
-    assert selector.discovery_strategy == "groupSearch"
+    assert selector.search_strategy == "groupSearch"
 
 
-def test_files_selector_accepts_project_search_discovery_strategy() -> None:
+def test_files_selector_accepts_project_search_strategy() -> None:
     selector = FilesSelector(
         path="**/skills/**/*",
-        discoveryStrategy="projectSearch",
+        searchStrategy="projectSearch",
     )
 
-    assert selector.discovery_strategy == "projectSearch"
+    assert selector.search_strategy == "projectSearch"
 
 
-def test_files_selector_rejects_unknown_discovery_strategy() -> None:
+def test_files_selector_rejects_unknown_search_strategy() -> None:
     with pytest.raises(ValidationError):
         FilesSelector.parse_obj(
             {
                 "path": "**/skills/**/*",
-                "discoveryStrategy": "tree",
+                "searchStrategy": "tree",
             }
         )
 
