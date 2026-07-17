@@ -32,7 +32,12 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ format('integrations/{0}', matrix.folder) }}
         run: |
-          make install
+          if [ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
+             [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]; then
+            make install/local-core
+          else
+            make install
+          fi
 
       - name: Test
         working-directory: ${{ format('integrations/{0}', matrix.folder) }}
