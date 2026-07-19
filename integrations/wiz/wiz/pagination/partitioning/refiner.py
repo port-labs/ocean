@@ -33,9 +33,7 @@ class PartitionRefiner:
 
         async for ready_partition in stream_independent_async_iterators(
             *[
-                self._refine_partition_streaming(
-                    resource, base_variables, partition
-                )
+                self._refine_partition_streaming(resource, base_variables, partition)
                 for partition in partitions
             ],
             context="partition refinement",
@@ -77,9 +75,7 @@ class PartitionRefiner:
 
         async for ready_partition in stream_independent_async_iterators(
             *[
-                self._refine_partition_streaming(
-                    resource, base_variables, child
-                )
+                self._refine_partition_streaming(resource, base_variables, child)
                 for child in children
             ],
             context=f"refine {partition.label}",

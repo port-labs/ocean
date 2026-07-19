@@ -6,6 +6,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 from pydantic.v1 import BaseModel, Field
 from typing import Literal, Optional
 
+from wiz.constants import VULNERABILITY_FINDING_SEVERITIES
+
 
 class IssueSelector(Selector):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
@@ -152,9 +154,7 @@ class VulnerabilityFindingSelector(Selector):
         description="List of statuses to filter vulnerability findings by",
         default=["OPEN", "IN_PROGRESS"],
     )
-    severity_list: Optional[
-        list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]
-    ] = Field(
+    severity_list: Optional[list[VULNERABILITY_FINDING_SEVERITIES]] = Field(
         alias="severityList",
         title="Severities",
         description="List of severities to filter vulnerability findings by. If empty, all severities are fetched.",

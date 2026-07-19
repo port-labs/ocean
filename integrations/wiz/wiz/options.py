@@ -34,9 +34,7 @@ class VulnerabilityFindingOptions(BaseModel):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] | None = (
         None
     )
-    severity_list: list[VULNERABILITY_FINDING_SEVERITIES] | None = (
-        None
-    )
+    severity_list: list[VULNERABILITY_FINDING_SEVERITIES] | None = None
     parallelism: ParallelismConfig | None = None
 
 

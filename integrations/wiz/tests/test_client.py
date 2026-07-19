@@ -6,6 +6,7 @@ from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from wiz.client import WizClient
+from wiz.constants import VULNERABILITY_FINDING_SEVERITIES
 from wiz.options import (
     SbomArtifactOptions,
     VulnerabilityFindingOptions,
@@ -287,7 +288,7 @@ async def test_get_vulnerability_findings_with_filters(
     """Test that get_vulnerability_findings calls _get_paginated_resources with user overridden params."""
     options = VulnerabilityFindingOptions(
         status_list=["OPEN"],
-        severity_list=["CRITICAL"],
+        severity_list=[VULNERABILITY_FINDING_SEVERITIES.CRITICAL],
         max_pages=2,
     )
 

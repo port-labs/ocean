@@ -8,12 +8,14 @@ COGNITO_URLS = [
     "https://auth.gov.wiz.io/oauth/token",
 ]
 
+
 class VULNERABILITY_FINDING_SEVERITIES(StrEnum):
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
     LOW = "LOW"
     NONE = "NONE"
+
 
 ISSUES_GQL = """
 query IssuesTable(
