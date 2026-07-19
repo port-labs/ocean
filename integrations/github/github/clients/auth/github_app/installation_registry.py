@@ -14,14 +14,17 @@ _discovery_lock = asyncio.Lock()
 
 def reset_authenticators_by_org() -> None:
     global _authenticators_by_org
-    _authenticators_by_org = {}
+    _authenticators_by_org.clear()
+    _discovery_lock = asyncio.Lock()
 
 
 def _authenticator(
-    organization: str, installation_id: str
+    app_auth: GitHubAppAuthenticator,
+    organization: str,
+    installation_id: str,
 ) -> GitHubAppInstallationAuthenticator:
     return GitHubAppInstallationAuthenticator(
-        app_auth=GitHubAppAuthenticator.from_config(),
+        app_auth=app_auth,
         organization=organization,
         installation_id=installation_id,
     )
@@ -33,12 +36,16 @@ async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator
     async for page in app_auth.iter_app_installations():
         for installation in page:
             login = installation.get("account", {}).get("login")
-            if not login:
-                raise AuthenticationException(
-                    f"No login found for installation {installation}"
+            is_suspended = installation.get("suspended_at", None) is not None
+            if not login or is_suspended:
+                logger.warning(
+                    f"Installation {installation} skipped: organization login missing or installation suspended."
                 )
+                continue
             index[login] = _authenticator(
-                organization=login, installation_id=str(installation["id"])
+                app_auth=app_auth,
+                organization=login,
+                installation_id=str(installation["id"]),
             )
     return index
 

@@ -6,7 +6,6 @@ from github.clients.auth.abstract_authenticator import (
     GitHubHeaders,
     GitHubToken,
 )
-from github.helpers.exceptions import AuthenticationException
 
 
 class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
@@ -37,30 +36,13 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
             X_GitHub_Api_Version="2022-11-28",
         )
 
-    async def _fetch_installation_token(self) -> GitHubToken:
-        try:
-            installation_id = await self._get_installation_id()
-            url = f"{self.app_auth.github_host}/app/installations/{installation_id}/access_tokens"
-            headers = await self.app_auth.get_headers()
-            response = await self.client.post(url, headers=headers.as_dict())
-            response.raise_for_status()
-            data = response.json()
-            return GitHubToken(token=data["token"], expires_at=data["expires_at"])
-        except Exception as e:
-            raise AuthenticationException(
-                f"Failed to fetch installation token: {e}"
-            ) from e
-
     async def _get_installation_id(self) -> str:
         if self.installation_id:
             return self.installation_id
 
-        url = f"{self.app_auth.github_host}/users/{self.organization}/installation"
-        headers = await self.app_auth.get_headers()
-        response = await self.client.get(url, headers=headers.as_dict())
-        response.raise_for_status()
-
-        self.installation_id = str(response.json()["id"])
+        self.installation_id = await self.app_auth.get_installation_id_for_organization(
+            self.organization
+        )
         return self.installation_id
 
     async def get_token(self) -> GitHubToken:
@@ -71,5 +53,8 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
             ):
                 return self.cached_installation_token
 
-            self.cached_installation_token = await self._fetch_installation_token()
+            installation_id = await self._get_installation_id()
+            self.cached_installation_token = (
+                await self.app_auth.fetch_installation_access_token(installation_id)
+            )
             return self.cached_installation_token
