@@ -31,12 +31,11 @@ async def _collect_ready_partitions(
     resource: str,
     base_variables: dict[str, Any],
     partitions: list[PaginationPartition],
-    config: ParallelismConfig,
 ) -> list[PaginationPartition]:
     return [
         partition
         async for partition in refiner.iter_ready_partitions(
-            resource, base_variables, partitions, config
+            resource, base_variables, partitions
         )
     ]
 
@@ -263,7 +262,6 @@ async def test_refine_partitions_skips_empty_partitions() -> None:
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         partitions,
-        config,
     )
 
     assert refined == []
@@ -288,7 +286,6 @@ async def test_refine_partitions_keeps_partitions_within_limit() -> None:
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
-        config,
     )
 
     assert refined == [partition]
@@ -315,7 +312,6 @@ async def test_refine_partitions_splits_large_date_partition() -> None:
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
-        config,
     )
 
     assert len(refined) == 2
@@ -344,7 +340,6 @@ async def test_refine_partitions_splits_severity_partition_with_date_subwindows(
         "vulnerabilityFindings",
         {"first": 100, "filterBy": {}},
         [partition],
-        config,
     )
 
     assert len(refined) == 2

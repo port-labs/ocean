@@ -1,7 +1,5 @@
 from enum import StrEnum
 
-from wiz.pagination.vulnerability_findings import VULNERABILITY_FINDING_SEVERITIES
-
 PAGE_SIZE = 100
 UPSERT_BATCH_MAX_SIZE = 100
 AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
