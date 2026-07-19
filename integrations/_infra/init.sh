@@ -5,7 +5,7 @@
 
 set -e
 
-# Ensure HOME points to writable emptyDir location
+# Ensure HOME points to writable emptyDir location asdasd
 export HOME="${HOME:-/tmp/ocean}"
 
 # Create required directories in writable location
