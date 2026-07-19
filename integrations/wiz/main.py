@@ -18,6 +18,7 @@ from wiz.options import (
     VulnerabilityFindingOptions,
     ParallelismConfig,
 )
+from wiz.constants import UPSERT_BATCH_MAX_SIZE
 from initialize_client import init_client
 from integration import ObjectKindWithSpecialHandling, ObjectKind
 from wiz.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
@@ -115,13 +116,12 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         )
 
     upsert_batch: list[dict[str, Any]] = []
-    upsert_batch_size = 100
 
     async for vulnerability_findings in wiz_client.get_vulnerability_findings(options):
         upsert_batch.extend(vulnerability_findings)
-        while len(upsert_batch) >= upsert_batch_size:
-            yield upsert_batch[:upsert_batch_size]
-            upsert_batch = upsert_batch[upsert_batch_size:]
+        while len(upsert_batch) >= UPSERT_BATCH_MAX_SIZE:
+            yield upsert_batch[:UPSERT_BATCH_MAX_SIZE]
+            upsert_batch = upsert_batch[UPSERT_BATCH_MAX_SIZE:]
 
     if upsert_batch:
         yield upsert_batch
