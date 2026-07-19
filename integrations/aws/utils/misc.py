@@ -39,7 +39,7 @@ class ResourceGroupsClientProtocol(Protocol):
 
 class CloudControlThrottlingConfig(enum.Enum):
     MAX_RETRY_ATTEMPTS = 100
-    RETRY_MODE = "adaptive" # Can also be "legacy" or "standard"
+    RETRY_MODE = "adaptive"  # Can also be "legacy" or "standard"
 
 
 OPT_IN_REGIONS = frozenset(
