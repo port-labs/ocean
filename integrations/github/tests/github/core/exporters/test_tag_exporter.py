@@ -8,7 +8,6 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleTagOptions, ListTagOptions
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_TAGS = [
     {
         "ref": "refs/tags/v1.0",
