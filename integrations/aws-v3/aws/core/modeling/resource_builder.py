@@ -13,7 +13,6 @@ class ResourceBuilder[ResourceModelT: ResourceModel[Any]]:
 
     Type Parameters:
         ResourceModelT: A subclass of `ResourceModel` with properties of type `TProperties`.
-        TProperties: A Pydantic `BaseModel` representing the resource's properties.
 
     Example:
         >>> builder = ResourceBuilder(MyResourceModel)
