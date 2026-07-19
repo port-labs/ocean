@@ -1,0 +1,31 @@
+{
+  "Type": "AWS::ECR::Repository",
+  "Properties": {
+    "RepositoryName": "my-app/backend",
+    "RepositoryArn": "arn:aws:ecr:us-east-1:123456789012:repository/my-app/backend",
+    "RegistryId": "123456789012",
+    "RepositoryUri": "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app/backend",
+    "CreatedAt": "2024-01-10T12:00:00.000Z",
+    "ImageTagMutability": "IMMUTABLE",
+    "ImageScanningConfiguration": {
+      "ScanOnPush": true
+    },
+    "EncryptionConfiguration": {
+      "EncryptionType": "AES256"
+    },
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "backend"
+      }
+    ]
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

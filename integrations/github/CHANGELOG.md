@@ -7,6 +7,212 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.24 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 6.2.23 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 6.2.22 (2026-07-17)
+
+
+### Features
+
+- Expanded team member ingestion to support GitHub Enterprise (`ent:*`) teams by falling back to the REST members API when GraphQL returns null, enabling Port to display members for EMU organisations.
+
+
+## 6.2.21 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 6.2.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 6.2.19 (2026-07-15)
+
+
+### Improvements
+
+- Recover from GraphQL queries that return HTTP 200 with unknown errors by shrinking the page size and retrying until the page succeeds
+
+
+## 6.2.18 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 6.2.17 (2026-07-15)
+
+
+### Improvements
+
+- Properly handle GraphQL rate-limit responses with bounded retry logic (max 5 attempts) and sleep-until-reset backoff
+- Detect both primary rate limits (HTTP 200 with exhausted x-ratelimit-* headers) and secondary rate limits (retry-after header)
+
+
+## 6.2.16 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 6.2.15 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 6.2.14 (2026-07-13)
+
+
+### Improvements
+
+- Implement property-reduction optimization for expensive GraphQL paginated requests
+
+
+## 6.2.13 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 6.2.12 (2026-07-12)
+
+
+### Improvements
+
+- Renamed the `update_repo_external_properties` action to `update_repo_external_custom_properties` and updated it to use GitHub's `/properties/installations/values` API endpoint.
+
+
+### Bug Fixes
+
+- Handle non-JSON GitHub API error responses when updating external custom properties.
+
+
+## 6.2.11 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 6.2.10 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 6.2.9 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 6.2.8 (2026-07-12)
+
+
+### Improvements
+
+- Added `legacyDispatchWorkflowTracking` configuration for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch. When enabled, the dispatch_workflow action polls GitHub for workflow runs and serializes dispatches per organization/repository/workflow.
+
+
+## 6.2.7 (2026-07-10)
+
+
+### Bug Fixes
+
+- Reverted the file-kind live event deletion changes introduced in 6.2.3 that fetched old file content for `items_to_parse` deletions.
+
+
+## 6.2.6 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 6.2.5 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 6.2.4 (2026-07-07)
+
+
+### Improvements
+
+- Use GitHub workflow run ID returned on dispatch to track workflow runs, enabling concurrent dispatch workflow action executions.
+
+
+## 6.2.3 (2026-07-02)
+
+
+### Bug Fixes
+
+- Fixed file-kind live events not deleting entities when a file is deleted or renamed, or an item is removed from a file that uses `items_to_parse`. When `items_to_parse` is configured, old content is fetched from the before commit (concurrently with new content) so the delete path carries real content. When `items_to_parse` is not configured, deletions for removed and renamed files are emitted from metadata only, avoiding extra Contents API calls.
+
+
+## 6.2.2 (2026-07-02)
+
+
+### Improvements
+
+- Improve log message in the GraphQL error handler
+
+
+## 6.2.1 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 6.2.0 (2026-07-01)
+
+
+### Features
+
+- Added `update_repo_external_properties` action that pushes Port blueprint property values to GitHub repository external properties.
+
+
 ## 6.1.3 (2026-06-30)
 
 

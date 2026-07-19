@@ -7,6 +7,143 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.2 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.3.1 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.3.0 (2026-07-14)
+
+
+### Improvements
+
+- Added `IssueSelector` to the issues kind configuration, exposing three server-side filter fields: `filterStatus`, `filterSeverities`, and `filterIssueType`. Users can set these in their Port integration config to sync only the issues they care about.
+- Increased `ISSUES_PAGE_SIZE` from 100 to 1000, reducing the number of API requests and sync time.
+
+
+## 0.2.21 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.2.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.2.19 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.2.18 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.2.17 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.2.16 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.2.15 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.2.14 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.2.13 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.2.12 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.2.11 (2026-07-08)
+
+
+### Bug Fixes
+
+- Fixed premature pagination termination on the open-issue-groups endpoint by honoring the `x-has-next-page` response header when present, preventing missing data for pages that are not full yet still have a subsequent page.
+
+
+## 0.2.10 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.2.9 (2026-07-03)
+
+
+### Bug Fixes
+
+- Fixed persistent timeouts and fetch errors on `issues/export` and paginated resources being masked as an empty successful fetch, which caused reconciliation to falsely delete existing entities. These errors now fail the affected kind so reconciliation is skipped.
+
+
+## 0.2.8 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
 ## 0.2.7 (2026-06-30)
 
 

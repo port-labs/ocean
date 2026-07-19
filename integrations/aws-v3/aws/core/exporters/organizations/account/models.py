@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 from pydantic import ConfigDict, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
@@ -10,14 +10,14 @@ class AccountProperties(BaseAWSPropertiesModel):
 
     Id: str = Field(default_factory=str)
     Arn: str = Field(default_factory=str)
-    Name: Optional[str] = None
+    Name: str | None = None
     Email: str = Field(default_factory=str)
-    Parents: List[Dict[str, Any]] = Field(default_factory=list)
-    Tags: List[Dict[str, Any]] = Field(default_factory=list)
-    Status: Optional[str] = None
-    State: Optional[str] = None
-    JoinedTimestamp: Optional[datetime] = None
-    JoinedMethod: Optional[str] = None
+    Parents: list[dict[str, Any]] = Field(default_factory=list)
+    Tags: list[dict[str, Any]] = Field(default_factory=list)
+    Status: str | None = None
+    State: str | None = None
+    JoinedTimestamp: datetime | None = None
+    JoinedMethod: str | None = None
 
 
 class Account(ResourceModel[AccountProperties]):

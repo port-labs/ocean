@@ -1,35 +1,33 @@
-from typing import Optional, Dict, Any, List
+from typing import Any
 from pydantic import Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
 
 class ClusterProperties(BaseAWSPropertiesModel):
     clusterName: str = Field(default_factory=str, alias="ClusterName")
-    capacityProviders: List[str] = Field(
+    capacityProviders: list[str] = Field(
         default_factory=list, alias="CapacityProviders"
     )
-    settings: List[Dict[str, Any]] = Field(
+    settings: list[dict[str, Any]] = Field(
         default_factory=list, alias="ClusterSettings"
     )
-    configuration: Optional[Dict[str, Any]] = Field(default=None, alias="Configuration")
-    defaultCapacityProviderStrategy: List[Dict[str, Any]] = Field(
+    configuration: dict[str, Any] | None = Field(default=None, alias="Configuration")
+    defaultCapacityProviderStrategy: list[dict[str, Any]] = Field(
         default_factory=list, alias="DefaultCapacityProviderStrategy"
     )
-    serviceConnectDefaults: Optional[Dict[str, Any]] = Field(
+    serviceConnectDefaults: dict[str, Any] | None = Field(
         default=None, alias="ServiceConnectDefaults"
     )
-    tags: List[Dict[str, Any]] = Field(default_factory=list, alias="Tags")
+    tags: list[dict[str, Any]] = Field(default_factory=list, alias="Tags")
 
-    attachments: List[Dict[str, Any]] = Field(default_factory=list, alias="Attachments")
-    attachmentsStatus: Optional[str] = Field(default=None, alias="AttachmentsStatus")
-    statistics: List[Dict[str, Any]] = Field(default_factory=list, alias="Statistics")
-    status: Optional[str] = Field(default=None, alias="Status")
-    runningTasksCount: Optional[int] = Field(default=None, alias="RunningTasksCount")
-    activeServicesCount: Optional[int] = Field(
-        default=None, alias="ActiveServicesCount"
-    )
-    pendingTasksCount: Optional[int] = Field(default=None, alias="PendingTasksCount")
-    registeredContainerInstancesCount: Optional[int] = Field(
+    attachments: list[dict[str, Any]] = Field(default_factory=list, alias="Attachments")
+    attachmentsStatus: str | None = Field(default=None, alias="AttachmentsStatus")
+    statistics: list[dict[str, Any]] = Field(default_factory=list, alias="Statistics")
+    status: str | None = Field(default=None, alias="Status")
+    runningTasksCount: int | None = Field(default=None, alias="RunningTasksCount")
+    activeServicesCount: int | None = Field(default=None, alias="ActiveServicesCount")
+    pendingTasksCount: int | None = Field(default=None, alias="PendingTasksCount")
+    registeredContainerInstancesCount: int | None = Field(
         default=None, alias="RegisteredContainerInstancesCount"
     )
     clusterArn: str = Field(default_factory=str, alias="ClusterArn")

@@ -68,7 +68,10 @@ class AbstractGitHubAuthenticator(ABC):
         return (await self.get_headers()).as_dict()
 
     def _make_client(
-        self, extra_retryable_methods: frozenset[str] = frozenset()
+        self,
+        *,
+        extra_retryable_methods: frozenset[str] = frozenset(),
+        extra_retryable_status: frozenset[int] = frozenset(),
     ) -> httpx.AsyncClient:
         default_methods = frozenset(
             ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
@@ -79,7 +82,8 @@ class AbstractGitHubAuthenticator(ABC):
                 "X-RateLimit-Reset",
             ],
             retryable_methods=default_methods | extra_retryable_methods,
-            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            additional_retry_status_codes={HTTPStatus.INTERNAL_SERVER_ERROR, 499}
+            | extra_retryable_status,
             ignore_retry_after_status_codes=[
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 HTTPStatus.BAD_GATEWAY,

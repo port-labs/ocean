@@ -1,53 +1,51 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any
 from pydantic import Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
 
 class ProjectProperties(BaseAWSPropertiesModel):
     arn: str = Field(default_factory=str, alias="Arn")
-    artifacts: Optional[dict[str, Any]] = Field(default=None, alias="Artifacts")
-    autoRetryLimit: Optional[int] = Field(default=None, alias="AutoRetryLimit")
-    badge: Optional[Dict[str, Any]] = Field(default=None, alias="Badge")
-    buildBatchConfig: Optional[Dict[str, Any]] = Field(
+    artifacts: dict[str, Any] | None = Field(default=None, alias="Artifacts")
+    autoRetryLimit: int | None = Field(default=None, alias="AutoRetryLimit")
+    badge: dict[str, Any] | None = Field(default=None, alias="Badge")
+    buildBatchConfig: dict[str, Any] | None = Field(
         default=None, alias="BuildBatchConfig"
     )
-    cache: Optional[Dict[str, Any]] = Field(default=None, alias="Cache")
-    concurrentBuildLimit: Optional[int] = Field(
-        default=None, alias="ConcurrentBuildLimit"
-    )
-    created: Optional[datetime] = Field(default=None, alias="Created")
-    description: Optional[str] = Field(default=None, alias="Description")
-    encryptionKey: Optional[str] = Field(default=None, alias="EncryptionKey")
-    environment: Optional[dict[str, Any]] = Field(default=None, alias="Environment")
-    fileSystemLocations: Optional[List[Dict[str, Any]]] = Field(
+    cache: dict[str, Any] | None = Field(default=None, alias="Cache")
+    concurrentBuildLimit: int | None = Field(default=None, alias="ConcurrentBuildLimit")
+    created: datetime | None = Field(default=None, alias="Created")
+    description: str | None = Field(default=None, alias="Description")
+    encryptionKey: str | None = Field(default=None, alias="EncryptionKey")
+    environment: dict[str, Any] | None = Field(default=None, alias="Environment")
+    fileSystemLocations: list[dict[str, Any]] = Field(
         default_factory=list, alias="FileSystemLocations"
     )
-    lastModified: Optional[datetime] = Field(default=None, alias="LastModified")
-    logsConfig: Optional[Dict[str, Any]] = Field(default=None, alias="LogsConfig")
+    lastModified: datetime | None = Field(default=None, alias="LastModified")
+    logsConfig: dict[str, Any] | None = Field(default=None, alias="LogsConfig")
     name: str = Field(default_factory=str, alias="Name")
-    projectVisibility: Optional[str] = Field(default=None, alias="ProjectVisibility")
-    publicProjectAlias: Optional[str] = Field(default=None, alias="PublicProjectAlias")
-    queuedTimeoutInMinutes: Optional[int] = Field(
+    projectVisibility: str | None = Field(default=None, alias="ProjectVisibility")
+    publicProjectAlias: str | None = Field(default=None, alias="PublicProjectAlias")
+    queuedTimeoutInMinutes: int | None = Field(
         default=None, alias="QueuedTimeoutInMinutes"
     )
-    resourceAccessRole: Optional[str] = Field(default=None, alias="ResourceAccessRole")
-    secondaryArtifacts: Optional[List[dict[str, Any]]] = Field(
+    resourceAccessRole: str | None = Field(default=None, alias="ResourceAccessRole")
+    secondaryArtifacts: list[dict[str, Any]] = Field(
         default_factory=list, alias="SecondaryArtifacts"
     )
-    secondarySources: Optional[List[dict[str, Any]]] = Field(
+    secondarySources: list[dict[str, Any]] = Field(
         default_factory=list, alias="SecondarySources"
     )
-    secondarySourceVersions: Optional[List[Dict[str, Any]]] = Field(
+    secondarySourceVersions: list[dict[str, Any]] = Field(
         default_factory=list, alias="SecondarySourceVersions"
     )
-    serviceRole: Optional[str] = Field(default=None, alias="ServiceRole")
-    source: Optional[dict[str, Any]] = Field(default=None, alias="Source")
-    sourceVersion: Optional[str] = Field(default=None, alias="SourceVersion")
-    tags: Optional[List[Dict[str, str]]] = Field(default_factory=list, alias="Tags")
-    timeoutInMinutes: Optional[int] = Field(default=None, alias="TimeoutInMinutes")
-    vpcConfig: Optional[dict[str, Any]] = Field(default=None, alias="VpcConfig")
-    webhook: Optional[Dict[str, Any]] = Field(default=None, alias="Webhook")
+    serviceRole: str | None = Field(default=None, alias="ServiceRole")
+    source: dict[str, Any] | None = Field(default=None, alias="Source")
+    sourceVersion: str | None = Field(default=None, alias="SourceVersion")
+    tags: list[dict[str, str]] = Field(default_factory=list, alias="Tags")
+    timeoutInMinutes: int | None = Field(default=None, alias="TimeoutInMinutes")
+    vpcConfig: dict[str, Any] | None = Field(default=None, alias="VpcConfig")
+    webhook: dict[str, Any] | None = Field(default=None, alias="Webhook")
 
 
 class CodeBuildProject(ResourceModel[ProjectProperties]):

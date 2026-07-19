@@ -71,6 +71,7 @@ class Ocean:
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
             feature_flags_cache_ttl_seconds=self.config.port.feature_flags_cache_ttl_seconds,
+            blueprint_cache_ttl_seconds=self.config.port.blueprint_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
         self.process_execution_mode: ProcessExecutionMode = (
@@ -100,6 +101,7 @@ class Ocean:
             poll_check_interval_seconds=self.config.actions_processor.poll_check_interval_seconds,
             visibility_timeout_ms=self.config.actions_processor.visibility_timeout_ms,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+            max_runs_buffer_util_pct_per_action=self.config.actions_processor.max_runs_buffer_util_pct_per_action,
         )
 
         self.integration = (

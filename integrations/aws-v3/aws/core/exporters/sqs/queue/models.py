@@ -1,4 +1,3 @@
-from typing import Optional, Dict
 from pydantic import Field, ConfigDict
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
@@ -8,28 +7,28 @@ class QueueProperties(BaseAWSPropertiesModel):
 
     QueueName: str = Field(default_factory=str)
     QueueUrl: str = Field(default_factory=str)
-    QueueArn: Optional[str] = None
-    ApproximateNumberOfMessages: Optional[int] = None
-    ApproximateNumberOfMessagesNotVisible: Optional[int] = None
-    ApproximateNumberOfMessagesDelayed: Optional[int] = None
-    CreatedTimestamp: Optional[str] = None
-    LastModifiedTimestamp: Optional[str] = None
-    VisibilityTimeout: Optional[int] = None
-    MaximumMessageSize: Optional[int] = None
-    MessageRetentionPeriod: Optional[int] = None
-    DelaySeconds: Optional[int] = None
-    ReceiveMessageWaitTimeSeconds: Optional[int] = None
-    Policy: Optional[str] = None
-    RedrivePolicy: Optional[str] = None
-    RedriveAllowPolicy: Optional[str] = None
-    KmsMasterKeyId: Optional[str] = None
-    KmsDataKeyReusePeriodSeconds: Optional[int] = None
-    SqsManagedSseEnabled: Optional[bool] = None
-    FifoQueue: Optional[bool] = None
-    ContentBasedDeduplication: Optional[bool] = None
-    DeduplicationScope: Optional[str] = None
-    FifoThroughputLimit: Optional[str] = None
-    Tags: Dict[str, str] = Field(default_factory=dict)
+    QueueArn: str | None = None
+    ApproximateNumberOfMessages: int | None = None
+    ApproximateNumberOfMessagesNotVisible: int | None = None
+    ApproximateNumberOfMessagesDelayed: int | None = None
+    CreatedTimestamp: str | None = None
+    LastModifiedTimestamp: str | None = None
+    VisibilityTimeout: int | None = None
+    MaximumMessageSize: int | None = None
+    MessageRetentionPeriod: int | None = None
+    DelaySeconds: int | None = None
+    ReceiveMessageWaitTimeSeconds: int | None = None
+    Policy: str | None = None
+    RedrivePolicy: str | None = None
+    RedriveAllowPolicy: str | None = None
+    KmsMasterKeyId: str | None = None
+    KmsDataKeyReusePeriodSeconds: int | None = None
+    SqsManagedSseEnabled: bool | None = None
+    FifoQueue: bool | None = None
+    ContentBasedDeduplication: bool | None = None
+    DeduplicationScope: str | None = None
+    FifoThroughputLimit: str | None = None
+    Tags: dict[str, str] = Field(default_factory=dict)
 
 
 class Queue(ResourceModel[QueueProperties]):

@@ -7,6 +7,129 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.23 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.10.22 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.10.21 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.10.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.10.19 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.10.18 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.10.17 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.10.16 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.10.15 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.10.14 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.10.13 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.10.12 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.10.11 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.10.10 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.10.9 (2026-07-01)
+
+
+### Improvements
+
+- Fixed unbounded concurrent file downloads in `IncludedFilesEnricher`. File downloads triggered by `includedFiles` config previously fired all at once via `asyncio.gather` with no concurrency cap, causing 429 bursts on orgs with large repo counts.
+- Fixed work item sync to process projects concurrently using `BoundedSemaphore` fan-out, eliminating the serial per-project loop.
+- Fixed unbounded concurrent area path fetches in `enrich_teams_with_area_paths`. Area path calls previously fired all at once per batch, causing repeated 5-minute rate limit holds on orgs with large team counts.
+- Fixed `httpx.ReadError` during response body reads not triggering the rate-limit cooldown. ADO occasionally closes the TCP connection mid-response instead of returning a proper 429; the integration now signals a 300-second throttle on `ReadError`, preventing it from silently aborting the sync.
+
+
 ## 0.10.8 (2026-06-30)
 
 

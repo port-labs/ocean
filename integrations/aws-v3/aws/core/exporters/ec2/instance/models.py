@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Any
 from datetime import datetime
 
 from pydantic import ConfigDict, Field
@@ -9,59 +9,59 @@ class EC2InstanceProperties(BaseAWSPropertiesModel):
     """Properties for an EC2 instance resource."""
     model_config = ConfigDict(extra="allow")
 
-    AmiLaunchIndex: Optional[int] = None
-    Architecture: Optional[str] = None
-    AvailabilityZone: Optional[str] = None
-    BlockDeviceMappings: Optional[List[Dict[str, Any]]] = None
-    BootMode: Optional[str] = None
-    CapacityReservationSpecification: Optional[Dict[str, Any]] = None
-    ClientToken: Optional[str] = None
-    CpuOptions: Optional[Dict[str, Any]] = None
-    CurrentInstanceBootMode: Optional[str] = None
-    EbsOptimized: Optional[bool] = None
-    EnclaveOptions: Optional[Dict[str, Any]] = None
-    EnaSupport: Optional[bool] = None
-    Events: Optional[List[Dict[str, Any]]] = None
-    HibernationOptions: Optional[Dict[str, Any]] = None
-    Hypervisor: Optional[str] = None
-    ImageId: Optional[str] = None
-    InstanceArn: Optional[str] = None
+    AmiLaunchIndex: int | None = None
+    Architecture: str | None = None
+    AvailabilityZone: str | None = None
+    BlockDeviceMappings: list[dict[str, Any]] | None = None
+    BootMode: str | None = None
+    CapacityReservationSpecification: dict[str, Any] | None = None
+    ClientToken: str | None = None
+    CpuOptions: dict[str, Any] | None = None
+    CurrentInstanceBootMode: str | None = None
+    EbsOptimized: bool | None = None
+    EnclaveOptions: dict[str, Any] | None = None
+    EnaSupport: bool | None = None
+    Events: list[dict[str, Any]] | None = None
+    HibernationOptions: dict[str, Any] | None = None
+    Hypervisor: str | None = None
+    ImageId: str | None = None
+    InstanceArn: str | None = None
     InstanceId: str = Field(default_factory=str)
-    InstanceStatus: Optional[Dict[str, Any]] = None
-    InstanceState: Optional[Dict[str, Any]] = None
-    InstanceType: Optional[str] = None
-    KeyName: Optional[str] = None
-    LaunchTime: Optional[datetime] = None
-    MaintenanceOptions: Optional[Dict[str, Any]] = None
-    MetadataOptions: Optional[Dict[str, Any]] = None
-    Monitoring: Optional[Dict[str, Any]] = None
-    NetworkInterfaces: Optional[List[Dict[str, Any]]] = None
-    NetworkPerformanceOptions: Optional[Dict[str, Any]] = None
-    Operator: Optional[Dict[str, Any]] = None
-    Placement: Optional[Dict[str, Any]] = None
-    Platform: Optional[str] = None
-    PlatformDetails: Optional[str] = None
-    PrivateDnsName: Optional[str] = None
-    PrivateDnsNameOptions: Optional[Dict[str, Any]] = None
-    PrivateIpAddress: Optional[str] = None
-    ProductCodes: Optional[List[Dict[str, Any]]] = None
-    PublicDnsName: Optional[str] = None
-    PublicIpAddress: Optional[str] = None
-    Reason: Optional[str] = None
-    RootDeviceName: Optional[str] = None
-    RootDeviceType: Optional[str] = None
-    SecurityGroups: Optional[List[Dict[str, Any]]] = None
-    SourceDestCheck: Optional[bool] = None
-    State: Optional[Dict[str, Any]] = None
-    StateReason: Optional[Dict[str, Any]] = None
-    StateTransitionReason: Optional[str] = None
-    SubnetId: Optional[str] = None
-    SystemStatus: Optional[Dict[str, Any]] = None
-    Tags: Optional[List[Dict[str, Any]]] = None
-    UsageOperation: Optional[str] = None
-    UsageOperationUpdateTime: Optional[datetime] = None
-    VirtualizationType: Optional[str] = None
-    VpcId: Optional[str] = None
+    InstanceStatus: dict[str, Any] | None = None
+    InstanceState: dict[str, Any] | None = None
+    InstanceType: str | None = None
+    KeyName: str | None = None
+    LaunchTime: datetime | None = None
+    MaintenanceOptions: dict[str, Any] | None = None
+    MetadataOptions: dict[str, Any] | None = None
+    Monitoring: dict[str, Any] | None = None
+    NetworkInterfaces: list[dict[str, Any]] | None = None
+    NetworkPerformanceOptions: dict[str, Any] | None = None
+    Operator: dict[str, Any] | None = None
+    Placement: dict[str, Any] | None = None
+    Platform: str | None = None
+    PlatformDetails: str | None = None
+    PrivateDnsName: str | None = None
+    PrivateDnsNameOptions: dict[str, Any] | None = None
+    PrivateIpAddress: str | None = None
+    ProductCodes: list[dict[str, Any]] | None = None
+    PublicDnsName: str | None = None
+    PublicIpAddress: str | None = None
+    Reason: str | None = None
+    RootDeviceName: str | None = None
+    RootDeviceType: str | None = None
+    SecurityGroups: list[dict[str, Any]] | None = None
+    SourceDestCheck: bool | None = None
+    State: dict[str, Any] | None = None
+    StateReason: dict[str, Any] | None = None
+    StateTransitionReason: str | None = None
+    SubnetId: str | None = None
+    SystemStatus: dict[str, Any] | None = None
+    Tags: list[dict[str, Any]] | None = None
+    UsageOperation: str | None = None
+    UsageOperationUpdateTime: datetime | None = None
+    VirtualizationType: str | None = None
+    VpcId: str | None = None
 
 
 class EC2Instance(ResourceModel[EC2InstanceProperties]):

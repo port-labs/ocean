@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Any
 from datetime import datetime
 from pydantic import Field, ConfigDict
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
@@ -8,20 +8,20 @@ class EbsVolumeProperties(BaseAWSPropertiesModel):
     model_config = ConfigDict(extra="allow")
 
     VolumeId: str = Field(default_factory=str)
-    VolumeType: Optional[str] = None
-    Size: Optional[int] = None
-    Iops: Optional[int] = None
-    Throughput: Optional[int] = None
-    AvailabilityZone: Optional[str] = None
-    State: Optional[str] = None
-    CreateTime: Optional[datetime] = None
-    Tags: Optional[List[Dict[str, Any]]] = None
-    Encrypted: Optional[bool] = None
-    SnapshotId: Optional[str] = None
-    Attachments: Optional[List[Dict[str, Any]]] = None
-    MultiAttachEnabled: Optional[bool] = None
-    KmsKeyId: Optional[str] = None
-    AutoEnableIO: Optional[bool] = None
+    VolumeType: str | None = None
+    Size: int | None = None
+    Iops: int | None = None
+    Throughput: int | None = None
+    AvailabilityZone: str | None = None
+    State: str | None = None
+    CreateTime: datetime | None = None
+    Tags: list[dict[str, Any]] | None = None
+    Encrypted: bool | None = None
+    SnapshotId: str | None = None
+    Attachments: list[dict[str, Any]] | None = None
+    MultiAttachEnabled: bool | None = None
+    KmsKeyId: str | None = None
+    AutoEnableIO: bool | None = None
 
 
 class EbsVolume(ResourceModel[EbsVolumeProperties]):

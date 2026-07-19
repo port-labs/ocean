@@ -246,6 +246,61 @@ async def test_validate_credentials_drops_clients_with_invalid_keys() -> None:
 
 
 @pytest.mark.asyncio
+async def test_validate_credentials_uses_supplied_identity_without_fetching() -> None:
+    config = {
+        "datadog_base_url": BASE_URL,
+        "datadog_credential_map": json.dumps(
+            [
+                {
+                    "datadogApiKey": "api-1",
+                    "datadogApplicationKey": "app-1",
+                    "datadogOrgPublicId": "uuid-supplied",
+                    "datadogOrgName": "Supplied Org",
+                }
+            ]
+        ),
+    }
+    manager = DatadogClientManager(config)
+    (client,) = manager.clients
+    client.send_api_request = AsyncMock()  # type: ignore[method-assign]
+
+    await manager.validate_credentials()
+
+    client.send_api_request.assert_not_called()
+    assert (client.org_id, client.org_name) == ("uuid-supplied", "Supplied Org")
+    assert manager.get_client_by_org_id("uuid-supplied") == client
+
+
+@pytest.mark.asyncio
+async def test_validate_credentials_fetches_only_when_identity_missing() -> None:
+    config = {
+        "datadog_base_url": BASE_URL,
+        "datadog_credential_map": json.dumps(
+            [
+                {
+                    "datadogApiKey": "api-supplied",
+                    "datadogApplicationKey": "app-supplied",
+                    "datadogOrgPublicId": "uuid-supplied",
+                    "datadogOrgName": "Supplied Org",
+                },
+                {"datadogApiKey": "api-fetch", "datadogApplicationKey": "app-fetch"},
+            ]
+        ),
+    }
+    manager = DatadogClientManager(config)
+    supplied, needs_fetch = manager.clients
+    supplied.send_api_request = AsyncMock()  # type: ignore[method-assign]
+    _stub_org(needs_fetch, "uuid-fetched", "Fetched Org")
+
+    await manager.validate_credentials()
+
+    supplied.send_api_request.assert_not_called()
+    needs_fetch.send_api_request.assert_awaited()  # type: ignore[attr-defined]
+    assert manager.get_client_by_org_id("uuid-supplied") == supplied
+    assert manager.get_client_by_org_id("uuid-fetched") == needs_fetch
+
+
+@pytest.mark.asyncio
 async def test_validate_credentials_is_noop_for_single_org() -> None:
     config = {
         "datadog_base_url": BASE_URL,
