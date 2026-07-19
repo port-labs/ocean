@@ -11,20 +11,19 @@ the wrong AWS resource).
 from typing import Any, Dict, List, Type
 
 import pytest
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from aws.core.interfaces.action import Action
 from aws.core.modeling.resource_inspector import ResourceInspector
-from aws.core.modeling.resource_models import ResourceModel
+from aws.core.modeling.resource_models import ResourceModel, BaseAWSPropertiesModel
 
 _FakeActionInput = List[str]
 patch_prefix = "aws.core.modeling.resource_inspector"
 
 
-class _FakeProperties(BaseModel):
-    class Config:
-        extra = "allow"
+class _FakeProperties(BaseAWSPropertiesModel):
+    pass
 
 
 class _FakeResource(ResourceModel[_FakeProperties]):

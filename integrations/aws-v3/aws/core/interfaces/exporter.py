@@ -4,7 +4,7 @@ from aiobotocore.session import AioSession
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.action import ActionMap, ActionInputType
 from aws.core.modeling.resource_builder import ResourceBuilder
-from aws.core.modeling.resource_models import ResourceModel
+from aws.core.modeling.resource_models import ResourceModel, BaseAWSPropertiesModel
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class IResourceExporter[ActionInput: ActionInputType](ABC):
 
     _service_name: SupportedServices
-    _model: Type[ResourceBuilder[ResourceModel[BaseModel], Any]]
+    _model: Type[ResourceBuilder[ResourceModel[BaseAWSPropertiesModel]]]
     _actions_map: Type[ActionMap[ActionInput]]
     _supported_regions: frozenset[str] | None = None
 
