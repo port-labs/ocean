@@ -33,7 +33,7 @@ jobs:
           mask-password: 'true'
 
       - name: Build Docker Image
-        uses: ./.github/workflows/actions/build-docker-image
+        uses: ./.github/actions/build-docker-image
         with:
           dockerfile: ./integrations/_infra/Dockerfile.base.builder
           platforms: linux/amd64,linux/arm64
@@ -45,7 +45,7 @@ jobs:
           skip-push: ${{ github.event_name == 'pull_request' }}
 
       - name: Build Docker Image
-        uses: ./.github/workflows/actions/build-docker-image
+        uses: ./.github/actions/build-docker-image
         with:
           dockerfile: ./integrations/_infra/Dockerfile.base.runner
           platforms: linux/amd64,linux/arm64

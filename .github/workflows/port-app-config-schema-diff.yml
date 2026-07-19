@@ -1,0 +1,37 @@
+name: Check Port App Config Schema Breakage
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+
+  check-schema-diff:
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: ${{ needs.detect-changes.outputs.integrations != '[]' }}
+    strategy:
+      max-parallel: 5
+      matrix:
+        integration_folder: ${{ fromJson(needs.detect-changes.outputs.integrations) }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Check Schema Diff
+        uses: ./.github/actions/check-schema-diff
+        with:
+          integration_folder: ${{ format('integrations/{0}', matrix.integration_folder) }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION }}

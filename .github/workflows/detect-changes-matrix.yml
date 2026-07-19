@@ -65,7 +65,7 @@ jobs:
               - '.github/workflows/integrations-unit-test.yml'
               - '.github/workflows/lint.yml'
               - '.github/workflows/detect-changes-matrix.yml'
-              - '.github/workflows/actions/build-docker-image/**'
+              - '.github/actions/**'
               - 'scripts/run-smoke-test.sh'
               - 'scripts/smoke-test-base.sh'
             integrations:
@@ -102,6 +102,8 @@ jobs:
           echo "Infra changes : ${HAS_INFRA}"
           echo "Integration changes : ${INTEGRATIONS}"
           echo "All changes : ${MATRIX}"
+          CHANGED=$([ "$MATRIX" = "[]" ] && echo "false" || echo "true")
+          echo "changed=${CHANGED}" >> $GITHUB_OUTPUT
           echo "core=${HAS_CORE}" >> $GITHUB_OUTPUT
           echo "core_ci_files_changed=${HAS_CORE_CI_FILES}" >> $GITHUB_OUTPUT
           echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
