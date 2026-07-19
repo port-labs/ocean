@@ -4,7 +4,7 @@ from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
+# SSSS
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.s3 import S3BucketExporter
