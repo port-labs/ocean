@@ -14,6 +14,7 @@ from github.core.options import (
 from integration import GithubWorkflowRunSelector
 from port_ocean.context.event import event_context
 
+
 TEST_DATA: dict[str, Any] = {
     "total_count": 1,
     "workflow_runs": [

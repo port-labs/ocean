@@ -7,6 +7,7 @@ from datetime import datetime
 import httpx
 from loguru import logger
 
+
 MAX_CONCURRENT_REQUESTS = 10
 MINIMUM_LIMIT_REMAINING = 1
 RATE_LIMIT_STATUS_CODE = 429

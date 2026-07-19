@@ -21,6 +21,7 @@ from jira.client import (
 from jira.overrides import JiraIssueSelector
 from jira.overrides import ComponentSource
 
+
 MOCK_BOARD_API_RESPONSE = {
     "id": 1,
     "name": "PORT board",

@@ -5,6 +5,7 @@ from typing import Any, Protocol
 from azure.core.credentials_async import AsyncTokenCredential
 from azure.identity.aio import DefaultAzureCredential
 
+
 AZURE_DEVOPS_API_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"
 ACCOUNT_MODE_SINGLE = "Single Account"
 ACCOUNT_MODE_MULTIPLE = "Multiple Accounts"

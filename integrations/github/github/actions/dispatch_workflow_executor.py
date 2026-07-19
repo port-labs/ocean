@@ -31,6 +31,7 @@ from github.actions.abstract_github_executor import (
 )
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
+
 MAX_WORKFLOW_POLL_ATTEMPTS = 30
 WORKFLOW_POLL_DELAY_SECONDS = 2
 

@@ -4,6 +4,7 @@ from typing import Any, AsyncIterator, List
 
 from checkmarx_one.core.options import ListSastOptions
 
+
 # Mock port_ocean imports before importing the module under test
 with patch.dict(
     "sys.modules",

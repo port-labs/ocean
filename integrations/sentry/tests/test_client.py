@@ -9,6 +9,7 @@ import pytest
 from clients.exceptions import IgnoredError, ResourceNotFoundError
 from clients.sentry import SentryClient, flatten_list
 
+
 pytestmark = pytest.mark.asyncio
 
 

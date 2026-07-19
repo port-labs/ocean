@@ -9,6 +9,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic.v1.fields import Field
 
+
 _WINDOW_FIELD: str = Field(
     default="today",
     title="Window",

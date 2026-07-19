@@ -3,6 +3,7 @@ from itertools import batched
 
 from typing import TYPE_CHECKING, Any
 
+
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
 

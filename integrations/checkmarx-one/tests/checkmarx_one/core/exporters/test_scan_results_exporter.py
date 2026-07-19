@@ -160,7 +160,7 @@ def test_get_params_with_all_options(exporter: CheckmarxScanResultExporter) -> N
 
 
 async def _async_gen(
-    batches: List[List[Dict[str, Any]]],
+    batches: List[List[Dict[str, Any]]]
 ) -> AsyncIterator[List[Dict[str, Any]]]:
     """Helper to convert list of lists into async generator."""
     for batch in batches:

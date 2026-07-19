@@ -1,6 +1,7 @@
 from gitlab.clients.client_factory import create_gitlab_client
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 
+
 MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE = 20
 
 

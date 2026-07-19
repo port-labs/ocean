@@ -18,9 +18,9 @@ def build_workflow_run_params(options: ListWorkflowRunOptions) -> dict[str, Any]
 
 
 class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionsT: SingleWorkflowRunOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SingleWorkflowRunOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         repo_name = options["repo_name"]
         run_id = options["run_id"]
@@ -40,9 +40,9 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, repo_name), organization
         )
 
-    async def get_paginated_resources[ExporterOptionsT: ListWorkflowRunOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListWorkflowRunOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
         organization = options["organization"]
         repo_name = options["repo_name"]

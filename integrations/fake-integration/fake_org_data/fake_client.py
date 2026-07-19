@@ -7,6 +7,7 @@ from port_ocean.context.ocean import ocean
 from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
 
+
 API_URL = "http://localhost:8000/integration"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
 

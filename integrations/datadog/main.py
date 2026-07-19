@@ -48,6 +48,7 @@ from datadog.overrides import (
     ServiceDependencyResourceConfig,
 )
 
+
 MAX_CONCURRENT_CLIENTS = 100
 
 

@@ -18,14 +18,15 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
 
+
 BATCH_CONCURRENCY_LIMIT = 10
 
 
 class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[ExporterOptionsT: SingleDeploymentOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SingleDeploymentOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         deployment_id = params["id"]
 
@@ -42,9 +43,9 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         )
         return self._enrich_deployment(response, cast(str, repo_name), organization)
 
-    async def get_paginated_resources[ExporterOptionsT: ListDeploymentsOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListDeploymentsOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_name, organization, params = parse_github_options(dict(options))
         repo = cast(str, repo_name)
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))

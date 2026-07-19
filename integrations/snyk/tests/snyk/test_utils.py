@@ -1,5 +1,6 @@
 from snyk.utils import parse_next_page_params
 
+
 BASE = "https://api.snyk.io/rest"
 
 

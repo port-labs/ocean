@@ -7,6 +7,7 @@ import confluent_kafka  # type: ignore
 from confluent_kafka.admin import AdminClient, ConfigResource  # type: ignore
 from loguru import logger
 
+
 DEFAULT_BATCH_SIZE = 50
 
 

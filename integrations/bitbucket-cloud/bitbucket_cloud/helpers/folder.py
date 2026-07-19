@@ -5,6 +5,7 @@ from loguru import logger
 from wcmatch import glob
 from integration import FolderPattern
 
+
 if TYPE_CHECKING:
     from bitbucket_cloud.client import BitbucketClient
 

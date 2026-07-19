@@ -15,18 +15,18 @@ class EventEnumMeta(EnumMeta):
     Nothing fancy here, just a custom metaclass util that allows adding multiple enum classes at the class level to combine their unique values.
     """
 
-    def __add__[T: HasValues](
-        cls: Type[T], other: Any
-    ) -> Set[str] | NotImplementedType:
+    def __add__[
+        T: HasValues
+    ](cls: Type[T], other: Any) -> Set[str] | NotImplementedType:
         if isinstance(other, type) and issubclass(other, HasValues):
             return set(cls.values()) | set(other.values())
         elif isinstance(other, set):
             return set(cls.values()) | other
         return NotImplemented
 
-    def __radd__[T: HasValues](
-        cls: Type[T], other: Any
-    ) -> Type[T] | Set[str] | NotImplementedType:
+    def __radd__[
+        T: HasValues
+    ](cls: Type[T], other: Any) -> Type[T] | Set[str] | NotImplementedType:
         # Handle case where the class is on the right side of the addition
         if isinstance(other, set):
             return other | set(cls.values())

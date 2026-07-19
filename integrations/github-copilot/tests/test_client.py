@@ -635,7 +635,7 @@ async def test_all_records_are_present_across_batches_without_data_loss(
         yield [mock_organization]
 
     async def mock_get_users_usage_metrics(
-        org: dict[str, Any],
+        org: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield records
 
@@ -666,7 +666,7 @@ async def test_every_record_in_every_batch_is_enriched_with_organization(
         yield [mock_organization]
 
     async def mock_get_users_usage_metrics(
-        org: dict[str, Any],
+        org: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield records
 
@@ -694,7 +694,7 @@ async def test_small_report_below_chunk_size_yields_single_batch(
         yield [mock_organization]
 
     async def mock_get_users_usage_metrics(
-        org: dict[str, Any],
+        org: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield records
 
@@ -726,7 +726,7 @@ async def test_empty_report_yields_nothing(
         yield [mock_organization]
 
     async def mock_get_users_usage_metrics(
-        org: dict[str, Any],
+        org: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield []
 
@@ -758,7 +758,7 @@ async def test_multiple_organizations_each_yield_separate_chunked_batches(
         yield [org_a, org_b]
 
     async def mock_get_users_usage_metrics(
-        org: dict[str, Any],
+        org: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if org["login"] == "org-a":
             yield records_a
@@ -951,7 +951,7 @@ async def test_all_day_totals_records_present_across_batches_without_data_loss(
         yield [mock_organization]
 
     async def mock_get_organization_usage_metrics(
-        org: dict[str, Any],
+        org: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield reports
 
@@ -981,7 +981,7 @@ async def test_report_with_no_day_totals_yields_nothing(
         yield [mock_organization]
 
     async def mock_get_organization_usage_metrics(
-        org: dict[str, Any],
+        org: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield reports
 

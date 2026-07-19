@@ -10,6 +10,7 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleDependabotAlertOptions, ListDependabotAlertOptions
 from github.clients.http.rest_client import GithubRestClient
 
+
 TEST_DEPENDABOT_ALERTS = [
     {
         "number": 1,

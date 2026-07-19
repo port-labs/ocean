@@ -9,6 +9,7 @@ from port_ocean.integration_testing import (
     ResyncResult,
 )
 
+
 # --- Fixtures ---------------------------------------------------------------
 
 ORG_LOGIN = "port-labs-testing"

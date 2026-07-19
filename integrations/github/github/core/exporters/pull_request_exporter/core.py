@@ -38,10 +38,9 @@ GRAPHQL_ORDER_BY_UPDATED_AT = "UPDATED_AT"
 
 class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[ExporterOptionsT: SinglePullRequestOptions](
-        self,
-        options: ExporterOptionsT,
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SinglePullRequestOptions
+    ](self, options: ExporterOptionsT,) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         pr_number = params["pr_number"]
 
@@ -63,9 +62,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[ExporterOptionsT: ListPullRequestOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListPullRequestOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all pull requests in the organization's repositories with pagination."""
 
         repo_name, organization, extras = parse_github_options(dict(options))
@@ -170,9 +169,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
 
 class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[ExporterOptionsT: SinglePullRequestOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SinglePullRequestOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         pr_number: int = params["pr_number"]
         repo = params["repo"]
@@ -209,9 +208,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             gql_options=pr_gql_options,
         )
 
-    async def get_paginated_resources[self, ExporterOptionsT: ListPullRequestOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        self, ExporterOptionsT: ListPullRequestOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, extras = parse_github_options(dict(options))
         states = extras["states"]
         max_results = extras["max_results"]

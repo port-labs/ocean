@@ -61,7 +61,7 @@ async def test_client_init_with_token() -> None:
 
 @pytest.mark.asyncio
 async def test_client_init_with_app_password(
-    mock_integration_config: dict[str, str],
+    mock_integration_config: dict[str, str]
 ) -> None:
     """Test client initialization with app password auth."""
     client = BitbucketClient.create_from_ocean_config()

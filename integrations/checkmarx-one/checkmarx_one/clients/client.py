@@ -9,6 +9,7 @@ from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
 
 from urllib.parse import urljoin
 
+
 PAGE_SIZE = 100
 
 

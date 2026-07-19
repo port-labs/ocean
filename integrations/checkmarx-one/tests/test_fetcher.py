@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from typing import Any, Dict, List, AsyncGenerator
 
+
 # Mock the integration module and other dependencies
 with patch.dict(
     "sys.modules",

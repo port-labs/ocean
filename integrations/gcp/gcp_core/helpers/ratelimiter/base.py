@@ -10,6 +10,7 @@ from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from collections.abc import MutableSequence
 import asyncio
 
+
 # Increasing _DEFAULT_RATE_LIMIT_TIME_PERIOD to 61.0 instead of 60.0 prevents hitting 429 errors in some cases.
 # The extra second compensates for potential timing inconsistencies in request handling
 # or slight variations in rate limit enforcement by the API.

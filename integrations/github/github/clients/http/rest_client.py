@@ -6,6 +6,7 @@ from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from loguru import logger
 
+
 PAGE_SIZE = 100
 
 

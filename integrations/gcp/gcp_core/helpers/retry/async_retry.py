@@ -23,6 +23,7 @@ from google.api_core.retry.retry_base import (
     if_exception_type,
 )
 
+
 _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES: float = 5.0
 _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS: float = 60.0
 _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF: float = 2.0

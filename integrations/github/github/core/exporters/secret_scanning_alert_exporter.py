@@ -16,9 +16,9 @@ from github.clients.http.rest_client import GithubRestClient
 
 class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[ExporterOptionsT: SingleSecretScanningAlertOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SingleSecretScanningAlertOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         alert_number = params.pop("alert_number")
@@ -39,9 +39,9 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[ExporterOptionsT: ListSecretScanningAlertOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListSecretScanningAlertOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all secret scanning alerts in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))

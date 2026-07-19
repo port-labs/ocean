@@ -1,6 +1,7 @@
 from loguru import logger
 from typing import TYPE_CHECKING, Any
 
+
 if TYPE_CHECKING:
     from datadog.overrides import TeamResourceConfig
 

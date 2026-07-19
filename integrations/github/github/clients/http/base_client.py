@@ -11,6 +11,7 @@ from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
+
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
         AbstractGitHubAuthenticator,

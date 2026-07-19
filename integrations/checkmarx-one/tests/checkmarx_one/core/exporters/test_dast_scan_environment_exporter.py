@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from typing import Any, AsyncIterator, List
 import types
 
+
 # Mock port_ocean imports before importing the module under test
 cache_module = types.ModuleType("port_ocean.utils.cache")
 

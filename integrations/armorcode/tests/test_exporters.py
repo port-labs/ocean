@@ -11,7 +11,7 @@ from armorcode.core.exporters import (
 
 
 async def _agen(
-    batches: list[list[dict[str, Any]]],
+    batches: list[list[dict[str, Any]]]
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     for batch in batches:
         yield batch

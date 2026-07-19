@@ -10,6 +10,7 @@ from newrelic_integration.overrides import (
     NewRelicAlertConditionResourceConfig,
 )
 
+
 NewRelicAnyResourceConfig = (
     NewRelicAlertResourceConfig
     | NewRelicServiceLevelResourceConfig

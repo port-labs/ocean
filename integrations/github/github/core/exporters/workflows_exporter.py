@@ -11,9 +11,9 @@ from github.helpers.utils import enrich_with_repository, enrich_with_organizatio
 
 
 class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionsT: SingleWorkflowOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SingleWorkflowOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         endpoint = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
 
@@ -33,9 +33,9 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
 
         return workflow
 
-    async def get_paginated_resources[ExporterOptionsT: ListWorkflowOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListWorkflowOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
         organization = options["organization"]

@@ -165,7 +165,7 @@ class TestPullRequestWebhookProcessor:
         """Test _check_repository_filter with various scenarios."""
 
         async def mock_repositories_generator(
-            params: dict[str, Any],
+            params: dict[str, Any]
         ) -> AsyncGenerator[dict[str, Any], None]:
             if repo_exists:
                 yield {"uuid": "repo-uuid"}

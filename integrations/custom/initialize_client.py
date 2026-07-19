@@ -15,6 +15,7 @@ from http_server.client import HttpServerClient
 from http_server.exceptions import CustomAuthConfigError
 from port_ocean.context.ocean import ocean
 
+
 # Global client singleton
 _client: Optional[HttpServerClient] = None
 

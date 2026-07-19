@@ -22,6 +22,7 @@ from github.core.options import SingleCollaboratorOptions
 from typing import Any
 from port_ocean.context.event import event_context
 
+
 VALID_MEMBER_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "action": "added",
     "repository": {"name": "test-repo"},

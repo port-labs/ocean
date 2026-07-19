@@ -58,7 +58,7 @@ class EntitiesHandler:
             )
 
         async def extract_entities(
-            response: Optional[Dict[str, Any]] = None,
+            response: Optional[Dict[str, Any]] = None
         ) -> Tuple[Optional[str], list[Dict[str, Any]]]:
             if not response:
                 return None, []

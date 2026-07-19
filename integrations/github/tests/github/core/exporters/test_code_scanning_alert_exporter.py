@@ -13,6 +13,7 @@ from github.core.options import (
 )
 from github.clients.http.rest_client import GithubRestClient
 
+
 TEST_CODE_SCANNING_ALERTS = [
     {
         "number": 42,

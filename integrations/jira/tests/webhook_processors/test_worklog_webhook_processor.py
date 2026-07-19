@@ -13,6 +13,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from jira.overrides import JiraWorklogSelector
 from webhook_processors.worklog_webhook_processor import WorklogWebhookProcessor
 
+
 MOCK_WORKLOG = {
     "id": "10100",
     "self": "https://example.atlassian.net/rest/api/3/issue/10001/worklog/10100",

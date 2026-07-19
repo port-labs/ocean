@@ -10,6 +10,7 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
 from rate_limiter import LaunchDarklyRateLimiter
 
+
 PAGE_SIZE = 100
 
 

@@ -14,6 +14,7 @@ from loguru import logger
 
 import httpx
 
+
 GITHUB_RETRY_MAX_BACKOFF = 1800
 
 

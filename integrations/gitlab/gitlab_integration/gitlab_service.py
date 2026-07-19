@@ -614,7 +614,7 @@ class GitlabService:
 
     @staticmethod
     def validate_file_is_directory(
-        file: Union[RESTObject, dict[str, Any], Project],
+        file: Union[RESTObject, dict[str, Any], Project]
     ) -> bool:
         if isinstance(file, dict):
             return file["type"] == "tree"
@@ -681,7 +681,7 @@ class GitlabService:
         created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         def should_run_for_pipeline(
-            _: Union[RESTObject, dict[str, Any], Project],
+            _: Union[RESTObject, dict[str, Any], Project]
         ) -> bool:
             return True
 

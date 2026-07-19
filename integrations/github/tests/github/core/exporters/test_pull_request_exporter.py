@@ -22,6 +22,7 @@ from github.helpers.gql_queries import (
 from github.core.exporters.pull_request_exporter.utils import filter_prs_by_date
 from integration import GithubPullRequestSelector
 
+
 TEST_PULL_REQUESTS = [
     {
         "id": 1,

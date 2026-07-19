@@ -14,6 +14,7 @@ from github.clients.http.rest_client import GithubRestClient
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 
+
 TEST_DEPLOYMENT_STATUSES = [
     {
         "id": 456,

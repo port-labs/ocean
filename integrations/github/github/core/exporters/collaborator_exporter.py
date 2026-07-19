@@ -12,9 +12,9 @@ from github.clients.http.rest_client import GithubRestClient
 
 
 class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionsT: SingleCollaboratorOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SingleCollaboratorOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         username = params["username"]
 
@@ -35,9 +35,9 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(collaborator, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[ExporterOptionsT: ListCollaboratorOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListCollaboratorOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all collaborators in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))

@@ -10,6 +10,7 @@ from github.core.options import (
 )
 from github.clients.http.rest_client import GithubRestClient
 
+
 TEST_SECRET_SCANNING_ALERTS = [
     {
         "number": 42,

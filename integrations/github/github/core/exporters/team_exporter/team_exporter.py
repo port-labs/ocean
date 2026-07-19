@@ -9,9 +9,9 @@ from github.helpers.utils import enrich_with_organization
 
 
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[ExporterOptionT: SingleTeamOptions](
-        self, options: ExporterOptionT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
         slug = options["slug"]
         organization = options["organization"]
 
@@ -28,9 +28,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(f"Fetched team {slug} from {organization}")
         return enrich_with_organization(response, organization)
 
-    async def get_paginated_resources[ExporterOptionT: ListTeamOptions](
-        self, options: ExporterOptionT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionT: ListTeamOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         organization = options["organization"]
         url = f"{self.client.base_url}/orgs/{organization}/teams"
 
@@ -40,9 +40,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
             batch = [enrich_with_organization(team, organization) for team in teams]
             yield batch
 
-    async def get_team_repositories_by_slug[ExporterOptionT: SingleTeamOptions](
-        self, options: ExporterOptionT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_team_repositories_by_slug[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         organization = options["organization"]
         url = (
             f"{self.client.base_url}/orgs/{organization}/teams/{options['slug']}/repos"
@@ -53,9 +53,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
             )
             yield repos
 
-    async def get_team_members_by_slug[ExporterOptionT: SingleTeamOptions](
-        self, options: ExporterOptionT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_team_members_by_slug[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         organization = options["organization"]
         url = f"{self.client.base_url}/orgs/{organization}/teams/{options['slug']}/members"
         async for members in self.client.send_paginated_request(url):

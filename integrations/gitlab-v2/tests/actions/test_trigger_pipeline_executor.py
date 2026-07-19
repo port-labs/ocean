@@ -16,6 +16,7 @@ from gitlab.helpers.exceptions import (
     MissingExecutionPropertyError,
 )
 
+
 PIPELINE_RESPONSE = {
     "id": 99,
     "project_id": 42,
