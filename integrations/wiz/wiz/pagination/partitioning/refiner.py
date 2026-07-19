@@ -63,7 +63,7 @@ class PartitionRefiner:
             yield partition
             return
 
-        logger.info(
+        logger.debug(
             f"Partition {partition.label} has {count} entities, splitting (limit {max_entities})"
         )
         children = self._splitter.split(partition, self._config)
