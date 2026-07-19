@@ -18,6 +18,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
     """App-level JWT auth for discovery and GET /app. Not installation-scoped."""
 
     _JWT_EXPIRY_MINUTES = 10
+    _JWT_CLOCK_DRIFT_SECONDS = 60
     _INSTALLATIONS_PAGE_SIZE = 100
 
     def __init__(self, app_id: str, private_key: str, github_host: str):
@@ -39,10 +40,12 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
 
     async def get_token(self) -> GitHubToken:
         now = datetime.now(timezone.utc)
+        # https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app#about-json-web-tokens-jwts
+        issued_at = now - timedelta(seconds=self._JWT_CLOCK_DRIFT_SECONDS)
         expires_at = now + timedelta(minutes=self._JWT_EXPIRY_MINUTES)
         payload = {
             "iss": self.app_id,
-            "iat": now,
+            "iat": issued_at,
             "exp": expires_at,
         }
         if self.private_key.startswith("-----BEGIN"):
