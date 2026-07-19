@@ -3,8 +3,6 @@ from typing import Any, Dict, Self
 
 from aws.core.modeling.resource_models import ResourceModel
 
-_JSON_NATIVE = (str, int, float, bool, type(None))
-
 
 class ResourceBuilder[ResourceModelT: ResourceModel[Any]]:
     """
