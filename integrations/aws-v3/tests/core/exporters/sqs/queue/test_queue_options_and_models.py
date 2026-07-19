@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from aws.core.exporters.sqs.queue.models import (
     QueueProperties,
