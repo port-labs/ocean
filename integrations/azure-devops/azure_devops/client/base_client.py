@@ -1,42 +1,50 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import ConnectTimeout, ReadTimeout, Response
+from httpx import ConnectTimeout, ReadError, ReadTimeout, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from azure_devops.client.auth import AuthProvider
 from azure_devops.client.rate_limiter import (
+    ADO_RATE_LIMIT_WINDOW_SECONDS,
     AzureDevOpsRateLimiter,
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
+from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
-# ADO TSTU (Team Services Time Units) budget resets on a 5-minute rolling window.
-# Both the retry backoff cap and the ReadTimeout cooldown are set to this value so
-# the integration always waits out the full reset window before retrying.
-ADO_RATE_LIMIT_WINDOW_SECONDS = 300
 
 
 class HTTPBaseClient:
-    def __init__(self, auth_provider: AuthProvider) -> None:
+    def __init__(
+        self,
+        auth_provider: AuthProvider,
+    ) -> None:
+        self._auth_provider = auth_provider
+        self._rate_limiter = AzureDevOpsRateLimiter()
         self._client = OceanAsyncClient(
+            AzureDevOpsRetryTransport,
+            transport_kwargs={
+                "rate_limiter": self._rate_limiter,
+                "auth_header_refresher": self._auth_provider.get_auth_headers,
+            },
             retry_config=RetryConfig(
                 retry_after_headers=[
                     LIMIT_RESET_HEADER,
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
                 max_backoff_wait=ADO_RATE_LIMIT_WINDOW_SECONDS,
+                base_delay=ADO_RATE_LIMIT_WINDOW_SECONDS,
+                max_attempts=10,
             ),
             timeout=ocean.config.client_timeout,
         )
-        self._auth_provider = auth_provider
-        self._rate_limiter = AzureDevOpsRateLimiter()
 
     async def send_request(
         self,
@@ -74,8 +82,11 @@ class HTTPBaseClient:
                 )
                 raise e
         except httpx.HTTPError as e:
-            if isinstance(e, (ReadTimeout, ConnectTimeout)):
-                await self._rate_limiter.signal_throttle(ADO_RATE_LIMIT_WINDOW_SECONDS)
+            if isinstance(e, (ReadTimeout, ConnectTimeout, ReadError)):
+                await self._rate_limiter.signal_throttle(
+                    ADO_RATE_LIMIT_WINDOW_SECONDS,
+                    reason=type(e).__name__,
+                )
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
         finally:

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Callable, cast
+from typing import List, Dict, Any, Callable
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap, ActionInputType
@@ -36,6 +36,7 @@ class ResourceInspector[
         client: Any,
         actions_map: ActionMap[ActionInput],
         model_factory: Callable[[], ResourceModelT],
+        action_id_key: str | None = None,
     ) -> None:
         """
         Initialize the ResourceInspector.
@@ -48,6 +49,7 @@ class ResourceInspector[
         self.client = client
         self.actions_map = actions_map
         self.model_factory = model_factory
+        self.action_id_key = action_id_key
 
     async def inspect(
         self,
@@ -68,37 +70,43 @@ class ResourceInspector[
         """
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
-        type = self.model_factory().Type
+        template = self.model_factory()
+        model_cls = type(template)
+        resource_type = template.Type
         action_results = await asyncio.gather(
             *(self._run_action(action, identifiers) for action in actions),
-            return_exceptions=True,
         )
 
         if not action_results or not any(action_results):
             return []
 
-        resource_data: dict[int, dict[str, Any]] = defaultdict(dict)
-        for action_result in action_results:
-            if isinstance(action_result, Exception):
-                logger.warning(
-                    f"{action_result.__class__.__name__} failed: {action_result}, skipping ..."
-                )
-                continue
-            for idx, item in enumerate(cast(List[Dict[str, Any]], action_result)):
-                if item:
-                    resource_data[idx] |= item
+        resource_data: dict[int | str, dict[str, Any]] = defaultdict(dict)
+        if self.action_id_key:
+            for result_group in action_results:
+                for result in result_group:
+                    if self.action_id_key in result:
+                        resource_data[result[self.action_id_key]] |= result
+                    else:
+                        logger.warning(
+                            f"Missing key '{self.action_id_key}' in result: {result}, skipping ..."
+                        )
+        else:
+            for action_result in action_results:
+                for idx, item in enumerate(action_result):
+                    if item:
+                        resource_data[idx] |= item
 
         resources = []
         for resource_props in resource_data.values():
-            builder = ResourceBuilder[ResourceModelT, Any](self.model_factory())
+            builder = ResourceBuilder[ResourceModelT, Any](model_cls)
             builder.with_properties(resource_props)
             if extra_context:
                 builder.with_extra_context(extra_context)
-            builder.with_type(type)
+            builder.with_type(resource_type)
             resources.append(builder.build())
 
         logger.info(
-            f"Built {len(resources)} resources from {len(action_results)} actions for {type}"
+            f"Built {len(resources)} resources from {len(action_results)} actions for {resource_type}"
         )
         return resources
 

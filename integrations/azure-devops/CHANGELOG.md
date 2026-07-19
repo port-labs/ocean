@@ -7,6 +7,209 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.24 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 0.10.23 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.10.22 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.10.21 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.10.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.10.19 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.10.18 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.10.17 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.10.16 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.10.15 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.10.14 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.10.13 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.10.12 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.10.11 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.10.10 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.10.9 (2026-07-01)
+
+
+### Improvements
+
+- Fixed unbounded concurrent file downloads in `IncludedFilesEnricher`. File downloads triggered by `includedFiles` config previously fired all at once via `asyncio.gather` with no concurrency cap, causing 429 bursts on orgs with large repo counts.
+- Fixed work item sync to process projects concurrently using `BoundedSemaphore` fan-out, eliminating the serial per-project loop.
+- Fixed unbounded concurrent area path fetches in `enrich_teams_with_area_paths`. Area path calls previously fired all at once per batch, causing repeated 5-minute rate limit holds on orgs with large team counts.
+- Fixed `httpx.ReadError` during response body reads not triggering the rate-limit cooldown. ADO occasionally closes the TCP connection mid-response instead of returning a proper 429; the integration now signals a 300-second throttle on `ReadError`, preventing it from silently aborting the sync.
+
+
+## 0.10.8 (2026-06-30)
+
+
+### Bug Fixes
+
+- Added Azure DevOps-specific 429 retry handling that pauses requests through the affected client for a cooldown and retries rate-limited requests up to 10 times before failing.
+
+
+## 0.10.7 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.10.6 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.10.5 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.10.4 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.10.3 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.10.2 (2026-06-23)
+
+
+### Features
+
+- The `user` kind now supports the Graph Users API via a `source` selector (`source: graph`, `vso.graph` scope); the default remains the Entitlements API (`source: entitlements`).
+
+
+## 0.10.1 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.10.0 (2026-06-22)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `build` kind. When enabled, each build gains a `__firstCommit` field (`__sha`, `__timestamp`, `__commitCount`) for its earliest commit, powering the DORA Lead Time for Changes metric (`finishTime - __firstCommit.__timestamp`). Off by default; enabling it costs one extra API call per build.
+
+
 ## 0.9.20 (2026-06-17)
 
 

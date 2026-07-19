@@ -5,10 +5,15 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.helpers.retry import RetryConfig, register_retry_config_callback
 
-from clients.options import ListRepositoriesOptions, ListContainersOptions
+from clients.options import (
+    ListRepositoriesOptions,
+    ListContainersOptions,
+    IssuesOptions,
+)
 from initialize_client import init_aikido_client
 from integration import (
     ObjectKind,
+    IssueResourceConfig,
     RepositoryResourceConfig,
     ContainerResourceConfig,
     IssueGroupResourceConfig,
@@ -47,8 +52,16 @@ async def on_repositories_resync(
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
+    selector = cast(IssueResourceConfig, event.resource_config).selector
+    options = IssuesOptions(
+        filter_status=selector.filter_status,
+        filter_severities=(
+            ",".join(selector.filter_severities) if selector.filter_severities else None
+        ),
+        filter_issue_type=selector.filter_issue_type,
+    )
     logger.info("Fetching all issues from Aikido API")
-    async for issue_batch in client.get_issues_in_batches():
+    async for issue_batch in client.get_issues(options=options):
         logger.info(f"Yielding issues batch of size: {len(issue_batch)}")
         yield issue_batch
 

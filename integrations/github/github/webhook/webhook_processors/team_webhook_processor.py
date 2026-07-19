@@ -6,7 +6,11 @@ from github.core.exporters.team_exporter import (
 )
 from github.core.options import ListTeamOptions, SingleTeamOptions
 from github.webhook.events import TEAM_DELETE_EVENTS, TEAM_EVENTS
-from github.helpers.utils import GithubClientType, ObjectKind
+from github.helpers.utils import (
+    GithubClientType,
+    ObjectKind,
+    enrich_members_with_saml_email,
+)
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
@@ -84,6 +88,25 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
                 ),
             )
             data_to_upsert = extras_result[0]
+            if not data_to_upsert:
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+            enriched = await exporter.enrich_enterprise_teams_with_members(
+                [data_to_upsert], organization
+            )
+            data_to_upsert = enriched[0]
+            if not data_to_upsert:
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+            if data_to_upsert["slug"].startswith("ent:"):
+                await enrich_members_with_saml_email(
+                    graphql_exporter.client,
+                    organization,
+                    data_to_upsert["members"]["nodes"],
+                    selector.include_saml_email,
+                )
 
         if selector.include_external_group:
             enriched = await exporter.enrich_teams_with_external_group(

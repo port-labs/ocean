@@ -14,6 +14,7 @@ from wcmatch import glob
 
 from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
 
+from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
@@ -39,6 +40,10 @@ def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any]
     }
 
 
+def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
+    return project.get("namespace", {}).get("kind") == "user"
+
+
 class GitLabClient:
     DEFAULT_PARAMS: dict[str, Any] = {
         "all_available": True,  # Fetch all resources accessible to the user
@@ -46,6 +51,23 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+
+    async def get_personal_namespace_projects(
+        self,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch projects in the authenticated user's personal namespace.
+
+        Uses the projects API with owned=true so fine-grained tokens do not need
+        the User: Read scope required by GET /user and GET /users/:id/projects.
+        Group-namespace projects are excluded via namespace.kind filtering.
+        """
+        params = {**self.DEFAULT_PARAMS, "owned": True}
+        async for batch in self.rest.get_paginated_resource("projects", params=params):
+            if personal_projects := list(filter(_is_personal_namespace_project, batch)):
+                logger.info(
+                    f"Received batch with {len(personal_projects)} personal namespace project(s)"
+                )
+                yield personal_projects
 
     async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
@@ -323,16 +345,43 @@ class GitLabClient:
         self,
         project: dict[str, Any],
         resource_iterator: AsyncIterator[list[dict[str, Any]]],
+        full_project_enrichment: bool = False,
+        skip_http_errors: frozenset[int] = frozenset(),
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Enrich resources with project information as they are fetched."""
-        async for batch in resource_iterator:
-            if batch:
-                yield [
-                    self.enrich_with_project_path(
-                        resource, project["path_with_namespace"]
-                    )
-                    for resource in batch
-                ]
+        """Enrich resources with project information as they are fetched.
+
+        When full_project_enrichment is False (default), injects only
+        {"path_with_namespace": ...} via enrich_with_project_path.
+
+        When full_project_enrichment is True, injects the full project object
+        so the mapping layer can access any project field via .__project.<field>.
+        """
+        try:
+            async for batch in resource_iterator:
+                if batch:
+                    yield [
+                        (
+                            {**resource, "__project": project}
+                            if full_project_enrichment
+                            else self.enrich_with_project_path(
+                                resource, project["path_with_namespace"]
+                            )
+                        )
+                        for resource in batch
+                    ]
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in skip_http_errors:
+                try:
+                    error_detail = e.response.json().get("message")
+                except Exception:
+                    raise e
+                logger.warning(
+                    f"HTTP error {e.response.status_code} for project "
+                    f"{project.get('path_with_namespace', project.get('id'))}: {error_detail}. "
+                    f"Skipping enrichment of this resource."
+                )
+                return
+            raise
 
     def enrich_with_project_path(
         self, resource: dict[str, Any], project_path: str
@@ -345,9 +394,10 @@ class GitLabClient:
         resource_type: str,
         max_concurrent: int = 10,
         params: Optional[dict[str, Any]] = None,
+        full_project_enrichment: bool = False,
+        skip_http_errors: frozenset[int] = frozenset(),
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
-
         tasks = [
             semaphore_async_iterator(
                 semaphore,
@@ -357,11 +407,12 @@ class GitLabClient:
                     self.rest.get_paginated_project_resource(
                         str(project["id"]), resource_type, params=params
                     ),
+                    full_project_enrichment,
+                    skip_http_errors,
                 ),
             )
             for project in projects_batch
         ]
-
         async for batch in stream_async_iterators_tasks(*tasks):
             if batch:
                 yield batch
@@ -955,3 +1006,51 @@ class GitLabClient:
                 data[index] = await self._resolve_file_references(item, project_id, ref)
 
         return data
+
+    async def get_deployments(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+        params: dict[str, Any] | None = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch deployments for each project in the batch, enriched with project data."""
+        async for batch in self.get_projects_resource_with_enrichment(
+            projects_batch,
+            "deployments",
+            max_concurrent,
+            params=params,
+            full_project_enrichment=True,
+            skip_http_errors=frozenset({400}),
+        ):
+            logger.info(f"Received batch with {len(batch)} deployments")
+            yield batch
+
+    async def get_single_deployment(
+        self, project_id: int | str, deployment_id: int
+    ) -> dict[str, Any] | None:
+        """Fetch a single deployment by ID from the given project."""
+        encoded_project_id = quote(str(project_id), safe="")
+        path = f"projects/{encoded_project_id}/deployments/{deployment_id}"
+        deployment = await self.rest.send_api_request("GET", path)
+        if not deployment:
+            return None
+        return deployment
+
+    async def trigger_pipeline(
+        self,
+        project_id: str | int,
+        ref: str,
+        variables: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger a CI/CD pipeline on the given project and ref."""
+        encoded_id = quote(str(project_id), safe="")
+        data: dict[str, Any] = {"ref": ref}
+        if variables:
+            data["variables"] = variables
+        return await self.rest.send_api_request(
+            "POST", f"projects/{encoded_id}/pipeline", data=data
+        )
+
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
+        """Return the most-recently observed rate-limit info, or None if unknown."""
+        return self.rest._rate_limiter.rate_limit_info

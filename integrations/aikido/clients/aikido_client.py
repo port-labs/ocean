@@ -1,8 +1,13 @@
 from typing import Any, AsyncGenerator, List, Dict, Optional
-from httpx import HTTPStatusError, AsyncClient
+from httpx import HTTPStatusError, AsyncClient, Response
 from aiolimiter import AsyncLimiter
 from clients.auth_client import AikidoAuth
-from clients.options import ListRepositoriesOptions, ListContainersOptions
+from clients.options import (
+    ListRepositoriesOptions,
+    ListContainersOptions,
+    IssuesOptions,
+)
+from helpers.utils import IgnoredError
 from loguru import logger
 from port_ocean.utils import http_async_client
 
@@ -10,6 +15,7 @@ API_VERSION = "v1"
 FIRST_PAGE = 0
 PAGE_SIZE = 20
 REPOSITORIES_PAGE_SIZE = 100
+ISSUES_PAGE_SIZE = 1000
 REQUESTS_PER_MINUTE = 15
 
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
@@ -26,33 +32,58 @@ class AikidoClient:
     Implements methods to fetch repositories and issues
     """
 
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=404,
+            message="Resource not found at endpoint",
+            type="NOT_FOUND",
+        ),
+    ]
+
     def __init__(self, base_url: str, client_id: str, client_secret: str):
         self.base_url = base_url.rstrip("/")
         self.http_client: AsyncClient = http_async_client
         self.auth = AikidoAuth(base_url, client_id, client_secret, self.http_client)
         self.rate_limiter = AsyncLimiter(REQUESTS_PER_MINUTE, 60)
 
-    async def _send_api_request(
+    def _should_ignore_error(
+        self,
+        error: HTTPStatusError,
+        resource: str,
+        method: str,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> bool:
+        all_ignored_errors = (ignored_errors or []) + (
+            self._DEFAULT_IGNORED_ERRORS if ignore_default_errors else []
+        )
+        status_code = error.response.status_code
+
+        for ignored_error in all_ignored_errors:
+            if str(status_code) == str(ignored_error.status):
+                logger.warning(
+                    f"Failed to {method} resource at {resource} due to {ignored_error.message} with status code {status_code}"
+                )
+                return True
+        return False
+
+    async def _execute_request(
         self,
         endpoint: str,
         method: str = "GET",
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Send an authenticated API request to the Aikido API.
-        Rate limited to stay under Aikido's 20 req/min limit.
-        """
+        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> Optional[Response]:
         token = await self.auth.get_token()
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         async with self.rate_limiter:
-
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             }
-
             try:
                 response = await self.http_client.request(
                     method=method,
@@ -60,21 +91,33 @@ class AikidoClient:
                     params=params,
                     json=json_data,
                     headers=headers,
-                    timeout=30,
                 )
                 response.raise_for_status()
-                return response.json()
+                return response
             except HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    logger.warning(
-                        f"Requested resource not found: {url}; message: {str(e)}"
-                    )
-                    return {}
+                if self._should_ignore_error(
+                    e, url, method, ignored_errors, ignore_default_errors
+                ):
+                    return None
                 logger.error(f"API request failed for {url}: {e}")
                 raise
             except Exception as e:
                 logger.error(f"Unexpected error during API request to {url}: {e}")
                 raise
+
+    async def _send_api_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        params: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> Dict[str, Any]:
+        response = await self._execute_request(
+            endpoint, method, params, json_data, ignored_errors, ignore_default_errors
+        )
+        return response.json() if response is not None else {}
 
     async def get_paginated_resource(
         self,
@@ -88,28 +131,34 @@ class AikidoClient:
 
         while True:
             try:
-                resources = await self._send_api_request(endpoint, params=params)
-
-                if not isinstance(resources, list):
-                    break
-
-                if not resources:
+                response = await self._execute_request(
+                    endpoint, params=params, ignore_default_errors=False
+                )
+                if response is None:
                     logger.info(
                         f"No {resource_name} returned for page {params['page']}"
                     )
                     break
-
-                logger.info(f"Fetched {len(resources)} {resource_name} from Aikido API")
-                fetched_count = len(resources)
-                yield resources
-
-                if fetched_count < page_size:
-                    break
-
-                params["page"] += 1
+                resources: List[Dict[str, Any]] = response.json()
             except Exception as e:
                 logger.error(f"Error fetching {resource_name}: {e}")
+                raise
+
+            if not resources:
+                logger.info(f"No {resource_name} returned for page {params['page']}")
                 break
+
+            logger.info(f"Fetched {len(resources)} {resource_name} from Aikido API")
+            fetched_count = len(resources)
+            yield resources
+
+            if (
+                (has_next := response.headers.get("x-has-next-page")) is not None
+                and has_next.lower() != "true"
+            ) or (has_next is None and fetched_count < page_size):
+                break
+
+            params["page"] += 1
 
     async def get_repositories(
         self,
@@ -129,32 +178,21 @@ class AikidoClient:
         ):
             yield repositories
 
-    async def get_all_issues(self) -> List[Dict[str, Any]]:
-        """
-        Fetch all issues from the Aikido API in a single request.
-        Returns a list of issue dicts.
-        """
-        endpoint = ISSUES_ENDPOINT
-        params = {"format": "json"}
-        try:
-            issues = await self._send_api_request(endpoint, params=params)
-            if not isinstance(issues, list):
-                return []
-            return issues
-        except Exception as e:
-            logger.error(f"Error fetching issues: {e}")
-            return []
-
-    async def get_issues_in_batches(
-        self, batch_size: int = 100
+    async def get_issues(
+        self, options: Optional[IssuesOptions] = None
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """
-        Fetch all issues and yield them in batches of the specified size.
-        """
-
-        all_issues = await self.get_all_issues()
-        for i in range(0, len(all_issues), batch_size):
-            yield all_issues[i : i + batch_size]
+        base_params: Dict[str, Any] = {
+            "format": "json",
+            **(options.model_dump(exclude_none=True) if options else {}),
+        }
+        async for issues in self.get_paginated_resource(
+            endpoint=ISSUES_ENDPOINT,
+            resource_name="issues",
+            first_page=FIRST_PAGE,
+            page_size=ISSUES_PAGE_SIZE,
+            base_params=base_params,
+        ):
+            yield issues
 
     async def get_open_issue_groups(
         self, team_id: Optional[str | int] = None

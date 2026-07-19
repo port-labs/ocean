@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from github.core.options import PullRequestGraphQLOptions
 
 PAGE_INFO_FRAGMENT = """
@@ -184,7 +186,30 @@ commits(first: 1) {
 """
 
 
-def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
+# PullRequest fields whose per-node resolution is expensive on large orgs
+# (team/membership expansion, actor visibility, check rollups). Stripped as a
+# last resort when a query keeps exceeding GitHub's GraphQL execution budget.
+EXPENSIVE_PR_GRAPHQL_FIELDS = [
+    "reviewRequests",
+    "reviews",
+    "reviewThreads",
+    "assignees",
+    "statusCheckRollup",
+    "labels",
+]
+
+
+def resolve_excluded_pr_fields(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> set[str]:
+    return set(options.exclude_graphql_fields) | set(extra_excluded_fields or [])
+
+
+def generate_pr_fields(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> str:
     required_fields = [
         ("url", "url"),
         ("id", "id"),
@@ -357,7 +382,7 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
         ),
     ]
 
-    excluded = set(options.exclude_graphql_fields)
+    excluded = resolve_excluded_pr_fields(options, extra_excluded_fields)
     filtered_optional_fields = [
         body for name, body in optional_fields if name not in excluded
     ]
@@ -370,7 +395,11 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
     )
 
 
-def generate_list_pull_requests_gql(options: PullRequestGraphQLOptions) -> str:
+def generate_list_pull_requests_gql(
+    options: PullRequestGraphQLOptions,
+    order_by_field: str = "CREATED_AT",
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> str:
     return f"""
 {PAGE_INFO_FRAGMENT}
 query ListPullRequests(
@@ -385,10 +414,10 @@ query ListPullRequests(
       first: $first,
       after: $after,
       states: $states,
-      orderBy: {{ field: CREATED_AT, direction: DESC }}
+      orderBy: {{ field: {order_by_field}, direction: DESC }}
     ) {{
       nodes {{
-{generate_pr_fields(options)}
+{generate_pr_fields(options, extra_excluded_fields)}
       }}
       pageInfo {{
         ...PageInfoFields
@@ -399,7 +428,10 @@ query ListPullRequests(
 """
 
 
-def generate_pull_request_details_gql(options: PullRequestGraphQLOptions) -> str:
+def generate_pull_request_details_gql(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> str:
     return f"""
 query PullRequestDetails(
   $organization: String!,
@@ -408,7 +440,7 @@ query PullRequestDetails(
 ) {{
   repository(owner: $organization, name: $repo) {{
     pullRequest(number: $prNumber) {{
-{generate_pr_fields(options)}
+{generate_pr_fields(options, extra_excluded_fields)}
     }}
   }}
 }}

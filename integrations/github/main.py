@@ -82,6 +82,7 @@ from github.core.options import (
 from github.helpers.utils import (
     ObjectKind,
     GithubClientType,
+    enrich_members_with_saml_email,
     enrich_user_with_primary_email,
     tag_batch_with_org,
 )
@@ -307,6 +308,17 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             include_saml_email=selector.include_saml_email,
                         ),
                     )
+                    teams = await RestTeamExporter(
+                        rest_client
+                    ).enrich_enterprise_teams_with_members(teams, org_name)
+                    for team in teams:
+                        if team["slug"].startswith("ent:"):
+                            await enrich_members_with_saml_email(
+                                graphql_client,
+                                org_name,
+                                team["members"]["nodes"],
+                                selector.include_saml_email,
+                            )
 
                 if selector.include_external_group:
                     teams = await RestTeamExporter(
@@ -448,6 +460,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else RestPullRequestExporter(rest_client)
     )
 
+    fetch_errors: list[Exception] = []
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -471,8 +485,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
-                                max_results=config.selector.max_results,
+                                max_results=config.selector.effective_max_results,
                                 updated_after=config.selector.updated_after,
+                                closed_after=config.selector.closed_after,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
@@ -480,10 +495,28 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for pull_requests in stream_independent_async_iterators(
-                    *tasks, context=kind
-                ):
-                    yield pull_requests
+                try:
+                    async for pull_requests in stream_independent_async_iterators(
+                        *tasks, context=kind
+                    ):
+                        yield pull_requests
+                except ExceptionGroup as page_errors:
+                    fetch_errors.extend(page_errors.exceptions)
+                    logger.error(
+                        f"{len(page_errors.exceptions)} repo(s) failed fetching pull requests "
+                        f"in org {org_name} (batch of {len(repos)}), continuing with remaining pages",
+                        extra={
+                            "failed_repos": [
+                                str(error) for error in page_errors.exceptions
+                            ],
+                        },
+                    )
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -749,6 +782,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 task=config.selector.task,
                                 environment=config.selector.environment,
+                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
                             )
                         )
                     )

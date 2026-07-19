@@ -6,6 +6,7 @@ from utils.misc import (
     AsyncPaginator,
     OPT_IN_REGIONS,
     is_region_not_supported_exception,
+    is_access_denied_exception,
 )
 from utils.resources import (
     resync_custom_kind,
@@ -15,6 +16,7 @@ from utils.resources import (
     fetch_group_resources,
     get_bucket_location,
     get_bucket_resource,
+    resync_s3_bucket,
 )
 from typing import Any, AsyncGenerator, Dict
 from contextlib import asynccontextmanager
@@ -279,20 +281,20 @@ async def test_resync_resource_group(
             assert group["__Resources"] == [{"ResourceArn": "test-arn"}]
 
 
-def test_select_s3_region_prefers_standard_regions() -> None:
-    """Test that select_s3_region prefers standard regions over opt-in regions."""
-    from main import select_s3_region
+def test_get_available_regions_prefers_standard_regions() -> None:
+    """Test that get_available_regions yields standard regions before opt-in regions."""
+    from main import get_available_regions
 
-    # Should prefer us-east-1 over opt-in regions
+    # Standard regions should be yielded first, opt-in regions last
     regions = ["af-south-1", "us-east-1", "eu-west-1"]
-    selected = select_s3_region(regions)
-    assert selected == "us-east-1"
-    assert selected not in OPT_IN_REGIONS
+    ordered = list(get_available_regions(regions))
+    assert ordered == ["us-east-1", "eu-west-1", "af-south-1"]
+    assert ordered[0] not in OPT_IN_REGIONS
 
-    # If only opt-in regions, should return first one
+    # If only opt-in regions, they are still all yielded in order
     opt_in_only = ["af-south-1", "ap-east-1"]
-    selected = select_s3_region(opt_in_only)
-    assert selected == "af-south-1"
+    ordered = list(get_available_regions(opt_in_only))
+    assert ordered == ["af-south-1", "ap-east-1"]
 
 
 @pytest.mark.asyncio
@@ -386,3 +388,75 @@ async def test_get_bucket_resource_other_error(mock_session: AsyncMock) -> None:
 
     result = await get_bucket_resource(bucket_name, cloudcontrol_client=mock_client)
     assert result is None
+
+
+def _build_s3_session(behavior: Any, region: str) -> AsyncMock:
+    """Build a mock session whose cloudcontrol list_resources follows behavior.
+
+    behavior is either a ClientError to raise from list_resources or a list of
+    resource batches to yield from it.
+    """
+    session = AsyncMock()
+    session.region_name = region
+
+    @asynccontextmanager
+    async def mock_client(
+        service_name: str, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        client = MagicMock()
+
+        class PaginatorMock:
+            async def paginate(self, **kwargs: Any) -> AsyncGenerator[Any, None]:
+                if isinstance(behavior, Exception):
+                    raise behavior
+                for batch in behavior:
+                    yield {"ResourceDescriptions": batch}
+
+        client.get_paginator = MagicMock(return_value=PaginatorMock())
+        client.exceptions.ClientError = ClientError
+        client.get_resource = AsyncMock(
+            return_value={"ResourceDescription": {"Properties": "{}"}}
+        )
+        yield client
+
+    session.client = mock_client
+    return session
+
+
+@pytest.mark.asyncio
+async def test_resync_s3_bucket_yields_buckets_in_region(mock_account_id: str) -> None:
+    """resync_s3_bucket yields the buckets returned by list_resources for the region."""
+    bucket_batch = [{"Identifier": "my-bucket"}]
+    session = _build_s3_session([bucket_batch], region="eu-west-1")
+
+    results = []
+    with patch(
+        "utils.resources._session_manager.find_account_id_by_session",
+        return_value=mock_account_id,
+    ):
+        async for batch in resync_s3_bucket(kind="AWS::S3::Bucket", session=session):
+            results.extend(batch)
+
+    assert len(results) == 1
+    assert results[0]["Identifier"] == "my-bucket"
+    assert results[0]["__Region"] == "eu-west-1"
+
+
+@pytest.mark.asyncio
+async def test_resync_s3_bucket_propagates_access_denied(mock_account_id: str) -> None:
+    """Access denied must propagate so the caller can fall back to the next region."""
+    access_denied = ClientError(
+        {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+        "ListResources",
+    )
+    session = _build_s3_session(access_denied, region="us-east-1")
+
+    with patch(
+        "utils.resources._session_manager.find_account_id_by_session",
+        return_value=mock_account_id,
+    ):
+        with pytest.raises(ClientError) as exc_info:
+            async for _ in resync_s3_bucket(kind="AWS::S3::Bucket", session=session):
+                pass
+
+    assert is_access_denied_exception(exc_info.value)

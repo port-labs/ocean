@@ -5,7 +5,7 @@ from typing import Type, Any, TypedDict, Optional
 import httpx
 from loguru import logger
 import yaml
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from starlette import status
 
 from port_ocean.clients.port.client import PortClient

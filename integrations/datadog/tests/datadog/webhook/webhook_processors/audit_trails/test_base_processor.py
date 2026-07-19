@@ -5,6 +5,7 @@ import pytest
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
+from datadog.client import DatadogClient
 from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
     BaseAuditTrailProcessor,
@@ -19,6 +20,7 @@ def _raw(
             "evt": {"name": evt_name},
             "action": action,
             "asset": {"type": asset_type, "id": asset_id},
+            "org": {"name": "DPN | Port", "uuid": "uuid-1"},
         }
     }
 
@@ -38,7 +40,10 @@ class _StubProcessor(BaseAuditTrailProcessor):
         )
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
         return event.dict()
 
@@ -54,6 +59,7 @@ def test_parse_event_normalizes_action_and_type() -> None:
             "evt": {"name": "  Monitor  "},
             "action": "MODIFIED",
             "asset": {"type": "MONITOR", "id": "m-1"},
+            "org": {"name": "DPN | Port", "uuid": "uuid-1"},
         }
     }
     event = AuditTrailEvent.parse_obj(raw)
@@ -63,7 +69,7 @@ def test_parse_event_normalizes_action_and_type() -> None:
 
 
 def test_parse_event_missing_required_field_raises() -> None:
-    from pydantic import ValidationError
+    from pydantic.v1 import ValidationError
 
     with pytest.raises(ValidationError):
         AuditTrailEvent.parse_obj(
@@ -157,6 +163,76 @@ async def test_non_delete_action_returns_fetched_resource(
     raw = _raw("Stub", "modified", "stub", "s-42")
     result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
     assert result.updated_raw_results[0]["attributes"]["asset"]["id"] == "s-42"
+    assert result.deleted_raw_results == []
+
+
+# ---------------------------------------------------------------------------
+# Multi-org client routing by org id (audit payload carries org.uuid)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_handle_event_routes_by_audit_org_id(
+    processor: _StubProcessor,
+    mock_client_manager: Any,
+) -> None:
+    raw = _raw("Stub", "modified", "stub", "s-1")
+    raw["attributes"]["org"] = {"name": "DPN | Port", "uuid": "uuid-1"}
+
+    await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
+
+    mock_client_manager.get_client_by_org_id.assert_called_once_with("uuid-1")
+
+
+@pytest.mark.asyncio
+async def test_handle_event_enriches_fetched_resource_with_org_id_when_multi_org(
+    processor: _StubProcessor,
+    mock_client_manager: Any,
+) -> None:
+    from datadog.utils import ORG_ID_ENRICHMENT_KEY
+
+    from unittest.mock import MagicMock
+
+    mock_client_manager.is_multi_org = True
+    client = MagicMock()
+    client.org_id = "uuid-1"
+    mock_client_manager.get_client_by_org_id.return_value = client
+
+    raw = _raw("Stub", "modified", "stub", "s-1")
+    raw["attributes"]["org"] = {"name": "DPN | Port", "uuid": "uuid-1"}
+
+    result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
+
+    assert result.updated_raw_results[0][ORG_ID_ENRICHMENT_KEY] == "uuid-1"
+
+
+@pytest.mark.asyncio
+async def test_handle_event_does_not_enrich_when_single_org(
+    processor: _StubProcessor,
+    mock_client_manager: Any,
+) -> None:
+    from datadog.utils import ORG_ID_ENRICHMENT_KEY
+
+    raw = _raw("Stub", "modified", "stub", "s-1")
+    raw["attributes"]["org"] = {"name": "DPN | Port", "uuid": "uuid-1"}
+
+    result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
+
+    assert ORG_ID_ENRICHMENT_KEY not in result.updated_raw_results[0]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_skips_when_no_client_for_org(
+    processor: _StubProcessor,
+    mock_client_manager: Any,
+) -> None:
+    mock_client_manager.get_client_by_org_id.return_value = None
+    raw = _raw("Stub", "modified", "stub", "s-1")
+    raw["attributes"]["org"] = {"name": "Unknown Org", "uuid": "uuid-unknown"}
+
+    result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
+
+    assert result.updated_raw_results == []
     assert result.deleted_raw_results == []
 
 

@@ -28,14 +28,19 @@ configurations:
     default: "https://api.datadoghq.com"
   - name: datadogApiKey
     description: Datadog API key. To create an API key, see the <a target="_blank" href="https://docs.datadoghq.com/account_management/api-app-keys/#add-an-api-key-or-client-token">Datadog documentation</a>.
-    required: true
+    required: false
     type: string
     sensitive: true
   - name: datadogApplicationKey
     description: Datadog application key. To create an application key, see the <a target="_blank" href="https://docs.datadoghq.com/account_management/api-app-keys/#add-application-keys">Datadog documentation</a>.
-    required: true
+    required: false
     type: string
     sensitive: true
+  - name: datadogCredentialMap
+    description: "Datadog credentials as a json array, one entry per organization. This enables fetching resources from multiple Datadog organizations. Each entry sets datadogApiKey and datadogApplicationKey, and may set an optional datadogBaseUrl when the org lives on a different Datadog site (defaults to datadogBaseUrl). Each entry may also supply the org's identity via datadogOrgPublicId and datadogOrgName; when omitted, the org's identity is fetched from Datadog on startup. Example '[{\"datadogApiKey\":\"apiKey\", \"datadogApplicationKey\":\"appKey\", \"datadogBaseUrl\":\"https://api.us3.datadoghq.com\", \"datadogOrgPublicId\":\"abc123\", \"datadogOrgName\":\"My Org\"}]'"
+    type: string
+    sensitive: true
+    required: false
   - name: appHost
     type: url
     required: false
