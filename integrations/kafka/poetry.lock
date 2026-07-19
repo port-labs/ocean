@@ -2481,7 +2481,25 @@ files = [
 [package.extras]
 dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 
+[[package]]
+name = "yamllint"
+version = "1.38.0"
+description = "A linter for YAML files."
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "yamllint-1.38.0-py3-none-any.whl", hash = "sha256:fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220"},
+    {file = "yamllint-1.38.0.tar.gz", hash = "sha256:09e5f29531daab93366bb061e76019d5e91691ef0a40328f04c927387d1d364d"},
+]
+
+[package.dependencies]
+pathspec = ">=1.0.0"
+pyyaml = "*"
+
+[package.extras]
+dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "ruff", "sphinx"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "7d9c71423e7bb1777b7d35f28f07ec56970a2140c968e6810fb56dde3e7699b3"
+content-hash = "fa1f6ea9454140c0b49d182b5893c49117314417c31f95eccc4a9bf0f034b41c"
