@@ -4,9 +4,7 @@ from typing import List
 
 
 class BaseAWSPropertiesModel(BaseModel):
-    model_config = ConfigDict(
-        extra="ignore", alias_generator=to_pascal, populate_by_name=True
-    )
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
 class ExtraContextModel(BaseModel):
