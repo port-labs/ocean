@@ -16,13 +16,14 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from aws.core.interfaces.action import Action
 from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.core.modeling.resource_models import ResourceModel, BaseAWSPropertiesModel
+from pydantic import ConfigDict
 
 _FakeActionInput = List[str]
 patch_prefix = "aws.core.modeling.resource_inspector"
 
 
 class _FakeProperties(BaseAWSPropertiesModel):
-    pass
+    model_config = ConfigDict(extra="allow")
 
 
 class _FakeResource(ResourceModel[_FakeProperties]):
