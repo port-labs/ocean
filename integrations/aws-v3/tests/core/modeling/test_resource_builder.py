@@ -4,15 +4,14 @@ These lock in that ``build`` emits the resource ``Type`` (passed via
 ``with_type``) alongside the accumulated ``Properties`` as a JSON-native dict.
 """
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
 
 
 class _FakeProperties(BaseModel):
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class _FakeResource(ResourceModel[_FakeProperties]):
