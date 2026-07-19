@@ -1,6 +1,5 @@
 from typing import Any, Dict, Self
 
-from pydantic.json import pydantic_encoder
 
 from aws.core.modeling.resource_models import ResourceModel
 

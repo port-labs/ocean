@@ -5,7 +5,6 @@ from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.action import ActionMap, ActionInputType
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel, BaseAWSPropertiesModel
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from aiobotocore.client import AioBaseClient
