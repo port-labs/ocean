@@ -27,7 +27,6 @@ class PartitionRefiner:
         resource: str,
         base_variables: dict[str, Any],
         partitions: list[PaginationPartition],
-        config: ParallelismConfig,
     ) -> AsyncIterator[PaginationPartition]:
         if not partitions:
             return
@@ -35,7 +34,7 @@ class PartitionRefiner:
         async for ready_partition in stream_independent_async_iterators(
             *[
                 self._refine_partition_streaming(
-                    resource, base_variables, partition, config
+                    resource, base_variables, partition
                 )
                 for partition in partitions
             ],
@@ -48,7 +47,6 @@ class PartitionRefiner:
         resource: str,
         base_variables: dict[str, Any],
         partition: PaginationPartition,
-        config: ParallelismConfig,
     ) -> AsyncIterator[PaginationPartition]:
         variables = merge_partition_filters(base_variables, partition)
         count = await self._client.get_resource_total_count(resource, variables)
@@ -57,7 +55,7 @@ class PartitionRefiner:
             logger.info(f"Skipping empty partition {partition.label}")
             return
 
-        max_entities = config.max_partition_entities
+        max_entities = self._config.max_partition_entities
         if count <= max_entities:
             logger.info(
                 f"Partition {partition.label} has {count} entities (within limit of {max_entities})"
@@ -68,7 +66,7 @@ class PartitionRefiner:
         logger.info(
             f"Partition {partition.label} has {count} entities, splitting (limit {max_entities})"
         )
-        children = self._splitter.split(partition, config)
+        children = self._splitter.split(partition, self._config)
         if not children:
             logger.warning(
                 f"Cannot split partition {partition.label} further "
@@ -80,7 +78,7 @@ class PartitionRefiner:
         async for ready_partition in stream_independent_async_iterators(
             *[
                 self._refine_partition_streaming(
-                    resource, base_variables, child, config
+                    resource, base_variables, child
                 )
                 for child in children
             ],

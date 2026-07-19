@@ -93,7 +93,6 @@ class ReadyPartitionCrawlStream:
                 self._resource,
                 self._base_variables,
                 self._initial_partitions,
-                self._config,
             ):
                 self._ready_count += 1
                 asyncio.create_task(self._crawl_partition(partition))
