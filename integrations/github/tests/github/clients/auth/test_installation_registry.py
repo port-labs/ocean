@@ -1,4 +1,5 @@
 import time
+from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -10,7 +11,7 @@ from github.clients.auth.github_app.installation_authenticator import (
 
 
 @pytest.fixture(autouse=True)
-def reset_registry() -> None:
+def reset_registry() -> Generator[None, None, None]:
     installation_registry.reset_authenticators_by_org()
     yield
     installation_registry.reset_authenticators_by_org()
