@@ -11,9 +11,6 @@ class ResourceBuilder[ResourceModelT: ResourceModel[Any]]:
     Provides a fluent interface to collect the resource's `Type`, `Properties`
     and extra context, then constructs the model in a single pass at `build`.
 
-    Type Parameters:
-        ResourceModelT: A subclass of `ResourceModel` with properties of type `TProperties`.
-
     Example:
         >>> builder = ResourceBuilder(MyResourceModel)
         >>> resource = builder.with_properties({"Name": "example", "Size": 42}).build()
