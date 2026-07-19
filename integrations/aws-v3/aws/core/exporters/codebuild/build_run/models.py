@@ -1,7 +1,11 @@
 from datetime import datetime
 from typing import Any
 from pydantic import Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
 class BuildRunProperties(BaseAWSPropertiesModel):

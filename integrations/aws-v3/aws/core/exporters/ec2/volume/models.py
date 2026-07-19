@@ -1,7 +1,11 @@
 from typing import Any
 from datetime import datetime
 from pydantic import Field, ConfigDict
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
 class EbsVolumeProperties(BaseAWSPropertiesModel):

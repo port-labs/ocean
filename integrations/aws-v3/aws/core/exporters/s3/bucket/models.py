@@ -1,6 +1,10 @@
 from typing import Any
 from pydantic import Field, ConfigDict
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 

@@ -1,11 +1,16 @@
 from typing import Any
 from pydantic import Field, ConfigDict
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
 class MskClusterProperties(BaseAWSPropertiesModel):
     """Properties for an MSK cluster resource."""
+
     model_config = ConfigDict(extra="allow")
 
     ClusterArn: str = Field(default_factory=str)

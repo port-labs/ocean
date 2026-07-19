@@ -4,7 +4,9 @@ from typing import List
 
 
 class BaseAWSPropertiesModel(BaseModel):
-    model_config = ConfigDict(extra="ignore", alias_generator=to_pascal, populate_by_name=True)
+    model_config = ConfigDict(
+        extra="ignore", alias_generator=to_pascal, populate_by_name=True
+    )
 
 
 class ExtraContextModel(BaseModel):
@@ -22,11 +24,14 @@ class ResourceModel[PropertiesT: BaseModel](BaseModel):
         Type (str): The AWS resource type identifier (e.g., "AWS::S3::Bucket").
         Properties (PropertiesT): The properties of the AWS resource, typed as a Pydantic model.
     """
+
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     Type: str
     Properties: PropertiesT
-    ExtraContext: ExtraContextModel = Field(default_factory=ExtraContextModel, alias="__ExtraContext")
+    ExtraContext: ExtraContextModel = Field(
+        default_factory=ExtraContextModel, alias="__ExtraContext"
+    )
 
 
 class ResourceRequestModel(BaseModel):
@@ -37,6 +42,7 @@ class ResourceRequestModel(BaseModel):
         region (str): The AWS region from which to export resources.
         include (List[str]): List of resource types or names to include in the export.
     """
+
     model_config = ConfigDict(extra="allow")
 
     region: str = Field(..., description="The AWS region to export resources from")

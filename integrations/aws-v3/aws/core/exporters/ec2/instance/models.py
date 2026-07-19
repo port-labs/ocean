@@ -2,11 +2,16 @@ from typing import Any
 from datetime import datetime
 
 from pydantic import ConfigDict, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
 class EC2InstanceProperties(BaseAWSPropertiesModel):
     """Properties for an EC2 instance resource."""
+
     model_config = ConfigDict(extra="allow")
 
     AmiLaunchIndex: int | None = None

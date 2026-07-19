@@ -1,7 +1,11 @@
 from typing import Any
 
 from pydantic import ConfigDict, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
 class MemoryDbUserProperties(BaseAWSPropertiesModel):
