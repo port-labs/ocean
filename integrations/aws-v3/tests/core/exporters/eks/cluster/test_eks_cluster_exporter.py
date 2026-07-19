@@ -61,7 +61,9 @@ class TestEksClusterExporter:
                 platformVersion="eks.5",
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_cluster.model_dump(exclude_none=True)
+        ]
 
         # Create options
         options = SingleEksClusterRequest(

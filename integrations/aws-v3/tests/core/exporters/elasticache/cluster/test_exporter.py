@@ -64,7 +64,9 @@ class TestElastiCacheClusterExporter:
                 Engine="redis",
             )
         )
-        mock_inspector.inspect.return_value = [cache_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            cache_cluster.model_dump(exclude_none=True)
+        ]
 
         options = SingleCacheClusterRequest(
             region="us-west-2",
@@ -186,7 +188,10 @@ class TestElastiCacheClusterExporter:
         )
 
         mock_inspector.inspect.side_effect = [
-            [cluster1.model_dump(exclude_none=True), cluster2.model_dump(exclude_none=True)],
+            [
+                cluster1.model_dump(exclude_none=True),
+                cluster2.model_dump(exclude_none=True),
+            ],
             [cluster3.model_dump(exclude_none=True)],
         ]
 
@@ -297,7 +302,9 @@ class TestElastiCacheClusterExporter:
         cache_cluster = CacheCluster(
             Properties=CacheClusterProperties(CacheClusterId="cluster-55")
         )
-        mock_inspector.inspect.return_value = [cache_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            cache_cluster.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleCacheClusterRequest(

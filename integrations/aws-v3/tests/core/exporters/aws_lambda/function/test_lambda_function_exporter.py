@@ -74,7 +74,9 @@ class TestLambdaFunctionExporter:
                 Handler="index.handler",
             )
         )
-        mock_inspector.inspect.return_value = [lambda_function.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            lambda_function.model_dump(exclude_none=True)
+        ]
 
         options = SingleLambdaFunctionRequest(
             region="us-east-1",
@@ -278,7 +280,9 @@ class TestLambdaFunctionExporter:
         lambda_function = LambdaFunction(
             Properties=LambdaFunctionProperties(FunctionName="cleanup-test")
         )
-        mock_inspector.inspect.return_value = [lambda_function.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            lambda_function.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleLambdaFunctionRequest(

@@ -59,7 +59,9 @@ class TestS3BucketExporter:
                 Tags=[{"Key": "Environment", "Value": "test"}],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_bucket.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_bucket.model_dump(exclude_none=True)
+        ]
 
         # Create options
         options = SingleBucketRequest(
@@ -107,7 +109,9 @@ class TestS3BucketExporter:
                 PublicAccessBlockConfiguration={"BlockPublicAcls": True},
             ),
         )
-        mock_inspector.inspect.return_value = [expected_bucket.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_bucket.model_dump(exclude_none=True)
+        ]
 
         # Create options with multiple includes
         options = SingleBucketRequest(
@@ -171,7 +175,10 @@ class TestS3BucketExporter:
 
         # Set up side effects for inspector.inspect calls per page
         mock_inspector.inspect.side_effect = [
-            [bucket1.model_dump(exclude_none=True), bucket2.model_dump(exclude_none=True)],
+            [
+                bucket1.model_dump(exclude_none=True),
+                bucket2.model_dump(exclude_none=True),
+            ],
             [bucket3.model_dump(exclude_none=True)],
         ]
 
@@ -318,7 +325,9 @@ class TestS3BucketExporter:
         mock_bucket = Bucket(
             Properties=BucketProperties(BucketName="test-bucket"),
         )
-        mock_inspector.inspect.return_value = [mock_bucket.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            mock_bucket.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleBucketRequest(

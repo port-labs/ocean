@@ -68,7 +68,9 @@ class TestRdsDbInstanceExporter:
                 Engine="mysql",
             )
         )
-        mock_inspector.inspect.return_value = [db_instance.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            db_instance.model_dump(exclude_none=True)
+        ]
 
         options = SingleDbInstanceRequest(
             region="us-west-2",
@@ -308,7 +310,9 @@ class TestRdsDbInstanceExporter:
         db_instance = DbInstance(
             Properties=DbInstanceProperties(DBInstanceIdentifier="db-55")
         )
-        mock_inspector.inspect.return_value = [db_instance.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            db_instance.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleDbInstanceRequest(

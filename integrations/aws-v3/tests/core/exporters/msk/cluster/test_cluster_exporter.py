@@ -62,7 +62,9 @@ class TestMskClusterExporter:
                 NumberOfBrokerNodes=3,
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_cluster.model_dump(exclude_none=True)
+        ]
 
         options = SingleMskClusterRequest(
             region="us-west-2",
@@ -295,7 +297,9 @@ class TestMskClusterExporter:
                 ClusterName="test-cluster",
             ),
         )
-        mock_inspector.inspect.return_value = [mock_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            mock_cluster.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleMskClusterRequest(

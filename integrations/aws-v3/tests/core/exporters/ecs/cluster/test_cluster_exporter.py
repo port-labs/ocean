@@ -65,7 +65,9 @@ class TestEcsClusterExporter:
                 tags=[{"key": "Environment", "value": "test"}],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_cluster.model_dump(exclude_none=True)
+        ]
 
         # Create options
         options = SingleClusterRequest(
@@ -115,7 +117,9 @@ class TestEcsClusterExporter:
                 capacityProviders=["FARGATE", "FARGATE_SPOT"],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_cluster.model_dump(exclude_none=True)
+        ]
 
         # Create options with no includes
         options = SingleClusterRequest(
@@ -363,7 +367,9 @@ class TestEcsClusterExporter:
                 clusterName="test-cluster",
             ),
         )
-        mock_inspector.inspect.return_value = [mock_cluster.model_dump(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            mock_cluster.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleClusterRequest(
