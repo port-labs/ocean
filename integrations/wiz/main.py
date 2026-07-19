@@ -21,7 +21,7 @@ from initialize_client import init_client
 from integration import ObjectKindWithSpecialHandling, ObjectKind
 from wiz.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 
-
+# Something
 @ocean.on_resync(ObjectKindWithSpecialHandling.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     wiz_client = init_client()
