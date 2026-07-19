@@ -496,11 +496,11 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
     else:
         level = (
-            f"repository-level ... across {len(repositories)} configured repositories"
+            f"repository-level file search across {len(repositories)} configured repositories"
             if repositories
-            else "group-level"
+            else "group-level file search"
         )
-        logger.info(f"Using {level} file search for path pattern '{search_path}'.")
+        logger.info(f"Using {level} for path pattern '{search_path}'.")
         search_iter = client.search_files(
             scope,
             search_path,
