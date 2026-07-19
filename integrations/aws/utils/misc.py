@@ -2,7 +2,6 @@ import enum
 from utils.overrides import AWSResourceConfig
 from typing import (
     List,
-    Literal,
     Protocol,
     Dict,
     Any,
@@ -39,8 +38,8 @@ class ResourceGroupsClientProtocol(Protocol):
 
 
 class CloudControlThrottlingConfig(enum.Enum):
-    MAX_RETRY_ATTEMPTS: int = 100
-    RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
+    MAX_RETRY_ATTEMPTS = 100
+    RETRY_MODE = "adaptive" # Can also be "legacy" or "standard"
 
 
 OPT_IN_REGIONS = frozenset(
