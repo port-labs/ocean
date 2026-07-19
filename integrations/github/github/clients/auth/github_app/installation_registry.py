@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from loguru import logger
 
@@ -8,14 +9,24 @@ from github.clients.auth.github_app.installation_authenticator import (
 )
 from github.helpers.exceptions import AuthenticationException
 
+_DISCOVERY_TTL_SECONDS = 15 * 60
+
 _authenticators_by_org: dict[str, GitHubAppInstallationAuthenticator] = {}
+_discovered_at: float = 0
 _discovery_lock = asyncio.Lock()
 
 
 def reset_authenticators_by_org() -> None:
-    global _authenticators_by_org
+    global _authenticators_by_org, _discovered_at, _discovery_lock
     _authenticators_by_org.clear()
+    _discovered_at = 0
     _discovery_lock = asyncio.Lock()
+
+
+def _is_discovery_fresh() -> bool:
+    if not _authenticators_by_org:
+        return False
+    return (time.monotonic() - _discovered_at) < _DISCOVERY_TTL_SECONDS
 
 
 def _authenticator(
@@ -51,12 +62,13 @@ async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator
 
 
 async def _discover_installations() -> None:
-    global _authenticators_by_org
+    global _authenticators_by_org, _discovered_at
     async with _discovery_lock:
-        if _authenticators_by_org:
+        if _is_discovery_fresh():
             return
 
         _authenticators_by_org = await _fetch_installations()
+        _discovered_at = time.monotonic()
 
 
 async def list_installations_authenticators() -> (
