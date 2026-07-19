@@ -135,7 +135,7 @@ class TestTaskDefinitionProperties:
             executionRoleArn="arn:aws:iam::123456789012:role/exec-role",
         )
 
-        result = properties.dict(by_alias=True)
+        result = properties.model_dump(by_alias=True)
         assert "TaskDefinitionArn" in result
         assert "Family" in result
         assert "Revision" in result
@@ -177,7 +177,7 @@ class TestTaskDefinition:
 
     def test_dict_exclude_none(self) -> None:
         td = TaskDefinition(Properties=TaskDefinitionProperties(family="my-task"))
-        data = td.dict(exclude_none=True)
+        data = td.model_dump(exclude_none=True)
         assert data["Type"] == "AWS::ECS::TaskDefinition"
         assert data["Properties"]["family"] == "my-task"
 

@@ -74,7 +74,7 @@ class TestLambdaFunctionExporter:
                 Handler="index.handler",
             )
         )
-        mock_inspector.inspect.return_value = [lambda_function.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [lambda_function.model_dump(exclude_none=True)]
 
         options = SingleLambdaFunctionRequest(
             region="us-east-1",
@@ -85,7 +85,7 @@ class TestLambdaFunctionExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == lambda_function.dict(exclude_none=True)
+        assert result == lambda_function.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-east-1", "lambda"
         )
@@ -169,8 +169,8 @@ class TestLambdaFunctionExporter:
         )
 
         mock_inspector.inspect.side_effect = [
-            [func1.dict(exclude_none=True), func2.dict(exclude_none=True)],
-            [func3.dict(exclude_none=True)],
+            [func1.model_dump(exclude_none=True), func2.model_dump(exclude_none=True)],
+            [func3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedLambdaFunctionRequest(
@@ -184,9 +184,9 @@ class TestLambdaFunctionExporter:
             collected.extend(page)
 
         assert len(collected) == 3
-        assert collected[0] == func1.dict(exclude_none=True)
-        assert collected[1] == func2.dict(exclude_none=True)
-        assert collected[2] == func3.dict(exclude_none=True)
+        assert collected[0] == func1.model_dump(exclude_none=True)
+        assert collected[1] == func2.model_dump(exclude_none=True)
+        assert collected[2] == func3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-east-1", "lambda"
@@ -278,7 +278,7 @@ class TestLambdaFunctionExporter:
         lambda_function = LambdaFunction(
             Properties=LambdaFunctionProperties(FunctionName="cleanup-test")
         )
-        mock_inspector.inspect.return_value = [lambda_function.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [lambda_function.model_dump(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleLambdaFunctionRequest(

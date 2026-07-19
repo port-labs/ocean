@@ -64,7 +64,7 @@ class TestElastiCacheClusterExporter:
                 Engine="redis",
             )
         )
-        mock_inspector.inspect.return_value = [cache_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [cache_cluster.model_dump(exclude_none=True)]
 
         options = SingleCacheClusterRequest(
             region="us-west-2",
@@ -75,7 +75,7 @@ class TestElastiCacheClusterExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == cache_cluster.dict(exclude_none=True)
+        assert result == cache_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-west-2", "elasticache"
         )
@@ -186,8 +186,8 @@ class TestElastiCacheClusterExporter:
         )
 
         mock_inspector.inspect.side_effect = [
-            [cluster1.dict(exclude_none=True), cluster2.dict(exclude_none=True)],
-            [cluster3.dict(exclude_none=True)],
+            [cluster1.model_dump(exclude_none=True), cluster2.model_dump(exclude_none=True)],
+            [cluster3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedCacheClusterRequest(
@@ -201,9 +201,9 @@ class TestElastiCacheClusterExporter:
             collected.extend(page)
 
         assert len(collected) == 3
-        assert collected[0] == cluster1.dict(exclude_none=True)
-        assert collected[1] == cluster2.dict(exclude_none=True)
-        assert collected[2] == cluster3.dict(exclude_none=True)
+        assert collected[0] == cluster1.model_dump(exclude_none=True)
+        assert collected[1] == cluster2.model_dump(exclude_none=True)
+        assert collected[2] == cluster3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-east-1", "elasticache"
@@ -297,7 +297,7 @@ class TestElastiCacheClusterExporter:
         cache_cluster = CacheCluster(
             Properties=CacheClusterProperties(CacheClusterId="cluster-55")
         )
-        mock_inspector.inspect.return_value = [cache_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [cache_cluster.model_dump(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleCacheClusterRequest(

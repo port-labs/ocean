@@ -65,7 +65,7 @@ class TestEcsClusterExporter:
                 tags=[{"key": "Environment", "value": "test"}],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [expected_cluster.model_dump(exclude_none=True)]
 
         # Create options
         options = SingleClusterRequest(
@@ -79,7 +79,7 @@ class TestEcsClusterExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_cluster.dict(exclude_none=True)
+        assert result == expected_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecs")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
@@ -115,7 +115,7 @@ class TestEcsClusterExporter:
                 capacityProviders=["FARGATE", "FARGATE_SPOT"],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [expected_cluster.model_dump(exclude_none=True)]
 
         # Create options with no includes
         options = SingleClusterRequest(
@@ -129,7 +129,7 @@ class TestEcsClusterExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_cluster.dict(exclude_none=True)
+        assert result == expected_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "eu-west-1", "ecs")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
@@ -363,7 +363,7 @@ class TestEcsClusterExporter:
                 clusterName="test-cluster",
             ),
         )
-        mock_inspector.inspect.return_value = [mock_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [mock_cluster.model_dump(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleClusterRequest(
