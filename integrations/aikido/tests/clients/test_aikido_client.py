@@ -16,7 +16,11 @@ from clients.aikido_client import (
     TEAMS_ENDPOINT,
     CONTAINERS_ENDPOINT,
 )
-from clients.options import ListRepositoriesOptions, ListContainersOptions
+from clients.options import (
+    ListRepositoriesOptions,
+    ListContainersOptions,
+    IssuesOptions,
+)
 from helpers.exceptions import (
     MissingIntegrationCredentialException,
 )
@@ -229,6 +233,7 @@ async def test_get_paginated_resource_uses_first_page_and_page_size(
                 captured_params.append(params.copy())
             mock_resp = MagicMock(spec=Response)
             mock_resp.json.return_value = responses.pop(0)
+            mock_resp.headers = {}
             return mock_resp
 
         mock_exec.side_effect = _side_effect
@@ -250,6 +255,117 @@ async def test_get_paginated_resource_uses_first_page_and_page_size(
         {"include_inactive": True, "per_page": 3, "page": 2},
         {"include_inactive": True, "per_page": 3, "page": 3},
     ]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resource_continues_on_partial_page_when_has_next_header_true(
+    aikido_client: AikidoClient,
+) -> None:
+    """x-has-next-page: true must continue to the next page even when the current page is not full."""
+    partial_page = [{"id": "1"}]
+    second_page = [{"id": "2"}, {"id": "3"}]
+    responses = [partial_page, second_page]
+    headers_per_call = [{"x-has-next-page": "true"}, {"x-has-next-page": "false"}]
+
+    with patch.object(
+        aikido_client, "_execute_request", new_callable=AsyncMock
+    ) as mock_exec:
+
+        async def _side_effect(
+            endpoint: str,
+            method: str = "GET",
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> MagicMock:
+            mock_resp = MagicMock(spec=Response)
+            mock_resp.json.return_value = responses.pop(0)
+            mock_resp.headers = headers_per_call.pop(0)
+            return mock_resp
+
+        mock_exec.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_paginated_resource(
+            endpoint="api/public/v1/open-issue-groups",
+            resource_name="open issue groups",
+            page_size=20,
+        ):
+            batches.append(batch)
+
+    assert batches == [partial_page, second_page]
+    assert mock_exec.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resource_stops_on_full_page_when_has_next_header_false(
+    aikido_client: AikidoClient,
+) -> None:
+    """x-has-next-page: false must stop after the current page even when it is full."""
+    full_page = [{"id": str(i)} for i in range(20)]
+
+    with patch.object(
+        aikido_client, "_execute_request", new_callable=AsyncMock
+    ) as mock_exec:
+
+        async def _side_effect(
+            endpoint: str,
+            method: str = "GET",
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> MagicMock:
+            mock_resp = MagicMock(spec=Response)
+            mock_resp.json.return_value = full_page
+            mock_resp.headers = {"x-has-next-page": "false"}
+            return mock_resp
+
+        mock_exec.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_paginated_resource(
+            endpoint="api/public/v1/open-issue-groups",
+            resource_name="open issue groups",
+            page_size=20,
+        ):
+            batches.append(batch)
+
+    assert batches == [full_page]
+    assert mock_exec.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resource_falls_back_to_count_heuristic_when_no_header(
+    aikido_client: AikidoClient,
+) -> None:
+    """When x-has-next-page header is absent the existing count heuristic determines whether to continue."""
+    partial_page = [{"id": "1"}, {"id": "2"}]
+
+    with patch.object(
+        aikido_client, "_execute_request", new_callable=AsyncMock
+    ) as mock_exec:
+
+        async def _side_effect(
+            endpoint: str,
+            method: str = "GET",
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> MagicMock:
+            mock_resp = MagicMock(spec=Response)
+            mock_resp.json.return_value = partial_page
+            mock_resp.headers = {}
+            return mock_resp
+
+        mock_exec.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_paginated_resource(
+            endpoint="api/public/v1/example",
+            resource_name="example",
+            page_size=20,
+        ):
+            batches.append(batch)
+
+    assert batches == [partial_page]
+    assert mock_exec.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -318,6 +434,7 @@ async def test_get_paginated_resource_continues_when_yielded_batch_is_mutated(
                 captured_params.append(params.copy())
             mock_resp = MagicMock(spec=Response)
             mock_resp.json.return_value = responses.pop(0)
+            mock_resp.headers = {}
             return mock_resp
 
         mock_exec.side_effect = items_to_parse
@@ -460,6 +577,73 @@ async def test_get_issues_paginates(aikido_client: AikidoClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_issues_passes_filter_status(aikido_client: AikidoClient) -> None:
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _mock_paginated(**kwargs: Any) -> Any:
+        captured_kwargs.update(kwargs)
+        yield [{"id": "1"}]
+
+    with patch.object(aikido_client, "get_paginated_resource", new=_mock_paginated):
+        async for _ in aikido_client.get_issues(
+            options=IssuesOptions(filter_status="open")
+        ):
+            pass
+
+    assert captured_kwargs["base_params"] == {"format": "json", "filter_status": "open"}
+
+
+@pytest.mark.asyncio
+async def test_get_issues_passes_multiple_severities(
+    aikido_client: AikidoClient,
+) -> None:
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _mock_paginated(**kwargs: Any) -> Any:
+        captured_kwargs.update(kwargs)
+        yield [{"id": "1"}]
+
+    with patch.object(aikido_client, "get_paginated_resource", new=_mock_paginated):
+        async for _ in aikido_client.get_issues(
+            options=IssuesOptions(filter_severities="critical,high")
+        ):
+            pass
+
+    assert captured_kwargs["base_params"] == {
+        "format": "json",
+        "filter_severities": "critical,high",
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_issues_passes_combined_filters(
+    aikido_client: AikidoClient,
+) -> None:
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _mock_paginated(**kwargs: Any) -> Any:
+        captured_kwargs.update(kwargs)
+        yield [{"id": "1"}]
+
+    with patch.object(aikido_client, "get_paginated_resource", new=_mock_paginated):
+        async for _ in aikido_client.get_issues(
+            options=IssuesOptions(
+                filter_status="open",
+                filter_severities="critical,high",
+                filter_issue_type="sast",
+            )
+        ):
+            pass
+
+    assert captured_kwargs["base_params"] == {
+        "format": "json",
+        "filter_status": "open",
+        "filter_severities": "critical,high",
+        "filter_issue_type": "sast",
+    }
+
+
+@pytest.mark.asyncio
 async def test_get_issues_reraises_on_timeout(
     aikido_client: AikidoClient,
 ) -> None:
@@ -520,6 +704,7 @@ async def test_get_paginated_resource_reraises_on_timeout(
             if call_count == 1:
                 mock_resp = MagicMock(spec=Response)
                 mock_resp.json.return_value = first_page
+                mock_resp.headers = {}
                 return mock_resp
             raise ReadTimeout("page 2 timed out")
 

@@ -7,11 +7,99 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.45.3 (2026-07-16)
+
+### Bug Fixes
+
+- Added in memory temporary caching for fetching blueprints. Cached blueprints are cleared when a resync is triggered/finished, and the cache has a default TTL of two minutes.
+
+## 0.45.2 (2026-07-16)
+
+### Improvements
+
+- Reduced datasource-entities reconciliation page size to 5,000 to lower per-request payload and memory usage
+
+
+## 0.45.1 (2026-07-16)
+
+### Bug Fixes
+
+- Fixed missing DSP KIND lifecycle notifications in multi-process mode by passing the parent resync id into kind subprocesses
+
+
+## 0.45.0 (2026-07-15)
+
+### Improvements
+
+- Updated entity reconciliation to use bulk delete API
+
+
+## 0.44.14 (2026-07-15)
+
+### Improvements
+
+- Added `OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED` (default `false`) as an integration-level opt-in for Redis live-events stream consumption, in addition to the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag.
+
+## 0.44.13 (2026-07-13)
+
+### Improvements
+
+- Added structured context (`status_code`, `method`, `url`, `reason`, `trace_id`) to Port API error logs to make failed requests easier to debug.
+
+## 0.44.12 (2026-07-14)
+
+### Improvements
+
+- Fail unregistered Ocean integration runs immediately by acknowledging and reporting them as failed instead of skipping them until the claim visibility timeout expires.
+
+## 0.44.11 (2026-07-13)
+
+### Bug Fixes
+
+- Fixed missing `links` field in `WorkflowNodeRun` patch on run start, so the GitHub Actions run URL now appears as a clickable link on workflow node runs in the Port UI.
+
+## 0.44.10 (2026-07-12)
+
+### Improvements
+
+- Refactored `LifecycleClient` to delegate lifecycle API POST requests to a dedicated `lifecycle_http_client` instead of inheriting HTTP transport behavior, improving separation of concerns and testability.
+
+### Bug Fixes
+
+- Fixed lifecycle HTTP client proxy resolution to return a context-bound client per access, preventing stale proxy reuse across different event loops.
+- Extended HTTP client context cleanup to include DSP lifecycle clients and aligned related tests, fixing flaky lifecycle/sync-raw test behavior.
+
+## 0.44.9 (2026-07-09)
+
+### Bug Fixes
+
+- Fixed lakehouse raw-data batch serialization when buffered items contain datetime values by applying `make_json_compatible` in `post_integration_raw_data_batch()` before HTTP JSON encoding.
+
+## 0.44.7 (2026-07-08)
+
+### Improvements
+
+- Renamed the `entityDeletionThreshold` port-app-config field title and description to "Allow entity deletion" so the Advanced Config mapping UI can present it as an on/off toggle.
+
+## 0.44.6 (2026-07-08)
+
+### Improvements
+
+- Improved action processor fairness: each claim-pending poll now considers both action runs and workflow node runs in the same cycle (instead of alternating), preventing one run type from waiting up to twice the poll interval while the other is claimed.
+- Added per-action-type buffer limits in the execution manager. When a run type fills its share of the queue, it is temporarily excluded from claim-pending so high-volume actions cannot starve other action types.
+- Added descriptions and validation bounds to `ActionsProcessorSettings` (`runs_buffer_high_watermark`, `visibility_timeout_ms`, `poll_check_interval_seconds`, `workers_count`).
+
+### Bug Fixes
+
+- Fixed `task_done() called too many times` when a worker timed out on an empty queue by only calling `commit()` after a run was successfully dequeued.
+
+
 ## 0.44.5 (2026-06-30)
 
 ### Improvements
 
 - Added Redis stream consumer observability: logs now include `stream_key`, `time_until_consumed_ms` (queue-to-consume latency from `queuedAt`), and `time_until_acked_ms` (queue-to-ack latency) for each message.
+
 
 ## 0.44.4 (2026-06-28)
 

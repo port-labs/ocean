@@ -73,6 +73,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
+    blueprint_cache_ttl_seconds: float = 120.0
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -108,10 +109,47 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
 
 class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
-    runs_buffer_high_watermark: int = Field(default=100)
-    visibility_timeout_ms: int = Field(default=30000)
-    poll_check_interval_seconds: int = Field(default=10)
-    workers_count: int = Field(default=1)
+    runs_buffer_high_watermark: int = Field(
+        default=300,
+        ge=1,
+        le=1_000,
+        description=(
+            "Max total runs queued across all actions before throttling "
+            "claim-pending polls. Aligned with Port's claim-pending limit."
+        ),
+    )
+    visibility_timeout_ms: int = Field(
+        default=60_000,
+        ge=1,
+        le=600_000,
+        description=(
+            "How long a claimed run stays invisible to other consumers before "
+            "becoming reclaimable (milliseconds)."
+        ),
+    )
+    poll_check_interval_seconds: int = Field(
+        default=10,
+        ge=1,
+        description="Seconds between claim-pending polling attempts.",
+    )
+    workers_count: int = Field(
+        default=3,
+        ge=1,
+        description=(
+            "Number of concurrent worker tasks processing claimed runs. "
+            "Tune based on the CPU and memory allocated to the pod."
+        ),
+    )
+    max_runs_buffer_util_pct_per_action: int | None = Field(
+        default=30,
+        ge=1,
+        le=100,
+        description=(
+            "Max runs-buffer utilization percentage per action. When queued runs "
+            "for an action identifier reach this % of runs_buffer_high_watermark, "
+            "exclude it from claim-pending."
+        ),
+    )
 
 
 class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
@@ -220,6 +258,7 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
+    is_redis_stream_consumer_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):

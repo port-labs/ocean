@@ -2,7 +2,11 @@ from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient, Response
 from aiolimiter import AsyncLimiter
 from clients.auth_client import AikidoAuth
-from clients.options import ListRepositoriesOptions, ListContainersOptions
+from clients.options import (
+    ListRepositoriesOptions,
+    ListContainersOptions,
+    IssuesOptions,
+)
 from helpers.utils import IgnoredError
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -11,7 +15,7 @@ API_VERSION = "v1"
 FIRST_PAGE = 0
 PAGE_SIZE = 20
 REPOSITORIES_PAGE_SIZE = 100
-ISSUES_PAGE_SIZE = 100
+ISSUES_PAGE_SIZE = 1000
 REQUESTS_PER_MINUTE = 15
 
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
@@ -130,9 +134,12 @@ class AikidoClient:
                 response = await self._execute_request(
                     endpoint, params=params, ignore_default_errors=False
                 )
-                resources: List[Dict[str, Any]] = (
-                    response.json() if response is not None else []
-                )
+                if response is None:
+                    logger.info(
+                        f"No {resource_name} returned for page {params['page']}"
+                    )
+                    break
+                resources: List[Dict[str, Any]] = response.json()
             except Exception as e:
                 logger.error(f"Error fetching {resource_name}: {e}")
                 raise
@@ -145,7 +152,10 @@ class AikidoClient:
             fetched_count = len(resources)
             yield resources
 
-            if fetched_count < page_size:
+            if (
+                (has_next := response.headers.get("x-has-next-page")) is not None
+                and has_next.lower() != "true"
+            ) or (has_next is None and fetched_count < page_size):
                 break
 
             params["page"] += 1
@@ -168,13 +178,19 @@ class AikidoClient:
         ):
             yield repositories
 
-    async def get_issues(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_issues(
+        self, options: Optional[IssuesOptions] = None
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        base_params: Dict[str, Any] = {
+            "format": "json",
+            **(options.model_dump(exclude_none=True) if options else {}),
+        }
         async for issues in self.get_paginated_resource(
             endpoint=ISSUES_ENDPOINT,
             resource_name="issues",
             first_page=FIRST_PAGE,
             page_size=ISSUES_PAGE_SIZE,
-            base_params={"format": "json"},
+            base_params=base_params,
         ):
             yield issues
 

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "cursor"
-version = "0.1.7"
+version = "0.1.20"
 description = "Cursor ocean integration"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.44.5", extras = ["cli"]}
+port_ocean = {version = "^0.45.3", extras = ["cli"]}
 aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
