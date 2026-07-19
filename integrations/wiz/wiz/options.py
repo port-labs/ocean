@@ -1,6 +1,7 @@
 from typing import Any, Literal
 
 from pydantic import BaseModel
+from wiz.constants import VULNERABILITY_FINDING_SEVERITIES
 
 
 class ParallelismConfig(BaseModel):
@@ -33,7 +34,7 @@ class VulnerabilityFindingOptions(BaseModel):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] | None = (
         None
     )
-    severity_list: list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]] | None = (
+    severity_list: list[VULNERABILITY_FINDING_SEVERITIES] | None = (
         None
     )
     parallelism: ParallelismConfig | None = None
