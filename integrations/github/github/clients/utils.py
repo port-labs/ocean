@@ -35,4 +35,4 @@ def get_github_organizations(
 
 def get_mono_repo_organization(organization: str | None) -> str | None:
     """Get the organization for a monorepo."""
-    return organization or ocean.integration_config["github_organization"]
+    return organization or ocean.integration_config.get("github_organization")
