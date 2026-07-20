@@ -1435,6 +1435,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         await lifecycle_poll_task
                     except asyncio.CancelledError:
                         pass
+                    except Exception as e:
+                        logger.warning(
+                            "Lifecycle abort poll task failed during cleanup",
+                            error=str(e),
+                        )
                 await ocean.app.cache_provider.clear()
                 ocean.port_client.clear_blueprint_cache()
                 if (

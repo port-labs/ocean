@@ -1823,3 +1823,47 @@ async def test_poll_for_lifecycle_abort_aborts_event(
             assert not current_event.aborted
             await mock_sync_raw_mixin._poll_for_lifecycle_abort("resync-1")
             assert current_event.aborted
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_all_ignores_poll_task_failure_and_completes_cleanup(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    async def failing_poll(_resync_id: str) -> None:
+        raise RuntimeError("poll failed")
+
+    mock_sync_raw_mixin._poll_for_lifecycle_abort = failing_poll  # type: ignore[method-assign]
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_ocean.lifecycle_client.notify_resync_started = AsyncMock()  # type: ignore
+    mock_ocean.lifecycle_client.notify_resync_finished = AsyncMock()  # type: ignore
+    mock_ocean.lifecycle_client.notify_resync_failed = AsyncMock()  # type: ignore
+
+    clear_cache = AsyncMock()
+    clear_blueprint_cache = MagicMock()
+    mock_ocean.app.cache_provider.clear = clear_cache  # type: ignore[method-assign]
+    mock_ocean.port_client.clear_blueprint_cache = clear_blueprint_cache  # type: ignore[method-assign]
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            result = await mock_sync_raw_mixin.sync_raw_all(
+                trigger_type="machine",
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert result is True
+    assert clear_cache.await_count == 2
+    assert clear_blueprint_cache.call_count == 2
