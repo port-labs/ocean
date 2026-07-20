@@ -1802,3 +1802,24 @@ def test_process_resource_in_subprocess_sets_metrics_event_id(
         )
 
     assert mock_ocean.metrics.event_id == "resync-from-parent"
+
+
+@pytest.mark.asyncio
+async def test_poll_for_lifecycle_abort_aborts_event(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    mock_ocean.lifecycle_client = MagicMock()
+    mock_ocean.lifecycle_client.get_resync_status = AsyncMock(return_value="aborted")
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.asyncio.sleep", AsyncMock()
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as current_event:
+            assert not current_event.aborted
+            await mock_sync_raw_mixin._poll_for_lifecycle_abort("resync-1")
+            assert current_event.aborted

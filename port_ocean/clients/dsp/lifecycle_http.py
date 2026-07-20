@@ -41,6 +41,9 @@ class OceanResyncHttpClient(OceanAsyncClient):
     async def _raw_post(self, url: str, **kwargs: Any) -> httpx.Response:
         return await super().post(url, **kwargs)
 
+    async def _raw_get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await super().get(url, **kwargs)
+
     async def do_post(self, url: str, json: dict[str, Any] | None = None) -> None:
         try:
             headers = await self._lifecycle_auth.headers()
@@ -63,6 +66,30 @@ class OceanResyncHttpClient(OceanAsyncClient):
             raise
         except Exception as exc:
             logger.error(f"Failed HTTP request: {type(exc).__name__}: {exc}")
+
+    async def do_get(self, url: str) -> dict[str, Any] | None:
+        try:
+            headers = await self._lifecycle_auth.headers()
+            response = await self._raw_get(url, headers=headers)
+            if response.is_error:
+                escaped = response.text.replace("{", "{{").replace("}", "}}")
+                logger.warning(
+                    f"API returned an error for GET {url}: {_truncate(escaped)}",
+                    status_code=response.status_code,
+                    response_body=_truncate(response.text),
+                )
+                return None
+            logger.info(
+                f"API request succeeded for GET {url}",
+                status_code=response.status_code,
+                response_body=_truncate(response.text),
+            )
+            return response.json()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.error(f"Failed HTTP request: {type(exc).__name__}: {exc}")
+            return None
 
 
 def _get_lifecycle_http_client_context(

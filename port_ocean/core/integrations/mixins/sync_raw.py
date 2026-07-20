@@ -64,6 +64,7 @@ from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
+LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 5
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
@@ -1184,6 +1185,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kinds=[MetricResourceKind.RECONCILIATION], dsp_enabled=dsp_enabled
             )
 
+    async def _poll_for_lifecycle_abort(self, resync_id: str) -> None:
+        while not event.aborted:
+            await asyncio.sleep(LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS)
+            status = await ocean.app.lifecycle_client.get_resync_status(resync_id)
+            if status != "aborted":
+                continue
+            logger.warning(
+                "Lifecycle API reported aborted status; cancelling Ocean resync",
+                resync_id=resync_id,
+            )
+            event.abort()
+            return
+
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
@@ -1220,6 +1234,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
 
             dsp_enabled = await is_dsp_mode_enabled()
+            lifecycle_poll_task: asyncio.Task[None] | None = None
             if dsp_enabled:
                 logger.bind(local_only=True).info(
                     "DSP mode active: ocean-core will skip transform, load and reconciliation"
@@ -1263,6 +1278,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_id=ocean.config.integration.identifier,
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
+                )
+                lifecycle_poll_task = asyncio.create_task(
+                    self._poll_for_lifecycle_abort(event.id)
                 )
 
             try:
@@ -1411,6 +1429,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                 return success
             finally:
+                if lifecycle_poll_task is not None:
+                    lifecycle_poll_task.cancel()
+                    try:
+                        await lifecycle_poll_task
+                    except asyncio.CancelledError:
+                        pass
                 await ocean.app.cache_provider.clear()
                 ocean.port_client.clear_blueprint_cache()
                 if (

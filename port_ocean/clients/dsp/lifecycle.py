@@ -122,6 +122,18 @@ class LifecycleClient:
             await self._resync_url(resync_id), json=body
         )
 
+    async def get_resync_status(self, resync_id: str) -> str | None:
+        logger.debug(f"Polling lifecycle API resync status, resync_id={resync_id}")
+        response = await self._lifecycle_http_client.do_get(
+            await self._resync_url(resync_id)
+        )
+        if response is None:
+            return None
+        status = response.get("status")
+        if not isinstance(status, str):
+            return None
+        return status.lower()
+
     # ── Granular (3-segment URL) ──────────────────────────────────────────────
 
     def _build_granular_body(

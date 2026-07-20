@@ -278,6 +278,34 @@ class TestNotifyResyncAborted:
         assert logged_body.endswith("…")
 
 
+class TestGetResyncStatus:
+    @pytest.mark.asyncio
+    async def test_returns_lowercased_status(
+        self, lifecycle_client: LifecycleClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            lifecycle_client._lifecycle_http_client,
+            "do_get",
+            AsyncMock(return_value={"status": "ABORTED"}),
+        )
+
+        status = await lifecycle_client.get_resync_status("r1")
+        assert status == "aborted"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_response_missing_status(
+        self, lifecycle_client: LifecycleClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            lifecycle_client._lifecycle_http_client,
+            "do_get",
+            AsyncMock(return_value={"ok": True}),
+        )
+
+        status = await lifecycle_client.get_resync_status("r1")
+        assert status is None
+
+
 class TestNotifyGranularStarted:
     @pytest.mark.asyncio
     async def test_sends_to_granular_url(
