@@ -17,7 +17,9 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       needs.detect-changes.outputs.integrations != '[]' ||
-      needs.detect-changes.outputs.infra == 'true'
+      needs.detect-changes.outputs.infra == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.core_ci_files_changed == 'true'
     outputs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
@@ -28,10 +30,15 @@ jobs:
         env:
           CHANGED_INTEGRATIONS: ${{ needs.detect-changes.outputs.integrations }}
           HAS_INFRA_CHANGES: ${{ needs.detect-changes.outputs.infra }}
+          HAS_CORE_CHANGES: ${{ needs.detect-changes.outputs.core }}
+          HAS_CORE_CI_CHANGES: ${{ needs.detect-changes.outputs.core_ci_files_changed }}
         run: |
           integrations_to_build=()
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$HAS_INFRA_CHANGES" = "true" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "$HAS_INFRA_CHANGES" = "true" ] || \
+             [ "$HAS_CORE_CHANGES" = "true" ] || \
+             [ "$HAS_CORE_CI_CHANGES" = "true" ]; then
             integration_names=$(find integrations -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
           else
             integration_names="$CHANGED_INTEGRATIONS"
