@@ -336,8 +336,10 @@ class TestLegacyDispatchWorkflowExecutor:
                 return_value=mock_rest_client,
             ),
             patch(
-                "github.actions.dispatch_workflow_executor.get_authenticated_actor",
-                AsyncMock(return_value="port-bot[bot]"),
+                "github.actions.dispatch_workflow_executor.get_auth_provider",
+                return_value=MagicMock(
+                    get_integration_actor=AsyncMock(return_value="port-bot[bot]")
+                ),
             ),
             patch.object(
                 DispatchWorkflowExecutor,
@@ -387,8 +389,10 @@ class TestLegacyDispatchWorkflowExecutor:
                 return_value=mock_rest_client,
             ),
             patch(
-                "github.actions.dispatch_workflow_executor.get_authenticated_actor",
-                AsyncMock(return_value="port-bot[bot]"),
+                "github.actions.dispatch_workflow_executor.get_auth_provider",
+                return_value=MagicMock(
+                    get_integration_actor=AsyncMock(return_value="port-bot[bot]")
+                ),
             ),
             patch(
                 "github.actions.dispatch_workflow_executor.asyncio.sleep",
