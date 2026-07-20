@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refreshed the GitHub App installation registry on a 15-minute TTL.
 
 
+## 6.2.25 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
 ## 6.2.24 (2026-07-16)
 
 
