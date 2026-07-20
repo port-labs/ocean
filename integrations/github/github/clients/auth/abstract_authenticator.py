@@ -51,12 +51,17 @@ class AbstractGitHubAuthenticator(ABC):
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ] = None
 
+    @property
     @abstractmethod
-    async def get_token(self, **kwargs: Any) -> GitHubToken:
+    def rate_limit_scope(self) -> str:
         pass
 
     @abstractmethod
-    async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
+    async def get_token(self) -> GitHubToken:
+        pass
+
+    @abstractmethod
+    async def get_headers(self) -> GitHubHeaders:
         pass
 
     def set_rate_limit_notifier(
