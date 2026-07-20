@@ -83,6 +83,7 @@ from github.core.options import (
 from github.helpers.utils import (
     ObjectKind,
     GithubClientType,
+    enrich_members_with_saml_email,
     enrich_user_with_primary_email,
     tag_batch_with_org,
 )
@@ -321,6 +322,17 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             include_saml_email=selector.include_saml_email,
                         ),
                     )
+                    teams = await RestTeamExporter(
+                        rest_client
+                    ).enrich_enterprise_teams_with_members(teams, org_name)
+                    for team in teams:
+                        if team["slug"].startswith("ent:"):
+                            await enrich_members_with_saml_email(
+                                graphql_client,
+                                org_name,
+                                team["members"]["nodes"],
+                                selector.include_saml_email,
+                            )
 
                 yield teams
 

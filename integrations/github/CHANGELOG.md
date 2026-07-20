@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.3.0 (2026-07-20)
+## 6.4.0 (2026-07-20)
 
 
 ### Features
@@ -23,6 +23,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
   `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`, with
   multi-org repository selectors
+
+
+## 6.3.1 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 6.3.0 (2026-07-20)
+
+
+### Improvements
+
+- Restructured GitHub App authentication internals behind installation-scoped backends and a central installation registry. No user-facing behavior change.
+- Set GitHub App JWT `iat` 60 seconds in the past to tolerate clock drift between Ocean and GitHub.
+- Refreshed the GitHub App installation registry on a 15-minute TTL.
+
+
+## 6.2.25 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 6.2.24 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 6.2.23 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 6.2.22 (2026-07-17)
+
+
+### Features
+
+- Expanded team member ingestion to support GitHub Enterprise (`ent:*`) teams by falling back to the REST members API when GraphQL returns null, enabling Port to display members for EMU organisations.
 
 
 ## 6.2.21 (2026-07-16)
