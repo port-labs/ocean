@@ -161,6 +161,28 @@ class TestNotifyResyncStarted:
         assert "ocean_version" in body
         assert "granularity" not in body
         assert "event_id" not in body
+        assert "mapping" not in body
+
+    @pytest.mark.asyncio
+    async def test_body_includes_mapping_when_provided(
+        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
+    ) -> None:
+        mapping = {
+            "resources": [
+                {
+                    "kind": "repository",
+                    "port": {"entity": {"mappings": [{"identifier": ".name"}]}},
+                }
+            ]
+        }
+        await lifecycle_client.notify_resync_started(
+            resync_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            mapping=mapping,
+        )
+        body = mock_post.call_args[1]["json"]
+        assert body["mapping"] == mapping
 
     @pytest.mark.asyncio
     async def test_defaults_started_at(
