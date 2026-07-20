@@ -3,8 +3,12 @@ from itertools import islice
 import asyncio
 from anyio import to_thread
 
-import confluent_kafka  # type: ignore
-from confluent_kafka.admin import AdminClient, ConfigResource  # type: ignore
+from confluent_kafka.admin import (  # type: ignore[attr-defined]
+    RESOURCE_BROKER,
+    RESOURCE_TOPIC,
+    AdminClient,
+    ConfigResource,
+)
 from loguru import logger
 
 
@@ -49,7 +53,7 @@ class KafkaClient:
         try:
             brokers_configs = await to_thread.run_sync(
                 self.kafka_admin_client.describe_configs,
-                [ConfigResource(confluent_kafka.admin.RESOURCE_BROKER, str(broker.id))],
+                [ConfigResource(RESOURCE_BROKER, str(broker.id))],
             )
             for broker_config_resource, future in brokers_configs.items():
                 broker_config = {
@@ -82,10 +86,13 @@ class KafkaClient:
             topics_metadata_dict = {}
 
             for topic in current_batch_topics:
+                topic_name = topic.topic
+                if topic_name is None:
+                    continue
                 topics_config_resources.append(
-                    ConfigResource(confluent_kafka.admin.RESOURCE_TOPIC, topic.topic)
+                    ConfigResource(RESOURCE_TOPIC, topic_name)
                 )
-                topics_metadata_dict[topic.topic] = topic
+                topics_metadata_dict[topic_name] = topic
 
             topics_configs = await to_thread.run_sync(
                 self.kafka_admin_client.describe_configs, topics_config_resources
