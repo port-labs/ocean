@@ -139,7 +139,6 @@ class GithubGraphQLClient(AbstractGithubClient):
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
-        authenticator_headers_params: Optional[Dict[str, Any]] = {},
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -153,7 +152,6 @@ class GithubGraphQLClient(AbstractGithubClient):
                 json_data=json_data,
                 ignored_errors=ignored_errors,
                 ignore_default_errors=ignore_default_errors,
-                authenticator_headers_params=authenticator_headers_params,
             )
             try:
                 return self._handle_graphql_errors(
