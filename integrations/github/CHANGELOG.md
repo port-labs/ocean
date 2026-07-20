@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.3.0 (2026-07-20)
+
+
+### Improvements
+
+- Restructured GitHub App authentication internals behind installation-scoped backends and a central installation registry. No user-facing behavior change.
+- Set GitHub App JWT `iat` 60 seconds in the past to tolerate clock drift between Ocean and GitHub.
+- Refreshed the GitHub App installation registry on a 15-minute TTL.
+
+
 ## 6.2.25 (2026-07-19)
 
 
