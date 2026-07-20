@@ -577,7 +577,9 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=tree_response)
         ) as mock_request:
-            tree, truncated = await exporter.get_tree_recursive("test-org", "repo1", "main")
+            tree, truncated = await exporter.get_tree_recursive(
+                "test-org", "repo1", "main"
+            )
 
             assert tree == TEST_TREE_ENTRIES
             assert truncated is False
@@ -595,7 +597,9 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=None)
         ) as mock_request:
-            tree, truncated = await exporter.get_tree_recursive(organization, "repo1", "main")
+            tree, truncated = await exporter.get_tree_recursive(
+                organization, "repo1", "main"
+            )
 
             assert tree == []
             assert truncated is False

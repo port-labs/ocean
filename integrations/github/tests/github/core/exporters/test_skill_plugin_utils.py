@@ -21,7 +21,9 @@ class TestSkillUtils:
         assert matches_skill_path("skills/hello/SKILL.md", globs)
         assert matches_skill_path("packages/ai/skills/x/SKILL.md", globs)
         assert matches_skill_path(".cursor/skills/x/SKILL.md", [".cursor/**/SKILL.md"])
-        assert not matches_skill_path("packages/ai/skills/x/SKILL.md", ["skills/**/SKILL.md"])
+        assert not matches_skill_path(
+            "packages/ai/skills/x/SKILL.md", ["skills/**/SKILL.md"]
+        )
 
     def test_build_skill_object_multi_segment_root(self) -> None:
         skill = build_skill_object(
