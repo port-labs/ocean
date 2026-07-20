@@ -19,7 +19,7 @@ jobs:
       RUN_SMOKE_TESTS: ${{ github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install poetry
         run: pipx install 'poetry>=1.0.0,<2.0.0'
