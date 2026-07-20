@@ -95,7 +95,7 @@ jobs:
 
       - name: Open pull request
         id: open_pr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           title: ${{ steps.version.outputs.pr_name }}
@@ -113,7 +113,7 @@ jobs:
       - name: Send Slack notification
         if: ${{ success() && steps.version.outputs.version != '' && steps.open_pr.outputs.pull-request-url != '' }}
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
           method: 'POST'
