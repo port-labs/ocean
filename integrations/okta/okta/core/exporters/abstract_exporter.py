@@ -6,7 +6,6 @@ from typing import Any, Generic, TypeVar
 from okta.clients.http.client import OktaClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
-
 TClient = TypeVar("TClient", bound=OktaClient)
 
 
