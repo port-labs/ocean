@@ -30,10 +30,12 @@ class TestParseIntervalToMinutes:
 
 class TestIncrementalSyncIntervalParsing:
     def test_settings_use_parse_interval_to_minutes(self) -> None:
-        settings = IntegrationSettings(
-            identifier="test",
-            type="github",
-            incremental_sync_interval="30m",
+        settings = IntegrationSettings.parse_obj(
+            {
+                "identifier": "test",
+                "type": "github",
+                "incremental_sync_interval": "30m",
+            }
         )
 
         assert settings.incremental_sync_interval == 30
