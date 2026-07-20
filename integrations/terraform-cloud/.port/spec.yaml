@@ -2,6 +2,7 @@ title: Terraform Cloud
 description: Terraform Cloud integration for Port Ocean
 icon: Terraform
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/terraform-cloud
+formMappingEnabled: true
 features:
   - type: exporter
     section: IaC
@@ -12,6 +13,7 @@ features:
       - kind: state-version
       - kind: state-file
       - kind: run
+      - kind: health-assessment
 configurations:
   - name: terraformCloudHost
     required: false

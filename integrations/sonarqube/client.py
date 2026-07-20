@@ -28,6 +28,10 @@ def turn_sequence_to_chunks(
 MAX_PORTFOLIO_REQUESTS = 20
 MAX_ISSUES_REQUESTS = 10000
 
+# This is necessary because otherwise we would exhaust the connection pool.
+# 100 is the default httpx connection pool size.
+MAX_CONCURRENT_REQUESTS = 100
+
 
 class Endpoints:
     COMPONENTS = "components/search_projects"
@@ -82,6 +86,7 @@ class SonarQubeClient:
         self.webhook_invoke_url = (
             f"{self.app_host}/integration/webhook" if self.app_host else ""
         )
+        self.semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
@@ -115,14 +120,15 @@ class SonarQubeClient:
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
         try:
-            response = await self.http_client.request(
-                method=method,
-                url=f"{self.base_url}/api/{endpoint}",
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
-            return response.json()
+            async with self.semaphore:
+                response = await self.http_client.request(
+                    method=method,
+                    url=f"{self.base_url}/api/{endpoint}",
+                    params=query_params,
+                    json=json_data,
+                )
+                response.raise_for_status()
+                return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -140,15 +146,18 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        query_params = query_params or {}
-        query_params["ps"] = PAGE_SIZE
+        params = {**query_params} if query_params else {}
+        params["ps"] = PAGE_SIZE
         logger.info(f"Starting paginated request to {endpoint}")
         try:
             while True:
+                logger.debug(
+                    f"Sending paginated API request to {endpoint} with query params: {params}"
+                )
                 response = await self._send_api_request(
                     endpoint=endpoint,
                     method=method,
-                    query_params=query_params,
+                    query_params=params,
                     json_data=json_data,
                 )
                 if not response:
@@ -182,14 +191,14 @@ class SonarQubeClient:
                         "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Returning accumulated issues and skipping further results."
                     )
                     break
-                query_params["p"] = page_index + 1
+                params |= {"p": page_index + 1}
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             if (
                 e.response.status_code == 400
-                and query_params.get("ps", 0) > PAGE_SIZE
+                and params.get("ps", 0) > PAGE_SIZE
                 and endpoint == Endpoints.ISSUES_SEARCH
             ):
                 logger.error(
@@ -297,7 +306,11 @@ class SonarQubeClient:
         branches = await self.get_branches(project_key)
         project["__branches"] = branches
         main_branch = [branch for branch in branches if branch.get("isMain")]
-        project["__branch"] = main_branch[0]
+        if not main_branch:
+            logger.warning(
+                f"No main branch data was returned from SonarQube for project {project_key}"
+            )
+        project["__branch"] = main_branch[0] if main_branch else {}
 
         if self.is_onpremise:
             project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
@@ -364,7 +377,7 @@ class SonarQubeClient:
     async def get_issues_by_component(
         self,
         component: dict[str, Any],
-        query_params: dict[str, Any] = {},
+        query_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve issues data across a single component (in this case, project) from SonarQube API.
@@ -373,17 +386,18 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing issues data for the specified component.
         """
+        params = {**query_params} if query_params else {}
         component_key = component.get("key")
 
         if self.is_onpremise:
-            query_params["components"] = component_key
+            params["components"] = component_key
         else:
-            query_params["componentKeys"] = component_key
+            params["componentKeys"] = component_key
 
         async for responses in self._send_paginated_request(
             endpoint=Endpoints.ISSUES_SEARCH,
             data_key="issues",
-            query_params=query_params,
+            query_params=params,
         ):
             yield [
                 {

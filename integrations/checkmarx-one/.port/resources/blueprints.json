@@ -43,7 +43,7 @@
           "description": "The origin or source of the project."
         },
         "criticality": {
-          "type": "string",
+          "type": "number",
           "title": "Criticality",
           "description": "The criticality level of the project."
         }

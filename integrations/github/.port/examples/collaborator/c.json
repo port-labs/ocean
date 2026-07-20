@@ -1,0 +1,30 @@
+{
+  "login": "emekanwaoma",
+  "id": 66322582,
+  "node_id": "MDQ6VXNlcjY2MzIyNTgy",
+  "avatar_url": "https://avatars.githubusercontent.com/u/66322582?v=4",
+  "gravatar_id": "",
+  "url": "https://api.github.com/users/emekanwaoma",
+  "html_url": "https://github.com/emekanwaoma",
+  "followers_url": "https://api.github.com/users/emekanwaoma/followers",
+  "following_url": "https://api.github.com/users/emekanwaoma/following{/other_user}",
+  "gists_url": "https://api.github.com/users/emekanwaoma/gists{/gist_id}",
+  "starred_url": "https://api.github.com/users/emekanwaoma/starred{/owner}{/repo}",
+  "subscriptions_url": "https://api.github.com/users/emekanwaoma/subscriptions",
+  "organizations_url": "https://api.github.com/users/emekanwaoma/orgs",
+  "repos_url": "https://api.github.com/users/emekanwaoma/repos",
+  "events_url": "https://api.github.com/users/emekanwaoma/events{/privacy}",
+  "received_events_url": "https://api.github.com/users/emekanwaoma/received_events",
+  "type": "User",
+  "user_view_type": "public",
+  "site_admin": false,
+  "permissions": {
+    "admin": true,
+    "maintain": true,
+    "push": true,
+    "triage": true,
+    "pull": true
+  },
+  "role_name": "admin",
+  "__repository": "perf-[REDACTED]-repo-adfd348e"
+}

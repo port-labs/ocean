@@ -7,7 +7,9 @@ FILE_PROPERTY_PREFIX = "file://"
 
 
 class FileEntityProcessor(JQEntityProcessor):
-    async def _search(self, data: dict[str, Any], pattern: str) -> Optional[str]:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Optional[str]:
         project_id = data.get("path_with_namespace") or data.get("repo", {}).get(
             "path_with_namespace"
         )

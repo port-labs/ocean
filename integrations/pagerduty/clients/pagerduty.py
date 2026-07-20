@@ -1,3 +1,4 @@
+import asyncio
 from http import HTTPStatus
 from typing import Any, AsyncGenerator, Dict, Optional
 
@@ -11,13 +12,20 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
 from clients.utils import get_date_range_for_last_n_months
-from clients.rate_limiter import PagerDutyRateLimiter
+from clients.rate_limiter import (
+    PagerDutyDailyRateLimitExceededError,
+    PagerDutyRateLimiter,
+    daily_quota_exhausted,
+)
+from clients.retry_transport import PagerDutyRetryTransport
 
 USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 100
 OAUTH_TOKEN_PREFIX = "pd"
+# Pagerduty classic pagination can only retrieve 10k resources. learn more: https://developer.pagerduty.com/docs/pagination
+MAX_PAGERDUTY_RESOURCES = 10_000
 
 
 class PagerDutyClient(OAuthClient):
@@ -26,7 +34,12 @@ class PagerDutyClient(OAuthClient):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
+        self._rate_limiter = PagerDutyRateLimiter(
+            max_concurrent=MAX_CONCURRENT_REQUESTS,
+        )
         self.http_client = OceanAsyncClient(
+            transport_class=PagerDutyRetryTransport,
+            transport_kwargs={"rate_limiter": self._rate_limiter},
             retry_config=RetryConfig(
                 additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
                 retry_after_headers=[
@@ -36,9 +49,6 @@ class PagerDutyClient(OAuthClient):
             timeout=ocean.config.client_timeout,
         )
         self.http_client.headers.update(self.headers)
-        self._rate_limiter = PagerDutyRateLimiter(
-            max_concurrent=MAX_CONCURRENT_REQUESTS,
-        )
 
     @classmethod
     def from_ocean_configuration(cls) -> "PagerDutyClient":
@@ -93,6 +103,13 @@ class PagerDutyClient(OAuthClient):
                 has_more_data = data["more"]
                 if has_more_data:
                     offset += data["limit"]
+
+                if (offset + PAGE_SIZE) > MAX_PAGERDUTY_RESOURCES:
+                    logger.warning(
+                        f"Reached max pagerduty limit of {MAX_PAGERDUTY_RESOURCES} for {resource}"
+                    )
+                    break
+
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"Got {e.response.status_code} status code while fetching paginated data: {str(e)}"
@@ -243,7 +260,6 @@ class PagerDutyClient(OAuthClient):
     async def get_incident_analytics_by_services(
         self, service_ids: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         logger.info(f"Fetching analytics for services: {service_ids} for period")
 
         request_data = {
@@ -298,6 +314,8 @@ class PagerDutyClient(OAuthClient):
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
 
+        self._rate_limiter.check_daily_budget(endpoint)
+
         async with self._rate_limiter:
             try:
                 response = await self.http_client.request(
@@ -311,11 +329,20 @@ class PagerDutyClient(OAuthClient):
                 return response.json()
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
-                if status_code == 404:
+                if status_code == HTTPStatus.NOT_FOUND:
                     logger.debug(
                         f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
                     )
                     return {}
+
+                if (
+                    status_code == HTTPStatus.TOO_MANY_REQUESTS
+                    and endpoint.startswith("analytics/")
+                    and daily_quota_exhausted(e.response.headers)
+                ):
+                    raise PagerDutyDailyRateLimitExceededError(
+                        f"PagerDuty analytics daily quota exhausted on {endpoint}."
+                    ) from e
 
                 logger.error(
                     f"HTTP error for endpoint '{endpoint}': Status code {status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}"
@@ -369,3 +396,37 @@ class PagerDutyClient(OAuthClient):
             incident["__analytics"] = analytics_map.get(incident["id"])
 
         return incidents
+
+    async def get_entity_custom_fields(
+        self, entity_type: str, entity_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch custom field values for a single service or incident."""
+        logger.debug(f"Fetching custom fields for {entity_type}/{entity_id}")
+        data = await self.send_api_request(
+            endpoint=f"{entity_type}/{entity_id}/custom_fields/values",
+            method="GET",
+        )
+        return data.get("custom_fields", [])
+
+    async def enrich_entities_with_custom_fields(
+        self, entities: list[dict[str, Any]], entity_type: str
+    ) -> list[dict[str, Any]]:
+        """Enrich a batch of entities with their custom field values."""
+        logger.info(f"Enriching {len(entities)} {entity_type} with custom fields")
+
+        results = await asyncio.gather(
+            *[
+                self.get_entity_custom_fields(entity_type, entity["id"])
+                for entity in entities
+            ],
+            return_exceptions=True,
+        )
+        for entity, result in zip(entities, results):
+            if isinstance(result, Exception):
+                logger.warning(
+                    f"Failed to fetch custom fields for {entity_type}/{entity['id']}: {result}"
+                )
+                result = []
+            entity["__custom_fields"] = result
+
+        return entities

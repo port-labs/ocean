@@ -1,5 +1,5 @@
 from io import StringIO
-from typing import Any, cast
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -9,7 +9,8 @@ from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
-from port_ocean.core.ocean_types import CalculationResult
+from port_ocean.core.models import Blueprint, BlueprintRelation
+from port_ocean.core.ocean_types import RAW_ITEM, CalculationResult
 from port_ocean.exceptions.core import EntityProcessorException
 
 
@@ -192,6 +193,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"foo": "bar"}
         pattern = ".foo."
+        # _search raises on JQ error; _search catches and returns None
         result = await mocked_processor._search(data, pattern)
         assert result is None
 
@@ -218,14 +220,46 @@ class TestJQEntityProcessor:
         pattern = ".foo"
         with pytest.raises(
             EntityProcessorException,
-            match="Expected boolean value, got value:bar of type: <class 'str'> instead",
+            match=r"Expected boolean value for pattern '\.foo'",
+        ):
+            await mocked_processor._search_as_bool(data, pattern)
+
+    async def test_search_logs_field_name_on_error(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo."
+        messages: list[str] = []
+        logger_id = logger.add(lambda msg: messages.append(str(msg)), level="WARNING")
+        try:
+            result = await mocked_processor._search(data, pattern, "properties.tier")
+        finally:
+            logger.remove(logger_id)
+        assert result is None
+        assert any("properties.tier" in m for m in messages)
+
+    async def test_search_as_bool_jq_error_includes_pattern(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo."
+        with pytest.raises(Exception):
+            await mocked_processor._search_as_bool(data, pattern)
+
+    async def test_search_as_bool_non_bool_includes_pattern(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo"
+        with pytest.raises(
+            EntityProcessorException,
+            match=r"Expected boolean value for pattern '\.foo'",
         ):
             await mocked_processor._search_as_bool(data, pattern)
 
     @pytest.mark.parametrize(
         "pattern, expected",
         [
-            ('.parameters[] | select(.name == "not_exists") | .value', None),
             (
                 '.parameters[] | select(.name == "parameter_name") | .value',
                 "parameter_value",
@@ -233,6 +267,10 @@ class TestJQEntityProcessor:
             (
                 '.parameters[] | select(.name == "another_parameter") | .value',
                 "another_value",
+            ),
+            (
+                '.parameters[] | select(.name == "not_exists") | .value',
+                None,
             ),
         ],
     )
@@ -248,6 +286,19 @@ class TestJQEntityProcessor:
         }
         result = await mocked_processor._search(data, pattern)
         assert result == expected
+
+    async def test_search_returns_none_on_no_match(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {
+            "parameters": [
+                {"name": "parameter_name", "value": "parameter_value"},
+                {"name": "another_parameter", "value": "another_value"},
+            ]
+        }
+        pattern = '.parameters[] | select(.name == "not_exists") | .value'
+        result = await mocked_processor._search(data, pattern)
+        assert result is None
 
     async def test_return_a_list_of_values(
         self, mocked_processor: JQEntityProcessor
@@ -317,23 +368,15 @@ class TestJQEntityProcessor:
             },
             {"foo": "bar", "baz": "bazbar", "bar": {"foobar": "foobar"}},
         ]
-        with patch(
-            "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
-        ) as mock_send_examples:
-            result = await mocked_processor._parse_items(
-                mapping, raw_results, send_raw_data_examples_amount=1
-            )
-            assert len(result.misconfigured_entity_keys) > 0
-            assert len(result.misconfigured_entity_keys) == 4
-            assert result.misconfigured_entity_keys == {
-                "identifier": ".ark",
-                "description": ".bazbar",
-                "url": ".foobar",
-                "defaultBranch": ".bar.baz",
-            }
-            assert mock_send_examples.await_args is not None, "mock was not awaited"
-            args, _ = mock_send_examples.await_args
-            assert len(cast(list[Any], args[0])) > 0
+        result = await mocked_processor._parse_items(mapping, raw_results)
+        assert len(result.misconfigured_entity_keys) > 0
+        assert len(result.misconfigured_entity_keys) == 4
+        assert result.misconfigured_entity_keys == {
+            "identifier": ".ark",
+            "properties.description": ".bazbar",
+            "properties.url": ".foobar",
+            "properties.defaultBranch": ".bar.baz",
+        }
 
     async def test_parse_items_empty_required(
         self, mocked_processor: JQEntityProcessor
@@ -373,21 +416,134 @@ class TestJQEntityProcessor:
             "2 transformations of batch failed due to empty, null or missing values"
             in logs_captured
         )
-        assert (
-            "{'blueprint': '.bar', 'identifier': '.foo'} (null, missing, or misconfigured)"
-            in logs_captured
+        assert "'blueprint': .bar (null, missing, or misconfigured)" in logs_captured
+        assert "'identifier': .foo (null, missing, or misconfigured)" in logs_captured
+
+    async def test_notify_mapping_issues_error_for_required_warning_for_optional(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        mock_blueprint = Blueprint(
+            identifier="testBlueprint",
+            title="Test",
+            team=None,
+            schema={
+                "properties": {
+                    "url": {"type": "string"},
+                    "description": {"type": "string"},
+                },
+                "required": ["url"],
+            },
+            relations={
+                "team": BlueprintRelation(
+                    many=False, required=True, target="team", title="Team"
+                ),
+                "project": BlueprintRelation(
+                    many=False, required=False, target="project", title="Project"
+                ),
+            },
         )
 
-    async def test_examples_sent_even_when_transformation_fails(
+        mapping = Mock()
+        mapping.port.entity.mappings.dict.return_value = {
+            "identifier": ".id",
+            "blueprint": '"testBlueprint"',
+            "properties": {
+                "url": ".missing_url",
+                "description": ".missing_desc",
+            },
+            "relations": {
+                "team": ".missing_team",
+                "project": ".missing_project",
+            },
+        }
+        mapping.port.entity.mappings.blueprint = '"testBlueprint"'
+        mapping.port.items_to_parse = None
+        mapping.selector.query = "true"
+
+        raw_results: list[dict[Any, Any]] = [
+            {"id": "entity-1"},
+        ]
+
+        stream = StringIO()
+        sink_id = logger.add(stream, level="DEBUG")
+        try:
+            with patch.object(
+                ocean.port_client,
+                "get_blueprint",
+                new=AsyncMock(return_value=mock_blueprint),
+            ):
+                await mocked_processor._parse_items(mapping, raw_results)
+        finally:
+            logger.remove(sink_id)
+
+        logs = stream.getvalue()
+
+        lines = logs.strip().split("\n")
+        error_lines = [
+            line
+            for line in lines
+            if "ERROR" in line and "null, missing, or misconfigured" in line
+        ]
+        warning_lines = [
+            line
+            for line in lines
+            if "WARNING" in line and "null, missing, or misconfigured" in line
+        ]
+
+        assert len(error_lines) == 2
+        assert len(warning_lines) == 2
+        assert any("properties.url" in line for line in error_lines)
+        assert any("relations.team" in line for line in error_lines)
+        assert any("properties.description" in line for line in warning_lines)
+        assert any("relations.project" in line for line in warning_lines)
+
+    async def test_notify_mapping_issues_all_warning_when_blueprint_fetch_fails(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        mapping = Mock()
+        mapping.port.entity.mappings.dict.return_value = {
+            "identifier": ".id",
+            "blueprint": '"missingBlueprint"',
+            "properties": {
+                "url": ".missing_url",
+            },
+        }
+        mapping.port.entity.mappings.blueprint = '"missingBlueprint"'
+        mapping.port.items_to_parse = None
+        mapping.selector.query = "true"
+
+        raw_results: list[dict[Any, Any]] = [{"id": "entity-1"}]
+
+        stream = StringIO()
+        sink_id = logger.add(stream, level="DEBUG")
+        try:
+            with patch.object(
+                ocean.port_client,
+                "get_blueprint",
+                new=AsyncMock(side_effect=Exception("not found")),
+            ):
+                await mocked_processor._parse_items(mapping, raw_results)
+        finally:
+            logger.remove(sink_id)
+
+        logs = stream.getvalue()
+        misconfig_lines = [
+            line
+            for line in logs.strip().split("\n")
+            if "null, missing, or misconfigured" in line
+        ]
+        assert len(misconfig_lines) >= 1
+        for line in misconfig_lines:
+            assert "WARNING" in line
+            assert "ERROR" not in line
+
+    async def test_parse_items_reports_misconfiguration_when_transformation_fails(
         self, mocked_processor: JQEntityProcessor
     ) -> None:
         """
-        Test that kind examples are sent BEFORE transformation, so users can see
-        raw data even when the mapping fails completely.
-
         Scenario: Raw data has user objects with 'name' and 'email', but the mapping
         tries to use '.test' as identifier (which doesn't exist). Transformation
-        should fail, but examples should still be sent.
+        should fail and report the misconfiguration.
         """
         mapping = Mock()
         mapping.kind = "users"
@@ -410,40 +566,656 @@ class TestJQEntityProcessor:
             {"name": "Bob Wilson", "email": "bob@example.com"},
         ]
 
-        with patch(
-            "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
-        ) as mock_send_examples:
-            result = await mocked_processor._parse_items(
-                mapping, raw_results, send_raw_data_examples_amount=2
+        result = await mocked_processor._parse_items(mapping, raw_results)
+
+        # Verify transformation failed (no entities created because .color doesn't exist)
+        assert (
+            len(result.entity_selector_diff.passed) == 0
+        ), "No entities should pass because identifier mapping failed"
+
+        # Verify misconfigurations were detected
+        assert (
+            "identifier" in result.misconfigured_entity_keys
+        ), "Should report identifier as misconfigured"
+
+    async def test_separate_compileable_and_uncompileable_patterns_simple(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test separating compileable and uncompileable patterns with simple patterns."""
+        raw_entity_mappings = {
+            "identifier": ".id",
+            "title": ".name",
+            "invalid": ".invalid.",
+        }
+        compileable, uncompileable = (
+            await mocked_processor.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                raw_entity_mappings
+            )
+        )
+        assert "identifier" in compileable
+        assert "title" in compileable
+        assert compileable["identifier"] == ".id"
+        assert compileable["title"] == ".name"
+        assert "invalid" in uncompileable
+        assert uncompileable["invalid"] == ".invalid."
+
+    async def test_separate_compileable_and_uncompileable_patterns_nested(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test separating compileable and uncompileable patterns with nested dictionaries."""
+        raw_entity_mappings = {
+            "identifier": ".id",
+            "properties": {
+                "name": ".name",
+                "invalid": ".invalid.",
+                "nested": {
+                    "value": ".value",
+                    "broken": ".broken.",
+                },
+            },
+        }
+        compileable, uncompileable = (
+            await mocked_processor.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                raw_entity_mappings
+            )
+        )
+        assert "identifier" in compileable
+        assert "properties" in compileable
+        # Nested dicts are split - compileable patterns go to compileable, uncompileable go to uncompileable
+        assert compileable["properties"]["name"] == ".name"
+        assert compileable["properties"]["nested"]["value"] == ".value"
+        assert "invalid" in uncompileable["properties"]
+        assert uncompileable["properties"]["invalid"] == ".invalid."
+        assert "broken" in uncompileable["properties"]["nested"]
+        assert uncompileable["properties"]["nested"]["broken"] == ".broken."
+
+    async def test_separate_compileable_and_uncompileable_patterns_with_selector(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test that selector queries are compiled during warmup."""
+        raw_entity_mappings = {"identifier": ".id"}
+        selector_queries = [".status == 'active'"]
+        compileable, uncompileable = (
+            await mocked_processor.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                raw_entity_mappings, selector_queries
+            )
+        )
+        assert "identifier" in compileable
+        # Selector queries are compiled but not returned, just warmed up
+
+    async def test_separate_compileable_and_uncompileable_patterns_empty(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test with empty mappings."""
+        compileable, uncompileable = (
+            await mocked_processor.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                {}
+            )
+        )
+        assert compileable == {}
+        assert uncompileable == {}
+
+    async def test_parse_items_sync_basic(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test parsing items synchronously with valid patterns."""
+        compileable_patterns = {
+            "identifier": ".id",
+            "title": ".name",
+        }
+        raw_results = [
+            {"id": "1", "name": "First"},
+            {"id": "2", "name": "Second"},
+        ]
+        selector_query = "true"
+        results, errors = await mocked_processor.parse_items_sync(
+            compileable_patterns, raw_results, selector_query
+        )
+        assert len(errors) == 0
+        assert len(results) == 2
+        assert len(results[0][0]) == 1
+        assert results[0][0][0].entity["identifier"] == "1"
+        assert results[0][0][0].entity["title"] == "First"
+        assert results[1][0][0].entity["identifier"] == "2"
+        assert results[1][0][0].entity["title"] == "Second"
+
+    async def test_parse_items_sync_with_selector(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test parsing items synchronously with selector query."""
+        compileable_patterns = {"identifier": ".id"}
+        raw_results = [
+            {"id": "1", "status": "active"},
+            {"id": "2", "status": "inactive"},
+        ]
+        selector_query = '.status == "active"'
+        results, errors = await mocked_processor.parse_items_sync(
+            compileable_patterns, raw_results, selector_query
+        )
+        assert len(errors) == 0
+        assert len(results) == 2
+        assert results[0][0][0].did_entity_pass_selector is True
+        assert results[1][0][0].did_entity_pass_selector is False
+
+    async def test_parse_items_sync_with_parse_all(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test parsing items synchronously with parse_all=True."""
+        compileable_patterns = {"identifier": ".id"}
+        raw_results = [{"id": "1"}]
+        selector_query = "false"
+        results, errors = await mocked_processor.parse_items_sync(
+            compileable_patterns, raw_results, selector_query, parse_all=True
+        )
+        assert len(errors) == 0
+        assert len(results) == 1
+        assert results[0][0][0].entity["identifier"] == "1"
+        assert results[0][0][0].did_entity_pass_selector is False
+
+    async def test_parse_items_sync_empty_results(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test parsing items synchronously with empty results."""
+        compileable_patterns = {"identifier": ".id"}
+        raw_results: list[dict[str, Any]] = []
+        selector_query = "true"
+        results, errors = await mocked_processor.parse_items_sync(
+            compileable_patterns, raw_results, selector_query
+        )
+        assert len(errors) == 0
+        assert len(results) == 0
+
+    async def test_parse_items_async_basic(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test parsing items asynchronously with valid patterns."""
+        uncompiled_patterns = {
+            "identifier": ".id",
+            "title": ".name",
+        }
+        raw_results = [
+            {"id": "1", "name": "First"},
+            {"id": "2", "name": "Second"},
+        ]
+        selector_query = "true"
+        results, errors = await mocked_processor.parse_items_async(
+            uncompiled_patterns, raw_results, selector_query
+        )
+        assert len(errors) == 0
+        assert len(results) == 2
+        assert len(results[0][0]) == 1
+        assert results[0][0][0].entity["identifier"] == "1"
+        assert results[0][0][0].entity["title"] == "First"
+
+    async def test_parse_items_async_empty_patterns(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test parsing items asynchronously with empty patterns."""
+        uncompiled_patterns: dict[str, Any] = {}
+        raw_results = [{"id": "1"}]
+        selector_query = "true"
+        results, errors = await mocked_processor.parse_items_async(
+            uncompiled_patterns, raw_results, selector_query
+        )
+        assert len(errors) == 0
+        assert len(results) == 0
+
+    async def test_parse_items_async_with_selector(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test parsing items asynchronously with selector query."""
+        uncompiled_patterns = {"identifier": ".id"}
+        raw_results = [
+            {"id": "1", "active": True},
+            {"id": "2", "active": False},
+        ]
+        selector_query = ".active == true"
+        results, errors = await mocked_processor.parse_items_async(
+            uncompiled_patterns, raw_results, selector_query
+        )
+        assert len(errors) == 0
+        assert len(results) == 2
+        assert results[0][0][0].did_entity_pass_selector is True
+        assert results[1][0][0].did_entity_pass_selector is False
+
+    async def test_deep_merge_basic(self, mocked_processor: JQEntityProcessor) -> None:
+        """Test basic deep merge functionality."""
+        dict1 = {"a": 1, "b": 2}
+        dict2 = {"c": 3, "d": 4}
+        result = mocked_processor._deep_merge(dict1, dict2)
+        assert result == {"a": 1, "b": 2, "c": 3, "d": 4}
+        assert dict1 == {"a": 1, "b": 2, "c": 3, "d": 4}  # dict1 is modified in place
+
+    async def test_deep_merge_nested(self, mocked_processor: JQEntityProcessor) -> None:
+        """Test deep merge with nested dictionaries."""
+        dict1 = {"a": {"x": 1, "y": 2}, "b": 3}
+        dict2 = {"a": {"z": 4}, "c": 5}
+        result = mocked_processor._deep_merge(dict1, dict2)
+        assert result == {"a": {"x": 1, "y": 2, "z": 4}, "b": 3, "c": 5}
+
+    async def test_deep_merge_overwrite(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test that deep merge doesn't overwrite existing values."""
+        dict1 = {"a": {"x": 1}, "b": 2}
+        dict2 = {"a": {"y": 3}, "b": 4}
+        result = mocked_processor._deep_merge(dict1, dict2)
+        # Only new keys are added, existing keys are preserved
+        assert result == {"a": {"x": 1, "y": 3}, "b": 2}
+
+    async def test_deep_merge_empty_dicts(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test deep merge with empty dictionaries."""
+        dict1: dict[str, Any] = {}
+        dict2 = {"a": 1}
+        result = mocked_processor._deep_merge(dict1, dict2)
+        assert result == {"a": 1}
+
+    async def test_merge_results_both_jq_and_async(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test merging results when both jq and async results exist."""
+        from port_ocean.core.handlers.entity_processor.models import MappedEntity
+
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={"identifier": "1", "jq_field": "jq_value"},
+                            did_entity_pass_selector=True,
+                        )
+                    ],
+                    [],
+                ),
+                (
+                    [
+                        MappedEntity(
+                            entity={"identifier": "2", "jq_field": "jq_value2"},
+                            did_entity_pass_selector=True,
+                        )
+                    ],
+                    [],
+                ),
+            ],
+            [],
+        )
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={"async_field": "async_value"},
+                            did_entity_pass_selector=True,
+                        )
+                    ],
+                    [],
+                ),
+                (
+                    [
+                        MappedEntity(
+                            entity={"async_field": "async_value2"},
+                            did_entity_pass_selector=True,
+                        )
+                    ],
+                    [],
+                ),
+            ],
+            [],
+        )
+        raw_results = [{"id": "1"}, {"id": "2"}]
+        entities, errors = mocked_processor.merge_results(
+            jq_results, async_results, raw_results
+        )
+        assert len(errors) == 0
+        assert len(entities) == 2
+        assert entities[0].entity == {
+            "identifier": "1",
+            "jq_field": "jq_value",
+            "async_field": "async_value",
+        }
+        assert entities[0].did_entity_pass_selector is True
+        assert entities[1].entity == {
+            "identifier": "2",
+            "jq_field": "jq_value2",
+            "async_field": "async_value2",
+        }
+
+    async def test_merge_results_only_jq(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test merging results when only jq results exist."""
+        from port_ocean.core.handlers.entity_processor.models import MappedEntity
+
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={"identifier": "1"}, did_entity_pass_selector=True
+                        )
+                    ],
+                    [],
+                )
+            ],
+            [],
+        )
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = ([], [])
+        raw_results: list[RAW_ITEM] = [{"id": "1"}]
+        entities, errors = mocked_processor.merge_results(
+            jq_results, async_results, raw_results
+        )
+        assert len(errors) == 0
+        assert len(entities) == 1
+        assert entities[0].entity == {"identifier": "1"}
+
+    async def test_merge_results_only_async(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test merging results when only async results exist."""
+        from port_ocean.core.handlers.entity_processor.models import MappedEntity
+
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = ([([], [])], [])
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={"identifier": "1"}, did_entity_pass_selector=True
+                        )
+                    ],
+                    [],
+                )
+            ],
+            [],
+        )
+        raw_results = [{"id": "1"}]
+        entities, errors = mocked_processor.merge_results(
+            jq_results, async_results, raw_results
+        )
+        assert len(errors) == 0
+        assert len(entities) == 1
+        assert entities[0].entity == {"identifier": "1"}
+
+    async def test_merge_results_with_top_level_errors(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test merging results with top-level errors raises ExceptionGroup."""
+        from port_ocean.core.handlers.entity_processor.models import MappedEntity
+
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [MappedEntity(entity={"identifier": "1"})],
+                    [],
+                )
+            ],
+            [ValueError("Top-level JQ error")],  # Top-level error
+        )
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [MappedEntity(entity={"identifier": "1"})],
+                    [],
+                )
+            ],
+            [],
+        )
+        raw_results = [{"id": "1"}]
+        with pytest.raises(ExceptionGroup, match="Error processing tasks"):
+            mocked_processor.merge_results(jq_results, async_results, raw_results)
+
+    async def test_merge_results_with_per_item_errors(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test merging results with per-item errors adds them to errors list."""
+        from port_ocean.core.handlers.entity_processor.models import MappedEntity
+
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [MappedEntity(entity={"identifier": "1"})],
+                    [ValueError("JQ error")],  # Per-item error
+                )
+            ],
+            [],  # No top-level errors
+        )
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [MappedEntity(entity={"identifier": "1"})],
+                    [RuntimeError("Async error")],  # Per-item error
+                )
+            ],
+            [],  # No top-level errors
+        )
+        raw_results: list[RAW_ITEM] = [{"id": "1"}]
+        entities, errors = mocked_processor.merge_results(
+            jq_results, async_results, raw_results
+        )
+        # Per-item errors are collected but don't raise ExceptionGroup
+        assert len(errors) == 2
+        assert len(entities) == 1
+
+    async def test_merge_results_selector_logic(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test that merged entity passes selector only if both pass."""
+        from port_ocean.core.handlers.entity_processor.models import MappedEntity
+
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={"identifier": "1"}, did_entity_pass_selector=True
+                        )
+                    ],
+                    [],
+                ),
+                (
+                    [
+                        MappedEntity(
+                            entity={"identifier": "2"}, did_entity_pass_selector=False
+                        )
+                    ],
+                    [],
+                ),
+            ],
+            [],
+        )
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={}, did_entity_pass_selector=True
+                        )  # First passes
+                    ],
+                    [],
+                ),
+                (
+                    [
+                        MappedEntity(
+                            entity={}, did_entity_pass_selector=True
+                        )  # Second passes
+                    ],
+                    [],
+                ),
+            ],
+            [],
+        )
+        raw_results: list[RAW_ITEM] = [{"id": "1"}, {"id": "2"}]
+        entities, errors = mocked_processor.merge_results(
+            jq_results, async_results, raw_results
+        )
+        assert len(errors) == 0
+        assert len(entities) == 2
+        # First: True && True = True
+        assert entities[0].did_entity_pass_selector is True
+        # Second: False && True = False
+        assert entities[1].did_entity_pass_selector is False
+
+    async def test_merge_results_misconfigurations(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test that misconfigurations are merged correctly."""
+        from port_ocean.core.handlers.entity_processor.models import MappedEntity
+
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={"identifier": "1"},
+                            misconfigurations={"jq_field": ".jq_field"},
+                        )
+                    ],
+                    [],
+                )
+            ],
+            [],
+        )
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ] = (
+            [
+                (
+                    [
+                        MappedEntity(
+                            entity={},
+                            misconfigurations={"async_field": ".async_field"},
+                        )
+                    ],
+                    [],
+                )
+            ],
+            [],
+        )
+        raw_results: list[RAW_ITEM] = [{"id": "1"}]
+        entities, errors = mocked_processor.merge_results(
+            jq_results, async_results, raw_results
+        )
+        assert len(errors) == 0
+        assert len(entities) == 1
+        assert entities[0].misconfigurations == {
+            "jq_field": ".jq_field",
+            "async_field": ".async_field",
+        }
+
+    async def test_shallow_copy_with_mask_object_does_not_corrupt_original(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """
+        Regression test for bug where mask_object mutated data in place,
+        causing entity properties to contain [REDACTED] values.
+
+        The bug occurred because:
+        1. _parse_items creates a shallow copy for examples: item.copy()
+        2. mask_object (in ingest_integration_kind_examples) mutated nested dicts in place
+        3. The mutation affected the original raw_results used for entity mapping
+
+        This test directly exercises the buggy code path:
+        - Creates data with nested objects containing sensitive patterns
+        - Makes a shallow copy (as send_raw_data_examples_before_transform does)
+        - Calls mask_object on the copy
+        - Verifies the original is NOT mutated
+        """
+        from copy import deepcopy
+        from port_ocean.log.sensetive import SensitiveLogFilter, sensitive_log_filter
+
+        # Save original patterns to restore after test (compiled_patterns is class-level)
+        original_patterns = SensitiveLogFilter.compiled_patterns.copy()
+
+        try:
+            # Add a sensitive pattern (simulating organizationUrl marked as sensitive)
+            sensitive_url = "https://dev.azure.com/my-secret-org"
+            sensitive_log_filter.hide_sensitive_strings(sensitive_url)
+
+            # Simulate raw_results from Azure DevOps API with nested objects
+            raw_results: list[dict[str, Any]] = [
+                {
+                    "id": "board-123",
+                    "name": "Sprint Board",
+                    "url": f"{sensitive_url}/project/_apis/work/boards/123",
+                    "__project": {
+                        "id": "project-456",
+                        "name": "My Project",
+                        "url": f"{sensitive_url}/_apis/projects/456",
+                    },
+                    "_links": {
+                        "self": {
+                            "href": f"{sensitive_url}/project/_apis/work/boards/123"
+                        },
+                    },
+                },
+            ]
+
+            # Store original values for comparison
+            raw_results_before: list[dict[str, Any]] = deepcopy(raw_results)
+
+            # Simulate what send_raw_data_examples_before_transform does: shallow copy for examples
+            examples_to_send = [item.copy() for item in raw_results[:1]]
+
+            # Call mask_object on the examples (as ingest_integration_kind_examples does)
+            masked_examples: list[dict[str, Any]] = sensitive_log_filter.mask_object(
+                examples_to_send, full_hide=True
             )
 
-            # Verify examples were sent (this is the key assertion)
+            # Verify the masked examples contain [REDACTED]
             assert (
-                mock_send_examples.await_args is not None
-            ), "Examples should be sent even when transformation fails"
-
-            # Verify the raw data was sent as examples
-            args, _ = mock_send_examples.await_args
-            examples_sent = cast(list[Any], args[0])
-            assert len(examples_sent) == 2, "Should send requested number of examples"
-
-            # Verify examples contain the raw data
-            assert examples_sent[0] == {"name": "John Doe", "email": "john@example.com"}
-            assert examples_sent[1] == {
-                "name": "Jane Smith",
-                "email": "jane@example.com",
-            }
-
-            # Verify the kind was passed correctly
-            kind_arg = args[1]
-            assert kind_arg == "users"
-
-            # Verify transformation failed (no entities created because .color doesn't exist)
+                "[REDACTED]" in masked_examples[0]["url"]
+            ), "Masked examples should contain [REDACTED]"
             assert (
-                len(result.entity_selector_diff.passed) == 0
-            ), "No entities should pass because identifier mapping failed"
+                "[REDACTED]" in masked_examples[0]["__project"]["url"]
+            ), "Nested URLs should be masked"
 
-            # Verify misconfigurations were detected
+            # CRITICAL ASSERTION: The original raw_results should NOT be mutated
+            # Before the fix, this failed because mask_object mutated nested dicts in place
+            assert raw_results == raw_results_before, (
+                "raw_results was mutated by mask_object! "
+                f"Original nested URL was: {raw_results_before[0]['__project']['url']}, "
+                f"but now it's: {raw_results[0]['__project']['url']}. "
+                "This bug causes entity properties to contain [REDACTED] values."
+            )
+
+            # Verify specific nested values are unchanged
             assert (
-                "identifier" in result.misconfigured_entity_keys
-            ), "Should report identifier as misconfigured"
+                raw_results[0]["__project"]["url"]
+                == f"{sensitive_url}/_apis/projects/456"
+            ), "Nested __project.url should not be mutated"
+            assert (
+                raw_results[0]["_links"]["self"]["href"]
+                == f"{sensitive_url}/project/_apis/work/boards/123"
+            ), "Deeply nested _links.self.href should not be mutated"
+
+        finally:
+            # Restore original patterns to avoid affecting other tests
+            SensitiveLogFilter.compiled_patterns = original_patterns

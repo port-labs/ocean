@@ -1,26 +1,12 @@
-from enum import StrEnum
-from typing import Any
 from loguru import logger
 
-from client import StatusPageClient
+from initialize_client import init_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from webhook.registry import register_live_events_webhooks
+from webhook.webhook_client import StatuspageWebhookClient
 
-
-class ObjectKind(StrEnum):
-    PAGE = "statuspage"
-    COMPONENT_GROUPS = "component_group"
-    COMPONENT = "component"
-    INCIDENT = "incident"
-    INCIDENT_UPDATE = "incident_update"
-
-
-def init_client() -> StatusPageClient:
-    return StatusPageClient(
-        statuspage_host=ocean.integration_config["statuspage_host"],
-        statuspage_api_key=ocean.integration_config["statuspage_api_key"],
-        statuspage_ids=ocean.integration_config.get("statuspage_ids"),
-    )
+from kinds import ObjectKind
 
 
 @ocean.on_resync(ObjectKind.PAGE)
@@ -71,30 +57,6 @@ async def resync_incident_updates(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield incident_updates
 
 
-@ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    """Handles incoming Statuspage webhook events, registers relevant data with ocean."""
-
-    logger.info(f"Received Statuspage webhook event: {data}")
-    client = init_client()
-
-    if "page" in data:
-        page_id = data["page"]["id"]
-        page = await client.get_page_by_id(page_id)
-        logger.debug(f"Received page: {page}")
-        await ocean.register_raw(ObjectKind.PAGE, [{**data["page"], **page}])
-
-    if "incident" in data:
-        await ocean.register_raw(ObjectKind.INCIDENT, [data["incident"]])
-
-        if "incident_updates" in data["incident"]:
-            await ocean.register_raw(
-                ObjectKind.INCIDENT_UPDATE, data["incident"]["incident_updates"]
-            )
-
-    return {"ok": True}
-
-
 @ocean.on_start()
 async def on_start() -> None:
     if ocean.event_listener_type == "ONCE":
@@ -110,8 +72,12 @@ async def on_start() -> None:
         logger.error("App host is not provided. Skipping webhook creation.")
         return
     client = init_client()
+    webhook_client = StatuspageWebhookClient(client)
 
     logger.info(f"App host: {app_host}")
     logger.info(f"Page IDs: {page_ids}")
 
-    await client.create_webhooks_for_all_pages(app_host)
+    await webhook_client.create_webhooks_for_all_pages(app_host)
+
+
+register_live_events_webhooks()

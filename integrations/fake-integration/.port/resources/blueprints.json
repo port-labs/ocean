@@ -56,5 +56,93 @@
                 "many": false
             }
         }
+    },
+    {
+        "identifier": "fake-office",
+        "title": "Fake Office",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "geo_lat": {
+                    "type": "number"
+                },
+                "geo_lng": {
+                    "type": "number"
+                },
+                "city_upper": {
+                    "type": "string"
+                },
+                "first_line": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "identifier": "fake-team",
+        "title": "Fake Team",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "lead_email": {
+                    "type": "string",
+                    "format": "email"
+                },
+                "lead_name": {
+                    "type": "string"
+                },
+                "dept_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "relations": {
+            "department": {
+                "title": "Department",
+                "description": "Fake Department",
+                "target": "fake-department",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "fake-project",
+        "title": "Fake Project",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "relations": {
+            "department": {
+                "title": "Department",
+                "description": "Fake Department",
+                "target": "fake-department",
+                "required": false,
+                "many": false
+            }
+        }
     }
 ]

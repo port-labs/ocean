@@ -1,3 +1,4 @@
+from typing import cast
 from loguru import logger
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.events import (
@@ -9,6 +10,7 @@ from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
+from integration import GithubUserConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -36,7 +38,7 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
         action = payload["action"]
         membership = payload["membership"]
         user = membership["user"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(f"Processing event: {action} of organization: {organization}")
 
@@ -51,10 +53,19 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
 
         client = create_github_client(GithubClientType.GRAPHQL)
         exporter = GraphQLUserExporter(client)
+        selector = cast(GithubUserConfig, resource_config).selector
 
         data_to_upsert = await exporter.get_resource(
-            SingleUserOptions(organization=organization, login=user["login"])
+            SingleUserOptions(
+                organization=organization,
+                login=user["login"],
+                include_saml_email=selector.include_saml_email,
+            )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         logger.info(
             f"User {user['login']} of organization: {organization} was upserted"

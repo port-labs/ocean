@@ -1,5 +1,5 @@
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from aws.core.exporters.s3.bucket.models import (
     Bucket,

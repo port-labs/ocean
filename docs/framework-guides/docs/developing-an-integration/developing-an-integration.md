@@ -36,7 +36,7 @@ These steps do not follow a specific order. Some steps only become relevant near
 :::
 
 1. **Scaffold** a new integration, as seen in [getting started](../getting-started/getting-started.md#scaffolding-a-new-integration)
-2. **Implement core logic** by adding the code and logic required for the new integration. [Create API clients](./implementing-an-api-client.md), [webhook processors](./implementing-webhooks.md), [resync functions](./handling-resyncs.md), and [define kinds configuration](./integration-configuration-and-kinds-in-ocean.md) in their respective directories.
+2. **Implement core logic** by adding the code and logic required for the new integration. [Create API clients](./implementing-an-api-client.md), [live event processors](./implementing-live-events.md), [resync functions](./handling-resyncs.md), and [define kinds configuration](./integration-configuration-and-kinds-in-ocean.md) in their respective directories.
 3. **Configure integration spec** by updating the [`.port/spec.yml`](./defining-configuration-files.md) file with metadata, supported resource kinds, required parameters, and webhook configurations.
 4. **Set up configuration** by updating the `integration.py` to add custom resource configs as described in [integration configuration](./integration-configuration-and-kinds-in-ocean.md).
 5. **Define resource mappings** in the [`.port/resources`](./defining-configuration-files.md) directory including blueprints, entity mappings, and selectors for resource filtering.
@@ -47,5 +47,3 @@ These steps do not follow a specific order. Some steps only become relevant near
 :::tip Integration Performance
 Be sure to review the integration [performance](./performance.md) and [code guidelines](./guidelines.md) to ensure your integration is efficient and well-written. Consider handling rate limiting, implementing pagination, using async code, supporting multi-account scenarios, managing webhook processing, and optimizing resync operations.
 :::
-
-

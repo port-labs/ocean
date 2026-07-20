@@ -1,7 +1,9 @@
 import asyncio
+from typing import cast
 from loguru import logger
 from clients.pagerduty import PagerDutyClient
 from consts import SERVICE_DELETE_EVENTS, SERVICE_UPSERT_EVENTS
+from integration import PagerdutyServiceResourceConfig
 from kinds import Kinds
 from webhook_processors.abstract import (
     PagerdutyAbstractWebhookProcessor,
@@ -48,6 +50,15 @@ class ServiceWebhookProcessor(PagerdutyAbstractWebhookProcessor):
             service = response.get("service")
             if service:
                 services = await client.update_oncall_users([service])
+
+                selector = cast(
+                    PagerdutyServiceResourceConfig, resource_config
+                ).selector
+                if selector.include_custom_fields:
+                    services = await client.enrich_entities_with_custom_fields(
+                        services, Kinds.SERVICES
+                    )
+
                 break
             else:
                 # When creating a service, PagerDuty can take some time to sync the api data with the new service.

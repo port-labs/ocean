@@ -41,7 +41,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing Secret Scanning alert event: {action} for alert {alert_number} in {repo_name} from {organization}"
@@ -73,7 +73,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
             alert = enrich_with_organization(
-                enrich_with_repository(alert, repo_name), organization
+                enrich_with_repository(alert, repo_name, repo=repo), organization
             )
 
             return WebhookEventRawResults(
@@ -95,6 +95,10 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
                 hide_secret=config.selector.hide_secret,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

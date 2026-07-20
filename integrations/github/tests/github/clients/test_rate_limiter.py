@@ -1,12 +1,21 @@
-from typing import Generator
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, cast
 from _pytest.fixtures import SubRequest
+from port_ocean.context.event import event_context, EventType
 import pytest
 import asyncio
+import gzip
 import time
+from threading import Lock
 from unittest.mock import Mock, patch
 import httpx
 
-from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.http.base_client import AbstractGithubClient
+from github.clients.rate_limiter.utils import (
+    GitHubRateLimiterConfig,
+    RateLimitInfo,
+    extract_graphql_rate_limit_info,
+)
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
 
@@ -32,6 +41,68 @@ def clear_rate_limiter_registry() -> Generator[None, None, None]:
     GitHubRateLimiterRegistry._instances.clear()
     yield
     GitHubRateLimiterRegistry._instances.clear()
+
+
+class _DummyHeaders:
+    def as_dict(self) -> dict[str, str]:
+        return {}
+
+
+class _DummyAuthenticator:
+    rate_limit_scope = "dummy"
+
+    def __init__(self, response: httpx.Response):
+        self._response = response
+        self.client = self
+
+    def set_rate_limit_notifier(self, notifier: Any) -> None:
+        pass
+
+    async def get_headers(self) -> _DummyHeaders:
+        return _DummyHeaders()
+
+    async def request(
+        self,
+        method: str,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+        follow_redirects: bool = False,
+    ) -> httpx.Response:
+        return self._response
+
+
+class _DummyBaseClient(AbstractGithubClient):
+    def __init__(
+        self,
+        github_host: str,
+        authenticator: _DummyAuthenticator,
+        config: GitHubRateLimiterConfig,
+    ):
+        self._config = config
+        super().__init__(
+            github_host=github_host,
+            authenticator=cast(AbstractGitHubAuthenticator, authenticator),
+        )
+
+    @property
+    def base_url(self) -> str:
+        return "https://api.github.com"
+
+    @property
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig:
+        return self._config
+
+    async def send_paginated_request(
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]] = None,
+        method: str = "GET",
+        ignored_errors: Optional[List[Any]] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if False:
+            yield []
 
 
 class MockGitHubClient:
@@ -74,10 +145,39 @@ class MockGitHubClient:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.headers = self._success_headers(remaining=remaining_override)
-            self.rate_limiter.update_rate_limits(
-                httpx.Headers(mock_response.headers), resource
-            )
+            await self.rate_limiter.on_response(mock_response, resource)
             return mock_response
+
+
+class TestRateLimiterRegistryForkReset:
+    def test_reset_for_fork_clears_instances(
+        self, client_config: GitHubRateLimiterConfig, github_host: str
+    ) -> None:
+        GitHubRateLimiterRegistry.get_limiter(github_host, client_config)
+        assert len(GitHubRateLimiterRegistry._instances) > 0
+
+        GitHubRateLimiterRegistry.reset_for_fork()
+
+        assert len(GitHubRateLimiterRegistry._instances) == 0
+
+    def test_reset_for_fork_reinitializes_lock(self) -> None:
+        old_lock = GitHubRateLimiterRegistry._lock
+        GitHubRateLimiterRegistry.reset_for_fork()
+        assert GitHubRateLimiterRegistry._lock is not old_lock
+        assert isinstance(GitHubRateLimiterRegistry._lock, type(Lock()))
+
+    def test_registry_functional_after_reset(
+        self, client_config: GitHubRateLimiterConfig, github_host: str
+    ) -> None:
+        limiter_before = GitHubRateLimiterRegistry.get_limiter(
+            github_host, client_config
+        )
+        GitHubRateLimiterRegistry.reset_for_fork()
+        limiter_after = GitHubRateLimiterRegistry.get_limiter(
+            github_host, client_config
+        )
+
+        assert limiter_after is not limiter_before
 
 
 class TestRateLimiter:
@@ -131,6 +231,7 @@ class TestRateLimiter:
             limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
         )
         client.rate_limiter.rate_limit_info = info  # trusted internal seed for the test
+        client.rate_limiter._initialized = True
 
         # This call should sleep on __aenter__
         mock_sleep.reset_mock()
@@ -163,9 +264,7 @@ class TestRateLimiter:
                 await asyncio.sleep(0.01)
                 headers = client._success_headers()
                 mock_resp = Mock(status_code=200, headers=headers)
-                client.rate_limiter.update_rate_limits(
-                    httpx.Headers(headers), f"/r/{i}"
-                )
+                await client.rate_limiter.on_response(mock_resp, f"/r/{i}")
             concurrent -= 1
             return mock_resp
 
@@ -201,11 +300,43 @@ class TestRateLimiter:
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_notify_rate_limited_updates_state(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """
+        notify_rate_limited (awaited by the transport) must update the limiter state
+        so that the next __aenter__ sleeps.
+        """
+        client = MockGitHubClient(github_host, client_config)
+        reset_in = 30
+
+        mock_response = Mock()
+        mock_response.status_code = 429
+        mock_response.headers = {
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + reset_in),
+        }
+
+        await client.rate_limiter.notify_rate_limited(mock_response)
+
+        assert client.rate_limiter._initialized is True
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 0
+
+        # The next __aenter__ should sleep because remaining == 0
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/user", remaining_override=999)
+        assert resp.status_code == 200
+        assert mock_sleep.call_count >= 1
+        assert any(args[0] >= reset_in - 1 for args, _ in mock_sleep.call_args_list)
+
+    @pytest.mark.asyncio
     async def test_pause_under_lock_blocks_others(
         self, github_host: str, mock_sleep: Mock
     ) -> None:
         """
-        Because sleep happens while holding _block_lock, a task that triggers the pause blocks others.
+        Because sleep happens while holding _lock, a task that triggers the pause blocks others.
         """
         config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
         limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
@@ -218,6 +349,7 @@ class TestRateLimiter:
             limiter.rate_limit_info = RateLimitInfo(
                 remaining=0, limit=1000, reset_time=int(time.time()) + 5
             )
+            limiter._initialized = True
             async with limiter:
                 order.append("A-acquired")
                 # any small work
@@ -244,3 +376,818 @@ class TestRateLimiter:
         # Sleep used to enforce the pause
         assert mock_sleep.call_count >= 1
         assert any(args[0] >= 5 for args, _ in mock_sleep.call_args_list)
+
+
+class TestRateLimiterOnResponse:
+    @pytest.mark.asyncio
+    async def test_on_response_does_not_reinitialize_when_already_initialized(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """Once initialized from a 200, subsequent 200s do not overwrite the state."""
+        client = MockGitHubClient(github_host, client_config)
+
+        # First request: initializes to remaining=500
+        await client.make_request("/user", remaining_override=500)
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 500
+
+        # Second request with a different remaining: state must not be overwritten
+        await client.make_request("/user", remaining_override=999)
+        # Optimistic decrement from 500 → 499, but no re-init to 999
+        assert client.rate_limiter.rate_limit_info.remaining == 499
+
+    @pytest.mark.asyncio
+    async def test_on_response_reinitializes_after_epoch_passes(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """After the reset epoch passes, the first new 200 reinitializes the limiter."""
+        client = MockGitHubClient(github_host, client_config)
+
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=5, reset_time=int(time.time()) - 1
+        )
+        client.rate_limiter._initialized = True
+
+        await client.make_request("/user", remaining_override=800)
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 800
+
+    @pytest.mark.asyncio
+    async def test_on_response_rate_limit_403_sets_remaining_to_zero(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """A 403 with exhausted rate limit headers sets remaining=0 and marks initialized."""
+        client = MockGitHubClient(github_host, client_config)
+
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+        await client.rate_limiter.on_response(mock_response, "/repos")
+
+        assert client.rate_limiter._initialized is True
+        info = client.rate_limiter.rate_limit_info
+        assert info is not None
+        assert info.remaining == 0
+
+    @pytest.mark.asyncio
+    async def test_handle_rate_limit_response_retry_after_only(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """When only retry-after is present (no x-ratelimit headers), a fallback RateLimitInfo is created (REST/Search only)."""
+        # Only test REST and Search APIs — GraphQL uses HTTP 200 for rate-limiting, not 429
+        for api_type in ("rest", "search"):
+            config = GitHubRateLimiterConfig(api_type=api_type, max_concurrent=5)
+            GitHubRateLimiterRegistry._instances.clear()
+            client = MockGitHubClient(github_host, config)
+            retry_after_seconds = 30
+
+            mock_response = Mock()
+            mock_response.status_code = 429
+            mock_response.headers = {"retry-after": str(retry_after_seconds)}
+            await client.rate_limiter.on_response(mock_response, "/search")
+
+            assert client.rate_limiter._initialized is True
+            info = client.rate_limiter.rate_limit_info
+            assert info is not None
+            assert info.remaining == 0
+            assert info.seconds_until_reset >= retry_after_seconds - 2
+
+    @pytest.mark.asyncio
+    async def test_handle_rate_limit_response_retry_after_overrides_x_ratelimit_reset(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """When both x-ratelimit-reset and retry-after are present, retry-after wins (REST/Search only)."""
+        # Only test REST and Search APIs — GraphQL uses HTTP 200 for rate-limiting, not 429
+        for api_type in ("rest", "search"):
+            config = GitHubRateLimiterConfig(api_type=api_type, max_concurrent=5)
+            GitHubRateLimiterRegistry._instances.clear()
+            client = MockGitHubClient(github_host, config)
+            retry_after_seconds = 60
+
+            mock_response = Mock()
+            mock_response.status_code = 429
+            mock_response.headers = {
+                "x-ratelimit-limit": "1000",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": str(int(time.time()) + 3600),
+                "retry-after": str(retry_after_seconds),
+            }
+            await client.rate_limiter.on_response(mock_response, "/repos")
+
+            info = client.rate_limiter.rate_limit_info
+            assert info is not None
+            assert info.remaining == 0
+            # reset_time must reflect retry-after (≈60s), not x-ratelimit-reset (≈3600s)
+            assert info.seconds_until_reset <= retry_after_seconds + 2
+
+
+class TestRateLimiterLogging:
+    @pytest.mark.asyncio
+    async def test_enforce_rate_limit_logs_bound_fields_when_sleeping(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """When remaining <= 1, logger.bind is called with api_type and delay."""
+        client = MockGitHubClient(github_host, client_config)
+        reset_in = 15
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+            mock_bound = Mock()
+            mock_logger.bind.return_value = mock_bound
+
+            async with client.rate_limiter:
+                pass
+
+            assert mock_logger.bind.call_count == 1
+            call_kwargs = mock_logger.bind.call_args.kwargs
+            assert call_kwargs["api_type"] == client_config.api_type
+            assert abs(call_kwargs["delay"] - reset_in) <= 2
+            mock_bound.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_handle_rate_limit_response_logs_bound_fields(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """When a rate limit response is processed, logger.bind is called with api_type, resource, resets_in."""
+        client = MockGitHubClient(github_host, client_config)
+        reset_in = 120
+
+        mock_response = Mock()
+        mock_response.status_code = 429
+        mock_response.headers = {
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + reset_in),
+        }
+
+        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+            mock_bound = Mock()
+            mock_logger.bind.return_value = mock_bound
+
+            await client.rate_limiter.on_response(mock_response, "/repos")
+
+            assert mock_logger.bind.call_count == 1
+            call_kwargs = mock_logger.bind.call_args.kwargs
+            assert call_kwargs["api_type"] == client_config.api_type
+            assert call_kwargs["resource"] == "/repos"
+            assert abs(call_kwargs["resets_in"] - reset_in) <= 2
+            mock_bound.warning.assert_called_once()
+
+    def test_log_rate_limit_status_warning_when_exhausted(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """When remaining == 0, _log_rate_limit_status emits a warning."""
+        client = MockGitHubClient(github_host, client_config)
+        info = RateLimitInfo(limit=1000, remaining=0, reset_time=int(time.time()) + 60)
+
+        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+            mock_bound = Mock()
+            mock_logger.bind.return_value = mock_bound
+
+            client.rate_limiter._log_rate_limit_status(info, "/user")
+
+            mock_bound.warning.assert_called_once()
+            mock_bound.debug.assert_not_called()
+
+    def test_log_rate_limit_status_warning_when_near_exhaustion(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """When remaining is at 5% of limit, _log_rate_limit_status emits a warning."""
+        client = MockGitHubClient(github_host, client_config)
+        info = RateLimitInfo(limit=1000, remaining=50, reset_time=int(time.time()) + 60)
+
+        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+            mock_bound = Mock()
+            mock_logger.bind.return_value = mock_bound
+
+            client.rate_limiter._log_rate_limit_status(info, "/user")
+
+            mock_bound.warning.assert_called_once()
+            mock_bound.debug.assert_not_called()
+
+    def test_log_rate_limit_status_debug_when_healthy(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """When remaining is well above 10% of limit, _log_rate_limit_status emits debug."""
+        client = MockGitHubClient(github_host, client_config)
+        info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 60
+        )
+
+        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+            mock_bound = Mock()
+            mock_logger.bind.return_value = mock_bound
+
+            client.rate_limiter._log_rate_limit_status(info, "/user")
+
+            mock_bound.debug.assert_called_once()
+            mock_bound.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_resync_above_threshold_sleeps_and_skips_optimistic_decrement(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 50
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        mock_sleep.assert_called_once()
+        assert client.rate_limiter._initialized is False
+        # resync sleep path must not also fall through
+        # to the optimistic decrement, remaining must stay untouched.
+        assert client.rate_limiter.rate_limit_info.remaining == 500
+
+    @pytest.mark.asyncio
+    async def test_resync_below_threshold_does_not_sleep_and_still_decrements(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 95
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        mock_sleep.assert_not_called()
+        # Falls through correctly to the normal exhaustion path's decrement.
+        assert client.rate_limiter.rate_limit_info.remaining == 499
+
+    @pytest.mark.asyncio
+    async def test_resync_sleep_resets_initialized_so_next_caller_does_not_resleep(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 50
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+                mock_sleep.reset_mock()
+
+                async with client.rate_limiter:
+                    pass
+
+        # _initialized is False so _enforce_rate_limit returns
+        # immediately at the top guard, no second sleep.
+        mock_sleep.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_non_numeric_threshold_falls_back_to_default(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=20, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": "not-a-number"
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        # 98% utilization (20/1000 remaining) exceeds the 95% default fallback.
+        mock_sleep.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_out_of_bounds_threshold_falls_back_to_default(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=20, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": -10
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        mock_sleep.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_non_resync_event_context_ignores_threshold_entirely(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
+            async with client.rate_limiter:
+                pass
+
+        mock_sleep.assert_not_called()
+        assert client.rate_limiter.rate_limit_info.remaining == 499
+
+    @pytest.mark.asyncio
+    async def test_no_active_event_context_ignores_threshold_entirely(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        async with client.rate_limiter:
+            pass
+
+        mock_sleep.assert_not_called()
+        assert client.rate_limiter.rate_limit_info.remaining == 499
+
+
+class TestNotifyRateLimitedConcurrency:
+    @pytest.mark.asyncio
+    async def test_concurrent_notify_calls_produce_consistent_state(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """Multiple concurrent notify_rate_limited calls must not corrupt the limiter state."""
+        client = MockGitHubClient(github_host, client_config)
+        now = int(time.time())
+
+        def make_429(reset_in: int) -> Mock:
+            resp = Mock()
+            resp.status_code = 429
+            resp.headers = {
+                "x-ratelimit-limit": "1000",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": str(now + reset_in),
+            }
+            return resp
+
+        tasks = [
+            asyncio.create_task(
+                client.rate_limiter.notify_rate_limited(make_429(reset_in))
+            )
+            for reset_in in [10, 20, 30]
+        ]
+        await asyncio.gather(*tasks)
+
+        info = client.rate_limiter.rate_limit_info
+        assert info is not None
+        assert info.remaining == 0
+        assert client.rate_limiter._initialized is True
+        assert info.reset_time in {now + 10, now + 20, now + 30}
+
+    @pytest.mark.asyncio
+    async def test_notify_rate_limited_blocks_when_lock_held(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """notify_rate_limited awaits the lock, so it blocks until the current holder releases."""
+        client = MockGitHubClient(github_host, client_config)
+        now = int(time.time())
+
+        notify_response = Mock()
+        notify_response.status_code = 429
+        notify_response.headers = {
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(now + 5),
+        }
+
+        # Create the notify task while we hold the lock — it will be blocked on lock acquisition.
+        async with client.rate_limiter._lock:
+            notify_task = asyncio.create_task(
+                client.rate_limiter.notify_rate_limited(notify_response)
+            )
+            # Task exists but hasn't run yet (hasn't even tried the lock).
+            assert client.rate_limiter.rate_limit_info is None
+
+        # Lock released — awaiting the task lets it run and acquire the lock.
+        await notify_task
+
+        assert client.rate_limiter._initialized is True
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 0
+
+
+class TestBaseClientRateLimit403Mapping:
+    @pytest.mark.asyncio
+    async def test_rate_limit_403_is_not_ignored(
+        self, github_host: str, client_config: GitHubRateLimiterConfig, mock_sleep: Mock
+    ) -> None:
+        # Ensure the limiter doesn't sleep due to prior cached headers
+        mock_sleep.reset_mock()
+
+        resource = "https://api.github.com/user"
+        req = httpx.Request("GET", resource)
+        gzipped_body = gzip.compress(b"{}")
+        resp = httpx.Response(
+            403,
+            request=req,
+            headers={
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": str(int(time.time()) + 3600),
+                "x-ratelimit-limit": "5000",
+            },
+            content=gzipped_body,
+        )
+
+        client = _DummyBaseClient(github_host, _DummyAuthenticator(resp), client_config)
+        with pytest.raises(httpx.HTTPStatusError) as exc:
+            await client.make_request(resource)
+        # With the current base client behavior, rate-limit 403s are not ignored and are raised as-is.
+        assert exc.value.response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_non_rate_limit_403_raises_when_not_ignored(
+        self, github_host: str, client_config: GitHubRateLimiterConfig
+    ) -> None:
+        resource = "https://api.github.com/user"
+        req = httpx.Request("GET", resource)
+        resp = httpx.Response(403, request=req, headers={}, content=b"{}")
+
+        client = _DummyBaseClient(github_host, _DummyAuthenticator(resp), client_config)
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.make_request(resource, ignore_default_errors=False)
+
+
+class TestRateLimiterSemaphorePermitLeak:
+    @pytest.mark.asyncio
+    async def test_cancelled_sleep_during_aenter_releases_acquired_semaphore_permit(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + 30
+        )
+        client.rate_limiter._initialized = True
+        mock_sleep.side_effect = asyncio.CancelledError()
+
+        with pytest.raises(asyncio.CancelledError):
+            await client.rate_limiter.__aenter__()
+
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
+
+    @pytest.mark.asyncio
+    async def test_ten_consecutive_cancelled_sleeps_leave_every_permit_acquirable_afterward(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        max_concurrent_slots = 10
+        config = GitHubRateLimiterConfig(
+            api_type="rest", max_concurrent=max_concurrent_slots
+        )
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+        mock_sleep.side_effect = asyncio.CancelledError()
+
+        for _ in range(max_concurrent_slots):
+            limiter.rate_limit_info = RateLimitInfo(
+                limit=1000, remaining=1, reset_time=int(time.time()) + 30
+            )
+            limiter._initialized = True
+            with pytest.raises(asyncio.CancelledError):
+                await limiter.__aenter__()
+
+        acquired_permits = [
+            await asyncio.wait_for(limiter._semaphore.acquire(), timeout=0.1)
+            for _ in range(max_concurrent_slots)
+        ]
+        assert len(acquired_permits) == max_concurrent_slots
+        for _ in acquired_permits:
+            limiter._semaphore.release()
+
+
+class TestExtractGraphQLRateLimitInfo:
+    """Tests for the extract_graphql_rate_limit_info utility function."""
+
+    def test_extract_primary_rate_limit_exhausted_headers(self) -> None:
+        """Extract primary rate limit from exhausted x-ratelimit headers."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        assert info.limit == 5000
+        assert info.remaining == 0
+        assert info.reset_time == int(time.time()) + 3600
+
+    def test_extract_secondary_rate_limit_numeric_retry_after(self) -> None:
+        """Extract secondary rate limit from numeric retry-after header."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "60"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        assert info.remaining == 0
+        assert info.limit == 1  # Secondary limits don't have a limit
+        assert 59 <= (info.reset_time - int(time.time())) <= 61  # Allow 1s timing skew
+
+    def test_extract_secondary_rate_limit_date_retry_after(self) -> None:
+        """Extract secondary rate limit from date-format retry-after header."""
+        future_time = int(time.time()) + 120
+        from datetime import datetime as dt, timezone
+
+        future_datetime = dt.fromtimestamp(future_time, tz=timezone.utc)
+        date_str = future_datetime.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": date_str}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        assert info.remaining == 0
+        assert info.limit == 1
+        # Allow 2s timing skew for slow tests
+        assert 118 <= (info.reset_time - int(time.time())) <= 122
+
+    def test_extract_ignores_invalid_retry_after_format(self) -> None:
+        """Invalid retry-after format returns None."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "invalid-date-format"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
+
+    def test_extract_ignores_zero_retry_after(self) -> None:
+        """Zero or negative retry-after is ignored."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "0"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
+
+    def test_extract_ignores_negative_retry_after(self) -> None:
+        """Negative retry-after is ignored."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {"retry-after": "-10"}
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
+
+    def test_extract_primary_takes_precedence_over_secondary(self) -> None:
+        """Primary rate limit (exhausted headers) takes precedence over retry-after."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+            "retry-after": "60",
+        }
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is not None
+        # Should use primary rate limit, not retry-after
+        assert info.limit == 5000
+        assert info.reset_time == int(time.time()) + 3600
+
+    def test_extract_returns_none_for_normal_response(self) -> None:
+        """Normal response without rate-limit indicators returns None."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "100",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        info = extract_graphql_rate_limit_info(mock_response)
+
+        assert info is None
+
+    @pytest.mark.asyncio
+    async def test_non_cancelled_exception_during_aenter_also_releases_acquired_semaphore_permit(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + 30
+        )
+        client.rate_limiter._initialized = True
+        mock_sleep.side_effect = RuntimeError("simulated enforcement failure")
+
+        with pytest.raises(RuntimeError):
+            await client.rate_limiter.__aenter__()
+
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
+
+    @pytest.mark.asyncio
+    async def test_uncancelled_aenter_and_aexit_still_round_trips_permit_as_before(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+
+        async with client.rate_limiter:
+            remaining_after_one_held_permit = [
+                await asyncio.wait_for(
+                    client.rate_limiter._semaphore.acquire(), timeout=0.1
+                )
+                for _ in range(client_config.max_concurrent - 1)
+            ]
+            assert (
+                len(remaining_after_one_held_permit) == client_config.max_concurrent - 1
+            )
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                    client.rate_limiter._semaphore.acquire(), timeout=0.05
+                )
+            for _ in remaining_after_one_held_permit:
+                client.rate_limiter._semaphore.release()
+
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
+
+
+class TestIsRateLimitResponseDispatch:
+    """Tests for is_rate_limit_response routing to the correct check function."""
+
+    def test_graphql_uses_graphql_rate_limit_check(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """GraphQL API type should use is_graphql_rate_limit_response."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # GraphQL rate-limit: HTTP 200 with exhausted headers
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_graphql_ignores_429_without_exhausted_headers(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """GraphQL API should not treat 429 as rate-limited without exhausted headers."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # 429 without exhausted headers should not be treated as rate-limited by GraphQL check
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.headers = {}
+
+        assert limiter.is_rate_limit_response(mock_response) is False
+
+    def test_rest_uses_rest_rate_limit_check(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """REST API type should use is_rest_rate_limit_response."""
+        config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # REST rate-limit: HTTP 429
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.headers = {}
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_rest_rate_limit_403_with_exhausted_headers(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """REST API should treat 403 with exhausted headers as rate-limited."""
+        config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # REST rate-limit: HTTP 403 with exhausted headers
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 403
+        mock_response.headers = {
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_search_uses_rest_rate_limit_check(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """Search API type should use is_rest_rate_limit_response (falls to default case)."""
+        config = GitHubRateLimiterConfig(api_type="search", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # Search API should use REST check: treat 429 as rate-limited
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.headers = {}
+
+        assert limiter.is_rate_limit_response(mock_response) is True
+
+    def test_graphql_http_200_without_exhausted_headers_not_rate_limited(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """GraphQL HTTP 200 without exhausted headers should not be treated as rate-limited."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+
+        # Normal successful response
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-remaining": "500",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        assert limiter.is_rate_limit_response(mock_response) is False
+
+    @pytest.mark.asyncio
+    async def test_graphql_rate_limit_response_handled_by_on_response(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """Verify that GraphQL rate-limit responses (HTTP 200 with exhausted headers) are handled."""
+        config = GitHubRateLimiterConfig(api_type="graphql", max_concurrent=5)
+        client = MockGitHubClient(github_host, config)
+
+        # Simulate a GraphQL rate-limit response
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + 3600),
+        }
+
+        await client.rate_limiter.on_response(mock_response, "/graphql")
+
+        # Verify the limiter recognized it as rate-limited and updated state
+        assert client.rate_limiter._initialized is True
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 0
+        assert client.rate_limiter.rate_limit_info.limit == 5000

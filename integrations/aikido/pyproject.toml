@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "aikido"
-version = "0.1.63-beta"
+version = "0.3.4"
 description = "Aikido Ocean Integation"
 authors = ["Habib Nuhu <habib.nuhu@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.32.3", extras = ["cli"]}
+port_ocean = {version = "^0.45.5", extras = ["cli"]}
+aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -67,7 +68,8 @@ exclude = [
     '.venv',
 ]
 plugins = [
-    "pydantic.mypy"
+    "pydantic.mypy",
+    "pydantic.v1.mypy"
 ]
 
 follow_imports = "silent"

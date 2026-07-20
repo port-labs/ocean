@@ -45,7 +45,11 @@ class TestBaseRepositoryWebhookProcessor:
             # Test with valid repository and "all" visibility
             (
                 {
-                    "repository": {"name": "test-repo"},
+                    "repository": {
+                        "name": "test-repo",
+                        "visibility": "public",
+                        "default_branch": "main",
+                    },
                     "organization": {"login": "test-org"},
                 },
                 "all",

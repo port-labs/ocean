@@ -44,6 +44,7 @@ class ScaScanResultWebhookProcessor(ScanWebhookProcessor):
         options = ListScanResultOptions(
             type=ScanResultObjectKind.SCA,
             scan_id=scan_id,
+            project_id=project_id,
             severity=selector.severity,
             state=selector.state,
             status=selector.status,

@@ -8,6 +8,11 @@ from aws.core.exporters.ecs.service.models import (
     SingleServiceRequest,
     PaginatedServiceRequest,
 )
+from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
+from aws.core.exporters.ecs.task_definition.models import (
+    SingleTaskDefinitionRequest,
+    PaginatedTaskDefinitionRequest,
+)
 
 __all__ = [
     "EcsClusterExporter",
@@ -16,4 +21,7 @@ __all__ = [
     "EcsServiceExporter",
     "SingleServiceRequest",
     "PaginatedServiceRequest",
+    "EcsTaskDefinitionExporter",
+    "SingleTaskDefinitionRequest",
+    "PaginatedTaskDefinitionRequest",
 ]

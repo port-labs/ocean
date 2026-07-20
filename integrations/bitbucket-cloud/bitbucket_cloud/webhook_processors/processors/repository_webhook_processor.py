@@ -1,3 +1,4 @@
+from typing import cast
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -9,6 +10,7 @@ from bitbucket_cloud.helpers.utils import ObjectKind
 from bitbucket_cloud.webhook_processors.processors._bitbucket_abstract_webhook_processor import (
     _BitbucketAbstractWebhookProcessor,
 )
+from integration import RepositoryResourceConfig
 from loguru import logger
 
 
@@ -32,6 +34,21 @@ class RepositoryWebhookProcessor(_BitbucketAbstractWebhookProcessor):
             f"Handling repository webhook event for repository: {repository_id}"
         )
         repository_details = await self._webhook_client.get_repository(repository_id)
+
+        selector = cast(RepositoryResourceConfig, resource_config).selector
+        included_files = selector.included_files or []
+        if included_files:
+            from bitbucket_cloud.enrichments.included_files import (
+                IncludedFilesEnricher,
+                RepositoryIncludedFilesStrategy,
+            )
+
+            enricher = IncludedFilesEnricher(
+                client=self._webhook_client,
+                strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
+            )
+            repository_details = (await enricher.enrich_batch([repository_details]))[0]
+
         return WebhookEventRawResults(
             updated_raw_results=[repository_details],
             deleted_raw_results=[],

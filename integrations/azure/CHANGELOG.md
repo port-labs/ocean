@@ -7,6 +7,909 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.385 (2026-07-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+0.1.384 (2026-07-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+0.1.383 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+0.1.382 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+0.1.381 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+0.1.380 (2026-07-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+0.1.379 (2026-07-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+0.1.378 (2026-07-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+0.1.377 (2026-07-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+0.1.376 (2026-07-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+0.1.375 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+0.1.374 (2026-07-12)
+
+### Bug Fixes
+
+- CloudEvents OPTIONS validation middleware now uses the ASGI scope path instead of `request.url.path` for route matching
+
+0.1.373 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+0.1.372 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+0.1.371 (2026-07-09)
+
+### Improvements
+
+- Replaced legacy Azure event handlers with AbstractWebhookProcessor-based webhook processing
+
+
+0.1.370 (2026-07-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+0.1.369 (2026-07-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+0.1.368 (2026-07-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+0.1.367 (2026-06-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+0.1.366 (2026-06-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+0.1.365 (2026-06-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+0.1.364 (2026-06-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+0.1.363 (2026-06-25)
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+0.1.362 (2026-06-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+0.1.361 (2026-06-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+0.1.360 (2026-06-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+0.1.359 (2026-06-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+0.1.358 (2026-06-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+0.1.357 (2026-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+0.1.356 (2026-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+0.1.355 (2026-06-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+0.1.354 (2026-06-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+0.1.353 (2026-06-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+0.1.352 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+0.1.351 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+0.1.350 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+0.1.349 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+0.1.348 (2026-05-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+0.1.347 (2026-05-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+0.1.346 (2026-05-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+0.1.345 (2026-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+0.1.344 (2026-05-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+0.1.343 (2026-05-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+0.1.342 (2026-05-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+0.1.341 (2026-05-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+0.1.340 (2026-05-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+0.1.339 (2026-05-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+0.1.338 (2026-05-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+0.1.337 (2026-05-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+0.1.336 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+0.1.335 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+0.1.334 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+0.1.333 (2026-05-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+0.1.332 (2026-05-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+0.1.331 (2026-05-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+0.1.330 (2026-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+0.1.329 (2026-05-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+0.1.328 (2026-04-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+0.1.327 (2026-04-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+0.1.326 (2026-04-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+0.1.325 (2026-04-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+0.1.324 (2026-04-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+0.1.323 (2026-04-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+0.1.322 (2026-04-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+0.1.321 (2026-04-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+0.1.320 (2026-04-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+0.1.319 (2026-04-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+0.1.318 (2026-04-12)
+
+### Improvements
+
+- Added explicit Literal kind definitions, dedicated resource config models for Azure kinds and enabled custom kinds support in `AzurePortAppConfig` for schema validation
+
+
+0.1.317 (2026-04-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+0.1.316 (2026-04-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+0.1.315 (2026-04-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+0.1.314 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+0.1.313 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+0.1.312 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+0.1.311 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+0.1.310 (2026-04-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+0.1.309 (2026-03-31)
+
+
+### Bug Fixes
+
+- Bumped `aiohttp` to `^3.13.4`, `azure-identity` to `^1.25.0`, and added `azure-core` `^1.39.0` to resolve security vulnerabilities in `aiohttp` and `azure-core`
+
+
+0.1.308 (2026-03-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+0.1.307 (2026-03-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+0.1.306 (2026-03-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+0.1.305 (2026-03-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+0.1.304 (2026-03-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+0.1.303 (2026-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+0.1.302 (2026-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+0.1.301 (2026-03-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+0.1.300 (2026-03-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+0.1.299 (2026-03-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+0.1.298 (2026-03-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+0.1.297 (2026-03-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+
+
+0.1.296 (2026-03-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+0.1.295 (2026-03-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+0.1.294 (2026-03-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+0.1.293 (2026-03-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+0.1.292 (2026-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+0.1.291 (2026-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+0.1.290 (2026-03-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+0.1.289 (2026-03-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+0.1.288 (2026-03-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+0.1.287 (2026-02-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+0.1.286 (2026-02-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+0.1.285 (2026-02-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+0.1.284 (2026-02-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+0.1.283 (2026-02-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+0.1.282 (2026-02-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+0.1.281 (2026-02-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+0.1.280 (2026-02-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+0.1.279 (2026-02-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+0.1.278 (2026-02-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+0.1.277 (2026-02-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+0.1.276 (2026-02-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+0.1.275 (2026-02-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+0.1.274 (2026-02-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+0.1.273 (2026-02-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+0.1.272 (2026-01-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+0.1.271 (2026-01-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+0.1.270 (2026-01-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+0.1.269 (2026-01-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+0.1.268 (2026-01-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+0.1.267 (2026-01-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+0.1.266 (2026-01-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+0.1.265 (2026-01-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+0.1.264 (2026-01-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+0.1.263 (2026-01-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+0.1.262 (2026-01-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+0.1.261 (2025-12-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+0.1.260 (2025-12-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+0.1.259 (2025-12-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+0.1.258 (2025-12-18)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+0.1.257 (2025-12-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
 0.1.256 (2025-12-15)
 
 ### Improvements

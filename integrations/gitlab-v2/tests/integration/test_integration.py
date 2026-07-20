@@ -5,11 +5,21 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
     WebhookEvent,
 )
+from port_ocean.core.handlers.port_app_config.validators import (
+    validate_and_get_config_schema,
+)
+from pydantic.v1 import ValidationError
+from integration import GitlabPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from gitlab.helpers.utils import GitLabDeploymentStatus
 from integration import (
     GitlabIntegration,
     GitManipulationHandler,
     GitlabLiveEventsProcessorManager,
+    PipelineQueryParams,
+    GitlabDeploymentQueryParams,
+    GitlabDeploymentSelector,
+    FilesSelector,
 )
 
 
@@ -80,3 +90,241 @@ async def test_gitlab_webhook_manager_uses_gitmanipulation_handler(
         # Assert
         assert isinstance(manager, GitlabLiveEventsProcessorManager)
         assert manager.EntityProcessorClass == GitManipulationHandler
+
+
+def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() -> None:
+    """Validates that schema generation succeeds and all supported resource kinds are present."""
+    schema = validate_and_get_config_schema(GitlabPortAppConfig)
+
+    assert schema, "Expected a non-empty schema for GitlabPortAppConfig"
+
+    schema_str = str(schema)
+    expected_kinds = {
+        "project",
+        "group",
+        "issue",
+        "group-with-members",
+        "member",
+        "folder",
+        "file",
+        "merge-request",
+        "tag",
+        "release",
+        "pipeline",
+        "job",
+        "deployment",
+    }
+
+    missing_kinds = {kind for kind in expected_kinds if kind not in schema_str}
+    assert not missing_kinds, f"Missing resource kinds in schema: {missing_kinds}"
+
+
+def test_files_selector_defaults_to_group_search_strategy() -> None:
+    selector = FilesSelector(path="**/skills/**/*")
+
+    assert selector.search_strategy == "groupSearch"
+
+
+def test_files_selector_accepts_project_search_strategy() -> None:
+    selector = FilesSelector(
+        path="**/skills/**/*",
+        searchStrategy="projectSearch",
+    )
+
+    assert selector.search_strategy == "projectSearch"
+
+
+def test_files_selector_rejects_unknown_search_strategy() -> None:
+    with pytest.raises(ValidationError):
+        FilesSelector.parse_obj(
+            {
+                "path": "**/skills/**/*",
+                "searchStrategy": "tree",
+            }
+        )
+
+
+def test_generate_query_params_excludes_unset_fields() -> None:
+    """Fields that were never set should not appear in the generated params."""
+    assert PipelineQueryParams().generate_query_params() == {}
+
+
+def test_generate_query_params_excludes_explicit_none_values() -> None:
+    """Fields explicitly set to None should still be excluded from the generated params."""
+    assert PipelineQueryParams(name=None).generate_query_params() == {}
+
+
+def test_generate_query_params_includes_only_set_fields() -> None:
+    """Only fields that were explicitly assigned should be emitted, keyed by field name."""
+    params = PipelineQueryParams(
+        name="build",
+        ref="main",
+        status="success",
+    ).generate_query_params()
+
+    assert params == {"name": "build", "ref": "main", "status": "success"}
+
+
+def test_generate_query_params_uses_snake_case_field_names_for_aliased_fields() -> None:
+    """Generated params must use the snake_case field names expected by the Gitlab API, not the camelCase aliases."""
+    params = PipelineQueryParams(
+        updated_after="2024-01-01T00:00:00Z",
+        updated_before="2024-02-01T00:00:00Z",
+    ).generate_query_params()
+
+    assert params == {
+        "updated_after": "2024-01-01T00:00:00Z",
+        "updated_before": "2024-02-01T00:00:00Z",
+    }
+
+
+def test_deployment_query_params_generate_query_params_is_empty_when_nothing_set() -> (
+    None
+):
+    assert GitlabDeploymentQueryParams().generate_query_params() == {}
+
+
+def test_deployment_query_params_generate_query_params_includes_environment() -> None:
+    params = GitlabDeploymentQueryParams(
+        environment="production"
+    ).generate_query_params()
+    assert params == {"environment": "production"}
+
+
+def test_deployment_query_params_generate_query_params_includes_status_as_string() -> (
+    None
+):
+    params = GitlabDeploymentQueryParams(
+        status=GitLabDeploymentStatus.SUCCESS
+    ).generate_query_params()
+    assert params == {"status": "success"}
+
+
+def test_deployment_query_params_generate_query_params_includes_updated_after() -> None:
+    params = GitlabDeploymentQueryParams(
+        updated_after="2024-01-15T10:00:00Z"
+    ).generate_query_params()
+    assert params == {"updated_after": "2024-01-15T10:00:00Z"}
+
+
+def test_deployment_query_params_generate_query_params_includes_updated_before() -> (
+    None
+):
+    params = GitlabDeploymentQueryParams(
+        updated_before="2024-06-01T00:00:00Z"
+    ).generate_query_params()
+    assert params == {"updated_before": "2024-06-01T00:00:00Z"}
+
+
+def test_deployment_query_params_updated_after_rejects_missing_timezone() -> None:
+    with pytest.raises(ValidationError):
+        GitlabDeploymentQueryParams(updated_after="2024-01-15T10:00:00")
+
+
+def test_deployment_query_params_updated_after_rejects_date_only() -> None:
+    with pytest.raises(ValidationError):
+        GitlabDeploymentQueryParams(updated_after="2024-01-15")
+
+
+def test_deployment_query_params_updated_before_rejects_missing_timezone() -> None:
+    with pytest.raises(ValidationError):
+        GitlabDeploymentQueryParams(updated_before="2024-06-01T00:00:00")
+
+
+def test_deployment_selector_generate_query_params_is_empty_when_nothing_set() -> None:
+    assert GitlabDeploymentSelector(query="true").generate_query_params() == {}
+
+
+def test_deployment_selector_generate_query_params_merges_query_params() -> None:
+    selector = GitlabDeploymentSelector(
+        query="true",
+        apiQueryParams=GitlabDeploymentQueryParams(
+            status=GitLabDeploymentStatus.SUCCESS,
+            environment="production",
+        ),
+    )
+    params = selector.generate_query_params()
+    assert params["status"] == "success"
+    assert params["environment"] == "production"
+
+
+def test_deployment_query_params_sets_order_by_finished_at_for_finished_after() -> None:
+    params = GitlabDeploymentQueryParams(
+        status=GitLabDeploymentStatus.SUCCESS,
+        finished_after="2024-01-01T00:00:00Z",
+    ).generate_query_params()
+    assert params["order_by"] == "finished_at"
+    assert params["finished_after"] == "2024-01-01T00:00:00Z"
+    assert "finished_before" not in params
+    assert "sort" not in params
+
+
+def test_deployment_query_params_sets_order_by_finished_at_for_finished_before() -> (
+    None
+):
+    params = GitlabDeploymentQueryParams(
+        status=GitLabDeploymentStatus.SUCCESS,
+        finished_before="2024-06-01T00:00:00Z",
+    ).generate_query_params()
+    assert params["order_by"] == "finished_at"
+    assert params["finished_before"] == "2024-06-01T00:00:00Z"
+    assert "finished_after" not in params
+
+
+def test_deployment_query_params_merges_all_params_for_full_finished_window() -> None:
+    params = GitlabDeploymentQueryParams(
+        status=GitLabDeploymentStatus.SUCCESS,
+        environment="production",
+        finished_after="2024-01-01T00:00:00Z",
+        finished_before="2024-06-01T00:00:00Z",
+    ).generate_query_params()
+    assert params["status"] == "success"
+    assert params["environment"] == "production"
+    assert params["order_by"] == "finished_at"
+    assert params["finished_after"] == "2024-01-01T00:00:00Z"
+    assert params["finished_before"] == "2024-06-01T00:00:00Z"
+
+
+def test_deployment_selector_does_not_set_order_by_when_no_finished_window() -> None:
+    selector = GitlabDeploymentSelector(
+        query="true",
+        apiQueryParams=GitlabDeploymentQueryParams(
+            status=GitLabDeploymentStatus.SUCCESS
+        ),
+    )
+    params = selector.generate_query_params()
+    assert "order_by" not in params
+
+
+def test_deployment_query_params_accepts_finished_after_when_status_is_success() -> (
+    None
+):
+    GitlabDeploymentQueryParams(
+        status=GitLabDeploymentStatus.SUCCESS,
+        finished_after="2024-01-01T00:00:00Z",
+    )
+
+
+def test_deployment_query_params_rejects_finished_after_when_status_is_not_success() -> (
+    None
+):
+    with pytest.raises(ValidationError):
+        GitlabDeploymentQueryParams(
+            status=GitLabDeploymentStatus.FAILED,
+            finished_after="2024-01-01T00:00:00Z",
+        )
+
+
+def test_deployment_query_params_rejects_finished_after_when_status_is_absent() -> None:
+    with pytest.raises(ValidationError):
+        GitlabDeploymentQueryParams(
+            finished_after="2024-01-01T00:00:00Z",
+        )
+
+
+def test_deployment_query_params_finished_after_rejects_missing_timezone() -> None:
+    with pytest.raises(ValidationError):
+        GitlabDeploymentQueryParams(
+            status=GitLabDeploymentStatus.SUCCESS,
+            finished_after="2024-01-01T00:00:00",
+        )

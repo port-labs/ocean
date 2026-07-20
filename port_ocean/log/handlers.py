@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from pathlib import PosixPath
 import sys
@@ -14,6 +13,7 @@ from loguru import logger
 
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
+from port_ocean.utils.misc import run_async_in_new_event_loop
 
 
 def _serialize_posix_paths(
@@ -46,7 +46,9 @@ def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
         extra["exc_info"] = serialized_exception
     extra = _serialize_posix_paths(extra)
     return {
-        "message": record.msg,
+        "message": record.msg.rstrip(
+            "\n"
+        ),  # strip trailing newline that exception messages and multiline strings can leave
         "level": record.levelname,
         "timestamp": datetime.utcfromtimestamp(record.created).strftime(
             "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -103,9 +105,7 @@ class HTTPMemoryHandler(MemoryHandler):
             return
 
         def _wrap_event_loop(_ocean: Ocean, logs_to_send: list[dict[str, Any]]) -> None:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(self.send_logs(_ocean, logs_to_send))
-            loop.close()
+            run_async_in_new_event_loop(self.send_logs(_ocean, logs_to_send))
 
         def clear_thread_pool() -> None:
             for thread in self._thread_pool:

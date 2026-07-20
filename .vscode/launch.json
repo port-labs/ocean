@@ -35,6 +35,17 @@
       "type": "debugpy"
     },
     {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/firehydrant",
+      "envFile": "${workspaceFolder}/integrations/firehydrant/.env",
+      "justMyCode": true,
+      "name": "Run firehydrant integration",
+      "program": "${workspaceFolder}/integrations/firehydrant/debug.py",
+      "python": "${workspaceFolder}/integrations/firehydrant/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
       "name": "Attach to docker fake-integration integration",
       "type": "debugpy",
       "request": "attach",
@@ -123,6 +134,17 @@
       "name": "Run Datadog integration",
       "program": "${workspaceFolder}/integrations/datadog/debug.py",
       "python": "${workspaceFolder}/integrations/datadog/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/newrelic",
+      "envFile": "${workspaceFolder}/integrations/newrelic/.env",
+      "justMyCode": false,
+      "name": "Run New Relic integration",
+      "program": "${workspaceFolder}/integrations/newrelic/debug.py",
+      "python": "${workspaceFolder}/integrations/newrelic/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
@@ -328,6 +350,61 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/sentry",
+      "envFile": "${workspaceFolder}/integrations/sentry/.env",
+      "justMyCode": true,
+      "name": "Run sentry integration",
+      "program": "${workspaceFolder}/integrations/sentry/debug.py",
+      "python": "${workspaceFolder}/integrations/sentry/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/servicenow",
+      "envFile": "${workspaceFolder}/integrations/servicenow/.env",
+      "justMyCode": true,
+      "name": "Run servicenow integration",
+      "program": "${workspaceFolder}/integrations/servicenow/debug.py",
+      "python": "${workspaceFolder}/integrations/servicenow/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/sonarqube",
+      "envFile": "${workspaceFolder}/integrations/sonarqube/.env",
+      "justMyCode": true,
+      "name": "Run sonarqube integration",
+      "program": "${workspaceFolder}/integrations/sonarqube/debug.py",
+      "python": "${workspaceFolder}/integrations/sonarqube/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/statuspage",
+      "envFile": "${workspaceFolder}/integrations/statuspage/.env",
+      "justMyCode": true,
+      "name": "Run statuspage integration",
+      "program": "${workspaceFolder}/integrations/statuspage/debug.py",
+      "python": "${workspaceFolder}/integrations/statuspage/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/terraform-cloud",
+      "envFile": "${workspaceFolder}/integrations/terraform-cloud/.env",
+      "justMyCode": true,
+      "name": "Run terraform-cloud integration",
+      "program": "${workspaceFolder}/integrations/terraform-cloud/debug.py",
+      "python": "${workspaceFolder}/integrations/terraform-cloud/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/custom",
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-no-auth.env",
       "justMyCode": true,
@@ -365,6 +442,17 @@
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-api-key.env",
       "justMyCode": true,
       "name": "Generic HTTP - API Key",
+      "program": "${workspaceFolder}/integrations/custom/debug.py",
+      "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/custom",
+      "envFile": "${workspaceFolder}/integrations/custom/examples/config-custom-auth-request.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Custom Auth",
       "program": "${workspaceFolder}/integrations/custom/debug.py",
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
       "request": "launch",

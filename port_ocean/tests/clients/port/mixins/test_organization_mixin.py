@@ -14,7 +14,7 @@ async def mocked_org_mixin() -> OrganizationClientMixin:
     client.get.return_value = MagicMock()
     client.get.return_value.json = MagicMock()
     client.get.return_value.json.return_value = {
-        "organization": {"featureFlags": ["aa", "bb"]}
+        "organization": {"id": "org-123", "featureFlags": ["aa", "bb"]}
     }
     client.get.return_value.status_code = 200
     return OrganizationClientMixin(auth=auth, client=client)

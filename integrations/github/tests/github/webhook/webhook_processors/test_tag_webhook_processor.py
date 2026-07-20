@@ -17,12 +17,12 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
-from integration import GithubRepoSearchConfig, RepoSearchSelector
+from integration import GithubTagConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return GithubRepoSearchConfig(
+    return GithubTagConfig(
         kind=ObjectKind.TAG,
         selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
@@ -140,7 +140,10 @@ class TestTagWebhookProcessor:
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
                 SingleTagOptions(
-                    organization="test-org", repo_name="test-repo", tag_name=tag_ref
+                    organization="test-org",
+                    repo_name="test-repo",
+                    tag_name=tag_ref,
+                    repo={"name": "test-repo"},
                 )
             )
 
@@ -152,7 +155,14 @@ class TestTagWebhookProcessor:
             assert result.updated_raw_results == [tag_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [{"name": tag_ref}]
+            assert result.deleted_raw_results == [
+                {
+                    "name": tag_ref,
+                    "__repository": "test-repo",
+                    "__repository_object": {"name": "test-repo"},
+                    "__organization": "test-org",
+                }
+            ]
 
     @pytest.mark.parametrize(
         "payload,expected",

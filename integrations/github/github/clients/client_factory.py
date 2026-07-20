@@ -1,19 +1,34 @@
-from typing import Dict, Type, overload, Literal, Optional
+import os
+from typing import Dict, Literal, Optional, Type, overload
 
-from port_ocean.context.ocean import ocean
-from github.clients.http.rest_client import GithubRestClient
-from github.clients.http.graphql_client import GithubGraphQLClient
-from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
-from github.helpers.utils import GithubClientType
-from github.clients.utils import integration_config
+from github.helpers.exceptions import MissingCredentials
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
+from port_ocean.context.ocean import ocean
 
+from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.github_app.installation_registry import (
+    reset_authenticators_by_org,
+)
+from github.clients.auth.github_app.installation_authenticator import (
+    GitHubAppInstallationAuthenticator,
+)
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
-from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
-from github.helpers.exceptions import MissingCredentials
+from github.clients.http.base_client import AbstractGithubClient
+from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.rest_client import GithubRestClient
+from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+from github.clients.utils import integration_config
+from github.helpers.utils import GithubClientType
+
+_CLIENT_CLASSES: Dict[GithubClientType, Type[AbstractGithubClient]] = {
+    GithubClientType.REST: GithubRestClient,
+    GithubClientType.GRAPHQL: GithubGraphQLClient,
+}
+_clients: Dict[tuple[str, GithubClientType], AbstractGithubClient] = {}
 
 
 class GitHubAuthenticatorFactory:
@@ -36,64 +51,54 @@ class GitHubAuthenticatorFactory:
             logger.debug(
                 f"Creating GitHub App Authenticator for {organization} on {github_host}"
             )
-            return GitHubAppAuthenticator(
-                app_id=app_id,
-                installation_id=installation_id,
-                private_key=private_key,
+            return GitHubAppInstallationAuthenticator(
+                app_auth=GitHubAppAuthenticator(
+                    app_id=app_id,
+                    private_key=private_key,
+                    github_host=github_host,
+                ),
                 organization=organization,
-                github_host=github_host,
+                installation_id=installation_id,
             )
 
         raise MissingCredentials("No valid GitHub credentials provided.")
 
 
-class GithubClientFactory:
-    _instance = None
-    _clients: Dict[GithubClientType, Type[AbstractGithubClient]] = {
-        GithubClientType.REST: GithubRestClient,
-        GithubClientType.GRAPHQL: GithubGraphQLClient,
-    }
-    _instances: Dict[GithubClientType, AbstractGithubClient] = {}
+def _reset_after_fork() -> None:
+    for client in _clients.values():
+        client.authenticator._http_client = None
+    _clients.clear()
+    reset_authenticators_by_org()
+    GitHubRateLimiterRegistry.reset_for_fork()
 
-    def __new__(cls) -> "GithubClientFactory":
-        if cls._instance is None:
-            cls._instance = super(GithubClientFactory, cls).__new__(cls)
-        return cls._instance
 
-    def get_client(self, client_type: GithubClientType) -> AbstractGithubClient:
-        """Get or create a client instance from Ocean configuration.
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_after_fork)
 
-        Args:
-            client_type: Type of client to create ("rest" or other supported types)
 
-        Returns:
-            An instance of AbstractGithubClient
+def _get_client(
+    authenticator: AbstractGitHubAuthenticator,
+    client_type: GithubClientType = GithubClientType.REST,
+) -> AbstractGithubClient:
+    cache_key = (authenticator.rate_limit_scope, client_type)
+    if cache_key not in _clients:
+        logger.info(
+            f"Instantiated new {client_type} client for scope {authenticator.rate_limit_scope}."
+        )
+        _clients[cache_key] = _CLIENT_CLASSES[client_type](
+            **integration_config(authenticator),
+        )
+    return _clients[cache_key]
 
-        Raises:
-            ValueError: If client_type is invalid
-        """
 
-        if client_type not in self._instances:
-            if client_type not in self._clients:
-                logger.error(f"Invalid client type: {client_type}")
-                raise ValueError(f"Invalid client type: {client_type}")
-
-            authenticator = GitHubAuthenticatorFactory.create(
-                github_host=ocean.integration_config["github_host"],
-                organization=ocean.integration_config.get("github_organization"),
-                token=ocean.integration_config.get("github_token"),
-                app_id=ocean.integration_config.get("github_app_id"),
-                installation_id=ocean.integration_config.get(
-                    "github_app_installation_id"
-                ),
-                private_key=ocean.integration_config.get("github_app_private_key"),
-            )
-
-            self._instances[client_type] = self._clients[client_type](
-                **integration_config(authenticator),
-            )
-
-        return self._instances[client_type]
+async def create_github_client_for_org(
+    organization: str,
+    client_type: GithubClientType = GithubClientType.REST,
+) -> AbstractGithubClient:
+    authenticator = await get_auth_provider().get_authenticator_for_organization(
+        organization
+    )
+    return _get_client(authenticator, client_type or GithubClientType.REST)
 
 
 @overload
@@ -115,5 +120,18 @@ def create_github_client(
 def create_github_client(
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    factory = GithubClientFactory()
-    return factory.get_client(client_type or GithubClientType.REST)
+    """
+    Legacy sync client factory for single-org PAT and GitHub App setups.
+
+    Prefer create_github_client_for_org() for multi-org GitHub App usage.
+    """
+    config = ocean.integration_config
+    authenticator = GitHubAuthenticatorFactory.create(
+        github_host=config["github_host"],
+        organization=config.get("github_organization"),
+        token=config.get("github_token"),
+        app_id=config.get("github_app_id"),
+        installation_id=config.get("github_app_installation_id"),
+        private_key=config.get("github_app_private_key"),
+    )
+    return _get_client(authenticator, client_type or GithubClientType.REST)
