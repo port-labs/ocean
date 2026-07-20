@@ -2,9 +2,11 @@
 
 # Script to sync CA certificates from privileged locations to unprivileged user directory
 # This handles cases where CA certificates are mounted or updated at runtime
+# OpenShift compatibility: Uses /tmp/ocean which can be mounted as emptyDir volume
+# and supports arbitrary UID assignment (GID 0 always has permissions)
 
 CERT_SOURCE_DIRS="/etc/ssl/certs /usr/share/ca-certificates /usr/local/share/ca-certificates"
-USER_CERT_DIR="/home/ocean/.local/share/ca-certificates"
+USER_CERT_DIR="/tmp/ocean/ca-certificates"
 
 # Create user certificate directory if it doesn't exist
 mkdir -p "$USER_CERT_DIR"
@@ -25,8 +27,14 @@ done
 chmod 755 "$USER_CERT_DIR" 2>/dev/null || true
 chmod 644 "$USER_CERT_DIR"/* 2>/dev/null || true
 
-# Create a consolidated CA bundle file
-cat "$USER_CERT_DIR"/*.crt "$USER_CERT_DIR"/*.pem 2>/dev/null > "$USER_CERT_DIR/ca-certificates.crt" || true
+# Create a consolidated CA bundle file. Written to a temp file first and then
+# renamed into place, since the bundle's own filename can match the *.crt glob
+# (e.g. when a system ca-certificates.crt was already copied above), which would
+# otherwise make cat read from and write to the same file at once and grow it unbounded.
+cat "$USER_CERT_DIR"/*.crt "$USER_CERT_DIR"/*.pem 2>/dev/null > "$USER_CERT_DIR/ca-certificates.crt.tmp" || true
+if [ -f "$USER_CERT_DIR/ca-certificates.crt.tmp" ]; then
+    mv "$USER_CERT_DIR/ca-certificates.crt.tmp" "$USER_CERT_DIR/ca-certificates.crt"
+fi
 
 # Export environment variables for SSL
 export SSL_CERT_DIR="$USER_CERT_DIR"

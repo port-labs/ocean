@@ -9,6 +9,7 @@ LIMIT_HEADER = "x-ratelimit-limit"
 LIMIT_REMAINING_HEADER = "x-ratelimit-remaining"
 LIMIT_RESET_HEADER = "x-ratelimit-reset"
 LIMIT_RETRY_AFTER_HEADER = "retry-after"
+ADO_RATE_LIMIT_WINDOW_SECONDS = 360
 
 
 class AzureDevOpsRateLimiter:
@@ -39,6 +40,9 @@ class AzureDevOpsRateLimiter:
         self._remaining: Optional[int] = None
         self._reset_time: Optional[float] = None
 
+        # Throttle signal set when ADO throttles via 429s or transport timeouts.
+        self._throttle_until: Optional[float] = None
+
     @property
     def seconds_until_reset(self) -> float:
         """Calculate seconds until rate limit window resets.
@@ -62,6 +66,33 @@ class AzureDevOpsRateLimiter:
             return max(0.0, wait_time)
         return 0.0
 
+    async def signal_throttle(self, seconds: float, reason: str = "throttle") -> None:
+        """Signal a throttle event — pause all subsequent requests for the given duration.
+
+        Used when throttling manifests as a 429 or timeout. The next request to
+        enter the limiter holds the shared lock while sleeping, so later requests
+        queue instead of continuing to hit Azure DevOps during the cooldown.
+        """
+        async with self._lock:
+            now = time.time()
+            throttle_end_time = now + seconds
+            if self._throttle_until is None or self._throttle_until <= now:
+                self._throttle_until = throttle_end_time
+                logger.warning(
+                    f"ADO rate limit: {reason} detected, pausing all requests for {seconds:.0f} seconds"
+                )
+            elif throttle_end_time > self._throttle_until:
+                self._throttle_until = throttle_end_time
+                logger.debug(
+                    f"ADO rate limit: {reason} extended existing throttle window "
+                    f"(expires in {self._throttle_until - now:.0f}s)"
+                )
+            else:
+                logger.debug(
+                    f"ADO rate limit: {reason} received but existing throttle window already covers it "
+                    f"(expires in {self._throttle_until - now:.0f}s)"
+                )
+
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
         """Enter the async context manager.
 
@@ -70,6 +101,20 @@ class AzureDevOpsRateLimiter:
         await self._semaphore.acquire()
 
         async with self._lock:
+            # Check shared throttle signal from 429s or transport timeouts.
+            if self._throttle_until is not None:
+                remaining_seconds = self._throttle_until - time.time()
+                if remaining_seconds > 0:
+                    logger.warning(
+                        f"ADO rate limit: holding request for {remaining_seconds:.0f} seconds while throttle window expires"
+                    )
+                    await asyncio.sleep(remaining_seconds)
+                else:
+                    logger.debug(
+                        "ADO rate limit: throttle window already expired, clearing and proceeding"
+                    )
+                self._throttle_until = None
+
             # Check if we need to wait due to previous rate limit
             retry_wait = self.should_wait_for_retry_after
             if retry_wait > 0:
@@ -86,7 +131,7 @@ class AzureDevOpsRateLimiter:
             ):
                 reset_wait = self.seconds_until_reset
                 if reset_wait > 0:
-                    logger.debug(
+                    logger.warning(
                         f"Rate limit: proactively waiting {reset_wait:.2f}s "
                         f"(remaining: {self._remaining}, threshold: {self._minimum_limit_remaining})"
                     )

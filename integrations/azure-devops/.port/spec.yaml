@@ -2,22 +2,83 @@ title: Azure Devops
 description: Azure Devops integration for Port Ocean
 icon: AzureDevops
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/azure-devops
+formMappingEnabled: true
 features:
   - type: gitops
     section: GitOps
   - type: exporter
     section: Git Providers
 configurations:
+  - name: accountMode
+    description: How to authenticate to Azure DevOps. "Single Account" uses a personal access token against one organization. "Multiple Accounts" uses an Azure AD service principal across many organizations.
+    required: false
+    type: string
+    enum: ["Single Account", "Multiple Accounts"]
+    format: "tabSwitcher"
+    default: "Single Account"
   - name: organizationUrl
     description: The URL of your Azure DevOps organization (e.g., "https://dev.azure.com/{your-organization}"). To find your organization URL, refer to the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http">Azure DevOps documentation</a>.
-    required: true
+    required: false
     type: url
     sensitive: true
+    dependencies:
+      - on: accountMode
+        when:
+          equals: "Single Account"
+        then:
+          required: true
   - name: personalAccessToken
     description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
-    required: true
+    required: false
     type: string
     sensitive: true
+    dependencies:
+      - on: accountMode
+        when:
+          equals: "Single Account"
+        then:
+          required: true
+  - name: clientId
+    description: Azure AD application (client) ID used to authenticate across multiple Azure DevOps organizations.
+    type: string
+    required: false
+    dependencies:
+      - on: accountMode
+        when:
+          equals: "Multiple Accounts"
+        then:
+          required: true
+  - name: clientSecret
+    description: Azure AD application client secret.
+    type: string
+    required: false
+    sensitive: true
+    dependencies:
+      - on: accountMode
+        when:
+          equals: "Multiple Accounts"
+        then:
+          required: true
+  - name: tenantId
+    description: Azure AD tenant ID.
+    type: string
+    required: false
+    dependencies:
+      - on: accountMode
+        when:
+          equals: "Multiple Accounts"
+        then:
+          required: true
+  - name: organizationUrls
+    description: List of Azure DevOps organization URLs to sync (e.g. "https://dev.azure.com/{your-organization}").
+    type: array
+    required: false
+    dependencies:
+      - on: accountMode
+        when:
+          equals: "Multiple Accounts"
+        then:
+          required: true
   - name: isProjectsLimited
     description: Set to true if the personal access token's scope is limited to specific projects within your organization.
     required: false
@@ -37,6 +98,11 @@ configurations:
     type: string
     required: false
     default: port
+  - name: excludedTags
+    title: Excluded Tags
+    description: A list of tags used to exclude projects and resources that belong to them from syncing.
+    type: array
+    required: false
 deploymentMethodOverride:
   - type: helm
 saas:

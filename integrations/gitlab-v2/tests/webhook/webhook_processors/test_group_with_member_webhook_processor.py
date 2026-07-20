@@ -104,6 +104,71 @@ class TestGroupWithMemberWebhookProcessor:
         assert result.updated_raw_results[0] == expected_group
         assert not result.deleted_raw_results
 
+    async def test_handle_event_with_inherited_members(
+        self, processor: GroupWithMemberWebhookProcessor, group_payload: dict[str, Any]
+    ) -> None:
+        """Test that include_inherited_members=True is forwarded to enrich_group_with_members"""
+        resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_bot_members = False
+        resource_config.selector.include_inherited_members = True
+
+        group_id = group_payload["group_id"]
+        expected_group = {
+            "id": group_id,
+            "name": group_payload["name"],
+            "path": group_payload["path"],
+            "__members": [
+                {"id": 1, "username": "user1", "name": "User One"},
+                {"id": 3, "username": "inherited_user", "name": "Inherited User"},
+            ],
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_group = AsyncMock(
+            return_value={
+                "id": group_id,
+                "name": group_payload["name"],
+                "path": group_payload["path"],
+            }
+        )
+        processor._gitlab_webhook_client.enrich_group_with_members = AsyncMock(
+            return_value=expected_group
+        )
+
+        result = await processor.handle_event(group_payload, resource_config)
+
+        processor._gitlab_webhook_client.enrich_group_with_members.assert_called_once_with(
+            {
+                "id": group_id,
+                "name": group_payload["name"],
+                "path": group_payload["path"],
+            },
+            include_bot_members=False,
+            include_inherited_members=True,
+        )
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results[0] == expected_group
+        assert not result.deleted_raw_results
+
+    async def test_handle_event_group_not_found_returns_empty_updates(
+        self, processor: GroupWithMemberWebhookProcessor, group_payload: dict[str, Any]
+    ) -> None:
+        """When the group no longer exists in GitLab, do not upsert an empty entity."""
+        resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_bot_members = True
+        resource_config.selector.include_inherited_members = False
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_group = AsyncMock(return_value=None)
+
+        result = await processor.handle_event(group_payload, resource_config)
+
+        processor._gitlab_webhook_client.enrich_group_with_members.assert_not_called()
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
     async def test_handle_destroy_event(
         self, processor: GroupWithMemberWebhookProcessor
     ) -> None:

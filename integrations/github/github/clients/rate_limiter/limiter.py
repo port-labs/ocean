@@ -1,35 +1,37 @@
 import asyncio
-from typing import List, Optional, Any, Type
+from port_ocean.exceptions.context import EventContextNotFoundError
+from port_ocean.context.event import event, EventType
+from port_ocean.context.ocean import ocean
+import time
+from typing import Optional, Any, Type
+
 import httpx
 from loguru import logger
 from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
     RateLimitInfo,
     RateLimiterRequiredHeaders,
+    is_graphql_rate_limit_response,
+    is_rest_rate_limit_response,
 )
-from github.helpers.utils import has_exhausted_rate_limit_headers
+
+_DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD: float = 95.0
 
 
 class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
         self.api_type = config.api_type
-        self._semaphore = asyncio.Semaphore(config.max_concurrent)
+        self._semaphore = asyncio.BoundedSemaphore(config.max_concurrent)
         self.rate_limit_info: Optional[RateLimitInfo] = None
-
-        self._block_lock = asyncio.Lock()
-        self._current_resource: Optional[str] = None
+        self._lock = asyncio.Lock()
+        self._initialized: bool = False
 
     async def __aenter__(self) -> "GitHubRateLimiter":
-        await self._semaphore.acquire()
+        # Enforce rate limit BEFORE acquiring semaphore so sleep doesn't hold up the permit
+        async with self._lock:
+            await self._enforce_rate_limit()
 
-        async with self._block_lock:
-            if self.rate_limit_info and (self.rate_limit_info.remaining <= 1):
-                delay = self.rate_limit_info.seconds_until_reset
-                if delay > 0:
-                    logger.warning(
-                        f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
-                    )
-                    await asyncio.sleep(delay)
+        await self._semaphore.acquire()
         return self
 
     async def __aexit__(
@@ -40,17 +42,94 @@ class GitHubRateLimiter:
     ) -> None:
         self._semaphore.release()
 
-    def get_rate_limit_status_codes(self) -> List[int]:
-        return [403, 429]
+    async def _enforce_rate_limit(self) -> None:
+        if not self._initialized or self.rate_limit_info is None:
+            return
 
-    def is_rate_limit_response(self, response: httpx.Response) -> bool:
-        status_code = response.status_code
-        headers = response.headers
+        if int(time.time()) >= self.rate_limit_info.reset_time:
+            self._initialized = False
+            return
 
-        if status_code not in self.get_rate_limit_status_codes():
+        if self._is_resync_event():
+            ratelimit_threshold = self._get_validated_resync_threshold()
+            if self.rate_limit_info.utilization_percentage >= ratelimit_threshold:
+                await self._sleep_for_resync_threshold(ratelimit_threshold)
+                return
+
+        if self.rate_limit_info.remaining <= 1:
+            await self._sleep()
+            return
+
+        self.rate_limit_info.remaining -= 1
+
+    async def _sleep(self) -> None:
+        if self.rate_limit_info is None:
+            return
+        delay = self.rate_limit_info.seconds_until_reset
+        if delay > 0:
+            logger.bind(api_type=self.api_type, delay=delay).warning(
+                f"Requests paused for {delay:.1f}s due to rate limit exhaustion."
+            )
+            await asyncio.sleep(delay)
+        self._initialized = False
+
+    @staticmethod
+    def _is_resync_event() -> bool:
+        try:
+            return event.event_type == EventType.RESYNC
+        except EventContextNotFoundError:
+            # we are not in an event context, we assume this is a standard action/webhook and should not be throttled
             return False
 
-        return status_code == 429 or has_exhausted_rate_limit_headers(headers)
+    @staticmethod
+    def _get_validated_resync_threshold() -> float:
+        raw_threshold = ocean.integration_config.get(
+            "resync_ratelimit_reservation_threshold",
+            _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD,
+        )
+
+        try:
+            threshold = float(raw_threshold)
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Invalid ratelimit_reservation_threshold value: {raw_threshold}. Using default {_DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD}%."
+            )
+            threshold = _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD
+
+        if not 0 <= threshold <= 100:
+            logger.warning(
+                f"resyncRatelimitReservationThreshold must be between 0 and 100, "
+                f"got {threshold}. Falling back to default of "
+                f"{_DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD}%."
+            )
+            return _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD
+        return threshold
+
+    async def _sleep_for_resync_threshold(self, threshold: float) -> None:
+        if self.rate_limit_info is None:
+            logger.debug("No rate limit info available, cannot check threshold.")
+            return
+
+        delay = self.rate_limit_info.seconds_until_reset
+        if delay > 0:
+            logger.bind(
+                api_type=self.api_type,
+                delay=delay,
+                current_utilization=self.rate_limit_info.utilization_percentage,
+                threshold=threshold,
+            ).warning(
+                "Rate limit utilization exceeds threshold during resync. "
+                "Pausing execution to save remaining budget for webhooks/actions."
+            )
+            await asyncio.sleep(delay)
+        self._initialized = False
+
+    def is_rate_limit_response(self, response: httpx.Response) -> bool:
+        match self.api_type:
+            case "graphql":
+                return is_graphql_rate_limit_response(response)
+            case _:
+                return is_rest_rate_limit_response(response)
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders
@@ -68,24 +147,100 @@ class GitHubRateLimiter:
             reset_time=int(headers.x_ratelimit_reset),
         )
 
-    def update_rate_limits(
-        self, headers: httpx.Headers, resource: str
-    ) -> Optional[RateLimitInfo]:
-        rate_limit_headers = RateLimiterRequiredHeaders(**headers)
+    def _parse_retry_after(self, headers: RateLimiterRequiredHeaders) -> Optional[int]:
+        if headers.retry_after is None:
+            return None
+        try:
+            return int(headers.retry_after)
+        except ValueError:
+            return None
 
-        info = self._parse_rate_limit_headers(rate_limit_headers)
-        if info:
-            self.rate_limit_info = info
-            logger.debug(
-                f"Rate limit hit on {resource} for {self.api_type}: {info.remaining}/{info.limit} remaining"
-            )
-        return info
+    async def notify_rate_limited(self, response: httpx.Response) -> None:
+        headers = RateLimiterRequiredHeaders(**response.headers)
+        async with self._lock:
+            self._handle_rate_limit_response(headers, "transport-retry")
 
-    def log_rate_limit_status(self) -> None:
-        info = self.rate_limit_info
-        if info:
-            logger.debug(
-                f"{self.api_type}: {info.remaining}/{info.limit} remaining "
-                f"({info.utilization_percentage:.1f}% used) - "
-                f"resets in {info.seconds_until_reset}s"
+    async def on_response(self, response: httpx.Response, resource: str) -> None:
+        rate_limit_headers = RateLimiterRequiredHeaders(**response.headers)
+
+        async with self._lock:
+            if self.is_rate_limit_response(response):
+                self._handle_rate_limit_response(rate_limit_headers, resource)
+                return
+
+            epoch_passed = (
+                self.rate_limit_info is not None
+                and int(time.time()) >= self.rate_limit_info.reset_time
             )
+            stale_exhausted = (
+                self.rate_limit_info is not None and self.rate_limit_info.remaining <= 0
+            )
+            if not self._initialized or epoch_passed or stale_exhausted:
+                self._initialize_from_response(rate_limit_headers, resource)
+
+    def _handle_rate_limit_response(
+        self, headers: RateLimiterRequiredHeaders, resource: str
+    ) -> None:
+        info = self._parse_rate_limit_headers(headers)
+        retry_after_seconds = self._parse_retry_after(headers)
+
+        if info is None and retry_after_seconds is not None:
+            info = RateLimitInfo(
+                limit=self.rate_limit_info.limit if self.rate_limit_info else 0,
+                remaining=0,
+                reset_time=int(time.time()) + retry_after_seconds,
+            )
+        elif info is not None:
+            if retry_after_seconds is not None:
+                info.reset_time = int(time.time()) + retry_after_seconds
+            info.remaining = 0
+
+        if info is None:
+            return
+
+        existing_reset = self.rate_limit_info.reset_time if self.rate_limit_info else 0
+        if info.reset_time <= max(int(time.time()), existing_reset):
+            return
+
+        self.rate_limit_info = info
+        self._initialized = True
+        logger.bind(
+            api_type=self.api_type,
+            resource=resource,
+            resets_in=info.seconds_until_reset,
+        ).warning(
+            f"GitHub rate limit exhausted for {self.api_type} on {resource}: "
+            f"resets in {info.seconds_until_reset}s"
+        )
+
+    def _initialize_from_response(
+        self, headers: RateLimiterRequiredHeaders, resource: str
+    ) -> None:
+        info = self._parse_rate_limit_headers(headers)
+        if info is None:
+            return
+
+        self.rate_limit_info = info
+        self._initialized = True
+        self._log_rate_limit_status(info, resource)
+
+    def _log_rate_limit_status(self, info: RateLimitInfo, resource: str) -> None:
+        resets_in = info.seconds_until_reset
+        bound = logger.bind(
+            api_type=self.api_type,
+            resource=resource,
+            remaining=info.remaining,
+            limit=info.limit,
+            resets_in=resets_in,
+        )
+        base_message = (
+            f"GitHub rate limit for {self.api_type} on {resource}: "
+            f"{info.remaining}/{info.limit} remaining (resets in {resets_in}s)"
+        )
+
+        if info.remaining <= 0:
+            bound.warning(f"Exhausted — {base_message}")
+        elif info.remaining <= info.limit * 0.1:
+            bound.warning(f"Near exhaustion — {base_message}")
+        else:
+            bound.debug(f"Status — {base_message}")

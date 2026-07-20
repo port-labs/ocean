@@ -1,0 +1,75 @@
+{
+  "Type": "AWS::ECS::TaskDefinition",
+  "Properties": {
+    "TaskDefinitionArn": "arn:aws:ecs:eu-west-1:123456789012:task-definition/port-ocean-aws-aws-integration:3",
+    "Family": "port-ocean-aws-aws-integration",
+    "Revision": 3,
+    "Status": "ACTIVE",
+    "ContainerDefinitions": [
+      {
+        "name": "port-ocean-aws-aws-integration",
+        "image": "ghcr.io/port-labs/port-ocean-aws:latest",
+        "cpu": 1024,
+        "memory": 2048,
+        "portMappings": [
+          {
+            "containerPort": 8000,
+            "hostPort": 8000,
+            "protocol": "tcp"
+          }
+        ],
+        "essential": true,
+        "environment": [
+          {
+            "name": "OCEAN__SCHEDULED_RESYNC_INTERVAL",
+            "value": "60"
+          },
+          {
+            "name": "OCEAN__INITIALIZE_PORT_RESOURCES",
+            "value": "true"
+          },
+          {
+            "name": "OCEAN__EVENT_LISTENER",
+            "value": "{\"type\":\"POLLING\"}"
+          }
+        ],
+        "mountPoints": [],
+        "volumesFrom": [],
+        "secrets": [
+          {
+            "name": "OCEAN__PORT",
+            "valueFrom": "arn:aws:secretsmanager:eu-west-1:123456789012:secret:port-credentials"
+          },
+          {
+            "name": "OCEAN__INTEGRATION",
+            "valueFrom": "arn:aws:secretsmanager:eu-west-1:123456789012:secret:integration-config"
+          }
+        ],
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/port-ocean-aws-aws-integration",
+            "awslogs-create-group": "true",
+            "awslogs-region": "eu-west-1",
+            "awslogs-stream-prefix": "ecs"
+          }
+        },
+        "systemControls": []
+      }
+    ],
+    "Cpu": "1024",
+    "Memory": "2048",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": ["FARGATE"],
+    "TaskRoleArn": "arn:aws:iam::123456789012:role/ecs-task-role-port-ocean-aws-aws-integration",
+    "ExecutionRoleArn": "arn:aws:iam::123456789012:role/ecs-task-execution-role-port-ocean-aws-aws-integration",
+    "Volumes": [],
+    "PlacementConstraints": [],
+    "Tags": [],
+    "RegisteredAt": "2024-08-20T19:54:12.602000+01:00"
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}

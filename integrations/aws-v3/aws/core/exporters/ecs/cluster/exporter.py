@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EcsClusterExporter(IResourceExporter):
+class EcsClusterExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "ecs"
     _model_cls: Type[Cluster] = Cluster
     _actions_map: Type[EcsClusterActionsMap] = EcsClusterActionsMap
@@ -27,9 +27,7 @@ class EcsClusterExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect(
-                [{"clusterName": options.cluster_name}], options.include
-            )
+            response = await inspector.inspect([options.cluster_name], options.include)
 
             return response[0] if response else {}
 

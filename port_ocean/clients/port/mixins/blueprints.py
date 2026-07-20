@@ -1,3 +1,5 @@
+import time
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -5,25 +7,51 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.clients.port.utils import (
+    get_event_context_params,
+    handle_port_status_code,
+)
 from port_ocean.core.models import Blueprint
 
 
+@dataclass
+class BlueprintCacheEntry:
+    blueprint: Blueprint
+    cached_at: float = field(default_factory=time.monotonic)
+
+
 class BlueprintClientMixin:
-    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
+    def __init__(
+        self,
+        auth: PortAuthentication,
+        client: httpx.AsyncClient,
+        blueprint_cache_ttl_seconds: float = 120.0,
+    ):
         self.auth = auth
         self.client = client
+        self._blueprint_cache_ttl_seconds = blueprint_cache_ttl_seconds
+        self._blueprint_cache: dict[str, BlueprintCacheEntry] = {}
 
     async def get_blueprint(
         self, identifier: str, should_log: bool = True
     ) -> Blueprint:
+        if (
+            entry := self._blueprint_cache.get(identifier)
+        ) is not None and time.monotonic() - entry.cached_at < self._blueprint_cache_ttl_seconds:
+            return entry.blueprint
+
         logger.info(f"Fetching blueprint with id: {identifier}")
         response = await self.client.get(
             f"{self.auth.api_url}/blueprints/{identifier}",
             headers=await self.auth.headers(),
         )
         handle_port_status_code(response, should_log=should_log)
-        return Blueprint.parse_obj(response.json()["blueprint"])
+        blueprint = Blueprint.parse_obj(response.json()["blueprint"])
+        self._blueprint_cache[identifier] = BlueprintCacheEntry(blueprint=blueprint)
+        return blueprint
+
+    def clear_blueprint_cache(self) -> None:
+        self._blueprint_cache.clear()
 
     async def create_blueprint(
         self,
@@ -36,7 +64,9 @@ class BlueprintClientMixin:
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
         handle_port_status_code(response)
-        return response.json()["blueprint"]
+        blueprint = response.json()["blueprint"]
+        self._blueprint_cache.pop(blueprint["identifier"], None)
+        return blueprint
 
     async def patch_blueprint(
         self,
@@ -52,6 +82,7 @@ class BlueprintClientMixin:
             json=raw_blueprint,
         )
         handle_port_status_code(response)
+        self._blueprint_cache.pop(identifier, None)
 
     async def delete_blueprint(
         self,
@@ -71,14 +102,17 @@ class BlueprintClientMixin:
                 headers=headers,
             )
             handle_port_status_code(response, should_raise)
+            self._blueprint_cache.pop(identifier, None)
             return None
         else:
             response = await self.client.delete(
-                f"{self.auth.api_url}/blueprints/{identifier}/all-entities?delete_blueprint=true",
-                headers=await self.auth.headers(),
+                f"{self.auth.api_url}/blueprints/{identifier}/all-entities",
+                headers=headers,
+                params={"delete_blueprint": "true", **get_event_context_params()},
             )
 
             handle_port_status_code(response, should_raise)
+            self._blueprint_cache.pop(identifier, None)
             return response.json().get("migrationId", "")
 
     async def create_scorecard(

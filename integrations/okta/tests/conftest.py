@@ -12,6 +12,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None | MagicMock:
     mock_app = MagicMock()
+    mock_app.is_saas.return_value = False
     # Match real structure expected by ocean.integration_config
     mock_app.config.integration.config = {
         "okta_domain": "example.okta.com",

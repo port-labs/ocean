@@ -52,6 +52,7 @@ class TestRestTagExporter:
                 )
             )
 
+            assert tag is not None
             assert tag["name"] == "v1.0"  # Check name is set
             assert tag["__repository"] == "repo1"  # Check repository is enriched
             assert tag["commit"] == TEST_TAGS[0]["object"]  # Check commit is set

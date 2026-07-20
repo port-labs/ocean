@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import (
@@ -27,7 +28,6 @@ from port_ocean.exceptions.context import (
 )
 from port_ocean.utils.misc import get_time
 
-
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
         ResourceConfig,
@@ -42,6 +42,7 @@ class EventType:
     START = "start"
     RESYNC = "resync"
     HTTP_REQUEST = "http_request"
+    ACTION_RUN = "action_run"
 
 
 @dataclass
@@ -180,21 +181,30 @@ async def event_context(
         try:
             yield event
         except EmptyPortAppConfigError as e:
-            logger.error(
-                f"Skipping resync due to empty mapping: {str(e)}", exc_info=True
+            success = False
+            logger.bind(traceback=traceback.format_exc()).error(
+                f"Skipping resync due to empty mapping: {str(e)}"
             )
             raise
         except WebhookEventNotSupportedError as e:
             success = False
-            logger.warning(f"Webhook event not supported: {str(e)}", exc_info=True)
+            logger.bind(traceback=traceback.format_exc()).warning(
+                f"Webhook event not supported: {str(e)}"
+            )
         except BaseException as e:
             success = False
             if isinstance(e, KeyboardInterrupt):
-                logger.warning("Operation interrupted by user", exc_info=True)
+                logger.bind(traceback=traceback.format_exc()).warning(
+                    "Operation interrupted by user"
+                )
             elif isinstance(e, asyncio.CancelledError):
-                logger.warning("Operation was cancelled", exc_info=True)
+                logger.bind(traceback=traceback.format_exc()).warning(
+                    "Operation was cancelled"
+                )
             else:
-                logger.error(f"Event failed with error: {repr(e)}", exc_info=True)
+                logger.bind(traceback=traceback.format_exc()).error(
+                    f"Event failed with error: {str(e)}"
+                )
             raise
         else:
             success = True

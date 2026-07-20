@@ -5,6 +5,7 @@ import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from clients.pagerduty import PagerDutyClient
+from clients.rate_limiter import PagerDutyDailyRateLimitExceededError
 
 
 TEST_INTEGRATION_CONFIG: dict[str, str] = {
@@ -268,6 +269,81 @@ class TestPagerDutyClient:
             assert result == {}
 
     @pytest.mark.asyncio
+    async def test_send_api_request_converts_daily_exhausted_429(
+        self, client: PagerDutyClient
+    ) -> None:
+        """A 429 carrying daily-quota-exhausted headers must surface as
+        PagerDutyDailyRateLimitExceededError so callers can distinguish it from
+        transient 429s and other errors."""
+        rate_limit_429 = MagicMock()
+        rate_limit_429.status_code = 429
+        rate_limit_429.headers = httpx.Headers(
+            {
+                "ratelimit-remaining": "959",
+                "daily-ratelimit-remaining": "-273",
+                "daily-ratelimit-reset": "49015",
+            }
+        )
+        rate_limit_429.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Too Many Requests", request=MagicMock(), response=rate_limit_429
+        )
+
+        with patch.object(
+            client.http_client, "request", AsyncMock(return_value=rate_limit_429)
+        ):
+            with pytest.raises(PagerDutyDailyRateLimitExceededError):
+                await client.send_api_request(
+                    "analytics/metrics/incidents/services", method="POST"
+                )
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_short_circuits_when_daily_budget_known_exhausted(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Once the rate limiter knows daily quota is gone, analytics calls must
+        not even reach the HTTP layer."""
+        from clients.rate_limiter import RateLimitInfo
+
+        client._rate_limiter.daily_rate_limit_info = RateLimitInfo(
+            limit=10, remaining=-1, seconds_until_reset=49015
+        )
+
+        request_mock = AsyncMock()
+        with patch.object(client.http_client, "request", request_mock):
+            with pytest.raises(PagerDutyDailyRateLimitExceededError):
+                await client.send_api_request(
+                    "analytics/metrics/incidents/services", method="POST"
+                )
+
+        assert request_mock.await_count == 0
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_daily_quota_does_not_block_rest_endpoints(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Daily-quota state from a prior analytics 429 must not block REST calls."""
+        from clients.rate_limiter import RateLimitInfo
+
+        client._rate_limiter.daily_rate_limit_info = RateLimitInfo(
+            limit=10, remaining=-1, seconds_until_reset=49015
+        )
+
+        rest_response = MagicMock()
+        rest_response.json.return_value = {"result": "ok"}
+        rest_response.raise_for_status.return_value = None
+        rest_response.headers = httpx.Headers(
+            {
+                "ratelimit-limit": "960",
+                "ratelimit-remaining": "900",
+                "ratelimit-reset": "30",
+            }
+        )
+
+        with patch.object(client.http_client, "request", return_value=rest_response):
+            result = await client.send_api_request("services")
+            assert result == {"result": "ok"}
+
+    @pytest.mark.asyncio
     async def test_transform_user_ids_to_emails(self, client: PagerDutyClient) -> None:
         # Mock the fetch_and_cache_users method to populate user cache
         async def mock_fetch_and_cache_users() -> None:
@@ -357,3 +433,92 @@ class TestPagerDutyClient:
 
         # Assert
         assert result.headers["Authorization"] == "Token token=mock-token"
+
+    @pytest.mark.asyncio
+    async def test_get_entity_custom_fields(self, client: PagerDutyClient) -> None:
+        """Test fetching custom fields for a single entity."""
+        custom_fields_response = {
+            "custom_fields": [
+                {
+                    "id": "FIELD1",
+                    "name": "team",
+                    "display_name": "Team",
+                    "data_type": "string",
+                    "field_type": "single_value",
+                    "type": "field_value",
+                    "value": {"value": "Platform"},
+                }
+            ]
+        }
+        mock_response = MagicMock()
+        mock_response.json.return_value = custom_fields_response
+        mock_response.raise_for_status.return_value = None
+
+        with patch.object(client.http_client, "request", return_value=mock_response):
+            result = await client.get_entity_custom_fields("services", "PS123")
+            assert len(result) == 1
+            assert result[0]["name"] == "team"
+            assert result[0]["value"]["value"] == "Platform"
+
+    @pytest.mark.asyncio
+    async def test_get_entity_custom_fields_empty(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Test that custom fields returns empty list when no fields exist."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"custom_fields": []}
+        mock_response.raise_for_status.return_value = None
+
+        with patch.object(client.http_client, "request", return_value=mock_response):
+            result = await client.get_entity_custom_fields("services", "PS123")
+            assert result == []
+
+    @pytest.mark.asyncio
+    async def test_enrich_entities_with_custom_fields(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Test batch enrichment of entities with custom fields."""
+        entities = [
+            {"id": "PS123", "name": "Service 1"},
+            {"id": "PS456", "name": "Service 2"},
+        ]
+
+        custom_fields_1 = [{"id": "F1", "name": "team", "value": {"value": "Alpha"}}]
+        custom_fields_2 = [{"id": "F1", "name": "team", "value": {"value": "Beta"}}]
+
+        with patch.object(
+            client,
+            "get_entity_custom_fields",
+            side_effect=[custom_fields_1, custom_fields_2],
+        ):
+            result = await client.enrich_entities_with_custom_fields(
+                entities, "services"
+            )
+
+        assert len(result) == 2
+        assert result[0]["__custom_fields"] == custom_fields_1
+        assert result[1]["__custom_fields"] == custom_fields_2
+
+    @pytest.mark.asyncio
+    async def test_enrich_entities_with_custom_fields_partial_empty(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Test that entities with no custom fields get an empty list."""
+        entities = [
+            {"id": "PS123", "name": "Service 1"},
+            {"id": "PS456", "name": "Service 2"},
+        ]
+
+        custom_fields_1 = [{"id": "F1", "name": "team", "value": {"value": "Alpha"}}]
+
+        with patch.object(
+            client,
+            "get_entity_custom_fields",
+            side_effect=[custom_fields_1, []],
+        ):
+            result = await client.enrich_entities_with_custom_fields(
+                entities, "services"
+            )
+
+        assert result[0]["__custom_fields"] == custom_fields_1
+        assert result[1]["__custom_fields"] == []

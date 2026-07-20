@@ -6,11 +6,11 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from webhook_processors.webhook_client import initialize_client
+from webhook_processors.webhook_client import init_webhook_client
 
 
 class BaseWebhookProcessorMixin(AbstractWebhookProcessor):
-    _client = initialize_client()
+    _client = init_webhook_client()
 
     async def authenticate(
         self, payload: dict[str, Any], headers: dict[str, str]

@@ -1,0 +1,110 @@
+resources:
+  - kind: claude-ai-user-activity
+    selector:
+      query: 'true'
+      timeFrame: 30
+    port:
+      entity:
+        mappings:
+          identifier: .user.id + "-" + .__date
+          title: (.user.email_address // .user.id) + " - " + .__date
+          blueprint: '"claude_ai_user_activity"'
+          properties:
+            record_date: .__date + "T00:00:00Z"
+            user_id: .user.id
+            email: .user.email_address
+            chat_conversation_count: (.chat_metrics.distinct_conversation_count // 0)
+            chat_message_count: (.chat_metrics.message_count // 0)
+            chat_thinking_message_count: (.chat_metrics.thinking_message_count // 0)
+            chat_skills_used_count: (.chat_metrics.distinct_skills_used_count // 0)
+            chat_connectors_used_count: (.chat_metrics.connectors_used_count // 0)
+            code_session_count: (.claude_code_metrics.core_metrics.distinct_session_count // 0)
+            code_commit_count: (.claude_code_metrics.core_metrics.commit_count // 0)
+            code_pull_request_count: (.claude_code_metrics.core_metrics.pull_request_count // 0)
+            lines_added: (.claude_code_metrics.core_metrics.lines_of_code.added_count // 0)
+            lines_removed: (.claude_code_metrics.core_metrics.lines_of_code.removed_count // 0)
+            edit_tool_accepted: (.claude_code_metrics.tool_actions.edit_tool.accepted_count // 0)
+            edit_tool_rejected: (.claude_code_metrics.tool_actions.edit_tool.rejected_count // 0)
+            write_tool_accepted: (.claude_code_metrics.tool_actions.write_tool.accepted_count // 0)
+            write_tool_rejected: (.claude_code_metrics.tool_actions.write_tool.rejected_count // 0)
+            multi_edit_tool_accepted: (.claude_code_metrics.tool_actions.multi_edit_tool.accepted_count // 0)
+            multi_edit_tool_rejected: (.claude_code_metrics.tool_actions.multi_edit_tool.rejected_count // 0)
+            notebook_edit_tool_accepted: (.claude_code_metrics.tool_actions.notebook_edit_tool.accepted_count // 0)
+            notebook_edit_tool_rejected: (.claude_code_metrics.tool_actions.notebook_edit_tool.rejected_count // 0)
+            web_search_count: (.web_search_count // 0)
+            chat_projects_used_count: (.chat_metrics.distinct_projects_used_count // 0)
+            chat_projects_created_count: (.chat_metrics.distinct_projects_created_count // 0)
+            chat_artifacts_created_count: (.chat_metrics.distinct_artifacts_created_count // 0)
+            chat_files_uploaded_count: (.chat_metrics.distinct_files_uploaded_count // 0)
+            chat_shared_conversations_viewed_count: (.chat_metrics.shared_conversations_viewed_count // 0)
+            office_session_count: >-
+              ([.office_metrics.excel.distinct_session_count,
+              .office_metrics.powerpoint.distinct_session_count,
+              .office_metrics.word.distinct_session_count,
+              .office_metrics.outlook.distinct_session_count] | map(. // 0) | add)
+            office_message_count: >-
+              ([.office_metrics.excel.message_count,
+              .office_metrics.powerpoint.message_count,
+              .office_metrics.word.message_count,
+              .office_metrics.outlook.message_count] | map(. // 0) | add)
+            cowork_session_count: (.cowork_metrics.distinct_session_count // 0)
+            cowork_message_count: (.cowork_metrics.message_count // 0)
+            design_session_count: (.design_metrics.distinct_session_count // 0)
+            design_message_count: (.design_metrics.message_count // 0)
+  - kind: claude-ai-user-usage
+    selector:
+      query: 'true'
+      startingAt: '2026-01-01T00:00:00Z'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .actor.user_id + "-" + .__starting_at[:10] + "-" + (.product // "all")
+            + "-" + (.model // "all")
+          title: (.actor.name // .actor.email // .actor.user_id) + " - " + .__starting_at[:10]
+          blueprint: '"claude_ai_user_usage"'
+          properties:
+            record_date: .__starting_at
+            range_end: .__ending_at
+            user_id: .actor.user_id
+            user_name: .actor.name
+            email: .actor.email
+            deleted: (.actor.deleted // false)
+            product: .product
+            model: .model
+            context_window: .context_window
+            inference_geo: .inference_geo
+            speed: .speed
+            uncached_input_tokens: (.uncached_input_tokens // 0)
+            cache_creation_1h_tokens: (.cache_creation.ephemeral_1h_input_tokens // 0)
+            cache_creation_5m_tokens: (.cache_creation.ephemeral_5m_input_tokens // 0)
+            cache_read_input_tokens: (.cache_read_input_tokens // 0)
+            output_tokens: (.output_tokens // 0)
+            total_tokens: (.total_tokens // 0)
+            web_search_requests: (.server_tool_use.web_search_requests // 0)
+            requests: (.requests // 0)
+  - kind: claude-ai-user-cost
+    selector:
+      query: 'true'
+      startingAt: '2026-01-01T00:00:00Z'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .actor.user_id + "-" + .__starting_at[:10] + "-" + (.product // "all")
+            + "-" + (.model // "all")
+          title: (.actor.name // .actor.email // .actor.user_id) + " - " + .__starting_at[:10]
+          blueprint: '"claude_ai_user_cost"'
+          properties:
+            record_date: .__starting_at
+            range_end: .__ending_at
+            user_id: .actor.user_id
+            user_name: .actor.name
+            email: .actor.email
+            deleted: (.actor.deleted // false)
+            product: .product
+            model: .model
+            currency: (.currency // "USD")
+            amount: ((.amount // "0") | tonumber) / 100
+            list_amount: ((.list_amount // "0") | tonumber) / 100
+            requests: (.requests // 0)

@@ -55,9 +55,11 @@ async def metric_resource_context(
         MetricResourceContext(metric_resource_kind=metric_resource_kind, index=index)
     )
 
-    with logger.contextualize(
-        metric_resource_kind=metric_resource.metric_resource_kind
-    ):
-        yield metric_resource
+    try:
+        with logger.contextualize(
+            metric_resource_kind=metric_resource.metric_resource_kind
+        ):
+            yield metric_resource
 
-    _resource_context_stack.pop()
+    finally:
+        _resource_context_stack.pop()

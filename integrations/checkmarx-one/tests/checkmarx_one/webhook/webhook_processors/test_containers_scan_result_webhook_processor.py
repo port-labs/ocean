@@ -391,6 +391,40 @@ class TestContainersScanResultWebhookProcessor:
         assert result.updated_raw_results[0] == batch1[0]
         assert result.updated_raw_results[1] == batch2[0]
 
+    async def test_handle_event_passes_project_id_in_options(
+        self,
+        containers_scan_result_webhook_processor: ContainersScanResultWebhookProcessor,
+        containers_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+    ) -> None:
+        """Test that project_id from the payload is passed through to ListScanResultOptions."""
+        payload: EventPayload = {
+            "scanId": "scan-123",
+            "projectId": "project-456",
+        }
+
+        captured_options: list[Any] = []
+        mock_exporter = AsyncMock()
+
+        async def mock_get_paginated_resources(
+            options: Any,
+        ) -> AsyncIterator[List[dict[str, Any]]]:
+            captured_options.append(options)
+            yield []
+
+        mock_exporter.get_paginated_resources = mock_get_paginated_resources
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.containers_scan_result_webhook_processor.create_scan_result_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+            await containers_scan_result_webhook_processor.handle_event(
+                payload, containers_scan_result_resource_config
+            )
+
+        assert len(captured_options) == 1
+        assert captured_options[0]["project_id"] == "project-456"
+        assert captured_options[0]["scan_id"] == "scan-123"
+
     async def test_handle_event_with_different_selector_options(
         self,
         containers_scan_result_webhook_processor: ContainersScanResultWebhookProcessor,

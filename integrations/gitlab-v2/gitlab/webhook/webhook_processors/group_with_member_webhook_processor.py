@@ -10,8 +10,9 @@ from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
+from typing import cast
+
 from integration import GitlabMemberSelector
-import typing
 
 
 class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -50,7 +51,7 @@ class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 deleted_raw_results=[payload],
             )
 
-        selector = typing.cast(GitlabMemberSelector, resource_config.selector)
+        selector = cast(GitlabMemberSelector, resource_config.selector)
         include_bot_members = bool(selector.include_bot_members)
         include_inherited_members = selector.include_inherited_members
 
@@ -61,11 +62,13 @@ class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 include_bot_members=include_bot_members,
                 include_inherited_members=include_inherited_members,
             )
-        else:
-            logger.warning(f"Group with ID '{group_id}' not found")
-            group = {}
+            return WebhookEventRawResults(
+                updated_raw_results=[group],
+                deleted_raw_results=[],
+            )
 
+        logger.warning(f"Group with ID '{group_id}' not found")
         return WebhookEventRawResults(
-            updated_raw_results=[group],
+            updated_raw_results=[],
             deleted_raw_results=[],
         )

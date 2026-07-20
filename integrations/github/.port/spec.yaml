@@ -2,6 +2,7 @@ title: GitHub
 description: GitHub integration for Port Ocean
 icon: Github
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean
+formMappingEnabled: true
 features:
   - type: exporter
     section: Git Providers
@@ -20,6 +21,7 @@ features:
       - kind: branch
       - kind: environment
       - kind: deployment
+      - kind: deployment-status
       - kind: dependabot-alert
       - kind: code-scanning-alerts
       - kind: file
@@ -59,6 +61,21 @@ configurations:
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
     sensitive: true
     required: false
+  - name: skipWebhookPatching
+    type: boolean
+    required: false
+    default: false
+    description: When enabled, the integration will not update existing webhook configurations on GitHub.
+  - name: resyncRatelimitReservationThreshold
+    type: integer
+    required: false
+    default: 95
+    description: GitHub REST rate-limit utilization percentage (0-100) at which resync processes pause to reserve quota for webhooks. Does not throttle webhooks or actions.
+  - name: legacyDispatchWorkflowTracking
+    type: boolean
+    required: false
+    default: false
+    description: Enable for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch (see https://github.com/github/roadmap/issues/1188). Polls GitHub for the triggered workflow run and serializes dispatches per organization/repository/workflow.
 saas:
   enabled: true
   liveEvents:
@@ -104,21 +121,41 @@ actions:
         title: Workflow inputs
         type: jqObject
         description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
+  - name: update_repo_external_custom_properties
+    icon: Github
+    description: Update GitHub repository external custom properties based on Port entity changes
+    inputs:
+      - name: org
+        title: Organization
+        type: string
+        description: The GitHub organization that owns the repository
+        required: true
+      - name: repo
+        title: Repository
+        type: string
+        description: The name of the GitHub repository to update
+        required: true
+      - name: externalPropertiesMapping
+        title: External Properties Mapping
+        type: jqObject
+        description: 'Defines the mapping of Port blueprint properties to GitHub external custom properties. Example: { "buisness_criticality": "{{ .properties.buisness_criticality }}"}'
+        required: true
 installationDocs:
   saas:
     - name: SaasOAuth2
       enabled: false
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=github-app-wizard
+      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=installation-method&s1=hosted-by-port#setup
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=pat&installation-methods=one-time-ci&cicd-method=github
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=github#setup
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=pat&installation-methods=one-time-ci&cicd-method=gitlab
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=gitlab#setup
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=custom-github-app&installation-methods=real-time-self-hosted&deploy=helm
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=prerequisites&s1=kubernetes#setup
   docker:
-    enabled: false
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=prerequisites&s1=docker#setup

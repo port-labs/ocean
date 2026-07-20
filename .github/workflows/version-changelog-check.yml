@@ -2,11 +2,6 @@ name: Version and Changelog Check
 
 on:
   pull_request:
-    paths:
-      - "integrations/**"
-      - "port_ocean/**"
-      - "pyproject.toml"
-      - "CHANGELOG.md"
 
 jobs:
   check-version-changelog:

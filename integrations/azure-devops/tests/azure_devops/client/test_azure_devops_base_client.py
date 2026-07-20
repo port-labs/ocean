@@ -1,17 +1,37 @@
 import pytest
 from typing import Any
-from unittest.mock import AsyncMock, patch
-from httpx import Response, ReadTimeout
+from unittest.mock import AsyncMock, MagicMock, patch
+from httpx import ReadError, Response, ReadTimeout
+from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.base_client import (
     HTTPBaseClient,
     CONTINUATION_TOKEN_HEADER,
     PAGE_SIZE,
 )
+from azure_devops.client.rate_limiter import (
+    ADO_RATE_LIMIT_WINDOW_SECONDS,
+)
+from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
+from port_ocean.context.ocean import PortOceanContext
 
 
 @pytest.fixture
-def mock_client() -> HTTPBaseClient:
-    return HTTPBaseClient(personal_access_token="test_token")
+def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
+    mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
+    return HTTPBaseClient(
+        auth_provider=PatAuthProvider("test_token"),
+    )
+
+
+def test_base_client_uses_azure_devops_retry_transport(
+    mock_client: HTTPBaseClient,
+) -> None:
+    transport = mock_client._client._transport
+
+    assert isinstance(transport, AzureDevOpsRetryTransport)
+    assert transport._rate_limiter is mock_client._rate_limiter
+    assert transport._retry_config.max_attempts == 10
+    assert transport._retry_config.max_backoff_wait == ADO_RATE_LIMIT_WINDOW_SECONDS
 
 
 @pytest.mark.asyncio
@@ -285,6 +305,74 @@ async def test_get_paginated_by_top_with_max_results(
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_by_top_and_skip_custom_param_names(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """Test top_param/skip_param use legacy names (top/skip) and skip increments per page."""
+    mock_response_page1 = AsyncMock(spec=Response)
+    mock_response_page1.status_code = 200
+    mock_response_page1.json.return_value = {
+        "value": [{"id": idx} for idx in range(PAGE_SIZE)]
+    }
+
+    mock_response_page2 = AsyncMock(spec=Response)
+    mock_response_page2.status_code = 200
+    mock_response_page2.json.return_value = {
+        "value": [{"id": idx} for idx in range(25)]
+    }
+
+    mock_response_empty = AsyncMock(spec=Response)
+    mock_response_empty.status_code = 200
+    mock_response_empty.json.return_value = {"value": []}
+
+    captured_calls: list[dict[str, Any]] = []
+    responses = [mock_response_page1, mock_response_page2, mock_response_empty]
+
+    async def capture_and_return(*args: Any, **kwargs: Any) -> Response:
+        captured_calls.append(
+            {
+                "params": (
+                    kwargs.get("params", {}).copy() if kwargs.get("params") else {}
+                ),
+            }
+        )
+        return responses[len(captured_calls) - 1]
+
+    with patch.object(
+        mock_client,
+        "send_request",
+        side_effect=capture_and_return,
+    ):
+        generator = mock_client._get_paginated_by_top_and_skip(
+            "test_url",
+            params={"api-version": "4.1-preview.1"},
+            top_param="top",
+            skip_param="skip",
+        )
+        results = [item async for page in generator for item in page]
+
+    assert len(results) == PAGE_SIZE + 25
+    assert len(captured_calls) == 3
+    assert captured_calls[0]["params"] == {
+        "api-version": "4.1-preview.1",
+        "top": PAGE_SIZE,
+        "skip": 0,
+    }
+    assert captured_calls[1]["params"] == {
+        "api-version": "4.1-preview.1",
+        "top": PAGE_SIZE,
+        "skip": PAGE_SIZE,
+    }
+    assert captured_calls[2]["params"] == {
+        "api-version": "4.1-preview.1",
+        "top": PAGE_SIZE,
+        "skip": PAGE_SIZE + 25,
+    }
+    assert "$top" not in captured_calls[0]["params"]
+    assert "$skip" not in captured_calls[0]["params"]
+
+
+@pytest.mark.asyncio
 async def test_get_paginated_by_top_and_skip_exhausts_retries(
     mock_client: HTTPBaseClient,
 ) -> None:
@@ -302,3 +390,59 @@ async def test_get_paginated_by_top_and_skip_exhausts_retries(
             _ = [item async for page in generator for item in page]
 
         assert mock_send.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_send_request_signals_throttle_on_read_error(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """ReadError during body read (ADO closing connection instead of 429) triggers throttle."""
+    with (
+        patch.object(
+            mock_client._client,
+            "request",
+            side_effect=ReadError("connection closed"),
+        ),
+        patch.object(
+            mock_client._rate_limiter,
+            "signal_throttle",
+            new_callable=AsyncMock,
+        ) as mock_throttle,
+    ):
+        with pytest.raises(ReadError):
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
+
+        mock_throttle.assert_awaited_once_with(
+            ADO_RATE_LIMIT_WINDOW_SECONDS,
+            reason="ReadError",
+        )
+
+
+@pytest.mark.asyncio
+async def test_send_request_signals_throttle_on_read_timeout(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """ReadTimeout triggers throttle — existing behaviour, kept for parity."""
+    with (
+        patch.object(
+            mock_client._client,
+            "request",
+            side_effect=ReadTimeout("timed out"),
+        ),
+        patch.object(
+            mock_client._rate_limiter,
+            "signal_throttle",
+            new_callable=AsyncMock,
+        ) as mock_throttle,
+    ):
+        with pytest.raises(ReadTimeout):
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
+
+        mock_throttle.assert_awaited_once_with(
+            ADO_RATE_LIMIT_WINDOW_SECONDS,
+            reason="ReadTimeout",
+        )

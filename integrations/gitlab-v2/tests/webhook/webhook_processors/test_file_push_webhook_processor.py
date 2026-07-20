@@ -4,6 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
 )
+from gitlab.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+)
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -81,6 +85,7 @@ class TestFilePushWebhookProcessor:
         """Create a mocked GitLabFilesResourceConfig with default no-repos config"""
         config = MagicMock(spec=ResourceConfig)
         config.selector = mock_gitlab_files_selector
+        config.selector.included_files = []
         config.kind = "file"
         return config
 
@@ -161,6 +166,7 @@ class TestFilePushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_files_selector
+        resource_config.selector.included_files = []
         resource_config.kind = "file"
 
         project_id = push_payload["project_id"]
@@ -243,6 +249,7 @@ class TestFilePushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_files_selector
+        resource_config.selector.included_files = []
         resource_config.kind = "file"
 
         processor._gitlab_webhook_client = MagicMock()
@@ -333,3 +340,100 @@ class TestFilePushWebhookProcessor:
         assert len(result.deleted_raw_results) == 2
         assert result.deleted_raw_results == enriched_deleted_data
         assert not result.updated_raw_results
+
+
+@pytest.mark.asyncio
+class TestFileEnrichWithIncludedFiles:
+    """Tests for the IncludedFilesEnricher with FileIncludedFilesStrategy"""
+
+    async def test_enrich_file_success(self) -> None:
+        """Test successful enrichment with included files."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock(
+            side_effect=["readme content", "owners content"]
+        )
+
+        file_entity: dict[str, Any] = {
+            "file": {"path": "src/main.py"},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
+            "branch": "main",
+        }
+
+        enricher = IncludedFilesEnricher(
+            client=client,
+            strategy=FileIncludedFilesStrategy(
+                included_files=["README.md", "CODEOWNERS"]
+            ),
+        )
+        result = (await enricher.enrich_batch([file_entity]))[0]
+
+        assert result["__includedFiles"] == {
+            "README.md": "readme content",
+            "CODEOWNERS": "owners content",
+        }
+        assert client.get_file_content.call_count == 2
+        # File is at src/main.py, so included files should be resolved relative to src/
+        client.get_file_content.assert_any_call(
+            "group/project", "src/README.md", "main"
+        )
+        client.get_file_content.assert_any_call(
+            "group/project", "src/CODEOWNERS", "main"
+        )
+
+    async def test_enrich_file_missing_file(self) -> None:
+        """Test enrichment when a file cannot be fetched — stores None."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock(
+            side_effect=["content", Exception("Not found")]
+        )
+
+        file_entity: dict[str, Any] = {
+            "file": {"path": "src/main.py"},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
+            "branch": "main",
+        }
+
+        enricher = IncludedFilesEnricher(
+            client=client,
+            strategy=FileIncludedFilesStrategy(
+                included_files=["README.md", "MISSING.md"]
+            ),
+        )
+        result = (await enricher.enrich_batch([file_entity]))[0]
+
+        assert result["__includedFiles"] == {
+            "README.md": "content",
+            "MISSING.md": None,
+        }
+
+    async def test_enrich_file_empty_file_list(self) -> None:
+        """Test enrichment with empty file list yields empty dict."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock()
+
+        file_entity: dict[str, Any] = {
+            "file": {"path": "src/main.py"},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
+            "branch": "main",
+        }
+
+        enricher = IncludedFilesEnricher(
+            client=client,
+            strategy=FileIncludedFilesStrategy(included_files=[]),
+        )
+        result = (await enricher.enrich_batch([file_entity]))[0]
+
+        assert result.get("__includedFiles") == {}
+        client.get_file_content.assert_not_called()

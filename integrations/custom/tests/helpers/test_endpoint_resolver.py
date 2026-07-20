@@ -123,12 +123,12 @@ class TestGenerateResolvedEndpoints:
 
 @pytest.mark.asyncio
 class TestQueryApiForParameters:
-    """Test querying API for parameter values"""
+    """Test querying API for parameter values - yields batches of values"""
 
     @patch("initialize_client.init_client")
-    @patch("http_server.helpers.endpoint_resolver.ocean")
+    @patch("http_server.helpers.endpoint_resolver.JQEntityProcessorSync")
     async def test_query_with_single_batch(
-        self, mock_ocean: MagicMock, mock_init_client: MagicMock
+        self, mock_jq_sync: MagicMock, mock_init_client: MagicMock
     ) -> None:
         """Test querying API that returns a single batch"""
         # Setup mock client
@@ -145,13 +145,13 @@ class TestQueryApiForParameters:
         mock_client.fetch_paginated_data = mock_fetch
         mock_init_client.return_value = mock_client
 
-        # Setup mock JQ processor
-        async def mock_search(data: Any, path: str) -> Any:
+        # Setup mock sync JQ processor
+        def mock_search(data: Any, path: str) -> Any:
             if path == ".id":
                 return data.get("id")
             return None
 
-        mock_ocean.app.integration.entity_processor._search = mock_search
+        mock_jq_sync._search = mock_search
 
         # Create param config
         param_config = ApiPathParameter(
@@ -162,17 +162,17 @@ class TestQueryApiForParameters:
             headers={},
         )
 
-        # Execute
-        result = await query_api_for_parameters(param_config)
+        # Execute - collect yielded batches from async generator
+        result = [batch async for batch in query_api_for_parameters(param_config)]
 
-        # Assert
-        assert result == ["team-1", "team-2"]
+        # Assert - yields a single batch containing all values
+        assert result == [["team-1", "team-2"]]
         mock_init_client.assert_called_once()
 
     @patch("initialize_client.init_client")
-    @patch("http_server.helpers.endpoint_resolver.ocean")
+    @patch("http_server.helpers.endpoint_resolver.JQEntityProcessorSync")
     async def test_query_with_filter(
-        self, mock_ocean: MagicMock, mock_init_client: MagicMock
+        self, mock_jq_sync: MagicMock, mock_init_client: MagicMock
     ) -> None:
         """Test querying API with a filter applied"""
         # Setup mock client
@@ -190,15 +190,15 @@ class TestQueryApiForParameters:
         mock_client.fetch_paginated_data = mock_fetch
         mock_init_client.return_value = mock_client
 
-        # Setup mock JQ processor
-        async def mock_search(data: Any, path: str) -> Any:
+        # Setup mock sync JQ processor
+        def mock_search(data: Any, path: str) -> Any:
             if path == ".id":
                 return data.get("id")
             if path == ".active":
                 return data.get("active")
             return None
 
-        mock_ocean.app.integration.entity_processor._search = mock_search
+        mock_jq_sync._search = mock_search
 
         # Create param config with filter
         param_config = ApiPathParameter(
@@ -210,17 +210,14 @@ class TestQueryApiForParameters:
             headers={},
         )
 
-        # Execute
-        result = await query_api_for_parameters(param_config)
+        # Execute - collect yielded batches from async generator
+        result = [batch async for batch in query_api_for_parameters(param_config)]
 
-        # Assert - only active teams
-        assert result == ["team-1", "team-3"]
+        # Assert - single batch with only active teams
+        assert result == [["team-1", "team-3"]]
 
     @patch("initialize_client.init_client")
-    @patch("http_server.helpers.endpoint_resolver.ocean")
-    async def test_query_with_empty_response(
-        self, mock_ocean: MagicMock, mock_init_client: MagicMock
-    ) -> None:
+    async def test_query_with_empty_response(self, mock_init_client: MagicMock) -> None:
         """Test querying API that returns empty results"""
         # Setup mock client
         mock_client = AsyncMock()
@@ -242,32 +239,35 @@ class TestQueryApiForParameters:
             headers={},
         )
 
-        # Execute
-        result = await query_api_for_parameters(param_config)
+        # Execute - collect yielded batches from async generator
+        result = [batch async for batch in query_api_for_parameters(param_config)]
 
-        # Assert
+        # Assert - no batches yielded when empty
         assert result == []
 
 
 @pytest.mark.asyncio
 class TestResolveDynamicEndpoints:
-    """Test the main endpoint resolution orchestrator"""
+    """Test the main endpoint resolution orchestrator - yields batches of endpoints"""
 
     async def test_static_endpoint_no_parameters(self) -> None:
         """Test resolving a static endpoint with no parameters"""
         selector = HttpServerSelector(query="true")
         kind = "/api/v1/users"
 
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Collect yielded batches from async generator
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
-        assert result == [("/api/v1/users", {})]
+        # Returns single batch with static endpoint
+        assert result == [[("/api/v1/users", {})]]
 
     async def test_empty_kind(self) -> None:
         """Test handling empty kind"""
         selector = HttpServerSelector(query="true")
         kind = ""
 
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Collect yielded batches from async generator
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         assert result == []
 
@@ -276,16 +276,23 @@ class TestResolveDynamicEndpoints:
         selector = HttpServerSelector(query="true")
         kind = "/api/v1/teams/{team_id}/members"
 
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Collect yielded batches from async generator
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
-        # Returns the template as-is when config is missing
-        assert result == [("/api/v1/teams/{team_id}/members", {})]
+        # Returns single batch with template as-is when config is missing
+        assert result == [[("/api/v1/teams/{team_id}/members", {})]]
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
-    async def test_resolve_with_single_parameter(self, mock_query: AsyncMock) -> None:
+    async def test_resolve_with_single_parameter(self, mock_query: MagicMock) -> None:
         """Test resolving endpoint with a single path parameter"""
-        # Setup mock query response
-        mock_query.return_value = ["team-1", "team-2"]
+
+        # Setup mock query as async generator that yields batches of values
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            yield ["team-1", "team-2"]
+
+        mock_query.side_effect = mock_query_gen
 
         # Create selector with path parameters
         param_config = ApiPathParameter(
@@ -301,21 +308,30 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/teams/{team_id}/members"
 
-        # Execute
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Execute - collect yielded batches from async generator
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
-        # Assert
+        # Assert - single batch with all resolved endpoints
         assert result == [
-            ("/api/v1/teams/team-1/members", {"team_id": "team-1"}),
-            ("/api/v1/teams/team-2/members", {"team_id": "team-2"}),
+            [
+                ("/api/v1/teams/team-1/members", {"team_id": "team-1"}),
+                ("/api/v1/teams/team-2/members", {"team_id": "team-2"}),
+            ]
         ]
         mock_query.assert_called_once_with(param_config)
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
-    async def test_resolve_with_no_values_found(self, mock_query: AsyncMock) -> None:
+    async def test_resolve_with_no_values_found(self, mock_query: MagicMock) -> None:
         """Test resolving when API returns no parameter values"""
-        # Setup mock query to return empty list
-        mock_query.return_value = []
+
+        # Setup mock query as async generator that yields no batches
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            return
+            yield  # Make this a generator
+
+        mock_query.side_effect = mock_query_gen
 
         # Create selector with path parameters
         param_config = ApiPathParameter(
@@ -331,19 +347,25 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/teams/{team_id}/members"
 
-        # Execute
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Execute - collect yielded batches from async generator
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
         # Assert - returns empty list when no values found
         assert result == []
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_resolve_with_multiple_parameters_warns(
-        self, mock_query: AsyncMock
+        self, mock_query: MagicMock
     ) -> None:
         """Test resolving endpoint with multiple parameters (currently only handles first)"""
-        # Setup mock query response
-        mock_query.return_value = ["org-1"]
+
+        # Setup mock query as async generator that yields batch
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            yield ["org-1"]
+
+        mock_query.side_effect = mock_query_gen
 
         # Create selector with multiple path parameters
         org_param = ApiPathParameter(
@@ -367,11 +389,11 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/orgs/{org_id}/teams/{team_id}/members"
 
-        # Execute
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Execute - collect yielded batches from async generator
+        result = [batch async for batch in resolve_dynamic_endpoints(selector, kind)]
 
-        # Assert - only first parameter is resolved (current limitation)
+        # Assert - single batch, only first parameter resolved (current limitation)
         assert result == [
-            ("/api/v1/orgs/org-1/teams/{team_id}/members", {"org_id": "org-1"})
+            [("/api/v1/orgs/org-1/teams/{team_id}/members", {"org_id": "org-1"})]
         ]
         mock_query.assert_called_once()

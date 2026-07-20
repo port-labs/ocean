@@ -8,8 +8,18 @@ env:
   SIZE_INCREASE_THRESHOLD: ${{ vars.SIZE_INCREASE_THRESHOLD || '7' }}
 
 jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+
   prepare-matrix:
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.integrations != '[]' ||
+      needs.detect-changes.outputs.infra == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.core_ci_files_changed == 'true'
     outputs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
@@ -19,37 +29,62 @@ jobs:
         id: prepare-matrix
         run: |
           integrations_to_build=()
-          # Get the list of integrations
-          files=$(find integrations/*/.port -name "spec.yaml")
-          for file in $files; do
-            folder=$(dirname "$file")
-            type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
-            # Get the version from pyproject.toml
-            version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "${{ needs.detect-changes.outputs.infra }}" = "true" ] || \
+             [ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
+             [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]; then
+            integration_names=$(find integrations -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          else
+            integration_names='${{ needs.detect-changes.outputs.integrations }}'
+          fi
 
-            # Check if the version exists in the ghcr.io registry
-            rc=0
-            docker manifest inspect ghcr.io/port-labs/port-ocean-$type:$version > /dev/null 2>&1 || rc=$?
+          echo "Integration candidates: ${integration_names}"
 
-            if [ $rc -eq 0 ]; then
-              echo "Image already exists in $repository: port-ocean-$type:$version"
-            else
-              integrations_to_build+=($file)
+          for integration_name in $(echo "$integration_names" | jq -r '.[]'); do
+            file="integrations/${integration_name}/.port/spec.yaml"
+            if [ ! -f "$file" ]; then
+              echo "Skipping ${integration_name}: no spec.yaml"
+              continue
             fi
+
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              folder=$(dirname "$file")
+              type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+              version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+
+              rc=0
+              docker manifest inspect ghcr.io/port-labs/port-ocean-$type:$version > /dev/null 2>&1 || rc=$?
+
+              if [ $rc -eq 0 ]; then
+                echo "Image already exists: port-ocean-$type:$version"
+                continue
+              fi
+            fi
+
+            integrations_to_build+=($file)
           done
-          echo $(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')
-          echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
+
+          if [ ${#integrations_to_build[@]} -eq 0 ]; then
+            matrix_json='[]'
+          else
+            matrix_json=$(printf '%s\n' "${integrations_to_build[@]}" | jq -R -s -c 'split("\n")[:-1]')
+          fi
+
+          echo "$matrix_json"
+          echo "INTEGRATIONS_MATRIX=$matrix_json" >> $GITHUB_OUTPUT
 
   build-integration:
     runs-on: ubuntu-latest
-    if: needs.prepare-matrix.outputs.matrix != '[]'
+    if: >-
+      needs.prepare-matrix.result == 'success' &&
+      needs.prepare-matrix.outputs.matrix != '[]'
     outputs:
       is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
     permissions:
       contents: read
       pull-requests: write
-    needs: [prepare-matrix]
+    needs: [detect-changes, prepare-matrix]
     strategy:
       max-parallel: 10
       matrix:
@@ -106,7 +141,7 @@ jobs:
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           skip-push: 'true'
           load-created-image: 'true'
           skip-login: ${{ github.event_name == 'pull_request' }}

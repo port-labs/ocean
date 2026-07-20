@@ -7,17 +7,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from webhook_processors.terraform_base_webhook_processor import (
-    TerraformBaseWebhookProcessor,
+from webhook_processors.base_workspace_webhook_processor import (
+    BaseWorkspaceWebhookProcessor,
 )
 
 
-class WorkspaceWebhookProcessor(TerraformBaseWebhookProcessor):
+class WorkspaceWebhookProcessor(BaseWorkspaceWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.WORKSPACE]
-
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return True
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

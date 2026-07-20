@@ -322,6 +322,52 @@ class TestGetPaginatedResource:
 
             assert results == [{"id": 1}, {"id": 2}]
 
+    async def test_stops_pagination_for_ignored_permission_errors(
+        self, sentry_client: SentryClient
+    ) -> None:
+        """Tests ignored permission errors yield no pages for paginated resources."""
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.headers = httpx.Headers({})
+        error = httpx.HTTPStatusError(
+            "Forbidden", request=MagicMock(), response=mock_response
+        )
+        mock_response.raise_for_status.side_effect = error
+
+        with patch.object(
+            sentry_client._client,
+            "request",
+            new_callable=AsyncMock,
+            return_value=mock_response,
+        ):
+            pages = [
+                page async for page in sentry_client._get_paginated_resource("/test")
+            ]
+
+            assert pages == []
+
+    async def test_stops_pagination_for_empty_response(
+        self, sentry_client: SentryClient
+    ) -> None:
+        """Tests empty paginated responses yield no pages."""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.json.return_value = []
+        mock_response.headers = httpx.Headers({})
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(
+            sentry_client._client,
+            "request",
+            new_callable=AsyncMock,
+            return_value=mock_response,
+        ):
+            pages = [
+                page async for page in sentry_client._get_paginated_resource("/test")
+            ]
+
+            assert pages == []
+
 
 class TestGetTags:
     """Tests for the _get_tags method."""

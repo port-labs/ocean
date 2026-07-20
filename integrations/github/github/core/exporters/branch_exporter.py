@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, cast
+from typing import Any, cast, Optional
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -26,7 +26,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleBranchOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         branch_name = params["branch_name"]
@@ -39,12 +39,15 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
             )
-            return {}
+            return None
 
         if protection_rules:
             response = await self._enrich_branch_with_protection_rules(
                 repo_name, response, organization
             )
+
+        if repo:
+            response = self._enrich_with_default_branch_status(response, repo)
 
         logger.info(
             f"Fetched branch: {branch_name} for repo: {repo_name} from {organization}"
@@ -65,8 +68,12 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name = cast(str, repo_name)
         repo = params.pop("repo")
         branch_names = params.pop("branch_names", [])
-        is_explicit = bool(branch_names)
+        default_branch_only = bool(params.pop("default_branch_only", False))
 
+        if default_branch_only:
+            branch_names = [repo["default_branch"]]
+
+        is_explicit = bool(branch_names)
         if branch_names:
 
             async def _explicit_branches() -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -99,7 +106,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             ]
 
             hydrated = await asyncio.gather(*tasks)
-            yield hydrated
+            yield [branch for branch in hydrated if branch is not None]
 
     async def _run_branch_hydration(
         self,
@@ -109,7 +116,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         detailed: bool,
         protection_rules: bool,
         batch_concurrency_limit: asyncio.Semaphore,
-    ) -> dict[str, Any]:
+    ) -> Optional[dict[str, Any]]:
         async with batch_concurrency_limit:
             return await self._hydrate_branch(
                 repo,
@@ -126,7 +133,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         branch: dict[str, Any],
         detailed: bool,
         protection_rules: bool,
-    ) -> dict[str, Any]:
+    ) -> Optional[dict[str, Any]]:
         repo_name = repo["name"]
         branch_name = branch["name"]
 
@@ -136,7 +143,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 logger.warning(
                     f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
                 )
-                return {}
+                return None
 
             logger.info(
                 f"Added extra details for branch '{branch_name}' in repo '{repo_name}'."
@@ -146,6 +153,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             branch = await self._enrich_branch_with_protection_rules(
                 repo_name, branch, organization
             )
+
+        if repo:
+            branch = self._enrich_with_default_branch_status(branch, repo)
 
         return enrich_with_organization(
             enrich_with_repository(branch, repo_name, repo=repo), organization
@@ -169,4 +179,11 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched protection rules for branch '{branch_name}' in repo '{repo_name}'."
         )
 
+        return branch
+
+    def _enrich_with_default_branch_status(
+        self, branch: dict[str, Any], repo: dict[str, Any]
+    ) -> RAW_ITEM:
+        if repo:
+            branch["__is_default_branch"] = branch["name"] == repo["default_branch"]
         return branch

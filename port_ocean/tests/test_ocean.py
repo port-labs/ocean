@@ -83,12 +83,22 @@ class TestRoutePrefix:
 # initialize_app route registration tests
 class TestInitializeAppRoutes:
     @pytest.mark.parametrize(
-        "path_prefix,expected_integration_path,expected_metrics_path",
+        "path_prefix,expected_integration_path,expected_metrics_path,expected_health_path",
         [
-            (None, "/integration", "/metrics"),
-            ("", "/integration", "/metrics"),
-            ("my-prefix", "/my-prefix/integration", "/my-prefix/metrics"),
-            ("/my-prefix/", "/my-prefix/integration", "/my-prefix/metrics"),
+            (None, "/integration", "/metrics", "/health"),
+            ("", "/integration", "/metrics", "/health"),
+            (
+                "my-prefix",
+                "/my-prefix/integration",
+                "/my-prefix/metrics",
+                "/my-prefix/health",
+            ),
+            (
+                "/my-prefix/",
+                "/my-prefix/integration",
+                "/my-prefix/metrics",
+                "/my-prefix/health",
+            ),
         ],
     )
     def test_initialize_app_registers_routes_with_correct_prefix(
@@ -97,6 +107,7 @@ class TestInitializeAppRoutes:
         path_prefix: str | None,
         expected_integration_path: str,
         expected_metrics_path: str,
+        expected_health_path: str,
     ) -> None:
         mock_ocean.config.path_prefix = path_prefix
         mock_ocean.fast_api_app = MagicMock()
@@ -109,6 +120,7 @@ class TestInitializeAppRoutes:
         calls = mock_ocean.fast_api_app.include_router.call_args_list
         assert calls[0].kwargs["prefix"] == expected_integration_path
         assert calls[1].kwargs["prefix"] == expected_metrics_path
+        assert calls[2].kwargs["prefix"] == expected_health_path
 
 
 # base_url property tests

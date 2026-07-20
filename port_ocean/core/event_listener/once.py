@@ -106,9 +106,7 @@ class OnceEventListener(BaseEventListener):
             await super()._before_resync()
             return
 
-        (interval, start_time) = (
-            await self.get_saas_resync_initialization_and_interval()
-        )
+        interval, start_time = await self.get_saas_resync_initialization_and_interval()
         await ocean.app.resync_state_updater.update_before_resync(interval, start_time)
 
     async def _after_resync(self) -> None:
@@ -117,22 +115,17 @@ class OnceEventListener(BaseEventListener):
             await super()._after_resync()
             return
 
-        (interval, start_time) = (
-            await self.get_saas_resync_initialization_and_interval()
-        )
+        interval, start_time = await self.get_saas_resync_initialization_and_interval()
         await ocean.app.resync_state_updater.update_after_resync(
             IntegrationStateStatus.Completed, interval, start_time
         )
 
     async def _on_resync_failure(self, e: Exception) -> None:
         if not ocean.app.is_saas():
-            # in case of non-saas, we still want to update the state before and after the resync
-            await super()._after_resync()
+            await super()._on_resync_failure(e)
             return
 
-        (interval, start_time) = (
-            await self.get_saas_resync_initialization_and_interval()
-        )
+        interval, start_time = await self.get_saas_resync_initialization_and_interval()
         await ocean.app.resync_state_updater.update_after_resync(
             IntegrationStateStatus.Failed, interval, start_time
         )

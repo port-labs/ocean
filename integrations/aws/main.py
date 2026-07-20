@@ -1,6 +1,6 @@
 import json
 import typing
-from typing import Optional, Iterable, Callable, Any, AsyncIterator
+from typing import Optional, Iterable, Iterator, Callable, Any, AsyncIterator
 
 from fastapi import Response, status
 import fastapi
@@ -17,6 +17,7 @@ from utils.resources import (
     fix_unserializable_date_properties,
     resync_cloudcontrol,
     resync_sqs_queue,
+    resync_s3_bucket,
     resync_resource_group,
 )
 
@@ -30,13 +31,20 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
-from utils.overrides import AWSPortAppConfig, AWSResourceConfig
+from utils.overrides import (
+    AWSPortAppConfig,
+    AWSResourceConfig,
+    AWSResourceGroupResourceConfig,
+)
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
     ResourceKindsWithSpecialHandling,
+    OPT_IN_REGIONS,
     is_access_denied_exception,
+    is_region_not_supported_exception,
     is_server_error,
+    safe_iterate,
 )
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -45,6 +53,17 @@ from port_ocean.utils.async_iterators import (
 from aioboto3 import Session
 
 import functools
+
+
+def get_available_regions(allowed_regions: list[str]) -> Iterator[str]:
+    """Yield regions preferring standard regions over opt-in ones."""
+    opt_in_regions = []
+    for region in allowed_regions:
+        if region in OPT_IN_REGIONS:
+            opt_in_regions.append(region)
+        else:
+            yield region
+    yield from opt_in_regions
 
 
 CONCURRENT_RESYNC_ACCOUNTS = 10
@@ -57,14 +76,31 @@ async def _handle_global_resource_resync(
     resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
     allowed_regions: Optional[Iterable[str]] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
-    async for session in credentials.create_session_for_each_region(allowed_regions):
+    regions = (
+        list(allowed_regions)
+        if allowed_regions is not None
+        else credentials.enabled_regions
+    )
+    async for session in credentials.create_session_for_each_region(
+        get_available_regions(regions)
+    ):
+        region = session.region_name
         try:
             async for batch in resync_func(kind, session):
                 yield batch
             return
         except Exception as e:
             if is_access_denied_exception(e):
+                logger.warning(
+                    f"Access denied for global resource {kind} in region "
+                    f"{region}, trying next region"
+                )
+                continue
+            elif is_region_not_supported_exception(e, region):
+                logger.bind(traceback=e, region=region).warning(
+                    f"Skipping global resource {kind} in region {region}: "
+                    f"resource is missing for the provided region"
+                )
                 continue
             else:
                 raise e
@@ -85,7 +121,7 @@ async def resync_resources_for_account(
         Batches of resources
 
     Raises:
-        ExceptionGroup: If there are errors during resync for multiple regions
+        ExceptionGroup: If there are real errors during resync across regions
     """
     errors: list[Exception] = []
     failed_regions: list[str] = []
@@ -114,28 +150,34 @@ async def resync_resources_for_account(
 
     # Process regional resources
     tasks: list[AsyncIterator[list[dict[Any, Any]]]] = []
-    async for session in credentials.create_session_for_each_region(allowed_regions):
-        try:
-            tasks.append(resync_func(kind, session))
-            if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
-                async for batch in _process_tasks(
-                    tasks, failed_regions, errors, session.region_name
-                ):
-                    yield batch
-
-        except Exception as exc:
-            logger.error(
-                f"Failed to complete resync for {kind} in region {session.region_name}: {exc}",
-                exc_info=True,
+    try:
+        async for session in credentials.create_session_for_each_region(
+            allowed_regions
+        ):
+            region = session.region_name
+            tasks.append(
+                safe_iterate(
+                    resync_func(kind, session),
+                    region,
+                    kind,
+                    errors,
+                    failed_regions,
+                )
             )
-            failed_regions.append(session.region_name)
-            errors.append(exc)
+            if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    yield batch
+                tasks.clear()
+    except Exception as exc:
+        logger.bind(traceback=exc, kind=kind, region=session.region_name).error(
+            f"Failed to complete resync for {kind} in region {session.region_name}: {exc}"
+        )
+        failed_regions.append(session.region_name)
+        errors.append(exc)
 
     # Process any remaining tasks
     if tasks:
-        async for batch in _process_tasks(
-            tasks, failed_regions, errors, session.region_name
-        ):
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
     if errors:
@@ -148,30 +190,9 @@ async def resync_resources_for_account(
         raise ExceptionGroup(error_msg, errors)
 
 
-async def _process_tasks(
-    tasks: list[AsyncIterator[list[dict[Any, Any]]]],
-    failed_regions: list[str],
-    errors: list[Exception],
-    current_region: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Helper to process a batch of tasks and handle errors."""
-    try:
-        async for batch in stream_async_iterators_tasks(*tasks):
-            yield batch
-    except Exception as exc:
-        if not is_access_denied_exception(exc):
-            failed_regions.append(current_region)
-            errors.append(exc)
-        logger.warning(
-            f"Error processing batch in region {current_region}: {exc}", exc_info=True
-        )
-    finally:
-        tasks.clear()
-
-
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(ResourceKindsWithSpecialHandling):
+    if kind in ResourceKindsWithSpecialHandling:
         return
 
     tasks = []
@@ -203,7 +224,6 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     elasticache_resync_func = functools.partial(
         resync_custom_kind,
         service_name="elasticache",
@@ -375,9 +395,27 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.S3_BUCKET)
+async def resync_s3(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    tasks = []
+    async for credentials in get_accounts():
+        tasks.append(resync_resources_for_account(credentials, kind, resync_s3_bucket))
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
+
+
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUP)
 async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    aws_resource_config = typing.cast(
+        AWSResourceGroupResourceConfig, event.resource_config
+    )
     tasks = []
 
     # Determine which resync function to use based on configuration
@@ -415,7 +453,8 @@ async def cloud_event_validation_middleware_handler(
     request: fastapi.Request,
     call_next: typing.Callable[[fastapi.Request], typing.Awaitable[responses.Response]],
 ) -> responses.Response:
-    if request.url.path.startswith("/integration"):
+    path = request.scope["path"]
+    if path.startswith("/integration"):
         if request.method == "OPTIONS":
             logger.info("Detected cloud event validation request")
             headers = {

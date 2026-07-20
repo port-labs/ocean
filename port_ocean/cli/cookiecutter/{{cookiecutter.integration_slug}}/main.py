@@ -2,6 +2,8 @@ from typing import Any
 
 from port_ocean.context.ocean import ocean
 
+from integration import ObjectKind
+
 
 # Required
 # Listen to the resync event of all the kinds specified in the mapping inside port.
@@ -11,13 +13,13 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
     # 1. Get all data from the source system
     # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
     # Example:
-    # if kind == "project":
+    # if kind == ObjectKind.PROJECT:
     #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
+    # if kind == ObjectKind.ISSUE:
     #     return [{"some_issue_key": "someIssueValue", ...}]
 
     # Initial stub to show complete flow, replace this with your own logic
-    if kind == "{{ cookiecutter.integration_slug }}-example-kind":
+    if kind == ObjectKind.EXAMPLE_KIND:
         return [
             {
                 "my_custom_id": f"id_{x}",
@@ -34,13 +36,13 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
 
 
 # The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
+# @ocean.on_resync(ObjectKind.PROJECT)
 # async def resync_project(kind: str) -> list[dict[Any, Any]]:
 #     # 1. Get all projects from the source system
 #     # 2. Return a list of dictionaries with the raw data of the state
 #     return [{"some_project_key": "someProjectValue", ...}]
 #
-# @ocean.on_resync('issues')
+# @ocean.on_resync(ObjectKind.ISSUE)
 # async def resync_issues(kind: str) -> list[dict[Any, Any]]:
 #     # 1. Get all issues from the source system
 #     # 2. Return a list of dictionaries with the raw data of the state

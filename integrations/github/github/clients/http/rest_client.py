@@ -65,6 +65,5 @@ class GithubRestClient(AbstractGithubClient):
                 next_resource := self._get_next_link(link_header)
             ):
                 break
-
             params = None
             resource = next_resource
