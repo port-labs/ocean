@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from typing import Any
 from freezegun import freeze_time
 
 from datadog.utils import (
@@ -65,7 +66,7 @@ def test_generate_time_windows_from_interval_days() -> None:
 
 
 def test_enrich_batch_stamps_all_enrichments_onto_every_item() -> None:
-    data: list[dict] = [{"id": 1}, {"id": 2}]
+    data: list[dict[str, Any]] = [{"id": 1}, {"id": 2}]
     result = enrich_batch(
         data,
         enrichments={ORG_ID_ENRICHMENT_KEY: "uuid-1", ORG_NAME_ENRICHMENT_KEY: "DPN | Port"},
@@ -76,6 +77,6 @@ def test_enrich_batch_stamps_all_enrichments_onto_every_item() -> None:
 
 
 def test_enrich_batch_overwrites_existing_keys() -> None:
-    data: list[dict] = [{"id": 1, ORG_ID_ENRICHMENT_KEY: "old-uuid"}]
+    data: list[dict[str, Any]] = [{"id": 1, ORG_ID_ENRICHMENT_KEY: "old-uuid"}]
     result = enrich_batch(data, enrichments={ORG_ID_ENRICHMENT_KEY: "new-uuid"})
     assert result[0][ORG_ID_ENRICHMENT_KEY] == "new-uuid"
