@@ -17,7 +17,7 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
 from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
-from gitlab.helpers.skill_plugin import DEFAULT_PLUGIN_PROVIDERS, DEFAULT_SKILL_ROOTS
+from gitlab.helpers.skill_plugin import DEFAULT_PLUGIN_PROVIDERS, DEFAULT_SKILL_PATHS
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
@@ -365,34 +365,36 @@ class GitLabFilesResourceConfig(ResourceConfig):
     )
 
 
-class GitLabSkillSelector(GroupSelector):
-    content: Literal["frontmatter", "skill.md"] = Field(
-        title="Content",
-        default="skill.md",
-        description=(
-            "How much of each SKILL.md to ingest. "
-            "`frontmatter` returns name/description only; "
-            "`skill.md` also includes the markdown body as instructions."
-        ),
-    )
-    roots: list[str] = Field(
-        title="Roots",
-        default_factory=lambda: list(DEFAULT_SKILL_ROOTS),
-        description=(
-            "Skill parent directories to scan for SKILL.md. Defaults cover "
-            ".agents, Antigravity (.agent), Cursor, Claude, Codex, GitHub "
-            "Copilot (.github/skills), OpenCode, and marketplace skills/ layouts."
-        ),
-    )
-    paths: list[str] = Field(
-        title="Paths",
-        default_factory=list,
-        description="Optional extra path patterns for SKILL.md files.",
+class GitLabSkillPath(BaseModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
     )
     repos: list[str] = Field(
         title="Repositories",
         default_factory=list,
-        description="Optional list of project path_with_namespace values to scan.",
+        description=(
+            "Optional list of project path_with_namespace values to scan "
+            "for this path (same as file kind)."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+def _default_skill_paths() -> list["GitLabSkillPath"]:
+    return [GitLabSkillPath(path=path) for path in DEFAULT_SKILL_PATHS]
+
+
+class GitLabSkillSelector(GroupSelector):
+    paths: list[GitLabSkillPath] = Field(
+        title="Paths",
+        default_factory=_default_skill_paths,
+        description=(
+            "Glob patterns for SKILL.md discovery. Each entry can set repos "
+            "(same shape as the file kind). Multiple entries enable multi-scope filtration."
+        ),
     )
 
 

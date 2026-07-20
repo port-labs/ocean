@@ -4,9 +4,8 @@ from typing import cast
 from loguru import logger
 
 from gitlab.helpers.skill_plugin import (
-    DEFAULT_SKILL_ROOTS,
     enrich_file_to_skill,
-    match_skill_root,
+    infer_skill_root,
     matches_skill_path,
 )
 from gitlab.helpers.utils import ObjectKind
@@ -33,16 +32,20 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         project_id = payload["project"]["id"]
-        branch = payload.get("ref", "").replace("refs/heads/", "")
+        branch = payload.get("ref", "").removeprefix("refs/heads/")
         repo_path = payload["project"]["path_with_namespace"]
 
         config = cast(GitLabSkillResourceConfig, resource_config)
         selector = config.selector
-        repos = selector.repos
-        roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
-        extra_paths = selector.paths
+        path_entries = selector.paths
+        path_globs = [entry.path for entry in path_entries]
 
-        if repos and repo_path not in repos:
+        applicable_globs = [
+            entry.path
+            for entry in path_entries
+            if not entry.repos or repo_path in entry.repos
+        ]
+        if not applicable_globs:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -55,10 +58,10 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             removed_files.update(commit.get("removed", []))
 
         matching_changed = sorted(
-            p for p in changed_files if matches_skill_path(p, roots, extra_paths)
+            p for p in changed_files if matches_skill_path(p, applicable_globs)
         )
         matching_removed = sorted(
-            p for p in removed_files if matches_skill_path(p, roots, extra_paths)
+            p for p in removed_files if matches_skill_path(p, applicable_globs)
         )
 
         if not matching_changed and not matching_removed:
@@ -85,12 +88,7 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 processed
             )
             for entity in enriched:
-                skill_item = enrich_file_to_skill(
-                    entity,
-                    content_mode=selector.content,
-                    roots=roots,
-                    extra_paths=extra_paths,
-                )
+                skill_item = enrich_file_to_skill(entity, path_globs=path_globs)
                 if skill_item:
                     updated_results.append(skill_item)
 
@@ -107,11 +105,10 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                         "frontmatter": {},
                         "path": skill_dir,
                         "skillMdPath": path,
-                        "root": match_skill_root(path, roots)
-                        or (skill_dir.split("/")[0] if skill_dir else ""),
+                        "root": infer_skill_root(path, path_globs),
                     },
-                    "repository": payload["project"],
-                    "branch": branch,
+                    "repo": payload["project"],
+                    "__branch": branch,
                 }
             )
 

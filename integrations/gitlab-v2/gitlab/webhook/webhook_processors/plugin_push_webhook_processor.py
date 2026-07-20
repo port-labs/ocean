@@ -113,8 +113,8 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[
                     {
                         "plugin": plugin,
-                        "repository": project,
-                        "branch": branch,
+                        "repo": project,
+                        "__branch": branch,
                     }
                 ],
                 deleted_raw_results=[],
@@ -128,8 +128,8 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                         name=project.get("path") or project.get("name"),
                         display_name=project.get("name"),
                     ),
-                    "repository": project,
-                    "branch": branch,
+                    "repo": project,
+                    "__branch": branch,
                 }
             ],
         )

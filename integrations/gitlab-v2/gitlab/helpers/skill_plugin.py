@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 from loguru import logger
+from wcmatch import glob
 from yaml import safe_load
 
-SkillContentMode = Literal["frontmatter", "skill.md"]
 PluginProvider = Literal[
     "claude",
     "cursor",
@@ -18,15 +18,15 @@ PluginProvider = Literal[
     "antigravity",
 ]
 
-DEFAULT_SKILL_ROOTS: list[str] = [
-    ".agents/skills",
-    ".agent/skills",
-    ".cursor/skills",
-    ".claude/skills",
-    ".codex/skills",
-    ".github/skills",
-    ".opencode/skills",
-    "skills",
+DEFAULT_SKILL_PATHS: list[str] = [
+    ".agents/skills/**/SKILL.md",
+    ".agent/skills/**/SKILL.md",
+    ".cursor/skills/**/SKILL.md",
+    ".claude/skills/**/SKILL.md",
+    ".codex/skills/**/SKILL.md",
+    ".github/skills/**/SKILL.md",
+    ".opencode/skills/**/SKILL.md",
+    "skills/**/SKILL.md",
 ]
 
 SKILL_MD_FILENAME = "SKILL.md"
@@ -66,63 +66,67 @@ PLUGIN_DIRECTORY_SEARCH_PATHS: dict[PluginProvider, str] = {
     "pi": ".pi/extensions/*",
 }
 
+_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB | glob.IGNORECASE
 
-def skill_search_paths(roots: list[str]) -> list[str]:
+
+def _glob_root(pattern: str) -> str:
+    """Strip the SKILL.md suffix from a glob to get the configured root prefix."""
+    cleaned = pattern.strip("/")
+    suffixes = (
+        f"/**/{SKILL_MD_FILENAME}",
+        f"/{SKILL_MD_FILENAME}",
+        f"**/{SKILL_MD_FILENAME}",
+        SKILL_MD_FILENAME,
+    )
+    lower = cleaned.lower()
+    for suffix in suffixes:
+        if lower.endswith(suffix.lower()):
+            return cleaned[: -len(suffix)].strip("/")
+    return cleaned
+
+
+def skill_search_paths(path_globs: list[str]) -> list[str]:
     """Paths suitable for GitLab Advanced Search (no ** globs)."""
     paths: list[str] = []
-    for root in roots:
-        clean = root.strip().strip("/")
-        if clean:
-            # Nested skills: <root>/<skill-name>/SKILL.md
-            paths.append(f"{clean}/*/{SKILL_MD_FILENAME}")
-            # Skill at the root directory itself
-            paths.append(f"{clean}/{SKILL_MD_FILENAME}")
+    seen_roots: set[str] = set()
+    for pattern in path_globs:
+        root = _glob_root(pattern)
+        if not root or root in seen_roots:
+            continue
+        seen_roots.add(root)
+        # Nested skills: <root>/<skill-name>/SKILL.md
+        paths.append(f"{root}/*/{SKILL_MD_FILENAME}")
+        # Skill at the root directory itself
+        paths.append(f"{root}/{SKILL_MD_FILENAME}")
     # Broad fallback for non-standard layouts
     paths.append(SKILL_MD_FILENAME)
     return paths
 
 
-def matches_skill_path(path: str, roots: list[str], extra_paths: list[str]) -> bool:
+def matches_skill_path(path: str, path_globs: list[str]) -> bool:
     normalized = path.strip("/")
-    lower = normalized.lower()
-    skill_md = SKILL_MD_FILENAME.lower()
-    if not lower.endswith(skill_md):
+    if Path(normalized).name.lower() != SKILL_MD_FILENAME.lower():
         return False
-
-    for root in roots:
-        clean = root.strip().strip("/").lower()
-        if lower == f"{clean}/{skill_md}":
-            return True
-        if lower.startswith(f"{clean}/") and lower.endswith(f"/{skill_md}"):
-            return True
-
-    for pattern in extra_paths:
-        if _simple_match(normalized, pattern):
-            return True
-
-    return False
+    return any(
+        glob.globmatch(normalized, pattern.strip("/"), flags=_GLOB_FLAGS)
+        for pattern in path_globs
+    )
 
 
-def _simple_match(path: str, pattern: str) -> bool:
-    import fnmatch
-
-    return fnmatch.fnmatch(path, pattern.strip("/"))
-
-
-def match_skill_root(skill_md_path: str, roots: list[str]) -> str | None:
+def infer_skill_root(skill_md_path: str, path_globs: list[str]) -> str:
+    """Root that matched this SKILL.md, for mapping filters."""
     normalized = skill_md_path.strip("/")
-    for root in roots:
-        clean = root.strip().strip("/")
-        if normalized == f"{clean}/{SKILL_MD_FILENAME}":
-            return clean
-        if normalized.startswith(f"{clean}/") and normalized.endswith(
-            f"/{SKILL_MD_FILENAME}"
-        ):
-            return clean
-    return None
+    for pattern in path_globs:
+        if glob.globmatch(normalized, pattern.strip("/"), flags=_GLOB_FLAGS):
+            root = _glob_root(pattern)
+            if root:
+                return root
+    skill_dir = str(Path(normalized).parent).replace("\\", "/")
+    parent = str(Path(skill_dir).parent).replace("\\", "/")
+    return parent if parent not in (".", "") else skill_dir
 
 
-def parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
+def _parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
     text = content.replace("\r\n", "\n")
     if not text.startswith("---"):
         return {}, text
@@ -150,11 +154,9 @@ def build_skill_object(
     *,
     skill_md_path: str,
     content: str,
-    content_mode: SkillContentMode,
-    roots: list[str] | None = None,
+    path_globs: list[str],
 ) -> dict[str, Any]:
-    roots = roots or DEFAULT_SKILL_ROOTS
-    frontmatter, body = parse_skill_markdown(content)
+    frontmatter, body = _parse_skill_markdown(content)
     path_obj = Path(skill_md_path)
     skill_dir = str(path_obj.parent).replace("\\", "/")
     path_name = path_obj.parent.name
@@ -167,30 +169,21 @@ def build_skill_object(
     if not isinstance(description, str):
         description = ""
 
-    root = match_skill_root(skill_md_path, roots) or (
-        skill_dir.split("/")[0] if skill_dir else ""
-    )
-
-    skill: dict[str, Any] = {
+    return {
         "name": name,
         "description": description,
-        "instructions": None,
+        "instructions": body,
         "frontmatter": frontmatter,
         "path": skill_dir,
         "skillMdPath": skill_md_path,
-        "root": root,
+        "root": infer_skill_root(skill_md_path, path_globs),
     }
-    if content_mode == "skill.md":
-        skill["instructions"] = body
-    return skill
 
 
 def enrich_file_to_skill(
     file_entity: dict[str, Any],
     *,
-    content_mode: SkillContentMode,
-    roots: list[str],
-    extra_paths: list[str] | None = None,
+    path_globs: list[str],
 ) -> dict[str, Any] | None:
     """Convert GitLab `{file, repo}` enrichment into normalized skill raw item."""
     file_data = file_entity.get("file") or {}
@@ -199,18 +192,17 @@ def enrich_file_to_skill(
     content = file_data.get("content")
     if not isinstance(content, str):
         return None
-    if not matches_skill_path(path, roots, extra_paths or []):
+    if not matches_skill_path(path, path_globs):
         return None
 
     return {
         "skill": build_skill_object(
             skill_md_path=path,
             content=content,
-            content_mode=content_mode,
-            roots=roots,
+            path_globs=path_globs,
         ),
-        "repository": repo,
-        "branch": file_data.get("ref") or repo.get("default_branch") or "main",
+        "repo": repo,
+        "__branch": file_data.get("ref") or repo.get("default_branch") or "main",
     }
 
 

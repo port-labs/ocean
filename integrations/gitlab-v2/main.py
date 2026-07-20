@@ -519,7 +519,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SKILL)
 async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     from gitlab.helpers.skill_plugin import (
-        DEFAULT_SKILL_ROOTS,
         enrich_file_to_skill,
         matches_skill_path,
         skill_search_paths,
@@ -528,11 +527,19 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
     include_only_active_groups = selector.include_only_active_groups
-    roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
-    extra_paths = selector.paths
-    repositories = selector.repos or None
-    search_paths = skill_search_paths(roots) + list(extra_paths)
-    # Deduplicate while preserving order
+    path_entries = selector.paths
+    path_globs = [entry.path for entry in path_entries]
+
+    # If any path entry has no repos filter, search all repos and filter per entity.
+    # Otherwise union the explicit repo lists for the Advanced Search scope.
+    if any(not entry.repos for entry in path_entries):
+        repositories: list[str] | None = None
+    else:
+        repositories = (
+            list({repo for entry in path_entries for repo in entry.repos}) or None
+        )
+
+    search_paths = skill_search_paths(path_globs)
     seen: set[str] = set()
     unique_paths = []
     for p in search_paths:
@@ -544,6 +551,15 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         include_only_active_groups=include_only_active_groups
     )
     emitted_keys: set[str] = set()
+
+    def _path_applies(path: str, repo_path: str) -> bool:
+        for entry in path_entries:
+            if not matches_skill_path(path, [entry.path]):
+                continue
+            if entry.repos and repo_path not in entry.repos:
+                continue
+            return True
+        return False
 
     for search_path in unique_paths:
         async for files_batch in client.search_files(
@@ -557,18 +573,15 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             skills: list[dict[str, Any]] = []
             for entity in enriched:
                 path = (entity.get("file") or {}).get("path") or ""
-                if not matches_skill_path(path, roots, extra_paths):
+                repo = entity.get("repo") or {}
+                repo_path = repo.get("path_with_namespace") or ""
+                if not _path_applies(path, repo_path):
                     continue
-                skill_item = enrich_file_to_skill(
-                    entity,
-                    content_mode=selector.content,
-                    roots=roots,
-                    extra_paths=extra_paths,
-                )
+                skill_item = enrich_file_to_skill(entity, path_globs=path_globs)
                 if not skill_item:
                     continue
                 key = (
-                    f"{(skill_item.get('repository') or {}).get('id')}:"
+                    f"{(skill_item.get('repo') or {}).get('id')}:"
                     f"{skill_item['skill']['skillMdPath']}"
                 )
                 if key in emitted_keys:
@@ -636,7 +649,7 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 entry = by_project.setdefault(
                     project_key,
                     {
-                        "repository": repo,
+                        "repo": repo,
                         "manifests": {},
                         "paths": set(),
                         "branch": file_data.get("ref"),
@@ -663,7 +676,7 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             entry = by_project[project_key]
             directory_supports = detect_directory_providers(entry["paths"], providers)
             plugin = normalize_plugin(
-                repository=entry["repository"],
+                repository=entry["repo"],
                 manifests=entry["manifests"],
                 providers=providers,
                 directory_supports=directory_supports,
@@ -673,9 +686,9 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             batch.append(
                 {
                     "plugin": plugin,
-                    "repository": entry["repository"],
-                    "branch": entry.get("branch")
-                    or entry["repository"].get("default_branch")
+                    "repo": entry["repo"],
+                    "__branch": entry.get("branch")
+                    or entry["repo"].get("default_branch")
                     or "main",
                 }
             )

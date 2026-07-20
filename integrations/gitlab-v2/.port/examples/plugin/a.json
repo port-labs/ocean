@@ -41,12 +41,12 @@
       "name": "superpowers"
     }
   },
-  "repository": {
+  "repo": {
     "id": 2,
     "name": "superpowers",
     "path_with_namespace": "obra/superpowers",
     "default_branch": "main",
     "web_url": "https://gitlab.com/obra/superpowers"
   },
-  "branch": "main"
+  "__branch": "main"
 }

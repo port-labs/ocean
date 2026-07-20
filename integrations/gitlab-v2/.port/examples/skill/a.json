@@ -11,12 +11,12 @@
     "skillMdPath": "skills/hello-skill/SKILL.md",
     "root": "skills"
   },
-  "repository": {
+  "repo": {
     "id": 1,
     "name": "example-skills",
     "path_with_namespace": "acme/example-skills",
     "default_branch": "main",
     "web_url": "https://gitlab.com/acme/example-skills"
   },
-  "branch": "main"
+  "__branch": "main"
 }
