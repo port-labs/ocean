@@ -32,6 +32,8 @@ from typing import Any, Dict, List, Optional, Type, Literal
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
+from github.core.exporters.skill_exporter import DEFAULT_SKILL_PATHS
+from github.core.exporters.plugin_exporter import DEFAULT_PLUGIN_PROVIDERS
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
@@ -278,6 +280,91 @@ class GithubFileResourceConfig(ResourceConfig):
     selector: GithubFileSelector = Field(
         title="File selector",
         description="Selector for the file resource.",
+    )
+
+
+class GithubSkillPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+def _default_skill_paths() -> list[GithubSkillPattern]:
+    return [GithubSkillPattern(path=path) for path in DEFAULT_SKILL_PATHS]
+
+
+class GithubSkillSelector(Selector):
+    paths: list[GithubSkillPattern] = Field(
+        title="Paths",
+        default_factory=_default_skill_paths,
+        description=(
+            "Glob patterns for SKILL.md discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtration."
+        ),
+    )
+
+
+class GithubSkillResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.SKILL] = Field(
+        title="Github Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GithubSkillSelector = Field(
+        title="Skill selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GithubPluginRepoSelector(RepositorySourceModel):
+    """Org/repo scope to scan for agent plugins."""
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubPluginSelector(Selector):
+    providers: list[
+        Literal[
+            "claude",
+            "cursor",
+            "codex",
+            "agents",
+            "kimi",
+            "opencode",
+            "pi",
+            "antigravity",
+        ]
+    ] = Field(
+        title="Providers",
+        default_factory=lambda: list(DEFAULT_PLUGIN_PROVIDERS),
+        description=(
+            "Agent plugin providers to detect. A repository is treated as a "
+            "plugin when any matching manifest/dir exists."
+        ),
+    )
+    repositories: list[GithubPluginRepoSelector] = Field(
+        title="Repositories",
+        default_factory=lambda: [GithubPluginRepoSelector()],
+        description=(
+            "Org/repo scopes to scan. Each entry can set organization and repos. "
+            "Multiple entries enable multi-org filtration."
+        ),
+    )
+
+
+class GithubPluginResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PLUGIN] = Field(
+        title="Github Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GithubPluginSelector = Field(
+        title="Plugin selector",
+        description="Selector for discovering agent plugin repositories.",
     )
 
 
@@ -816,6 +903,8 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubSkillResourceConfig
+        | GithubPluginResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig

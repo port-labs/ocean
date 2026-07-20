@@ -1,0 +1,59 @@
+{
+  "plugin": {
+    "name": "superpowers",
+    "displayName": "Superpowers",
+    "description": "Core skills library for Claude Code and Cursor",
+    "version": "6.1.1",
+    "supports": {
+      "claude": true,
+      "cursor": true,
+      "codex": true,
+      "agents": true,
+      "kimi": true,
+      "opencode": true,
+      "pi": true,
+      "antigravity": true
+    },
+    "claude": {
+      "name": "superpowers",
+      "marketplaceName": "superpowers-dev",
+      "description": "Core skills library for Claude Code",
+      "version": "6.1.1"
+    },
+    "cursor": {
+      "name": "superpowers",
+      "displayName": "Superpowers",
+      "description": "Core skills library",
+      "version": "6.1.1",
+      "skills": "./skills/"
+    },
+    "codex": {
+      "name": "superpowers",
+      "version": "6.1.1"
+    },
+    "agents": {
+      "name": "superpowers",
+      "marketplaceName": "superpowers-marketplace"
+    },
+    "kimi": {
+      "name": "superpowers"
+    },
+    "opencode": {
+      "detected": true
+    },
+    "pi": {
+      "detected": true
+    },
+    "antigravity": {
+      "name": "superpowers"
+    }
+  },
+  "__repository": {
+    "name": "superpowers",
+    "full_name": "obra/superpowers",
+    "html_url": "https://github.com/obra/superpowers",
+    "default_branch": "main"
+  },
+  "__branch": "main",
+  "__organization": "obra"
+}

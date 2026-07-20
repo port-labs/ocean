@@ -134,7 +134,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            tree = await self.get_tree_recursive(organization, repo_name, branch)
+            tree, _truncated = await self.get_tree_recursive(
+                organization, repo_name, branch
+            )
 
             matched = filter_github_tree_entries_by_pattern(tree, pattern)
 
@@ -388,8 +390,8 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     @cache_coroutine_result()
     async def get_tree_recursive(
         self, organization: str, repo: str, branch: str
-    ) -> List[Dict[str, Any]]:
-        """Retrieve the full recursive tree for a given branch."""
+    ) -> tuple[List[Dict[str, Any]], bool]:
+        """Retrieve the recursive tree and whether GitHub truncated the response."""
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
         response = await self.client.send_api_request(
             tree_url, ignored_errors=self._IGNORED_ERRORS
@@ -398,11 +400,16 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"Did not retrieve tree from {repo}@{branch} from {organization}"
             )
-            return []
+            return [], False
+
+        truncated = bool(response.get("truncated"))
+        if truncated:
+            logger.warning(
+                "Git tree was truncated by GitHub; file/plugin detection may be incomplete"
+            )
 
         tree_items = response["tree"]
         logger.info(
             f"Retrieved tree for {repo}@{branch}: {len(tree_items)} items from {organization}"
         )
-
-        return tree_items
+        return tree_items, truncated

@@ -56,6 +56,8 @@ class ObjectKind(StrEnum):
     SECRET_SCANNING_ALERT = "secret-scanning-alerts"
     FILE = "file"
     COLLABORATOR = "collaborator"
+    SKILL = "skill"
+    PLUGIN = "plugin"
 
 
 def enrich_with_organization(
