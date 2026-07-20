@@ -64,7 +64,7 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
                 )
                 continue
             if monitor:
-                self._enrich_with_org_id([monitor], client)
+                self._enrich_with_org_identity([monitor], client)
                 break
 
         return WebhookEventRawResults(
