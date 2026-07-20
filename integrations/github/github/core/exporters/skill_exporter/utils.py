@@ -1,75 +1,67 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from loguru import logger
 from ruamel.yaml import YAML
+from wcmatch import glob
 
-DEFAULT_SKILL_ROOTS: list[str] = [
-    ".agents/skills",
-    ".agent/skills",
-    ".cursor/skills",
-    ".claude/skills",
-    ".codex/skills",
-    ".github/skills",
-    ".opencode/skills",
-    "skills",
+from github.helpers.utils import matches_glob_pattern
+
+DEFAULT_SKILL_PATHS: list[str] = [
+    ".agents/skills/**/SKILL.md",
+    ".agent/skills/**/SKILL.md",
+    ".cursor/skills/**/SKILL.md",
+    ".claude/skills/**/SKILL.md",
+    ".codex/skills/**/SKILL.md",
+    ".github/skills/**/SKILL.md",
+    ".opencode/skills/**/SKILL.md",
+    "skills/**/SKILL.md",
 ]
 
 SKILL_MD_FILENAME = "SKILL.md"
 
-SkillContentMode = Literal["frontmatter", "skill.md"]
+
+def _glob_root(pattern: str) -> str:
+    """Strip the SKILL.md suffix from a glob to get the configured root prefix."""
+    cleaned = pattern.strip("/")
+    suffixes = (
+        f"/**/{SKILL_MD_FILENAME}",
+        f"/{SKILL_MD_FILENAME}",
+        f"**/{SKILL_MD_FILENAME}",
+        SKILL_MD_FILENAME,
+    )
+    lower = cleaned.lower()
+    for suffix in suffixes:
+        if lower.endswith(suffix.lower()):
+            return cleaned[: -len(suffix)].strip("/")
+    return cleaned
 
 
-def roots_to_globs(roots: list[str]) -> list[str]:
-    """Convert skill roots to GitHub tree globs that match SKILL.md files."""
-    globs: list[str] = []
-    for root in roots:
-        clean = root.strip().strip("/")
-        if not clean:
-            continue
-        globs.append(f"{clean}/**/{SKILL_MD_FILENAME}")
-        globs.append(f"{clean}/{SKILL_MD_FILENAME}")
-    return globs
-
-
-def match_skill_root(skill_md_path: str, roots: list[str]) -> str | None:
-    """Return the configured root that owns this SKILL.md path, if any."""
-    normalized = skill_md_path.strip("/")
-    for root in roots:
-        clean = root.strip().strip("/")
-        if normalized == f"{clean}/{SKILL_MD_FILENAME}":
-            return clean
-        if normalized.startswith(f"{clean}/") and normalized.endswith(
-            f"/{SKILL_MD_FILENAME}"
-        ):
-            return clean
-    return None
-
-
-def path_under_roots_or_extra(
-    skill_md_path: str, roots: list[str], extra_paths: list[str]
-) -> bool:
-    if match_skill_root(skill_md_path, roots) is not None:
-        return True
-    from wcmatch import glob
-
-    from github.helpers.utils import matches_glob_pattern
-
-    for pattern in extra_paths:
+def infer_skill_root(skill_md_path: str, path_globs: list[str]) -> str:
+    """Root that matched this SKILL.md, for mapping filters."""
+    for pattern in path_globs:
         if matches_glob_pattern(skill_md_path, pattern, flags=glob.DOTGLOB):
-            return True
-    return False
+            root = _glob_root(pattern)
+            if root:
+                return root
+    skill_dir = str(Path(skill_md_path).parent).replace("\\", "/")
+    parent = str(Path(skill_dir).parent).replace("\\", "/")
+    return parent if parent not in (".", "") else skill_dir
 
 
-def parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
-    """
-    Split SKILL.md into YAML frontmatter and markdown body.
+def matches_skill_path(path: str, path_globs: list[str]) -> bool:
+    if Path(path).name.lower() != SKILL_MD_FILENAME.lower():
+        return False
+    return any(
+        matches_glob_pattern(path, pattern, flags=glob.DOTGLOB)
+        for pattern in path_globs
+    )
 
-    Returns (frontmatter_dict, body). On missing/invalid frontmatter returns
-    ({}, full content as body).
-    """
+
+def _parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
+    """Split SKILL.md into YAML frontmatter and markdown body."""
     text = content.replace("\r\n", "\n")
     if not text.startswith("---"):
         return {}, text
@@ -80,13 +72,11 @@ def parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
 
     raw_fm = parts[1].strip()
     body = parts[2].lstrip("\n")
-
     if not raw_fm:
         return {}, body
 
     try:
-        yaml = YAML(typ="safe")
-        parsed = yaml.load(raw_fm)
+        parsed = YAML(typ="safe").load(raw_fm)
     except Exception as exc:
         logger.warning(f"Failed to parse skill frontmatter: {exc}")
         return {}, body
@@ -101,12 +91,10 @@ def build_skill_object(
     *,
     skill_md_path: str,
     content: str,
-    content_mode: SkillContentMode,
-    roots: list[str] | None = None,
+    path_globs: list[str],
 ) -> dict[str, Any]:
     """Build the normalized `.skill` object from SKILL.md path and content."""
-    roots = roots or DEFAULT_SKILL_ROOTS
-    frontmatter, body = parse_skill_markdown(content)
+    frontmatter, body = _parse_skill_markdown(content)
     path_obj = Path(skill_md_path)
     skill_dir = str(path_obj.parent).replace("\\", "/")
     path_name = path_obj.parent.name
@@ -119,44 +107,35 @@ def build_skill_object(
     if not isinstance(description, str):
         description = ""
 
-    root = match_skill_root(skill_md_path, roots) or skill_dir.split("/")[0]
-
-    skill: dict[str, Any] = {
+    return {
         "name": name,
         "description": description,
-        "instructions": None,
+        "instructions": body,
         "frontmatter": frontmatter,
         "path": skill_dir,
         "skillMdPath": skill_md_path,
-        "root": root,
+        "root": infer_skill_root(skill_md_path, path_globs),
     }
-
-    if content_mode == "skill.md":
-        skill["instructions"] = body
-
-    return skill
 
 
 def build_skill_raw_item(
     *,
     skill_md_path: str,
     content: str,
-    content_mode: SkillContentMode,
     repository: dict[str, Any],
     branch: str,
     organization: str | None = None,
-    roots: list[str] | None = None,
+    path_globs: list[str],
 ) -> dict[str, Any]:
     item: dict[str, Any] = {
         "skill": build_skill_object(
             skill_md_path=skill_md_path,
             content=content,
-            content_mode=content_mode,
-            roots=roots,
+            path_globs=path_globs,
         ),
-        "repository": repository,
-        "branch": branch,
+        "__repository": repository,
+        "__branch": branch,
     }
     if organization is not None:
-        item["organization"] = organization
+        item["__organization"] = organization
     return item

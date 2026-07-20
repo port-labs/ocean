@@ -11,12 +11,12 @@
     "skillMdPath": "skills/hello-skill/SKILL.md",
     "root": "skills"
   },
-  "repository": {
+  "__repository": {
     "name": "example-skills",
     "full_name": "acme/example-skills",
     "html_url": "https://github.com/acme/example-skills",
     "default_branch": "main"
   },
-  "branch": "main",
-  "organization": "acme"
+  "__branch": "main",
+  "__organization": "acme"
 }

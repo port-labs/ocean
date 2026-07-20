@@ -48,12 +48,12 @@
       "name": "superpowers"
     }
   },
-  "repository": {
+  "__repository": {
     "name": "superpowers",
     "full_name": "obra/superpowers",
     "html_url": "https://github.com/obra/superpowers",
     "default_branch": "main"
   },
-  "branch": "main",
-  "organization": "obra"
+  "__branch": "main",
+  "__organization": "obra"
 }

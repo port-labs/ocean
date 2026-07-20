@@ -5,13 +5,13 @@ from loguru import logger
 
 from github.clients.client_factory import create_github_client
 from github.core.exporters.file_exporter.core import RestFileExporter
-from github.core.exporters.file_exporter.utils import group_files_by_status
+from github.core.exporters.file_exporter.utils import (
+    get_matching_files,
+    group_files_by_status,
+)
 from github.core.exporters.skill_exporter import (
-    DEFAULT_SKILL_ROOTS,
-    SKILL_MD_FILENAME,
     build_skill_raw_item,
-    match_skill_root,
-    path_under_roots_or_extra,
+    infer_skill_root,
 )
 from github.core.options import FileContentOptions
 from github.helpers.port_app_config import ORG_CONFIG_REPO
@@ -19,7 +19,7 @@ from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
-from integration import GithubSkillResourceConfig
+from integration import GithubFilePattern, GithubSkillResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -58,11 +58,24 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         current_branch = payload["ref"].removeprefix("refs/heads/")
 
         selector = cast(GithubSkillResourceConfig, resource_config).selector
-        effective_roots = selector.roots or list(DEFAULT_SKILL_ROOTS)
+        path_globs = [pattern.path for pattern in selector.paths]
 
-        if not self._is_applicable_to_repo_branch(
-            selector, repo_name, current_branch, default_branch
-        ):
+        # Same branch/org filtering as FileWebhookProcessor._get_matching_patterns
+        matching_patterns = [
+            GithubFilePattern(
+                path=pattern.path,
+                organization=pattern.organization,
+                repos=pattern.repos,
+                skipParsing=True,
+                validationCheck=False,
+            )
+            for pattern in selector.paths
+            if (pattern.organization is None or pattern.organization == organization)
+            and self._is_applicable_to_repo_branch(
+                pattern, repo_name, current_branch, default_branch
+            )
+        ]
+        if not matching_patterns:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -72,18 +85,9 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         diff_data = await exporter.fetch_commit_diff(
             organization, repo_name, before_sha, after_sha
         )
-        changed_files = diff_data.get("files") or []
-
-        skill_changes = [
-            file_info
-            for file_info in changed_files
-            if self._is_skill_path(
-                file_info.get("filename", ""),
-                effective_roots,
-                selector.paths,
-            )
-        ]
-
+        skill_changes = get_matching_files(
+            diff_data.get("files") or [], matching_patterns
+        )
         if not skill_changes:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -108,11 +112,10 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                 build_skill_raw_item(
                     skill_md_path=path,
                     content=file_data["content"],
-                    content_mode=selector.content,
                     repository=repository,
                     branch=current_branch,
                     organization=organization,
-                    roots=effective_roots,
+                    path_globs=path_globs,
                 )
             )
 
@@ -130,12 +133,11 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                         "frontmatter": {},
                         "path": skill_dir,
                         "skillMdPath": filename,
-                        "root": match_skill_root(filename, effective_roots)
-                        or skill_dir.split("/")[0],
+                        "root": infer_skill_root(filename, path_globs),
                     },
-                    "repository": repository,
-                    "branch": current_branch,
-                    "organization": organization,
+                    "__repository": repository,
+                    "__branch": current_branch,
+                    "__organization": organization,
                 }
             )
 
@@ -147,13 +149,3 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
             updated_raw_results=updated_raw_results,
             deleted_raw_results=deleted_raw_results,
         )
-
-    def _is_skill_path(
-        self,
-        path: str,
-        roots: list[str],
-        extra_paths: list[str],
-    ) -> bool:
-        if Path(path).name.lower() != SKILL_MD_FILENAME.lower():
-            return False
-        return path_under_roots_or_extra(path, roots, extra_paths)

@@ -99,7 +99,7 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         providers: List[PluginProvider],
     ) -> PluginBuildResult:
         repo_name = repository["name"]
-        tree, truncated = await self._file_exporter.get_tree_recursive_meta(
+        tree, truncated = await self._file_exporter.get_tree_recursive(
             organization, repo_name, branch
         )
         if not tree:
@@ -149,9 +149,9 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         return PluginBuildResult(
             plugin_item={
                 "plugin": plugin,
-                "repository": repository,
-                "branch": branch,
-                "organization": organization,
+                "__repository": repository,
+                "__branch": branch,
+                "__organization": organization,
             },
             tree_truncated=truncated,
         )

@@ -7,19 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.2.22 (2026-07-16)
+## 6.3.0 (2026-07-20)
 
 
 ### Features
 
-- Added `skill` kind to discover Agent Skills (`SKILL.md`) under convention roots
-  (`.agents/skills`, `.agent/skills`, `.cursor/skills`, `.claude/skills`,
-  `.codex/skills`, `.github/skills`, `.opencode/skills`, `skills`)
-  with `content: frontmatter | skill.md` selectors
+- Added `skill` kind to discover Agent Skills (`SKILL.md`) via glob paths
+  (defaults: `.agents/skills/**/SKILL.md`, `.agent/skills/**/SKILL.md`,
+  `.cursor/skills/**/SKILL.md`, `.claude/skills/**/SKILL.md`,
+  `.codex/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`,
+  `.opencode/skills/**/SKILL.md`, `skills/**/SKILL.md`) with multi-org
+  path selectors (same shape as the file kind)
 - Added `plugin` kind to detect agent plugin packages (aligned with
   [obra/superpowers](https://github.com/obra/superpowers)): `.claude-plugin/`,
   `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
-  `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`
+  `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`, with
+  multi-org repository selectors
 
 
 ## 6.2.21 (2026-07-16)

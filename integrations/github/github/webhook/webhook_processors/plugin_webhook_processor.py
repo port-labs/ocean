@@ -5,7 +5,6 @@ from loguru import logger
 from github.clients.client_factory import create_github_client
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter import (
-    DEFAULT_PLUGIN_PROVIDERS,
     PluginExporter,
     all_manifest_paths,
     empty_plugin,
@@ -55,10 +54,14 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
         current_branch = payload["ref"].removeprefix("refs/heads/")
 
         selector = cast(GithubPluginResourceConfig, resource_config).selector
-        providers = selector.providers or list(DEFAULT_PLUGIN_PROVIDERS)
+        providers = selector.providers
 
-        if not self._is_applicable_to_repo_branch(
-            selector, repo_name, current_branch, default_branch
+        if not any(
+            (repo_sel.organization is None or repo_sel.organization == organization)
+            and self._is_applicable_to_repo_branch(
+                repo_sel, repo_name, current_branch, default_branch
+            )
+            for repo_sel in selector.repositories
         ):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -107,9 +110,9 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
             deleted_raw_results=[
                 {
                     "plugin": empty_plugin(name=repo_name),
-                    "repository": repository,
-                    "branch": current_branch,
-                    "organization": organization,
+                    "__repository": repository,
+                    "__branch": current_branch,
+                    "__organization": organization,
                 }
             ],
         )

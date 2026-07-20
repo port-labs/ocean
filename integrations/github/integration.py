@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional, Type, Literal
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
-from github.core.exporters.skill_exporter import DEFAULT_SKILL_ROOTS
+from github.core.exporters.skill_exporter import DEFAULT_SKILL_PATHS
 from github.core.exporters.plugin_exporter import DEFAULT_PLUGIN_PROVIDERS
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
@@ -283,32 +283,28 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
-class GithubSkillSelector(Selector, RepositorySourceModel):
-    content: Literal["frontmatter", "skill.md"] = Field(
-        title="Content",
-        default="skill.md",
-        description=(
-            "How much of each SKILL.md to ingest. "
-            "`frontmatter` returns name/description only; "
-            "`skill.md` also includes the markdown body as instructions."
-        ),
+class GithubSkillPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
     )
-    roots: list[str] = Field(
-        title="Roots",
-        default_factory=lambda: list(DEFAULT_SKILL_ROOTS),
-        description=(
-            "Skill parent directories to scan recursively for SKILL.md. "
-            "Defaults cover .agents, Antigravity (.agent), Cursor, Claude, "
-            "Codex, GitHub Copilot (.github/skills), OpenCode, and marketplace "
-            "skills/ layouts."
-        ),
-    )
-    paths: list[str] = Field(
+
+    class Config:
+        extra = "forbid"
+
+
+def _default_skill_paths() -> list[GithubSkillPattern]:
+    return [GithubSkillPattern(path=path) for path in DEFAULT_SKILL_PATHS]
+
+
+class GithubSkillSelector(Selector):
+    paths: list[GithubSkillPattern] = Field(
         title="Paths",
-        default_factory=list,
+        default_factory=_default_skill_paths,
         description=(
-            "Optional extra glob patterns for SKILL.md files outside the "
-            "configured roots (e.g. '**/legacy-skills/*/SKILL.md')."
+            "Glob patterns for SKILL.md discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtration."
         ),
     )
 
@@ -324,7 +320,14 @@ class GithubSkillResourceConfig(ResourceConfig):
     )
 
 
-class GithubPluginSelector(Selector, RepositorySourceModel):
+class GithubPluginRepoSelector(RepositorySourceModel):
+    """Org/repo scope to scan for agent plugins."""
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubPluginSelector(Selector):
     providers: list[
         Literal[
             "claude",
@@ -340,11 +343,16 @@ class GithubPluginSelector(Selector, RepositorySourceModel):
         title="Providers",
         default_factory=lambda: list(DEFAULT_PLUGIN_PROVIDERS),
         description=(
-            "Agent plugin providers to detect (aligned with obra/superpowers). "
-            "A repository is treated as a plugin when any matching manifest/dir "
-            "exists (.claude-plugin/, .cursor-plugin/, .codex-plugin/, "
-            ".agents/plugins/, .kimi-plugin/, .opencode/plugins/, "
-            ".pi/extensions/, gemini-extension.json)."
+            "Agent plugin providers to detect. A repository is treated as a "
+            "plugin when any matching manifest/dir exists."
+        ),
+    )
+    repositories: list[GithubPluginRepoSelector] = Field(
+        title="Repositories",
+        default_factory=lambda: [GithubPluginRepoSelector()],
+        description=(
+            "Org/repo scopes to scan. Each entry can set organization and repos. "
+            "Multiple entries enable multi-org filtration."
         ),
     )
 
