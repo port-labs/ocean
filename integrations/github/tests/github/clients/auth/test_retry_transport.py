@@ -240,6 +240,37 @@ class TestGitHubRetryTransportShouldRetry:
 
         assert result is True
 
+    def test_should_not_retry_on_400(self) -> None:
+        """400 Bad Request is never retried — GitHub 400s are always semantic errors."""
+        transport = _make_transport()
+        req = httpx.Request("GET", "https://api.github.com/test")
+        response_400 = httpx.Response(
+            400,
+            request=req,
+            headers={
+                "x-ratelimit-limit": "5000",
+                "x-ratelimit-remaining": "4000",
+                "x-ratelimit-reset": str(int(time.time()) + 244),
+            },
+        )
+        assert transport._should_retry(response_400) is False
+
+    @pytest.mark.asyncio
+    async def test_should_not_retry_async_on_400(self) -> None:
+        """400 Bad Request is never retried — async path."""
+        transport = _make_transport()
+        req = httpx.Request("GET", "https://api.github.com/test")
+        response_400 = httpx.Response(
+            400,
+            request=req,
+            headers={
+                "x-ratelimit-limit": "5000",
+                "x-ratelimit-remaining": "4000",
+                "x-ratelimit-reset": str(int(time.time()) + 244),
+            },
+        )
+        assert await transport._should_retry_async(response_400) is False
+
 
 class TestGitHubRetryTransportBeforeRetryAsync:
     @pytest.mark.asyncio

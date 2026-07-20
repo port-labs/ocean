@@ -99,15 +99,18 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
             response = await self.client.send_api_request(
                 url, ignored_errors=self._EXTERNAL_GROUP_IGNORED_ERRORS
             )
-            if not response:
-                logger.warning(
-                    f"Failed to fetch external IdP group for team {slug} in {organization}, setting to None"
-                )
-                team["__external_group"] = None
-                continue
             # Per GitHub docs, only one external group can be linked to a team —
             # no pagination on this endpoint.
             # https://docs.github.com/en/rest/teams/external-groups
-            groups = response["groups"]
-            team["__external_group"] = groups[0] if groups else None
+            groups = response.get("groups", [])
+            if not groups:
+                logger.debug(
+                    f"No external group linked to team {slug} in {organization}"
+                )
+                team["__external_group"] = None
+                continue
+            team["__external_group"] = groups[0]
+            logger.info(
+                f"Fetched external IdP group {groups[0]['group_name']} for team {slug} in {organization}"
+            )
         return teams

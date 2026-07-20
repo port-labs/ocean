@@ -284,11 +284,19 @@ class GitHubRetryTransport(RetryTransport):
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return await super()._should_retry_async(
-            response
-        ) or is_rest_rate_limit_response(response)
+        if response.status_code == 400:
+            # GitHub 400s are always semantic errors (malformed request, wrong org
+            # type, wrong team type). They are never transient and will not resolve
+            # on retry. The base RetryConfig includes 400 in default_retry_status_codes
+            # for integrations that may see transient 400s — GitHub does not.
+            return False
+        is_rate_limit = is_rest_rate_limit_response(response)
+        return await super()._should_retry_async(response) or is_rate_limit
 
     def _should_retry(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return super()._should_retry(response) or is_rest_rate_limit_response(response)
+        if response.status_code == 400:
+            return False
+        is_rate_limit = is_rest_rate_limit_response(response)
+        return super()._should_retry(response) or is_rate_limit

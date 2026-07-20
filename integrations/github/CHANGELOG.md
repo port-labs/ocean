@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.26 (2026-07-20)
+
+
+### Features
+
+- Expanded team payload by fetching the external IdP group linked to each team via the GitHub EMU external groups API, enabling customers to relate `githubTeam` entities to Entra ID groups ingested from the Entra ID Ocean integration. Controlled by the new `include_external_group` selector field (default: `false`).
+
+
 ## 6.2.25 (2026-07-19)
 
 

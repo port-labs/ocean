@@ -655,7 +655,7 @@ class TestRestTeamExporterExternalGroup:
         assert result[0]["__external_group"] == EXTERNAL_GROUP
         assert result[1]["__external_group"] is None
 
-    async def test_enrich_teams_with_external_group_handles_api_failure(
+    async def test_enrich_teams_with_external_group_handles_non_emu_org(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestTeamExporter(rest_client)
@@ -663,7 +663,7 @@ class TestRestTeamExporterExternalGroup:
             {"slug": "team-alpha", "__organization": "test-org"}
         ]
 
-        with patch.object(rest_client, "send_api_request", return_value=None):
+        with patch.object(rest_client, "send_api_request", return_value={}):
             result = await exporter.enrich_teams_with_external_group(teams, "test-org")
 
         assert result[0]["__external_group"] is None
