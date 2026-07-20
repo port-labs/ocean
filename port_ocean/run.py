@@ -16,6 +16,7 @@ from port_ocean.utils.misc import get_spec_file, load_module
 from port_ocean.utils.signal import init_signal_handler
 
 
+# SSS
 def _get_default_config_factory() -> None | Type[BaseModel]:
     spec = get_spec_file()
     config_factory = None
