@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "claude-managed-agents"
-version = "0.1.7"
+version = "0.1.12"
 description = "Claude Managed Agents integration for Port Ocean"
 authors = ["Tal Sabag <tal@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.44.14", extras = ["cli"]}
+port_ocean = {version = "^0.45.4", extras = ["cli"]}
 anthropic = { version = "^0.109.1", extras = ["webhooks"] }
 
 [tool.poetry.group.dev.dependencies]

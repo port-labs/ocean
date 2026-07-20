@@ -29,7 +29,9 @@ class AbstractGithubClient(ABC):
         self.authenticator = authenticator
         self.kwargs = kwargs
         self.rate_limiter: GitHubRateLimiter = GitHubRateLimiterRegistry.get_limiter(
-            host=github_host, config=self.rate_limiter_config
+            host=github_host,
+            config=self.rate_limiter_config,
+            scope=authenticator.rate_limit_scope,
         )
         self.authenticator.set_rate_limit_notifier(
             self.rate_limiter.notify_rate_limited
@@ -60,9 +62,9 @@ class AbstractGithubClient(ABC):
     def client(self) -> httpx.AsyncClient:
         return self.authenticator.client
 
-    async def headers(self, **kwargs: Any) -> Dict[str, str]:
+    async def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
-        return (await self.authenticator.get_headers(**kwargs)).as_dict()
+        return (await self.authenticator.get_headers()).as_dict()
 
     @property
     @abstractmethod
@@ -101,7 +103,6 @@ class AbstractGithubClient(ABC):
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
-        authenticator_headers_params: Optional[Dict[str, Any]] = None,
     ) -> Response:
         """Make a request to the GitHub API with GitHub rate limiting and error handling."""
 
@@ -112,7 +113,7 @@ class AbstractGithubClient(ABC):
                     url=resource,
                     params=params,
                     json=json_data,
-                    headers=await self.headers(**(authenticator_headers_params or {})),
+                    headers=await self.headers(),
                     follow_redirects=True,
                 )
                 response.raise_for_status()
@@ -161,7 +162,6 @@ class AbstractGithubClient(ABC):
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
-        authenticator_headers_params: Optional[Dict[str, Any]] = {},
     ) -> Dict[str, Any]:
         """Send request to GitHub API with error handling and rate limiting."""
 
@@ -172,7 +172,6 @@ class AbstractGithubClient(ABC):
             json_data,
             ignored_errors,
             ignore_default_errors,
-            authenticator_headers_params,
         )
         return response.json()
 
