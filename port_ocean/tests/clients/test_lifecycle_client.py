@@ -38,6 +38,7 @@ def reset_lifecycle_http_context() -> Generator[None, None, None]:
 def mock_auth() -> MagicMock:
     auth = MagicMock()
     auth.headers = AsyncMock(return_value={"Authorization": "Bearer test-token"})
+    auth.api_url = "https://api.port.io/v1"
     return auth
 
 
@@ -283,14 +284,16 @@ class TestGetResyncStatus:
     async def test_returns_lowercased_status(
         self, lifecycle_client: LifecycleClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        mock_get = AsyncMock(return_value={"status": "ABORTED"})
         monkeypatch.setattr(
             lifecycle_client._lifecycle_http_client,
             "do_get",
-            AsyncMock(return_value={"status": "ABORTED"}),
+            mock_get,
         )
 
         status = await lifecycle_client.get_resync_status("r1")
         assert status == "aborted"
+        mock_get.assert_awaited_once_with("https://api.port.io/v1/lifecycle/r1")
 
     @pytest.mark.asyncio
     async def test_returns_none_when_response_missing_status(
