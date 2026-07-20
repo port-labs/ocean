@@ -465,12 +465,3 @@ class IntegrationClientMixin:
             json=body,
         )
         handle_port_status_code(post_response)
-
-    async def delete_integration_cursors(self) -> None:
-        """Delete all cursors for this integration (called on full resync or deletion)."""
-        logger.debug("Deleting all incremental cursors")
-        response = await self.client.delete(
-            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
-            headers=await self.auth.headers(),
-        )
-        handle_port_status_code(response)

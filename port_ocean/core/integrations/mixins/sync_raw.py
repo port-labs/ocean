@@ -1314,7 +1314,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     cursor_store,
                     user_agent_type,
                 )
-                if not success:
+                if not success and dsp_enabled:
                     await ocean.app.lifecycle_client.notify_resync_failed(
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
@@ -1322,11 +1322,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                     return
 
-            await ocean.app.lifecycle_client.notify_resync_finished(
-                resync_id=event.id,
-                integration_id=ocean.config.integration.identifier,
-                integration_type=ocean.config.integration.type,
-            )
+            if dsp_enabled:
+                await ocean.app.lifecycle_client.notify_resync_finished(
+                    resync_id=event.id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                )
 
             logger.info(
                 "Incremental sync completed",

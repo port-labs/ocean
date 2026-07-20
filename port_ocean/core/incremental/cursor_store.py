@@ -39,12 +39,3 @@ class CursorStore:
             index=index,
             cursor=value.isoformat(),
         )
-
-    async def delete_all(self) -> None:
-        """Remove all cursors for this integration.
-
-        Should be called after a successful full resync so the next incremental
-        run starts from a clean baseline.
-        """
-        await self._client.delete_integration_cursors()
-        logger.debug("All incremental cursors deleted")
