@@ -123,7 +123,7 @@ class TestFolderWebhookProcessor:
         assert ObjectKind.FOLDER in kinds
 
     @patch(
-        "github.webhook.webhook_processors.folder_webhook_processor.create_github_client"
+        "github.webhook.webhook_processors.folder_webhook_processor.create_github_client_for_org"
     )
     @patch(
         "github.webhook.webhook_processors.folder_webhook_processor.fetch_commit_diff",
@@ -229,7 +229,7 @@ class TestFolderWebhookProcessor:
         assert mock_exporter_instance.get_paginated_resources.call_count >= 1
 
     @patch(
-        "github.webhook.webhook_processors.folder_webhook_processor.create_github_client"
+        "github.webhook.webhook_processors.folder_webhook_processor.create_github_client_for_org"
     )
     @patch(
         "github.webhook.webhook_processors.folder_webhook_processor.fetch_commit_diff",

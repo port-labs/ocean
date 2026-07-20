@@ -18,9 +18,10 @@ from github.core.exporters.team_exporter import (
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.registry import register_live_events_webhooks
 from github.core.exporters.file_exporter.utils import FilePatternMappingBuilder
+from github.clients.auth import get_auth_provider
 from github.clients.client_factory import (
-    GitHubAuthenticatorFactory,
-    create_github_client,
+    create_github_client_for_discovery,
+    create_github_client_for_org,
 )
 from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
@@ -120,16 +121,10 @@ MAX_CONCURRENT_REPOS = 10
 
 
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
-    github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
     skip_patching = ocean.integration_config["skip_webhook_patching"]
-    authenticator = GitHubAuthenticatorFactory.create(
-        github_host=github_host,
-        organization=org_name,
-        token=ocean.integration_config.get("github_token"),
-        app_id=ocean.integration_config.get("github_app_id"),
-        installation_id=ocean.integration_config.get("github_app_installation_id"),
-        private_key=ocean.integration_config.get("github_app_private_key"),
+    authenticator = await get_auth_provider().get_authenticator_for_organization(
+        org_name
     )
 
     client = await GithubWebhookClientFactory.create(
@@ -161,7 +156,7 @@ async def on_start() -> None:
         await _create_webhooks_for_organization(github_organization, base_url)
         return
 
-    org_exporter = RestOrganizationExporter(create_github_client())
+    org_exporter = RestOrganizationExporter(await create_github_client_for_discovery())
     await ocean.integration.port_app_config_handler.get_port_app_config()
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -179,8 +174,8 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all organizations the Personal Access Token user is a member of."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    exporter = RestOrganizationExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    exporter = RestOrganizationExporter(discovery_client)
 
     async for organizations in exporter.get_paginated_resources(
         get_github_organizations()
@@ -194,40 +189,45 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories across organizations."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relations = repo_config.selector.normalized_relations
     included_files = repo_config.selector.included_files or []
-    included_files_enricher = (
-        IncludedFilesEnricher(
-            client=rest_client,
-            strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
-        )
-        if included_files
-        else None
-    )
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = (
-            RestRepositoryExporter(rest_client).get_paginated_resources(
+        for org in organizations:
+            org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            included_files_enricher = (
+                IncludedFilesEnricher(
+                    client=rest_client,
+                    strategy=RepositoryIncludedFilesStrategy(
+                        included_files=included_files
+                    ),
+                )
+                if included_files
+                else None
+            )
+            async for repositories in RestRepositoryExporter(
+                rest_client
+            ).get_paginated_resources(
                 options=ListRepositoryOptions(
-                    organization=org["login"],
+                    organization=org_name,
                     organization_type=org["type"],
                     type=port_app_config.repository_type,
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                 )
-            )
-            for org in organizations
-        )
-        async for repositories in stream_async_iterators_tasks(*tasks):
-            if included_files_enricher:
-                repositories = await included_files_enricher.enrich_batch(repositories)
-            yield repositories
+            ):
+                if included_files_enricher:
+                    repositories = await included_files_enricher.enrich_batch(
+                        repositories
+                    )
+                yield repositories
 
 
 @ocean.on_resync(ObjectKind.USER)
@@ -235,10 +235,8 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all users across organizations."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    graphql_client = create_github_client(GithubClientType.GRAPHQL)
-    org_exporter = RestOrganizationExporter(rest_client)
-    exporter = GraphQLUserExporter(graphql_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
     config = cast(GithubUserConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -247,16 +245,22 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks = []
         for org in organizations:
             if org["type"] == "Organization":
+                org_name = org["login"]
+                graphql_client = await create_github_client_for_org(
+                    org_name, GithubClientType.GRAPHQL
+                )
+                exporter = GraphQLUserExporter(graphql_client)
                 tasks.append(
                     exporter.get_paginated_resources(
                         options=ListUserOptions(
-                            organization=org["login"],
+                            organization=org_name,
                             include_saml_email=config.selector.include_saml_email,
                         )
                     )
                 )
                 continue
 
+            rest_client = await create_github_client_for_discovery()
             if not org.get("email"):
                 org = await enrich_user_with_primary_email(rest_client, org)
             yield [org]
@@ -271,10 +275,8 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all teams across organizations."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    graphql_client = create_github_client(GithubClientType.GRAPHQL)
-
-    org_exporter = RestOrganizationExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     config = cast(GithubTeamConfig, event.resource_config)
     selector = config.selector
@@ -286,6 +288,7 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             if org["type"] == "Organization":
                 org_name = org["login"]
+                rest_client = await create_github_client_for_org(org_name)
                 rest_exporter = RestTeamExporter(rest_client)
 
                 tasks.append(
@@ -300,6 +303,10 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if tasks:
             async for org_name, teams in stream_async_iterators_tasks(*tasks):
                 if selector.members:
+                    graphql_client = await create_github_client_for_org(
+                        org_name, GithubClientType.GRAPHQL
+                    )
+                    rest_client = await create_github_client_for_org(org_name)
                     graphql_exporter = GraphQLTeamWithMembersExporter(graphql_client)
                     teams = await graphql_exporter._enrich_team_with_extras(
                         teams,
@@ -328,8 +335,8 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all workflows for specified Github repositories"""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowConfig, event.resource_config)
 
@@ -338,6 +345,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
             repo_exporter = RestRepositoryExporter(rest_client)
             workflow_exporter = RestWorkflowExporter(rest_client)
 
@@ -370,11 +378,8 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all workflow runs for specified Github repositories"""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repo_exporter = RestRepositoryExporter(rest_client)
-    workflow_exporter = RestWorkflowExporter(rest_client)
-    workflow_run_exporter = RestWorkflowRunExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowRunConfig, event.resource_config)
@@ -384,6 +389,10 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repo_exporter = RestRepositoryExporter(rest_client)
+            workflow_exporter = RestWorkflowExporter(rest_client)
+            workflow_run_exporter = RestWorkflowRunExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -441,19 +450,12 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    graphql_client = create_github_client(GithubClientType.GRAPHQL)
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
-    pull_request_exporter: AbstractGithubExporter[Any] = (
-        GraphQLPullRequestExporter(graphql_client)
-        if is_graphql_api
-        else RestPullRequestExporter(rest_client)
-    )
 
     fetch_errors: list[Exception] = []
 
@@ -462,6 +464,16 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            graphql_client = await create_github_client_for_org(
+                org_name, GithubClientType.GRAPHQL
+            )
+            repository_exporter = RestRepositoryExporter(rest_client)
+            pull_request_exporter: AbstractGithubExporter[Any] = (
+                GraphQLPullRequestExporter(graphql_client)
+                if is_graphql_api
+                else RestPullRequestExporter(rest_client)
+            )
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -519,10 +531,8 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all issues from repositories."""
     logger.info(f"Starting resync for kind {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    issue_exporter = RestIssueExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubIssueConfig, event.resource_config)
@@ -532,6 +542,9 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            issue_exporter = RestIssueExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -564,10 +577,8 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all releases in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    release_exporter = RestReleaseExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubReleaseConfig, event.resource_config)
@@ -577,6 +588,9 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            release_exporter = RestReleaseExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -606,10 +620,8 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all tags in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    tag_exporter = RestTagExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubTagConfig, event.resource_config)
@@ -619,6 +631,9 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            tag_exporter = RestTagExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -648,10 +663,8 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all branches in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    branch_exporter = RestBranchExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     selector = cast(GithubBranchConfig, event.resource_config).selector
@@ -661,6 +674,9 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            branch_exporter = RestBranchExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -702,10 +718,8 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all environments in the organization."""
     logger.info(f"Starting resync for kind {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    environment_exporter = RestEnvironmentExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubEnvironmentConfig, event.resource_config)
@@ -715,6 +729,9 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            environment_exporter = RestEnvironmentExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -745,10 +762,8 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all deployments in the organization."""
     logger.info(f"Starting resync for kind {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    deployment_exporter = RestDeploymentExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentConfig, event.resource_config)
@@ -758,6 +773,9 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            deployment_exporter = RestDeploymentExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -791,11 +809,8 @@ async def resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all deployment statuses in the organization."""
     logger.info(f"Starting resync for kind {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    deployment_exporter = RestDeploymentExporter(rest_client)
-    deployment_status_exporter = RestDeploymentStatusExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentStatusConfig, event.resource_config)
@@ -810,6 +825,10 @@ async def resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            deployment_exporter = RestDeploymentExporter(rest_client)
+            deployment_status_exporter = RestDeploymentStatusExporter(rest_client)
             org_type = org["type"]
             logger.debug(f"Processing organization: {org_name} (type={org_type})")
 
@@ -867,10 +886,8 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all Dependabot alerts in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDependabotAlertConfig, event.resource_config)
@@ -880,6 +897,9 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
 
             repo_options = ListRepositoryOptions(
                 organization=org_name,
@@ -914,10 +934,8 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all code scanning alerts in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
@@ -927,6 +945,9 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -959,8 +980,8 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all folders in specified repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    folder_exporter = RestFolderExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    folder_exporter = RestFolderExporter(discovery_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     should_enrich_with_included_files = any(
@@ -971,7 +992,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files_enricher = (
         IncludedFilesEnricher(
-            client=rest_client,
+            client=discovery_client,
             strategy=FolderIncludedFilesStrategy(
                 folder_selectors=selector.folders,
                 global_included_files=selector.included_files,
@@ -981,8 +1002,8 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else None
     )
 
-    org_exporter = RestOrganizationExporter(rest_client)
-    repo_exporter = RestRepositoryExporter(rest_client)
+    org_exporter = RestOrganizationExporter(discovery_client)
+    repo_exporter = RestRepositoryExporter(discovery_client)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
 
     pattern_builder = FolderPatternMappingBuilder(
@@ -1003,17 +1024,17 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration using the file exporter."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    file_exporter = RestFileExporter(rest_client)
-    repo_exporter = RestRepositoryExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
+    file_exporter = RestFileExporter(discovery_client)
+    repo_exporter = RestRepositoryExporter(discovery_client)
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     should_enrich_with_included_files = bool(config.selector.included_files)
     included_files_enricher = (
         IncludedFilesEnricher(
-            client=rest_client,
+            client=discovery_client,
             strategy=FileIncludedFilesStrategy(
                 included_files=config.selector.included_files,
             ),
@@ -1040,10 +1061,8 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all collaborators in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    collaborator_exporter = RestCollaboratorExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCollaboratorConfig, event.resource_config)
@@ -1053,6 +1072,9 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            collaborator_exporter = RestCollaboratorExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -1084,10 +1106,8 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     """Resync all secret scanning alerts in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    secret_scanning_alert_exporter = RestSecretScanningAlertExporter(rest_client)
+    discovery_client = await create_github_client_for_discovery()
+    org_exporter = RestOrganizationExporter(discovery_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
@@ -1097,6 +1117,11 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     ):
         for org in organizations:
             org_name = org["login"]
+            rest_client = await create_github_client_for_org(org_name)
+            repository_exporter = RestRepositoryExporter(rest_client)
+            secret_scanning_alert_exporter = RestSecretScanningAlertExporter(
+                rest_client
+            )
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],

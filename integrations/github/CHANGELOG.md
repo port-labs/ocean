@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.3.1 (2026-07-20)
+
+
+### Improvements
+
+- Migrated all GitHub API callers from legacy `create_github_client()` to installation-scoped `create_github_client_for_org()`, enabling correct multi-org GitHub App authentication across resync handlers, webhooks, and actions.
+- Removed `GitHubAuthenticatorFactory` and the sync legacy client factory path.
+
+
 ## 6.3.0 (2026-07-20)
 
 

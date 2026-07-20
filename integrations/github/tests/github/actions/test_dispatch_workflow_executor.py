@@ -76,9 +76,15 @@ def mock_rest_client() -> MagicMock:
 def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[DispatchWorkflowExecutor, None, None]:
-    with patch(
-        "github.actions.abstract_github_executor.create_github_client",
-        return_value=mock_rest_client,
+    with (
+        patch(
+            "github.actions.abstract_github_executor.create_github_client_for_org",
+            new=AsyncMock(return_value=mock_rest_client),
+        ),
+        patch(
+            "github.actions.abstract_github_executor.create_github_client_for_discovery",
+            new=AsyncMock(return_value=mock_rest_client),
+        ),
     ):
         yield DispatchWorkflowExecutor()
 
@@ -108,12 +114,11 @@ class TestDispatchWorkflowExecutor:
 
         with (
             patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
-            patch.object(
-                executor._workflow_run_exporter,
-                "get_resource",
-                get_resource_mock,
-            ),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+            ) as mock_exporter_cls,
         ):
+            mock_exporter_cls.return_value.get_resource = get_resource_mock
             await executor.execute(run)
 
         mock_rest_client.make_request.assert_awaited_once()
@@ -157,11 +162,12 @@ class TestDispatchWorkflowExecutor:
         dispatch_response.json.return_value = {"workflow_run_id": 12345}
         mock_rest_client.make_request.return_value = dispatch_response
 
-        with patch.object(
-            executor._workflow_run_exporter,
-            "get_resource",
-            AsyncMock(return_value=WORKFLOW_RUN),
-        ):
+        with patch(
+            "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+        ) as mock_exporter_cls:
+            mock_exporter_cls.return_value.get_resource = AsyncMock(
+                return_value=WORKFLOW_RUN
+            )
             await executor.execute(run)
 
         json_data = mock_rest_client.make_request.call_args.kwargs["json_data"]
@@ -332,8 +338,8 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.abstract_github_executor.create_github_client",
-                return_value=mock_rest_client,
+                "github.actions.abstract_github_executor.create_github_client_for_org",
+                new=AsyncMock(return_value=mock_rest_client),
             ),
             patch(
                 "github.actions.dispatch_workflow_executor.get_auth_provider",
@@ -385,8 +391,8 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.abstract_github_executor.create_github_client",
-                return_value=mock_rest_client,
+                "github.actions.abstract_github_executor.create_github_client_for_org",
+                new=AsyncMock(return_value=mock_rest_client),
             ),
             patch(
                 "github.actions.dispatch_workflow_executor.get_auth_provider",

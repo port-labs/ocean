@@ -2,7 +2,7 @@ import os
 from typing import Any, Optional
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.options import FileContentOptions
 from github.core.exporters.file_exporter.core import RestFileExporter
 
@@ -22,7 +22,7 @@ class FileEntityProcessor(JQEntityProcessor):
     ) -> Optional[Any]:
         """Helper method to fetch and process file content."""
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         exporter = RestFileExporter(rest_client)
 
         file_content_response = await exporter.get_resource(

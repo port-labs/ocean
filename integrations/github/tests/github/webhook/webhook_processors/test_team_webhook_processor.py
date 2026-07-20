@@ -132,7 +132,9 @@ class TestTeamWebhookProcessor:
             mock_rest_client = AsyncMock()
             mock_graphql_client = AsyncMock()
 
-            def create_client_side_effect(client_type: GithubClientType) -> AsyncMock:
+            def create_client_side_effect(
+                organization: str, client_type: GithubClientType = GithubClientType.REST
+            ) -> AsyncMock:
                 return (
                     mock_graphql_client
                     if client_type == GithubClientType.GRAPHQL
@@ -141,7 +143,7 @@ class TestTeamWebhookProcessor:
 
             with (
                 patch(
-                    "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
+                    "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org"
                 ) as mock_create_client,
                 patch(
                     "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
@@ -167,8 +169,8 @@ class TestTeamWebhookProcessor:
 
                 if include_members:
                     assert mock_create_client.call_args_list == [
-                        call(GithubClientType.REST),
-                        call(GithubClientType.GRAPHQL),
+                        call("test-org"),
+                        call("test-org", GithubClientType.GRAPHQL),
                     ]
                     mock_graphql_get_resource.assert_awaited_once_with(
                         SingleTeamOptions(
@@ -178,7 +180,7 @@ class TestTeamWebhookProcessor:
                         )
                     )
                 else:
-                    mock_create_client.assert_called_once_with(GithubClientType.REST)
+                    mock_create_client.assert_called_once_with("test-org")
                     mock_graphql_get_resource.assert_not_awaited()
 
         assert isinstance(result, WebhookEventRawResults)
@@ -248,7 +250,9 @@ class TestTeamWebhookProcessor:
         mock_rest_client = AsyncMock()
         mock_graphql_client = AsyncMock()
 
-        def create_client_side_effect(client_type: GithubClientType) -> AsyncMock:
+        def create_client_side_effect(
+            organization: str, client_type: GithubClientType = GithubClientType.REST
+        ) -> AsyncMock:
             return (
                 mock_graphql_client
                 if client_type == GithubClientType.GRAPHQL
@@ -257,7 +261,7 @@ class TestTeamWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
+                "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org"
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
@@ -283,8 +287,8 @@ class TestTeamWebhookProcessor:
         assert result.updated_raw_results == [enriched_team]
         assert result.deleted_raw_results == []
         assert mock_create_client.call_args_list == [
-            call(GithubClientType.REST),
-            call(GithubClientType.GRAPHQL),
+            call("test-org"),
+            call("test-org", GithubClientType.GRAPHQL),
         ]
         mock_graphql_get_resource.assert_awaited_once_with(
             SingleTeamOptions(
