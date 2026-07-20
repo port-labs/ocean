@@ -74,6 +74,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
+    blueprint_cache_ttl_seconds: float = 120.0
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -268,6 +269,7 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
+    is_redis_stream_consumer_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):

@@ -811,12 +811,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource: ResourceConfig,
         index: int,
         user_agent_type: UserAgentType,
+        resync_id: str,
     ) -> None:
         logger.info(
             f"process started successfully for {resource.kind} with index {index}"
         )
 
         clear_http_client_context()
+        ocean.metrics.event_id = resync_id
 
         async def process_resource_task() -> None:
 
@@ -976,7 +978,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 }
                 process = ProcessWrapper(
                     target=self.process_resource_in_subprocess,
-                    args=(file_ipc_map, resource, index, user_agent_type),
+                    args=(
+                        file_ipc_map,
+                        resource,
+                        index,
+                        user_agent_type,
+                        ocean.metrics.event_id,
+                    ),
                 )
                 process.start()
                 await process.join_async()
@@ -1396,6 +1404,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             # Clear cache
             await ocean.app.cache_provider.clear()
+            ocean.port_client.clear_blueprint_cache()
 
             if dsp_enabled:
                 await ocean.app.lifecycle_client.notify_resync_started(
@@ -1552,6 +1561,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 return success
             finally:
                 await ocean.app.cache_provider.clear()
+                ocean.port_client.clear_blueprint_cache()
                 if (
                     ocean.app.process_execution_mode
                     == ProcessExecutionMode.multi_process

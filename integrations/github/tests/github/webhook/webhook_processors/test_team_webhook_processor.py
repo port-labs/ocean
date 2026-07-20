@@ -203,6 +203,104 @@ class TestTeamWebhookProcessor:
             else:
                 assert result.deleted_raw_results == [team_data]
 
+    async def test_handle_event_enterprise_team_members_populated(
+        self,
+        team_webhook_processor: TeamWebhookProcessor,
+    ) -> None:
+        team_data = {
+            "id": 999,
+            "name": "Security Team",
+            "slug": "ent:security-team",
+            "description": "Enterprise security team",
+            "node_id": "ENT_NODE_1",
+        }
+
+        payload = {
+            "action": "created",
+            "team": team_data,
+            "organization": {"login": "test-org"},
+        }
+
+        resource_config = GithubTeamConfig(
+            kind=ObjectKind.TEAM,
+            selector=GithubTeamSelector(members=True, query="true"),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".slug",
+                        title=".name",
+                        blueprint='"githubTeam"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        rest_result = {**team_data}
+        enterprise_members = [{"login": "alice", "id": 1, "role": "maintainer"}]
+        enriched_team = {**rest_result, "members": {"nodes": enterprise_members}}
+
+        mock_rest_get_resource = AsyncMock(return_value=rest_result)
+        mock_graphql_get_resource = AsyncMock(return_value=None)
+        mock_enrich_enterprise = AsyncMock(return_value=[enriched_team])
+        mock_enrich_saml = AsyncMock()
+
+        mock_rest_client = AsyncMock()
+        mock_graphql_client = AsyncMock()
+
+        def create_client_side_effect(client_type: GithubClientType) -> AsyncMock:
+            return (
+                mock_graphql_client
+                if client_type == GithubClientType.GRAPHQL
+                else mock_rest_client
+            )
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
+            ) as mock_create_client,
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
+                new=mock_rest_get_resource,
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.GraphQLTeamWithMembersExporter.get_resource",
+                new=mock_graphql_get_resource,
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.enrich_enterprise_teams_with_members",
+                new=mock_enrich_enterprise,
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.enrich_members_with_saml_email",
+                new=mock_enrich_saml,
+            ),
+        ):
+            mock_create_client.side_effect = create_client_side_effect
+            result = await team_webhook_processor.handle_event(payload, resource_config)
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == [enriched_team]
+        assert result.deleted_raw_results == []
+        assert mock_create_client.call_args_list == [
+            call(GithubClientType.REST),
+            call(GithubClientType.GRAPHQL),
+        ]
+        mock_graphql_get_resource.assert_awaited_once_with(
+            SingleTeamOptions(
+                organization="test-org",
+                slug="ent:security-team",
+                include_saml_email=False,
+            )
+        )
+        mock_enrich_enterprise.assert_awaited_once()
+        mock_enrich_saml.assert_awaited_once_with(
+            mock_graphql_client,
+            "test-org",
+            enterprise_members,
+            False,
+        )
+
     @pytest.mark.parametrize(
         "payload,expected",
         [
