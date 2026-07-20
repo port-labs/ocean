@@ -9,7 +9,10 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.signal import signal_handler
 
+from gcp_core.cloud_function.auth import get_id_token
+from gcp_core.cloud_function.client import CloudFunctionClient
 from gcp_core.overrides import (
+    GCPCloudFunctionResourceConfig,
     GCPCloudResourceSelector,
 )
 from gcp_core.search.iterators import iterate_per_available_project
@@ -124,9 +127,33 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_resync(kind="gcpCloudFunction")
+async def resync_cloud_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = typing.cast(GCPCloudFunctionResourceConfig, get_current_resource_config())
+    function_url = config.selector.function_url
+    target_kind = config.selector.target_kind
+    integration_id = getattr(ocean.config.integration, "identifier", "gcp-integration")
+    agent = f"gcp/{integration_id}"
+
+    async def _token_supplier() -> typing.Optional[str]:
+        return await get_id_token(function_url)
+
+    client = CloudFunctionClient(
+        agent=agent,
+        function_url=function_url,
+        secrets=config.selector.secrets,
+        token_supplier=_token_supplier,
+        timeout=config.selector.timeout,
+        max_retries=config.selector.max_retries,
+    )
+    logger.info(f"Syncing target_kind={target_kind!r} via cloud function at {function_url!r}")
+    async for page in client.sync(target_kind):
+        yield page
+
+
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in AssetTypesWithSpecialHandling:
+    if kind in AssetTypesWithSpecialHandling or kind == "gcpCloudFunction":
         logger.debug("Kind already has a specific handling, skipping")
         return
     asset_rate_limiter, asset_semaphore = await resolve_request_controllers(kind)
