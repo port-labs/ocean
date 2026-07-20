@@ -69,7 +69,10 @@ def test_enrich_batch_stamps_all_enrichments_onto_every_item() -> None:
     data: list[dict[str, Any]] = [{"id": 1}, {"id": 2}]
     result = enrich_batch(
         data,
-        enrichments={ORG_ID_ENRICHMENT_KEY: "uuid-1", ORG_NAME_ENRICHMENT_KEY: "DPN | Port"},
+        enrichments={
+            ORG_ID_ENRICHMENT_KEY: "uuid-1",
+            ORG_NAME_ENRICHMENT_KEY: "DPN | Port",
+        },
     )
     for item in result:
         assert item[ORG_ID_ENRICHMENT_KEY] == "uuid-1"
