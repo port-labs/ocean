@@ -967,7 +967,7 @@ class GitLabClient:
                 if processed_batch:
                     yield processed_batch
         except httpx.HTTPStatusError as e:
-            if e.response.status_code != 400:
+            if not self._is_blob_search_unavailable(e):
                 raise
             logger.warning(
                 f"Group search in group {group_id} failed: {e.response.json().get('message')}, "
@@ -977,6 +977,18 @@ class GitLabClient:
                 group_id, scope, query, skip_parsing
             ):
                 yield batch
+
+    def _is_blob_search_unavailable(self, error: httpx.HTTPStatusError) -> bool:
+        error_messages = (
+            "Scope 'blobs' is not available for this search",
+            "Advanced search is not available",
+        )
+        if error.response.status_code != 400:
+            return False
+        message = error.response.json().get("message", "")
+        if isinstance(message, list):
+            message = " ".join(message)
+        return any(error_message in message for error_message in error_messages)
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str

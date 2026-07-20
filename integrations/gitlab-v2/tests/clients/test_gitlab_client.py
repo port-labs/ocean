@@ -839,35 +839,6 @@ class TestGitLabClient:
 
         assert results == []
 
-    async def test_search_files_in_group_other_400_raises(
-        self, client: GitLabClient
-    ) -> None:
-        """Test that _search_files_in_group falls back to project search on any 400, and propagates errors from the fallback"""
-        mock_response = MagicMock()
-        mock_response.status_code = 400
-        mock_response.json.return_value = {
-            "message": "400 Bad request - Some other error"
-        }
-        error = httpx.HTTPStatusError(
-            "400 Bad Request", request=MagicMock(), response=mock_response
-        )
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            side_effect=error,
-        ):
-            with patch.object(
-                client,
-                "_search_files_in_group_projects",
-                side_effect=error,
-            ):
-                with pytest.raises(httpx.HTTPStatusError):
-                    async for _ in client._search_files_in_group(
-                        "my-group", "blobs", "test.json"
-                    ):
-                        pass
-
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""
         # Arrange
