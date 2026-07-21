@@ -1010,6 +1010,104 @@ class TestGitLabClient:
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
 
+    async def test_match_files_with_repository_tree_scoped_directory(
+        self, client: GitLabClient
+    ) -> None:
+        """A non-wildcard directory pattern scopes the tree listing to that directory
+        (non-recursive) and matches items against the full repo-root-relative path."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        # GitLab returns full repo-root-relative paths even when `path` scopes the listing.
+        mock_tree = [
+            {"type": "blob", "name": "app.json", "path": "src/config/app.json"},
+            {"type": "blob", "name": "other.json", "path": "src/config/other.json"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project", build_search_query("src/config/app.json")
+                ):
+                    results.extend(batch)
+
+                assert [f["path"] for f in results] == ["src/config/app.json"]
+                assert results[0]["ref"] == "main"
+                assert results[0]["project_id"] == "1"
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {"ref": "main", "path": "src/config", "recursive": False},
+                )
+
+    async def test_match_files_with_repository_tree_pathless_is_recursive(
+        self, client: GitLabClient
+    ) -> None:
+        """A pathless pattern (no directory) walks the whole tree recursively and
+        matches by filename anywhere, including subdirectories — mirroring the
+        search API's filename: behavior rather than only listing the repo root."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {"type": "blob", "name": "app.yaml", "path": "app.yaml"},
+            {"type": "blob", "name": "app.yaml", "path": "config/app.yaml"},
+            {"type": "blob", "name": "deep.yaml", "path": "a/b/deep.yaml"},
+            {"type": "blob", "name": "notes.md", "path": "docs/notes.md"},
+            {"type": "tree", "name": "config", "path": "config"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project", build_search_query("*.yaml")
+                ):
+                    results.extend(batch)
+
+                # Matches every *.yaml at any depth, not just the repo root.
+                assert sorted(f["path"] for f in results) == [
+                    "a/b/deep.yaml",
+                    "app.yaml",
+                    "config/app.yaml",
+                ]
+                # Whole-repo recursive listing (path empty, recursive True).
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {"ref": "main", "path": "", "recursive": True},
+                )
+
+    async def test_match_files_with_repository_tree_missing_project(
+        self, client: GitLabClient
+    ) -> None:
+        """No project resolved → no tree fetched, no results."""
+        with patch.object(client, "get_project", AsyncMock(return_value=None)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/missing", build_search_query("*.yaml")
+                ):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
+
     async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
         """Test that parsed file content with file:// reference fetches and resolves content."""
         # Arrange

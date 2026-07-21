@@ -1027,14 +1027,24 @@ class GitLabClient:
     async def _match_files_with_repository_tree(
         self, repo: str, query: SearchQuery
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for files in specified repository matching the given path pattern."""
+        """Search for files in specified repository matching the given path pattern.
+
+        A pathless pattern (no directory component, e.g. ``*.yaml`` or ``readme.md``)
+        matches by filename anywhere in the repository, mirroring the search API's
+        ``filename:`` behavior: it is expanded to ``**/<filename>`` so the whole tree
+        is walked recursively and matches in subdirectories are not missed. A pattern
+        with a directory component is matched against the full path as given.
+        """
         project = await self.get_project(repo)
         if not project:
             return
 
         ref = project["default_branch"]
-        is_wildcard = _is_wildcard_path(query.path)
-        tree_path = query.path if is_wildcard else (query.directory or "")
+        match_pattern = (
+            f"**/{query.filename}" if query.directory is None else query.path
+        )
+        is_wildcard = _is_wildcard_path(match_pattern)
+        tree_path = match_pattern if is_wildcard else (query.directory or "")
 
         async for items_batch in self.get_repository_tree(project, tree_path, ref):
             files_batch = [
@@ -1046,7 +1056,7 @@ class GitLabClient:
                 for item in items_batch
                 if item["type"] == "blob"
                 and glob.globmatch(
-                    item["path"], query.path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                    item["path"], match_pattern, flags=glob.GLOBSTAR | glob.DOTGLOB
                 )
             ]
             if files_batch:
