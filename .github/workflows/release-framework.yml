@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 2
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -54,7 +54,7 @@ jobs:
           git push origin refs/tags/v${CURRENT_TAG}
       - name: Create GitHub Release
         if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.get_current_version.outputs.current_tag }}
           name: Ocean Framework ${{ steps.get_current_version.outputs.current_tag }}
@@ -71,12 +71,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: v${{ needs.tag-main.outputs.current_tag }}
 
@@ -105,7 +105,7 @@ jobs:
       - name: Send internal release notification
         if: env.VERSION != ''
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
           method: 'POST'
