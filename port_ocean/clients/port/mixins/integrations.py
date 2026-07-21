@@ -415,8 +415,9 @@ class IntegrationClientMixin:
             f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
             json=body,
+            extensions={"retryable": True},
         )
-        handle_port_status_code(response, should_raise=False, should_log=True)
+        handle_port_status_code(response, should_raise=True, should_log=True)
         logger.debug("Finished POST raw data batch request")
 
     async def get_integration_cursor(self, kind: str, index: int) -> Optional[datetime]:
