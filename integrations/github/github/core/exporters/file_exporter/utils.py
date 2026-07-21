@@ -20,12 +20,11 @@ from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
 
-from github.clients.utils import get_github_organizations, get_mono_repo_organization
+from github.clients.utils import get_github_organizations
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
-    ListOrganizationOptions,
 )
 from github.helpers.utils import GithubClientType, matches_glob_pattern
 from github.helpers.repo_selectors import CompositeRepositorySelector

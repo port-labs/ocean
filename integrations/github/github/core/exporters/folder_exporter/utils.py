@@ -1,12 +1,11 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, cast
 from loguru import logger
-from github.clients.utils import get_github_organizations, get_mono_repo_organization
+from github.clients.utils import get_github_organizations
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
     FolderSearchOptions,
     ListFolderOptions,
-    ListOrganizationOptions,
 )
 from github.helpers.repo_selectors import CompositeRepositorySelector
 from port_ocean.context.event import event
