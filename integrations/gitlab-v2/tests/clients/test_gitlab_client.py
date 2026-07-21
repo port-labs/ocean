@@ -978,8 +978,8 @@ class TestGitLabClient:
         }
 
         mock_tree = [
-            {"type": "tree", "name": "folder1"},
-            {"type": "blob", "name": "file.txt"},
+            {"type": "tree", "name": "folder1", "path": "src/folder1"},
+            {"type": "blob", "name": "file.txt", "path": "src/file.txt"},
         ]
 
         with patch.object(

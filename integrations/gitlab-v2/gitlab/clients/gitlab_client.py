@@ -44,6 +44,11 @@ def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
     return project.get("namespace", {}).get("kind") == "user"
 
 
+def _is_wildcard_path(path: str) -> bool:
+    """Check if a path contains glob wildcard characters."""
+    return any(c in path for c in "*?[]")
+
+
 class GitLabClient:
     DEFAULT_PARAMS: dict[str, Any] = {
         "all_available": True,  # Fetch all resources accessible to the user
@@ -731,10 +736,13 @@ class GitLabClient:
         path: str,
         ref: str = "main",
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch repository tree items (files and folders) for a project."""
+        """Fetch repository tree items for a project.
 
+        Determines whether to fetch recursively (wildcard path) or a specific subdirectory.
+        Callers should filter the results according to their needs.
+        """
         project_path = project["path_with_namespace"]
-        is_wildcard = any(c in path for c in "*?[]")
+        is_wildcard = _is_wildcard_path(path)
 
         params = {
             "ref": ref,
@@ -744,19 +752,8 @@ class GitLabClient:
         async for batch in self.rest.get_paginated_project_resource(
             project_path, "repository/tree", params
         ):
-            filtered_batch = (
-                [
-                    item
-                    for item in batch
-                    if glob.globmatch(
-                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                    )
-                ]
-                if is_wildcard
-                else batch
-            )
-            if filtered_batch:
-                yield filtered_batch
+            if batch:
+                yield batch
 
     async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
@@ -765,6 +762,7 @@ class GitLabClient:
         project = await self.get_project(repository)
         if project:
             effective_branch = branch or project["default_branch"]
+            is_wildcard = _is_wildcard_path(path)
             async for items_batch in self.get_repository_tree(
                 project, path, effective_branch
             ):
@@ -772,6 +770,12 @@ class GitLabClient:
                     {"folder": item, "repo": project, "__branch": effective_branch}
                     for item in items_batch
                     if item["type"] == "tree"
+                    and (
+                        not is_wildcard
+                        or glob.globmatch(
+                            item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                        )
+                    )
                 ]
                 if folders_batch:
                     yield folders_batch
@@ -1020,11 +1024,16 @@ class GitLabClient:
         if not project:
             return
 
-        search_components = build_search_query(path)
         ref = project["default_branch"]
-        async for items_batch in self.get_repository_tree(
-            project, search_components.directory or "", ref
-        ):
+        is_wildcard = _is_wildcard_path(path)
+
+        if is_wildcard:
+            tree_path = path
+        else:
+            search_components = build_search_query(path)
+            tree_path = search_components.directory or ""
+
+        async for items_batch in self.get_repository_tree(project, tree_path, ref):
             files_batch = [
                 {
                     **item,
@@ -1034,9 +1043,7 @@ class GitLabClient:
                 for item in items_batch
                 if item["type"] == "blob"
                 and glob.globmatch(
-                    item.get("name", ""),
-                    search_components.filename,
-                    flags=glob.GLOBSTAR | glob.DOTGLOB,
+                    item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
                 )
             ]
             if files_batch:
