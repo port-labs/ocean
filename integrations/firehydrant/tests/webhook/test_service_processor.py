@@ -19,7 +19,6 @@ from webhook.webhook_processors.service_webhook_processor import (
     ServiceWebhookProcessor,
 )
 
-
 SERVICE_PAYLOAD: dict[str, Any] = {
     "data": {
         "services": [
