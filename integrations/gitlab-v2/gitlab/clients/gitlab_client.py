@@ -12,7 +12,11 @@ from port_ocean.utils.async_iterators import (
 from urllib.parse import quote
 from wcmatch import glob
 
-from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
+from gitlab.helpers.utils import (
+    parse_file_content,
+    SearchQuery,
+    is_bot_member,
+)
 
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
@@ -552,7 +556,7 @@ class GitLabClient:
     async def search_files(
         self,
         scope: str,
-        path: str,
+        query: SearchQuery,
         skip_parsing: bool = False,
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
@@ -562,6 +566,8 @@ class GitLabClient:
         """Search for files based on the specified strategy.
 
         Args:
+            query: The parsed search path, built once by the caller and threaded
+                through every strategy so the query string is never rebuilt.
             strategy: One of "projectSearch", "repositoryTree", or "groupSearch".
                 - projectSearch: Search across all accessible projects
                 - repositoryTree: Search across all accessible projects using tree API
@@ -572,11 +578,11 @@ class GitLabClient:
         if strategy in ("projectSearch", "repositoryTree"):
             logger.info(
                 f"Using {'repository tree' if use_tree else 'project-level'} file search "
-                f"for path pattern '{path}'."
+                f"for path pattern '{query.path}'."
             )
             async for batch in self.search_files_in_projects(
                 scope,
-                path,
+                query,
                 skip_parsing=skip_parsing,
                 repositories=repositories,
                 params=params,
@@ -585,10 +591,12 @@ class GitLabClient:
             ):
                 yield batch
         else:
-            logger.info(f"Using group-level file search for path pattern '{path}'.")
+            logger.info(
+                f"Using group-level file search for path pattern '{query.path}'."
+            )
             found_any = False
             async for batch in self._search_files_by_groups(
-                scope, path, repositories, skip_parsing, params, max_concurrent
+                scope, query, repositories, skip_parsing, params, max_concurrent
             ):
                 found_any = True
                 yield batch
@@ -600,7 +608,7 @@ class GitLabClient:
                 )
                 async for batch in self.search_files_in_projects(
                     scope,
-                    path,
+                    query,
                     skip_parsing=skip_parsing,
                     params=params,
                     use_tree=False,
@@ -611,20 +619,19 @@ class GitLabClient:
     async def _search_files_by_groups(
         self,
         scope: str,
-        path: str,
+        query: SearchQuery,
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search files by groups or repositories (internal helper)."""
-        search_query = build_search_query(path).to_query_string()
-        logger.info(f"Starting file search with path pattern: '{path}'")
+        logger.info(f"Starting file search with path pattern: '{query.path}'")
 
         semaphore = asyncio.BoundedSemaphore(max_concurrent)
         if repositories:
             logger.info(
-                f"Searching for {path} across {len(repositories)} specific repositories"
+                f"Searching for {query.path} across {len(repositories)} specific repositories"
             )
             tasks = [
                 semaphore_async_iterator(
@@ -633,7 +640,7 @@ class GitLabClient:
                         self._search_files_in_repository,
                         repo,
                         scope,
-                        search_query,
+                        query,
                         skip_parsing,
                     ),
                 )
@@ -642,7 +649,7 @@ class GitLabClient:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
         else:
-            logger.info(f"Searching for {path} across groups")
+            logger.info(f"Searching for {query.path} across groups")
             async for top_level_groups in self.get_parent_groups(
                 params=params,
             ):
@@ -657,7 +664,7 @@ class GitLabClient:
                             self._search_files_in_group,
                             str(group["id"]),
                             scope,
-                            search_query,
+                            query,
                             skip_parsing,
                         ),
                     )
@@ -669,7 +676,7 @@ class GitLabClient:
     async def search_files_in_projects(
         self,
         scope: str,
-        path: str,
+        query: SearchQuery,
         *,
         skip_parsing: bool = False,
         repositories: list[str] | None = None,
@@ -686,13 +693,13 @@ class GitLabClient:
             use_tree: Whether to use the repository tree API for searching.
         """
         logger.info(
-            f"Starting project-level file search with path pattern: '{path}' using params: {params}"
+            f"Starting project-level file search with path pattern: '{query.path}' using params: {params}"
         )
         semaphore = asyncio.BoundedSemaphore(max_concurrent)
 
         if repositories:
             logger.info(
-                f"Searching for {path} across {len(repositories)} specific repositories"
+                f"Searching for {query.path} across {len(repositories)} specific repositories"
             )
             tasks = [
                 semaphore_async_iterator(
@@ -701,7 +708,7 @@ class GitLabClient:
                         self._search_files_in_repository,
                         repo,
                         scope,
-                        path,
+                        query,
                         skip_parsing,
                         use_tree=use_tree,
                     ),
@@ -711,7 +718,7 @@ class GitLabClient:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
         else:
-            logger.info(f"Searching for {path} across all accessible projects")
+            logger.info(f"Searching for {query.path} across all accessible projects")
             async for projects_batch in self.get_projects(params=params):
                 tasks = [
                     semaphore_async_iterator(
@@ -720,7 +727,7 @@ class GitLabClient:
                             self._search_files_in_repository,
                             project["path_with_namespace"],
                             scope,
-                            path,
+                            query,
                             skip_parsing,
                             use_tree=use_tree,
                         ),
@@ -984,18 +991,18 @@ class GitLabClient:
         self,
         repo: str,
         scope: str,
-        path: str,
+        query: SearchQuery,
         skip_parsing: bool = False,
         use_tree: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.debug(
-            f"Starting search in repository '{repo}' for query '{path}' with scope '{scope}'"
+            f"Starting search in repository '{repo}' for query '{query.path}' with scope '{scope}'"
         )
 
         search_handler = (
-            self._match_files_with_repository_tree(repo, path)
+            self._match_files_with_repository_tree(repo, query)
             if use_tree
-            else self._match_files_with_project_search(repo, scope, path)
+            else self._match_files_with_project_search(repo, scope, query)
         )
 
         async for file_batch in search_handler:
@@ -1007,17 +1014,18 @@ class GitLabClient:
                 yield processed_batch
 
     async def _match_files_with_project_search(
-        self, repo: str, scope: str, path: str
+        self, repo: str, scope: str, query: SearchQuery
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        search_query = build_search_query(path).to_query_string()
-        params = {"scope": scope, "search": search_query}
+        params = {"scope": scope, "search": query.to_query_string()}
         encoded_repo = quote(repo, safe="")
-        path = f"projects/{encoded_repo}/search"
-        async for file_batch in self.rest.get_paginated_resource(path, params=params):
+        search_path = f"projects/{encoded_repo}/search"
+        async for file_batch in self.rest.get_paginated_resource(
+            search_path, params=params
+        ):
             yield file_batch
 
     async def _match_files_with_repository_tree(
-        self, repo: str, path: str
+        self, repo: str, query: SearchQuery
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files in specified repository matching the given path pattern."""
         project = await self.get_project(repo)
@@ -1025,13 +1033,8 @@ class GitLabClient:
             return
 
         ref = project["default_branch"]
-        is_wildcard = _is_wildcard_path(path)
-
-        if is_wildcard:
-            tree_path = path
-        else:
-            search_components = build_search_query(path)
-            tree_path = search_components.directory or ""
+        is_wildcard = _is_wildcard_path(query.path)
+        tree_path = query.path if is_wildcard else (query.directory or "")
 
         async for items_batch in self.get_repository_tree(project, tree_path, ref):
             files_batch = [
@@ -1043,7 +1046,7 @@ class GitLabClient:
                 for item in items_batch
                 if item["type"] == "blob"
                 and glob.globmatch(
-                    item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                    item["path"], query.path, flags=glob.GLOBSTAR | glob.DOTGLOB
                 )
             ]
             if files_batch:
@@ -1053,7 +1056,7 @@ class GitLabClient:
         self,
         group_id: str,
         scope: str,
-        query: str,
+        query: SearchQuery,
         skip_parsing: bool = False,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -1081,13 +1084,17 @@ class GitLabClient:
         self,
         group_id: str,
         scope: str,
-        query: str,
+        query: SearchQuery,
         skip_parsing: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.info(
-            f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
+            f"Starting search in group '{group_id}' for query '{query.path}' with scope '{scope}'"
         )
-        params = {"scope": scope, "search": query, "search_type": "advanced"}
+        params = {
+            "scope": scope,
+            "search": query.to_query_string(),
+            "search_type": "advanced",
+        }
         path = f"groups/{quote(group_id, safe='')}/search"
 
         try:

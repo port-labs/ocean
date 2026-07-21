@@ -7,7 +7,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.helpers.utils import is_bot_member
+from gitlab.helpers.utils import build_search_query, is_bot_member
 
 
 @pytest.fixture(autouse=True)
@@ -745,7 +745,7 @@ class TestGitLabClient:
         ]
         repos = ["group/project"]
         scope = "blobs"
-        query = "test.json"
+        query = build_search_query("test.json")
         with patch.object(
             client,
             "_search_files_in_repository",
@@ -763,7 +763,7 @@ class TestGitLabClient:
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
                 mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", "test.json filename:test.json", False
+                    "group/project", "blobs", query, False
                 )
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
@@ -773,7 +773,7 @@ class TestGitLabClient:
             {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
         ]
         scope = "blobs"
-        query = "test.yaml"
+        query = build_search_query("test.yaml")
 
         with patch.object(
             client, "get_groups", return_value=async_mock_generator([mock_groups])
@@ -805,7 +805,7 @@ class TestGitLabClient:
                         params={"min_access_level": 30}
                     )
                     mock_search_group.assert_called_once_with(
-                        "1", "blobs", "test.yaml filename:test.yaml", False
+                        "1", "blobs", query, False
                     )
 
     async def test_search_files_in_group_blobs_scope_unavailable(
@@ -833,7 +833,7 @@ class TestGitLabClient:
             ):
                 results = []
                 async for batch in client._search_files_in_group(
-                    "my-group", "blobs", "test.json"
+                    "my-group", "blobs", build_search_query("test.json")
                 ):
                     results.extend(batch)
 
@@ -863,7 +863,7 @@ class TestGitLabClient:
             ) as mock_fallback:
                 with pytest.raises(httpx.HTTPStatusError):
                     async for _ in client._search_files_in_group(
-                        "my-group", "blobs", "test.json"
+                        "my-group", "blobs", build_search_query("test.json")
                     ):
                         pass
                 mock_fallback.assert_not_called()

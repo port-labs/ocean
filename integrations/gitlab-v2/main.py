@@ -16,7 +16,11 @@ from gitlab.clients.utils import (
     build_project_params,
     build_branch_params,
 )
-from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
+from gitlab.helpers.utils import (
+    ObjectKind,
+    build_search_query,
+    enrich_resources_with_project,
+)
 from integration import (
     GitLabFilesResourceConfig,
     GroupResourceConfig,
@@ -485,7 +489,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for files_batch in client.search_files(
         scope,
-        search_path,
+        build_search_query(search_path),
         skip_parsing=skip_parsing,
         repositories=repositories,
         params=params,

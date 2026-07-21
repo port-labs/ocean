@@ -34,10 +34,16 @@ class TestUtils:
 
 class TestBuildSearchQuery:
     def test_single_filename(self) -> None:
-        assert build_search_query("readme.md").to_query_string() == "readme.md filename:readme.md"
+        assert (
+            build_search_query("readme.md").to_query_string()
+            == "readme.md filename:readme.md"
+        )
 
     def test_single_filename_no_extension(self) -> None:
-        assert build_search_query("Makefile").to_query_string() == "Makefile filename:Makefile"
+        assert (
+            build_search_query("Makefile").to_query_string()
+            == "Makefile filename:Makefile"
+        )
 
     def test_simple_path(self) -> None:
         assert (
@@ -67,7 +73,10 @@ class TestBuildSearchQuery:
         )
 
     def test_glob_in_path_and_filename(self) -> None:
-        assert build_search_query("home/*/*.txt").to_query_string() == ".txt path:home/* filename:*.txt"
+        assert (
+            build_search_query("home/*/*.txt").to_query_string()
+            == ".txt path:home/* filename:*.txt"
+        )
 
     def test_dotfile_single(self) -> None:
         assert (
