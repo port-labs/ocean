@@ -600,10 +600,8 @@ async def test_post_integration_raw_data_batch_retries_503() -> None:
 
     http_client = OceanAsyncClient(
         transport_class=TokenRetryTransport,
-        transport_kwargs={
-            "port_client": port_client,
-            "retry_config": RetryConfig(max_attempts=3, base_delay=0.0),
-        },
+        transport_kwargs={"port_client": port_client},
+        retry_config=RetryConfig(max_attempts=3, base_delay=0.0),
         verify=True,
     )
     port_client.client = http_client
@@ -644,10 +642,8 @@ async def test_post_integration_raw_data_batch_retries_connect_error() -> None:
 
     http_client = OceanAsyncClient(
         transport_class=TokenRetryTransport,
-        transport_kwargs={
-            "port_client": port_client,
-            "retry_config": RetryConfig(max_attempts=3, base_delay=0.0),
-        },
+        transport_kwargs={"port_client": port_client},
+        retry_config=RetryConfig(max_attempts=3, base_delay=0.0),
         verify=True,
     )
     port_client.client = http_client
