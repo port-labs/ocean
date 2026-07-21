@@ -35,7 +35,7 @@ class OceanAsyncClient(httpx.AsyncClient):
     def _wrap_with_ip_blocker_if_needed(
         self, transport: httpx.AsyncBaseTransport
     ) -> httpx.AsyncBaseTransport:
-        if not ocean.app.is_saas():
+        if not ocean.config.ip_outbound_blocker_enabled:
             return transport
         return IPBlockerTransport(wrapped=transport)
 

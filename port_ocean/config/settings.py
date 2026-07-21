@@ -316,6 +316,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
+    ip_outbound_blocker_enabled: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
     processing_mode: ProcessingMode = ProcessingMode.ocean_core
@@ -360,6 +361,13 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             return dict(v)
         except (TypeError, ValueError):
             return MetricsSettings(enabled=False, webhook_url=None)
+
+    @root_validator()
+    def set_ip_outbound_blocker_default(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if values.get("ip_outbound_blocker_enabled") is None:
+            runtime = values.get("runtime", Runtime.OnPrem)
+            values["ip_outbound_blocker_enabled"] = runtime.is_saas_runtime
+        return values
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
