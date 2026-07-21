@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added `ip_outbound_blocker_enabled` integration setting to control whether outbound HTTP clients use the IP blocker transport. Defaults to enabled on SaaS runtimes and disabled on on-prem, preserving existing behavior.
+- Added `disable_ip_outbound_blocker` integration setting to disable outbound HTTP IP blocking. Defaults to false on SaaS runtimes and true on on-prem, preserving existing behavior.
 
 ## 0.45.5 (2026-07-20)
 

@@ -17,8 +17,8 @@ def _mock_saas_spec(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-class TestIpOutboundBlockerEnabled:
-    def test_defaults_to_true_on_saas_runtime(
+class TestDisableIpOutboundBlocker:
+    def test_defaults_to_false_on_saas_runtime(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _set_required_env(monkeypatch)
@@ -27,9 +27,9 @@ class TestIpOutboundBlockerEnabled:
 
         config = IntegrationConfiguration()
 
-        assert config.ip_outbound_blocker_enabled is True
+        assert config.disable_ip_outbound_blocker is False
 
-    def test_defaults_to_false_on_on_prem_runtime(
+    def test_defaults_to_true_on_on_prem_runtime(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _set_required_env(monkeypatch)
@@ -37,27 +37,27 @@ class TestIpOutboundBlockerEnabled:
 
         config = IntegrationConfiguration()
 
-        assert config.ip_outbound_blocker_enabled is False
+        assert config.disable_ip_outbound_blocker is True
 
-    def test_explicit_env_override_on_saas(
+    def test_explicit_env_disables_on_saas(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _set_required_env(monkeypatch)
         _mock_saas_spec(monkeypatch)
         monkeypatch.setenv("OCEAN__RUNTIME", "Saas")
-        monkeypatch.setenv("OCEAN__IP_OUTBOUND_BLOCKER_ENABLED", "false")
+        monkeypatch.setenv("OCEAN__DISABLE_IP_OUTBOUND_BLOCKER", "true")
 
         config = IntegrationConfiguration()
 
-        assert config.ip_outbound_blocker_enabled is False
+        assert config.disable_ip_outbound_blocker is True
 
-    def test_explicit_env_override_on_on_prem(
+    def test_explicit_env_enables_on_on_prem(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _set_required_env(monkeypatch)
         monkeypatch.setenv("OCEAN__RUNTIME", "OnPrem")
-        monkeypatch.setenv("OCEAN__IP_OUTBOUND_BLOCKER_ENABLED", "true")
+        monkeypatch.setenv("OCEAN__DISABLE_IP_OUTBOUND_BLOCKER", "false")
 
         config = IntegrationConfiguration()
 
-        assert config.ip_outbound_blocker_enabled is True
+        assert config.disable_ip_outbound_blocker is False
