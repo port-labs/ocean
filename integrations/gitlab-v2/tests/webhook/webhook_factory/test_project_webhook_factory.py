@@ -46,9 +46,7 @@ class TestProjectWebHook:
         monkeypatch.setattr(
             project_webhook,
             "create",
-            AsyncMock(
-                return_value={"id": 1, "url": STATIC_WEBHOOK_URL}
-            ),
+            AsyncMock(return_value={"id": 1, "url": STATIC_WEBHOOK_URL}),
         )
         result = await project_webhook.create_project_webhook("123")
         assert result is True

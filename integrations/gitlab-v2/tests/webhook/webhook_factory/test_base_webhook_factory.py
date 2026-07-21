@@ -51,9 +51,7 @@ class TestBaseWebhookFactory:
         monkeypatch.setattr(concrete_factory, "_exists", exists_mock)
 
         # Test with matching URL
-        exists = await concrete_factory._exists(
-            STATIC_WEBHOOK_URL, "groups/123/hooks"
-        )
+        exists = await concrete_factory._exists(STATIC_WEBHOOK_URL, "groups/123/hooks")
         assert exists is True
 
         # Test with non-matching URL
@@ -68,9 +66,7 @@ class TestBaseWebhookFactory:
         mock_events: MagicMock,
     ) -> None:
         """Test building webhook payload"""
-        payload = concrete_factory._build_payload(
-            STATIC_WEBHOOK_URL, mock_events
-        )
+        payload = concrete_factory._build_payload(STATIC_WEBHOOK_URL, mock_events)
         assert payload["url"] == STATIC_WEBHOOK_URL
         assert payload["push_events"] is True
         assert payload["merge_requests_events"] is True
@@ -100,14 +96,10 @@ class TestBaseWebhookFactory:
         monkeypatch.setattr(
             concrete_factory,
             "_send_request",
-            AsyncMock(
-                return_value={"id": 1, "url": STATIC_WEBHOOK_URL}
-            ),
+            AsyncMock(return_value={"id": 1, "url": STATIC_WEBHOOK_URL}),
         )
 
-        response = await concrete_factory.create(
-            STATIC_WEBHOOK_URL, "groups/123/hooks"
-        )
+        response = await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
         assert response["id"] == 1
         assert response["url"] == STATIC_WEBHOOK_URL
 
@@ -119,9 +111,7 @@ class TestBaseWebhookFactory:
         """Test webhook creation when webhook already exists"""
         monkeypatch.setattr(concrete_factory, "_exists", AsyncMock(return_value=True))
 
-        response = await concrete_factory.create(
-            STATIC_WEBHOOK_URL, "groups/123/hooks"
-        )
+        response = await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
         assert response == {}
 
     async def test_create_webhook_failure(
@@ -138,9 +128,7 @@ class TestBaseWebhookFactory:
         )
 
         with pytest.raises(Exception):
-            await concrete_factory.create(
-                STATIC_WEBHOOK_URL, "groups/123/hooks"
-            )
+            await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
 
     async def test_create_webhook_skips_when_token_lacks_resource_access(
         self,
@@ -160,8 +148,6 @@ class TestBaseWebhookFactory:
             ),
         )
 
-        response = await concrete_factory.create(
-            STATIC_WEBHOOK_URL, "groups/123/hooks"
-        )
+        response = await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
 
         assert response == {}
