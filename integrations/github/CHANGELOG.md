@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.45.7
+- Migrated GitHub API callers to installation-scoped clients.
 
 
 ## 6.3.3 (2026-07-21)

@@ -27,6 +27,7 @@ class ConcreteGithubClient(AbstractGithubClient):
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         ignored_errors: Optional[list[IgnoredError]] = None,
+        fallback_queries: Optional[list[str]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         # Need to yield something to make it a valid generator
         if (

@@ -40,10 +40,12 @@ class AbstractExecutor(ABC):
             WEBHOOK_PROCESSOR_CLASS = MyWebhookProcessor  # Optional
             WEBHOOK_PATH = "/webhook/my_action"  # Optional
 
-            async def is_close_to_rate_limit(self) -> bool:
+            async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
                 return await self._check_rate_limit()
 
-            async def get_remaining_seconds_until_rate_limit(self) -> float:
+            async def get_remaining_seconds_until_rate_limit(
+                self, run: IntegrationRun
+            ) -> float:
                 return await self._get_rate_limit_wait_time()
 
             async def execute(self, run: ActionRun) -> None:
@@ -67,7 +69,7 @@ class AbstractExecutor(ABC):
         return None
 
     @abstractmethod
-    async def is_close_to_rate_limit(self) -> bool:
+    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         """
         Check if the action is approaching its rate limit threshold.
 
@@ -80,25 +82,17 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def is_close_to_rate_limit(self) -> bool:
+            async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
                 rate_info = await self.client.get_rate_limit_info()
                 return rate_info.remaining / rate_info.limit < 0.1  # 10% threshold
             ```
         """
         pass
 
-    async def is_close_to_rate_limit_for_run(self, run: IntegrationRun) -> bool:
-        """
-        Check whether the action is approaching its rate limit for a specific run.
-
-        Override this when rate limit status depends on the run context, such as
-        the organization or account selected by the action. The default preserves
-        compatibility with executors that use a shared rate limit.
-        """
-        return await self.is_close_to_rate_limit()
-
     @abstractmethod
-    async def get_remaining_seconds_until_rate_limit(self) -> float:
+    async def get_remaining_seconds_until_rate_limit(
+        self, run: IntegrationRun
+    ) -> float:
         """
         Calculate the number of seconds to wait before executing the next action.
 
@@ -112,7 +106,9 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def get_remaining_seconds_until_rate_limit(self) -> float:
+            async def get_remaining_seconds_until_rate_limit(
+                self, run: IntegrationRun
+            ) -> float:
                 rate_info = await self.client.get_rate_limit_info()
                 if rate_info.reset_time > datetime.now():
                     return (rate_info.reset_time - datetime.now()).total_seconds()
@@ -120,17 +116,6 @@ class AbstractExecutor(ABC):
             ```
         """
         pass
-
-    async def get_remaining_seconds_until_rate_limit_for_run(
-        self, run: IntegrationRun
-    ) -> float:
-        """
-        Get the rate-limit wait time for a specific run.
-
-        Override this when rate limit status depends on the run context. The
-        default preserves compatibility with executors that use a shared rate limit.
-        """
-        return await self.get_remaining_seconds_until_rate_limit()
 
     @abstractmethod
     async def execute(self, run: IntegrationRun) -> None:

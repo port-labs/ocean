@@ -1,27 +1,21 @@
-from loguru import logger
-
-from github.core.options import ListOrganizationOptions
-from github.helpers.exceptions import OrganizationRequiredException
-from port_ocean.utils.cache import cache_iterator_result, cache_coroutine_result
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.clients.http.rest_client import GithubRestClient
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from typing import List, Optional
+
+from loguru import logger
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.utils.cache import cache_iterator_result, cache_coroutine_result
+
+from github.clients.http.rest_client import GithubRestClient
+from github.clients.utils import get_github_organizations
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.core.options import ListOrganizationOptions
 
 
 class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
     """Exporter for GitHub organizations using REST API."""
 
-    async def is_classic_pat_token(self) -> bool:
-        response = await self.client.make_request(f"{self.client.base_url}/user", {})
-        return "x-oauth-scopes" in response.headers
-
     @cache_coroutine_result()
     async def get_personal_org(self) -> RAW_ITEM:
-        """
-        Fetch the personal account of the authenticated user.
-        This method is cached to avoid repeated API calls.
-        """
+        """Fetch the personal account of the authenticated user."""
         logger.info("Fetching personal account")
         response = await self.client.send_api_request(f"{self.client.base_url}/user")
         if response:
@@ -32,28 +26,37 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
 
     @cache_iterator_result()
     async def get_paginated_resources(
-        self, options: ListOrganizationOptions
+        self,
+        options: ListOrganizationOptions | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """
-        If the organization is provided, fetch a single organization.
-        If the organization is not provided, fetch all organizations.
-        If the organization is not provided and the token is not a classic PAT token, raise an error.
-        If the organization is provided and the token is not a classic PAT token, raise an error.
-        If the organization is not provided and the token is a classic PAT token, fetch all organizations.
-        If the organization is provided and the token is a classic PAT token, fetch a single organization.
+        """Discover organizations for this client's credentials.
 
-        - Optional: filter to allowed orgs + include personal account as pseudo-org
+        GitHub App installations yield the installed organization. Personal
+        access tokens page ``/user/orgs``, optionally including the token
+        owner's personal account, or fetch a single org when ``organization``
+        is set in ``options``, on the authenticator, or in integration config.
+
+        Omit ``options`` to apply listing defaults from the port app config.
         """
         logger.info("Fetching organizations")
 
-        allowed_multi_organizations: List[str] = options.get(
+        resolved_options = get_github_organizations() if options is None else options
+
+        allowed_multi_organizations: List[str] = resolved_options.get(
             "allowed_multi_organizations", []
         )
-        include_authenticated_user: bool = options.get(
+        include_authenticated_user: bool = resolved_options.get(
             "include_authenticated_user", False
         )
 
-        if organization := options.get("organization"):
+        organization = resolved_options.get("organization")
+        if organization:
+            if (
+                allowed_multi_organizations
+                and organization not in allowed_multi_organizations
+            ):
+                return
+
             logger.info(f"Fetching single organization {organization}")
             yield [
                 await self.client.send_api_request(
@@ -61,11 +64,6 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
                 )
             ]
             return
-
-        if not await self.is_classic_pat_token():
-            raise OrganizationRequiredException(
-                "Organization is required for non-classic PAT tokens"
-            )
 
         async for batch in self._stream_selected_organizations(
             allowed_multi_organizations, include_authenticated_user

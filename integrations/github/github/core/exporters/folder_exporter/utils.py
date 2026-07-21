@@ -1,14 +1,15 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 from loguru import logger
-from github.clients.utils import get_mono_repo_organization
+from github.clients.utils import get_github_organizations
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import FolderSearchOptions, ListFolderOptions
-from github.helpers.repo_selectors import (
-    CompositeRepositorySelector,
-    OrganizationLoginAndTypeGenerator,
+from github.core.options import (
+    FolderSearchOptions,
+    ListFolderOptions,
 )
-from integration import FolderSelector
+from github.helpers.repo_selectors import CompositeRepositorySelector
+from port_ocean.context.event import event
+from integration import FolderSelector, GithubPortAppConfig
 
 
 class FolderPatternMappingBuilder:
@@ -18,9 +19,7 @@ class FolderPatternMappingBuilder:
         repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
-        self.generate_org_logins_and_types = OrganizationLoginAndTypeGenerator(
-            org_exporter
-        )
+        self.org_exporter = org_exporter
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
@@ -30,26 +29,30 @@ class FolderPatternMappingBuilder:
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
 
         for folder_sel in folders:
-            organization = get_mono_repo_organization(folder_sel.organization)
-            async for org_login, org_type in self.generate_org_logins_and_types(
-                organization
+            async for batch in self.org_exporter.get_paginated_resources(
+                get_github_organizations(folder_sel.organization)
             ):
-                async for (
-                    repo_name,
-                    branch,
-                    repo_obj,
-                ) in self.repo_selector.select_repos(
-                    folder_sel, self.repo_exporter, org_login, org_type
-                ):
-                    key = (org_login, repo_name)
-                    repo_map[key].append(
-                        FolderSearchOptions(
-                            organization=org_login,
-                            branch=branch,
-                            path=folder_sel.path,
-                            repo=repo_obj,
+                if not batch:
+                    continue
+                for org in batch:
+                    org_login = org["login"]
+                    org_type = org["type"]
+                    async for (
+                        repo_name,
+                        branch,
+                        repo_obj,
+                    ) in self.repo_selector.select_repos(
+                        folder_sel, self.repo_exporter, org_login, org_type
+                    ):
+                        key = (org_login, repo_name)
+                        repo_map[key].append(
+                            FolderSearchOptions(
+                                organization=org_login,
+                                branch=branch,
+                                path=folder_sel.path,
+                                repo=repo_obj,
+                            )
                         )
-                    )
 
         return [
             ListFolderOptions(
