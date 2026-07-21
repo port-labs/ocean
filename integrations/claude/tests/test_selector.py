@@ -3,7 +3,6 @@ from pydantic.v1 import ValidationError
 
 from integration import ClaudePlatformCodeAnalyticsSelector
 
-
 # ---------------------------------------------------------------------------
 # Valid configurations — exactly one field provided
 # ---------------------------------------------------------------------------
