@@ -38,7 +38,7 @@ class AbstractAnthropicExecutor(AbstractExecutor):
             return False
         return info.remaining / info.limit < RATE_LIMIT_HEADROOM_RATIO
 
-    async def is_close_to_rate_limit(self) -> bool:
+    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         """Defers starting a new action run once either Managed Agents RPM
         pool (create or read; see `AnthropicClient.get_create_rate_limit_status`/
         `get_read_rate_limit_status`) is close to exhausted.
@@ -54,7 +54,9 @@ class AbstractAnthropicExecutor(AbstractExecutor):
             self.client.get_create_rate_limit_status()
         ) or self._is_pool_close_to_exhausted(self.client.get_read_rate_limit_status())
 
-    async def get_remaining_seconds_until_rate_limit(self) -> float:
+    async def get_remaining_seconds_until_rate_limit(
+        self, run: IntegrationRun
+    ) -> float:
         """Waits out whichever pool(s) are currently close to exhausted, so
         the execution manager doesn't retry before all of them have
         replenished."""

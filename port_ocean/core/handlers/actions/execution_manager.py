@@ -490,14 +490,12 @@ class ExecutionManager:
                 try:
                     executor = self._actions_executors[run.action_type]
                     while (
-                        await executor.is_close_to_rate_limit_for_run(run)
+                        await executor.is_close_to_rate_limit(run)
                         and not self._is_shutting_down.is_set()
                     ):
                         backoff_seconds = min(
                             RATE_LIMIT_MAX_BACKOFF_SECONDS,
-                            await executor.get_remaining_seconds_until_rate_limit_for_run(
-                                run
-                            ),
+                            await executor.get_remaining_seconds_until_rate_limit(run),
                         )
                         logger.info(
                             "Encountered rate limit, will attempt to re-run in {backoff_seconds} seconds",

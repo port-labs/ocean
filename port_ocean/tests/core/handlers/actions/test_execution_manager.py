@@ -26,7 +26,6 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
-    IntegrationRun,
     RunKind,
     ActionRunStatus,
     WorkflowIntegrationActionConfig,
@@ -147,10 +146,8 @@ def mock_test_executor() -> MagicMock:
     mock_executor.WEBHOOK_PATH = None
     mock_executor._get_partition_key = AsyncMock(return_value=None)
     mock_executor.execute = AsyncMock(return_value=None)
-    mock_executor.is_close_to_rate_limit_for_run = AsyncMock(return_value=False)
-    mock_executor.get_remaining_seconds_until_rate_limit_for_run = AsyncMock(
-        return_value=0.0
-    )
+    mock_executor.is_close_to_rate_limit = AsyncMock(return_value=False)
+    mock_executor.get_remaining_seconds_until_rate_limit = AsyncMock(return_value=0.0)
     return mock_executor
 
 
@@ -166,10 +163,8 @@ def mock_test_partition_executor() -> MagicMock:
         )
     )
     mock_executor.execute = AsyncMock(return_value=None)
-    mock_executor.is_close_to_rate_limit_for_run = AsyncMock(return_value=False)
-    mock_executor.get_remaining_seconds_until_rate_limit_for_run = AsyncMock(
-        return_value=0.0
-    )
+    mock_executor.is_close_to_rate_limit = AsyncMock(return_value=False)
+    mock_executor.get_remaining_seconds_until_rate_limit = AsyncMock(return_value=0.0)
     return mock_executor
 
 
@@ -210,26 +205,6 @@ def execution_manager(
 
 
 class TestExecutionManager:
-    @pytest.mark.asyncio
-    async def test_run_aware_rate_limit_methods_delegate_to_legacy_methods(
-        self,
-    ) -> None:
-        class LegacyExecutor(AbstractExecutor):
-            async def is_close_to_rate_limit(self) -> bool:
-                return True
-
-            async def get_remaining_seconds_until_rate_limit(self) -> float:
-                return 1.0
-
-            async def execute(self, run: IntegrationRun) -> None:
-                pass
-
-        executor = LegacyExecutor()
-        run = generate_mock_action_run()
-
-        assert await executor.is_close_to_rate_limit_for_run(run)
-        assert await executor.get_remaining_seconds_until_rate_limit_for_run(run) == 1.0
-
     @pytest.mark.asyncio
     async def test_register_executor(
         self,
@@ -317,10 +292,10 @@ class TestExecutionManager:
     ) -> None:
         # Arrange
         few_seconds_away = datetime.now() + timedelta(seconds=0.1)
-        mock_test_executor.is_close_to_rate_limit_for_run = AsyncMock(
+        mock_test_executor.is_close_to_rate_limit = AsyncMock(
             side_effect=lambda _: few_seconds_away > datetime.now()
         )
-        mock_test_executor.get_remaining_seconds_until_rate_limit_for_run = AsyncMock(
+        mock_test_executor.get_remaining_seconds_until_rate_limit = AsyncMock(
             side_effect=lambda _: (few_seconds_away - datetime.now()).total_seconds()
         )
         execution_manager_without_executors.register_executor(mock_test_executor)
@@ -336,10 +311,10 @@ class TestExecutionManager:
             level="WARNING",
             should_raise=False,
         )
-        mock_test_executor.is_close_to_rate_limit_for_run.assert_called_with(
+        mock_test_executor.is_close_to_rate_limit.assert_called_with(
             mock_test_action_run
         )
-        mock_test_executor.get_remaining_seconds_until_rate_limit_for_run.assert_called_once_with(
+        mock_test_executor.get_remaining_seconds_until_rate_limit.assert_called_once_with(
             mock_test_action_run
         )
 
