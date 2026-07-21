@@ -64,9 +64,8 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
             )
 
             try:
-                rest_client = await self.get_rest_client(org)
-                await rest_client.make_request(
-                    f"{rest_client.base_url}/orgs/{org}/properties/installations/values",
+                await self.rest_client.make_request(
+                    f"{self.rest_client.base_url}/orgs/{org}/properties/installations/values",
                     method="PATCH",
                     json_data={
                         "repository_names": [str(repo)],

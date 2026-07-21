@@ -8,10 +8,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleIssueOptions, ListIssueOptions
-from github.clients.http.rest_client import GithubRestClient
+from github.clients.http.base_client import AbstractGithubClient
 
 
-class RestIssueExporter(AbstractGithubExporter[GithubRestClient]):
+class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     async def get_resource[ExporterOptionsT: SingleIssueOptions](
         self,

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import pytest
 import httpx
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch, PropertyMock
 
 from github.clients.auth.abstract_authenticator import GitHubToken
 from github.clients.auth.github_app.installation_authenticator import (
@@ -23,16 +23,10 @@ class TestGithubAuthenticator:
             installation_id="12345",
         )
 
-    def test_rate_limit_scope_uses_installation_id(
+    def test_rate_limit_scope_uses_organization(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
-        assert github_auth.rate_limit_scope == "installation:12345"
-
-    @pytest.mark.asyncio
-    async def test_get_installation_id_returns_cached_id(
-        self, github_auth: GitHubAppInstallationAuthenticator
-    ) -> None:
-        assert await github_auth._get_installation_id() == "12345"
+        assert github_auth.rate_limit_scope == "installation:test-org"
 
     @pytest.mark.asyncio
     async def test_token_generated(
@@ -102,6 +96,48 @@ class TestGithubAuthenticator:
             mock_fetch_install_token.assert_called_once_with("12345")
             mock_get_installation_id.assert_not_called()
             assert token == mock_install_token
+
+    @pytest.mark.asyncio
+    async def test_installation_id_fetched_when_not_provided(self) -> None:
+        github_auth = GitHubAppInstallationAuthenticator(
+            app_auth=GitHubAppAuthenticator(
+                app_id="test-app-id",
+                private_key="test-private-key",
+                github_host="https://api.github.com",
+            ),
+            organization="my-org",
+        )
+        mock_client = AsyncMock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"id": 99999}
+        mock_response.raise_for_status = Mock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        with (
+            patch.object(
+                github_auth.app_auth,
+                "get_headers",
+                AsyncMock(
+                    return_value=AsyncMock(
+                        as_dict=lambda: {"Authorization": "Bearer jwt"}
+                    )
+                ),
+            ),
+            patch.object(
+                type(github_auth.app_auth),
+                "client",
+                new_callable=PropertyMock,
+                return_value=mock_client,
+            ),
+        ):
+            installation_id = await github_auth._get_installation_id()
+
+            mock_client.get.assert_called_once_with(
+                "https://api.github.com/users/my-org/installation",
+                headers={"Authorization": "Bearer jwt"},
+            )
+            assert installation_id == "99999"
+            assert github_auth.installation_id == "99999"
 
     @pytest.mark.asyncio
     async def test_client_returns_same_instance(

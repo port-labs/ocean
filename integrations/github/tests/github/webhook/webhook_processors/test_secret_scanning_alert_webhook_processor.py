@@ -196,7 +196,7 @@ class TestSecretScanningAlertWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.secret_scanning_alert_webhook_processor.create_github_client_for_org"
+                "github.webhook.webhook_processors.secret_scanning_alert_webhook_processor.create_github_client"
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.secret_scanning_alert_webhook_processor.RestSecretScanningAlertExporter",

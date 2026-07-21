@@ -11,7 +11,7 @@ from github.helpers.utils import (
     ObjectKind,
     enrich_members_with_saml_email,
 )
-from github.clients.client_factory import create_github_client_for_org
+from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
@@ -61,7 +61,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[team]
             )
 
-        rest_client = await create_github_client_for_org(organization)
+        rest_client = create_github_client(GithubClientType.REST)
         exporter = RestTeamExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
@@ -78,9 +78,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
 
         if selector.members:
             graphql_exporter = GraphQLTeamWithMembersExporter(
-                await create_github_client_for_org(
-                    organization, GithubClientType.GRAPHQL
-                )
+                create_github_client(GithubClientType.GRAPHQL)
             )
             extras_result = await graphql_exporter._enrich_team_with_extras(
                 [data_to_upsert],

@@ -5,7 +5,7 @@ from github.helpers.utils import (
     enrich_with_organization,
     enrich_with_repository,
 )
-from github.clients.client_factory import create_github_client_for_org
+from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -88,7 +88,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
 
-        rest_client = await create_github_client_for_org(organization)
+        rest_client = create_github_client()
         exporter = RestBranchExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(

@@ -20,14 +20,14 @@ from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
 
-from github.clients.utils import get_github_organizations
+from github.clients.utils import get_mono_repo_organization
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import (
-    FileSearchOptions,
-    ListFileSearchOptions,
-)
+from github.core.options import FileSearchOptions, ListFileSearchOptions
 from github.helpers.utils import GithubClientType, matches_glob_pattern
-from github.helpers.repo_selectors import CompositeRepositorySelector
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+    OrganizationLoginAndTypeGenerator,
+)
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -138,7 +138,9 @@ class FilePatternMappingBuilder:
         repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
-        self.org_exporter = org_exporter
+        self.generate_org_logins_and_types = OrganizationLoginAndTypeGenerator(
+            org_exporter
+        )
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
@@ -150,25 +152,21 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            async for batch in self.org_exporter.get_paginated_resources(
-                get_github_organizations(file_sel.organization)
+            organization = get_mono_repo_organization(file_sel.organization)
+            async for org_login, org_type in self.generate_org_logins_and_types(
+                organization
             ):
-                if not batch:
-                    continue
-                for org in batch:
-                    org_login = org["login"]
-                    org_type = org["type"]
-                    async for repo_name, branch, _ in self.repo_selector.select_repos(
-                        file_sel, self.repo_exporter, org_login, org_type
-                    ):
-                        repo_map[(org_login, repo_name)].append(
-                            FileSearchOptions(
-                                organization=org_login,
-                                path=file_sel.path,
-                                skip_parsing=file_sel.skip_parsing,
-                                branch=branch,
-                            )
+                async for repo_name, branch, _ in self.repo_selector.select_repos(
+                    file_sel, self.repo_exporter, org_login, org_type
+                ):
+                    repo_map[(org_login, repo_name)].append(
+                        FileSearchOptions(
+                            organization=org_login,
+                            path=file_sel.path,
+                            skip_parsing=file_sel.skip_parsing,
+                            branch=branch,
                         )
+                    )
 
         return [
             ListFileSearchOptions(

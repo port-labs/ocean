@@ -4,7 +4,7 @@ from github.webhook.events import COLLABORATOR_EVENTS, TEAM_COLLABORATOR_EVENTS
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 from port_ocean.context.event import event
-from github.clients.client_factory import create_github_client_for_org
+from github.clients.client_factory import create_github_client
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.options import ListRepositoryOptions
 from github.helpers.models import RepoSearchParams
@@ -78,7 +78,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
             organization_type="Organization",
             search_params=RepoSearchParams(query=targeted_query),
         )
-        rest_client = await create_github_client_for_org(organization_login)
+        rest_client = create_github_client()
         exporter = RestRepositoryExporter(rest_client)
         async for search_results in exporter.get_paginated_resources(search_options):
             for repository in search_results:

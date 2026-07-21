@@ -31,3 +31,8 @@ def get_github_organizations(
     if resolved_org:
         options["organization"] = resolved_org
     return options
+
+
+def get_mono_repo_organization(organization: str | None) -> str | None:
+    """Get the organization for a monorepo."""
+    return organization or ocean.integration_config.get("github_organization")

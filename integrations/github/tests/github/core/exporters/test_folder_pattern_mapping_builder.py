@@ -69,9 +69,7 @@ async def test_folder_pattern_mapping_builder_explicit_repos() -> None:
         new=AsyncMock(return_value={"default_branch": "main", "name": "repoX"}),
     ):
         builder = FolderPatternMappingBuilder(
-            org_exporter,
-            repo_exporter,
-            repo_type="all",
+            org_exporter, repo_exporter, repo_type="all"
         )
 
         selectors = [

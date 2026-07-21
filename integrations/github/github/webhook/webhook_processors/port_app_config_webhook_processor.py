@@ -19,7 +19,7 @@ from github.webhook.webhook_processors.github_abstract_webhook_processor import 
 from github.core.exporters.file_exporter.utils import group_files_by_status
 from github.helpers.port_app_config import is_repo_managed_mapping
 from github.core.exporters.file_exporter.core import RestFileExporter
-from github.clients.client_factory import create_github_client_for_org
+from github.clients.client_factory import create_github_client
 from github.helpers.port_app_config import ORG_CONFIG_FILE, ORG_CONFIG_REPO
 
 
@@ -91,7 +91,7 @@ class PortAppConfigWebhookProcessor(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = await create_github_client_for_org(organization)
+        rest_client = create_github_client()
         exporter = RestFileExporter(rest_client)
 
         diff_data = await exporter.fetch_commit_diff(

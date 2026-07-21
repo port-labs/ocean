@@ -15,7 +15,7 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
         self,
         app_auth: GitHubAppAuthenticator,
         organization: str,
-        installation_id: str,
+        installation_id: Optional[str] = None,
     ):
         self.app_auth = app_auth
         self.organization = organization
@@ -25,7 +25,8 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
 
     @property
     def rate_limit_scope(self) -> str:
-        return f"installation:{self.installation_id}"
+        # TODO: replace to installation id based rate limit scope after create_github_client is deprecated
+        return f"installation:{self.organization}"
 
     async def get_headers(self) -> GitHubHeaders:
         token_response = await self.get_token()

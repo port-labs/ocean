@@ -104,6 +104,10 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
     _default_ref_cache: dict[str, str] = {}
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._workflow_run_exporter = RestWorkflowRunExporter(self.rest_client)
+
     def _use_legacy_dispatch_workflow_tracking(self) -> bool:
         return bool(
             ocean.integration_config.get("legacy_dispatch_workflow_tracking", False)
@@ -132,8 +136,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             )
             return self._default_ref_cache[key]
 
-        rest_client = await self.get_rest_client(organization)
-        repoExporter = RestRepositoryExporter(rest_client)
+        repoExporter = RestRepositoryExporter(self.rest_client)
         repo = await repoExporter.get_resource(
             SingleRepositoryOptions(organization=organization, name=repo_name)
         )
@@ -161,11 +164,10 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     ) -> dict[str, Any]:
         workflow_runs: list[dict[str, Any]] = []
         actor = await get_auth_provider().get_integration_actor()
-        rest_client = await self.get_rest_client(organization)
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
-            response = await rest_client.send_api_request(
-                f"{rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/runs",
+            response = await self.rest_client.send_api_request(
+                f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/runs",
                 params={
                     "actor": actor,
                     "event": "workflow_dispatch",
@@ -212,9 +214,8 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         ref: str,
         inputs: dict[str, str],
     ) -> None:
-        rest_client = await self.get_rest_client(organization)
-        await rest_client.make_request(
-            f"{rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
+        await self.rest_client.make_request(
+            f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
             method="POST",
             json_data={
                 "ref": ref,
@@ -237,9 +238,8 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             "return_run_details": True,
         }
 
-        rest_client = await self.get_rest_client(organization)
-        response = await rest_client.make_request(
-            f"{rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
+        response = await self.rest_client.make_request(
+            f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
             method="POST",
             json_data=dispatch_payload,
             ignore_default_errors=False,
@@ -281,9 +281,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 if not workflow_run_id:
                     raise ActionExecutionError("Workflow run ID not found")
 
-                rest_client = await self.get_rest_client(organization)
-                workflow_run_exporter = RestWorkflowRunExporter(rest_client)
-                fetched_workflow_run = await workflow_run_exporter.get_resource(
+                fetched_workflow_run = await self._workflow_run_exporter.get_resource(
                     SingleWorkflowRunOptions(
                         organization=organization,
                         repo_name=repo,

@@ -1,7 +1,7 @@
 """Tests for DispatchWorkflowExecutor."""
 
 from typing import Any, Generator
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -77,33 +77,13 @@ def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[DispatchWorkflowExecutor, None, None]:
     with patch(
-        "github.actions.abstract_github_executor.create_github_client_for_org",
-        new=AsyncMock(return_value=mock_rest_client),
+        "github.actions.abstract_github_executor.create_github_client",
+        return_value=mock_rest_client,
     ):
         yield DispatchWorkflowExecutor()
 
 
 class TestDispatchWorkflowExecutor:
-    @pytest.mark.asyncio
-    async def test_rate_limit_uses_run_organization(
-        self, mock_rest_client: MagicMock
-    ) -> None:
-        run = make_run({"org": "port-labs"})
-        mock_rest_client.get_rate_limit_status.return_value = MagicMock(
-            remaining=19, seconds_until_reset=42
-        )
-
-        with patch(
-            "github.actions.abstract_github_executor.create_github_client_for_org",
-            new=AsyncMock(return_value=mock_rest_client),
-        ) as create_client:
-            executor = DispatchWorkflowExecutor()
-
-            assert await executor.is_close_to_rate_limit(run) is True
-            assert await executor.get_remaining_seconds_until_rate_limit(run) == 42
-
-        create_client.assert_has_awaits([call("port-labs"), call("port-labs")])
-
     @pytest.mark.asyncio
     async def test_happy_path(
         self,
@@ -128,11 +108,12 @@ class TestDispatchWorkflowExecutor:
 
         with (
             patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
-            patch(
-                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
-            ) as mock_exporter_cls,
+            patch.object(
+                executor._workflow_run_exporter,
+                "get_resource",
+                get_resource_mock,
+            ),
         ):
-            mock_exporter_cls.return_value.get_resource = get_resource_mock
             await executor.execute(run)
 
         mock_rest_client.make_request.assert_awaited_once()
@@ -176,12 +157,11 @@ class TestDispatchWorkflowExecutor:
         dispatch_response.json.return_value = {"workflow_run_id": 12345}
         mock_rest_client.make_request.return_value = dispatch_response
 
-        with patch(
-            "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
-        ) as mock_exporter_cls:
-            mock_exporter_cls.return_value.get_resource = AsyncMock(
-                return_value=WORKFLOW_RUN
-            )
+        with patch.object(
+            executor._workflow_run_exporter,
+            "get_resource",
+            AsyncMock(return_value=WORKFLOW_RUN),
+        ):
             await executor.execute(run)
 
         json_data = mock_rest_client.make_request.call_args.kwargs["json_data"]
@@ -352,8 +332,8 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.abstract_github_executor.create_github_client_for_org",
-                new=AsyncMock(return_value=mock_rest_client),
+                "github.actions.abstract_github_executor.create_github_client",
+                return_value=mock_rest_client,
             ),
             patch(
                 "github.actions.dispatch_workflow_executor.get_auth_provider",
@@ -405,8 +385,8 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.abstract_github_executor.create_github_client_for_org",
-                new=AsyncMock(return_value=mock_rest_client),
+                "github.actions.abstract_github_executor.create_github_client",
+                return_value=mock_rest_client,
             ),
             patch(
                 "github.actions.dispatch_workflow_executor.get_auth_provider",

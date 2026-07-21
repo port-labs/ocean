@@ -1034,7 +1034,7 @@ class TestFileExporterUtils:
         # Act
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
         async with event_context("test_event") as event:
-            # Minimal port app config for organization listing options
+            # Minimal config used by OrganizationLoginAndTypeGenerator
             event.port_app_config = MagicMock(include_authenticated_user=False)
             result = await builder.build(files)
 

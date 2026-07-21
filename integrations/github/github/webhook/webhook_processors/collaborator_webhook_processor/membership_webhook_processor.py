@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 from loguru import logger
 
-from github.clients.client_factory import create_github_client_for_org
+from github.clients.client_factory import create_github_client
 from github.core.exporters.team_exporter import (
     RestTeamExporter,
 )
@@ -74,7 +74,7 @@ class CollaboratorMembershipWebhookProcessor(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = await create_github_client_for_org(organization)
+        rest_client = create_github_client()
         team_exporter = RestTeamExporter(rest_client)
 
         repositories = []

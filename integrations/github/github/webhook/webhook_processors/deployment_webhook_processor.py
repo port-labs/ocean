@@ -1,6 +1,6 @@
 from loguru import logger
 from github.helpers.utils import ObjectKind
-from github.clients.client_factory import create_github_client_for_org
+from github.clients.client_factory import create_github_client
 
 from github.core.options import SingleDeploymentOptions
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -51,7 +51,7 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        client = await create_github_client_for_org(organization)
+        client = create_github_client()
         deployment_exporter = RestDeploymentExporter(client)
         data_to_upsert = await deployment_exporter.get_resource(
             SingleDeploymentOptions(
