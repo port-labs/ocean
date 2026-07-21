@@ -77,15 +77,9 @@ def mock_port_client() -> MagicMock:
 def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[UpdateRepoExternalCustomPropertiesExecutor, None, None]:
-    with (
-        patch(
-            "github.actions.abstract_github_executor.create_github_client_for_org",
-            new=AsyncMock(return_value=mock_rest_client),
-        ),
-        patch(
-            "github.actions.abstract_github_executor.create_github_client_for_discovery",
-            new=AsyncMock(return_value=mock_rest_client),
-        ),
+    with patch(
+        "github.actions.abstract_github_executor.create_github_client_for_org",
+        new=AsyncMock(return_value=mock_rest_client),
     ):
         yield UpdateRepoExternalCustomPropertiesExecutor()
 

@@ -132,18 +132,14 @@ class TestTeamWebhookProcessor:
             mock_rest_client = AsyncMock()
             mock_graphql_client = AsyncMock()
 
-            def create_client_side_effect(
-                organization: str, client_type: GithubClientType = GithubClientType.REST
-            ) -> AsyncMock:
-                return (
-                    mock_graphql_client
-                    if client_type == GithubClientType.GRAPHQL
-                    else mock_rest_client
-                )
-
             with (
                 patch(
-                    "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org"
+                    "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org",
+                    side_effect=lambda organization, client_type=GithubClientType.REST: (
+                        mock_graphql_client
+                        if client_type == GithubClientType.GRAPHQL
+                        else mock_rest_client
+                    ),
                 ) as mock_create_client,
                 patch(
                     "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
@@ -154,7 +150,6 @@ class TestTeamWebhookProcessor:
                     new=mock_graphql_get_resource,
                 ),
             ):
-                mock_create_client.side_effect = create_client_side_effect
                 result = await team_webhook_processor.handle_event(
                     payload, resource_config
                 )
@@ -250,18 +245,14 @@ class TestTeamWebhookProcessor:
         mock_rest_client = AsyncMock()
         mock_graphql_client = AsyncMock()
 
-        def create_client_side_effect(
-            organization: str, client_type: GithubClientType = GithubClientType.REST
-        ) -> AsyncMock:
-            return (
-                mock_graphql_client
-                if client_type == GithubClientType.GRAPHQL
-                else mock_rest_client
-            )
-
         with (
             patch(
-                "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org"
+                "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org",
+                side_effect=lambda organization, client_type=GithubClientType.REST: (
+                    mock_graphql_client
+                    if client_type == GithubClientType.GRAPHQL
+                    else mock_rest_client
+                ),
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
@@ -280,7 +271,6 @@ class TestTeamWebhookProcessor:
                 new=mock_enrich_saml,
             ),
         ):
-            mock_create_client.side_effect = create_client_side_effect
             result = await team_webhook_processor.handle_event(payload, resource_config)
 
         assert isinstance(result, WebhookEventRawResults)

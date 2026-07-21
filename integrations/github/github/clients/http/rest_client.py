@@ -39,6 +39,7 @@ class GithubRestClient(AbstractGithubClient):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         ignored_errors: Optional[List[IgnoredError]] = None,
+        fallback_queries: Optional[List[str]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Handle GitHub's pagination for API requests."""
         if params is None:

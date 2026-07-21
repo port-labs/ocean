@@ -179,6 +179,15 @@ class AbstractGithubClient(ABC):
         """Get current rate limit status for monitoring."""
         return self.rate_limiter.rate_limit_info
 
+    def build_graphql_payload(
+        self,
+        query: str,
+        variables: Dict[str, Any],
+        page_size: int = 25,
+        cursor: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        raise NotImplementedError
+
     @abstractmethod
     def send_paginated_request(
         self,
@@ -186,6 +195,7 @@ class AbstractGithubClient(ABC):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         ignored_errors: Optional[List[IgnoredError]] = None,
+        fallback_queries: Optional[List[str]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Send a paginated request to GitHub API and yield results.
 

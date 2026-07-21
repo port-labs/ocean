@@ -1,5 +1,6 @@
+from github.clients.auth import get_auth_provider
 from github.clients.client_factory import (
-    create_github_client_for_discovery,
+    create_github_client,
     create_github_client_for_org,
 )
 from github.clients.http.rest_client import GithubRestClient
@@ -13,8 +14,12 @@ class AbstractGithubExecutor(AbstractExecutor):
     async def get_rest_client(self, organization: str) -> GithubRestClient:
         return await create_github_client_for_org(organization)
 
+    async def _get_rate_limit_client(self) -> GithubRestClient:
+        authenticators = await get_auth_provider().list_authenticators()
+        return create_github_client(authenticators[0])
+
     async def is_close_to_rate_limit(self) -> bool:
-        client = await create_github_client_for_discovery()
+        client = await self._get_rate_limit_client()
         info = client.get_rate_limit_status()
         if not info:
             return False
@@ -22,7 +27,7 @@ class AbstractGithubExecutor(AbstractExecutor):
         return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW
 
     async def get_remaining_seconds_until_rate_limit(self) -> float:
-        client = await create_github_client_for_discovery()
+        client = await self._get_rate_limit_client()
         info = client.get_rate_limit_status()
         if not info:
             return 0

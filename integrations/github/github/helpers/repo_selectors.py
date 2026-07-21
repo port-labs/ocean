@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import (
     Any,
-    AsyncGenerator,
     AsyncIterator,
     Dict,
     List,
@@ -9,23 +8,18 @@ from typing import (
     Tuple,
     TYPE_CHECKING,
     Protocol,
-    cast,
 )
 
 from loguru import logger
 
 
-from github.core.options import (
-    ListOrganizationOptions,
-    ListRepositoryOptions,
-)
+from github.core.options import ListRepositoryOptions
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import get_repository_metadata
-from port_ocean.context.event import event
 
 
 if TYPE_CHECKING:
-    from integration import RepositoryBranchMapping, GithubPortAppConfig
+    from integration import RepositoryBranchMapping
 
 
 class RepoListSelector(Protocol):
@@ -141,30 +135,3 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
                 selector, repo_exporter, org_login, org_type
             ):
                 yield result
-
-
-class OrganizationLoginAndTypeGenerator:
-    """Helper to iterate organizations for a selector.
-
-    Wraps the exporter pagination to yield organization logins for a specific
-    organization or for all accessible organizations when not provided.
-    """
-
-    def __init__(self, org_exporter: AbstractGithubExporter[Any]):
-        self.org_exporter = org_exporter
-
-    async def __call__(
-        self, organization: Optional[str]
-    ) -> AsyncGenerator[Tuple[str, str], None]:
-        port_app_config = cast("GithubPortAppConfig", event.port_app_config)
-        org_options: ListOrganizationOptions = {
-            "include_authenticated_user": port_app_config.include_authenticated_user
-        }
-        if organization:
-            org_options.update({"organization": organization})
-
-        async for batch in self.org_exporter.get_paginated_resources(org_options):
-            if not batch or not any(batch):
-                continue
-            for org in batch:
-                yield org["login"], org["type"]
