@@ -7,7 +7,6 @@ from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import OrganizationRequiredException
 from port_ocean.context.event import event_context
 
-
 TEST_ORG = {
     "id": 12345,
     "login": "test-org",
