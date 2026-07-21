@@ -6,6 +6,8 @@ from typing import Any
 from gitlab.webhook.webhook_factory._base_webhook_factory import BaseWebhookFactory
 from gitlab.webhook.events import EventConfig
 
+STATIC_WEBHOOK_URL = "https://app.example.com/integration/webhook"
+
 
 @pytest.mark.asyncio
 class TestBaseWebhookFactory:
@@ -49,14 +51,12 @@ class TestBaseWebhookFactory:
         monkeypatch.setattr(concrete_factory, "_exists", exists_mock)
 
         # Test with matching URL
-        exists = await concrete_factory._exists(
-            "https://app.example.com/hook/123", "groups/123/hooks"
-        )
+        exists = await concrete_factory._exists(STATIC_WEBHOOK_URL, "groups/123/hooks")
         assert exists is True
 
         # Test with non-matching URL
         exists = await concrete_factory._exists(
-            "https://app.example.com/hook/456", "groups/123/hooks"
+            "https://app.example.com/integration/hook/123", "groups/123/hooks"
         )
         assert exists is False
 
@@ -66,10 +66,8 @@ class TestBaseWebhookFactory:
         mock_events: MagicMock,
     ) -> None:
         """Test building webhook payload"""
-        payload = concrete_factory._build_payload(
-            "https://app.example.com/hook/123", mock_events
-        )
-        assert payload["url"] == "https://app.example.com/hook/123"
+        payload = concrete_factory._build_payload(STATIC_WEBHOOK_URL, mock_events)
+        assert payload["url"] == STATIC_WEBHOOK_URL
         assert payload["push_events"] is True
         assert payload["merge_requests_events"] is True
         assert payload["issues_events"] is True
@@ -78,8 +76,8 @@ class TestBaseWebhookFactory:
         self, concrete_factory: BaseWebhookFactory[EventConfig]
     ) -> None:
         """Test webhook response validation"""
-        valid_response = {"id": 1, "url": "https://app.example.com/hook/123"}
-        invalid_response1 = {"url": "https://app.example.com/hook/123"}
+        valid_response = {"id": 1, "url": STATIC_WEBHOOK_URL}
+        invalid_response1 = {"url": STATIC_WEBHOOK_URL}
         invalid_response2 = {"id": 1}
         empty_response: dict[str, Any] = {}
 
@@ -98,16 +96,12 @@ class TestBaseWebhookFactory:
         monkeypatch.setattr(
             concrete_factory,
             "_send_request",
-            AsyncMock(
-                return_value={"id": 1, "url": "https://app.example.com/hook/123"}
-            ),
+            AsyncMock(return_value={"id": 1, "url": STATIC_WEBHOOK_URL}),
         )
 
-        response = await concrete_factory.create(
-            "https://app.example.com/hook/123", "groups/123/hooks"
-        )
+        response = await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
         assert response["id"] == 1
-        assert response["url"] == "https://app.example.com/hook/123"
+        assert response["url"] == STATIC_WEBHOOK_URL
 
     async def test_create_webhook_already_exists(
         self,
@@ -117,9 +111,7 @@ class TestBaseWebhookFactory:
         """Test webhook creation when webhook already exists"""
         monkeypatch.setattr(concrete_factory, "_exists", AsyncMock(return_value=True))
 
-        response = await concrete_factory.create(
-            "https://app.example.com/hook/123", "groups/123/hooks"
-        )
+        response = await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
         assert response == {}
 
     async def test_create_webhook_failure(
@@ -136,9 +128,7 @@ class TestBaseWebhookFactory:
         )
 
         with pytest.raises(Exception):
-            await concrete_factory.create(
-                "https://app.example.com/hook/123", "groups/123/hooks"
-            )
+            await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
 
     async def test_create_webhook_skips_when_token_lacks_resource_access(
         self,
@@ -158,8 +148,6 @@ class TestBaseWebhookFactory:
             ),
         )
 
-        response = await concrete_factory.create(
-            "https://app.example.com/hook/123", "groups/123/hooks"
-        )
+        response = await concrete_factory.create(STATIC_WEBHOOK_URL, "groups/123/hooks")
 
         assert response == {}
