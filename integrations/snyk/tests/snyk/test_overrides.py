@@ -1,4 +1,5 @@
 import pytest
+from typing import Literal
 from pydantic.v1 import ValidationError
 from snyk.overrides import (
     SnykTargetAPIQueryParams,
@@ -295,22 +296,31 @@ def test_target_selector_api_query_params_combined_filters() -> None:
 
 
 @pytest.mark.parametrize(
-    "field, values, expected",
+    "status, effective_severity_level, expected_key, expected_value",
     [
-        ("status", ["open", "resolved"], "open,resolved"),
+        (["open", "resolved"], None, "status", "open,resolved"),
         (
-            "effective_severity_level",
+            None,
             ["critical", "high", "medium"],
+            "effective_severity_level",
             "critical,high,medium",
         ),
-        ("status", ["open"], "open"),  # single-element, no trailing comma
+        (["open"], None, "status", "open"),
     ],
 )
 def test_generate_query_params_joins_list_values_with_commas(
-    field: str, values: list, expected: str
+    status: list[Literal["open", "resolved"]] | None,
+    effective_severity_level: (
+        list[Literal["info", "low", "medium", "high", "critical"]] | None
+    ),
+    expected_key: str,
+    expected_value: str,
 ) -> None:
-    params = SnykVulnerabilityAPIQueryParams(**{field: values})
-    assert params.generate_query_params()[field] == expected
+    params = SnykVulnerabilityAPIQueryParams(
+        status=status,
+        effective_severity_level=effective_severity_level,
+    )
+    assert params.generate_query_params()[expected_key] == expected_value
 
 
 @pytest.mark.parametrize("value", [True, False])
@@ -323,8 +333,8 @@ def test_generate_query_params_preserves_boolean_values_not_stringified(
     assert isinstance(result["exclude_empty"], bool)
 
 
-@pytest.mark.parametrize("field", ["status", "effective_severity_level"])
-def test_generate_query_params_excludes_empty_lists(field: str) -> None:
-    """Empty list must be omitted, sending 'status=' is not equivalent to no filter."""
-    params = SnykVulnerabilityAPIQueryParams(**{field: []})
-    assert field not in params.generate_query_params()
+def test_generate_query_params_excludes_empty_lists() -> None:
+    params = SnykVulnerabilityAPIQueryParams(status=[], effective_severity_level=[])
+    result = params.generate_query_params()
+    assert "status" not in result
+    assert "effective_severity_level" not in result
