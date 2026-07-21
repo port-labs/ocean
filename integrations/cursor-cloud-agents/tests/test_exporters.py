@@ -181,3 +181,23 @@ async def test_runs_exporter_continues_when_usage_fetch_fails() -> None:
     batches = [batch async for batch in exporter.get_paginated_resources()]
 
     assert batches == [[{"id": "run-1", "agentId": "bc-1"}]]
+
+
+@pytest.mark.asyncio
+async def test_runs_exporter_sets_agent_id_when_missing() -> None:
+    client_mock = MagicMock()
+
+    def _paginate(
+        path: str, items_key: str, params: dict[str, Any] | None = None, **_: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if path == V1_AGENTS:
+            return _aiter([[{"id": "bc-1"}]])
+        return _aiter([[{"id": "run-1"}]])
+
+    client_mock.paginate_by_cursor.side_effect = _paginate
+    client_mock.send_api_request = AsyncMock(return_value={"runs": []})
+    exporter = RunsExporter(client_mock)
+
+    batches = [batch async for batch in exporter.get_paginated_resources()]
+
+    assert batches == [[{"id": "run-1", "agentId": "bc-1"}]]

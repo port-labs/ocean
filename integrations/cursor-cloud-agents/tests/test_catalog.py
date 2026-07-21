@@ -6,6 +6,7 @@ import pytest
 from core.catalog import (
     enrich_v0_agent_raw_for_catalog,
     fetch_run_raw_for_catalog,
+    fetch_usage_by_run_id,
     normalize_agent_raw_for_catalog,
 )
 
@@ -76,10 +77,12 @@ def test_normalize_agent_raw_preserves_v1_statuses() -> None:
 @pytest.mark.asyncio
 async def test_fetch_run_raw_for_catalog_attaches_usage() -> None:
     client = MagicMock()
-    client.send_api_request = AsyncMock(
-        side_effect=[
-            {"id": "run-1", "status": "FINISHED", "agentId": "bc-1"},
-            {
+
+    async def _send_api_request(
+        method: str, path: str, **kwargs: object
+    ) -> dict[str, object]:
+        if path.endswith("/usage"):
+            return {
                 "runs": [
                     {
                         "id": "run-1",
@@ -90,9 +93,10 @@ async def test_fetch_run_raw_for_catalog_attaches_usage() -> None:
                         },
                     }
                 ]
-            },
-        ]
-    )
+            }
+        return {"id": "run-1", "status": "FINISHED", "agentId": "bc-1"}
+
+    client.send_api_request = AsyncMock(side_effect=_send_api_request)
 
     run_raw = await fetch_run_raw_for_catalog(client, "bc-1", "run-1", status="ERROR")
 
@@ -108,9 +112,15 @@ async def test_fetch_run_raw_for_catalog_attaches_usage() -> None:
 @pytest.mark.asyncio
 async def test_fetch_run_raw_for_catalog_falls_back_to_webhook_fields() -> None:
     client = MagicMock()
-    client.send_api_request = AsyncMock(
-        side_effect=[RuntimeError("boom"), {"runs": []}]
-    )
+
+    async def _send_api_request(
+        method: str, path: str, **kwargs: object
+    ) -> dict[str, object]:
+        if path.endswith("/usage"):
+            return {"runs": []}
+        raise RuntimeError("boom")
+
+    client.send_api_request = AsyncMock(side_effect=_send_api_request)
     webhook_time = datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc)
 
     run_raw = await fetch_run_raw_for_catalog(
@@ -127,3 +137,31 @@ async def test_fetch_run_raw_for_catalog_falls_back_to_webhook_fields() -> None:
         "status": "FINISHED",
         "updatedAt": "2025-06-01T12:00:00Z",
     }
+
+
+@pytest.mark.asyncio
+async def test_fetch_usage_by_run_id_ignores_malformed_rows() -> None:
+    client = MagicMock()
+    client.send_api_request = AsyncMock(
+        return_value={
+            "runs": [
+                "bad-row",
+                {"id": "run-1", "usage": {"totalTokens": 10}},
+                {"usage": {"totalTokens": 20}},
+            ]
+        }
+    )
+
+    usage_by_run_id = await fetch_usage_by_run_id(client, "bc-1")
+
+    assert usage_by_run_id == {"run-1": {"totalTokens": 10}}
+
+
+@pytest.mark.asyncio
+async def test_fetch_usage_by_run_id_returns_empty_when_runs_not_list() -> None:
+    client = MagicMock()
+    client.send_api_request = AsyncMock(return_value={"runs": "bad"})
+
+    usage_by_run_id = await fetch_usage_by_run_id(client, "bc-1")
+
+    assert usage_by_run_id == {}

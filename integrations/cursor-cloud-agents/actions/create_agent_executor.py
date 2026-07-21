@@ -79,7 +79,12 @@ class CreateAgentExecutor(AbstractCursorExecutor):
             await self._create_v1(
                 run,
                 props.get("prompt"),
-                repository, ref, pr_url, model, auto_create_pr, config
+                repository,
+                ref,
+                pr_url,
+                model,
+                auto_create_pr,
+                config,
             )
 
     async def _launch_v0(

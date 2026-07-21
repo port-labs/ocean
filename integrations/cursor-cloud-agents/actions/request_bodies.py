@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, ValidationError, ValidationInfo, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    ValidationError,
+    ValidationInfo,
+    model_validator,
+)
 
 from actions.exceptions import InvalidActionParametersException
 

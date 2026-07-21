@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
@@ -127,11 +128,19 @@ async def fetch_usage_by_run_id(
             f"(runs will sync without usage): {error}"
         )
         return {}
-    return {
-        run_usage["id"]: run_usage["usage"]
-        for run_usage in usage_response.get("runs") or []
-        if run_usage.get("id") and run_usage.get("usage") is not None
-    }
+    runs = usage_response.get("runs")
+    if not isinstance(runs, list):
+        return {}
+
+    usage_by_run_id: dict[str, Any] = {}
+    for run_usage in runs:
+        if not isinstance(run_usage, dict):
+            continue
+        run_id = run_usage.get("id")
+        usage = run_usage.get("usage")
+        if isinstance(run_id, str) and run_id and usage is not None:
+            usage_by_run_id[run_id] = usage
+    return usage_by_run_id
 
 
 async def fetch_run_raw_for_catalog(
@@ -142,22 +151,28 @@ async def fetch_run_raw_for_catalog(
     status: str | None = None,
     updated_at: datetime | None = None,
 ) -> dict[str, Any]:
-    try:
-        run_raw = dict(
-            await client.send_api_request("GET", v1_agent_run(agent_id, run_id))
-        )
-    except Exception as error:
-        logger.warning(
-            f"Failed to fetch Cursor run {run_id} for agent {agent_id} "
-            f"(using webhook snapshot): {error}"
-        )
-        run_raw = {"id": run_id}
+    async def fetch_run_or_fallback() -> dict[str, Any]:
+        try:
+            return dict(
+                await client.send_api_request("GET", v1_agent_run(agent_id, run_id))
+            )
+        except Exception as error:
+            logger.warning(
+                f"Failed to fetch Cursor run {run_id} for agent {agent_id} "
+                f"(using webhook snapshot): {error}"
+            )
+            return {"id": run_id}
+
+    run_raw, usage_by_run_id = await asyncio.gather(
+        fetch_run_or_fallback(),
+        fetch_usage_by_run_id(client, agent_id),
+    )
     run_raw.setdefault("agentId", agent_id)
     if status is not None:
         run_raw.setdefault("status", status)
     if updated_at is not None:
         run_raw.setdefault("updatedAt", format_datetime_for_catalog(updated_at))
-    usage = (await fetch_usage_by_run_id(client, agent_id)).get(run_id)
+    usage = usage_by_run_id.get(run_id)
     if usage is not None:
         run_raw["usage"] = usage
     return run_raw

@@ -27,8 +27,9 @@ from webhook_processors.utils import (
 )
 
 # v0 webhook `status` values, mirroring `apps/workflow-service/.../postCursorCallback.ts`.
-_TERMINAL_STATUSES = {"FINISHED", "ERROR"}
-_SUCCESS_STATUSES = {"FINISHED"}
+# `CANCELLED` and `EXPIRED` are included defensively for blueprint parity even though
+# v0 webhooks today only emit `FINISHED` and `ERROR`.
+_TERMINAL_STATUSES = {"FINISHED", "ERROR", "CANCELLED", "EXPIRED"}
 
 
 class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
@@ -53,7 +54,8 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
         return WebhookProcessorType.ACTION
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("status") in _TERMINAL_STATUSES
+        status = event.payload.get("status")
+        return isinstance(status, str) and status in _TERMINAL_STATUSES
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return []
@@ -67,7 +69,7 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
         webhook_time = parse_webhook_timestamp(payload)
         cursor_run_id = await resolve_cursor_run_id_for_webhook(agent_id, webhook_time)
         run = await resolve_tracked_run(agent_id, cursor_run_id)
-        success = status in _SUCCESS_STATUSES
+        success = status == "FINISHED"
         summary = payload.get("summary")
 
         if run is None:

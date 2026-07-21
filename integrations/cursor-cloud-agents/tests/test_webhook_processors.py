@@ -102,11 +102,9 @@ def _patch_handle_event(mock_ocean: MagicMock, client_mock: MagicMock) -> ExitSt
 @pytest.mark.asyncio
 async def test_should_process_event_true_for_terminal_statuses() -> None:
     processor = _build_processor()
-    event = MagicMock(payload={"status": "FINISHED"})
-    assert await processor.should_process_event(event) is True
-
-    event = MagicMock(payload={"status": "ERROR"})
-    assert await processor.should_process_event(event) is True
+    for status in ("FINISHED", "ERROR", "CANCELLED", "EXPIRED"):
+        event = MagicMock(payload={"status": status})
+        assert await processor.should_process_event(event) is True
 
 
 @pytest.mark.asyncio
@@ -118,6 +116,13 @@ async def test_should_process_event_false_for_non_terminal_statuses() -> None:
 
 
 @pytest.mark.asyncio
+async def test_should_process_event_false_for_non_string_status() -> None:
+    processor = _build_processor()
+    event = MagicMock(payload={"status": {"code": "FINISHED"}})
+    assert await processor.should_process_event(event) is False
+
+
+@pytest.mark.asyncio
 async def test_validate_payload_requires_id_and_status() -> None:
     processor = _build_processor()
     assert (
@@ -125,6 +130,9 @@ async def test_validate_payload_requires_id_and_status() -> None:
     )
     assert await processor.validate_payload({"id": "bc-1"}) is False
     assert await processor.validate_payload({"status": "FINISHED"}) is False
+    assert await processor.validate_payload({"id": 123, "status": "FINISHED"}) is False
+    assert await processor.validate_payload({"id": "bc-1", "status": 123}) is False
+    assert await processor.validate_payload({"id": "", "status": "FINISHED"}) is False
 
 
 @pytest.mark.asyncio

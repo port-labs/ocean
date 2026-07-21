@@ -46,6 +46,8 @@ class TriggerAgentExecutor(AbstractCursorExecutor):
     async def execute(self, run: IntegrationRun) -> None:
         props = run.execution_properties
         agent_id = props.get("agentId")
+        if not isinstance(agent_id, str) or not agent_id:
+            raise InvalidActionParametersException("agentId is required")
 
         report_completion = bool(props.get("reportCompletion", False))
         config = props.get("config")

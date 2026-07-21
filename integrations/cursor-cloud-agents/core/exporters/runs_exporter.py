@@ -39,6 +39,7 @@ class RunsExporter(AbstractCursorExporter):
                     if not runs_batch:
                         continue
                     for run in runs_batch:
+                        run.setdefault("agentId", agent_id)
                         run_id = run.get("id")
                         usage = usage_by_run_id.get(run_id) if run_id else None
                         if usage is not None:

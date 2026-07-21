@@ -12,5 +12,7 @@ class AbstractCursorExporter(ABC):
         self.client = client
 
     @abstractmethod
-    def get_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        pass
+    def get_paginated_resources(
+        self, *, include_archived: bool = False
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise NotImplementedError

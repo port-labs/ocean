@@ -53,4 +53,11 @@ class AbstractCursorWebhookProcessor(AbstractWebhookProcessor):
         return verify_hmac_signature(secret, raw_body, signature)
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return bool(payload.get("id") and payload.get("status"))
+        agent_id = payload.get("id")
+        status = payload.get("status")
+        return (
+            isinstance(agent_id, str)
+            and bool(agent_id)
+            and isinstance(status, str)
+            and bool(status)
+        )
