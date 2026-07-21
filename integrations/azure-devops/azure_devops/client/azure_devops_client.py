@@ -1021,7 +1021,9 @@ class AzureDevopsClient(HTTPBaseClient):
         analytics_filter = build_pipeline_runs_analytics_filter(incremental_cursor)
         async for projects in self.generate_projects():
             for project in projects:
-                async for discoveries in self._discover_pipeline_runs_from_analytics_for_project(
+                async for (
+                    discoveries
+                ) in self._discover_pipeline_runs_from_analytics_for_project(
                     project["id"], analytics_filter
                 ):
                     enriched = await self._enrich_analytics_pipeline_run_discoveries(
@@ -1096,8 +1098,10 @@ class AzureDevopsClient(HTTPBaseClient):
         )
         enriched: list[dict[str, Any]] = []
         for result in results:
-            if isinstance(result, Exception):
-                logger.warning(f"Failed to enrich pipeline run from analytics: {result}")
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to enrich pipeline run from analytics: {result}"
+                )
                 continue
             if result:
                 enriched.append(result)

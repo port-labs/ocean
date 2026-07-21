@@ -359,9 +359,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
 async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     cursor = active_incremental_cursor()
-    async for deployments in resync.iter_release_deployments(
-        incremental_cursor=cursor
-    ):
+    async for deployments in resync.iter_release_deployments(incremental_cursor=cursor):
         logger.info(f"Fetched {len(deployments)} release deployments")
         yield deployments
 
@@ -415,9 +413,7 @@ async def incremental_resync_pipeline_runs(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     cursor = active_incremental_cursor()
-    async for runs in resync.iter_pipeline_runs_incremental(
-        incremental_cursor=cursor
-    ):
+    async for runs in resync.iter_pipeline_runs_incremental(incremental_cursor=cursor):
         logger.info(f"Incrementally resyncing {len(runs)} pipeline runs")
         yield runs
 

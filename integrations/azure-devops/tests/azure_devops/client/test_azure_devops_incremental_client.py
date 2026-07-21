@@ -119,9 +119,7 @@ async def test_fetch_work_item_id_batches_injects_changed_date_filter(
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, "port")
     captured_queries: list[str] = []
 
-    async def mock_send_request(
-        method: str, url: str, **kwargs: Any
-    ) -> Any:
+    async def mock_send_request(method: str, url: str, **kwargs: Any) -> Any:
         captured_queries.append(kwargs["data"])
         response = type("Resp", (), {})()
         response.json = lambda: {"workItems": []}
@@ -186,6 +184,7 @@ async def test_generate_pipeline_runs_incremental_queries_analytics_then_enriche
             "Pipeline": {"PipelineId": 15, "PipelineName": "ocean-incremental-hub"},
         }
     ]
+
     async def mock_generate_projects() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [project]
 

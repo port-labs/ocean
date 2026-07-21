@@ -60,10 +60,7 @@ def test_merge_advanced_security_incremental_noop_without_cursor() -> None:
 
 
 def test_wiql_changed_after_clause_uses_date_precision_only() -> None:
-    assert (
-        wiql_changed_after_clause(CURSOR)
-        == "[System.ChangedDate] >= '2026-06-01'"
-    )
+    assert wiql_changed_after_clause(CURSOR) == "[System.ChangedDate] >= '2026-06-01'"
 
 
 def test_flatten_advanced_security_params_expands_criteria() -> None:
