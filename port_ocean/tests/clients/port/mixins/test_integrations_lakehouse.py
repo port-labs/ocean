@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -19,6 +20,13 @@ from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse
 TEST_INTEGRATION_IDENTIFIER = "test-integration"
 TEST_INTEGRATION_VERSION = "1.0.0"
 TEST_INGEST_URL = "https://api.example.com"
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> Generator[MagicMock, None, None]:
+    with patch("port_ocean.helpers.async_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=False)
+        yield mock_ocean
 
 
 def _inner_http_transport(http_client: OceanAsyncClient) -> httpx.AsyncHTTPTransport:
@@ -596,6 +604,7 @@ async def test_post_integration_raw_data_batch_retries_503() -> None:
             "port_client": port_client,
             "retry_config": RetryConfig(max_attempts=3, base_delay=0.0),
         },
+        verify=True,
     )
     port_client.client = http_client
 
@@ -639,6 +648,7 @@ async def test_post_integration_raw_data_batch_retries_connect_error() -> None:
             "port_client": port_client,
             "retry_config": RetryConfig(max_attempts=3, base_delay=0.0),
         },
+        verify=True,
     )
     port_client.client = http_client
 
