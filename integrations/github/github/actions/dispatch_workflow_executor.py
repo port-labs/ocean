@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 from loguru import logger
 from github.actions.utils import build_external_id
-from github.context.auth import get_authenticated_actor
+from github.clients.auth import get_auth_provider
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
@@ -30,7 +30,6 @@ from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
 )
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-
 
 MAX_WORKFLOW_POLL_ATTEMPTS = 30
 WORKFLOW_POLL_DELAY_SECONDS = 2
@@ -164,7 +163,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         self, organization: str, repo: str, workflow: str, ref: str, iso_date: str
     ) -> dict[str, Any]:
         workflow_runs: list[dict[str, Any]] = []
-        actor = await get_authenticated_actor()
+        actor = await get_auth_provider().get_integration_actor()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
             response = await self.rest_client.send_api_request(

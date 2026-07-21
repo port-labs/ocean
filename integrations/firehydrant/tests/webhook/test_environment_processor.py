@@ -19,7 +19,6 @@ from webhook.webhook_processors.environment_webhook_processor import (
     EnvironmentWebhookProcessor,
 )
 
-
 ENVIRONMENT_PAYLOAD: dict[str, Any] = {
     "data": {
         "environments": [

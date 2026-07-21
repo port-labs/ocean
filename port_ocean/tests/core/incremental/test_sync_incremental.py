@@ -57,7 +57,6 @@ def mock_port_client() -> MagicMock:
     client = MagicMock()
     client.get_integration_cursor = AsyncMock(return_value=None)
     client.upsert_integration_cursor = AsyncMock()
-    client.delete_integration_cursors = AsyncMock()
     return client
 
 

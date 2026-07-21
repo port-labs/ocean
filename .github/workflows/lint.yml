@@ -17,13 +17,13 @@ jobs:
         folder: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install poetry
         run: pipx install 'poetry>=1.0.0,<2.0.0'
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: 'poetry'
@@ -31,10 +31,9 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         run: |
-          if [ "${{ matrix.folder }}" = "." ]; then
-            make install
-          elif [ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
-               [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]; then
+          if [ "${{ matrix.folder }}" != "." ] && \
+             ([ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
+              [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]); then
             make install/local-core
           else
             make install

@@ -9,7 +9,6 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleReleaseOptions, ListReleaseOptions
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_RELEASES = [
     {
         "id": 1,
