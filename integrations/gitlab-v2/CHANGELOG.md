@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.8.4 (2026-07-21)
 
 
-### Improvements
+### Bug Fixes
 
-- Switched GitLab webhooks to a static `/webhook` route for compatibility with Redis live events
+- Fix group search fallback to recognize multiple GitLab error messages when blob scope is unavailable
 
 
 ## 0.8.3 (2026-07-21)
