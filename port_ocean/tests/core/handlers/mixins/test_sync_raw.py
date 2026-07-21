@@ -1748,20 +1748,14 @@ async def test_sync_raw_all_dsp_notifies_resync_started_with_mapping(
         "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
         AsyncMock(return_value=True),
     ):
-        async with event_context(
-            EventType.RESYNC,
+        await mock_sync_raw_mixin.sync_raw_all(
             trigger_type="machine",
-            attributes={"resync_start_time": datetime.now(timezone.utc)},
-        ) as event:
-            event.port_app_config = mock_port_app_config
-            await mock_sync_raw_mixin.sync_raw_all(
-                trigger_type="machine",
-                user_agent_type=UserAgentType.exporter,
-            )
+            user_agent_type=UserAgentType.exporter,
+        )
 
     lifecycle_client.notify_resync_started.assert_awaited_once()
     call_kwargs = lifecycle_client.notify_resync_started.await_args.kwargs
-    assert call_kwargs["resync_id"] == event.id
+    assert call_kwargs["resync_id"] == mock_ocean.metrics.event_id
     assert call_kwargs["integration_id"] == "integration-id"
     assert call_kwargs["integration_type"] == "integration-type"
     assert call_kwargs["mapping"] == expected_mapping

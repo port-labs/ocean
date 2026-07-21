@@ -361,7 +361,7 @@ def test_to_dsp_lifecycle_mapping_leaves_array_mappings_unchanged() -> None:
         }
     )
 
-    with patch.object(config, "to_request", return_value=mapping):
+    with patch.object(PortAppConfig, "to_request", return_value=mapping):
         result = config.to_dsp_lifecycle_mapping()
 
     assert result["resources"][0]["port"]["entity"]["mappings"] == [
