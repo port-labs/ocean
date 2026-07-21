@@ -87,6 +87,16 @@ class AbstractExecutor(ABC):
         """
         pass
 
+    async def is_close_to_rate_limit_for_run(self, run: IntegrationRun) -> bool:
+        """
+        Check whether the action is approaching its rate limit for a specific run.
+
+        Override this when rate limit status depends on the run context, such as
+        the organization or account selected by the action. The default preserves
+        compatibility with executors that use a shared rate limit.
+        """
+        return await self.is_close_to_rate_limit()
+
     @abstractmethod
     async def get_remaining_seconds_until_rate_limit(self) -> float:
         """
@@ -110,6 +120,17 @@ class AbstractExecutor(ABC):
             ```
         """
         pass
+
+    async def get_remaining_seconds_until_rate_limit_for_run(
+        self, run: IntegrationRun
+    ) -> float:
+        """
+        Get the rate-limit wait time for a specific run.
+
+        Override this when rate limit status depends on the run context. The
+        default preserves compatibility with executors that use a shared rate limit.
+        """
+        return await self.get_remaining_seconds_until_rate_limit()
 
     @abstractmethod
     async def execute(self, run: IntegrationRun) -> None:
