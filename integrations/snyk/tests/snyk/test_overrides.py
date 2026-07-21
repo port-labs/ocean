@@ -28,8 +28,8 @@ def test_generate_query_params_preserves_list_values() -> None:
         environment=["frontend", "backend"],
     )
     result = params.generate_query_params()
-    assert result["lifecycle"] == ["production", "development"]
-    assert result["environment"] == ["frontend", "backend"]
+    assert result["lifecycle"] == "production,development"
+    assert result["environment"] == "frontend,backend"
 
 
 def test_generate_query_params_preserves_scalar_values() -> None:
@@ -44,7 +44,7 @@ def test_generate_query_params_preserves_scalar_values() -> None:
 def test_merge_with_combines_params_and_extras() -> None:
     params = SnykVulnerabilityAPIQueryParams(status=["open"])
     result = params.merge_with({"version": "2024-06-21", "scan_item.id": "abc"})
-    assert result["status"] == ["open"]
+    assert result["status"] == "open"
     assert result["version"] == "2024-06-21"
     assert result["scan_item.id"] == "abc"
 
@@ -79,7 +79,7 @@ def test_vulnerability_date_filter_rejects_invalid_formats(value: str) -> None:
 def test_merge_with_params_take_precedence_over_extra_values() -> None:
     params = SnykVulnerabilityAPIQueryParams(status=["open"])
     result = params.merge_with({"status": "resolved"})
-    assert result["status"] == ["open"]
+    assert result["status"] == "open"
 
 
 def test_policy_generate_query_params_excludes_unset_fields() -> None:
@@ -99,7 +99,7 @@ def test_policy_generate_query_params_preserves_scalar_search() -> None:
 
 def test_policy_generate_query_params_preserves_list_review() -> None:
     params = SnykPolicyAPIQueryParams(review=["pending", "approved"])
-    assert params.generate_query_params()["review"] == ["pending", "approved"]
+    assert params.generate_query_params()["review"] == "pending,approved"
 
 
 def test_policy_generate_query_params_preserves_bool_expires_never() -> None:
@@ -165,7 +165,7 @@ def test_policy_merge_with_combines_params_and_extras() -> None:
     params = SnykPolicyAPIQueryParams(search="alice@example.com", review=["pending"])
     result = params.merge_with({"version": "2024-01-01"})
     assert result["search"] == "alice@example.com"
-    assert result["review"] == ["pending"]
+    assert result["review"] == "pending"
     assert result["version"] == "2024-01-01"
 
 
@@ -292,3 +292,39 @@ def test_target_selector_api_query_params_combined_filters() -> None:
     assert result["exclude_empty"] is False
     assert result["is_private"] is False
     assert result["display_name"] == "snyk-fixtures"
+
+
+@pytest.mark.parametrize(
+    "field, values, expected",
+    [
+        ("status", ["open", "resolved"], "open,resolved"),
+        (
+            "effective_severity_level",
+            ["critical", "high", "medium"],
+            "critical,high,medium",
+        ),
+        ("status", ["open"], "open"),  # single-element, no trailing comma
+    ],
+)
+def test_generate_query_params_joins_list_values_with_commas(
+    field: str, values: list, expected: str
+) -> None:
+    params = SnykVulnerabilityAPIQueryParams(**{field: values})
+    assert params.generate_query_params()[field] == expected
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_generate_query_params_preserves_boolean_values_not_stringified(
+    value: bool,
+) -> None:
+    """str(True) produces 'True' not 'true', booleans must stay as booleans."""
+    result = SnykTargetAPIQueryParams(exclude_empty=value).generate_query_params()
+    assert result["exclude_empty"] is value
+    assert isinstance(result["exclude_empty"], bool)
+
+
+@pytest.mark.parametrize("field", ["status", "effective_severity_level"])
+def test_generate_query_params_excludes_empty_lists(field: str) -> None:
+    """Empty list must be omitted, sending 'status=' is not equivalent to no filter."""
+    params = SnykVulnerabilityAPIQueryParams(**{field: []})
+    assert field not in params.generate_query_params()

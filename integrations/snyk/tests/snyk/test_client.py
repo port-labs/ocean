@@ -221,7 +221,7 @@ async def test_get_paginated_issues_merges_api_params_with_base_version(
     assert len(captured_query_params) == 1
     params = captured_query_params[0]
     assert params["version"] == snyk_client.snyk_api_version
-    assert params["status"] == ["open"]
+    assert params["status"] == "open"
 
 
 @pytest.mark.asyncio
@@ -519,7 +519,7 @@ async def test_get_paginated_policies_merges_api_params_with_version(
     params = captured_query_params[0]
     assert params["version"] == snyk_client.snyk_api_version
     assert params["search"] == "wont-fix"
-    assert params["review"] == ["pending"]
+    assert params["review"] == "pending"
 
 
 @pytest.mark.asyncio
