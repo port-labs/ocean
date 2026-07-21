@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.4 (2026-07-21)
+
+
+### Improvements
+
+- Switched GitLab webhooks to a static `/webhook` route for compatibility with Redis live events
+
+
 ## 0.8.3 (2026-07-21)
 
 
