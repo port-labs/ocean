@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "azure-devops"
-version = "0.10.24"
+version = "0.10.26"
 description = "An Azure Devops Ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.45.4", extras = ["cli"]}
+port_ocean = {version = "^0.45.5", extras = ["cli"]}
 braceexpand = "^0.1.7"
 wcmatch = "^10.1"
 azure-core = "^1.32.0"
@@ -15,16 +15,17 @@ aiohttp = "^3.10.11"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
-#port_ocean = { path = '../../', develop = true, extras = ['all'] }
-black = "^24.4.2"
+# port_ocean = { path = '../../', develop = true, extras = ['all'] }
+black = "^26.5.1"
 mypy = "^1.3.0"
 pylint = ">=2.17.4,<4.0.0"
-pytest = ">=8.2,<9.0"
+pytest = "^9.1.1"
 pytest-asyncio = ">=0.24.0"
 pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+yamllint = "^1.37.1"
 types-PyYAML = "^6.0.0"
 
 [tool.towncrier]

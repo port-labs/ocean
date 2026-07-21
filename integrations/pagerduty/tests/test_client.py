@@ -7,7 +7,6 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from clients.pagerduty import PagerDutyClient
 from clients.rate_limiter import PagerDutyDailyRateLimitExceededError
 
-
 TEST_INTEGRATION_CONFIG: dict[str, str] = {
     "token": "mock-token",
     "api_url": "https://api.pagerduty.com",

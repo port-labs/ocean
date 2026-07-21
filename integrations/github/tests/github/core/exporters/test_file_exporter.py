@@ -28,7 +28,6 @@ from typing import AsyncGenerator, List, Dict, Any
 
 from integration import GithubFilePattern, RepositoryBranchMapping
 
-
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
 

@@ -19,9 +19,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         IgnoredError(status=409, message="empty repository"),
     ]
 
-    async def get_resource[
-        ExporterOptionsT: SingleFolderOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleFolderOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
         raise NotImplementedError
 
     @cache_coroutine_result()
@@ -33,9 +33,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         )
         return tree.get("tree", [])
 
-    async def get_paginated_resources[
-        ExporterOptionsT: List[ListFolderOptions]
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: List[ListFolderOptions]](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Search for folders across repositories and fetch their trees."""
 
         for repo_opts in options:

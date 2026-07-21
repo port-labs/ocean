@@ -107,7 +107,7 @@ class IssuesHandler:
 
     @staticmethod
     async def _extract_issues(
-        response: dict[Any, Any]
+        response: dict[Any, Any],
     ) -> Tuple[Optional[str], list[dict[Any, Any]]]:
         """Extract issues from the response. used by send_paginated_graph_api_request"""
         results = (
