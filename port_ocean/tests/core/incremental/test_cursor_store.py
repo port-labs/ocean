@@ -13,7 +13,6 @@ def mock_port_client() -> MagicMock:
     client = MagicMock()
     client.get_integration_cursor = AsyncMock(return_value=None)
     client.upsert_integration_cursor = AsyncMock()
-    client.delete_integration_cursors = AsyncMock()
     return client
 
 
@@ -72,13 +71,3 @@ class TestCursorStoreSave:
         mock_port_client.upsert_integration_cursor.assert_called_once_with(
             "build", 2, cursor
         )
-
-
-class TestCursorStoreDeleteAll:
-    async def test_delegates_to_delete_integration_cursors(
-        self,
-        cursor_store: CursorStore,
-        mock_port_client: MagicMock,
-    ) -> None:
-        await cursor_store.delete_all()
-        mock_port_client.delete_integration_cursors.assert_called_once()
