@@ -11,7 +11,7 @@ from port_ocean.utils.async_iterators import (
 )
 
 from datadog.client import DatadogClient
-from datadog.utils import ORG_ID_ENRICHMENT_KEY, enrich_batch
+from datadog.utils import ORG_ID_ENRICHMENT_KEY, ORG_NAME_ENRICHMENT_KEY, enrich_batch
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
 from integration import ObjectKind
@@ -54,7 +54,7 @@ MAX_CONCURRENT_CLIENTS = 100
 async def _resync_across_orgs(
     build_iterator: Callable[[DatadogClient], ASYNC_GENERATOR_RESYNC_TYPE],
     context: str,
-    enrich_with_org_id: bool = True,
+    enrich_with_org_identity: bool = True,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     manager = get_client_manager()
 
@@ -65,11 +65,13 @@ async def _resync_across_orgs(
     ) -> Callable[[], ASYNC_GENERATOR_RESYNC_TYPE]:
         async def iterator() -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for batch in build_iterator(client):
-                if enrich_with_org_id and manager.is_multi_org:
+                if enrich_with_org_identity and manager.is_multi_org:
                     enrich_batch(
                         batch,
-                        enrichment_key=ORG_ID_ENRICHMENT_KEY,
-                        enrichment_data=client.org_id,
+                        enrichments={
+                            ORG_ID_ENRICHMENT_KEY: client.org_id,
+                            ORG_NAME_ENRICHMENT_KEY: client.org_name,
+                        },
                     )
                 yield batch
 
@@ -203,7 +205,7 @@ async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for orgs in _resync_across_orgs(
         lambda client: OrgExporter(client).get_paginated_resources(),
         context="Organization exporter",
-        enrich_with_org_id=False,
+        enrich_with_org_identity=False,
     ):
         yield orgs
 
