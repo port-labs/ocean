@@ -4,6 +4,10 @@ from typing import Any, Callable, cast
 from loguru import logger
 
 from github.actions.registry import register_actions_executors
+from github.clients.auth import get_auth_provider
+from github.clients.auth.abstract_authenticator import (
+    AbstractGitHubAuthenticator,
+)
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -20,11 +24,8 @@ from github.core.exporters.team_exporter import (
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.registry import register_live_events_webhooks
 from github.core.exporters.file_exporter.utils import FilePatternMappingBuilder
-from github.clients.auth import get_auth_provider
-from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.client_factory import (
     create_github_client,
-    create_github_client_for_org,
 )
 from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
@@ -60,6 +61,7 @@ from github.core.exporters.folder_exporter import (
 )
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.exporters.organization_exporter import RestOrganizationExporter
+from github.clients.utils import get_github_organizations
 
 from github.core.options import (
     ListBranchOptions,
@@ -118,7 +120,7 @@ from github.enrichments.included_files import (
 )
 
 MAX_CONCURRENT_REPOS = 10
-MAX_CONCURRENT_AUTHENTICATORS = 100
+MAX_CONCURRENT_AUTHENTICATORS = 10
 
 
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
@@ -161,7 +163,9 @@ async def on_start() -> None:
     for authenticator in await get_auth_provider().list_authenticators():
         rest_client = create_github_client(authenticator)
         org_exporter = RestOrganizationExporter(rest_client)
-        async for organizations in org_exporter.get_paginated_resources():
+        async for organizations in org_exporter.get_paginated_resources(
+            get_github_organizations(authenticator.organization)
+        ):
             logger.info(
                 f"Subscribing to GitHub webhooks for {len(organizations)} organizations"
             )
@@ -204,14 +208,16 @@ def _resync_per_authenticator(
 @ocean.on_resync(ObjectKind.ORGANIZATION)
 @_resync_per_authenticator
 async def resync_organizations(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all organizations the Personal Access Token user is a member of."""
 
     rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    exporter = RestOrganizationExporter(rest_client)
+
+    async for organizations in exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         logger.info(f"Received {len(organizations)} batch {kind}s")
         yield organizations
 
@@ -219,89 +225,75 @@ async def resync_organizations(
 @ocean.on_resync(ObjectKind.REPOSITORY)
 @_resync_per_authenticator
 async def resync_repositories(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories across organizations."""
 
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relations = repo_config.selector.normalized_relations
     included_files = repo_config.selector.included_files or []
+    included_files_enricher = (
+        IncludedFilesEnricher(
+            client=rest_client,
+            strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
+        )
+        if included_files
+        else None
+    )
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
-
-        async def get_organization_repositories(
-            org: dict[str, Any],
-        ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-            org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            included_files_enricher = (
-                IncludedFilesEnricher(
-                    client=rest_client,
-                    strategy=RepositoryIncludedFilesStrategy(
-                        included_files=included_files
-                    ),
-                )
-                if included_files
-                else None
-            )
-            async for repositories in RestRepositoryExporter(
-                rest_client
-            ).get_paginated_resources(
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
+        tasks = (
+            RestRepositoryExporter(rest_client).get_paginated_resources(
                 options=ListRepositoryOptions(
-                    organization=org_name,
+                    organization=org["login"],
                     organization_type=org["type"],
                     type=port_app_config.repository_type,
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                 )
-            ):
-                if included_files_enricher:
-                    repositories = await included_files_enricher.enrich_batch(
-                        repositories
-                    )
-                yield repositories
-
-        tasks = [get_organization_repositories(org) for org in organizations]
+            )
+            for org in organizations
+        )
         async for repositories in stream_async_iterators_tasks(*tasks):
+            if included_files_enricher:
+                repositories = await included_files_enricher.enrich_batch(repositories)
             yield repositories
 
 
 @ocean.on_resync(ObjectKind.USER)
 @_resync_per_authenticator
 async def resync_users(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all users across organizations."""
 
+    rest_client = create_github_client(authenticator)
+    graphql_client = create_github_client(authenticator, GithubClientType.GRAPHQL)
+    org_exporter = RestOrganizationExporter(rest_client)
+    exporter = GraphQLUserExporter(graphql_client)
     config = cast(GithubUserConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         tasks = []
         for org in organizations:
             if org["type"] == "Organization":
-                org_name = org["login"]
-                graphql_client = await create_github_client_for_org(
-                    org_name, GithubClientType.GRAPHQL
-                )
-                exporter = GraphQLUserExporter(graphql_client)
                 tasks.append(
                     exporter.get_paginated_resources(
                         options=ListUserOptions(
-                            organization=org_name,
+                            organization=org["login"],
                             include_saml_email=config.selector.include_saml_email,
                         )
                     )
                 )
                 continue
 
-            rest_client = await create_github_client_for_org(org["login"])
             if not org.get("email"):
                 org = await enrich_user_with_primary_email(rest_client, org)
             yield [org]
@@ -314,22 +306,25 @@ async def resync_users(
 @ocean.on_resync(ObjectKind.TEAM)
 @_resync_per_authenticator
 async def resync_teams(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all teams across organizations."""
+
+    rest_client = create_github_client(authenticator)
+    graphql_client = create_github_client(authenticator, GithubClientType.GRAPHQL)
+
+    org_exporter = RestOrganizationExporter(rest_client)
 
     config = cast(GithubTeamConfig, event.resource_config)
     selector = config.selector
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         tasks = []
         for org in organizations:
             if org["type"] == "Organization":
                 org_name = org["login"]
-                rest_client = await create_github_client_for_org(org_name)
                 rest_exporter = RestTeamExporter(rest_client)
 
                 tasks.append(
@@ -344,10 +339,6 @@ async def resync_teams(
         if tasks:
             async for org_name, teams in stream_async_iterators_tasks(*tasks):
                 if selector.members:
-                    graphql_client = await create_github_client_for_org(
-                        org_name, GithubClientType.GRAPHQL
-                    )
-                    rest_client = await create_github_client_for_org(org_name)
                     graphql_exporter = GraphQLTeamWithMembersExporter(graphql_client)
                     teams = await graphql_exporter._enrich_team_with_extras(
                         teams,
@@ -374,20 +365,21 @@ async def resync_teams(
 @ocean.on_resync(ObjectKind.WORKFLOW)
 @_resync_per_authenticator
 async def resync_workflows(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all workflows for specified Github repositories"""
-
-    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubWorkflowConfig, event.resource_config)
+    logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    config = cast(GithubWorkflowConfig, event.resource_config)
+
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
             repo_exporter = RestRepositoryExporter(rest_client)
             workflow_exporter = RestWorkflowExporter(rest_client)
 
@@ -418,23 +410,25 @@ async def resync_workflows(
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
 @_resync_per_authenticator
 async def resync_workflow_runs(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all workflow runs for specified Github repositories"""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    workflow_exporter = RestWorkflowExporter(rest_client)
+    workflow_run_exporter = RestWorkflowRunExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowRunConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repo_exporter = RestRepositoryExporter(rest_client)
-            workflow_exporter = RestWorkflowExporter(rest_client)
-            workflow_run_exporter = RestWorkflowRunExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -490,33 +484,32 @@ async def resync_workflow_runs(
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 @_resync_per_authenticator
 async def resync_pull_requests(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
 
+    rest_client = create_github_client(authenticator)
+    graphql_client = create_github_client(authenticator, GithubClientType.GRAPHQL)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
+    pull_request_exporter: AbstractGithubExporter[Any] = (
+        GraphQLPullRequestExporter(graphql_client)
+        if is_graphql_api
+        else RestPullRequestExporter(rest_client)
+    )
 
     fetch_errors: list[Exception] = []
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            graphql_client = await create_github_client_for_org(
-                org_name, GithubClientType.GRAPHQL
-            )
-            repository_exporter = RestRepositoryExporter(rest_client)
-            pull_request_exporter: AbstractGithubExporter[Any] = (
-                GraphQLPullRequestExporter(graphql_client)
-                if is_graphql_api
-                else RestPullRequestExporter(rest_client)
-            )
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -572,22 +565,24 @@ async def resync_pull_requests(
 @ocean.on_resync(ObjectKind.ISSUE)
 @_resync_per_authenticator
 async def resync_issues(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all issues from repositories."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    issue_exporter = RestIssueExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubIssueConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            issue_exporter = RestIssueExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -618,22 +613,24 @@ async def resync_issues(
 @ocean.on_resync(ObjectKind.RELEASE)
 @_resync_per_authenticator
 async def resync_releases(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all releases in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    release_exporter = RestReleaseExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubReleaseConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            release_exporter = RestReleaseExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -661,22 +658,24 @@ async def resync_releases(
 @ocean.on_resync(ObjectKind.TAG)
 @_resync_per_authenticator
 async def resync_tags(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all tags in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    tag_exporter = RestTagExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubTagConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            tag_exporter = RestTagExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -692,9 +691,7 @@ async def resync_tags(
                     tasks.append(
                         tag_exporter.get_paginated_resources(
                             ListTagOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                repo=repo,
+                                organization=org_name, repo_name=repo["name"], repo=repo
                             )
                         )
                     )
@@ -706,22 +703,24 @@ async def resync_tags(
 @ocean.on_resync(ObjectKind.BRANCH)
 @_resync_per_authenticator
 async def resync_branches(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all branches in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    branch_exporter = RestBranchExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     selector = cast(GithubBranchConfig, event.resource_config).selector
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            branch_exporter = RestBranchExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -761,22 +760,24 @@ async def resync_branches(
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
 @_resync_per_authenticator
 async def resync_environments(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all environments in the organization."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    environment_exporter = RestEnvironmentExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubEnvironmentConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            environment_exporter = RestEnvironmentExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -805,22 +806,24 @@ async def resync_environments(
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
 @_resync_per_authenticator
 async def resync_deployments(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all deployments in the organization."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    deployment_exporter = RestDeploymentExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            deployment_exporter = RestDeploymentExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -852,10 +855,16 @@ async def resync_deployments(
 @ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
 @_resync_per_authenticator
 async def resync_deployment_statuses(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all deployment statuses in the organization."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    deployment_exporter = RestDeploymentExporter(rest_client)
+    deployment_status_exporter = RestDeploymentStatusExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentStatusConfig, event.resource_config)
@@ -865,15 +874,11 @@ async def resync_deployment_statuses(
         f"task={config.selector.task}, environment={config.selector.environment}"
     )
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            deployment_exporter = RestDeploymentExporter(rest_client)
-            deployment_status_exporter = RestDeploymentStatusExporter(rest_client)
             org_type = org["type"]
             logger.debug(f"Processing organization: {org_name} (type={org_type})")
 
@@ -929,22 +934,24 @@ async def resync_deployment_statuses(
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
 @_resync_per_authenticator
 async def resync_dependabot_alerts(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all Dependabot alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDependabotAlertConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
 
             repo_options = ListRepositoryOptions(
                 organization=org_name,
@@ -977,22 +984,24 @@ async def resync_dependabot_alerts(
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
 @_resync_per_authenticator
 async def resync_code_scanning_alerts(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all code scanning alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -1023,22 +1032,21 @@ async def resync_code_scanning_alerts(
 @ocean.on_resync(ObjectKind.FOLDER)
 @_resync_per_authenticator
 async def resync_folders(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all folders in specified repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    folder_exporter = RestFolderExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
-    app_config = cast(GithubPortAppConfig, event.port_app_config)
     should_enrich_with_included_files = any(
         folder_sel.included_files for folder_sel in selector.folders
     )
     should_enrich_with_included_files = should_enrich_with_included_files or bool(
         selector.included_files
     )
-
-    rest_client = create_github_client(authenticator)
-    folder_exporter = RestFolderExporter(rest_client)
     included_files_enricher = (
         IncludedFilesEnricher(
             client=rest_client,
@@ -1050,8 +1058,11 @@ async def resync_folders(
         if should_enrich_with_included_files
         else None
     )
+
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+
     pattern_builder = FolderPatternMappingBuilder(
         org_exporter=org_exporter,
         repo_exporter=repo_exporter,
@@ -1068,19 +1079,19 @@ async def resync_folders(
 @ocean.on_resync(ObjectKind.FILE)
 @_resync_per_authenticator
 async def resync_files(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration using the file exporter."""
-
-    config = cast(GithubFileResourceConfig, event.resource_config)
-    app_config = cast(GithubPortAppConfig, event.port_app_config)
-    should_enrich_with_included_files = bool(config.selector.included_files)
+    logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     file_exporter = RestFileExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
+
+    config = cast(GithubFileResourceConfig, event.resource_config)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+    should_enrich_with_included_files = bool(config.selector.included_files)
     included_files_enricher = (
         IncludedFilesEnricher(
             client=rest_client,
@@ -1091,6 +1102,7 @@ async def resync_files(
         if should_enrich_with_included_files
         else None
     )
+
     pattern_builder = FilePatternMappingBuilder(
         org_exporter=org_exporter,
         repo_exporter=repo_exporter,
@@ -1107,22 +1119,24 @@ async def resync_files(
 @ocean.on_resync(ObjectKind.COLLABORATOR)
 @_resync_per_authenticator
 async def resync_collaborators(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all collaborators in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    collaborator_exporter = RestCollaboratorExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCollaboratorConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            collaborator_exporter = RestCollaboratorExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -1152,24 +1166,24 @@ async def resync_collaborators(
 @ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
 @_resync_per_authenticator
 async def resync_secret_scanning_alerts(
-    kind: str,
-    authenticator: AbstractGitHubAuthenticator,
+    kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all secret scanning alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    secret_scanning_alert_exporter = RestSecretScanningAlertExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
 
-    rest_client = create_github_client(authenticator)
-    org_exporter = RestOrganizationExporter(rest_client)
-    async for organizations in org_exporter.get_paginated_resources():
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations(authenticator.organization)
+    ):
         for org in organizations:
             org_name = org["login"]
-            rest_client = await create_github_client_for_org(org_name)
-            repository_exporter = RestRepositoryExporter(rest_client)
-            secret_scanning_alert_exporter = RestSecretScanningAlertExporter(
-                rest_client
-            )
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],

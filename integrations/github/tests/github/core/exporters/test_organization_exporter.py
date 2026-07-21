@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.core.exporters.organization_exporter import RestOrganizationExporter
 from github.core.options import ListOrganizationOptions
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.event import event_context
 
@@ -25,7 +26,9 @@ TEST_ORGS = [
 
 @pytest.fixture
 def unscoped_client(rest_client: GithubRestClient) -> GithubRestClient:
-    rest_client.authenticator = MagicMock(spec=[])
+    authenticator = MagicMock(spec=AbstractGitHubAuthenticator)
+    authenticator.organization = None
+    rest_client.authenticator = authenticator
     return rest_client
 
 
@@ -82,6 +85,53 @@ class TestRestOrganizationExporter:
                 mock_request.assert_called_once_with(
                     f"{unscoped_client.base_url}/users/test-org"
                 )
+
+    async def test_get_paginated_resources_scopes_each_authenticator_to_its_organization(
+        self,
+        unscoped_client: GithubRestClient,
+    ) -> None:
+        first_client = GithubRestClient(
+            github_host=unscoped_client.base_url,
+            authenticator=MagicMock(organization="test1"),
+        )
+        second_client = GithubRestClient(
+            github_host=unscoped_client.base_url,
+            authenticator=MagicMock(organization="test2"),
+        )
+
+        with (
+            patch.object(
+                first_client, "send_api_request", new_callable=AsyncMock
+            ) as first_request,
+            patch.object(
+                second_client, "send_api_request", new_callable=AsyncMock
+            ) as second_request,
+        ):
+            first_request.return_value = {**TEST_ORG, "login": "test1"}
+            second_request.return_value = {**TEST_ORG, "login": "test2"}
+
+            async with event_context("test_event"):
+                first_batches = [
+                    batch
+                    async for batch in RestOrganizationExporter(
+                        first_client
+                    ).get_paginated_resources(
+                        ListOrganizationOptions(organization="test1")
+                    )
+                ]
+                second_batches = [
+                    batch
+                    async for batch in RestOrganizationExporter(
+                        second_client
+                    ).get_paginated_resources(
+                        ListOrganizationOptions(organization="test2")
+                    )
+                ]
+
+        assert first_batches == [[{**TEST_ORG, "login": "test1"}]]
+        assert second_batches == [[{**TEST_ORG, "login": "test2"}]]
+        first_request.assert_called_once_with(f"{first_client.base_url}/users/test1")
+        second_request.assert_called_once_with(f"{second_client.base_url}/users/test2")
 
     async def test_get_paginated_resources_respects_allowed_multi_organizations(
         self,

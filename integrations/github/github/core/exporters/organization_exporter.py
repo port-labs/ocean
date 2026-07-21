@@ -40,11 +40,8 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         """
         logger.info("Fetching organizations")
 
-        resolved_options = (
-            get_github_organizations(self.client.authenticator.organization)
-            if options is None
-            else options
-        )
+        resolved_options = get_github_organizations() if options is None else options
+
         allowed_multi_organizations: List[str] = resolved_options.get(
             "allowed_multi_organizations", []
         )
