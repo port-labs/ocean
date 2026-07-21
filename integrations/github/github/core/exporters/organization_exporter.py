@@ -40,7 +40,11 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         """
         logger.info("Fetching organizations")
 
-        resolved_options = get_github_organizations() if options is None else options
+        resolved_options = (
+            get_github_organizations(self.client.authenticator.organization)
+            if options is None
+            else options
+        )
         allowed_multi_organizations: List[str] = resolved_options.get(
             "allowed_multi_organizations", []
         )
@@ -48,7 +52,14 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
             "include_authenticated_user", False
         )
 
-        if organization := resolved_options.organization:
+        organization = resolved_options.get("organization")
+        if organization:
+            if (
+                allowed_multi_organizations
+                and organization not in allowed_multi_organizations
+            ):
+                return
+
             logger.info(f"Fetching single organization {organization}")
             yield [
                 await self.client.send_api_request(

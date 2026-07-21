@@ -36,14 +36,11 @@ class MatchedFile:
 class CheckRuns:
     """Handles GitHub check run operations for file validation."""
 
-    async def _get_client(self, organization: str) -> AbstractGithubClient:
-        return await create_github_client_for_org(organization)
-
     async def create_validation_check(
         self, organization: str, repo_name: str, head_sha: str
     ) -> str:
         """Create a new check run for validation."""
-        client = await self._get_client(organization)
+        client = await create_github_client_for_org(organization)
         endpoint = f"{client.base_url}/repos/{organization}/{repo_name}/check-runs"
 
         payload = {
@@ -84,7 +81,7 @@ class CheckRuns:
         details: str,
     ) -> None:
         """Update check run with results."""
-        client = await self._get_client(organization)
+        client = await create_github_client_for_org(organization)
         endpoint = f"{client.base_url}/repos/{organization}/{repo_name}/check-runs/{check_run_id}"
 
         payload = {

@@ -2,10 +2,6 @@ from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
-from github.clients.auth.github_app.installation_authenticator import (
-    GitHubAppInstallationAuthenticator,
-)
 from github.core.exporters.organization_exporter import RestOrganizationExporter
 from github.core.options import ListOrganizationOptions
 from github.clients.http.rest_client import GithubRestClient
@@ -31,22 +27,6 @@ TEST_ORGS = [
 def unscoped_client(rest_client: GithubRestClient) -> GithubRestClient:
     rest_client.authenticator = MagicMock(spec=[])
     return rest_client
-
-
-@pytest.fixture
-def installation_client(rest_client: GithubRestClient) -> GithubRestClient:
-    return GithubRestClient(
-        github_host=rest_client.base_url,
-        authenticator=GitHubAppInstallationAuthenticator(
-            app_auth=GitHubAppAuthenticator(
-                app_id="app1",
-                private_key="key1",
-                github_host=rest_client.base_url,
-            ),
-            organization="installed-org",
-            installation_id="123",
-        ),
-    )
 
 
 @pytest.mark.asyncio
@@ -81,17 +61,20 @@ class TestRestOrganizationExporter:
         exporter = RestOrganizationExporter(unscoped_client)
         unscoped_client.authenticator = MagicMock(organization="test-org")
 
-        with patch.object(
-            unscoped_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_request:
+        with (
+            patch(
+                "github.core.exporters.organization_exporter.get_github_organizations",
+                return_value=ListOrganizationOptions(organization="test-org"),
+            ),
+            patch.object(
+                unscoped_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_request,
+        ):
             mock_request.return_value = TEST_ORG
 
             async with event_context("test_event"):
                 orgs: list[list[dict[str, Any]]] = [
-                    batch
-                    async for batch in exporter.get_paginated_resources(
-                        ListOrganizationOptions()
-                    )
+                    batch async for batch in exporter.get_paginated_resources()
                 ]
 
                 assert len(orgs) == 1
@@ -100,43 +83,19 @@ class TestRestOrganizationExporter:
                     f"{unscoped_client.base_url}/users/test-org"
                 )
 
-    async def test_get_paginated_resources_uses_client_authenticator_scope(
-        self,
-        installation_client: GithubRestClient,
-    ) -> None:
-        exporter = RestOrganizationExporter(installation_client)
-
-        with patch.object(
-            installation_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.return_value = {**TEST_ORG, "login": "installed-org"}
-
-            async with event_context("test_event"):
-                orgs: list[list[dict[str, Any]]] = [
-                    batch
-                    async for batch in exporter.get_paginated_resources(
-                        ListOrganizationOptions()
-                    )
-                ]
-
-                assert len(orgs) == 1
-                assert orgs[0][0]["login"] == "installed-org"
-                mock_request.assert_called_once_with(
-                    f"{installation_client.base_url}/users/installed-org"
-                )
-
     async def test_get_paginated_resources_respects_allowed_multi_organizations(
         self,
-        installation_client: GithubRestClient,
+        unscoped_client: GithubRestClient,
     ) -> None:
-        exporter = RestOrganizationExporter(installation_client)
+        exporter = RestOrganizationExporter(unscoped_client)
 
         with patch.object(
-            installation_client, "send_api_request", new_callable=AsyncMock
+            unscoped_client, "send_api_request", new_callable=AsyncMock
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListOrganizationOptions(
-                    allowed_multi_organizations=["other-org"]
+                    organization="installed-org",
+                    allowed_multi_organizations=["other-org"],
                 )
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
