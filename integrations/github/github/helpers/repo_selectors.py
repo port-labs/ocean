@@ -23,7 +23,6 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import get_repository_metadata
 from port_ocean.context.event import event
 
-
 if TYPE_CHECKING:
     from integration import RepositoryBranchMapping, GithubPortAppConfig
 

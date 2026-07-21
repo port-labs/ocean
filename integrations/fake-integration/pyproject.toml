@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fake-integration"
-version = "0.1.296-dev"
+version = "0.1.297-dev"
 description = "A useless fake integration that helps us test the Ocean Core"
 authors = ["Erik Zaadi <erik@getport.io>"]
 
@@ -12,17 +12,18 @@ faker = "^28.0.0"
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
 # port_ocean = { path = '../../', develop = true, extras = ['all'] }
-black = "^24.4.2"
+black = "^26.5.1"
 mypy = "^1.3.0"
 pre-commit = "^3.7.1"
 pylint = "^2.17.4"
-pytest = ">=8.2,<9.0"
+pytest = "^9.1.1"
 pytest-asyncio = ">=0.24.0"
 pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 requests = "^2.32.3"
 ruff = "^0.0.278"
 towncrier = "^23.6.0"
+yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"
