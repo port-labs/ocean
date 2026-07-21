@@ -613,14 +613,16 @@ async def test_post_integration_raw_data_batch_retries_503() -> None:
         httpx.Response(200, request=request),
     ]
 
+    mock_handle_async_request = AsyncMock(side_effect=responses)
+
     with (
-        patch.object(inner, "handle_async_request", AsyncMock(side_effect=responses)),
+        patch.object(inner, "handle_async_request", mock_handle_async_request),
         patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
     ):
         event = make_single_entry_lakehouse_batch([{"id": "1"}], kind="repo", index=0)
         await port_client.post_integration_raw_data_batch("sync-1", event)
 
-    assert inner.handle_async_request.await_count == 2
+    assert mock_handle_async_request.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -655,11 +657,13 @@ async def test_post_integration_raw_data_batch_retries_connect_error() -> None:
         httpx.Response(200, request=request),
     ]
 
+    mock_handle_async_request = AsyncMock(side_effect=responses)
+
     with (
-        patch.object(inner, "handle_async_request", AsyncMock(side_effect=responses)),
+        patch.object(inner, "handle_async_request", mock_handle_async_request),
         patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
     ):
         event = make_single_entry_lakehouse_batch([{"id": "1"}], kind="repo", index=0)
         await port_client.post_integration_raw_data_batch("sync-1", event)
 
-    assert inner.handle_async_request.await_count == 2
+    assert mock_handle_async_request.await_count == 2
