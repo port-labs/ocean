@@ -18,6 +18,7 @@ from azure_devops.misc import (
     AzureDevopsFolderResourceConfig,
     Kind,
     create_closed_pull_request_search_criteria,
+    create_incremental_pull_request_search_criteria,
 )
 from azure_devops.webhooks.setup import setup_webhooks_for_all_orgs
 from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
@@ -83,6 +84,7 @@ from integration import (
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
@@ -183,11 +185,20 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield pipelines
 
 
+@ocean.on_incremental_resync(Kind.PULL_REQUEST)
 @ocean.on_resync(Kind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(
         AzureDevopsPullRequestResourceConfig, event.resource_config
     ).selector
+    cursor = active_incremental_cursor()
+
+    if cursor is not None:
+        for search_filter in create_incremental_pull_request_search_criteria(cursor):
+            async for pull_requests in resync.iter_pull_requests(search_filter):
+                logger.info(f"Resyncing {len(pull_requests)} pull_requests")
+                yield pull_requests
+        return
 
     async for pull_requests in resync.iter_pull_requests(
         ACTIVE_PULL_REQUEST_SEARCH_CRITERIA
@@ -266,12 +277,15 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield policies
 
 
+@ocean.on_incremental_resync(Kind.WORK_ITEM)
 @ocean.on_resync(Kind.WORK_ITEM)
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
+    cursor = active_incremental_cursor()
     async for work_items in resync.iter_work_items(
         wiql=config.selector.wiql,
         expand=config.selector.expand,
+        incremental_cursor=cursor,
     ):
         logger.info(f"Resyncing {len(work_items)} work items")
         yield work_items
@@ -291,11 +305,14 @@ async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield boards
 
 
+@ocean.on_incremental_resync(Kind.RELEASE)
 @ocean.on_resync(Kind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsReleaseConfig, event.resource_config)
+    cursor = active_incremental_cursor()
     async for releases in resync.iter_releases(
-        additional_params=config.selector.to_params()
+        additional_params=config.selector.to_params(),
+        incremental_cursor=cursor,
     ):
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases
@@ -311,11 +328,14 @@ async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield definitions
 
 
+@ocean.on_incremental_resync(Kind.BUILD)
 @ocean.on_resync(Kind.BUILD)
 async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsBuildConfig, event.resource_config)
+    cursor = active_incremental_cursor()
     async for builds in resync.iter_builds(
-        enrich_with_first_commit=config.selector.enrich_with_first_commit
+        enrich_with_first_commit=config.selector.enrich_with_first_commit,
+        incremental_cursor=cursor,
     ):
         logger.info(f"Resyncing {len(builds)} builds")
         yield builds
@@ -335,9 +355,11 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield environments
 
 
+@ocean.on_incremental_resync(Kind.RELEASE_DEPLOYMENT)
 @ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
 async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for deployments in resync.iter_release_deployments():
+    cursor = active_incremental_cursor()
+    async for deployments in resync.iter_release_deployments(incremental_cursor=cursor):
         logger.info(f"Fetched {len(deployments)} release deployments")
         yield deployments
 
@@ -386,6 +408,16 @@ async def resync_pipeline_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield runs
 
 
+@ocean.on_incremental_resync(Kind.PIPELINE_RUN)
+async def incremental_resync_pipeline_runs(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    cursor = active_incremental_cursor()
+    async for runs in resync.iter_pipeline_runs_incremental(incremental_cursor=cursor):
+        logger.info(f"Incrementally resyncing {len(runs)} pipeline runs")
+        yield runs
+
+
 @ocean.on_start()
 async def setup_webhooks() -> None:
     await setup_webhooks_for_all_orgs()
@@ -418,11 +450,15 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_incremental_resync(Kind.TEST_RUN)
 @ocean.on_resync(Kind.TEST_RUN)
 async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
+    cursor = active_incremental_cursor()
     async for test_runs in resync.iter_test_runs(
-        selector.include_results, selector.code_coverage
+        selector.include_results,
+        selector.code_coverage,
+        incremental_cursor=cursor,
     ):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs
@@ -443,16 +479,20 @@ async def resync_area_paths(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield area_paths
 
 
+@ocean.on_incremental_resync(Kind.ADVANCED_SECURITY_ALERT)
 @ocean.on_resync(Kind.ADVANCED_SECURITY_ALERT)
 async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(
         AzureDevopsAdvancedSecurityResourceConfig, event.resource_config
     ).selector
+    cursor = active_incremental_cursor()
     params: dict[str, Any] = {}
     if selector.criteria:
         params = selector.criteria.as_params
 
-    async for security_alerts in resync.iter_advanced_security_alerts(params):
+    async for security_alerts in resync.iter_advanced_security_alerts(
+        params, incremental_cursor=cursor
+    ):
         logger.info(f"Resyncing {len(security_alerts)} security alerts")
         yield security_alerts
 

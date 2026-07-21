@@ -51,15 +51,17 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
-        options_dict = dict(options)
+        organization = options["organization"]
+        repo_name = options["repo_name"]
+        workflow_id = options["workflow_id"]
+        max_runs = options["max_runs"]
+
+        options_dict: dict[str, Any] = dict(options)
         incremental_cursor = options_dict.pop("incremental_cursor", None)
         if incremental_cursor is not None:
             options_dict.update(
                 WORKFLOW_RUN_INCREMENTAL.build_params(incremental_cursor)
             )
-        organization = options_dict["organization"]
-        repo_name = options_dict["repo_name"]
-        workflow_id = options_dict["workflow_id"]
 
         url = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/workflows/{workflow_id}/runs"
         fetched_batch = 0
@@ -83,9 +85,9 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             yield batch
 
             fetched_batch = fetched_batch + len(workflow_runs)
-            if fetched_batch >= options_dict["max_runs"]:
+            if fetched_batch >= max_runs:
                 logger.info(
-                    f"Reached maximum limit of {options_dict['max_runs']} workflow runs"
+                    f"Reached maximum limit of {max_runs} workflow runs"
                     f"for workflow {workflow_id} in {repo_name} from {organization}"
                 )
                 return

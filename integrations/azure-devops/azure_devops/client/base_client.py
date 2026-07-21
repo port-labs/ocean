@@ -14,6 +14,7 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RETRY_AFTER_HEADER,
 )
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
+from azure_devops.misc import is_advanced_security_alerts_list_url
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
@@ -67,6 +68,20 @@ class HTTPBaseClient:
                     params=params,
                     headers=headers,
                 )
+                if response.status_code == 404:
+                    logger.warning(
+                        f"Couldn't access url: {url}. Failed due to 404 error"
+                    )
+                    return None
+                if (
+                    response.status_code == 400
+                    and is_advanced_security_alerts_list_url(url)
+                ):
+                    logger.warning(
+                        f"Skipping Advanced Security alerts for {url}: "
+                        "GHAS not enabled or repository not onboarded (HTTP 400)"
+                    )
+                    return None
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
             if response.status_code == 404:

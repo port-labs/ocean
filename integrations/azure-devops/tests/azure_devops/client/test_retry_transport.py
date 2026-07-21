@@ -194,3 +194,33 @@ class TestAzureDevOpsRetryTransport:
         assert len(requests_seen) == 2
         assert rate_limiter._throttle_until == 1000.0 + ADO_RATE_LIMIT_WINDOW_SECONDS
         sleep.assert_awaited_once_with(ADO_RATE_LIMIT_WINDOW_SECONDS)
+
+    @pytest.mark.asyncio
+    async def test_handle_async_request_does_not_retry_advsec_alerts_list_400(
+        self,
+    ) -> None:
+        requests_seen: list[httpx.Request] = []
+        advsec_url = (
+            "https://advsec.dev.azure.com/org/project/_apis/alert/"
+            "repositories/repo-id/alerts"
+        )
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            requests_seen.append(request)
+            return httpx.Response(400, request=request, text="GHAS not enabled")
+
+        transport = AzureDevOpsRetryTransport(
+            wrapped_transport=httpx.MockTransport(handler),
+            retry_config=RetryConfig(max_attempts=10),
+        )
+
+        with patch(
+            "port_ocean.helpers.retry.asyncio.sleep", new_callable=AsyncMock
+        ) as sleep:
+            response = await transport.handle_async_request(
+                httpx.Request("GET", advsec_url)
+            )
+
+        assert response.status_code == 400
+        assert len(requests_seen) == 1
+        sleep.assert_not_awaited()

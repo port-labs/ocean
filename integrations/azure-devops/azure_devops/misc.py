@@ -61,6 +61,20 @@ def create_closed_pull_request_search_criteria(
     ]
 
 
+def create_incremental_pull_request_search_criteria(
+    cursor: datetime,
+) -> list[dict[str, Any]]:
+    """Build PR search filters for incremental sync (cursor overrides selector min_time)."""
+    return [
+        {
+            **ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
+            "searchCriteria.minTime": cursor,
+            "searchCriteria.queryTimeRangeType": "created",
+        },
+        *create_closed_pull_request_search_criteria(cursor),
+    ]
+
+
 ORG_URL_FIELD = "__organizationUrl"
 ORG_NAME_FIELD = "__organizationName"
 
@@ -148,3 +162,7 @@ class AzureDevopsFolderResourceConfig(ResourceConfig):
         title="Folder selector",
         description="Selector for the folder resource.",
     )
+
+
+def is_advanced_security_alerts_list_url(url: str) -> bool:
+    return "advsec." in url and "/alert/repositories/" in url and "/alerts" in url
