@@ -24,6 +24,7 @@ from port_ocean.version import __version__
 def mock_ocean_context() -> Generator[MagicMock, None, None]:
     with patch("port_ocean.helpers.async_client.ocean") as mock_ocean:
         mock_ocean.app.is_saas = MagicMock(return_value=False)
+        mock_ocean.config.disable_ip_outbound_blocker = True
         yield mock_ocean
 
 
