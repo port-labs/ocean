@@ -1,7 +1,7 @@
 """Tests for DispatchWorkflowExecutor."""
 
 from typing import Any, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -84,6 +84,26 @@ def executor(
 
 
 class TestDispatchWorkflowExecutor:
+    @pytest.mark.asyncio
+    async def test_rate_limit_uses_run_organization(
+        self, mock_rest_client: MagicMock
+    ) -> None:
+        run = make_run({"org": "port-labs"})
+        mock_rest_client.get_rate_limit_status.return_value = MagicMock(
+            remaining=19, seconds_until_reset=42
+        )
+
+        with patch(
+            "github.actions.abstract_github_executor.create_github_client_for_org",
+            new=AsyncMock(return_value=mock_rest_client),
+        ) as create_client:
+            executor = DispatchWorkflowExecutor()
+
+            assert await executor.is_close_to_rate_limit(run) is True
+            assert await executor.get_remaining_seconds_until_rate_limit(run) == 42
+
+        create_client.assert_has_awaits([call("port-labs"), call("port-labs")])
+
     @pytest.mark.asyncio
     async def test_happy_path(
         self,
