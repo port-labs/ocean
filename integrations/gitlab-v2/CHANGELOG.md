@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replaces the parameterized webhook route /hook/{group_id} with a static /webhook path
 
+## 0.8.5 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
 ## 0.8.4 (2026-07-21)
 
 
