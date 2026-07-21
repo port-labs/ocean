@@ -5,7 +5,9 @@ from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
-from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.installation_authenticator import (
+    GitHubAppInstallationAuthenticator,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
@@ -30,9 +32,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "pages": "_enrich_repository_with_pages",
     }
 
-    async def get_resource[
-        ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
         name = options["name"]
         organization = options["organization"]
         included_relations = options.get("included_relations")
@@ -57,9 +59,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             organization,
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListRepositoryOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
         options_dict = dict(options)
@@ -101,7 +103,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         )
         is_personal_account = organization_type == "User"
         is_github_app_authenticated = isinstance(
-            self.client.authenticator, GitHubAppAuthenticator
+            self.client.authenticator, GitHubAppInstallationAuthenticator
         )
 
         use_search_api = search_params is not None or (
