@@ -156,7 +156,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        incremental_cursor = params.pop("incremental_cursor", None)
+        params.pop("incremental_cursor", None)
         repository_type = params.pop("type")
         forced_qualifiers = (
             ["fork:true", f"is:{repository_type}"] if search_params is None else []
