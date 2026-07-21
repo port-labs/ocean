@@ -461,7 +461,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     files_cache: dict[str, dict[str, Any]] = {}
-    found_any_files = False
 
     async def _enrich_and_yield(
         files_batch: list[dict[str, Any]],
@@ -478,61 +477,23 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 file_entity["__includedFiles"] = files_cache[repo_key]
         return enriched_batch
 
-    should_use_project_search = search_strategy == "projectSearch" and not repositories
+    params = (
+        build_project_params(include_only_active_projects=include_only_active_groups)
+        if search_strategy in ("projectSearch", "repositoryTree")
+        else build_group_params(include_only_active_groups=include_only_active_groups)
+    )
 
-    if should_use_project_search:
-        logger.info(
-            f"Using project-level file search for path pattern '{search_path}' "
-            "based on selector searchStrategy."
-        )
-        logger.info(
-            "Project-level file search scans accessible projects according to "
-            "the file selector filters because no file repositories were explicitly configured."
-        )
-        params = build_project_params(
-            include_only_active_projects=include_only_active_groups
-        )
-        search_iter = client.search_files_in_projects(
-            scope, search_path, skip_parsing, params
-        )
-    else:
-        level = (
-            f"repository-level file search across {len(repositories)} configured repositories"
-            if repositories
-            else "group-level file search"
-        )
-        logger.info(f"Using {level} for path pattern '{search_path}'.")
-        search_iter = client.search_files(
-            scope,
-            search_path,
-            repositories,
-            skip_parsing,
-            build_group_params(include_only_active_groups=include_only_active_groups),
-        )
-
-    async for files_batch in search_iter:
+    async for files_batch in client.search_files(
+        scope,
+        search_path,
+        skip_parsing=skip_parsing,
+        repositories=repositories,
+        params=params,
+        strategy=search_strategy,
+    ):
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
-            found_any_files = True
             yield enriched_batch
-
-    if not should_use_project_search and not found_any_files and not repositories:
-        logger.info(
-            "Group-level file search returned no results. "
-            "Falling back to project-level file search."
-        )
-        params = build_project_params(
-            include_only_active_projects=include_only_active_groups
-        )
-        async for files_batch in client.search_files_in_projects(
-            scope,
-            search_path,
-            skip_parsing,
-            params,
-        ):
-            enriched_batch = await _enrich_and_yield(files_batch)
-            if enriched_batch:
-                yield enriched_batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)

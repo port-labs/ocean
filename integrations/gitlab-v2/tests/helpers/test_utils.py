@@ -34,49 +34,49 @@ class TestUtils:
 
 class TestBuildSearchQuery:
     def test_single_filename(self) -> None:
-        assert build_search_query("readme.md") == "readme.md filename:readme.md"
+        assert build_search_query("readme.md").to_query_string() == "readme.md filename:readme.md"
 
     def test_single_filename_no_extension(self) -> None:
-        assert build_search_query("Makefile") == "Makefile filename:Makefile"
+        assert build_search_query("Makefile").to_query_string() == "Makefile filename:Makefile"
 
     def test_simple_path(self) -> None:
         assert (
-            build_search_query("home/file.yaml")
+            build_search_query("home/file.yaml").to_query_string()
             == "file.yaml path:home filename:file.yaml"
         )
 
     def test_wildcard_path(self) -> None:
         assert (
-            build_search_query("home/*/file.yaml")
+            build_search_query("home/*/file.yaml").to_query_string()
             == "file.yaml path:home/* filename:file.yaml"
         )
 
     def test_nested_path(self) -> None:
         assert (
-            build_search_query("src/config/settings.json")
+            build_search_query("src/config/settings.json").to_query_string()
             == "settings.json path:src/config filename:settings.json"
         )
 
     def test_glob_filename(self) -> None:
-        assert build_search_query("*.yaml") == ".yaml filename:*.yaml"
+        assert build_search_query("*.yaml").to_query_string() == ".yaml filename:*.yaml"
 
     def test_glob_filename_in_path(self) -> None:
         assert (
-            build_search_query("home/directory/*.txt")
+            build_search_query("home/directory/*.txt").to_query_string()
             == ".txt path:home/directory filename:*.txt"
         )
 
     def test_glob_in_path_and_filename(self) -> None:
-        assert build_search_query("home/*/*.txt") == ".txt path:home/* filename:*.txt"
+        assert build_search_query("home/*/*.txt").to_query_string() == ".txt path:home/* filename:*.txt"
 
     def test_dotfile_single(self) -> None:
         assert (
-            build_search_query(".gitlab-ci.yml")
+            build_search_query(".gitlab-ci.yml").to_query_string()
             == ".gitlab-ci.yml filename:.gitlab-ci.yml"
         )
 
     def test_dotfile_in_path(self) -> None:
         assert (
-            build_search_query("ci/.gitlab-ci.yml")
+            build_search_query("ci/.gitlab-ci.yml").to_query_string()
             == ".gitlab-ci.yml path:ci filename:.gitlab-ci.yml"
         )

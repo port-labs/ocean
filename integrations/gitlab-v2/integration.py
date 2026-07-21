@@ -341,14 +341,14 @@ class FilesSelector(BaseModel):
         description="Skip parsing the files and just return the raw file content",
         title="Skip Parsing",
     )
-    search_strategy: Literal["groupSearch", "projectSearch"] = Field(
+    search_strategy: Literal["groupSearch", "projectSearch", "repositoryTree"] = Field(
         default="groupSearch",
         alias="searchStrategy",
         title="Search Strategy",
         description=(
             "Controls how files are discovered when repositories are not explicitly configured. "
-            "Use groupSearch to search through GitLab groups, or projectSearch to enumerate "
-            "projects and search each project directly."
+            "Use groupSearch to search through GitLab groups, projectSearch to enumerate "
+            "projects and search each project directly, and repositoryTree to match against the Git repository tree."
         ),
     )
 

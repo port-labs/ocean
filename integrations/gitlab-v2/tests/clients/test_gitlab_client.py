@@ -933,7 +933,7 @@ class TestGitLabClient:
             assert exists is False
 
     async def test_get_repository_tree(self, client: GitLabClient) -> None:
-        """Test fetching repository tree (folders only) for a project"""
+        """Test fetching repository tree (files and folders) for a project"""
         project = {"path_with_namespace": "group/project"}
         path = "src"
         ref = "main"
@@ -951,11 +951,13 @@ class TestGitLabClient:
             async for batch in client.get_repository_tree(project, path, ref):
                 results.extend(batch)
 
-            assert len(results) == 2
-            assert results[0]["folder"]["name"] == "folder1"
-            assert results[1]["folder"]["name"] == "folder2"
-            assert all(r["repo"] == project for r in results)
-            assert all(r["__branch"] == ref for r in results)
+            assert len(results) == 3
+            assert results[0]["type"] == "tree"
+            assert results[0]["name"] == "folder1"
+            assert results[1]["type"] == "blob"
+            assert results[1]["name"] == "file.txt"
+            assert results[2]["type"] == "tree"
+            assert results[2]["name"] == "folder2"
             mock_get_paginated.assert_called_once_with(
                 "group/project",
                 "repository/tree",
