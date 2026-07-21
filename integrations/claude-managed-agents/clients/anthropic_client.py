@@ -26,7 +26,6 @@ from clients.exceptions import (
     WebhookSigningSecretNotConfiguredError,
 )
 
-
 DEFAULT_PAGE_SIZE = 50
 
 _RATE_LIMIT_LIMIT_HEADER = "anthropic-ratelimit-requests-limit"
