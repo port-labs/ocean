@@ -43,6 +43,7 @@ class EventType:
     RESYNC = "resync"
     HTTP_REQUEST = "http_request"
     ACTION_RUN = "action_run"
+    INCREMENTAL_RESYNC = "incremental_resync"
 
 
 @dataclass
