@@ -77,8 +77,10 @@ class LifecycleClient:
         integration_id: str,
         integration_type: str,
         started_at: datetime | None = None,
+        mapping: dict[str, Any] | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
+        extra = {"mapping": mapping} if mapping else {}
         body = self._build_body(
             "started",
             integration_id=integration_id,
@@ -86,6 +88,7 @@ class LifecycleClient:
             integration_version=__integration_version__,
             ocean_version=__version__,
             started_at=started_at.isoformat(),
+            **extra,
         )
         logger.info(f"Notifying lifecycle API resync started, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(

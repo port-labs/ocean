@@ -1,25 +1,26 @@
 [tool.poetry]
 name = "kubecost"
-version = "0.1.370"
+version = "0.1.374"
 description = "Kubecost integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.45.5", extras = ["cli"]}
+port_ocean = {version = "^0.45.8", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
 # port_ocean = { path = '../../', develop = true, extras = ['all'] }
-black = "^24.4.2"
+black = "^26.5.1"
 mypy = "^1.3.0"
 pylint = ">=2.17.4,<4.0.0"
-pytest = ">=8.2,<9.0"
+pytest = "^9.1.1"
 pytest-asyncio = ">=0.24.0"
 pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"

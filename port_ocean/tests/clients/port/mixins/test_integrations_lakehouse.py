@@ -1,21 +1,43 @@
 from datetime import datetime, timezone
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock, patch, AsyncMock
 
+import httpx
 import pytest
 
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
+from port_ocean.clients.port.retry_transport import TokenRetryTransport
 from port_ocean.core.models import (
     LakehouseDataEntryBatch,
     LakehouseEventType,
     LakehouseOperation,
 )
 from port_ocean.context.event import EventType, event_context
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse_batch
 
 TEST_INTEGRATION_IDENTIFIER = "test-integration"
 TEST_INTEGRATION_VERSION = "1.0.0"
 TEST_INGEST_URL = "https://api.example.com"
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> Generator[MagicMock, None, None]:
+    with patch("port_ocean.helpers.async_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=False)
+        yield mock_ocean
+
+
+def _inner_http_transport(http_client: OceanAsyncClient) -> httpx.AsyncHTTPTransport:
+    transport = http_client._transport
+    if hasattr(transport, "_wrapped"):
+        transport = transport._wrapped
+    assert isinstance(transport, TokenRetryTransport)
+    inner = transport._wrapped_transport
+    assert isinstance(inner, httpx.AsyncHTTPTransport)
+    return inner
 
 
 @pytest.fixture
@@ -66,6 +88,7 @@ async def test_post_integration_raw_data_default_operation(
 
         expected_url = f"{TEST_INGEST_URL}/lake/write/integration-type/github/integration/{TEST_INTEGRATION_IDENTIFIER}/sync/{sync_id}/kind/{kind}"
         assert call_args[0][0] == expected_url
+        assert call_args[1]["extensions"] == {"retryable": True}
 
         body = call_args[1]["json"]
         assert body["kind"] == kind
@@ -587,3 +610,91 @@ async def test_post_integration_raw_data_batch_aborts_resync_on_zero_pending_cou
                 batch_event,
             )
             assert current_event.aborted
+
+
+@pytest.mark.asyncio
+async def test_post_integration_raw_data_batch_retries_503() -> None:
+    auth = MagicMock()
+    auth.headers = AsyncMock(return_value={"Authorization": "Bearer test-token"})
+    auth.integration_type = "github"
+    auth.last_token_object = MagicMock()
+
+    port_client = IntegrationClientMixin(
+        integration_identifier=TEST_INTEGRATION_IDENTIFIER,
+        integration_version=TEST_INTEGRATION_VERSION,
+        auth=auth,
+        client=MagicMock(),
+    )
+    port_client.get_ingest_attributes = AsyncMock(
+        return_value={"ingestUrl": TEST_INGEST_URL}
+    )
+
+    http_client = OceanAsyncClient(
+        transport_class=TokenRetryTransport,
+        transport_kwargs={"port_client": port_client},
+        retry_config=RetryConfig(max_attempts=3, base_delay=0.0),
+        verify=True,
+    )
+    port_client.client = http_client
+
+    inner = _inner_http_transport(http_client)
+    request = httpx.Request("POST", f"{TEST_INGEST_URL}/lake/write")
+    responses = [
+        httpx.Response(503, request=request),
+        httpx.Response(200, request=request),
+    ]
+
+    mock_handle_async_request = AsyncMock(side_effect=responses)
+
+    with (
+        patch.object(inner, "handle_async_request", mock_handle_async_request),
+        patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+    ):
+        event = make_single_entry_lakehouse_batch([{"id": "1"}], kind="repo", index=0)
+        await port_client.post_integration_raw_data_batch("sync-1", event)
+
+    assert mock_handle_async_request.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_post_integration_raw_data_batch_retries_connect_error() -> None:
+    auth = MagicMock()
+    auth.headers = AsyncMock(return_value={"Authorization": "Bearer test-token"})
+    auth.integration_type = "github"
+    auth.last_token_object = MagicMock()
+
+    port_client = IntegrationClientMixin(
+        integration_identifier=TEST_INTEGRATION_IDENTIFIER,
+        integration_version=TEST_INTEGRATION_VERSION,
+        auth=auth,
+        client=MagicMock(),
+    )
+    port_client.get_ingest_attributes = AsyncMock(
+        return_value={"ingestUrl": TEST_INGEST_URL}
+    )
+
+    http_client = OceanAsyncClient(
+        transport_class=TokenRetryTransport,
+        transport_kwargs={"port_client": port_client},
+        retry_config=RetryConfig(max_attempts=3, base_delay=0.0),
+        verify=True,
+    )
+    port_client.client = http_client
+
+    inner = _inner_http_transport(http_client)
+    request = httpx.Request("POST", f"{TEST_INGEST_URL}/lake/write")
+    responses = [
+        httpx.ConnectError("connection refused", request=request),
+        httpx.Response(200, request=request),
+    ]
+
+    mock_handle_async_request = AsyncMock(side_effect=responses)
+
+    with (
+        patch.object(inner, "handle_async_request", mock_handle_async_request),
+        patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+    ):
+        event = make_single_entry_lakehouse_batch([{"id": "1"}], kind="repo", index=0)
+        await port_client.post_integration_raw_data_batch("sync-1", event)
+
+    assert mock_handle_async_request.await_count == 2

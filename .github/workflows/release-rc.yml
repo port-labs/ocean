@@ -39,7 +39,7 @@ jobs:
           fi
 
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
@@ -104,12 +104,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
@@ -194,7 +194,7 @@ jobs:
       contents: write
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -230,7 +230,7 @@ jobs:
 
       - name: Create GitHub Release (Pre-release)
         if: inputs.dry_run != true && steps.check-tag.outputs.exists != 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.validate-inputs.outputs.version }}
           name: Ocean Framework ${{ needs.validate-inputs.outputs.version }} (RC)
@@ -253,7 +253,7 @@ jobs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
@@ -334,12 +334,12 @@ jobs:
         integration: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -452,7 +452,7 @@ jobs:
     if: always()
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
