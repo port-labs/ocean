@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.3.8 (2026-07-22)
+
+
+### Improvements
+
+- Implement fetching excluded fields individually as well as property-reduction for unknown 200 errors.
+
+
 ## 6.3.7 (2026-07-22)
 
 
