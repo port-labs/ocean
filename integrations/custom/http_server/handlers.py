@@ -9,7 +9,6 @@ from collections.abc import AsyncGenerator as AsyncGenType
 
 import httpx
 
-
 # ============================================================================
 # Pagination Handlers
 # ============================================================================

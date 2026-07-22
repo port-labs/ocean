@@ -80,8 +80,10 @@ class LifecycleClient:
         sync_type: str,
         started_at: datetime | None = None,
         kind_identifiers: list[str] | None = None,
+        mapping: dict[str, Any] | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
+        extra = {"mapping": mapping} if mapping else {}
         body = self._build_body(
             "started",
             integration_id=integration_id,
@@ -90,6 +92,7 @@ class LifecycleClient:
             ocean_version=__version__,
             started_at=started_at.isoformat(),
             sync_type=sync_type,
+            **extra,
         )
         if kind_identifiers:
             body["kind_identifiers"] = kind_identifiers

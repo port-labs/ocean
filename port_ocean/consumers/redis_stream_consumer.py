@@ -123,6 +123,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._read_task = asyncio.create_task(self._read_loop())
 
         if self._settings.pel_requeue_worker_enabled:
+            assert self._redis is not None
             self._pel_worker = PELRequeueWorker(
                 redis=self._redis,
                 redis_settings=self._settings,

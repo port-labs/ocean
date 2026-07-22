@@ -1008,6 +1008,33 @@ async def test_on_resync_start_hooks_are_called(
 
 
 @pytest.mark.asyncio
+async def test_sync_raw_all_clears_blueprint_cache_on_start_and_finish(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    invalidate_mock = MagicMock(wraps=mock_ocean.port_client.clear_blueprint_cache)
+    mock_ocean.port_client.clear_blueprint_cache = invalidate_mock  # type: ignore[method-assign]
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
+        event.port_app_config = mock_port_app_config
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    assert invalidate_mock.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_on_resync_complete_hooks_are_called_on_success(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
@@ -1693,6 +1720,49 @@ async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
     )
     lifecycle_client.notify_failed.assert_not_awaited()
     lifecycle_client.notify_aborted.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_all_dsp_notifies_resync_started_with_mapping(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin.process_resource = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_resync_started = AsyncMock()
+    lifecycle_client.notify_resync_finished = AsyncMock()
+    lifecycle_client.notify_resync_failed = AsyncMock()
+    lifecycle_client.notify_resync_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    expected_mapping = mock_port_app_config.to_dsp_lifecycle_mapping()
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    lifecycle_client.notify_resync_started.assert_awaited_once()
+    call_kwargs = lifecycle_client.notify_resync_started.await_args.kwargs
+    assert call_kwargs["resync_id"] == mock_ocean.metrics.event_id
+    assert call_kwargs["integration_id"] == "integration-id"
+    assert call_kwargs["integration_type"] == "integration-type"
+    assert call_kwargs["mapping"] == expected_mapping
+    mappings = call_kwargs["mapping"]["resources"][0]["port"]["entity"]["mappings"]
+    assert isinstance(mappings, list)
+    assert len(mappings) == 1
+    lifecycle_client.notify_resync_finished.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -27,6 +27,7 @@ ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
 ENTITIES_BULK_MINIMUM_BATCH_SIZE = 1
 ENTITIES_BULK_UPSERT_CONCURRENCY = 5
 ENTITIES_BULK_DELETE_MAX_BATCH_SIZE = 100
+DATASOURCE_ENTITIES_PAGE_SIZE = 5000
 
 
 class EntityClientMixin:
@@ -633,6 +634,7 @@ class EntityClientMixin:
             request_body: dict[str, Any] = {
                 "datasource_prefix": datasource_prefix,
                 "datasource_suffix": datasource_suffix,
+                "limit": DATASOURCE_ENTITIES_PAGE_SIZE,
             }
 
             if before is not None:

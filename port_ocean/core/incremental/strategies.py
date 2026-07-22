@@ -48,6 +48,8 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
+from port_ocean.utils.time import convert_str_to_utc_datetime
+
 
 class IncrementalStrategy(ABC):
     """Base class for incremental sync strategies.
@@ -170,7 +172,7 @@ class ClientSideCutoffStrategy(IncrementalStrategy):
         raw = item.get(self._stop_field)
         if not raw:
             return False
-        item_time = datetime.fromisoformat(str(raw))
+        item_time = convert_str_to_utc_datetime(str(raw))
         return item_time < cursor
 
     def page_exhausted(

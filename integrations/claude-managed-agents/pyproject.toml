@@ -1,26 +1,27 @@
 [tool.poetry]
 name = "claude-managed-agents"
-version = "0.1.9"
+version = "0.1.16"
 description = "Claude Managed Agents integration for Port Ocean"
 authors = ["Tal Sabag <tal@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.45.1", extras = ["cli"]}
+port_ocean = {version = "^0.45.7", extras = ["cli"]}
 anthropic = { version = "^0.109.1", extras = ["webhooks"] }
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
 # port_ocean = { path = '../../', develop = true, extras = ['cli'] }
-black = "^24.4.2"
+black = "^26.5.1"
 mypy = "^1.3.0"
 pylint = ">=2.17.4,<4.0.0"
-pytest = ">=8.2,<9.0"
+pytest = "^9.1.1"
 pytest-asyncio = ">=0.24.0"
 pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"

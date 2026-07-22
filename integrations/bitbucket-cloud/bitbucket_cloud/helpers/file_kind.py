@@ -10,7 +10,6 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
     parse_file,
 )
 
-
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
