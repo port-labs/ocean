@@ -346,9 +346,11 @@ class FilesSelector(BaseModel):
         alias="searchStrategy",
         title="Search Strategy",
         description=(
-            "Controls how files are discovered when repositories are not explicitly configured. "
-            "Use groupSearch to search through GitLab groups, projectSearch to enumerate "
-            "projects and search each project directly, and repositoryTree to match against the Git repository tree."
+            "Controls how files are discovered. groupSearch and projectSearch query GitLab's "
+            "search API; repositoryTree walks the Git repository tree via the tree API, which "
+            "does not depend on GitLab's search index, so it returns complete, consistent "
+            "results even when search indexing is stale or disabled, at the cost of being "
+            "considerably slower."
         ),
     )
 

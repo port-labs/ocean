@@ -89,3 +89,9 @@ class TestBuildSearchQuery:
             build_search_query("ci/.gitlab-ci.yml").to_query_string()
             == ".gitlab-ci.yml path:ci filename:.gitlab-ci.yml"
         )
+
+    def test_globstar_and_wildcard_in_path(self) -> None:
+        assert (
+            build_search_query("**/skills/*/SKILL.md").to_query_string()
+            == "SKILL.md path:**/skills/* filename:SKILL.md"
+        )
