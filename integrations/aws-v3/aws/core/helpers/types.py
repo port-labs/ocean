@@ -32,6 +32,7 @@ class ObjectKind(StrEnum):
     CODEPIPELINE_ACTION = "AWS::CodePipeline::Action"
     CODEPIPELINE_PIPELINE_EXECUTION = "AWS::CodePipeline::PipelineExecution"
     CODEPIPELINE_ACTION_EXECUTION = "AWS::CodePipeline::ActionExecution"
+    DYNAMODB_TABLE = "AWS::DynamoDB::Table"
 
 
 SupportedServices = Literal[
@@ -50,4 +51,5 @@ SupportedServices = Literal[
     "codebuild",
     "codedeploy",
     "codepipeline",
+    "dynamodb",
 ]

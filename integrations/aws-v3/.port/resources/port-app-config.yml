@@ -43,6 +43,28 @@ resources:
             arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::DynamoDB::Table
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.TableArn
+          title: .Properties.TableName
+          blueprint: '"dynamodbTable"'
+          properties:
+            tableArn: .Properties.TableArn
+            tableStatus: .Properties.TableStatus
+            billingMode: .Properties.BillingModeSummary.BillingMode
+            itemCount: .Properties.ItemCount
+            tableSizeBytes: .Properties.TableSizeBytes
+            creationDateTime: .Properties.CreationDateTime
+            deletionProtectionEnabled: .Properties.DeletionProtectionEnabled
+            encryptionType: .Properties.SSEDescription.SSEType
+            region: .__ExtraContext.Region
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
