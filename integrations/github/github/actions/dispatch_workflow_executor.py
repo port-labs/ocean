@@ -23,11 +23,10 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
     DispatchWorkflowWebhookProcessor,
 )
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
-from integrations.github.github.clients.client_factory import (
+from github.clients.client_factory import (
     create_github_client_for_org,
 )
-from integrations.github.github.clients.http.base_client import AbstractGithubClient
-from integrations.github.github.clients.http.rest_client import GithubRestClient
+from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.models import IntegrationRun
@@ -126,8 +125,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
 
         return f"{organization}/{repo}/{workflow}"
 
-    async def _get_execution_client(self, run: IntegrationRun) -> AbstractGithubClient:
-        return await create_github_client_for_org(run.execution_properties.get("org"))
+    async def _get_execution_client(self, run: IntegrationRun) -> GithubRestClient:
+        organization = run.execution_properties.get("org")
+        if not isinstance(organization, str):
+            raise InvalidActionParametersException("organization is required")
+        return await create_github_client_for_org(organization)
 
     async def _get_default_ref(
         self, rest_client: GithubRestClient, organization: str, repo_name: str

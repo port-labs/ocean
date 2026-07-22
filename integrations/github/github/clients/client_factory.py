@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Type
+from typing import Dict, Literal, Type, overload
 
 from loguru import logger
 from github.clients.auth import get_auth_provider
@@ -33,6 +33,33 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_reset_after_fork)
 
 
+@overload
+def create_github_client(
+    authenticator: AbstractGitHubAuthenticator,
+    client_type: Literal[GithubClientType.REST],
+) -> GithubRestClient: ...
+
+
+@overload
+def create_github_client(
+    authenticator: AbstractGitHubAuthenticator,
+) -> GithubRestClient: ...
+
+
+@overload
+def create_github_client(
+    authenticator: AbstractGitHubAuthenticator,
+    client_type: Literal[GithubClientType.GRAPHQL],
+) -> GithubGraphQLClient: ...
+
+
+@overload
+def create_github_client(
+    authenticator: AbstractGitHubAuthenticator,
+    client_type: GithubClientType,
+) -> AbstractGithubClient: ...
+
+
 def create_github_client(
     authenticator: AbstractGitHubAuthenticator,
     client_type: GithubClientType = GithubClientType.REST,
@@ -46,6 +73,33 @@ def create_github_client(
             **integration_config(authenticator),
         )
     return _clients[cache_key]
+
+
+@overload
+async def create_github_client_for_org(
+    organization: str,
+    client_type: Literal[GithubClientType.REST],
+) -> GithubRestClient: ...
+
+
+@overload
+async def create_github_client_for_org(
+    organization: str,
+) -> GithubRestClient: ...
+
+
+@overload
+async def create_github_client_for_org(
+    organization: str,
+    client_type: Literal[GithubClientType.GRAPHQL],
+) -> GithubGraphQLClient: ...
+
+
+@overload
+async def create_github_client_for_org(
+    organization: str,
+    client_type: GithubClientType,
+) -> AbstractGithubClient: ...
 
 
 async def create_github_client_for_org(

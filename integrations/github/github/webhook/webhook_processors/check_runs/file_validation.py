@@ -10,7 +10,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 from port_ocean.core.handlers.entity_processor import JQEntityProcessor
 from datetime import datetime, timezone
-from github.clients.http.base_client import AbstractGithubClient
 from github.clients.client_factory import create_github_client_for_org
 from github.helpers.exceptions import CheckRunsException
 

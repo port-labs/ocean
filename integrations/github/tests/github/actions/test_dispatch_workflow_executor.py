@@ -77,7 +77,7 @@ def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[DispatchWorkflowExecutor, None, None]:
     with patch(
-        "github.actions.abstract_github_executor.create_github_client_for_org",
+        "github.actions.dispatch_workflow_executor.create_github_client_for_org",
         new=AsyncMock(return_value=mock_rest_client),
     ):
         yield DispatchWorkflowExecutor()
@@ -94,7 +94,7 @@ class TestDispatchWorkflowExecutor:
         )
 
         with patch(
-            "github.actions.abstract_github_executor.create_github_client_for_org",
+            "github.actions.dispatch_workflow_executor.create_github_client_for_org",
             new=AsyncMock(return_value=mock_rest_client),
         ) as create_client:
             executor = DispatchWorkflowExecutor()
@@ -352,7 +352,7 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.abstract_github_executor.create_github_client_for_org",
+                "github.actions.dispatch_workflow_executor.create_github_client_for_org",
                 new=AsyncMock(return_value=mock_rest_client),
             ),
             patch(
@@ -405,7 +405,7 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.abstract_github_executor.create_github_client_for_org",
+                "github.actions.dispatch_workflow_executor.create_github_client_for_org",
                 new=AsyncMock(return_value=mock_rest_client),
             ),
             patch(

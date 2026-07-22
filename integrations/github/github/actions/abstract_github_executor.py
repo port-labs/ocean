@@ -1,8 +1,7 @@
 from abc import abstractmethod
-from integrations.github.github.clients.http.base_client import AbstractGithubClient
+from github.clients.http.base_client import AbstractGithubClient
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.models import IntegrationRun
-
 
 MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW = 20
 

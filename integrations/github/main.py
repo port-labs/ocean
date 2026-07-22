@@ -1035,10 +1035,10 @@ async def resync_folders(
     )
     repo_path_map = await pattern_builder.build(folders)
 
-    async for folders in folder_exporter.get_paginated_resources(repo_path_map):
+    async for folder_batch in folder_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
-            folders = await included_files_enricher.enrich_batch(folders)
-        yield folders
+            folder_batch = await included_files_enricher.enrich_batch(folder_batch)
+        yield folder_batch
 
 
 @ocean.on_resync(ObjectKind.FILE)

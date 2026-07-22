@@ -2,10 +2,12 @@ from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from integration import GithubPortAppConfig
 from github.core.exporters.organization_exporter import RestOrganizationExporter
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.rest_client import GithubRestClient
-from port_ocean.context.event import event_context
+from port_ocean.context.event import event, event_context
+from port_ocean.context.ocean import ocean
 
 TEST_ORG = {
     "id": 12345,
@@ -23,7 +25,10 @@ TEST_ORGS = [
 
 
 @pytest.fixture
-def unscoped_client(rest_client: GithubRestClient) -> GithubRestClient:
+def unscoped_client(
+    rest_client: GithubRestClient, monkeypatch: pytest.MonkeyPatch
+) -> GithubRestClient:
+    monkeypatch.delitem(ocean.integration_config, "github_organization")
     authenticator = MagicMock(spec=AbstractGitHubAuthenticator)
     authenticator.organization = None
     rest_client.authenticator = authenticator
@@ -35,6 +40,7 @@ class TestRestOrganizationExporter:
     async def test_get_paginated_resources_uses_authenticator_organization(
         self,
         unscoped_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         exporter = RestOrganizationExporter(unscoped_client)
         unscoped_client.authenticator = MagicMock(organization="test-org")
@@ -45,6 +51,7 @@ class TestRestOrganizationExporter:
             mock_request.return_value = TEST_ORG
 
             async with event_context("test_event"):
+                event.port_app_config = mock_port_app_config
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources()
                 ]
@@ -58,6 +65,7 @@ class TestRestOrganizationExporter:
     async def test_get_paginated_resources_scopes_each_authenticator_to_its_organization(
         self,
         unscoped_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         first_client = GithubRestClient(
             github_host=unscoped_client.base_url,
@@ -80,6 +88,7 @@ class TestRestOrganizationExporter:
             second_request.return_value = {**TEST_ORG, "login": "test2"}
 
             async with event_context("test_event"):
+                event.port_app_config = mock_port_app_config
                 first_batches = [
                     batch
                     async for batch in RestOrganizationExporter(
@@ -101,6 +110,7 @@ class TestRestOrganizationExporter:
     async def test_get_paginated_resources_lists_all_orgs_when_unscoped(
         self,
         unscoped_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         async def mock_paginated_request(
             *args: Any, **kwargs: Any
@@ -115,6 +125,7 @@ class TestRestOrganizationExporter:
             side_effect=mock_paginated_request,
         ) as mock_request:
             async with event_context("test_event"):
+                event.port_app_config = mock_port_app_config
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources()
                 ]
@@ -128,6 +139,7 @@ class TestRestOrganizationExporter:
     async def test_get_paginated_resources_includes_personal_when_allowed(
         self,
         unscoped_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         personal_user = {"id": 999, "login": "alice", "type": "User"}
 
@@ -149,8 +161,10 @@ class TestRestOrganizationExporter:
             ),
         ):
             mock_get_personal.return_value = personal_user
+            mock_port_app_config.include_authenticated_user = True
 
             async with event_context("test_event"):
+                event.port_app_config = mock_port_app_config
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources()
                 ]
