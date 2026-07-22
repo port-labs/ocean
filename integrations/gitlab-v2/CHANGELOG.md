@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.8 (2026-07-22)
+## 0.8.9 (2026-07-22)
 
 
 ### Improvements
@@ -16,7 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Truncated GitLab push payloads fall back to repository compare for changed paths
 - Skill Advanced Search covers two-level nested `SKILL.md` paths
 - Restored group id and query in Advanced Search fallback warning logs
-- Merged latest main (static `/webhook` path + multi-message search fallback)
+- Bumped ocean version to ^0.45.8
+
+
+## 0.8.8 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
 
 
 ## 0.8.7 (2026-07-21)
