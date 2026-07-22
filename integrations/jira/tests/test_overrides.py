@@ -16,7 +16,6 @@ from jira.overrides import (
     JiraComponentSelector,
 )
 
-
 BOARD_MAPPING = {
     "entity": {
         "mappings": {

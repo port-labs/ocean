@@ -1414,6 +1414,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_id=ocean.config.integration.identifier,
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
+                    mapping=app_config.to_dsp_lifecycle_mapping(),
                 )
 
             try:

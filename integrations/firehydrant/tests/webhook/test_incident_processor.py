@@ -19,7 +19,6 @@ from webhook.webhook_processors.incident_webhook_processor import (
     IncidentWebhookProcessor,
 )
 
-
 INCIDENT_PAYLOAD: dict[str, Any] = {
     "data": {
         "incident": {"id": "inc-123"},

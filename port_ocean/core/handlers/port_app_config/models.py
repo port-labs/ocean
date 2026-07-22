@@ -191,6 +191,15 @@ class PortAppConfig(_FieldMetadataEnforcer):
             ],
         }
 
+    def to_dsp_lifecycle_mapping(self) -> dict[str, Any]:
+        mapping = self.to_request()
+        for resource in mapping.get("resources", []):
+            entity = resource.get("port", {}).get("entity", {})
+            mappings = entity.get("mappings")
+            if mappings is not None and not isinstance(mappings, list):
+                entity["mappings"] = [mappings]
+        return mapping
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
 

@@ -1,6 +1,8 @@
 from github.core.options import PullRequestGraphQLOptions
 from github.helpers.gql_queries import (
+    ALL_OPTIONAL_PR_FIELD_NAMES,
     generate_list_pull_requests_gql,
+    generate_pr_fields,
     generate_pull_request_details_gql,
 )
 
@@ -15,6 +17,22 @@ class TestGeneratePullRequestDetailsGql:
         options = PullRequestGraphQLOptions()
         query = generate_list_pull_requests_gql(options)
         assert "PageInfoFields" in query
+
+    def test_includes_required_fields_by_default(self) -> None:
+        query = generate_pull_request_details_gql(PullRequestGraphQLOptions())
+        assert "fullDatabaseId" in query
+
+    def test_can_omit_required_fields_for_single_field_fetch(self) -> None:
+        # A backfill query for just `additions` selects that field and nothing else.
+        options = PullRequestGraphQLOptions()
+        fields = generate_pr_fields(
+            options,
+            extra_excluded_fields=[
+                f for f in ALL_OPTIONAL_PR_FIELD_NAMES if f != "additions"
+            ],
+            include_required_fields=False,
+        )
+        assert fields.strip() == "additions"
 
     def test_pr_query_includes_change_metrics_by_default(self) -> None:
         options = PullRequestGraphQLOptions()
