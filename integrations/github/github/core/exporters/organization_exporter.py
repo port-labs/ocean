@@ -10,14 +10,25 @@ from typing import Optional, cast
 
 from integration import GithubPortAppConfig
 from github.core.options import ListOrganizationOptions, SingleOrganizationOptions
+from github.helpers.exceptions import AuthenticationException
 
 
 class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
     """Exporter for GitHub organizations using REST API."""
 
-    @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListOrganizationOptions | None = None
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        async for batch in self._get_paginated_resources(
+            options, self.client.authenticator.rate_limit_scope
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _get_paginated_resources(
+        self,
+        options: ListOrganizationOptions | None,
+        _auth_scope: str,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         If the authenticator or integration config scopes an organization, fetch it.
@@ -28,10 +39,22 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         allowed_multi_organizations = port_app_config.organizations
         include_authenticated_user = port_app_config.include_authenticated_user
         requested_organization = options.organization if options else None
+        authenticated_organization = self.client.authenticator.organization
+
+        if (
+            requested_organization
+            and authenticated_organization
+            and requested_organization.casefold()
+            != authenticated_organization.casefold()
+        ):
+            raise AuthenticationException(
+                f"Authenticator for '{authenticated_organization}' cannot access "
+                f"requested organization '{requested_organization}'"
+            )
 
         if organization := (
             requested_organization
-            or self.client.authenticator.organization
+            or authenticated_organization
             or ocean.integration_config.get("github_organization")
         ):
             logger.info(f"Fetching single organization {organization}")
@@ -43,7 +66,7 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
             return
 
         async for batch in self._stream_selected_organizations(
-            allowed_multi_organizations, include_authenticated_user
+            allowed_multi_organizations, include_authenticated_user, _auth_scope
         ):
             yield batch
 
@@ -55,10 +78,13 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
     async def _stream_selected_organizations(
-        self, allowed_multi_organizations: list[str], include_authenticated_user: bool
+        self,
+        allowed_multi_organizations: list[str],
+        include_authenticated_user: bool,
+        auth_scope: str,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if include_authenticated_user:
-            yield [await self._get_personal_org()]
+            yield [await self._get_personal_org(auth_scope)]
 
         async for batch in self.client.send_paginated_request(
             f"{self.client.base_url}/user/orgs"
@@ -71,7 +97,7 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
             ]
 
     @cache_coroutine_result()
-    async def _get_personal_org(self) -> RAW_ITEM:
+    async def _get_personal_org(self, _auth_scope: str) -> RAW_ITEM:
         """
         Fetch the personal account of the authenticated user.
         This method is cached to avoid repeated API calls.
