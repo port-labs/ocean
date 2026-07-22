@@ -100,7 +100,6 @@ class _DummyBaseClient(AbstractGithubClient):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         ignored_errors: Optional[List[Any]] = None,
-        fallback_queries: Optional[List[str]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if False:
             yield []
