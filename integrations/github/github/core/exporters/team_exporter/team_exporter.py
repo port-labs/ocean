@@ -7,6 +7,7 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions, ListTeamOptions
 from github.helpers.utils import enrich_with_organization, IgnoredError
 
+
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
     _EXTERNAL_GROUP_IGNORED_ERRORS = [
         IgnoredError(
