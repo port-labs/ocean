@@ -6,6 +6,10 @@ from loguru import logger
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.clients.rate_limiter.utils import is_rest_rate_limit_response
 from github.helpers.exceptions import InvalidActionParametersException
+from integrations.github.github.clients.client_factory import (
+    create_github_client_for_org,
+)
+from integrations.github.github.clients.http.base_client import AbstractGithubClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -41,6 +45,9 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
         repo = run.execution_properties.get("repo")
         return f"{org}/{repo}"
 
+    async def _get_execution_client(self, run: IntegrationRun) -> AbstractGithubClient:
+        return await create_github_client_for_org(run.execution_properties.get("org"))
+
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
         repo = run.execution_properties.get("repo")
@@ -64,7 +71,7 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
             )
 
             try:
-                rest_client = await self.get_rest_client(org)
+                rest_client = await self._get_execution_client(run)
                 await rest_client.make_request(
                     f"{rest_client.base_url}/orgs/{org}/properties/installations/values",
                     method="PATCH",
