@@ -573,11 +573,11 @@ class GitLabClient:
                 - repositoryTree: Search across all accessible projects using tree API
                 - groupSearch: Search across groups (with fallback to projectSearch if no results)
         """
-        use_tree = strategy == "repositoryTree"
+        should_use_tree = strategy == "repositoryTree"
 
         if strategy in ("projectSearch", "repositoryTree"):
             logger.info(
-                f"Using {'repository tree' if use_tree else 'project-level'} file search "
+                f"Using {'repository tree' if should_use_tree else 'project-level'} file search "
                 f"for path pattern '{query.path}'."
             )
             async for batch in self.search_files_in_projects(
@@ -586,7 +586,7 @@ class GitLabClient:
                 skip_parsing=skip_parsing,
                 repositories=repositories,
                 params=params,
-                use_tree=use_tree,
+                should_use_tree=should_use_tree,
                 max_concurrent=max_concurrent,
             ):
                 yield batch
@@ -594,14 +594,14 @@ class GitLabClient:
             logger.info(
                 f"Using group-level file search for path pattern '{query.path}'."
             )
-            found_any = False
+            has_group_results = False
             async for batch in self._search_files_by_groups(
                 scope, query, repositories, skip_parsing, params, max_concurrent
             ):
-                found_any = True
+                has_group_results = True
                 yield batch
 
-            if not found_any and not repositories:
+            if not has_group_results and not repositories:
                 logger.info(
                     "Group-level file search returned no results. "
                     "Falling back to project-level file search."
@@ -611,7 +611,7 @@ class GitLabClient:
                     query,
                     skip_parsing=skip_parsing,
                     params=params,
-                    use_tree=False,
+                    should_use_tree=False,
                     max_concurrent=max_concurrent,
                 ):
                     yield batch
@@ -681,7 +681,7 @@ class GitLabClient:
         skip_parsing: bool = False,
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
-        use_tree: bool = False,
+        should_use_tree: bool = False,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files across accessible projects or specific repositories.
@@ -690,7 +690,7 @@ class GitLabClient:
             repositories: List of specific repository paths to search. If None or empty,
                          searches across all accessible projects.
             params: Project filter parameters (only used when repositories is None).
-            use_tree: Whether to use the repository tree API for searching.
+            should_use_tree: Whether to use the repository tree API for searching.
         """
         logger.info(
             f"Starting project-level file search with path pattern: '{query.path}' using params: {params}"
@@ -710,7 +710,7 @@ class GitLabClient:
                         scope,
                         query,
                         skip_parsing,
-                        use_tree=use_tree,
+                        should_use_tree=should_use_tree,
                     ),
                 )
                 for repo in repositories
@@ -729,7 +729,7 @@ class GitLabClient:
                             scope,
                             query,
                             skip_parsing,
-                            use_tree=use_tree,
+                            should_use_tree=should_use_tree,
                         ),
                     )
                     for project in projects_batch
@@ -993,7 +993,7 @@ class GitLabClient:
         scope: str,
         query: SearchQuery,
         skip_parsing: bool = False,
-        use_tree: bool = False,
+        should_use_tree: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.debug(
             f"Starting search in repository '{repo}' for query '{query.path}' with scope '{scope}'"
@@ -1001,7 +1001,7 @@ class GitLabClient:
 
         search_handler = (
             self._match_files_with_repository_tree(repo, query)
-            if use_tree
+            if should_use_tree
             else self._match_files_with_project_search(repo, scope, query)
         )
 
