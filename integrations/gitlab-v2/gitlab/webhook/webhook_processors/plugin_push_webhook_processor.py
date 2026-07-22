@@ -4,7 +4,6 @@ from typing import Any, cast
 from loguru import logger
 
 from gitlab.helpers.skill_plugin import (
-    DEFAULT_PLUGIN_PROVIDERS,
     PLUGIN_DIRECTORY_PREFIXES,
     PluginProvider,
     all_manifest_paths,
@@ -16,6 +15,10 @@ from gitlab.helpers.skill_plugin import (
 from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.push_constants import DELETED_COMMIT_SHA
+from gitlab.webhook.webhook_processors.push_path_changes import (
+    resolve_push_path_changes,
 )
 from integration import GitLabPluginResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -36,15 +39,29 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        project_id = payload["project"]["id"]
-        branch = payload.get("ref", "").replace("refs/heads/", "")
-        repo_path = payload["project"]["path_with_namespace"]
+        if payload.get("after") == DELETED_COMMIT_SHA:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         project = payload["project"]
+        project_id = project["id"]
+        branch = payload.get("ref", "").removeprefix("refs/heads/")
+        repo_path = project["path_with_namespace"]
+        default_branch = project.get("default_branch")
+        if default_branch and branch != default_branch:
+            logger.info(
+                f"Skipping plugin push for {repo_path} on non-default branch {branch}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         ref = payload.get("after") or branch
 
         config = cast(GitLabPluginResourceConfig, resource_config)
         selector = config.selector
-        providers = selector.providers or list(DEFAULT_PLUGIN_PROVIDERS)
+        providers = selector.providers
         repos = selector.repos
         manifest_paths = set(all_manifest_paths(providers))
 
@@ -53,12 +70,9 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        changed_files: set[str] = set()
-        removed_files: set[str] = set()
-        for commit in payload.get("commits", []):
-            changed_files.update(commit.get("added", []))
-            changed_files.update(commit.get("modified", []))
-            removed_files.update(commit.get("removed", []))
+        changed_files, removed_files = await resolve_push_path_changes(
+            self._gitlab_webhook_client, repo_path, payload
+        )
 
         all_touched = changed_files | removed_files
         if not any(path_touches_plugin(path, providers) for path in all_touched):

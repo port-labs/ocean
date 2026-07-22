@@ -12,7 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Merged latest main into skill/plugin kinds branch (webhook path + search fallback)
+- Skill/plugin push webhooks now ignore non-default branches and branch deletes
+- Truncated GitLab push payloads fall back to repository compare for changed paths
+- Skill Advanced Search covers two-level nested `SKILL.md` paths
+- Restored group id and query in Advanced Search fallback warning logs
+- Merged latest main (static `/webhook` path + multi-message search fallback)
 
 
 ## 0.8.7 (2026-07-21)

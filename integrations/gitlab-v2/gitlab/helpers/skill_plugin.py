@@ -96,9 +96,11 @@ def skill_search_paths(path_globs: list[str]) -> list[str]:
         seen_roots.add(root)
         # Nested skills: <root>/<skill-name>/SKILL.md
         paths.append(f"{root}/*/{SKILL_MD_FILENAME}")
+        # Two-level nesting: <root>/<team>/<skill-name>/SKILL.md
+        paths.append(f"{root}/*/*/{SKILL_MD_FILENAME}")
         # Skill at the root directory itself
         paths.append(f"{root}/{SKILL_MD_FILENAME}")
-    # Broad fallback for non-standard layouts
+    # Broad fallback for non-standard layouts / deeper nesting
     paths.append(SKILL_MD_FILENAME)
     return paths
 

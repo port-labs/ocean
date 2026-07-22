@@ -77,6 +77,20 @@ class GitLabClient:
             "GET", f"projects/{project_id}/repository/tags/{tag_name}"
         )
 
+    async def compare_repository(
+        self,
+        project_path: str | int,
+        from_sha: str,
+        to_sha: str,
+    ) -> dict[str, Any]:
+        """Compare two refs and return the GitLab compare payload (including diffs)."""
+        encoded_path = quote(str(project_path), safe="")
+        return await self.rest.send_api_request(
+            "GET",
+            f"projects/{encoded_path}/repository/compare",
+            params={"from": from_sha, "to": to_sha},
+        )
+
     async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/releases/{tag_name}"

@@ -36,10 +36,13 @@ def test_skill_search_paths_from_globs() -> None:
         ]
     )
     assert "skills/*/SKILL.md" in paths
+    assert "skills/*/*/SKILL.md" in paths
     assert "skills/SKILL.md" in paths
     assert ".cursor/skills/*/SKILL.md" in paths
+    assert ".cursor/skills/*/*/SKILL.md" in paths
     assert ".cursor/skills/SKILL.md" in paths
     assert ".github/skills/*/SKILL.md" in paths
+    assert ".github/skills/*/*/SKILL.md" in paths
     assert ".github/skills/SKILL.md" in paths
     assert "SKILL.md" in paths
 

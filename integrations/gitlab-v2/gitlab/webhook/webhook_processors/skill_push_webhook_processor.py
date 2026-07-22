@@ -12,6 +12,10 @@ from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.push_constants import DELETED_COMMIT_SHA
+from gitlab.webhook.webhook_processors.push_path_changes import (
+    resolve_push_path_changes,
+)
 from integration import GitLabSkillResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -31,9 +35,23 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        project_id = payload["project"]["id"]
+        if payload.get("after") == DELETED_COMMIT_SHA:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        project = payload["project"]
+        project_id = project["id"]
         branch = payload.get("ref", "").removeprefix("refs/heads/")
-        repo_path = payload["project"]["path_with_namespace"]
+        repo_path = project["path_with_namespace"]
+        default_branch = project.get("default_branch")
+        if default_branch and branch != default_branch:
+            logger.info(
+                f"Skipping skill push for {repo_path} on non-default branch {branch}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         config = cast(GitLabSkillResourceConfig, resource_config)
         selector = config.selector
@@ -50,12 +68,9 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        changed_files: set[str] = set()
-        removed_files: set[str] = set()
-        for commit in payload.get("commits", []):
-            changed_files.update(commit.get("added", []))
-            changed_files.update(commit.get("modified", []))
-            removed_files.update(commit.get("removed", []))
+        changed_files, removed_files = await resolve_push_path_changes(
+            self._gitlab_webhook_client, repo_path, payload
+        )
 
         matching_changed = sorted(
             p for p in changed_files if matches_skill_path(p, applicable_globs)
@@ -107,7 +122,7 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                         "skillMdPath": path,
                         "root": infer_skill_root(path, path_globs),
                     },
-                    "repo": payload["project"],
+                    "repo": project,
                     "__branch": branch,
                 }
             )

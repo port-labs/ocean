@@ -17,7 +17,11 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
 from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
-from gitlab.helpers.skill_plugin import DEFAULT_PLUGIN_PROVIDERS, DEFAULT_SKILL_PATHS
+from gitlab.helpers.skill_plugin import (
+    DEFAULT_PLUGIN_PROVIDERS,
+    DEFAULT_SKILL_PATHS,
+    PluginProvider,
+)
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
@@ -420,25 +424,10 @@ class GitLabSkillResourceConfig(ResourceConfig):
 
 
 class GitLabPluginSelector(GroupSelector):
-    providers: list[
-        Literal[
-            "claude",
-            "cursor",
-            "codex",
-            "agents",
-            "kimi",
-            "opencode",
-            "pi",
-            "antigravity",
-        ]
-    ] = Field(
+    providers: list[PluginProvider] = Field(
         title="Providers",
         default_factory=lambda: list(DEFAULT_PLUGIN_PROVIDERS),
-        description=(
-            "Agent plugin providers to detect (aligned with obra/superpowers): "
-            ".claude-plugin/, .cursor-plugin/, .codex-plugin/, .agents/plugins/, "
-            ".kimi-plugin/, .opencode/plugins/, .pi/extensions/, gemini-extension.json."
-        ),
+        description="Agent plugin providers to detect.",
     )
     repos: list[str] = Field(
         title="Repositories",
