@@ -172,7 +172,7 @@ class SingleEnvironmentOptions(RepositoryIdentifier):
 class ListEnvironmentsOptions(RepositoryIdentifier):
     """Options for listing environments."""
 
-    variables: NotRequired[bool]
+    include_variables: NotRequired[bool]
 
 
 class SingleDeploymentOptions(RepositoryIdentifier):
