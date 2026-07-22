@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.45.10 (2026-07-22)
+
+### Bug Fixes
+
+- Removed misleading `Event Added To Queue` log from the Redis stream consumer; queue latency is already reported via `time_until_consumed_ms` in the Redis stream processed log.
+
 ## 0.45.9 (2026-07-22)
 
 ### Features
