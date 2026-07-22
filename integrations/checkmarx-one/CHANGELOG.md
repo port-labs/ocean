@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.118 (2026-07-22)
+
+
+### Improvements
+
+- Use shared Ocean relative time helpers for scan lookback selectors and remove the local `days_ago_to_rfc3339` helper.
+
+
 ## 0.2.117 (2026-07-22)
 
 
