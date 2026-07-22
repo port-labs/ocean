@@ -63,7 +63,7 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
 
         if include_variables:
             response = await self._enrich_with_variables(
-                cast(str, repo_name), name, cast(str, organization), response
+                cast(str, repo_name), name, organization, response
             )
 
         logger.info(
@@ -99,7 +99,7 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
                     self._enrich_with_variables(
                         cast(str, repo_name),
                         env["name"],
-                        cast(str, organization),
+                        organization,
                         env,
                         semaphore,
                     )

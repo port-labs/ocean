@@ -108,7 +108,6 @@ from integration import (
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
     GithubUserConfig,
-    GithubEnvironmentConfig,
 )
 from github.enrichments.included_files import (
     IncludedFilesEnricher,

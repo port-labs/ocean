@@ -85,12 +85,15 @@ class TestRestEnvironmentExporter:
         ) -> AsyncGenerator[dict[str, Any], None]:
             yield {"variables": TEST_VARIABLES}
 
-        with patch.object(
-            rest_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_api, patch.object(
-            rest_client,
-            "send_paginated_request",
-            side_effect=mock_paginated_variables,
+        with (
+            patch.object(
+                rest_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_api,
+            patch.object(
+                rest_client,
+                "send_paginated_request",
+                side_effect=mock_paginated_variables,
+            ),
         ):
             mock_api.return_value = TEST_ENVIRONMENTS[0]
             environment = await exporter.get_resource(
@@ -102,6 +105,7 @@ class TestRestEnvironmentExporter:
                 )
             )
 
+            assert environment is not None
             assert environment["__variables"] == TEST_VARIABLES
             assert environment["__repository"] == "test-repo"
 

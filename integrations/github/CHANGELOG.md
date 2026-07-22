@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.4.0 (2026-07-22)
+
+
+### Features
+
+- Added an `includeVariables` selector option for the `environment` kind that fetches environment variables (via the paginated GitHub variables REST API) and exposes them as `__variables` on each environment. (#3591)
+
+
 ## 6.3.5 (2026-07-22)
 
 
