@@ -13,9 +13,10 @@ from github.clients.http.base_client import AbstractGithubClient
 
 class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
-    async def get_resource[
-        ExporterOptionsT: SingleIssueOptions
-    ](self, options: ExporterOptionsT,) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleIssueOptions](
+        self,
+        options: ExporterOptionsT,
+    ) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         issue_number = params["issue_number"]
 
@@ -35,9 +36,9 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListIssueOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListIssueOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name, organization, params = parse_github_options(dict(options))
 

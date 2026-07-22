@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from typing import Any, AsyncIterator, List
 
-
 # Mock port_ocean imports before importing the module under test
 with patch.dict(
     "sys.modules",

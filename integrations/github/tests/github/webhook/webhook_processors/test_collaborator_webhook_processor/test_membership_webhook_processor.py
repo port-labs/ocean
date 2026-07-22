@@ -22,7 +22,6 @@ from github.core.options import SingleTeamOptions
 from typing import Any, AsyncGenerator
 from port_ocean.context.event import event_context
 
-
 VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "action": "added",
     "repository": {"name": "test-repo"},
