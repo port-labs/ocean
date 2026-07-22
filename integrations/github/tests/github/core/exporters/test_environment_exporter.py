@@ -98,7 +98,7 @@ class TestRestEnvironmentExporter:
                     organization="test-org",
                     repo_name="test-repo",
                     name="production",
-                    variables=True,
+                    include_variables=True,
                 )
             )
 
@@ -171,7 +171,9 @@ class TestRestEnvironmentExporter:
         ):
             async with event_context("test_event"):
                 options = ListEnvironmentsOptions(
-                    organization="test-org", repo_name="test-repo", variables=True
+                    organization="test-org",
+                    repo_name="test-repo",
+                    include_variables=True,
                 )
                 environments: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)

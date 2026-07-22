@@ -1,3 +1,5 @@
+from typing import cast
+
 from loguru import logger
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
@@ -31,7 +33,7 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
         organization = self.get_webhook_payload_organization(payload)["login"]
 
         config = cast(GithubEnvironmentConfig, resource_config)
-        include_variables = config.selector.variables
+        include_variables = config.selector.include_variables
         logger.info(
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
@@ -48,7 +50,7 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
                 organization=organization,
                 repo_name=repo,
                 name=environment,
-                variables=include_variables,
+                include_variables=include_variables,
             )
         )
         if not data_to_upsert:
