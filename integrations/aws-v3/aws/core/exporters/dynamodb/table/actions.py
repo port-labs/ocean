@@ -30,6 +30,9 @@ class GetTableTagsAction(Action[list[dict[str, Any]]]):
         response = await self.client.list_tags_of_resource(
             ResourceArn=table["TableArn"]
         )
+        # list_tags_of_resource supports pagination via NextToken, but AWS enforces
+        # a hard limit of 50 tags per DynamoDB resource — a single call always
+        # returns all tags. Source: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html
         return {"Tags": response["Tags"]}
 
 
