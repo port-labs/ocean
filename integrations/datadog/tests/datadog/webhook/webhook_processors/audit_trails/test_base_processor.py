@@ -185,17 +185,18 @@ async def test_handle_event_routes_by_audit_org_id(
 
 
 @pytest.mark.asyncio
-async def test_handle_event_enriches_fetched_resource_with_org_id_when_multi_org(
+async def test_handle_event_enriches_fetched_resource_with_org_identity_when_multi_org(
     processor: _StubProcessor,
     mock_client_manager: Any,
 ) -> None:
-    from datadog.utils import ORG_ID_ENRICHMENT_KEY
+    from datadog.utils import ORG_ID_ENRICHMENT_KEY, ORG_NAME_ENRICHMENT_KEY
 
     from unittest.mock import MagicMock
 
     mock_client_manager.is_multi_org = True
     client = MagicMock()
     client.org_id = "uuid-1"
+    client.org_name = "DPN | Port"
     mock_client_manager.get_client_by_org_id.return_value = client
 
     raw = _raw("Stub", "modified", "stub", "s-1")
@@ -204,6 +205,7 @@ async def test_handle_event_enriches_fetched_resource_with_org_id_when_multi_org
     result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
 
     assert result.updated_raw_results[0][ORG_ID_ENRICHMENT_KEY] == "uuid-1"
+    assert result.updated_raw_results[0][ORG_NAME_ENRICHMENT_KEY] == "DPN | Port"
 
 
 @pytest.mark.asyncio
@@ -211,7 +213,7 @@ async def test_handle_event_does_not_enrich_when_single_org(
     processor: _StubProcessor,
     mock_client_manager: Any,
 ) -> None:
-    from datadog.utils import ORG_ID_ENRICHMENT_KEY
+    from datadog.utils import ORG_ID_ENRICHMENT_KEY, ORG_NAME_ENRICHMENT_KEY
 
     raw = _raw("Stub", "modified", "stub", "s-1")
     raw["attributes"]["org"] = {"name": "DPN | Port", "uuid": "uuid-1"}
@@ -219,6 +221,7 @@ async def test_handle_event_does_not_enrich_when_single_org(
     result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
 
     assert ORG_ID_ENRICHMENT_KEY not in result.updated_raw_results[0]
+    assert ORG_NAME_ENRICHMENT_KEY not in result.updated_raw_results[0]
 
 
 @pytest.mark.asyncio

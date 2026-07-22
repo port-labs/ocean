@@ -4,6 +4,7 @@ from typing import Any, Dict
 import httpx
 from loguru import logger
 
+from gitlab.webhook.constants import build_integration_webhook_url
 from gitlab.webhook.events import EventConfig
 from gitlab.clients.gitlab_client import GitLabClient
 
@@ -21,6 +22,9 @@ class BaseWebhookFactory[T: EventConfig](ABC):
     def __init__(self, client: GitLabClient, app_host: str):
         self._client = client
         self._app_host = app_host
+
+    def build_integration_webhook_url(self) -> str:
+        return build_integration_webhook_url(self._app_host)
 
     async def create(
         self, webhook_url: str, gitlab_webhook_endpoint: str

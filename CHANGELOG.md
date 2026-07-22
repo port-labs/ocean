@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.45.8 (2026-07-21)
+
+### Improvements
+
+- Pass integration-run context to action-executor rate-limit checks.
+
+## 0.45.7 (2026-07-21)
+
+### Improvements
+
+- Report integration mapping on DSP resync started lifecycle notifications so DSP can use the config Ocean loaded without fetching from port-api.
+
+## 0.45.6 (2026-07-21)
+
+### Improvements
+
+- Added `disable_ip_outbound_blocker` integration setting to disable outbound HTTP IP blocking. Defaults to false on SaaS runtimes and true on on-prem, preserving existing behavior.
+
+## 0.45.5 (2026-07-20)
+
+### Improvements
+
+- Log an error when `report_run_completed` is called with `success=False`, including the run ID for easier failure debugging.
+
 ## 0.45.4 (2026-07-19)
 
 ### Vulnerabilities

@@ -245,17 +245,14 @@ def build_batch_file_query(
     """
     Build a GraphQL query to fetch multiple files from a repository.
     """
-    objects = "\n".join(
-        f"""
+    objects = "\n".join(f"""
         file_{file_index}: object(expression: "{branch}:{path}") {{
             ... on Blob {{
                 text
                 byteSize
             }}
         }}
-        """
-        for file_index, path in enumerate(file_paths)
-    )
+        """ for file_index, path in enumerate(file_paths))
 
     query = f"""
     query {{

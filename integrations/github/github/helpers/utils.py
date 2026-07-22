@@ -19,7 +19,6 @@ from loguru import logger
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
-
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
 

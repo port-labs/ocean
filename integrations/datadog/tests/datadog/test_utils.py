@@ -1,8 +1,12 @@
 import time
 from datetime import datetime
+from typing import Any
 from freezegun import freeze_time
 
 from datadog.utils import (
+    ORG_ID_ENRICHMENT_KEY,
+    ORG_NAME_ENRICHMENT_KEY,
+    enrich_batch,
     get_start_of_the_day_in_seconds_x_day_back,
     generate_time_windows_from_interval_days,
 )
@@ -59,3 +63,23 @@ def test_generate_time_windows_from_interval_days() -> None:
 
     # Last interval should end at current time
     assert result[-1][1] == current_time
+
+
+def test_enrich_batch_stamps_all_enrichments_onto_every_item() -> None:
+    data: list[dict[str, Any]] = [{"id": 1}, {"id": 2}]
+    result = enrich_batch(
+        data,
+        enrichments={
+            ORG_ID_ENRICHMENT_KEY: "uuid-1",
+            ORG_NAME_ENRICHMENT_KEY: "DPN | Port",
+        },
+    )
+    for item in result:
+        assert item[ORG_ID_ENRICHMENT_KEY] == "uuid-1"
+        assert item[ORG_NAME_ENRICHMENT_KEY] == "DPN | Port"
+
+
+def test_enrich_batch_overwrites_existing_keys() -> None:
+    data: list[dict[str, Any]] = [{"id": 1, ORG_ID_ENRICHMENT_KEY: "old-uuid"}]
+    result = enrich_batch(data, enrichments={ORG_ID_ENRICHMENT_KEY: "new-uuid"})
+    assert result[0][ORG_ID_ENRICHMENT_KEY] == "new-uuid"

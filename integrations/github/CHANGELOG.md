@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.3.1 (2026-07-20)
+
+## 6.4.0 (2026-07-22)
 
 
 ### Improvements
@@ -17,6 +18,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `GitHubAuthenticatorFactory` and the sync legacy client factory path.
 - Removed deprecated `OrganizationLoginAndTypeGenerator`; file and folder pattern builders call `RestOrganizationExporter.get_paginated_resources()` directly.
 - Deprecated `githubAppInstallationId`; GitHub App organization scope is discovered from app installations. OAuth installations no longer publish `githubAppInstallationId` or `githubOrganization`, so `githubOrganization` remains editable in the integration config.
+
+
+## 6.3.5 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 6.3.4 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 6.3.3 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 6.3.2 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 6.3.1 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
 
 
 ## 6.3.0 (2026-07-20)

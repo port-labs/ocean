@@ -12,9 +12,9 @@ from github.core.options import ListEnvironmentsOptions, SingleEnvironmentOption
 
 
 class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleEnvironmentOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleEnvironmentOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
         """Get a single environment for a repository."""
 
         repo_name, organization, params = parse_github_options(dict(options))
@@ -36,9 +36,9 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListEnvironmentsOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListEnvironmentsOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all environments for a repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))

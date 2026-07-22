@@ -21,7 +21,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from typing import Any, AsyncGenerator
 from port_ocean.context.event import event_context
 
-
 VALID_TEAM_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "action": "added_to_repository",
     "repository": {"name": "test-repo"},
