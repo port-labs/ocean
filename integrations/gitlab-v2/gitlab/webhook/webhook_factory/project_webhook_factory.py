@@ -10,7 +10,7 @@ class ProjectWebHook(BaseWebhookFactory[ProjectEvents]):
     """Creates and manages GitLab project-level webhooks."""
 
     async def create_project_webhook(self, project_id: int | str) -> bool:
-        project_webhook_url = f"{self._app_host}/integration/hook/{project_id}"
+        project_webhook_url = self.build_integration_webhook_url()
 
         try:
             response = await self.create(

@@ -884,7 +884,7 @@ class TestGitLabClient:
     async def test_search_files_in_group_blob_validation_400_raises(
         self, client: GitLabClient
     ) -> None:
-        """Request-specific blob 400s are not cached as Advanced Search misses."""
+        """Request-specific / unrecognized blob 400s are not treated as capability misses."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
@@ -899,11 +899,16 @@ class TestGitLabClient:
             "get_paginated_resource",
             side_effect=error,
         ):
-            with pytest.raises(httpx.HTTPStatusError):
-                async for _ in client._search_files_in_group(
-                    "my-group", "blobs", "test.json"
-                ):
-                    pass
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+            ) as mock_fallback:
+                with pytest.raises(httpx.HTTPStatusError):
+                    async for _ in client._search_files_in_group(
+                        "my-group", "blobs", "test.json"
+                    ):
+                        pass
+                mock_fallback.assert_not_called()
 
         assert "my-group" not in client._groups_without_advanced_search
 

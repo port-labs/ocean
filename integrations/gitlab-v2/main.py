@@ -37,6 +37,7 @@ from integration import (
     GitlabDeploymentResourceConfig,
 )
 
+from gitlab.webhook.constants import WEBHOOK_PATH
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
 )
@@ -834,23 +835,23 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", PipelineWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", MemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", SkillPushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", PluginPushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ProjectWithMemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", DeploymentWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, GroupWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, MergeRequestWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PipelineWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, JobWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, MemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, GroupWithMemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, FilePushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, SkillPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PluginPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, FolderPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWithMemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, TagWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ReleaseWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
 
 register_actions_executors()

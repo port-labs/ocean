@@ -982,8 +982,9 @@ class GitLabClient:
                 raise
             self._groups_without_advanced_search.add(group_id)
             logger.warning(
-                "Group advanced search unavailable; "
-                "falling back to project-level search for remaining queries"
+                f"Group advanced search unavailable for group {group_id} "
+                f"(query={query!r}); falling back to project-level search "
+                "for remaining queries"
             )
             async for batch in self._search_files_in_group_projects(
                 group_id, scope, query, skip_parsing
@@ -1000,12 +1001,19 @@ class GitLabClient:
         except Exception:
             return False
         if isinstance(raw, list):
-            message = " ".join(str(part) for part in raw).lower()
+            message = " ".join(str(part) for part in raw)
         else:
-            message = str(raw).lower()
-        # GitLab returns either of these depending on version / plan messaging.
+            message = str(raw)
+        error_messages = (
+            "Scope 'blobs' is not available for this search",
+            "Advanced search is not available",
+        )
+        if any(error_message in message for error_message in error_messages):
+            return True
+        # Broader match for GitLab version / plan messaging variants.
+        lowered = message.lower()
         return (
-            "advanced search" in message or "scope 'blobs' is not available" in message
+            "advanced search" in lowered or "scope 'blobs' is not available" in lowered
         )
 
     async def _resolve_file_references(
