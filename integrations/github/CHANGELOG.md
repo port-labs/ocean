@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- towncrier release notes start -->
 
 
-## 6.4.0 (2026-07-23)
+## 6.5.0 (2026-07-23)
 
 
 ### Improvements
@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `GitHubAuthenticatorFactory` and the sync legacy client factory path.
 - Removed deprecated `OrganizationLoginAndTypeGenerator`; file and folder pattern builders call `RestOrganizationExporter.get_paginated_resources()` directly.
 - Deprecated `githubAppInstallationId`; GitHub App organization scope is discovered from app installations. OAuth installations no longer publish `githubAppInstallationId` or `githubOrganization`, so `githubOrganization` remains editable in the integration config.
+
+
+## 6.4.0 (2026-07-22)
+
+
+### Features
+
+- Added an `includeVariables` selector option for the `environment` kind that fetches environment variables (via the paginated GitHub variables REST API) and exposes them as `__variables` on each environment. (#3591)
 
 
 ## 6.3.8 (2026-07-22)

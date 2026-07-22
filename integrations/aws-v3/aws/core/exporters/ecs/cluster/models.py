@@ -1,9 +1,13 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class ClusterProperties(BaseModel):
+class ClusterProperties(BaseAWSPropertiesModel):
     clusterName: str = Field(default_factory=str, alias="ClusterName")
     capacityProviders: list[str] = Field(
         default_factory=list, alias="CapacityProviders"
@@ -31,10 +35,6 @@ class ClusterProperties(BaseModel):
         default=None, alias="RegisteredContainerInstancesCount"
     )
     clusterArn: str = Field(default_factory=str, alias="ClusterArn")
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "ignore"
 
 
 class Cluster(ResourceModel[ClusterProperties]):

@@ -1,10 +1,14 @@
 from datetime import datetime
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class PipelineExecutionProperties(BaseModel):
+class PipelineExecutionProperties(BaseAWSPropertiesModel):
     artifactRevisions: list[dict[str, Any]] | None = Field(
         default=None, alias="ArtifactRevisions"
     )
@@ -26,10 +30,6 @@ class PipelineExecutionProperties(BaseModel):
     stopTrigger: dict[str, Any] | None = Field(default=None, alias="StopTrigger")
     trigger: dict[str, Any] | None = Field(default=None, alias="Trigger")
     variables: list[dict[str, Any]] | None = Field(default=None, alias="Variables")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class PipelineExecution(ResourceModel[PipelineExecutionProperties]):

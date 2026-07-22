@@ -76,7 +76,7 @@ class TestMskServerlessClusterExporter:
         )
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
-        mock_inspector.inspect.return_value = [expected.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [expected.model_dump(exclude_none=True)]
 
         options = SingleMskServerlessClusterRequest(
             region="us-east-1",
@@ -87,7 +87,7 @@ class TestMskServerlessClusterExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == expected.dict(exclude_none=True)
+        assert result == expected.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "kafka")
         mock_client.describe_cluster_v2.assert_called_once_with(ClusterArn=CLUSTER_ARN)
 
