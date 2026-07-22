@@ -13,7 +13,7 @@ from port_ocean.context.event import event_context
 from github.helpers.models import RepoSearchParams
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubRepositorySelector
-
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 
 TEST_REPOS = [
     {
@@ -340,7 +340,9 @@ class TestRestRepositoryExporter:
     async def test_get_paginated_resources_uses_search_strategy_when_app_auth_and_personal_account(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
-        from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+        from github.clients.auth.github_app.installation_authenticator import (
+            GitHubAppInstallationAuthenticator,
+        )
 
         async def mock_paginated_request(
             url: str, params: dict[str, Any], *args: Any, **kwargs: Any
@@ -354,11 +356,11 @@ class TestRestRepositoryExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             # Force the exporter to detect App authentication
-            rest_client.authenticator = GitHubAppAuthenticator(
-                app_id="app",
-                private_key="key",
+            rest_client.authenticator = GitHubAppInstallationAuthenticator(
+                app_auth=GitHubAppAuthenticator(
+                    app_id="app", private_key="key", github_host=rest_client.base_url
+                ),
                 organization="test-org",
-                github_host=rest_client.base_url,
                 installation_id="123",
             )
 

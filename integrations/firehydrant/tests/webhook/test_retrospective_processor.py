@@ -19,7 +19,6 @@ from webhook.webhook_processors.retrospective_webhook_processor import (
     RetrospectiveWebhookProcessor,
 )
 
-
 INCIDENT_PAYLOAD: dict[str, Any] = {
     "data": {
         "incident": {"id": "inc-123"},

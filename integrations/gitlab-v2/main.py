@@ -16,7 +16,11 @@ from gitlab.clients.utils import (
     build_project_params,
     build_branch_params,
 )
-from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
+from gitlab.helpers.utils import (
+    ObjectKind,
+    build_search_query,
+    enrich_resources_with_project,
+)
 from integration import (
     GitLabFilesResourceConfig,
     GroupResourceConfig,
@@ -35,6 +39,7 @@ from integration import (
     GitlabDeploymentResourceConfig,
 )
 
+from gitlab.webhook.constants import WEBHOOK_PATH
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
 )
@@ -451,6 +456,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     search_path = selector.files.path
     scope = "blobs"
     skip_parsing = selector.files.skip_parsing
+    search_strategy = selector.files.search_strategy
 
     repositories = (
         selector.files.repos
@@ -459,7 +465,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     files_cache: dict[str, dict[str, Any]] = {}
-    found_any_files = False
 
     async def _enrich_and_yield(
         files_batch: list[dict[str, Any]],
@@ -476,36 +481,23 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 file_entity["__includedFiles"] = files_cache[repo_key]
         return enriched_batch
 
+    params = (
+        build_project_params(include_only_active_projects=include_only_active_groups)
+        if search_strategy in ("projectSearch", "repositoryTree")
+        else build_group_params(include_only_active_groups=include_only_active_groups)
+    )
+
     async for files_batch in client.search_files(
         scope,
-        search_path,
-        repositories,
-        skip_parsing,
-        build_group_params(include_only_active_groups=include_only_active_groups),
+        build_search_query(search_path),
+        skip_parsing=skip_parsing,
+        repositories=repositories,
+        params=params,
+        strategy=search_strategy,
     ):
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
-            found_any_files = True
             yield enriched_batch
-
-    if not found_any_files and not repositories:
-        logger.info(
-            "Group-level file search returned no results. "
-            "Falling back to project-level file search."
-        )
-        # control project filtering using group selector to avoid adding a new selector
-        params = build_project_params(
-            include_only_active_projects=include_only_active_groups
-        )
-        async for files_batch in client.search_files_in_projects(
-            scope,
-            search_path,
-            skip_parsing,
-            params,
-        ):
-            enriched_batch = await _enrich_and_yield(files_batch)
-            if enriched_batch:
-                yield enriched_batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -617,21 +609,21 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", PipelineWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", MemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ProjectWithMemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", DeploymentWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, GroupWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, MergeRequestWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PipelineWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, JobWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, MemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, GroupWithMemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, FilePushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, FolderPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWithMemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, TagWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ReleaseWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
 
 register_actions_executors()

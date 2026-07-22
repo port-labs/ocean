@@ -89,7 +89,6 @@ def mock_datetime() -> Generator[datetime, None, None]:
 
 @pytest.mark.asyncio
 class TestPullRequestExporter:
-
     async def test_get_resource(self, rest_client: GithubRestClient) -> None:
         exporter = RestPullRequestExporter(rest_client)
 

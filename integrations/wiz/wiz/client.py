@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import functools
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
@@ -8,8 +9,8 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils.async_iterators import (
-    semaphore_async_iterator,
     stream_async_iterators_tasks,
+    semaphore_async_iterator,
 )
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
@@ -21,13 +22,21 @@ from wiz.options import (
     VulnerabilityFindingOptions,
 )
 
-from .constants import (
+from wiz.constants import (
     AUTH0_URLS,
     COGNITO_URLS,
     GRAPH_QUERIES,
     ISSUES_GQL,
     PAGE_SIZE,
+    RESOURCE_TOTAL_COUNT_QUERIES,
 )
+from wiz.rate_limiter import TokenBucketRateLimiter
+from wiz.pagination import (
+    ReadyPartitionCrawlStream,
+    VulnerabilityFindingPartitionStrategy,
+)
+
+DEFAULT_API_REQUESTS_PER_SECOND = 10
 
 
 class CacheKeys(StrEnum):
@@ -70,7 +79,11 @@ class WizClient:
     )
 
     def __init__(
-        self, api_url: str, client_id: str, client_secret: str, token_url: str
+        self,
+        api_url: str,
+        client_id: str,
+        client_secret: str,
+        token_url: str,
     ):
         self.api_url = api_url
         self.client_id = client_id
@@ -79,6 +92,7 @@ class WizClient:
         self.last_token_object: TokenResponse | None = None
 
         self.http_client = http_async_client
+        self._api_rate_limiter = TokenBucketRateLimiter(DEFAULT_API_REQUESTS_PER_SECOND)
 
     @property
     def auth_request_params(self) -> dict[str, Any]:
@@ -104,6 +118,7 @@ class WizClient:
     async def _get_token(self) -> TokenResponse:
         logger.info(f"Fetching access token for Wiz clientId: {self.client_id}")
 
+        await self._api_rate_limiter.acquire()
         response = await self.http_client.post(
             self.token_url,
             data=self.auth_request_params,
@@ -134,8 +149,8 @@ class WizClient:
         self, query: str, variables: dict[str, Any]
     ) -> dict[str, Any]:
         try:
+            await self._api_rate_limiter.acquire()
             logger.info(f"Fetching graphql query with variables {variables}")
-
             response = await self.http_client.post(
                 url=self.api_url,
                 json={"query": query, "variables": variables},
@@ -162,18 +177,55 @@ class WizClient:
             logger.error(f"Error while making GraphQL query: {str(e)}")
             raise
 
+    async def get_resource_total_count(
+        self, resource: str, variables: dict[str, Any]
+    ) -> int:
+        query = RESOURCE_TOTAL_COUNT_QUERIES.get(resource)
+        if query is None:
+            raise OceanAbortException(
+                f"Total count queries are not supported for resource '{resource}'"
+            )
+
+        count_variables = {"filterBy": variables.get("filterBy") or {}}
+        data = await self.make_graphql_query(query, count_variables)
+        resource_data = data.get(resource)
+        if not isinstance(resource_data, dict):
+            raise OceanAbortException(
+                f"Wiz GraphQL response is missing '{resource}' object for count query"
+            )
+
+        total_count = resource_data.get("totalCount")
+        if not isinstance(total_count, int):
+            raise OceanAbortException(
+                f"Wiz GraphQL response for '{resource}' includes invalid 'totalCount'"
+            )
+
+        return total_count
+
     async def _get_paginated_resources(
-        self, resource: str, variables: dict[str, Any], max_pages: Optional[int] = None
+        self,
+        resource: str,
+        variables: dict[str, Any],
+        max_pages: Optional[int] = None,
+        partition_label: str | None = None,
     ) -> AsyncGenerator[list[Any], None]:
-        logger.info(f"Fetching {resource} data from Wiz API")
+        chain_variables = copy.deepcopy(variables)
         page_num = 1
+        counter = 0
+        partition_suffix = f" ({partition_label})" if partition_label else ""
+
+        if partition_label:
+            logger.info(f"Starting partition {partition_label}")
+        else:
+            logger.info(f"Fetching {resource} data from Wiz API")
 
         while True:
             logger.info(
-                f"Fetching page {page_num} {f"of {max_pages}" if max_pages else ''}"
+                f"Fetching page {page_num}{partition_suffix} "
+                f"{f'of {max_pages}' if max_pages else ''}"
             )
             gql = GRAPH_QUERIES[resource]
-            data = await self.make_graphql_query(gql, variables)
+            data = await self.make_graphql_query(gql, chain_variables)
             resource_data = data.get(resource)
             if not isinstance(resource_data, dict):
                 raise OceanAbortException(
@@ -187,15 +239,20 @@ class WizClient:
                 )
 
             yield nodes
+            counter += len(nodes)
 
             cursor = resource_data.get("pageInfo") or {}
             if not cursor.get("hasNextPage", False):
-                break  # Break out of the loop if no more pages
+                if partition_label:
+                    logger.info(
+                        f"Finished partition {partition_label} after {page_num} pages "
+                        f"and {counter} entities"
+                    )
+                break
 
-            # Set the cursor for the next page request
-            variables["after"] = cursor.get("endCursor", "")
+            chain_variables["after"] = cursor.get("endCursor", "")
             page_num += 1
-            if max_pages and page_num >= max_pages:
+            if max_pages and page_num > max_pages:
                 break
 
     async def get_issues(
@@ -291,6 +348,28 @@ class WizClient:
 
         if options.severity_list:
             variables["filterBy"]["severity"] = options.severity_list
+
+        if options.parallelism is not None:
+            self._api_rate_limiter = TokenBucketRateLimiter(
+                options.parallelism.api_requests_per_second
+            )
+            initial_partitions = (
+                VulnerabilityFindingPartitionStrategy().build_partitions(
+                    variables, options.parallelism
+                )
+            )
+            if initial_partitions:
+                async for findings in ReadyPartitionCrawlStream(
+                    self,
+                    "vulnerabilityFindings",
+                    variables,
+                    initial_partitions,
+                    options.parallelism,
+                    self._get_paginated_resources,
+                    max_pages=options.max_pages,
+                ):
+                    yield findings
+                return
 
         async for findings in self._get_paginated_resources(
             resource="vulnerabilityFindings",
