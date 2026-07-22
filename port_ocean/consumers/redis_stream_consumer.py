@@ -308,7 +308,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 error=str(error),
             )
         finally:
-
             elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
             await self._ack(message_id)
             time_until_acked_ms = self._time_since_queued_ms(queued_time)
