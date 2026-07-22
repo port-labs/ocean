@@ -64,6 +64,32 @@ class TestRestOrganizationExporter:
             f"{unscoped_client.base_url}/users/test-org"
         )
 
+    async def test_requested_organization_takes_precedence_over_authenticator(
+        self,
+        unscoped_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
+    ) -> None:
+        unscoped_client.authenticator.organization = "auth-org"
+        exporter = RestOrganizationExporter(unscoped_client)
+
+        with patch.object(
+            unscoped_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = TEST_ORG
+
+            async with event_context("test_event"):
+                event.port_app_config = mock_port_app_config
+                _ = [
+                    batch
+                    async for batch in exporter.get_paginated_resources(
+                        ListOrganizationOptions(organization="requested-org")
+                    )
+                ]
+
+        mock_request.assert_called_once_with(
+            f"{unscoped_client.base_url}/users/requested-org"
+        )
+
     async def test_get_paginated_resources_uses_authenticator_organization(
         self,
         unscoped_client: GithubRestClient,

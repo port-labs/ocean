@@ -1,8 +1,7 @@
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 from loguru import logger
-from github.core.exporters.organization_exporter import RestOrganizationExporter
-from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
     FolderSearchOptions,
     ListOrganizationOptions,
@@ -15,8 +14,8 @@ from integration import FolderSelector
 class FolderPatternMappingBuilder:
     def __init__(
         self,
-        org_exporter: RestOrganizationExporter,
-        repo_exporter: RestRepositoryExporter,
+        org_exporter: AbstractGithubExporter[Any],
+        repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
         self.org_exporter = org_exporter

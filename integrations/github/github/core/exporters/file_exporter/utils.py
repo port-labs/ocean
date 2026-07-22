@@ -27,12 +27,11 @@ from github.core.options import (
     ListOrganizationOptions,
     ListFileSearchOptions,
 )
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import GithubClientType, matches_glob_pattern
 from github.helpers.repo_selectors import CompositeRepositorySelector
 
 if TYPE_CHECKING:
-    from github.core.exporters.organization_exporter import RestOrganizationExporter
-    from github.core.exporters.repository_exporter import RestRepositoryExporter
     from integration import GithubFilePattern
 
 JSON_FILE_SUFFIX = ".json"
@@ -137,8 +136,8 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
 class FilePatternMappingBuilder:
     def __init__(
         self,
-        org_exporter: RestOrganizationExporter,
-        repo_exporter: RestRepositoryExporter,
+        org_exporter: AbstractGithubExporter[Any],
+        repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
         self.org_exporter = org_exporter

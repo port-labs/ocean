@@ -27,11 +27,12 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         port_app_config = cast(GithubPortAppConfig, event.port_app_config)
         allowed_multi_organizations = port_app_config.organizations
         include_authenticated_user = port_app_config.include_authenticated_user
+        requested_organization = options.organization if options else None
 
         if organization := (
-            self.client.authenticator.organization
+            requested_organization
+            or self.client.authenticator.organization
             or ocean.integration_config.get("github_organization")
-            or (options.organization if options else None)
         ):
             logger.info(f"Fetching single organization {organization}")
             organization_resource = await self.get_resource(
