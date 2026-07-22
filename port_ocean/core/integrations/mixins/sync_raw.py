@@ -64,7 +64,7 @@ from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
-LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 5
+LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 60
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
