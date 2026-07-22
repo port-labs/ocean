@@ -732,6 +732,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListEnvironmentsOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                include_variables=config.selector.include_variables,
                             )
                         )
                     )

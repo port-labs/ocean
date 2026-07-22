@@ -166,10 +166,13 @@ class SingleEnvironmentOptions(RepositoryIdentifier):
     """Options for fetching a single environment."""
 
     name: str
+    include_variables: NotRequired[bool]
 
 
 class ListEnvironmentsOptions(RepositoryIdentifier):
     """Options for listing environments."""
+
+    include_variables: NotRequired[bool]
 
 
 class SingleDeploymentOptions(RepositoryIdentifier):
