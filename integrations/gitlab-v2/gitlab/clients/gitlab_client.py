@@ -51,6 +51,9 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+        # Groups where Advanced Search (search_type=advanced) returned 400.
+        # Avoid re-trying that path for every file pattern in the same process.
+        self._groups_without_advanced_search: set[str] = set()
 
     async def get_personal_namespace_projects(
         self,
@@ -72,6 +75,20 @@ class GitLabClient:
     async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/repository/tags/{tag_name}"
+        )
+
+    async def compare_repository(
+        self,
+        project_path: str | int,
+        from_sha: str,
+        to_sha: str,
+    ) -> dict[str, Any]:
+        """Compare two refs and return the GitLab compare payload (including diffs)."""
+        encoded_path = quote(str(project_path), safe="")
+        return await self.rest.send_api_request(
+            "GET",
+            f"projects/{encoded_path}/repository/compare",
+            params={"from": from_sha, "to": to_sha},
         )
 
     async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
@@ -950,9 +967,17 @@ class GitLabClient:
         query: str,
         skip_parsing: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        logger.info(
-            f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
-        )
+        logger.info(f"Starting group search with scope '{scope}'")
+
+        # Advanced Search is unavailable for some groups (common on GitLab.com
+        # free tiers). Cache capability misses so later queries skip advanced search.
+        if scope == "blobs" and group_id in self._groups_without_advanced_search:
+            async for batch in self._search_files_in_group_projects(
+                group_id, scope, query, skip_parsing
+            ):
+                yield batch
+            return
+
         params = {"scope": scope, "search": query, "search_type": "advanced"}
         path = f"groups/{quote(group_id, safe='')}/search"
 
@@ -960,35 +985,50 @@ class GitLabClient:
             async for file_batch in self.rest.get_paginated_resource(
                 path, params=params
             ):
-                logger.info(f"Found {len(file_batch)} files in group '{group_id}'")
+                logger.info(f"Found {len(file_batch)} files in group search")
                 processed_batch = await self._process_file_batch(
                     file_batch, group_id, skip_parsing
                 )
                 if processed_batch:
                     yield processed_batch
         except httpx.HTTPStatusError as e:
-            if not self._is_blob_search_unavailable(e):
+            if not (scope == "blobs" and self._is_advanced_search_unavailable(e)):
                 raise
+            self._groups_without_advanced_search.add(group_id)
             logger.warning(
-                f"Group search in group {group_id} failed: {e.response.json().get('message')}, "
-                f"falling back to project-level search for group's projects"
+                f"Group advanced search unavailable for group {group_id} "
+                f"(query={query!r}); falling back to project-level search "
+                "for remaining queries"
             )
             async for batch in self._search_files_in_group_projects(
                 group_id, scope, query, skip_parsing
             ):
                 yield batch
 
-    def _is_blob_search_unavailable(self, error: httpx.HTTPStatusError) -> bool:
+    @staticmethod
+    def _is_advanced_search_unavailable(error: httpx.HTTPStatusError) -> bool:
+        """True only for capability 400s, not request-specific validation errors."""
+        if error.response.status_code != 400:
+            return False
+        try:
+            raw = error.response.json().get("message", "")
+        except Exception:
+            return False
+        if isinstance(raw, list):
+            message = " ".join(str(part) for part in raw)
+        else:
+            message = str(raw)
         error_messages = (
             "Scope 'blobs' is not available for this search",
             "Advanced search is not available",
         )
-        if error.response.status_code != 400:
-            return False
-        message = error.response.json().get("message", "")
-        if isinstance(message, list):
-            message = " ".join(message)
-        return any(error_message in message for error_message in error_messages)
+        if any(error_message in message for error_message in error_messages):
+            return True
+        # Broader match for GitLab version / plan messaging variants.
+        lowered = message.lower()
+        return (
+            "advanced search" in lowered or "scope 'blobs' is not available" in lowered
+        )
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str

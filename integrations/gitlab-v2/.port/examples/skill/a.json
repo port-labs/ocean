@@ -1,0 +1,22 @@
+{
+  "skill": {
+    "name": "hello-skill",
+    "description": "A minimal example skill used to test skill discovery.",
+    "instructions": "# Hello Skill\n\nRespond with a short greeting.\n",
+    "frontmatter": {
+      "name": "hello-skill",
+      "description": "A minimal example skill used to test skill discovery."
+    },
+    "path": "skills/hello-skill",
+    "skillMdPath": "skills/hello-skill/SKILL.md",
+    "root": "skills"
+  },
+  "repo": {
+    "id": 1,
+    "name": "example-skills",
+    "path_with_namespace": "acme/example-skills",
+    "default_branch": "main",
+    "web_url": "https://gitlab.com/acme/example-skills"
+  },
+  "__branch": "main"
+}

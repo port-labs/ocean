@@ -17,8 +17,11 @@ from gitlab.clients.utils import (
     build_branch_params,
 )
 from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
+from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
 from integration import (
     GitLabFilesResourceConfig,
+    GitLabSkillResourceConfig,
+    GitLabPluginResourceConfig,
     GroupResourceConfig,
     ProjectResourceConfig,
     GitLabFoldersResourceConfig,
@@ -64,6 +67,12 @@ from gitlab.webhook.webhook_processors.group_with_member_webhook_processor impor
 )
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.skill_push_webhook_processor import (
+    SkillPushWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.plugin_push_webhook_processor import (
+    PluginPushWebhookProcessor,
 )
 from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
@@ -535,6 +544,28 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield enriched_batch
 
 
+@ocean.on_resync(ObjectKind.SKILL)
+async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
+    group_params = build_group_params(
+        include_only_active_groups=selector.include_only_active_groups
+    )
+    async for batch in resync_skills(client, selector, group_params):
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.PLUGIN)
+async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
+    group_params = build_group_params(
+        include_only_active_groups=selector.include_only_active_groups
+    )
+    async for batch in resync_plugins(client, selector, group_params):
+        yield batch
+
+
 @ocean.on_resync(ObjectKind.FOLDER)
 async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -653,6 +684,8 @@ ocean.add_webhook_processor(WEBHOOK_PATH, JobWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, MemberWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, FilePushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, SkillPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PluginPushWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, FolderPushWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWithMemberWebhookProcessor)

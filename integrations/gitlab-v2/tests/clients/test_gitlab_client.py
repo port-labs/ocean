@@ -811,11 +811,51 @@ class TestGitLabClient:
     async def test_search_files_in_group_blobs_scope_unavailable(
         self, client: GitLabClient
     ) -> None:
-        """Test that _search_files_in_group falls back to _search_files_in_group_projects when blobs scope is unavailable (400 error)"""
+        """400 on group blob search falls back to project search and caches the group."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
-            "message": "400 Bad request - Scope 'blobs' is not available for this search"
+            "message": "400 Bad request - Advanced search is not available"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ) as mock_group_search:
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+                return_value=async_mock_generator([]),
+            ) as mock_fallback:
+                results = []
+                async for batch in client._search_files_in_group(
+                    "my-group", "blobs", "test.json"
+                ):
+                    results.extend(batch)
+
+                # Second call should skip advanced search entirely.
+                async for batch in client._search_files_in_group(
+                    "my-group", "blobs", "other.json"
+                ):
+                    results.extend(batch)
+
+        assert results == []
+        assert mock_group_search.call_count == 1
+        assert mock_fallback.call_count == 2
+        assert "my-group" in client._groups_without_advanced_search
+
+    async def test_search_files_in_group_blobs_scope_legacy_message(
+        self, client: GitLabClient
+    ) -> None:
+        """Legacy GitLab message still triggers Advanced Search fallback."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "Scope 'blobs' is not available for this search"
         }
         error = httpx.HTTPStatusError(
             "400 Bad Request", request=MagicMock(), response=mock_response
@@ -830,19 +870,21 @@ class TestGitLabClient:
                 client,
                 "_search_files_in_group_projects",
                 return_value=async_mock_generator([]),
-            ):
+            ) as mock_fallback:
                 results = []
                 async for batch in client._search_files_in_group(
-                    "my-group", "blobs", "test.json"
+                    "legacy-group", "blobs", "test.json"
                 ):
                     results.extend(batch)
 
         assert results == []
+        assert mock_fallback.call_count == 1
+        assert "legacy-group" in client._groups_without_advanced_search
 
-    async def test_search_files_in_group_other_400_raises(
+    async def test_search_files_in_group_blob_validation_400_raises(
         self, client: GitLabClient
     ) -> None:
-        """Test that _search_files_in_group re-raises 400 errors with unrecognized messages"""
+        """Request-specific / unrecognized blob 400s are not treated as capability misses."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
@@ -867,6 +909,32 @@ class TestGitLabClient:
                     ):
                         pass
                 mock_fallback.assert_not_called()
+
+        assert "my-group" not in client._groups_without_advanced_search
+
+    async def test_search_files_in_group_non_blob_400_raises(
+        self, client: GitLabClient
+    ) -> None:
+        """Non-blob group search 400s are not treated as Advanced Search fallback."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "400 Bad request - Advanced search is not available"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client._search_files_in_group(
+                    "my-group", "issues", "test.json"
+                ):
+                    pass
 
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""
