@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -7,9 +6,6 @@ from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions, ListTeamOptions
 from github.helpers.utils import enrich_with_organization, IgnoredError
-
-BATCH_CONCURRENCY_LIMIT = 10
-
 
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
     _EXTERNAL_GROUP_IGNORED_ERRORS = [
@@ -96,23 +92,7 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
         teams: list[dict[str, Any]],
         organization: str,
     ) -> list[dict[str, Any]]:
-        semaphore = asyncio.BoundedSemaphore(BATCH_CONCURRENCY_LIMIT)
-        return list(
-            await asyncio.gather(
-                *[
-                    self._enrich_team_with_external_group(team, organization, semaphore)
-                    for team in teams
-                ]
-            )
-        )
-
-    async def _enrich_team_with_external_group(
-        self,
-        team: dict[str, Any],
-        organization: str,
-        semaphore: asyncio.BoundedSemaphore,
-    ) -> dict[str, Any]:
-        async with semaphore:
+        for team in teams:
             slug = team["slug"]
             url = f"{self.client.base_url}/orgs/{organization}/teams/{slug}/external-groups"
             response = await self.client.send_api_request(
@@ -127,9 +107,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
                     f"No external group linked to team {slug} in {organization}"
                 )
                 team["__external_group"] = None
-                return team
+                continue
             team["__external_group"] = groups[0]
             logger.info(
                 f"Fetched external IdP group {groups[0]['group_name']} for team {slug} in {organization}"
             )
-            return team
+        return teams
