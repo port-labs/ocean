@@ -115,6 +115,81 @@
     }
   },
   {
+    "identifier": "dynamodbTable",
+    "title": "DynamoDB Table",
+    "icon": "AmazonDynamoDB",
+    "schema": {
+      "properties": {
+        "tableArn": {
+          "type": "string",
+          "title": "Table ARN",
+          "description": "The Amazon Resource Name (ARN) of the DynamoDB table"
+        },
+        "tableStatus": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the table"
+        },
+        "billingMode": {
+          "type": "string",
+          "title": "Billing Mode",
+          "description": "The billing mode of the table (PROVISIONED or PAY_PER_REQUEST)"
+        },
+        "itemCount": {
+          "type": "number",
+          "title": "Item Count",
+          "description": "The number of items in the table"
+        },
+        "tableSizeBytes": {
+          "type": "number",
+          "title": "Table Size (Bytes)",
+          "description": "The total size of the table in bytes"
+        },
+        "creationDateTime": {
+          "type": "string",
+          "title": "Creation Date",
+          "description": "The date and time when the table was created",
+          "format": "date-time"
+        },
+        "deletionProtectionEnabled": {
+          "type": "boolean",
+          "title": "Deletion Protection",
+          "description": "Whether deletion protection is enabled for the table"
+        },
+        "encryptionType": {
+          "type": "string",
+          "title": "Encryption Type",
+          "description": "The type of server-side encryption (AES256 or KMS)"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the table resides"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the table",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "ecsCluster",
     "title": "ECS Cluster",
     "icon": "AWS",

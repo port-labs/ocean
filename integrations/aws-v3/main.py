@@ -73,6 +73,8 @@ from aws.core.exporters.codepipeline import (
     CodePipelineActionExecutionExporter,
     PaginatedCodePipelineActionExecutionRequest,
 )
+from aws.core.exporters.dynamodb import DynamoDBTableExporter
+from aws.core.exporters.dynamodb.table.models import PaginatedTableRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -422,6 +424,15 @@ async def resync_codepipeline_action_execution(
         CodePipelineActionExecutionExporter,
         PaginatedCodePipelineActionExecutionRequest,
         regional=True,
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.DYNAMODB_TABLE)
+async def resync_dynamodb_table(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, DynamoDBTableExporter, PaginatedTableRequest, regional=True
     )
     async for batch in service:
         yield batch
