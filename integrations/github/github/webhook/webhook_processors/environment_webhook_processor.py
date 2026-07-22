@@ -30,11 +30,8 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
         resource_config_kind = resource_config.kind
         organization = self.get_webhook_payload_organization(payload)["login"]
 
-        include_variables = (
-            isinstance(resource_config, GithubEnvironmentConfig)
-            and resource_config.selector.variables
-        )
-
+        config = cast(GithubEnvironmentConfig, resource_config)
+        include_variables = config.selector.variables
         logger.info(
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
