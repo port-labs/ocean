@@ -3,7 +3,6 @@ from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from initialize_client import init_client
 
-
 FILE_PROPERTY_PREFIX = "file://"
 
 
