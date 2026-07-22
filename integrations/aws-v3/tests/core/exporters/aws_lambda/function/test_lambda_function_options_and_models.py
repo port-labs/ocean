@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from aws.core.exporters.aws_lambda.function.models import (
     LambdaFunction,
@@ -151,7 +151,7 @@ class TestLambdaFunctionProperties:
             Runtime="python3.9",
             Tags={"Project": "demo"},
         )
-        result = properties.dict(exclude_none=True)
+        result = properties.model_dump(exclude_none=True)
         assert result["FunctionName"] == "test-function"
         assert result["Runtime"] == "python3.9"
         assert result["Tags"] == {"Project": "demo"}
@@ -220,7 +220,7 @@ class TestLambdaFunctionProperties:
         )
 
         # Test that aliases are used in serialization
-        result = properties.dict(by_alias=True)
+        result = properties.model_dump(by_alias=True)
         assert "KMSKeyArn" in result
 
         # Test that field names work in direct access
@@ -271,7 +271,7 @@ class TestLambdaFunction:
         lambda_function = LambdaFunction(
             Properties=LambdaFunctionProperties(FunctionName="test-function")
         )
-        data = lambda_function.dict(exclude_none=True)
+        data = lambda_function.model_dump(exclude_none=True)
         assert data["Type"] == "AWS::Lambda::Function"
         assert data["Properties"]["FunctionName"] == "test-function"
 
@@ -304,7 +304,7 @@ class TestLambdaFunction:
         )
         lambda_function = LambdaFunction(Properties=properties)
 
-        data = lambda_function.dict(exclude_none=True)
+        data = lambda_function.model_dump(exclude_none=True)
         assert data["Properties"]["Environment"]["Variables"]["ENV_VAR_1"] == "value1"
         assert data["Properties"]["VpcConfig"]["VpcId"] == "vpc-12345678"
         assert len(data["Properties"]["VpcConfig"]["SubnetIds"]) == 2

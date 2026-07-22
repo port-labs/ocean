@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from aws.core.exporters.msk.serverless_cluster.models import (
     MskServerlessCluster,

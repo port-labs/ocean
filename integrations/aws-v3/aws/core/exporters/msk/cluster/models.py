@@ -1,11 +1,17 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field, ConfigDict
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
-class MskClusterProperties(BaseModel):
+class MskClusterProperties(BaseAWSPropertiesModel):
     """Properties for an MSK cluster resource."""
+
+    model_config = ConfigDict(extra="allow")
 
     ClusterArn: str = Field(default_factory=str)
     ClusterName: str = Field(default_factory=str)
@@ -28,9 +34,6 @@ class MskClusterProperties(BaseModel):
     ZookeeperConnectStringTls: str | None = None
 
     Tags: dict[str, str] = Field(default_factory=dict)
-
-    class Config:
-        extra = "allow"
 
 
 class MskCluster(ResourceModel[MskClusterProperties]):
