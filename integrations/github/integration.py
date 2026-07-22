@@ -226,6 +226,18 @@ class GithubBranchConfig(ResourceConfig):
     selector: GithubBranchSelector
 
 
+class GithubEnvironmentSelector(RepoSearchSelector):
+    variables: bool = Field(
+        default=False,
+        description="Include environment variables (fetched via the variables REST API) as __variables on each environment.",
+    )
+
+
+class GithubEnvironmentConfig(ResourceConfig):
+    kind: Literal["environment"]
+    selector: GithubEnvironmentSelector
+
+
 class GithubRepoSearchConfig(ResourceConfig):
     selector: RepoSearchSelector
 
@@ -252,6 +264,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
+        | GithubEnvironmentConfig
         | GithubRepoSearchConfig
         | ResourceConfig
     ] = Field(default_factory=list)

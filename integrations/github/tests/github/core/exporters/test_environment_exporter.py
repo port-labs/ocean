@@ -29,6 +29,21 @@ TEST_ENVIRONMENTS = [
     },
 ]
 
+TEST_VARIABLES = [
+    {
+        "name": "APP_URL",
+        "value": "https://example.com",
+        "created_at": "2024-03-20T10:00:00Z",
+        "updated_at": "2024-03-20T10:00:00Z",
+    },
+    {
+        "name": "DEPLOY_TIMEOUT",
+        "value": "300",
+        "created_at": "2024-03-20T10:00:00Z",
+        "updated_at": "2024-03-20T10:00:00Z",
+    },
+]
+
 
 @pytest.mark.asyncio
 class TestRestEnvironmentExporter:
@@ -55,6 +70,37 @@ class TestRestEnvironmentExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/environments/production"
             )
+
+    async def test_get_resource_with_variables(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """variables=True fetches and attaches __variables to the environment."""
+        exporter = RestEnvironmentExporter(rest_client)
+
+        async def mock_paginated_variables(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            yield {"variables": TEST_VARIABLES}
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_api, patch.object(
+            rest_client,
+            "send_paginated_request",
+            side_effect=mock_paginated_variables,
+        ):
+            mock_api.return_value = TEST_ENVIRONMENTS[0]
+            environment = await exporter.get_resource(
+                SingleEnvironmentOptions(
+                    organization="test-org",
+                    repo_name="test-repo",
+                    name="production",
+                    variables=True,
+                )
+            )
+
+            assert environment["__variables"] == TEST_VARIABLES
+            assert environment["__repository"] == "test-repo"
 
     async def test_get_paginated_resources(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
@@ -91,4 +137,41 @@ class TestRestEnvironmentExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/test-org/test-repo/environments",
                     {},
+                )
+
+    async def test_get_paginated_resources_with_variables(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """variables=True enriches each environment in the batch with __variables."""
+        exporter = RestEnvironmentExporter(rest_client)
+
+        call_count = 0
+
+        async def mock_paginated(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call: environments list
+                yield {"environments": TEST_ENVIRONMENTS}
+            else:
+                # Subsequent calls: variables for each environment
+                yield {"variables": TEST_VARIABLES}
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated
+        ):
+            async with event_context("test_event"):
+                options = ListEnvironmentsOptions(
+                    organization="test-org", repo_name="test-repo", variables=True
+                )
+                environments: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(environments) == 1
+                assert all(
+                    environment["__variables"] == TEST_VARIABLES
+                    for environment in environments[0]
                 )

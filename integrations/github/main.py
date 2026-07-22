@@ -83,6 +83,7 @@ from integration import (
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubUserConfig,
+    GithubEnvironmentConfig,
 )
 
 
@@ -566,7 +567,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     environment_exporter = RestEnvironmentExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubEnvironmentConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -590,6 +591,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListEnvironmentsOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                variables=config.selector.variables,
                             )
                         )
                     )

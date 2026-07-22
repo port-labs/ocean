@@ -14,6 +14,7 @@ from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.webhook.webhook_processors.base_deployment_webhook_processor import (
     BaseDeploymentWebhookProcessor,
 )
+from integration import GithubEnvironmentConfig
 
 
 class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
@@ -30,6 +31,11 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
         resource_config_kind = resource_config.kind
         organization = payload["organization"]["login"]
 
+        include_variables = (
+            isinstance(resource_config, GithubEnvironmentConfig)
+            and resource_config.selector.variables
+        )
+
         logger.info(
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
@@ -41,6 +47,7 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
                 organization=organization,
                 repo_name=repo,
                 name=environment,
+                variables=include_variables,
             )
         )
 
