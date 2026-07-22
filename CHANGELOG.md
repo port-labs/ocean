@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.45.8 (2026-07-21)
+
+### Improvements
+
+- Pass integration-run context to action-executor rate-limit checks.
+
 ## 0.45.7 (2026-07-21)
 
 ### Improvements
