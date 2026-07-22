@@ -681,7 +681,9 @@ class GithubWorkflowConfig(ResourceConfig):
 
 
 class GithubEnvironmentSelector(RepoSearchSelector):
-    variables: bool = Field(
+    include_variables: bool = Field(
+        title="Include Variables"
+        alias="includeVariables"
         default=False,
         description="Include environment variables (fetched via the variables REST API) as __variables on each environment.",
 
