@@ -2,30 +2,40 @@ name: Validate integration files
 
 on:
   pull_request:
-    paths:
-      - "integrations/**"
 
 
 jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+
   validate-files:
+    needs: detect-changes
     runs-on: ubuntu-latest
 
     steps:
+      - name: No integration changes
+        if: needs.detect-changes.outputs.has_integration_code_changes != 'true'
+        run: echo "No integration changes detected"
+
       - name: Set up Python 3.12
+        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Checkout code
+        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup
+        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         run: |
           pip install toml-cli yq packaging
 
       - name: Check Ocean version 🌊
+        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         run: |
           git remote add ocean-origin https://github.com/port-labs/ocean.git
           git fetch ocean-origin
@@ -47,6 +57,7 @@ jobs:
           done
 
       - name: Validate integration version format
+        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         run: |
           changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
           for dir in $changed_dirs; do
@@ -69,6 +80,7 @@ jobs:
           done
 
       - name: Validate integration not duplicated
+        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         run: |
           for integration in $(find integrations -name 'pyproject.yaml' -not -path "**/.venv/*"); do
             type=$(grep -E '^name = ".*"' "$integration" | cut -d'"' -f2)
