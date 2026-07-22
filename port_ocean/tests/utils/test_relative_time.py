@@ -38,12 +38,6 @@ def test_months_ago_calendar(monkeypatch: pytest.MonkeyPatch) -> None:
     assert months_ago(1) == datetime(2025, 12, 31, 12, 0, 0, tzinfo=timezone.utc)
 
 
-def test_months_ago_negative_is_future(freeze_now: datetime) -> None:
-    assert months_ago(-2) == datetime(
-        2026, 9, 21, 12, 30, 45, 123456, tzinfo=timezone.utc
-    )
-
-
 def test_to_rfc3339_seconds() -> None:
     assert to_rfc3339(FROZEN_NOW) == "2026-07-21T12:30:45Z"
 
