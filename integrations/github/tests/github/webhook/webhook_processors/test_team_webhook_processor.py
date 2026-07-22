@@ -301,6 +301,63 @@ class TestTeamWebhookProcessor:
             False,
         )
 
+    async def test_handle_event_with_external_group_enrichment(
+        self,
+        team_webhook_processor: TeamWebhookProcessor,
+    ) -> None:
+        team_data = {
+            "id": 1,
+            "name": "test-repo",
+            "slug": "test-team",
+            "description": "Test team",
+            "node_id": "NODE_1",
+        }
+        payload = {
+            "action": "created",
+            "team": team_data,
+            "organization": {"login": "test-org"},
+        }
+        resource_config = GithubTeamConfig(
+            kind=ObjectKind.TEAM,
+            selector=GithubTeamSelector(
+                members=False, include_external_group=True, query="true"
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".slug",
+                        title=".name",
+                        blueprint='"githubTeam"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+        external_group = {
+            "group_id": "28836910a68075ab3dbe",
+            "group_name": "engineering",
+            "updated_at": "2024-01-01T00:00:00Z",
+        }
+        enriched_team = {**team_data, "__external_group": external_group}
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
+                new=AsyncMock(return_value=dict(team_data)),
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.enrich_teams_with_external_group",
+                new=AsyncMock(return_value=[enriched_team]),
+            ),
+        ):
+            result = await team_webhook_processor.handle_event(payload, resource_config)
+
+        assert result.updated_raw_results == [enriched_team]
+        assert result.deleted_raw_results == []
+
     @pytest.mark.parametrize(
         "payload,expected",
         [

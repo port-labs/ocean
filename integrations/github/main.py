@@ -320,6 +320,11 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 selector.include_saml_email,
                             )
 
+                if selector.include_external_group:
+                    teams = await RestTeamExporter(
+                        rest_client
+                    ).enrich_teams_with_external_group(teams, org_name)
+
                 yield teams
 
 

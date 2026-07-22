@@ -108,6 +108,12 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
                     selector.include_saml_email,
                 )
 
+        if selector.include_external_group:
+            enriched = await exporter.enrich_teams_with_external_group(
+                [data_to_upsert], organization
+            )
+            data_to_upsert = enriched[0]
+
         logger.info(f"Team {team['slug']} of organization: {organization} was upserted")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

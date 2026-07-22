@@ -5,10 +5,18 @@ from loguru import logger
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions, ListTeamOptions
-from github.helpers.utils import enrich_with_organization
+from github.helpers.utils import enrich_with_organization, IgnoredError
 
 
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
+    _EXTERNAL_GROUP_IGNORED_ERRORS = [
+        IgnoredError(
+            status=400,
+            message="Organization is not part of an externally managed enterprise",
+            type="NOT_EMU_ORG",
+        )
+    ]
+
     async def get_resource[ExporterOptionT: SingleTeamOptions](
         self, options: ExporterOptionT
     ) -> Optional[RAW_ITEM]:
@@ -78,4 +86,31 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
             ):
                 all_members.extend(batch)
             team["members"] = {"nodes": all_members}
+        return teams
+
+    async def enrich_teams_with_external_group(
+        self,
+        teams: list[dict[str, Any]],
+        organization: str,
+    ) -> list[dict[str, Any]]:
+        for team in teams:
+            slug = team["slug"]
+            url = f"{self.client.base_url}/orgs/{organization}/teams/{slug}/external-groups"
+            response = await self.client.send_api_request(
+                url, ignored_errors=self._EXTERNAL_GROUP_IGNORED_ERRORS
+            )
+            # Per GitHub docs, only one external group can be linked to a team —
+            # no pagination on this endpoint.
+            # https://docs.github.com/en/rest/teams/external-groups
+            groups = response.get("groups", [])
+            if not groups:
+                logger.debug(
+                    f"No external group linked to team {slug} in {organization}"
+                )
+                team["__external_group"] = None
+                continue
+            team["__external_group"] = groups[0]
+            logger.info(
+                f"Fetched external IdP group {groups[0]['group_name']} for team {slug} in {organization}"
+            )
         return teams
