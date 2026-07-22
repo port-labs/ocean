@@ -1,0 +1,64 @@
+name: New Relic Metric Reporter
+
+description: Send metrics to New Relic
+
+inputs:
+  new_relic_api_key:
+    description: The New Relic API key
+    required: true
+  metric_name:
+    description: The metric name
+    required: true
+  metric_type:
+    description: "Metric type: gauge, count, or summary"
+    required: false
+    default: "gauge"
+  metric_value:
+    description: The metric value
+    required: true
+  metric_attributes:
+    description: JSON string of metric attributes
+    required: false
+    default: "{}"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Send New Relic Metric
+      shell: bash
+      run: |
+        timestamp=$(date +%s)
+
+        payload=$(jq -n \
+          --arg name "${{ inputs.metric_name }}" \
+          --arg type "${{ inputs.metric_type }}" \
+          --argjson value "${{ inputs.metric_value }}" \
+          --argjson timestamp "$timestamp" \
+          --argjson attributes '${{ inputs.metric_attributes }}' \
+          '[{
+            "metrics": [{
+              "name": $name,
+              "type": $type,
+              "value": $value,
+              "timestamp": $timestamp,
+              "attributes": $attributes
+            }]
+          }]'
+        )
+
+        echo "Sending metric to New Relic:"
+        echo "$payload" | jq .
+
+        http_code=$(curl -s -o /tmp/nr_response.txt -w "%{http_code}" -X POST \
+          -H "Api-Key: ${{ inputs.new_relic_api_key }}" \
+          -H "Content-Type: application/json" \
+          -d "$payload" \
+          "https://metric-api.newrelic.com/metric/v1")
+
+        echo "Response: $(cat /tmp/nr_response.txt)"
+        echo "HTTP Status: $http_code"
+
+        if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
+          echo "Error: New Relic API returned HTTP $http_code"
+          exit 1
+        fi

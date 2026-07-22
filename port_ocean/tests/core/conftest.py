@@ -102,7 +102,6 @@ def mock_port_client(mock_http_client: MagicMock) -> PortClient:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(
@@ -127,9 +126,14 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config = MagicMock()
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
+        ocean_mock.config.process_in_queue_max_workers = 4
+        ocean_mock.config.process_in_queue_timeout = 10
+        ocean_mock.config.allow_environment_variables_jq_access = True
+        ocean_mock.config.delete_entities_max_batch_size = 50
         ocean_mock.port_client = mock_port_client
         ocean_mock.process_execution_mode = ProcessExecutionMode.single_process
         ocean_mock.cache_provider = InMemoryCacheProvider()
+        ocean_mock.lifecycle_client = None  # type: ignore
         metrics_settings = MetricsSettings(enabled=True)
         integration_settings = IntegrationSettings(type="test", identifier="test")
         ocean_mock.metrics = Metrics(
@@ -145,6 +149,9 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
 def mock_context(mock_ocean: Ocean) -> PortOceanContext:
     context = PortOceanContext(mock_ocean)
     ocean._app = context.app
+    # Set up integration.entity_processor for multiprocess _calculate_entity access
+    mock_ocean.integration = MagicMock()
+    mock_ocean.integration.entity_processor = JQEntityProcessor(context)
     return context
 
 

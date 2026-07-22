@@ -9,7 +9,6 @@ from github.clients.http.rest_client import GithubRestClient
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 
-
 TEST_ENVIRONMENTS = [
     {
         "name": "production",
@@ -65,7 +64,11 @@ class TestRestEnvironmentExporter:
                 )
             )
 
-            assert environment == {**TEST_ENVIRONMENTS[0], "__repository": "test-repo"}
+            assert environment == {
+                **TEST_ENVIRONMENTS[0],
+                "__repository": "test-repo",
+                "__organization": "test-org",
+            }
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/environments/production"
@@ -131,6 +134,10 @@ class TestRestEnvironmentExporter:
                 )
                 assert all(
                     environment["__repository"] == "test-repo"
+                    for environment in environments[0]
+                )
+                assert all(
+                    environment["__organization"] == "test-org"
                     for environment in environments[0]
                 )
 

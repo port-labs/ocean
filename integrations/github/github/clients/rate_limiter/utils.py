@@ -1,7 +1,29 @@
 import time
+import calendar
+from datetime import datetime
 from typing import Optional, Dict, Literal
 from dataclasses import dataclass
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
+import httpx
+
+from github.helpers.utils import has_exhausted_rate_limit_headers
+
+REST_RATE_LIMIT_STATUS_CODES = {403, 429}
+GRAPHQL_RATE_LIMIT_STATUS_CODES = REST_RATE_LIMIT_STATUS_CODES | {200}
+
+
+def is_rest_rate_limit_response(response: httpx.Response) -> bool:
+    if response.status_code not in REST_RATE_LIMIT_STATUS_CODES:
+        return False
+    return response.status_code == 429 or has_exhausted_rate_limit_headers(
+        response.headers
+    )
+
+
+def is_graphql_rate_limit_response(response: httpx.Response) -> bool:
+    if response.status_code not in GRAPHQL_RATE_LIMIT_STATUS_CODES:
+        return False
+    return has_exhausted_rate_limit_headers(response.headers)
 
 
 @dataclass
@@ -43,6 +65,52 @@ class RateLimiterRequiredHeaders(BaseModel):
     x_ratelimit_limit: Optional[str] = Field(alias="x-ratelimit-limit")
     x_ratelimit_remaining: Optional[str] = Field(alias="x-ratelimit-remaining")
     x_ratelimit_reset: Optional[str] = Field(alias="x-ratelimit-reset")
+    retry_after: Optional[str] = Field(alias="retry-after")
 
     def as_dict(self) -> Dict[str, str]:
         return self.dict(by_alias=True)
+
+
+def extract_graphql_rate_limit_info(
+    response: httpx.Response,
+) -> Optional[RateLimitInfo]:
+    """
+    Extract GraphQL rate-limit info from response headers.
+
+    Handles both primary rate limits (HTTP 200 with exhausted x-ratelimit-* headers)
+    and secondary rate limits (retry-after header on any response).
+    Returns RateLimitInfo if rate-limited, None otherwise.
+    """
+    # Check primary rate limit (exhausted headers)
+    if is_graphql_rate_limit_response(response):
+        limit = int(response.headers.get("x-ratelimit-limit", 0))
+        remaining = int(response.headers.get("x-ratelimit-remaining", 0))
+        reset_time = int(response.headers.get("x-ratelimit-reset", 0))
+        return RateLimitInfo(remaining=remaining, reset_time=reset_time, limit=limit)
+
+    # Check secondary rate limit (retry-after header)
+    retry_after = response.headers.get("retry-after")
+    if retry_after is not None:
+        retry_after_seconds = None
+        try:
+            retry_after_seconds = int(retry_after)
+        except ValueError:
+            try:
+                date_part = (
+                    retry_after.rsplit(" ", 1)[0] if " " in retry_after else retry_after
+                )
+                retry_time = datetime.strptime(date_part, "%a, %d %b %Y %H:%M:%S")
+                utc_timestamp = calendar.timegm(retry_time.timetuple())
+                retry_after_seconds = int(utc_timestamp - time.time())
+            except (ValueError, AttributeError, IndexError):
+                pass
+
+        if retry_after_seconds is not None and retry_after_seconds > 0:
+            reset_time = int(time.time()) + retry_after_seconds
+            return RateLimitInfo(
+                remaining=0,
+                reset_time=reset_time,
+                limit=1,
+            )
+
+    return None

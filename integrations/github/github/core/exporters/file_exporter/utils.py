@@ -16,16 +16,17 @@ from typing import (
     Union,
 )
 
-import yaml
+from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
 
+from github.clients.utils import get_mono_repo_organization
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import FileSearchOptions, ListFileSearchOptions
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, matches_glob_pattern
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
-    OrganizationLoginGenerator,
+    OrganizationLoginAndTypeGenerator,
 )
 
 if TYPE_CHECKING:
@@ -48,6 +49,7 @@ class FileObject(TypedDict):
     path: str
     name: str
     metadata: Dict[str, Any]
+    __base_jq: str
 
 
 def decode_content(content: str, encoding: str) -> str:
@@ -71,8 +73,19 @@ def decode_content(content: str, encoding: str) -> str:
         raise ValueError(f"Unsupported encoding: {encoding}")
 
     try:
-        return base64.b64decode(content).decode("utf-8")
-    except (binascii.Error, UnicodeDecodeError) as e:
+        decoded_bytes = base64.b64decode(content)
+        content_str = decoded_bytes.decode("utf-8")
+        return content_str.replace("\x00", "")
+
+    except UnicodeDecodeError as e:
+        logger.warning(
+            f"Failed to decode content with strict utf-8 decoding: {str(e)}. "
+            "Retrying with replacement of invalid characters."
+        )
+        content_str = decoded_bytes.decode("utf-8", errors="replace")
+        return content_str.replace("\x00", "")
+
+    except binascii.Error as e:
         logger.error(f"Failed to decode content: {str(e)}")
         raise
 
@@ -83,7 +96,8 @@ def parse_content(content: str, file_path: str) -> Any:
         if file_path.endswith(JSON_FILE_SUFFIX):
             return json.loads(content)
         elif file_path.endswith(YAML_FILE_SUFFIX):
-            return yaml.safe_load(content)
+            yaml = YAML(typ="safe")
+            return yaml.load(content)
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
 
@@ -124,7 +138,9 @@ class FilePatternMappingBuilder:
         repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
-        self.generate_org_logins = OrganizationLoginGenerator(org_exporter)
+        self.generate_org_logins_and_types = OrganizationLoginAndTypeGenerator(
+            org_exporter
+        )
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
@@ -136,9 +152,12 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            async for org_login in self.generate_org_logins(file_sel.organization):
+            organization = get_mono_repo_organization(file_sel.organization)
+            async for org_login, org_type in self.generate_org_logins_and_types(
+                organization
+            ):
                 async for repo_name, branch, _ in self.repo_selector.select_repos(
-                    file_sel, self.repo_exporter, org_login
+                    file_sel, self.repo_exporter, org_login, org_type
                 ):
                     repo_map[(org_login, repo_name)].append(
                         FileSearchOptions(
@@ -164,7 +183,7 @@ def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
     Match file path against a glob pattern using wcmatch's globmatch.
     Supports ** and other extended glob syntax.
     """
-    return glob.globmatch(path, pattern, flags=glob.GLOBSTAR | glob.IGNORECASE)
+    return matches_glob_pattern(path, pattern, flags=glob.DOTGLOB)
 
 
 def determine_api_client_type_by_file_size(size: int) -> GithubClientType:
@@ -224,17 +243,14 @@ def build_batch_file_query(
     """
     Build a GraphQL query to fetch multiple files from a repository.
     """
-    objects = "\n".join(
-        f"""
+    objects = "\n".join(f"""
         file_{file_index}: object(expression: "{branch}:{path}") {{
             ... on Blob {{
                 text
                 byteSize
             }}
         }}
-        """
-        for file_index, path in enumerate(file_paths)
-    )
+        """ for file_index, path in enumerate(file_paths))
 
     query = f"""
     query {{

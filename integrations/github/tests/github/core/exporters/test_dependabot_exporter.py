@@ -10,7 +10,6 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleDependabotAlertOptions, ListDependabotAlertOptions
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_DEPENDABOT_ALERTS = [
     {
         "number": 1,
@@ -123,6 +122,7 @@ class TestRestDependabotAlertExporter:
             expected_alert = {
                 **TEST_DEPENDABOT_ALERTS[0],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
 
@@ -159,6 +159,7 @@ class TestRestDependabotAlertExporter:
 
             assert len(alerts) == 2
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
+            assert all(alert["__organization"] == "test-org" for alert in alerts)
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/dependabot/alerts",
@@ -216,6 +217,7 @@ class TestRestDependabotAlertExporter:
             expected_alert = {
                 **TEST_DEPENDABOT_ALERTS[1],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
             assert alert["state"] == "dismissed"
@@ -254,7 +256,7 @@ class TestRestDependabotAlertExporter:
                 )
             )
 
-            assert result == {"__repository": "test-repo"}
+            assert result is None
 
     async def test_handle_request_paginated_with_dependabot_disabled_error(
         self, rest_client: GithubRestClient

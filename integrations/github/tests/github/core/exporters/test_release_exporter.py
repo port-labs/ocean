@@ -8,7 +8,6 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleReleaseOptions, ListReleaseOptions
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_RELEASES = [
     {
         "id": 1,
@@ -49,6 +48,7 @@ class TestRestReleaseExporter:
                 )
             )
 
+            assert release is not None
             assert release["name"] == "Release 1.0"
             assert release["__repository"] == "repo1"  # Check repository is enriched
 

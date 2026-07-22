@@ -1,0 +1,41 @@
+{
+  "key": "AZwuDv7ZacZtUu_jLZSO",
+  "rule": "typescript:S6606",
+  "severity": "MINOR",
+  "component": "port-gh-app-dev_vscode:src/vs/workbench/browser/parts/editor/editorParts.ts",
+  "project": "port-gh-app-dev_vscode",
+  "line": 105,
+  "hash": "dcdb59612b387a41a706a8f061311393",
+  "textRange": {
+    "startLine": 105,
+    "endLine": 118,
+    "startOffset": 3,
+    "endOffset": 4
+  },
+  "flows": [],
+  "status": "OPEN",
+  "message": "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.",
+  "effort": "5min",
+  "debt": "5min",
+  "author": "benjamin.pasero@gmail.com",
+  "tags": [
+    "es2020",
+    "nullish-coalescing",
+    "type-dependent"
+  ],
+  "creationDate": "2026-02-05T11:33:36+0000",
+  "updateDate": "2026-02-05T13:33:06+0000",
+  "type": "CODE_SMELL",
+  "organization": "port-gh-app-dev",
+  "cleanCodeAttribute": "CONVENTIONAL",
+  "cleanCodeAttributeCategory": "CONSISTENT",
+  "impacts": [
+    {
+      "softwareQuality": "MAINTAINABILITY",
+      "severity": "LOW"
+    }
+  ],
+  "issueStatus": "OPEN",
+  "projectName": "vscode",
+  "__link": "https://sonarcloud.io/project/issues?open=AZwuDv7ZacZtUu_jLZSO&id=port-gh-app-dev_vscode"
+}

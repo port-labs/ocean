@@ -6,7 +6,6 @@ from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from loguru import logger
 
-
 PAGE_SIZE = 100
 
 
@@ -65,6 +64,5 @@ class GithubRestClient(AbstractGithubClient):
                 next_resource := self._get_next_link(link_header)
             ):
                 break
-
             params = None
             resource = next_resource

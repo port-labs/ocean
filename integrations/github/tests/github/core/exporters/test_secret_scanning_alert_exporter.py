@@ -10,7 +10,6 @@ from github.core.options import (
 )
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_SECRET_SCANNING_ALERTS = [
     {
         "number": 42,
@@ -107,6 +106,7 @@ class TestRestSecretScanningAlertExporter:
             expected_alert = {
                 **TEST_SECRET_SCANNING_ALERTS[0],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
 
@@ -140,6 +140,7 @@ class TestRestSecretScanningAlertExporter:
 
             assert len(alerts) == 2
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
+            assert all(alert["__organization"] == "test-org" for alert in alerts)
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/secret-scanning/alerts",
@@ -175,6 +176,7 @@ class TestRestSecretScanningAlertExporter:
             expected_params = {"hide_secret": True}
             assert len(alerts) == 2
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
+            assert all(alert["__organization"] == "test-org" for alert in alerts)
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/secret-scanning/alerts",

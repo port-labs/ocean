@@ -18,7 +18,6 @@ from integration import GithubEnvironmentConfig
 
 
 class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
-
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ENVIRONMENT]
 
@@ -29,7 +28,7 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
         environment = payload["deployment"]["environment"]
         repo = payload["repository"]["name"]
         resource_config_kind = resource_config.kind
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         include_variables = (
             isinstance(resource_config, GithubEnvironmentConfig)
@@ -39,6 +38,11 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
         logger.info(
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
+
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         client = create_github_client()
         environment_exporter = RestEnvironmentExporter(client)
@@ -50,6 +54,10 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
                 variables=include_variables,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

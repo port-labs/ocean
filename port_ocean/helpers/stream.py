@@ -22,7 +22,10 @@ class Stream:
         if chunk_size is None:
             chunk_size = ocean_context.ocean.config.streaming.chunk_size
 
-        file_name = f"{ocean_context.ocean.config.streaming.location}/{uuid.uuid4()}"
+        streaming_location = ocean_context.ocean.config.streaming.location
+        os.makedirs(streaming_location, exist_ok=True)
+
+        file_name = f"{streaming_location}/{uuid.uuid4()}"
 
         crypt = Fernet(Fernet.generate_key())
 

@@ -5,7 +5,8 @@ from loguru import logger
 import httpx
 
 from port_ocean.context.ocean import ocean
-from pydantic import BaseModel, Field, Extra
+from port_ocean.utils import http_async_client
+from pydantic.v1 import BaseModel, Field, Extra
 
 from newrelic_integration.core.errors import NewRelicNotFoundError
 from newrelic_integration.core.entities import EntitiesHandler
@@ -31,8 +32,8 @@ class IssueState(Enum):
 
 
 class IssuesHandler:
-    def __init__(self, http_client: httpx.AsyncClient):
-        self.http_client = http_client
+    def __init__(self, http_client: httpx.AsyncClient | None = None):
+        self.http_client = http_client or http_async_client
 
     async def get_number_of_issues_by_entity_guid(
         self,
@@ -106,7 +107,7 @@ class IssuesHandler:
 
     @staticmethod
     async def _extract_issues(
-        response: dict[Any, Any]
+        response: dict[Any, Any],
     ) -> Tuple[Optional[str], list[dict[Any, Any]]]:
         """Extract issues from the response. used by send_paginated_graph_api_request"""
         results = (

@@ -1,0 +1,26 @@
+{
+  "identifier": "d87f1777-7de0-47e2-8f89-f193c382ee6d",
+  "title": "MyApp/MyGroup",
+  "properties": {
+    "applicationName": "MyApp",
+    "deploymentGroupId": "d87f1777-7de0-47e2-8f89-f193c382ee6d",
+    "serviceRoleArn": "arn:aws:iam::123456789012:role/service-role/Somebody",
+    "computePlatform": "Server",
+    "deploymentStyle": {
+      "deploymentType": "IN_PLACE",
+      "deploymentOption": "WITHOUT_TRAFFIC_CONTROL"
+    },
+    "autoScalingGroups": [],
+    "outdatedInstancesStrategy": "UPDATE",
+    "tags": [
+      {
+        "Key": "Hum",
+        "Value": "Drum"
+      }
+    ]
+  },
+  "relations": {
+    "account": "123456789012"
+  },
+  "icon": "AWS"
+}

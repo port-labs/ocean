@@ -3,7 +3,6 @@ from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from initialize_client import init_client
 
-
 FILE_PROPERTY_PREFIX = "file://"
 
 
@@ -25,7 +24,9 @@ class FileEntityProcessor(JQEntityProcessor):
             )
             return None
 
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         """
         Search for a file in the repository and return its content.
 

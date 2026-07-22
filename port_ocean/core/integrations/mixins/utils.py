@@ -1,21 +1,20 @@
 import asyncio
-import json
+import hashlib
 import multiprocessing
 import os
 import re
-import shutil
-import stat
-import subprocess
-import tempfile
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 
-import ijson
 from loguru import logger
 
+from port_ocean.clients.dsp.lifecycle_http import (
+    _lifecycle_http_client as _dsp_lifecycle_http_client,
+)
 from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
+from port_ocean.core.handlers import JQEntityProcessor
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -29,57 +28,203 @@ from port_ocean.exceptions.core import (
     KindNotImplementedException,
 )
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
+from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
+from port_ocean.core.models import IntegrationFeatureFlag, LakehouseDataEntry, LakehouseDataEntryMetadata, ProcessingMode
 
-def _process_path_type_items(
-    result: RAW_RESULT, items_to_parse: str | None = None
-) -> RAW_RESULT:
+
+def collect_export_env_variables(
+    variable_names: list[str],
+) -> dict[str, str | None] | None:
+    """Collect values for explicitly requested environment variable names."""
+    if not variable_names:
+        return None
+    return {name: os.environ.get(name) for name in variable_names}
+
+
+def build_lakehouse_data_entry(
+    *,
+    items: list[Any],
+    metadata: LakehouseDataEntryMetadata,
+    export_env_variables: list[str],
+    request: dict[str, Any] | None = None,
+    response: dict[str, Any] | None = None,
+) -> LakehouseDataEntry:
+    """Build a lakehouse data entry, collecting env vars for this bulk."""
+    entry: LakehouseDataEntry = {
+        "request": request or {},
+        "response": response or {},
+        "metadata": metadata,
+        "items": items,
+    }
+    environment_data = collect_export_env_variables(export_env_variables)
+    if environment_data is not None:
+        entry["environment_data"] = environment_data
+    return entry
+
+
+def selector_query_from_resource(resource: ResourceConfig) -> str | None:
+    query = getattr(getattr(resource, "selector", None), "query", None)
+    if not isinstance(query, str):
+        return None
+
+    trimmed = query.strip()
+    return trimmed if trimmed else None
+
+
+def selector_hash_from_query(query: str) -> str:
+    return hashlib.sha256(query.encode("utf-8")).hexdigest()
+
+
+def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
+    query = selector_query_from_resource(resource)
+    if not query:
+        return None
+
+    return selector_hash_from_query(query)
+
+
+async def is_lakehouse_data_enabled() -> bool:
+    """Check if lakehouse data is enabled.
+
+    This function checks the organization feature flags and config to determine
+    if lakehouse data sending is enabled. It handles errors gracefully since
+    lakehouse sending is intended to be best-effort and should not block core
+    processing flows.
+
+    Returns:
+        bool: True if lakehouse data is enabled, False otherwise (including on error)
     """
-    Process items in the result array to check for "__type": "path" fields.
-    If found, read the file contents and load them into a "content" field.
-    Skip processing if we're on the items_to_parse branch.
+    try:
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and ocean.config.lakehouse_enabled
+        ):
+            return True
+        return False
+    except Exception as e:
+        logger.bind(local_only=True).warning(
+            f"Failed to check lakehouse feature flags, assuming disabled: {e}"
+        )
+        return False
+
+
+async def is_dsp_mode_enabled() -> bool:
+    """Check if DSP (Data Source Processor) mode is active.
+
+    DSP mode offloads all transform/load/reconciliation to an external service.
+    Ocean still extracts raw data and forwards it to the lakehouse, but skips
+    all entity processing.  Requires an explicit opt-in via config AND the right
+    org feature flags.  Errors are swallowed so this never blocks core flows.
+
+    Returns:
+        bool: True only when all four conditions are met, False otherwise.
     """
-    if not isinstance(result, list):
-        return result
+    try:
+        if ocean.config.processing_mode != ProcessingMode.dsp:
+            return False
+        if not ocean.config.lakehouse_enabled:
+            logger.bind(local_only=True).warning(
+                "DSP mode requested but lakehouse_enabled is False, falling back to ocean-core"
+            )
+            return False
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags
+        ):
+            return True
+        logger.bind(local_only=True).warning(
+            "DSP mode requested but required feature flags are missing "
+            f"(LAKEHOUSE_ELIGIBLE={IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags}, "
+            f"DATA_SOURCE_PROCESSOR_ENABLED={IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags}), "
+            "falling back to ocean-core"
+        )
+        return False
+    except Exception as e:
+        logger.bind(local_only=True).warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
+        return False
 
-    # Skip processing if we're on the items_to_parse branch
-    if items_to_parse:
-        return result
 
-    processed_result = []
-    for item in result:
-        if isinstance(item, dict) and item.get("__type") == "path":
-            try:
-                # Read the file content and parse as JSON
-                file_path = item.get("file", {}).get("content", {}).get("path")
-                if file_path and os.path.exists(file_path):
-                    with open(file_path, "r") as f:
-                        content = json.loads(f.read())
-                    # Create a copy of the item with the content field
-                    processed_item = item.copy()
-                    processed_item["file"]["content"] = content
-                    processed_result.append(processed_item)
-                else:
-                    # If file doesn't exist, keep the original item
-                    processed_result.append(item)
-            except (json.JSONDecodeError, IOError, OSError) as e:
-                if isinstance(item, dict) and item.get("file") is not None:
-                    content = item["file"].get("content") if isinstance(item["file"].get("content"), dict) else {}
-                    data_path = content.get("path", None)
-                    logger.warning(
-                        f"Failed to read or parse file content for path {data_path}: {e}"
-                    )
-                else:
-                    logger.warning(
-                        f"Failed to read or parse file content for unknown path: {e}. item: {json.dumps(item)}"
-                    )
-                # Keep the original item if there's an error
-                processed_result.append(item)
+async def is_redis_live_events_enabled() -> bool:
+    """Check if live events should be consumed from a Redis stream.
+
+    Gated by the organization feature flag and the integration-level
+    ``OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED`` setting (default false).
+    Errors are swallowed so this never blocks core flows.
+
+    Returns:
+        bool: True when Redis stream consumption is enabled, False otherwise.
+    """
+    try:
+        if not ocean.config.live_events.is_redis_stream_consumer_enabled:
+            return False
+        flags = await ocean.port_client.get_organization_feature_flags()
+        return IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED in flags
+    except Exception as e:
+        logger.bind(local_only=True).warning(
+            f"Failed to check Redis live events feature flags, assuming disabled: {e}"
+        )
+        return False
+
+
+
+def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
+    """
+    Revised function to extract a simple path suitable for del() by analyzing pipe segments.
+    """
+    expr = jq_expression.strip()
+
+    # 1. Handle surrounding parentheses and extract the main chain
+    if expr.startswith('('):
+        match_paren = re.match(r'\((.*?)\)', expr, re.DOTALL)
+        if match_paren:
+            chain = match_paren.group(1).strip()
         else:
-            # Keep non-path type items as is
-            processed_result.append(item)
+            return None
+    else:
+        chain = expr
 
-    return processed_result
+    # 2. Split the chain by the main pipe operator (excluding pipes inside quotes or brackets,
+    # but for simplicity here, we split naively and check segments)
+    segments = chain.split('|')
+
+    # 3. Analyze each segment for a simple path
+    for segment in segments:
+        segment = segment.strip()
+
+        # Ignore variable assignment segments like '. as $root'
+        if re.match(r'^\.\s+as\s+\$\w+', segment):
+            continue
+
+        # Ignore identity and variable access like '.' or '$items'
+        if segment == '.' or segment.startswith('$'):
+            continue
+
+        # Look for the first genuine path accessor (e.g., .key, .[index], .key.nested, .key[0])
+        # This regex looks for a starting dot and follows it with path components
+        # (alphanumeric keys or bracketed accessors, where brackets can follow words directly)
+        # Pattern: Start with .word or .[index], then optionally more:
+        #   - .word (dot followed by word)
+        #   - [index] (bracket directly after word, no dot)
+        #   - .[index] (dot followed by bracket)
+        path_match = re.match(r'(\.[\w]+|\.\[[^\]]+\])(\.[\w]+|\[[^\]]+\]|\.\[[^\]]+\])*', segment)
+
+        if path_match:
+            path = path_match.group(0).strip()
+
+            # If the path is immediately followed by a simple fallback (// value),
+            # we consider the path complete.
+            if re.search(r'\s*//\s*(\[\]|null|\.|\{.*?\})', segment):
+                return path
+
+            # If the path is just a path segment followed by nothing or the end of a complex
+            # expression (like .file.content.raw) we return it.
+            return path
+
+    # Default case: No suitable path found after checking all segments
+    return None
 
 @contextmanager
 def resync_error_handling() -> Generator[None, None, None]:
@@ -98,42 +243,102 @@ def resync_error_handling() -> Generator[None, None, None]:
 
 
 async def resync_function_wrapper(
-    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str, items_to_parse: str | None = None
+    fn: Callable[[str], Awaitable[RAW_RESULT]],
+    kind: str,
+    send_raw_data_examples_amount: int = 0,
 ) -> RAW_RESULT:
     with resync_error_handling():
-        results = await fn(kind)
-        validated_results = validate_result(results)
-        return _process_path_type_items(validated_results, items_to_parse)
+        results = validate_result(await fn(kind))
+        await send_raw_data_examples(
+            results, kind, send_raw_data_examples_amount
+        )
+        return results
 
+async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True) -> AsyncGenerator[list[dict[str, Any]], None]:
+    delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
+    jq_expression = f". | del({delete_target})"
+    batch_size = ocean.config.yield_items_to_parse_batch_size
+
+    entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
+
+    for item in result:
+        items_to_parse_data = await entity_processor._search(item, items_to_parse)
+        if items_to_parse_top_level_transform:
+            transformed = await entity_processor._search(item, jq_expression)
+            if transformed is None:
+                logger.warning(
+                    f"Top-level transform '{jq_expression}' returned None for item, skipping..."
+                )
+                continue
+            item = transformed
+        if not isinstance(items_to_parse_data, list):
+            logger.warning(
+                f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
+                f" Skipping..."
+            )
+            continue
+        batch = []
+        for parsed_item in items_to_parse_data:
+            if len(batch) >= batch_size:
+                yield batch
+                batch = []
+            merged_item = {**item}
+            merged_item[items_to_parse_name] = parsed_item
+            batch.append(merged_item)
+        if batch:
+            yield batch
+
+async def send_raw_data_examples(
+    result: RAW_RESULT, kind: str, amount: int
+) -> int:
+    if amount <= 0 or not result:
+        return 0
+
+    examples_to_send = [item.copy() for item in result[:amount]]
+    try:
+        await ocean.port_client.ingest_integration_kind_examples(
+            kind, examples_to_send, should_log=False
+        )
+        return len(examples_to_send)
+    except Exception as ex:
+        logger.warning(
+            f"Failed to send raw data example {ex}",
+            exc_info=True,
+        )
+        return 0
 
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE],
+    kind: str,
+    items_to_parse_name: str,
+    items_to_parse: str | None = None,
+    items_to_parse_top_level_transform: bool = True,
+    send_raw_data_examples_amount: int = 0,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
+    remaining_examples_to_send = send_raw_data_examples_amount
     try:
         while True:
             try:
                 with resync_error_handling():
-                    result = await anext(generator)
-                    if not ocean.config.yield_items_to_parse:
-                        validated_result = validate_result(result)
-                        processed_result = _process_path_type_items(validated_result,items_to_parse)
-                        yield processed_result
+                    result = validate_result(await anext(generator))
+                    sent_examples = await send_raw_data_examples(
+                        result, kind, remaining_examples_to_send
+                    )
+                    remaining_examples_to_send = max(
+                        0, remaining_examples_to_send - sent_examples
+                    )
+
+                    if items_to_parse and not await is_dsp_mode_enabled():
+                        items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
+                        del result
+                        async for batch in items_to_parse_generator:
+                            yield batch
                     else:
-                        if items_to_parse:
-                            for data in result:
-                                data_path: str | None = None
-                                if isinstance(data, dict) and data.get("file") is not None:
-                                    content = data["file"].get("content") if isinstance(data["file"].get("content"), dict) else {}
-                                    data_path = content.get("path", None)
-                                bulks = get_items_to_parse_bulks(data, data_path, items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
-                                async for bulk in bulks:
-                                    yield bulk
-                        else:
-                            validated_result = validate_result(result)
-                            processed_result = _process_path_type_items(validated_result, items_to_parse)
-                            yield processed_result
+                        yield result
+
+
             except OceanAbortException as error:
                 errors.append(error)
                 ocean.metrics.inc_metric(
@@ -153,151 +358,11 @@ def is_resource_supported(
 ) -> bool:
     return bool(resync_event_mapping[kind] or resync_event_mapping[None])
 
-def _validate_jq_expression(expression: str) -> None:
-    """Validate jq expression to prevent command injection."""
-    try:
-        _ = cast(JQEntityProcessor, ocean.app.integration.entity_processor)._compile(expression)
-    except Exception as e:
-        raise ValueError(f"Invalid jq expression: {e}") from e
-    # Basic validation - reject expressions that could be dangerous
-    # Check for dangerous patterns (include, import, module)
-    dangerous_patterns = ['include', 'import', 'module', 'env', 'debug']
-    for pattern in dangerous_patterns:
-        # Use word boundary regex to match only complete words, not substrings
-        if re.search(rf'\b{re.escape(pattern)}\b', expression):
-            raise ValueError(f"Potentially dangerous pattern '{pattern}' found in jq expression")
-
-    # Special handling for 'env' - block environment variable access
-    if re.search(r'(?<!\w)\$ENV(?:\.)?', expression):
-        raise ValueError("Environment variable access '$ENV.' found in jq expression")
-    if re.search(r'\benv\.', expression):
-        raise ValueError("Environment variable access 'env.' found in jq expression")
-
-def _create_secure_temp_file(suffix: str = ".json") -> str:
-    """Create a secure temporary file with restricted permissions."""
-    # Create temp directory if it doesn't exist
-    temp_dir = "/tmp/ocean"
-    os.makedirs(temp_dir, exist_ok=True)
-
-    # Create temporary file with secure permissions
-    fd, temp_path = tempfile.mkstemp(suffix=suffix, dir=temp_dir)
-    try:
-        # Set restrictive permissions (owner read/write only)
-        os.chmod(temp_path, stat.S_IRUSR | stat.S_IWUSR)
-        return temp_path
-    finally:
-        os.close(fd)
-
-async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, items_to_parse: str, items_to_parse_name: str, base_jq: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-    # Validate inputs to prevent command injection
-    _validate_jq_expression(items_to_parse)
-    items_to_parse = items_to_parse.replace(base_jq, ".") if data_path else items_to_parse
-
-    temp_data_path = None
-    temp_output_path = None
-
-    try:
-        # Create secure temporary files
-        if not data_path:
-            raw_data_serialized = json.dumps(raw_data)
-            temp_data_path = _create_secure_temp_file("_input.json")
-            with open(temp_data_path, "w") as f:
-                f.write(raw_data_serialized)
-            data_path = temp_data_path
-
-        temp_output_path = _create_secure_temp_file("_parsed.json")
-
-        delete_target = items_to_parse.split('|', 1)[0].strip() if not items_to_parse.startswith('map(') else '.'
-        base_jq_object_string = await _build_base_jq_object_string(raw_data, base_jq, delete_target)
-
-        # Build jq expression safely
-        jq_expression = f""". as $all
-      | ($all | {items_to_parse}) as $items
-      | $items
-      | map({{{items_to_parse_name}: ., {base_jq_object_string}}})"""
-
-        # Use subprocess with list arguments instead of shell=True
-
-        jq_path = shutil.which("jq") or "/bin/jq"
-        jq_args = [jq_path, jq_expression, data_path]
-
-        with open(temp_output_path, "w") as output_file:
-            result = subprocess.run(
-                jq_args,
-                stdout=output_file,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False  # Don't raise exception, handle errors manually
-            )
-
-        if result.returncode != 0:
-            logger.error(f"Failed to parse items for JQ expression {items_to_parse}, error: {result.stderr}")
-            yield []
-        else:
-            with open(temp_output_path, "r") as f:
-                events_stream = get_events_as_a_stream(f, 'item', ocean.config.yield_items_to_parse_batch_size)
-                for items_bulk in events_stream:
-                    yield items_bulk
-
-    except ValueError as e:
-        logger.error(f"Invalid jq expression: {e}")
-        yield []
-    except Exception as e:
-        logger.error(f"Failed to parse items for JQ expression {items_to_parse}, error: {e}")
-        yield []
-    finally:
-        # Cleanup temporary files
-        for temp_path in [temp_data_path, temp_output_path]:
-            if temp_path and os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except OSError as e:
-                    logger.warning(f"Failed to cleanup temporary file {temp_path}: {e}")
-
 def unsupported_kind_response(
     kind: str, available_resync_kinds: list[str]
 ) -> tuple[RESYNC_RESULT, list[Exception]]:
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
-
-async def _build_base_jq_object_string(raw_data: dict[Any, Any], base_jq: str, delete_target: str) -> str:
-    base_jq_object_before_parsing = await cast(JQEntityProcessor, ocean.app.integration.entity_processor)._search(raw_data, f"{base_jq} = {json.dumps("__all")}")
-    base_jq_object_before_parsing_serialized = json.dumps(base_jq_object_before_parsing)
-    base_jq_object_before_parsing_serialized = base_jq_object_before_parsing_serialized[1:-1] if len(base_jq_object_before_parsing_serialized) >= 2 else base_jq_object_before_parsing_serialized
-    base_jq_object_before_parsing_serialized = base_jq_object_before_parsing_serialized.replace("\"__all\"", f"(($all | del({delete_target})) // {{}})")
-    return base_jq_object_before_parsing_serialized
-
-
-def get_events_as_a_stream(
-        stream: Any,
-        target_items: str = "item",
-        max_buffer_size_mb: int = 1
-    ) -> Generator[list[dict[str, Any]], None, None]:
-        events = ijson.sendable_list()
-        coro = ijson.items_coro(events, target_items, use_float=True)
-
-        # Convert MB to bytes for the buffer size
-        buffer_size = max_buffer_size_mb * 1024 * 1024
-
-        # Read chunks from the stream until exhausted
-        while True:
-            chunk = stream.read(buffer_size)
-            if not chunk:  # End of stream
-                break
-
-            # Convert string to bytes if necessary (for text mode files)
-            if isinstance(chunk, str):
-                chunk = chunk.encode('utf-8')
-
-            coro.send(chunk)
-            yield events
-            del events[:]
-        try:
-            coro.close()
-        finally:
-            if events:
-                yield events
-                events[:] = []
 
 class ProcessWrapper(multiprocessing.Process):
     def __init__(self, *args, **kwargs):
@@ -324,3 +389,74 @@ def clear_http_client_context() -> None:
             _port_http_client.pop()
     except (RuntimeError, AttributeError):
         pass
+
+    try:
+        while _dsp_lifecycle_http_client.top is not None:
+            _dsp_lifecycle_http_client.pop()
+    except (RuntimeError, AttributeError):
+        pass
+
+def start_kind_tracking(kind: str) -> None:
+    monitor = get_monitor()
+    monitor.start_kind_tracking(kind)
+
+def stop_kind_tracking(kind: str) -> None:
+    monitor = get_monitor()
+    monitor.stop_kind_tracking(kind)
+    stats = monitor.get_kind_stats(kind)
+    if stats.sample_count > 0:
+        # Report CPU metrics
+        ocean.metrics.set_metric(
+            MetricType.CPU_MAX_NAME, [kind], stats.cpu.cpu_max
+        )
+        ocean.metrics.set_metric(
+            MetricType.CPU_MEDIAN_NAME, [kind], stats.cpu.cpu_median
+        )
+        ocean.metrics.set_metric(
+            MetricType.CPU_AVG_NAME, [kind], stats.cpu.cpu_avg
+        )
+        # Report memory metrics
+        ocean.metrics.set_metric(
+            MetricType.MEMORY_MAX_NAME, [kind], stats.memory.memory_max
+        )
+        ocean.metrics.set_metric(
+            MetricType.MEMORY_MEDIAN_NAME,
+            [kind],
+            stats.memory.memory_median,
+        )
+        ocean.metrics.set_metric(
+            MetricType.MEMORY_AVG_NAME, [kind], stats.memory.memory_avg
+        )
+        # Report latency metrics
+        ocean.metrics.set_metric(
+            MetricType.LATENCY_MAX_NAME,
+            [kind],
+            stats.latency.latency_max,
+        )
+        ocean.metrics.set_metric(
+            MetricType.LATENCY_MEDIAN_NAME,
+            [kind],
+            stats.latency.latency_median,
+        )
+        ocean.metrics.set_metric(
+            MetricType.LATENCY_AVG_NAME,
+            [kind],
+            stats.latency.latency_avg,
+        )
+    # Report response size metrics (always report, even if no requests)
+    ocean.metrics.set_metric(
+        MetricType.RESPONSE_SIZE_TOTAL_NAME,
+        [kind],
+        stats.response_size.response_size_total,
+    )
+    ocean.metrics.set_metric(
+        MetricType.RESPONSE_SIZE_AVG_NAME,
+        [kind],
+        stats.response_size.response_size_avg,
+    )
+    ocean.metrics.set_metric(
+        MetricType.RESPONSE_SIZE_MEDIAN_NAME,
+        [kind],
+        stats.response_size.response_size_median,
+    )
+    monitor.cleanup_kind_tracking(kind)

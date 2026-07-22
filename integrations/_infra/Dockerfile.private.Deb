@@ -1,0 +1,74 @@
+ARG BASE_BUILDER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-builder:latest
+ARG BASE_RUNNER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-runner:latest
+
+FROM ${BASE_BUILDER_PYTHON_IMAGE} AS base
+
+
+ENV LIBRDKAFKA_VERSION=2.8.2
+
+ARG BUILD_CONTEXT
+ARG BUILDPLATFORM
+
+WORKDIR /app
+
+COPY ./${BUILD_CONTEXT}/pyproject.toml ./${BUILD_CONTEXT}/poetry.lock /app/
+
+RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
+
+FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
+
+ARG OCEAN_USER_ID=1001
+ARG OCEAN_GROUP_ID=1001
+
+RUN groupadd -r appgroup -g ${OCEAN_GROUP_ID} && useradd -r -g appgroup -u ${OCEAN_USER_ID} ocean
+
+RUN mkdir -p /tmp/ocean
+
+ARG INTEGRATION_VERSION
+ARG BUILD_CONTEXT
+ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
+ARG OAUTH_CONFIG_DIR=/tmp/ocean/.config
+ARG STREAMING_LOCATION=/tmp/ocean/streaming
+
+ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
+    STREAMING_LOCATION=${STREAMING_LOCATION}
+
+RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
+RUN mkdir -p ${STREAMING_LOCATION}
+RUN mkdir -p ${OAUTH_CONFIG_DIR}
+RUN chmod -R 777 /tmp/ocean
+
+RUN apt-get update \
+    && apt-get install -y \
+        ca-certificates \
+        openssl \
+        curl \
+        acl \
+        libyaml-dev \
+    && apt-get clean
+
+LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
+LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
+
+ENV PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /app
+
+USER ocean
+
+COPY ./${BUILD_CONTEXT} /app
+COPY --from=base /app/.venv /app/.venv
+COPY ./_infra/sync_ca_certs.sh /app/sync_ca_certs.sh
+COPY ./_infra/init.sh /app/init.sh
+
+USER root
+
+RUN chmod a+x /app/.venv/bin/ocean
+RUN chmod a+x /app/init.sh
+RUN chmod +x /app/sync_ca_certs.sh
+RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
+RUN chmod -R a+rX /app
+
+USER ocean
+
+CMD ["bash", "/app/init.sh"]

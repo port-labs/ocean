@@ -5,12 +5,13 @@ from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-from starlette import status
+from starlette import status as starlette_status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import (
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
+    get_event_context_params,
     handle_port_status_code,
 )
 from port_ocean.context.ocean import ocean
@@ -25,6 +26,8 @@ ENTITIES_BULK_SAMPLES_SIZE = 10
 ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
 ENTITIES_BULK_MINIMUM_BATCH_SIZE = 1
 ENTITIES_BULK_UPSERT_CONCURRENCY = 5
+ENTITIES_BULK_DELETE_MAX_BATCH_SIZE = 100
+DATASOURCE_ENTITIES_PAGE_SIZE = 5000
 
 
 class EntityClientMixin:
@@ -107,18 +110,20 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
                 json=entity.dict(exclude_unset=True, by_alias=True),
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -139,7 +144,7 @@ class EntityClientMixin:
             )
 
             if (
-                response.status_code == status.HTTP_404_NOT_FOUND
+                response.status_code == starlette_status.HTTP_404_NOT_FOUND
                 and not result.get("ok")
                 and result.get("error") == PortAPIErrorMessage.NOT_FOUND.value
             ):
@@ -206,6 +211,15 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{blueprint}/entities/bulk",
                 json={
@@ -215,14 +229,7 @@ class EntityClientMixin:
                     ]
                 },
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -261,34 +268,55 @@ class EntityClientMixin:
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
+        if error_entities:
+            sample_errors = {
+                idx: {
+                    "identifier": entities[idx].identifier,
+                    "blueprint": entities[idx].blueprint,
+                    "error": error_entities[idx].get("message")
+                    or error_entities[idx].get("error"),
+                }
+                for idx in list(error_entities.keys())[:5]  # Sample up to 5 errors
+            }
+
+            logger.error(
+                "Bulk upsert completed with entity-specific failures",
+                extra={
+                    "failed_count": len(error_entities),
+                    "sample_errors": sample_errors,
+                },
+            )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.LOADED,
+            ],
+            value=len(successful_entities),
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.FAILED,
+            ],
+            value=len(error_entities),
+        )
+
         batch_results: list[tuple[bool | None, Entity]] = []
         for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
             if entity_index in successful_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.LOADED,
-                    ],
-                    value=1,
-                )
                 success_entity = successful_entities[entity_index]
                 # Create a copy of the original entity with the new identifier
                 updated_entity = reduced_entity.copy()
                 updated_entity.identifier = success_entity["identifier"]
                 batch_results.append((True, updated_entity))
             elif entity_index in error_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.FAILED,
-                    ],
-                    value=1,
-                )
                 error = error_entities[entity_index]
                 if (
                     error.get("identifier") == "unknown"
@@ -432,14 +460,16 @@ class EntityClientMixin:
             logger.info(
                 f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
+            params = {
+                "delete_dependents": str(
+                    request_options["delete_dependent_entities"]
+                ).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.delete(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
                 headers=await self.auth.headers(user_agent_type),
-                params={
-                    "delete_dependents": str(
-                        request_options["delete_dependent_entities"]
-                    ).lower()
-                },
+                params=params,
             )
 
             if response.is_error:
@@ -477,14 +507,109 @@ class EntityClientMixin:
             return_exceptions=True,
         )
 
+    async def _bulk_delete_entities_batch(
+        self,
+        blueprint: str,
+        entity_identifiers: list[str],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+    ) -> list[str]:
+        async with self.semaphore:
+            logger.debug(
+                f"Bulk deleting {len(entity_identifiers)} entities of blueprint: {blueprint}"
+            )
+            response = await self.client.post(
+                f"{self.auth.api_url}/blueprints/{blueprint}/bulk/entities/delete",
+                json={"entities": entity_identifiers},
+                headers=await self.auth.headers(user_agent_type),
+                params={
+                    "delete_dependents": str(
+                        request_options["delete_dependent_entities"]
+                    ).lower(),
+                    **get_event_context_params(),
+                },
+                extensions={"retryable": True},
+            )
+
+        if response.is_error:
+            logger.error(
+                f"Error bulk deleting {len(entity_identifiers)} entities of blueprint: {blueprint}"
+            )
+            handle_port_status_code(response, should_raise=True)
+
+        deleted_entities = response.json().get("deletedEntities", [])
+        logger.debug(
+            f"Successfully bulk deleted {len(deleted_entities)} entities of blueprint: {blueprint}"
+        )
+        return deleted_entities
+
+    async def bulk_delete_entities(
+        self,
+        blueprint: str,
+        entity_identifiers: list[str],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> list[str]:
+        """Delete multiple entities of a single blueprint.
+
+        Splits entity_identifiers into batches of at most ENTITIES_BULK_DELETE_MAX_BATCH_SIZE
+        and fires all batches concurrently. Returns the flat list of deleted entity identifiers.
+        """
+        if not entity_identifiers:
+            return []
+
+        batch_size_to_delete = max(
+            1,
+            min(
+                ocean.config.delete_entities_max_batch_size,
+                ENTITIES_BULK_DELETE_MAX_BATCH_SIZE,
+            ),
+        )
+        batches = [
+            entity_identifiers[
+                batch_start_index : batch_start_index + batch_size_to_delete
+            ]
+            for batch_start_index in range(
+                0, len(entity_identifiers), batch_size_to_delete
+            )
+        ]
+
+        batch_results = await asyncio.gather(
+            *(
+                self._bulk_delete_entities_batch(
+                    blueprint, batch, request_options, user_agent_type
+                )
+                for batch in batches
+            ),
+            return_exceptions=True,
+        )
+
+        deleted_entity_identifiers: list[str] = []
+        for batch, result in zip(batches, batch_results):
+            if isinstance(result, BaseException):
+                logger.error(
+                    f"Failed to bulk delete {len(batch)} entities of blueprint: {blueprint}"
+                )
+                if should_raise:
+                    raise result
+            else:
+                # we can have partial deletions in a batch, so we only extend with the successfully deleted ones returned by the API
+                deleted_entity_identifiers.extend(result)
+
+        return deleted_entity_identifiers
+
     async def search_entities(
         self,
         user_agent_type: UserAgentType,
         query: dict[Any, Any] | None = None,
         parameters_to_include: list[str] | None = None,
+        before: str | None = None,
     ) -> list[Entity]:
         if query is None:
-            return await self._search_entities_by_datasource_paginated(user_agent_type)
+            return await self._search_entities_by_datasource_paginated(
+                user_agent_type, before=before
+            )
 
         return await self._search_entities_by_query(
             user_agent_type=user_agent_type,
@@ -493,7 +618,7 @@ class EntityClientMixin:
         )
 
     async def _search_entities_by_datasource_paginated(
-        self, user_agent_type: UserAgentType
+        self, user_agent_type: UserAgentType, before: str | None = None
     ) -> list[Entity]:
         datasource_prefix = f"port-ocean/{self.auth.integration_type}/"
         datasource_suffix = (
@@ -509,7 +634,11 @@ class EntityClientMixin:
             request_body: dict[str, Any] = {
                 "datasource_prefix": datasource_prefix,
                 "datasource_suffix": datasource_suffix,
+                "limit": DATASOURCE_ENTITIES_PAGE_SIZE,
             }
+
+            if before is not None:
+                request_body["before"] = before
 
             if next_from:
                 request_body["from"] = next_from
@@ -556,7 +685,6 @@ class EntityClientMixin:
         if query.get("rules"):
             query["rules"].extend(default_query["rules"])
 
-        logger.info(f"Searching entities with custom query: {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
             json=query,

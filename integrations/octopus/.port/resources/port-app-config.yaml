@@ -11,7 +11,7 @@ resources:
           title: .Name
           blueprint: '"octopusSpace"'
           properties:
-            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .Id
+            url: .__url
             description: .Description
   - kind: project
     selector:
@@ -23,7 +23,7 @@ resources:
           title: .Name
           blueprint: '"octopusProject"'
           properties:
-            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/projects/" + .Id
+            url: .__url
             description: .Description
             isDisabled: .IsDisabled
             tenantedDeploymentMode: .TenantedDeploymentMode
@@ -43,7 +43,7 @@ resources:
             assembledDate: .Assembled
             channelId: .ChannelId
             releaseNotes: .ReleaseNotes
-            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/releases/" + .Id
+            url: .__url
           relations:
             project: .ProjectId
   - kind: deployment
@@ -61,7 +61,7 @@ resources:
             taskId: .TaskId
             failureEncountered: .FailureEncountered
             comments: .Comments
-            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/deployments/" + .Id
+            url: .__url
           relations:
             release: .ReleaseId
             project: .ProjectId
@@ -77,7 +77,7 @@ resources:
           properties:
             roles: .Roles
             status: .HealthStatus
-            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/infrastructure/machines/" + .Id + "/settings"
+            url: .__url
             isDisabled: .IsDisabled
             operatingSystem: .OperatingSystem
             architecture: .Architecture

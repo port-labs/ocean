@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+import httpx
 from loguru import logger
 
+from gitlab.webhook.constants import build_integration_webhook_url
 from gitlab.webhook.events import EventConfig
 from gitlab.clients.gitlab_client import GitLabClient
 
@@ -21,6 +23,9 @@ class BaseWebhookFactory[T: EventConfig](ABC):
         self._client = client
         self._app_host = app_host
 
+    def build_integration_webhook_url(self) -> str:
+        return build_integration_webhook_url(self._app_host)
+
     async def create(
         self, webhook_url: str, gitlab_webhook_endpoint: str
     ) -> Dict[str, Any]:
@@ -33,7 +38,6 @@ class BaseWebhookFactory[T: EventConfig](ABC):
         Raises:
             Exception: If webhook creation fails
         """
-        # Check if webhook already exists
         if await self._exists(webhook_url, gitlab_webhook_endpoint):
             logger.info(f"Webhook already exists: {webhook_url}")
             return {}
@@ -50,6 +54,15 @@ class BaseWebhookFactory[T: EventConfig](ABC):
             logger.info(f"Created webhook with id {response['id']} at {webhook_url}")
             return response
 
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                logger.warning(
+                    f"Skipping webhook creation for {gitlab_webhook_endpoint} - "
+                    "token is not scoped to this resource"
+                )
+                return {}
+            logger.error(f"Webhook creation failed: {e}")
+            raise
         except Exception as e:
             logger.error(f"Webhook creation failed: {e}")
             raise

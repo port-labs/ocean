@@ -1,0 +1,385 @@
+{
+  "id": "P7LVMYP",
+  "type": "escalation_policy",
+  "summary": "Backend Escalation Policy",
+  "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+  "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP",
+  "name": "Backend Escalation Policy",
+  "escalation_rules": [
+    {
+      "id": "P6PS04G",
+      "escalation_delay_in_minutes": 30,
+      "targets": [
+        {
+          "id": "PWAXLIH",
+          "type": "schedule_reference",
+          "summary": "Port Test Service - Weekly Rotation",
+          "self": "https://api.pagerduty.com/schedules/PWAXLIH",
+          "html_url": "https://getport-io.pagerduty.com/schedules/PWAXLIH"
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "id": "PI7INCI",
+      "type": "service_reference",
+      "summary": "about-turn",
+      "self": "https://api.pagerduty.com/services/PI7INCI",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PI7INCI"
+    },
+    {
+      "id": "PBBI7YI",
+      "type": "service_reference",
+      "summary": "Analytics service",
+      "self": "https://api.pagerduty.com/services/PBBI7YI",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PBBI7YI"
+    },
+    {
+      "id": "P00BUSE",
+      "type": "service_reference",
+      "summary": "API Gateway MTBF Test",
+      "self": "https://api.pagerduty.com/services/P00BUSE",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P00BUSE"
+    },
+    {
+      "id": "PBBOTO8",
+      "type": "service_reference",
+      "summary": "CDN Edge Service MTBF Test",
+      "self": "https://api.pagerduty.com/services/PBBOTO8",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PBBOTO8"
+    },
+    {
+      "id": "P9GEW6E",
+      "type": "service_reference",
+      "summary": "Create From Port - Test 3",
+      "self": "https://api.pagerduty.com/services/P9GEW6E",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P9GEW6E"
+    },
+    {
+      "id": "PYWN6WU",
+      "type": "service_reference",
+      "summary": "Created From Port - Test",
+      "self": "https://api.pagerduty.com/services/PYWN6WU",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PYWN6WU"
+    },
+    {
+      "id": "PHGKHX2",
+      "type": "service_reference",
+      "summary": "Created From Port - Test 3",
+      "self": "https://api.pagerduty.com/services/PHGKHX2",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PHGKHX2"
+    },
+    {
+      "id": "PNCA8WK",
+      "type": "service_reference",
+      "summary": "Created From Port - Test 4",
+      "self": "https://api.pagerduty.com/services/PNCA8WK",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PNCA8WK"
+    },
+    {
+      "id": "PUX2S6S",
+      "type": "service_reference",
+      "summary": "Created from Port - Test 6",
+      "self": "https://api.pagerduty.com/services/PUX2S6S",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PUX2S6S"
+    },
+    {
+      "id": "PAW50IT",
+      "type": "service_reference",
+      "summary": "Created from Port Test 5",
+      "self": "https://api.pagerduty.com/services/PAW50IT",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PAW50IT"
+    },
+    {
+      "id": "P94D8C0",
+      "type": "service_reference",
+      "summary": "Created Service From Port",
+      "self": "https://api.pagerduty.com/services/P94D8C0",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P94D8C0"
+    },
+    {
+      "id": "PXS7AA9",
+      "type": "service_reference",
+      "summary": "Created Service From Port 2",
+      "self": "https://api.pagerduty.com/services/PXS7AA9",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PXS7AA9"
+    },
+    {
+      "id": "P3S7OD1",
+      "type": "service_reference",
+      "summary": "Critical Auth Service MTBF Test",
+      "self": "https://api.pagerduty.com/services/P3S7OD1",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P3S7OD1"
+    },
+    {
+      "id": "P04Y4PT",
+      "type": "service_reference",
+      "summary": "Database Connection Pool MTBF Test",
+      "self": "https://api.pagerduty.com/services/P04Y4PT",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P04Y4PT"
+    },
+    {
+      "id": "PGAZG4C",
+      "type": "service_reference",
+      "summary": "E-commerce Frontend MTBF Test",
+      "self": "https://api.pagerduty.com/services/PGAZG4C",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PGAZG4C"
+    },
+    {
+      "id": "PPV5NDZ",
+      "type": "service_reference",
+      "summary": "Everythiong",
+      "self": "https://api.pagerduty.com/services/PPV5NDZ",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PPV5NDZ"
+    },
+    {
+      "id": "P0C6AUG",
+      "type": "service_reference",
+      "summary": "File Upload Service MTBF Test",
+      "self": "https://api.pagerduty.com/services/P0C6AUG",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P0C6AUG"
+    },
+    {
+      "id": "P3ZMV54",
+      "type": "service_reference",
+      "summary": "Image Processing Pipeline MTBF Test",
+      "self": "https://api.pagerduty.com/services/P3ZMV54",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P3ZMV54"
+    },
+    {
+      "id": "P4OUB76",
+      "type": "service_reference",
+      "summary": "Legacy Analytics Engine MTBF Test",
+      "self": "https://api.pagerduty.com/services/P4OUB76",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P4OUB76"
+    },
+    {
+      "id": "PI0A58G",
+      "type": "service_reference",
+      "summary": "Legacy Payment API MTBF Test",
+      "self": "https://api.pagerduty.com/services/PI0A58G",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PI0A58G"
+    },
+    {
+      "id": "PIJKUCL",
+      "type": "service_reference",
+      "summary": "Legacy Reporting System MTBF Test",
+      "self": "https://api.pagerduty.com/services/PIJKUCL",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PIJKUCL"
+    },
+    {
+      "id": "PFNZU0Y",
+      "type": "service_reference",
+      "summary": "Mobile App Backend MTBF Test",
+      "self": "https://api.pagerduty.com/services/PFNZU0Y",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PFNZU0Y"
+    },
+    {
+      "id": "PRMYRH5",
+      "type": "service_reference",
+      "summary": "MTBF Threshold Monitor",
+      "self": "https://api.pagerduty.com/services/PRMYRH5",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PRMYRH5"
+    },
+    {
+      "id": "P2684AB",
+      "type": "service_reference",
+      "summary": "My Web App",
+      "self": "https://api.pagerduty.com/services/P2684AB",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P2684AB"
+    },
+    {
+      "id": "PPPA0CC",
+      "type": "service_reference",
+      "summary": "My Web App 2",
+      "self": "https://api.pagerduty.com/services/PPPA0CC",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PPPA0CC"
+    },
+    {
+      "id": "PZS0ECM",
+      "type": "service_reference",
+      "summary": "Notification Service MTBF Test",
+      "self": "https://api.pagerduty.com/services/PZS0ECM",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PZS0ECM"
+    },
+    {
+      "id": "P4SVG8K",
+      "type": "service_reference",
+      "summary": "PORT",
+      "self": "https://api.pagerduty.com/services/P4SVG8K",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P4SVG8K"
+    },
+    {
+      "id": "P69HX03",
+      "type": "service_reference",
+      "summary": "Port Outbound Service",
+      "self": "https://api.pagerduty.com/services/P69HX03",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P69HX03"
+    },
+    {
+      "id": "PPMMYN4",
+      "type": "service_reference",
+      "summary": "Port_Gitlab_CI_Service",
+      "self": "https://api.pagerduty.com/services/PPMMYN4",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PPMMYN4"
+    },
+    {
+      "id": "P7QOAJ8",
+      "type": "service_reference",
+      "summary": "PORT-2",
+      "self": "https://api.pagerduty.com/services/P7QOAJ8",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P7QOAJ8"
+    },
+    {
+      "id": "PPEMW95",
+      "type": "service_reference",
+      "summary": "port-docs",
+      "self": "https://api.pagerduty.com/services/PPEMW95",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PPEMW95"
+    },
+    {
+      "id": "PHALNAY",
+      "type": "service_reference",
+      "summary": "port-test-2",
+      "self": "https://api.pagerduty.com/services/PHALNAY",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PHALNAY"
+    },
+    {
+      "id": "P4Q7WAO",
+      "type": "service_reference",
+      "summary": "port-test-3",
+      "self": "https://api.pagerduty.com/services/P4Q7WAO",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P4Q7WAO"
+    },
+    {
+      "id": "PQ6Z3Y8",
+      "type": "service_reference",
+      "summary": "port-test-4",
+      "self": "https://api.pagerduty.com/services/PQ6Z3Y8",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PQ6Z3Y8"
+    },
+    {
+      "id": "P79NVHU",
+      "type": "service_reference",
+      "summary": "Redis Cache Cluster MTBF Test",
+      "self": "https://api.pagerduty.com/services/P79NVHU",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P79NVHU"
+    },
+    {
+      "id": "PJYSAF0",
+      "type": "service_reference",
+      "summary": "Search API MTBF Test",
+      "self": "https://api.pagerduty.com/services/PJYSAF0",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PJYSAF0"
+    },
+    {
+      "id": "PJ6BJ1G",
+      "type": "service_reference",
+      "summary": "Sync Webhook Test Service",
+      "self": "https://api.pagerduty.com/services/PJ6BJ1G",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PJ6BJ1G"
+    },
+    {
+      "id": "PUKOVRM",
+      "type": "service_reference",
+      "summary": "Test 7",
+      "self": "https://api.pagerduty.com/services/PUKOVRM",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PUKOVRM"
+    },
+    {
+      "id": "POZBXCJ",
+      "type": "service_reference",
+      "summary": "Test 8",
+      "self": "https://api.pagerduty.com/services/POZBXCJ",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/POZBXCJ"
+    },
+    {
+      "id": "PQS99B6",
+      "type": "service_reference",
+      "summary": "Test 9",
+      "self": "https://api.pagerduty.com/services/PQS99B6",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PQS99B6"
+    },
+    {
+      "id": "PRUJX97",
+      "type": "service_reference",
+      "summary": "User Management Service MTBF Test",
+      "self": "https://api.pagerduty.com/services/PRUJX97",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/PRUJX97"
+    }
+  ],
+  "num_loops": 1,
+  "teams": [],
+  "description": "Test escalation policy description",
+  "on_call_handoff_notifications": "if_has_services",
+  "privilege": null,
+  "created_at": "2023-05-15T16:54:27+03:00",
+  "updated_at": "2025-07-28T16:12:00+03:00",
+  "__oncall_users": [
+    {
+      "escalation_policy": {
+        "id": "P7LVMYP",
+        "type": "escalation_policy_reference",
+        "summary": "Backend Escalation Policy",
+        "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+        "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP"
+      },
+      "escalation_level": 1,
+      "schedule": {
+        "id": "PWAXLIH",
+        "type": "schedule_reference",
+        "summary": "Port Test Service - Weekly Rotation",
+        "self": "https://api.pagerduty.com/schedules/PWAXLIH",
+        "html_url": "https://getport-io.pagerduty.com/schedules/PWAXLIH"
+      },
+      "user": {
+        "name": "John Doe",
+        "email": "jdoe@getport.io",
+        "time_zone": "Asia/Jerusalem",
+        "color": "green",
+        "avatar_url": "https://secure.gravatar.com/avatar/0d5d34ceb820d324d69046a1b2f51dc0.png?d=mm&r=PG",
+        "billed": true,
+        "role": "admin",
+        "description": null,
+        "invitation_sent": false,
+        "job_title": null,
+        "teams": [],
+        "created_via_sso": false,
+        "contact_methods": [
+          {
+            "id": "PKDRC7X",
+            "type": "email_contact_method_reference",
+            "summary": "Default",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/contact_methods/PKDRC7X",
+            "html_url": null
+          }
+        ],
+        "notification_rules": [
+          {
+            "id": "PL8ZDWC",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel PKDRC7X",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PL8ZDWC",
+            "html_url": null
+          },
+          {
+            "id": "PRIX7O7",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel PKDRC7X",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PRIX7O7",
+            "html_url": null
+          }
+        ],
+        "locale": "en-US",
+        "id": "PJCRRLH",
+        "type": "user",
+        "summary": "isaac",
+        "self": "https://api.pagerduty.com/users/PJCRRLH",
+        "html_url": "https://getport-io.pagerduty.com/users/PJCRRLH"
+      },
+      "start": "2025-12-01T14:00:00Z",
+      "end": "2025-12-15T14:00:00Z"
+    }
+  ]
+}

@@ -78,7 +78,7 @@ class TestGetQueueAttributesAction:
     async def test_execute_with_recoverable_exception(
         self, action: GetQueueAttributesAction
     ) -> None:
-        """Test execution with recoverable exception."""
+        """Test execution with recoverable exception preserves an empty placeholder."""
         # Mock ClientError for resource not found
         error = ClientError(
             error_response={"Error": {"Code": "ResourceNotFound"}},
@@ -91,12 +91,42 @@ class TestGetQueueAttributesAction:
         ]
         result = await action._execute(test_queue_urls)
 
-        # Should return empty list since the exception is recoverable
-        assert result == []
+        # Recoverable error must still produce an entry to preserve index
+        # alignment with concurrent actions' results.
+        assert result == [{}]
         action.client.get_queue_attributes.assert_called_once_with(
             QueueUrl="https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
             AttributeNames=["All"],
         )
+
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, action: GetQueueAttributesAction
+    ) -> None:
+        """Middle queue fails recoverably; results keep aligned positions."""
+
+        def mock_get_queue_attributes(QueueUrl: str, **kwargs: Any) -> dict[str, Any]:
+            if QueueUrl.endswith("queue-2"):
+                raise ClientError(
+                    error_response={"Error": {"Code": "AccessDenied"}},
+                    operation_name="GetQueueAttributes",
+                )
+            return {"Attributes": {"QueueArn": f"arn-for-{QueueUrl[-7:]}"}}
+
+        action.client.get_queue_attributes.side_effect = mock_get_queue_attributes
+
+        queue_urls = [
+            "https://sqs.us-east-1.amazonaws.com/123456789012/queue-1",
+            "https://sqs.us-east-1.amazonaws.com/123456789012/queue-2",
+            "https://sqs.us-east-1.amazonaws.com/123456789012/queue-3",
+        ]
+
+        result = await action._execute(queue_urls)
+
+        assert len(result) == 3
+        assert result[0] == {"QueueArn": "arn-for-queue-1"}
+        assert result[1] == {}
+        assert result[2] == {"QueueArn": "arn-for-queue-3"}
 
     @pytest.mark.asyncio
     async def test_execute_with_non_recoverable_exception(
@@ -180,7 +210,7 @@ class TestGetQueueTagsAction:
     async def test_execute_with_recoverable_exception(
         self, action: ListQueueTagsAction
     ) -> None:
-        """Test execution with recoverable exception."""
+        """Test execution with recoverable exception preserves an empty placeholder."""
         # Mock ClientError for access denied
         error = ClientError(
             error_response={"Error": {"Code": "AccessDenied"}},
@@ -193,11 +223,41 @@ class TestGetQueueTagsAction:
         ]
         result = await action._execute(test_queue_urls)
 
-        # Should return empty list since the exception is recoverable
-        assert result == []
+        # Recoverable error must still produce an entry to preserve index
+        # alignment with concurrent actions' results.
+        assert result == [{}]
         action.client.list_queue_tags.assert_called_once_with(
             QueueUrl="https://sqs.us-east-1.amazonaws.com/123456789012/test-queue"
         )
+
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, action: ListQueueTagsAction
+    ) -> None:
+        """Middle queue fails recoverably; tag results keep aligned positions."""
+
+        def mock_list_queue_tags(QueueUrl: str, **kwargs: Any) -> dict[str, Any]:
+            if QueueUrl.endswith("queue-2"):
+                raise ClientError(
+                    error_response={"Error": {"Code": "AccessDenied"}},
+                    operation_name="ListQueueTags",
+                )
+            return {"Tags": {"Env": QueueUrl[-7:]}}
+
+        action.client.list_queue_tags.side_effect = mock_list_queue_tags
+
+        queue_urls = [
+            "https://sqs.us-east-1.amazonaws.com/123456789012/queue-1",
+            "https://sqs.us-east-1.amazonaws.com/123456789012/queue-2",
+            "https://sqs.us-east-1.amazonaws.com/123456789012/queue-3",
+        ]
+
+        result = await action._execute(queue_urls)
+
+        assert len(result) == 3
+        assert result[0] == {"Tags": {"Env": "queue-1"}}
+        assert result[1] == {}
+        assert result[2] == {"Tags": {"Env": "queue-3"}}
 
     @pytest.mark.asyncio
     async def test_execute_with_non_recoverable_exception(

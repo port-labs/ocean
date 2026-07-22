@@ -12,19 +12,19 @@ from github.core.options import SingleReleaseOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
+from integration import GithubReleaseConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubReleaseConfig(
         kind=ObjectKind.RELEASE,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -47,7 +47,6 @@ def release_webhook_processor(
 
 @pytest.mark.asyncio
 class TestReleaseWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,result", [(ObjectKind.RELEASE, True), ("invalid", False)]
     )
@@ -139,7 +138,10 @@ class TestReleaseWebhookProcessor:
             assert result.updated_raw_results == [release_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [release_data]
+            # Deletions are enriched with repository + organization metadata
+            assert result.deleted_raw_results == [
+                {**release_data, "__organization": "test-org"}
+            ]
 
     @pytest.mark.parametrize(
         "payload,expected",

@@ -1,11 +1,39 @@
-from typing import Any, AsyncGenerator
-from port_ocean.context.ocean import ocean
-from loguru import logger
+from typing import Any, AsyncGenerator, cast
 
+from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
+from port_ocean.helpers.retry import RetryConfig, register_retry_config_callback
+
+from clients.options import (
+    ListRepositoriesOptions,
+    ListContainersOptions,
+    IssuesOptions,
+)
 from initialize_client import init_aikido_client
+from integration import (
+    ObjectKind,
+    IssueResourceConfig,
+    RepositoryResourceConfig,
+    ContainerResourceConfig,
+    IssueGroupResourceConfig,
+)
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
-from integration import ObjectKind
+
+AIKIDO_RETRY_MAX_BACKOFF = 1800
+
+
+def _get_aikido_retry_config() -> RetryConfig:
+    """Configure retry behavior to respect Aikido's Retry-After header on 429 responses."""
+    return RetryConfig(
+        retry_after_headers=["Retry-After"],
+        respect_retry_after_header=True,
+        max_backoff_wait=AIKIDO_RETRY_MAX_BACKOFF,
+    )
+
+
+register_retry_config_callback(_get_aikido_retry_config)
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
@@ -13,8 +41,10 @@ async def on_repositories_resync(
     kind: str,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
+    selector = cast(RepositoryResourceConfig, event.resource_config).selector
+    options: ListRepositoriesOptions = {"include_inactive": selector.include_inactive}
     logger.info("Fetching repositories from Aikido API")
-    async for repos_batch in client.get_repositories():
+    async for repos_batch in client.get_repositories(options=options):
         logger.info(f"Yielding repositories batch of size: {len(repos_batch)}")
         yield repos_batch
 
@@ -22,10 +52,61 @@ async def on_repositories_resync(
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
+    selector = cast(IssueResourceConfig, event.resource_config).selector
+    options = IssuesOptions(
+        filter_status=selector.filter_status,
+        filter_severities=(
+            ",".join(selector.filter_severities) if selector.filter_severities else None
+        ),
+        filter_issue_type=selector.filter_issue_type,
+    )
     logger.info("Fetching all issues from Aikido API")
-    async for issue_batch in client.get_issues_in_batches():
+    async for issue_batch in client.get_issues(options=options):
         logger.info(f"Yielding issues batch of size: {len(issue_batch)}")
         yield issue_batch
+
+
+@ocean.on_resync(ObjectKind.ISSUE_GROUPS)
+async def on_issue_groups_resync(
+    kind: str,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    client = init_aikido_client()
+    selector = cast(IssueGroupResourceConfig, event.resource_config).selector
+
+    if selector.scope_to_team:
+        logger.info("Fetching team-scoped open issue groups from Aikido API")
+        async for batch in client.get_open_issue_groups_by_team():
+            logger.info(
+                f"Yielding team-scoped open issue groups batch of size: {len(batch)}"
+            )
+            yield batch
+    else:
+        logger.info("Fetching open issue groups from Aikido API")
+        async for batch in client.get_open_issue_groups():
+            logger.info(f"Yielding open issue groups batch of size: {len(batch)}")
+            yield batch
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_teams_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    client = init_aikido_client()
+    logger.info("Fetching teams from Aikido API")
+    async for team_batch in client.get_teams():
+        logger.info(f"Yielding teams batch of size: {len(team_batch)}")
+        yield team_batch
+
+
+@ocean.on_resync(ObjectKind.CONTAINER)
+async def on_containers_resync(
+    kind: str,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    client = init_aikido_client()
+    selector = cast(ContainerResourceConfig, event.resource_config).selector
+    options: ListContainersOptions = {"filter_status": selector.filter_status}
+    logger.info("Fetching containers from Aikido API")
+    async for container_batch in client.get_containers(options=options):
+        logger.info(f"Yielding containers batch of size: {len(container_batch)}")
+        yield container_batch
 
 
 @ocean.on_start()

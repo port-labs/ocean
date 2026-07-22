@@ -1,0 +1,26 @@
+{
+  "identifier": "vol-09a13562b4dacdee2",
+  "title": "zinc",
+  "blueprint": "ebsVolume",
+  "properties": {
+    "volumeType": "gp2",
+    "size": 10,
+    "iops": 100,
+    "throughput": null,
+    "availabilityZone": "eu-west-1c",
+    "state": "available",
+    "creationDate": "2024-04-17T19:45:45.700000+00:00",
+    "encrypted": false,
+    "autoEnableIO": false,
+    "tags": [
+      {
+        "Key": "Name",
+        "Value": "zinc"
+      }
+    ],
+    "arn": "arn:aws:ec2:eu-west-1:123456789012:volume/vol-09a13562b4dacdee2"
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

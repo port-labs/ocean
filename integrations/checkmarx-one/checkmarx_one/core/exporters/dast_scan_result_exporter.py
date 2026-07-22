@@ -9,11 +9,12 @@ from checkmarx_one.core.options import ListDastScanResultOptions
 class CheckmarxDastScanResultExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One DAST results per scan."""
 
-    def _enrich_scan_result_with_dast_scan_id(
-        self, dast_scan_result: Dict[str, Any], dast_scan_id: str
+    def _enrich_scan_result_with_dast_scan_info(
+        self, dast_scan_result: Dict[str, Any], dast_scan_id: str, dast_project_id: str
     ) -> dict[str, Any]:
-        """Enrich scan result with scan ID."""
+        """Enrich scan result with scan ID and project ID."""
         dast_scan_result["__dast_scan_id"] = dast_scan_id
+        dast_scan_result["__dast_project_id"] = dast_project_id
         return dast_scan_result
 
     async def get_resource(self, options: Any) -> Any:
@@ -38,6 +39,7 @@ class CheckmarxDastScanResultExporter(AbstractCheckmarxExporter):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params: dict[str, Any] = self._build_params(options)
         dast_scan_id = options["dast_scan_id"]
+        dast_project_id = options["dast_project_id"]
         endpoint = f"/dast/mfe-results/results/{dast_scan_id}"
         async for results in self.client.send_paginated_request_page_based(
             endpoint, "results", params
@@ -46,9 +48,10 @@ class CheckmarxDastScanResultExporter(AbstractCheckmarxExporter):
                 f"Fetched batch of {len(results)} DAST results for scan {dast_scan_id}"
             )
             yield [
-                self._enrich_scan_result_with_dast_scan_id(
+                self._enrich_scan_result_with_dast_scan_info(
                     result,
                     dast_scan_id,
+                    dast_project_id,
                 )
                 for result in results
             ]

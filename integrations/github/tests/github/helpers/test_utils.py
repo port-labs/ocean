@@ -1,9 +1,12 @@
 import pytest
 from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock
 
 from github.helpers.utils import (
+    enrich_with_organization,
     enrich_with_repository,
     parse_github_options,
+    enrich_user_with_primary_email,
 )
 
 
@@ -158,3 +161,54 @@ class TestExtractRepoParams:
         assert repo_name is None
         assert organization == "test-org"
         assert remaining_params == {"other_param": "value"}
+
+
+class TestEnrichWithOrganization:
+    """Tests for enrich_with_organization function."""
+
+    def test_enrich_with_organization(self) -> None:
+        """Test enriching response with organization."""
+        response = {"data": "test"}
+        organization = "test-org"
+
+        result = enrich_with_organization(response, organization)
+
+        assert result["__organization"] == organization
+        assert result["data"] == "test"
+
+
+class DummyClient:
+    def __init__(self, base_url: str = "https://api.github.com") -> None:
+        self.base_url = base_url
+        self.make_request = AsyncMock()
+
+
+@pytest.mark.asyncio
+async def test_enrich_user_with_primary_email_sets_email() -> None:
+    client = DummyClient()
+    resp = MagicMock()
+    resp.json.return_value = [
+        {"email": "alt@example.com", "primary": False},
+        {"email": "primary@example.com", "primary": True},
+    ]
+    client.make_request.return_value = resp
+
+    user: Dict[str, Any] = {"login": "alice"}
+    result = await enrich_user_with_primary_email(client, user)
+
+    assert result["email"] == "primary@example.com"
+    client.make_request.assert_awaited_once_with(f"{client.base_url}/user/emails")
+
+
+@pytest.mark.asyncio
+async def test_enrich_user_with_primary_email_handles_empty_response() -> None:
+    client = DummyClient()
+    resp = MagicMock()
+    resp.json.return_value = []
+    client.make_request.return_value = resp
+
+    user: Dict[str, Any] = {"lxxogin": "alice"}
+    result = await enrich_user_with_primary_email(client, user)
+
+    # Should return user unchanged when no primary email is found
+    assert result == user

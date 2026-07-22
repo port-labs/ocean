@@ -10,7 +10,6 @@ from port_ocean.utils import http_async_client
 
 from okta.helpers.utils import IgnoredError
 
-
 _DEFAULT_IGNORED_ERRORS = [
     IgnoredError(
         status=403,
@@ -78,7 +77,7 @@ class OktaClient:
         """Perform an HTTP request to the Okta API and return the raw response.
 
         Args:
-            endpoint: The API endpoint (e.g., '/users')
+            endpoint: The API endpoint path (e.g., '/users') or an absolute URL (e.g., 'https://{your-domain}.okta.com/api/v1/users')
             method: HTTP method (GET, POST, PUT, DELETE)
             params: Query parameters
             json_data: JSON payload for POST/PUT requests
@@ -90,9 +89,7 @@ class OktaClient:
         Raises:
             httpx.HTTPError: If the request fails after all retries
         """
-        normalized_endpoint = endpoint.lstrip("/")
-        base = self.base_url.rstrip("/")
-        url = f"{base}/{normalized_endpoint}"
+        url = self._normalize_url(endpoint)
 
         request_headers: Dict[str, str] = {
             "Authorization": f"SSWS {self.api_token}",
@@ -194,3 +191,12 @@ class OktaClient:
 
             endpoint = next_url.replace(self.base_url.rstrip("/"), "").lstrip("/")
             params = None
+
+    def _normalize_url(self, endpoint: str) -> str:
+        base = self.base_url.rstrip("/")
+        normalized_endpoint = endpoint.lstrip("/")
+        if normalized_endpoint.startswith("http"):
+            url = normalized_endpoint
+        else:
+            url = f"{base}/{normalized_endpoint}"
+        return url

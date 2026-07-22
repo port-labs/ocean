@@ -11,7 +11,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class SqsQueueExporter(IResourceExporter):
+class SqsQueueExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "sqs"
     _model_cls: Type[Queue] = Queue
     _actions_map: Type[SqsQueueActionsMap] = SqsQueueActionsMap

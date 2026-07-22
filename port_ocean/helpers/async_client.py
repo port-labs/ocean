@@ -1,17 +1,21 @@
-from typing import Any, Type
+from typing import Any, AsyncGenerator, Dict, List, Type
 
 import httpx
 from loguru import logger
 
-from port_ocean.helpers.retry import RetryTransport, RetryConfig
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.ip_blocker import IPBlockerTransport
+from port_ocean.helpers.retry import RetryConfig, RetryTransport
+from port_ocean.helpers.ssl import resolve_verify_param
 from port_ocean.helpers.stream import Stream
 
 
 class OceanAsyncClient(httpx.AsyncClient):
     """
-    This class is a wrapper around httpx.AsyncClient that uses a custom transport class.
-    This is done to allow passing our custom transport class to the AsyncClient constructor while still allowing
-    all the default AsyncClient behavior that is changed when passing a custom transport instance.
+    Wrapper around httpx.AsyncClient with Ocean retry transport and SaaS IP blocking.
+
+    When ``verify`` is not passed, uses ``ocean.config.ssl.third_party`` (``OCEAN__SSL__THIRD_PARTY__*``).
+    Pass ``verify`` explicitly to override (e.g. Port API uses ``ssl.port``).
     """
 
     def __init__(
@@ -24,7 +28,16 @@ class OceanAsyncClient(httpx.AsyncClient):
         self._transport_kwargs = transport_kwargs
         self._transport_class = transport_class
         self._retry_config = retry_config
+        if "verify" not in kwargs:
+            kwargs["verify"] = resolve_verify_param(ocean.config.ssl.third_party)
         super().__init__(**kwargs)
+
+    def _wrap_with_ip_blocker_if_needed(
+        self, transport: httpx.AsyncBaseTransport
+    ) -> httpx.AsyncBaseTransport:
+        if ocean.config.disable_ip_outbound_blocker:
+            return transport
+        return IPBlockerTransport(wrapped=transport)
 
     def _init_transport(  # type: ignore[override]
         self,
@@ -32,27 +45,58 @@ class OceanAsyncClient(httpx.AsyncClient):
         **kwargs: Any,
     ) -> httpx.AsyncBaseTransport:
         if transport is not None:
+            transport = self._wrap_with_ip_blocker_if_needed(transport)
             return super()._init_transport(transport=transport, **kwargs)
 
-        return self._transport_class(
+        inner = self._transport_class(
             wrapped_transport=httpx.AsyncHTTPTransport(**kwargs),
             retry_config=self._retry_config,
             logger=logger,
             **(self._transport_kwargs or {}),
         )
+        return self._wrap_with_ip_blocker_if_needed(inner)
 
     def _init_proxy_transport(  # type: ignore[override]
         self, proxy: httpx.Proxy, **kwargs: Any
     ) -> httpx.AsyncBaseTransport:
-        return self._transport_class(
+        inner = self._transport_class(
             wrapped_transport=httpx.AsyncHTTPTransport(proxy=proxy, **kwargs),
             retry_config=self._retry_config,
             logger=logger,
             **(self._transport_kwargs or {}),
         )
+        return self._wrap_with_ip_blocker_if_needed(inner)
 
     async def get_stream(self, url: str, **kwargs: Any) -> Stream:
         req = self.build_request("GET", url, **kwargs)
         response = await self.send(req, stream=True)
         response.raise_for_status()
         return Stream(response)
+
+
+class StreamingClientWrapper:
+    def __init__(self, http_client: OceanAsyncClient):
+        self._client = http_client
+
+    async def stream_json(
+        self,
+        url: str,
+        target_items_path: str,
+        **kwargs: Any,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        A wrapper that provides a unified async generator interface for both streaming
+        and non-streaming HTTP GET requests.
+
+        :param url: The URL to request.
+        :param target_items_path: A JMESPath string to extract the list of items
+                                  from the JSON response (e.g., 'results'). The wrapper
+                                  will automatically adapt this for the streaming parser.
+        :param kwargs: Additional arguments for the HTTP request.
+        """
+        # ijson needs a path to the items inside the array, e.g., "results.item"
+        streaming_path = f"{target_items_path}.item"
+        stream_response = await self._client.get_stream(url, **kwargs)
+        json_stream = stream_response.get_json_stream(target_items=streaming_path)
+        async for items_batch in json_stream:
+            yield items_batch

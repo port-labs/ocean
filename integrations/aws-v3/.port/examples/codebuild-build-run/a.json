@@ -1,0 +1,176 @@
+{
+  "Type": "AWS::CodeBuild::BuildRun",
+  "Properties": {
+    "Arn": "arn:aws:codebuild:eu-west-1:123456789012:build/test-project-0a8232e7e6e8:05e0378b-f071-4c80-85f6-e307757e8120",
+    "Artifacts": {
+      "location": ""
+    },
+    "BuildComplete": true,
+    "BuildNumber": 1,
+    "BuildStatus": "SUCCEEDED",
+    "Cache": {
+      "type": "NO_CACHE"
+    },
+    "CurrentPhase": "COMPLETED",
+    "EncryptionKey": "arn:aws:kms:eu-west-1:build:alias/aws/s3",
+    "EndTime": "2026-06-01T14:41:28.045000+03:00",
+    "Environment": {
+      "type": "LINUX_CONTAINER",
+      "image": "aws/codebuild/amazonlinux2-x86_64-standard:5.0",
+      "computeType": "BUILD_GENERAL1_SMALL",
+      "environmentVariables": [],
+      "privilegedMode": false,
+      "imagePullCredentialsType": "CODEBUILD"
+    },
+    "Id": "test-project-0a8232e7e6e8:05e0378b-f071-4c80-85f6-e307757e8120",
+    "Initiator": "codepipeline/MyPipeline",
+    "Logs": {
+      "groupName": "/aws/codebuild/test-project-0a8232e7e6e7",
+      "streamName": "05e0214b-f071-4c80-85f6-e307757e8120",
+      "deepLink": "https://console.aws.amazon.com/cloudwatch/home?region=eu-west-1#logsV2:log-groups/log-group/$252Faws$252Fcodebuild$252FSimpleSchedulePythonBuildProject-0a8232e7e6e7/log-events/05e0214b-f071-4c80-85f6-e307757e8120",
+      "cloudWatchLogsArn": "arn:aws:logs:eu-west-1:268995414429:log-group:/aws/codebuild/SimpleSchedulePythonBuildProject-0a8232e7e6e7:log-stream:05e0214b-f071-4c80-85f6-e307757e8120"
+    },
+    "Phases": [
+      {
+        "phaseType": "SUBMITTED",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:21.968000+03:00",
+        "endTime": "2026-06-01T14:41:22.076000+03:00",
+        "durationInSeconds": 0
+      },
+      {
+        "phaseType": "QUEUED",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:22.076000+03:00",
+        "endTime": "2026-06-01T14:41:22.642000+03:00",
+        "durationInSeconds": 0
+      },
+      {
+        "phaseType": "PROVISIONING",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:22.642000+03:00",
+        "endTime": "2026-06-01T14:41:25.711000+03:00",
+        "durationInSeconds": 3,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "DOWNLOAD_SOURCE",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:25.711000+03:00",
+        "endTime": "2026-06-01T14:41:27.136000+03:00",
+        "durationInSeconds": 1,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "INSTALL",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:27.136000+03:00",
+        "endTime": "2026-06-01T14:41:27.257000+03:00",
+        "durationInSeconds": 0,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "PRE_BUILD",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:27.257000+03:00",
+        "endTime": "2026-06-01T14:41:27.295000+03:00",
+        "durationInSeconds": 0,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "BUILD",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:27.295000+03:00",
+        "endTime": "2026-06-01T14:41:27.450000+03:00",
+        "durationInSeconds": 0,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "POST_BUILD",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:27.450000+03:00",
+        "endTime": "2026-06-01T14:41:27.485000+03:00",
+        "durationInSeconds": 0,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "UPLOAD_ARTIFACTS",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:27.485000+03:00",
+        "endTime": "2026-06-01T14:41:27.551000+03:00",
+        "durationInSeconds": 0,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "FINALIZING",
+        "phaseStatus": "SUCCEEDED",
+        "startTime": "2026-06-01T14:41:27.551000+03:00",
+        "endTime": "2026-06-01T14:41:28.045000+03:00",
+        "durationInSeconds": 0,
+        "contexts": [
+          {
+            "statusCode": "",
+            "message": ""
+          }
+        ]
+      },
+      {
+        "phaseType": "COMPLETED",
+        "startTime": "2026-06-01T14:41:28.045000+03:00"
+      }
+    ],
+    "ProjectName": "test-project-0a8232e7e6e7",
+    "QueuedTimeoutInMinutes": 480,
+    "ResolvedSourceVersion": "a03a2f7c04724979e58a8852c0c8062facfeff2b",
+    "SecondarySources": [],
+    "SecondarySourceVersions": [],
+    "ServiceRole": "arn:aws:iam::123456789012:role/CodePipelineStarterTemplate-ScheduleA-CodeBuildRole-mNoEBLqvGMFc",
+    "Source": {
+      "type": "CODEPIPELINE",
+      "buildspec": "version: 0.2\n\nphases:\n  build:\n    commands:\n      - echo \"Ding\"",
+      "insecureSsl": false
+    },
+    "SourceVersion": "arn:aws:s3:::codepipelinestartertempla-codepipelineartifactsbuc-xdx8gvyceuuq/SimpleSchedulePython/SourceOutp/ezxwXmH",
+    "StartTime": "2026-06-01T14:41:21.968000+03:00",
+    "TimeoutInMinutes": 45
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}

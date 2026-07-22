@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.core.exporters.folder_exporter.utils import FolderPatternMappingBuilder
 from integration import FolderSelector, RepositoryBranchMapping
+from port_ocean.context.event import event_context
+from integration import GithubPortAppConfig
 
 
 async def _aiter_one(value: Any) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -18,7 +20,7 @@ async def test_folder_pattern_mapping_builder_all_repos() -> None:
 
     # orgs → one org
     org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
-        [{"login": "test-org"}]
+        [{"login": "test-org", "type": "Organization"}]
     )
 
     # repos → two repos with default branches
@@ -32,7 +34,9 @@ async def test_folder_pattern_mapping_builder_all_repos() -> None:
     builder = FolderPatternMappingBuilder(org_exporter, repo_exporter, repo_type="all")
 
     selectors = [FolderSelector(organization="test-org", path="src/**", repos=None)]
-    result = await builder.build(selectors)
+    async with event_context("test_event") as event:
+        event.port_app_config = GithubPortAppConfig(repository_type="all", resources=[])
+        result = await builder.build(selectors)
 
     # Validate structure
     assert isinstance(result, list)
@@ -56,7 +60,7 @@ async def test_folder_pattern_mapping_builder_explicit_repos() -> None:
     repo_exporter = MagicMock()
 
     org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
-        [{"login": "test-org"}]
+        [{"login": "test-org", "type": "Organization"}]
     )
 
     # Exact selector path calls get_repository_metadata via repo_selectors
@@ -76,7 +80,11 @@ async def test_folder_pattern_mapping_builder_explicit_repos() -> None:
             )
         ]
 
-        result = await builder.build(selectors)
+        async with event_context("test_event") as event:
+            event.port_app_config = GithubPortAppConfig(
+                repository_type="all", resources=[]
+            )
+            result = await builder.build(selectors)
         assert len(result) == 1
         opt = result[0]
         assert opt["organization"] == "test-org"

@@ -1,5 +1,4 @@
 import typing
-from typing import Any
 
 from loguru import logger
 from webhook_processors.incidents import IncidentWebhookProcessor
@@ -9,6 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.pagerduty import PagerDutyClient
+from clients.rate_limiter import PagerDutyDailyRateLimitExceededError
 from integration import (
     OBJECTS_WITH_SPECIAL_HANDLING,
     PagerdutyEscalationPolicyResourceConfig,
@@ -18,36 +18,7 @@ from integration import (
     PagerdutyServiceResourceConfig,
 )
 from kinds import Kinds
-
-
-async def enrich_service_with_analytics_data(
-    client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
-) -> list[dict[str, Any]]:
-    async def fetch_service_analytics(
-        services: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        service_ids = [service["id"] for service in services]
-        try:
-            services_analytics = await client.get_service_analytics(
-                service_ids, months_period
-            )
-            # Map analytics to corresponding services
-            service_analytics_map = {
-                analytics["service_id"]: analytics for analytics in services_analytics
-            }
-            enriched_services = [
-                {
-                    **service,
-                    "__analytics": service_analytics_map.get(service["id"], None),
-                }
-                for service in services
-            ]
-            return enriched_services
-        except Exception as e:
-            logger.error(f"Failed to fetch analytics for service {service_ids}: {e}")
-            return [{**service, "__analytics": None} for service in services]
-
-    return await fetch_service_analytics(services)
+from utils import enrich_service_with_analytics_data
 
 
 @ocean.on_resync(Kinds.INCIDENTS)
@@ -68,11 +39,26 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(incidents)} incidents")
 
         if selector.incident_analytics:
-            yield (
-                await pager_duty_client.enrich_incidents_with_analytics_data(incidents)
+            try:
+                incidents = (
+                    await pager_duty_client.enrich_incidents_with_analytics_data(
+                        incidents
+                    )
+                )
+            except PagerDutyDailyRateLimitExceededError as e:
+                logger.warning(
+                    f"Skipping incident analytics enrichment for {len(incidents)} incidents: {e}"
+                )
+                incidents = [
+                    {**incident, "__analytics": None} for incident in incidents
+                ]
+
+        if selector.include_custom_fields:
+            incidents = await pager_duty_client.enrich_entities_with_custom_fields(
+                incidents, Kinds.INCIDENTS
             )
-        else:
-            yield incidents
+
+        yield incidents
 
 
 @ocean.on_resync(Kinds.SERVICES)
@@ -97,6 +83,11 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if selector.service_analytics:
             services = await enrich_service_with_analytics_data(
                 pager_duty_client, services, selector.analytics_months_period
+            )
+
+        if selector.include_custom_fields:
+            services = await pager_duty_client.enrich_entities_with_custom_fields(
+                services, Kinds.SERVICES
             )
 
         yield await pager_duty_client.update_oncall_users(services)

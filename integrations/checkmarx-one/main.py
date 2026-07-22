@@ -14,6 +14,7 @@ from checkmarx_one.exporter_factory import (
     create_scan_result_exporter,
     create_dast_scan_environment_exporter,
     create_dast_scan_exporter,
+    create_application_exporter,
 )
 from checkmarx_one.core.options import (
     ListDastScanOptions,
@@ -23,6 +24,7 @@ from checkmarx_one.core.options import (
     ListApiSecOptions,
     ListKicsOptions,
     ListScanResultOptions,
+    ListApplicationOptions,
 )
 from integration import (
     CheckmarxOneDastScanResultResourcesConfig,
@@ -32,6 +34,7 @@ from integration import (
     CheckmarxOneScanResultResourcesConfig,
     CheckmarxOneApiSecResourcesConfig,
     CheckmarxOneDastScanResourcesConfig,
+    CheckmarxOneApplicationResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
 from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
@@ -59,6 +62,27 @@ from fetcher import fetch_dast_scan_results_for_environment
 
 # Webhook endpoint constant
 WEBHOOK_ENDPOINT = "/webhook"
+
+
+@ocean.on_resync(ObjectKind.APPLICATION)
+async def on_application_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync applications from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    application_exporter = create_application_exporter()
+    selector = cast(
+        CheckmarxOneApplicationResourcesConfig, event.resource_config
+    ).selector
+    options = ListApplicationOptions(
+        tag_keys=selector.tag_keys,
+        tag_values=selector.tag_values,
+    )
+
+    async for applications_batch in application_exporter.get_paginated_resources(
+        options
+    ):
+        logger.debug(f"Received batch with {len(applications_batch)} applications")
+        yield applications_batch
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -149,6 +173,7 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListSastOptions(
                 scan_id=scan_data["id"],
+                project_id=scan_data["projectId"],
                 severity=selector.severity,
                 status=selector.status,
                 state=selector.state,
@@ -161,7 +186,7 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             async for results_batch in sast_exporter.get_paginated_resources(options):
                 logger.info(
-                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']}"
+                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']} and project {scan_data['projectId']}"
                 )
                 yield results_batch
 
@@ -190,12 +215,13 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListKicsOptions(
                 scan_id=scan_data["id"],
+                project_id=scan_data["projectId"],
                 severity=selector.severity,
                 status=selector.status,
             )
             async for results_batch in kics_exporter.get_paginated_resources(options):
                 logger.info(
-                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']}"
+                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']} and project {scan_data['projectId']}"
                 )
                 yield results_batch
 
@@ -229,6 +255,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListScanResultOptions(
                 scan_id=scan_data["id"],
+                project_id=scan_data["projectId"],
                 type=kind,
                 severity=selector.severity,
                 state=selector.state,

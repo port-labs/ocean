@@ -8,17 +8,19 @@ Uses Ocean's built-in HTTP client with caching and rate limiting.
 import asyncio
 import functools
 from typing import AsyncGenerator, List, Dict, Any, Optional
-from urllib.parse import urljoin
 import httpx
 from loguru import logger
 
-from port_ocean.utils.async_http import http_async_client
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryTransport
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
 
-from http_server.handlers import get_auth_handler, get_pagination_handler
+from http_server.auth import get_auth_handler
+from http_server.handlers import get_pagination_handler
 
 
 class HttpServerClient:
@@ -30,24 +32,37 @@ class HttpServerClient:
         auth_type: str,
         auth_config: Dict[str, Any],
         pagination_config: Dict[str, Any],
-        timeout: int = 30,
         verify_ssl: bool = True,
         max_concurrent_requests: int = 10,
+        custom_headers: Optional[Dict[str, str]] = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.auth_type = auth_type
         self.auth_config = auth_config
         self.pagination_config = pagination_config
-        self.timeout = timeout
         self.verify_ssl = verify_ssl
+        self.custom_headers = custom_headers or {}
 
         # Use Ocean's built-in HTTP client with retry and rate limiting
-        self.client = http_async_client
-        self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
+        # Leverage Ocean's core client_timeout capability
+        if not verify_ssl:
+            logger.warning(
+                "SSL verification is disabled - not recommended for production"
+            )
+        self.client = OceanAsyncClient(
+            RetryTransport,
+            timeout=ocean.config.client_timeout,
+            verify=verify_ssl,
+        )
 
         # Configure authentication using handler pattern
-        auth_handler = get_auth_handler(self.auth_type, self.client, self.auth_config)
-        auth_handler.setup()
+        self.auth_handler = get_auth_handler(
+            self.auth_type,
+            self.client,
+            self.auth_config,
+        )
+
+        self.auth_handler.setup()
 
         # Concurrency control
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
@@ -58,12 +73,13 @@ class HttpServerClient:
         method: str = "GET",
         query_params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with automatic rate limiting and concurrency control"""
 
         async def _fetch() -> AsyncGenerator[List[Dict[str, Any]], None]:
             async for batch in self._fetch_with_pagination(
-                endpoint, method, query_params, headers
+                endpoint, method, query_params, headers, body
             ):
                 yield batch
 
@@ -76,10 +92,20 @@ class HttpServerClient:
         method: str,
         query_params: Optional[Dict[str, Any]],
         headers: Optional[Dict[str, str]],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with pagination handling using handler pattern"""
 
-        url = urljoin(self.base_url, endpoint.lstrip("/"))
+        base_url = self.base_url.rstrip("/")
+        endpoint_path = endpoint.lstrip("/")
+
+        # Validate - raise error if empty
+        if not base_url:
+            raise ValueError("base_url cannot be empty")
+        if not endpoint_path:
+            raise ValueError("endpoint cannot be empty")
+
+        url = f"{base_url}/{endpoint_path}"
         params = query_params or {}
         request_headers = headers or {}
 
@@ -99,7 +125,9 @@ class HttpServerClient:
             get_nested_value_fn=self._get_nested_value,
         )
 
-        async for batch in handler.fetch_all(url, method, params, request_headers):
+        async for batch in handler.fetch_all(
+            url, method, params, request_headers, body
+        ):
             yield batch
 
     def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
@@ -117,17 +145,36 @@ class HttpServerClient:
         self,
         url: str,
         method: str,
-        params: Dict[str, Any],
+        params: Optional[Dict[str, Any]],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:
-        """Make HTTP request using Ocean's built-in client with retry and rate limiting"""
+        """Make HTTP request using Ocean's built-in client with retry and rate limiting.
+        Authentication and 401 retries are handled automatically by httpx.Auth."""
+        merged_headers = {
+            "User-Agent": "Port-Ocean-HTTP-Integration/1.0",
+            **self.custom_headers,
+            **headers,
+        }
+
         try:
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=params,
-                headers=headers,
-            )
+            # Build request - include body if present
+            if body:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    headers=merged_headers,
+                    json=body,
+                )
+            else:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    headers=merged_headers,
+                )
+
             response.raise_for_status()
             return response
 
@@ -139,10 +186,6 @@ class HttpServerClient:
 
         except httpx.RequestError as e:
             logger.error(f"Request error for {method} {url}: {str(e)}")
-            raise
-
-        except Exception as e:
-            logger.error(f"Unexpected error for {method} {url}: {str(e)}")
             raise
 
     def _extract_items_from_response(self, data: Any) -> List[Dict[str, Any]]:

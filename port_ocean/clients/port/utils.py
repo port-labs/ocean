@@ -1,11 +1,16 @@
 from typing import TYPE_CHECKING
 
 import httpx
+
+from port_ocean.context.event import EventType, event
+from port_ocean.exceptions.context import EventContextNotFoundError
 from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.ssl import resolve_verify_param
 
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
@@ -30,6 +35,9 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
 FIVE_MINUETS = 60 * 5
 
+# Prefix for ocean info query params (ocean_info_event_type, ocean_info_resync_id)
+OCEAN_INFO_PREFIX = "ocean_info_"
+
 
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
@@ -43,6 +51,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
             },
             timeout=PORT_HTTPX_TIMEOUT,
             limits=PORT_HTTPX_LIMITS,
+            verify=resolve_verify_param(ocean.config.ssl.port),
         )
         _http_client.push(client)
 
@@ -62,17 +71,41 @@ def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
     return _port_internal_async_client
 
 
+def get_event_context_params() -> dict[str, str]:
+    """Get ocean info query params when in an event context.
+
+    Uses underscore prefix notation (ocean_info_event_type, ocean_info_resync_id).
+    resyncId is only included for RESYNC events.
+    """
+    try:
+        params: dict[str, str] = {f"{OCEAN_INFO_PREFIX}event_type": event.event_type}
+        if event.event_type == EventType.RESYNC:
+            params[f"{OCEAN_INFO_PREFIX}resync_id"] = event.id
+        return params
+    except EventContextNotFoundError:
+        pass
+    return {}
+
+
+def _get_port_error_log_context(response: httpx.Response) -> dict[str, str | int]:
+    log_context: dict[str, str | int] = {
+        "status_code": response.status_code,
+        "method": response.request.method,
+        "url": str(response.request.url),
+    }
+    if reason := response.reason_phrase:
+        log_context["reason"] = reason
+    if trace_id := response.headers.get("x-trace-id"):
+        log_context["trace_id"] = trace_id
+    return log_context
+
+
 def handle_port_status_code(
     response: httpx.Response, should_raise: bool = True, should_log: bool = True
 ) -> None:
     if should_log and response.is_error:
-        error_message = f"Request failed with status code: {response.status_code}, Error: {response.text}"
-        if response.status_code >= 500 and response.headers.get("x-trace-id"):
-            logger.error(
-                error_message,
-                trace_id=response.headers.get("x-trace-id"),
-            )
-        else:
-            logger.error(error_message)
+        escaped_response_text = response.text.replace("{", "{{").replace("}", "}}")
+        error_message = f"Request failed with status code: {response.status_code}, Error: {escaped_response_text}"
+        logger.error(error_message, **_get_port_error_log_context(response))
     if should_raise:
         response.raise_for_status()

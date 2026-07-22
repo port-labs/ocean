@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from typing import Any, Dict, List, AsyncGenerator
 
-
 # Mock the integration module and other dependencies
 with patch.dict(
     "sys.modules",
@@ -56,7 +55,7 @@ class TestFetcher:
         )
 
         results = await fetch_dast_scan_results(
-            "scan-1", mock_selector, mock_dast_scan_result_exporter
+            "scan-1", "project-1", mock_selector, mock_dast_scan_result_exporter
         )
 
         assert len(results) == 1
@@ -84,7 +83,7 @@ class TestFetcher:
         )
 
         results = await fetch_dast_scan_results(
-            "scan-1", mock_selector, mock_dast_scan_result_exporter
+            "scan-1", "project-1", mock_selector, mock_dast_scan_result_exporter
         )
 
         assert len(results) == 5
@@ -119,7 +118,7 @@ class TestFetcher:
         )
 
         results = await fetch_dast_scan_results(
-            "scan-1", mock_selector, mock_dast_scan_result_exporter
+            "scan-1", "project-1", mock_selector, mock_dast_scan_result_exporter
         )
 
         assert len(results) == 6
@@ -145,7 +144,7 @@ class TestFetcher:
         )
 
         await fetch_dast_scan_results(
-            "scan-1", mock_selector, mock_dast_scan_result_exporter
+            "scan-1", "project-1", mock_selector, mock_dast_scan_result_exporter
         )
 
         # Verify the exporter was called with correct options

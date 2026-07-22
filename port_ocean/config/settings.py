@@ -1,11 +1,11 @@
 import platform
 from typing import Any, Literal, Optional, Type
+from urllib.parse import urlparse
 
-from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
-from pydantic.class_validators import root_validator, validator
-from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
-from pydantic.fields import Field
-from pydantic.main import BaseModel
+from pydantic.v1 import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
+from pydantic.v1.class_validators import root_validator, validator
+from pydantic.v1.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
+from pydantic.v1.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import (
@@ -16,12 +16,34 @@ from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
     EventListenerType,
+    LiveEventsConsumerType,
     ProcessExecutionMode,
+    ProcessingMode,
     Runtime,
 )
-from port_ocean.utils.misc import get_integration_name, get_spec_file
+from port_ocean.utils.misc import (
+    get_cgroup_cpu_limit,
+    get_integration_name,
+    get_spec_file,
+)
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+
+
+class SslX509Settings(BaseOceanModel):
+    """X.509 verification profile applied when ``verify`` is true."""
+
+    strict: bool = True
+
+
+class SslClientSettings(BaseOceanModel):
+    verify: bool = True
+    x509: SslX509Settings = Field(default_factory=SslX509Settings)
+
+
+class SslSettings(BaseOceanModel):
+    port: SslClientSettings = Field(default_factory=SslClientSettings)
+    third_party: SslClientSettings = Field(default_factory=SslClientSettings)
 
 
 class ApplicationSettings(BaseSettings):
@@ -50,7 +72,8 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
-    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
+    feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
+    blueprint_cache_ttl_seconds: float = 120.0
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -86,10 +109,166 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
 
 class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
-    runs_buffer_high_watermark: int = Field(default=100)
-    visibility_timeout_ms: int = Field(default=30000)
-    poll_check_interval_seconds: int = Field(default=10)
-    workers_count: int = Field(default=1)
+    runs_buffer_high_watermark: int = Field(
+        default=300,
+        ge=1,
+        le=1_000,
+        description=(
+            "Max total runs queued across all actions before throttling "
+            "claim-pending polls. Aligned with Port's claim-pending limit."
+        ),
+    )
+    visibility_timeout_ms: int = Field(
+        default=60_000,
+        ge=1,
+        le=600_000,
+        description=(
+            "How long a claimed run stays invisible to other consumers before "
+            "becoming reclaimable (milliseconds)."
+        ),
+    )
+    poll_check_interval_seconds: int = Field(
+        default=10,
+        ge=1,
+        description="Seconds between claim-pending polling attempts.",
+    )
+    workers_count: int = Field(
+        default=3,
+        ge=1,
+        description=(
+            "Number of concurrent worker tasks processing claimed runs. "
+            "Tune based on the CPU and memory allocated to the pod."
+        ),
+    )
+    max_runs_buffer_util_pct_per_action: int | None = Field(
+        default=30,
+        ge=1,
+        le=100,
+        description=(
+            "Max runs-buffer utilization percentage per action. When queued runs "
+            "for an action identifier reach this % of runs_buffer_high_watermark, "
+            "exclude it from claim-pending."
+        ),
+    )
+
+
+class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
+    url: str = Field(default="redis://localhost:6379")
+    username: str | None = None
+    password: str | None = Field(default=None, sensitive=True)
+    enable_tls: bool = False
+    ca: str | None = Field(
+        default=None,
+        description="Base64-encoded PEM CA certificate bundle for TLS verification.",
+    )
+    cert: str | None = Field(
+        default=None,
+        description="Base64-encoded PEM client certificate for mutual TLS.",
+    )
+    private_key: str | None = Field(
+        default=None,
+        sensitive=True,
+        description="Base64-encoded PEM private key for mutual TLS.",
+    )
+    block_ms: int = Field(default=1000, ge=1)
+    read_count: int = Field(
+        default=10,
+        ge=1,
+        description="Maximum number of stream entries to return per XREADGROUP call.",
+    )
+    stream_ttl_seconds: int | None = Field(
+        default=3600,
+        ge=1,
+        description=(
+            "TTL in seconds for the Redis stream when the consumer creates it "
+            "via MKSTREAM. Set to null to disable stream expiry."
+        ),
+    )
+    # PEL requeue worker settings
+    pel_requeue_worker_enabled: bool = Field(
+        default=True,
+        description=(
+            "When true, starts a background worker that reclaims stuck PEL "
+            "entries and re-enqueues them for reprocessing."
+        ),
+    )
+    pel_stuck_timeout_seconds: int = Field(
+        default=600,
+        ge=1,
+        description="Seconds a PEL entry must be idle before the requeue worker reclaims it.",
+    )
+    pel_max_requeue_count: int = Field(
+        default=3,
+        ge=1,
+        description="Maximum number of times a message is requeued before being discarded.",
+    )
+    pel_scan_interval_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description="Seconds between successive PEL scans by the requeue worker.",
+    )
+    pel_xautoclaim_count: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum number of PEL entries to claim per XAUTOCLAIM call.",
+    )
+    pel_lifecycle_error_backoff_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        description=(
+            "Seconds to wait before retrying the PEL worker lifecycle loop "
+            "after an unexpected error."
+        ),
+    )
+
+    @property
+    def stuck_timeout_ms(self) -> int:
+        return self.pel_stuck_timeout_seconds * 1000
+
+    @root_validator
+    def validate_tls_settings(cls, values: dict[str, Any]) -> dict[str, Any]:
+        url = values.get("url", "redis://localhost:6379")
+        enable_tls = values.get("enable_tls", False)
+        cert = values.get("cert")
+        private_key = values.get("private_key")
+
+        scheme = urlparse(url).scheme.lower()
+        uses_tls_scheme = scheme == "rediss"
+
+        if enable_tls and not uses_tls_scheme:
+            raise ValueError(
+                "enable_tls is True but the Redis URL does not use the rediss:// "
+                "scheme. Use a rediss:// URL or set enable_tls to False."
+            )
+        if not enable_tls and uses_tls_scheme:
+            raise ValueError(
+                "The Redis URL uses rediss:// but enable_tls is False. "
+                "Set enable_tls to True or use a redis:// URL."
+            )
+
+        has_cert = bool(cert)
+        has_private_key = bool(private_key)
+        if has_cert != has_private_key:
+            raise ValueError(
+                "Redis mutual TLS requires both cert and private_key to be set."
+            )
+
+        return values
+
+
+class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
+    type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
+    is_redis_stream_consumer_enabled: bool = False
+
+
+class RedisLiveEventsSettings(LiveEventsSettings):
+    type: Literal[LiveEventsConsumerType.REDIS] = LiveEventsConsumerType.REDIS
+    redis: LiveEventsRedisSettings = Field(
+        default_factory=lambda: LiveEventsRedisSettings()
+    )
+
+
+LiveEventsSettingsType = RedisLiveEventsSettings
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
@@ -98,12 +277,16 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
+    status_heartbeat_interval_seconds: int = Field(
+        default=10,  # Interval in seconds for sending metrics heartbeat (liveness).
+        gt=0,
+    )
     client_timeout: int = 60
-    # Determines if Port should generate resources such as blueprints and pages instead of ocean
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
     oauth_access_token_file_path: str | None = None
     base_url: str | None = None
+    path_prefix: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
         default_factory=lambda: PollingEventListenerSettings(
@@ -111,6 +294,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
     )
     event_workers_count: int = 1
+    events_debug_logging: bool = False
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = Field(
         default_factory=lambda: IntegrationSettings(type="", identifier="")
@@ -132,21 +316,35 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
-    yield_items_to_parse: bool = False
-    yield_items_to_parse_batch_size: int = 10
-
+    disable_ip_outbound_blocker: bool | None = None
+    lakehouse_buffer_interval_seconds: float = 10.0
+    lakehouse_buffer_max_count: int = 50
+    processing_mode: ProcessingMode = ProcessingMode.ocean_core
+    yield_items_to_parse_batch_size: int = 200
+    process_in_queue_timeout: int = 120
+    process_in_queue_max_workers: int = Field(
+        default_factory=lambda: get_cgroup_cpu_limit()
+    )
+    delete_entities_max_batch_size: int = 1000
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
     actions_processor: ActionsProcessorSettings = Field(
         default_factory=lambda: ActionsProcessorSettings()
     )
+    live_events: LiveEventsSettingsType = Field(
+        default_factory=lambda: RedisLiveEventsSettings()
+    )
+    ssl: SslSettings = Field(default_factory=SslSettings)
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(
-        cls, process_execution_mode: ProcessExecutionMode
+        cls,
+        process_execution_mode: ProcessExecutionMode,
+        values: dict[str, Any],
     ) -> ProcessExecutionMode:
         # Check if the system is macos, if so, set the process execution mode to single process since multiprocessing behavior is different on macos and some asyncio error pop up
         is_macos = platform.system() == "Darwin"
-        if is_macos:
+        runtime = values.get("runtime", Runtime.OnPrem)
+        if is_macos or runtime == Runtime.Saas:
             return ProcessExecutionMode.single_process
         return process_execution_mode
 
@@ -163,6 +361,15 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             return dict(v)
         except (TypeError, ValueError):
             return MetricsSettings(enabled=False, webhook_url=None)
+
+    @root_validator()
+    def set_disable_ip_outbound_blocker_default(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        if values.get("disable_ip_outbound_blocker") is None:
+            runtime = values.get("runtime", Runtime.OnPrem)
+            values["disable_ip_outbound_blocker"] = not runtime.is_saas_runtime
+        return values
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -184,20 +391,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
 
         return values
-
-    @validator("create_port_resources_origin")
-    def validate_create_port_resources_origin(
-        cls, create_port_resources_origin: CreatePortResourcesOrigin | None
-    ) -> CreatePortResourcesOrigin | None:
-        spec = get_spec_file()
-        if spec and spec.get("create_port_resources_origin", None):
-            spec_create_port_resources_origin = spec.get("create_port_resources_origin")
-            if spec_create_port_resources_origin in [
-                CreatePortResourcesOrigin.Port,
-                CreatePortResourcesOrigin.Ocean,
-            ]:
-                return CreatePortResourcesOrigin(spec_create_port_resources_origin)
-        return create_port_resources_origin
 
     @validator("runtime")
     def validate_runtime(cls, runtime: Runtime) -> Runtime:

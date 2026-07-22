@@ -1,11 +1,12 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import BasicAuth, Request, Response
+from httpx import BasicAuth, Request, Response, HTTPStatusError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from jira_server.client import JiraServerClient
+from jira_server.client import JiraServerClient, IGNORED_ERRORS
+from jira_server.helpers.utils import IgnoredError
 
 
 @pytest.fixture(autouse=True)
@@ -184,12 +185,16 @@ async def test_get_paginated_users(mock_jira_server_client: JiraServerClient) ->
     with patch.object(
         mock_jira_server_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = [users_page1, users_page2, []]
+        # First call simulates /user/list unsupported (404) -> fallback to /user/search
+        not_found_response = Response(404, request=Request("GET", "http://example.com"))
+        list_not_supported = HTTPStatusError(
+            "Not Found", request=not_found_response.request, response=not_found_response
+        )
+        # Then legacy /user/search pages
+        mock_request.side_effect = [list_not_supported, users_page1, users_page2, []]
 
         users = []
-        async for user_batch in mock_jira_server_client.get_paginated_users(
-            username="testuser"
-        ):
+        async for user_batch in mock_jira_server_client.get_paginated_users():
             users.extend(user_batch)
 
         assert len(users) == 3
@@ -198,3 +203,251 @@ async def test_get_paginated_users(mock_jira_server_client: JiraServerClient) ->
             {"accountId": "user2"},
             {"accountId": "user3"},
         ]
+        # Verify that after the 404, we used /user/search
+        # call_args_list[0] corresponds to the failing /user/list probe
+        # subsequent calls should hit /user/search
+        for call in mock_request.call_args_list[1:]:
+            _, url, *_ = call.args
+            assert "/user/search" in url
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_users_via_list_success(
+    mock_jira_server_client: JiraServerClient,
+) -> None:
+    """Test users fetch via /user/list using cursor-based pagination."""
+    list_page1 = {
+        "values": [{"accountId": "u1"}, {"accountId": "u2"}],
+        "nextCursor": "c1",
+        "isLast": False,
+    }
+    list_page2 = {
+        "values": [{"accountId": "u3"}],
+        "isLast": True,
+    }
+
+    with patch.object(
+        mock_jira_server_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [list_page1, list_page2]
+
+        users = []
+        async for batch in mock_jira_server_client.get_paginated_users():
+            users.extend(batch)
+
+        assert users == [
+            {"accountId": "u1"},
+            {"accountId": "u2"},
+            {"accountId": "u3"},
+        ]
+        # Ensure only /user/list was used
+        assert len(mock_request.call_args_list) == 2
+        for call in mock_request.call_args_list:
+            _, url, *_ = call.args
+            assert "/user/list" in url
+
+
+class TestShouldIgnoreError:
+    """Tests for the _should_ignore_error method."""
+
+    def test_should_ignore_error_returns_true_when_status_matches(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that _should_ignore_error returns True when status code matches."""
+        error_response = Response(404, request=Request("GET", "http://example.com"))
+        error = HTTPStatusError(
+            "Not Found", request=error_response.request, response=error_response
+        )
+        ignored_errors = [IgnoredError(status=404, message="Resource not found")]
+
+        result = mock_jira_server_client._should_ignore_error(
+            error, "http://example.com", "GET", ignored_errors
+        )
+
+        assert result is True
+
+    def test_should_ignore_error_returns_false_when_status_does_not_match(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that _should_ignore_error returns False when status code doesn't match."""
+        error_response = Response(500, request=Request("GET", "http://example.com"))
+        error = HTTPStatusError(
+            "Server Error", request=error_response.request, response=error_response
+        )
+        ignored_errors = [IgnoredError(status=404, message="Only 404 ignored")]
+
+        result = mock_jira_server_client._should_ignore_error(
+            error, "http://example.com", "GET", ignored_errors
+        )
+
+        assert result is False
+
+    def test_should_ignore_error_returns_false_when_no_ignored_errors(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that _should_ignore_error returns False when ignored_errors is None."""
+        error_response = Response(404, request=Request("GET", "http://example.com"))
+        error = HTTPStatusError(
+            "Not Found", request=error_response.request, response=error_response
+        )
+
+        result = mock_jira_server_client._should_ignore_error(
+            error, "http://example.com", "GET", None
+        )
+
+        assert result is False
+
+
+class TestSendApiRequestWithIgnoredErrors:
+    """Tests for _send_api_request with ignored_errors parameter."""
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_returns_empty_dict_for_ignored_404_error(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that _send_api_request returns {} when 404 error is ignored."""
+        with patch.object(
+            mock_jira_server_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = Response(
+                404, request=Request("GET", "http://example.com")
+            )
+            ignored_errors = [IgnoredError(status=404, message="Resource not found")]
+
+            result = await mock_jira_server_client._send_api_request(
+                "GET", "http://example.com", ignored_errors=ignored_errors
+            )
+
+            assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_raises_for_non_ignored_error(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that _send_api_request raises when error is not in ignored list."""
+        with patch.object(
+            mock_jira_server_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = Response(
+                500, request=Request("GET", "http://example.com")
+            )
+            ignored_errors = [IgnoredError(status=404, message="Only 404 ignored")]
+
+            with pytest.raises(HTTPStatusError):
+                await mock_jira_server_client._send_api_request(
+                    "GET", "http://example.com", ignored_errors=ignored_errors
+                )
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_raises_400_with_descriptive_logging(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that 400 errors are raised (not ignored) with descriptive logging."""
+        jira_error_response = {
+            "errorMessages": [
+                "The value 'INVALID' does not exist for the field 'project'."
+            ],
+            "errors": {},
+        }
+        with patch.object(
+            mock_jira_server_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = Response(
+                400,
+                request=Request("GET", "http://example.com"),
+                json=jira_error_response,
+            )
+
+            with pytest.raises(HTTPStatusError):
+                await mock_jira_server_client._send_api_request(
+                    "GET", "http://example.com"
+                )
+
+
+class TestGetPaginatedIssuesErrorHandling:
+    """Tests for get_paginated_issues error handling (PORT-17194)."""
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_issues_ignores_404_errors(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that 404 errors are ignored and return no issues."""
+        with patch.object(
+            mock_jira_server_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = Response(
+                404, request=Request("GET", "http://example.com/search")
+            )
+
+            issues = []
+            async for issue_batch in mock_jira_server_client.get_paginated_issues():
+                issues.extend(issue_batch)
+
+            # Should return empty list, not raise exception
+            assert issues == []
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_issues_uses_ignored_errors(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that get_paginated_issues passes IGNORED_ERRORS to _send_api_request."""
+        with patch.object(
+            mock_jira_server_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            # Return empty response to stop pagination
+            mock_request.return_value = {}
+
+            issues = []
+            async for issue_batch in mock_jira_server_client.get_paginated_issues():
+                issues.extend(issue_batch)
+
+            # Verify _send_api_request was called with ignored_errors
+            call_kwargs = mock_request.call_args.kwargs
+            assert "ignored_errors" in call_kwargs
+            assert call_kwargs["ignored_errors"] == IGNORED_ERRORS
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_issues_raises_400_jql_errors(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that 400 JQL errors are raised (not ignored) per PORT-17194.
+
+        400 errors should be raised with descriptive Jira error messages
+        so users understand what's wrong with their JQL query.
+        """
+        jira_error_response = {
+            "errorMessages": [
+                "The value 'INACCESSIBLE' does not exist for the field 'project'."
+            ],
+            "errors": {},
+        }
+        with patch.object(
+            mock_jira_server_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = Response(
+                400,
+                request=Request("GET", "http://example.com/search"),
+                json=jira_error_response,
+            )
+
+            with pytest.raises(HTTPStatusError):
+                async for _ in mock_jira_server_client.get_paginated_issues(
+                    params={"jql": "project = INACCESSIBLE"}
+                ):
+                    pass
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_issues_raises_500_errors(
+        self, mock_jira_server_client: JiraServerClient
+    ) -> None:
+        """Test that 500 errors are raised by get_paginated_issues."""
+        with patch.object(
+            mock_jira_server_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = Response(
+                500, request=Request("GET", "http://example.com/search")
+            )
+
+            with pytest.raises(HTTPStatusError):
+                async for _ in mock_jira_server_client.get_paginated_issues():
+                    pass

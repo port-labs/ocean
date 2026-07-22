@@ -1,12 +1,22 @@
+import asyncio
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
 import httpx
-from httpx import URL, Timeout
+from httpx import Timeout
 from loguru import logger
-from port_ocean.context.event import event
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
+from snyk.overrides import (
+    SnykProjectAPIQueryParams,
+    SnykPolicyAPIQueryParams,
+    SnykTargetAPIQueryParams,
+    SnykVulnerabilityAPIQueryParams,
+)
+from snyk.utils import enrich_batch_with_data, parse_next_page_params
 
 
 class CacheKeys(StrEnum):
@@ -18,6 +28,7 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
+CONCURRENT_REQUESTS = 100
 
 
 class SnykClient:
@@ -44,11 +55,18 @@ class SnykClient:
         self.group_ids = group_ids
         self.rest_api_url = f"{api_url}/rest"
         self.webhook_secret = webhook_secret
-        self.http_client = http_async_client
+        retry_config = RetryConfig(
+            retryable_methods=[
+                "POST",
+                "GET",
+            ],
+        )
+        self.http_client = OceanAsyncClient(retry_config=retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
-        self.snyk_api_version = "2024-06-21"
+        self.snyk_api_version = "2026-03-25"
         self.rate_limiter = rate_limiter
+        self.semaphore = asyncio.BoundedSemaphore(CONCURRENT_REQUESTS)
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -66,7 +84,7 @@ class SnykClient:
             **(query_params or {}),
             **({"version": version} if version is not None else {}),
         }
-        async with self.rate_limiter:
+        async with self.rate_limiter, self.semaphore:
             try:
                 response = await self.http_client.request(
                     method=method, url=url, params=query_params, json=json_data
@@ -108,9 +126,7 @@ class SnykClient:
                 # Check if there is a "next" URL in the links object
                 next_url = data.get("links", {}).get("next", "")
                 if next_url:
-                    parsed_url = URL(next_url)
-                    url_path = parsed_url.raw_path.decode().replace("/rest", "")
-                    query_params = dict(parsed_url.params)
+                    url_path, query_params = parse_next_page_params(next_url)
                 else:
                     url_path = ""
                     query_params = {}
@@ -120,11 +136,9 @@ class SnykClient:
                 )
                 raise
 
+    @cache_coroutine_result()
     async def get_issues(self, org_id: str, project_id: str) -> list[dict[str, Any]]:
-        cache_key = f"{CacheKeys.ISSUE}-{project_id}"
         # We cache the issues for each project in the event attributes as in the same resync events we may need to fetch the issues multiple times for aggregations
-        if cache := event.attributes.get(cache_key):
-            return cache
 
         url = f"{self.api_url}/org/{org_id}/project/{project_id}/aggregated-issues"
         issues = (
@@ -135,20 +149,73 @@ class SnykClient:
             )
         ).get("issues", [])
 
-        event.attributes[cache_key] = issues
         return issues
 
-    async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        all_organizations = await self.get_organizations_in_groups()
-        for org in all_organizations:
-            logger.info(f"Fetching paginated issues for organization: {org['id']}")
-            url = f"/orgs/{org['id']}/issues"
-            query_params = {"version": self.snyk_api_version}
+    async def get_project_vulnerabilities(
+        self,
+        org_id: str,
+        project: dict[str, Any],
+        query_params: dict[str, Any],
+        attach_ignore: bool = False,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = f"/orgs/{org_id}/issues"
+        async for issues in self._get_paginated_resources(
+            url,
+            query_params={
+                **query_params,
+                "scan_item.id": project["id"],
+                "scan_item.type": project["type"],
+            },
+        ):
+            if attach_ignore and issues:
+                project_ignores = await self._get_project_ignore_data(org_id, project)
+                for issue in issues:
+                    issue_key = issue["attributes"]["key"]
+                    issue["__ignore_data"] = project_ignores.get(issue_key, [])
+            yield enrich_batch_with_data(issues, project, enrichment_key="__project")
 
-            async for issues in self._get_paginated_resources(
-                url_path=url, query_params=query_params
+    async def get_paginated_issues(
+        self,
+        org: dict[str, Any],
+        api_params: Optional[SnykVulnerabilityAPIQueryParams] = None,
+        project_params: Optional[SnykProjectAPIQueryParams] = None,
+        attach_project: bool = False,
+        attach_ignore: bool = False,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching paginated issues for organization: {org['id']}")
+        base_params = {"version": self.snyk_api_version}
+        query_params = (
+            api_params.merge_with(base_params)
+            if api_params is not None
+            else base_params
+        )
+
+        if project_params or attach_project or attach_ignore:
+            if project_params:
+                logger.info(
+                    "Project filters set, fetching issues from matching projects",
+                    project_params=project_params.generate_query_params(),
+                )
+            async for projects in self.get_paginated_projects(
+                org=org,
+                api_params=project_params,
+                enrich_with_org=False,
             ):
-                yield issues
+                tasks = [
+                    self.get_project_vulnerabilities(
+                        org["id"], project, query_params, attach_ignore=attach_ignore
+                    )
+                    for project in projects
+                ]
+
+                async for issues in stream_async_iterators_tasks(*tasks):
+                    yield enrich_batch_with_data(issues, org)
+        else:
+            url = f"/orgs/{org['id']}/issues"
+            async for issues in self._get_paginated_resources(
+                url, query_params=query_params
+            ):
+                yield enrich_batch_with_data(issues, org)
 
     def _get_projects_by_target(
         self,
@@ -167,45 +234,86 @@ class SnykClient:
 
     async def get_paginated_projects(
         self,
-        target_id: Optional[str] = None,
+        org: dict[str, Any],
+        api_params: Optional[SnykProjectAPIQueryParams] = None,
+        enrich_with_org: bool = True,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if CacheKeys.PROJECT in event.attributes:
-            all_projects = event.attributes[CacheKeys.PROJECT]
-            projects_to_yield = self._get_projects_by_target(
-                all_projects, target_id=target_id
+        base_query_params = {
+            "version": self.snyk_api_version,
+            "meta.latest_issue_counts": "true",
+            "expand": "target",
+        }
+        query_params = (
+            api_params.merge_with(base_query_params)
+            if api_params is not None
+            else base_query_params
+        )
+
+        async for projects in self._get_paginated_projects(org, params=query_params):
+            if enrich_with_org:
+                yield enrich_batch_with_data(projects, org)
+            else:
+                yield projects
+
+    @cache_iterator_result()
+    async def _get_paginated_projects(
+        self, org: dict[str, Any], params: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching paginated projects for organization: {org['id']}")
+        url = f"/orgs/{org['id']}/projects"
+        async for projects in self._get_paginated_resources(
+            url_path=url, query_params=params
+        ):
+            yield projects
+
+    @cache_coroutine_result()
+    async def _get_project_ignore_data(
+        self, org_id: str, project: dict[str, Any]
+    ) -> dict[str, Any]:
+        logger.info(
+            f"fetching ignore data for project: {project['id']}",
+            project_name=project["attributes"]["name"],
+        )
+        url = f"{self.api_url}/org/{org_id}/project/{project['id']}/ignores"
+        response = await self._send_api_request(
+            url=url, method="GET", version=f"{self.snyk_api_version}"
+        )
+
+        if not response:
+            return {}
+
+        return response
+
+    async def _process_target(
+        self,
+        org: dict[str, Any],
+        target_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        target_data.setdefault("__projects", [])
+
+        async for projects in self.get_paginated_projects(
+            org=org, enrich_with_org=False
+        ):
+            target_data["__projects"].extend(
+                self._get_projects_by_target(projects, target_data["id"])
             )
-            yield projects_to_yield
-            return
-
-        all_organizations = await self.get_organizations_in_groups()
-        for org in all_organizations:
-            logger.info(f"Fetching paginated projects for organization: {org['id']}")
-            url = f"/orgs/{org['id']}/projects"
-            query_params = {
-                "version": self.snyk_api_version,
-                "meta.latest_issue_counts": "true",
-                "expand": "target",
-            }
-
-            async for projects in self._get_paginated_resources(
-                url_path=url, query_params=query_params
-            ):
-                event.attributes.setdefault(CacheKeys.PROJECT, []).extend(projects)
-
-                projects_to_yield = self._get_projects_by_target(
-                    projects, target_id=target_id
-                )
-                yield projects_to_yield
+        return target_data
 
     async def get_single_target_by_project_id(
-        self, org_id: str, project_id: str
+        self, org: dict[str, Any], project_id: str, attach_project_data: bool = True
     ) -> dict[str, Any]:
-        project = await self.get_single_project(org_id, project_id)
+        project = await self.get_single_project(org["id"], project_id)
         target_id = (
             project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
         )
 
-        url = f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}"
+        if target_id is None:
+            logger.warning(
+                f"No target ID found in project {project_id}; skipping target fetching."
+            )
+            return {}
+
+        url = f"{self.rest_api_url}/orgs/{org['id']}/targets/{target_id}"
 
         response = await self._send_api_request(
             url=url, method="GET", version=f"{self.snyk_api_version}"
@@ -215,47 +323,40 @@ class SnykClient:
             return {}
 
         target = response["data"]
-        async for projects_data_of_target in self.get_paginated_projects(target["id"]):
-            target.setdefault("__projects", []).extend(projects_data_of_target)
+
+        if attach_project_data:
+            logger.info(f"Enriching target {target_id} with projects")
+            await self._process_target(org, target)
+
         return target
 
     async def get_paginated_targets(
         self,
+        org: dict[str, Any],
+        attach_project_data: bool = True,
+        api_params: Optional[SnykTargetAPIQueryParams] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        all_organizations = await self.get_organizations_in_groups()
-        for org in all_organizations:
-            logger.info(f"Fetching paginated targets for organization: {org['id']}")
+        logger.info(f"Fetching paginated targets for organization: {org['id']}")
 
-            url = f"/orgs/{org['id']}/targets"
-            query_params = {"version": self.snyk_api_version}
-            async for targets in self._get_paginated_resources(
-                url_path=url, query_params=query_params
-            ):
-                targets_with_project_data = []
-                for target_data in targets:
-                    async for projects_data_of_target in self.get_paginated_projects(
-                        target_data["id"]
-                    ):
-                        target_data.setdefault("__projects", []).extend(
-                            projects_data_of_target
-                        )
-                    targets_with_project_data.append(target_data)
+        url = f"/orgs/{org['id']}/targets"
+        query_params: dict[str, Any] = {"version": self.snyk_api_version}
+        if api_params:
+            query_params = api_params.merge_with(query_params)
+
+        async for targets in self._get_paginated_resources(
+            url_path=url, query_params=query_params
+        ):
+            if attach_project_data:
+                logger.debug(f"Enriching len{targets} targets with projects")
+                targets_with_project_data = await asyncio.gather(
+                    *[self._process_target(org, target_data) for target_data in targets]
+                )
                 yield targets_with_project_data
+            else:
+                yield targets
 
+    @cache_coroutine_result()
     async def get_single_project(self, org_id: str, project_id: str) -> dict[str, Any]:
-        if CacheKeys.PROJECT in event.attributes:
-            all_projects = event.attributes[CacheKeys.PROJECT]
-            project = next(
-                (
-                    project
-                    for project in all_projects
-                    if project.get("id") == project_id
-                ),
-                None,
-            )
-            if project:
-                return project
-
         url = f"{self.rest_api_url}/orgs/{org_id}/projects/{project_id}"
         query_params = {
             "meta.latest_issue_counts": "true",
@@ -268,7 +369,6 @@ class SnykClient:
             version=self.snyk_api_version,
         )
         project = response.get("data", {})
-        event.attributes.setdefault(CacheKeys.PROJECT, []).append(project)
 
         return project
 
@@ -311,12 +411,8 @@ class SnykClient:
         ]
         return all_organizations
 
+    @cache_coroutine_result()
     async def get_organizations_in_groups(self) -> list[Any]:
-        # Check if the result is already cached
-        if cache := event.attributes.get(CacheKeys.GROUP):
-            logger.info("Fetched Snyk organizations from the cache")
-            return cache
-
         all_organizations = await self.get_all_organizations()
 
         if self.organization_ids:
@@ -328,7 +424,6 @@ class SnykClient:
                 f"Fetched {len(matching_organization)} organizations for the given organization ID(s)."
             )
             if matching_organization:
-                event.attributes[CacheKeys.GROUP] = matching_organization
                 return matching_organization
             else:
                 logger.warning(
@@ -350,12 +445,37 @@ class SnykClient:
                 f"Fetched {len(matching_organizations_in_groups)} organizations for the given groups."
             )
 
-            event.attributes[CacheKeys.GROUP] = matching_organizations_in_groups
             return matching_organizations_in_groups
         else:
             logger.info(
                 "Integration config did not specify any group(s) or organizationId to filter. Getting all organizations linked to the provided Snyk token"
             )
 
-            event.attributes[CacheKeys.GROUP] = all_organizations
             return all_organizations
+
+    async def get_paginated_policies(
+        self,
+        org: dict[str, Any],
+        api_params: Optional[SnykPolicyAPIQueryParams] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching paginated policies for organization: {org['id']}")
+        url = f"/orgs/{org['id']}/policies"
+        base_params = {"version": self.snyk_api_version}
+        query_params = (
+            api_params.merge_with(base_params)
+            if api_params is not None
+            else base_params
+        )
+        async for policies in self._get_paginated_resources(
+            url_path=url, query_params=query_params
+        ):
+            yield enrich_batch_with_data(policies, org)
+
+    async def process_project_issues(
+        self, project: dict[str, Any], enrich_with_org: bool = False
+    ) -> list[dict[str, Any]]:
+        organization_id = project["relationships"]["organization"]["data"]["id"]
+        issues = await self.get_issues(organization_id, project["id"])
+        if not enrich_with_org:
+            return issues
+        return enrich_batch_with_data(issues, project["__organization"])

@@ -10,7 +10,6 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleCollaboratorOptions, ListCollaboratorOptions
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_COLLABORATORS = [
     {
         "login": "user1",
@@ -81,6 +80,7 @@ class TestRestCollaboratorExporter:
             # The exporter enriches the data with repository info
             expected_collaborator = TEST_COLLABORATORS[0].copy()
             expected_collaborator["__repository"] = "test-repo"
+            expected_collaborator["__organization"] = "test-org"
             assert collaborator == expected_collaborator
 
             mock_request.assert_called_once_with(
@@ -101,7 +101,7 @@ class TestRestCollaboratorExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListCollaboratorOptions(
-                    organization="test-org", repo_name="test-repo"
+                    organization="test-org", repo_name="test-repo", affiliation="all"
                 )
                 exporter = RestCollaboratorExporter(rest_client)
 
@@ -114,12 +114,16 @@ class TestRestCollaboratorExporter:
 
                 # Create expected enriched collaborators with __repository field
                 expected_collaborators = [
-                    {**collaborator, "__repository": "test-repo"}
+                    {
+                        **collaborator,
+                        "__repository": "test-repo",
+                        "__organization": "test-org",
+                    }
                     for collaborator in TEST_COLLABORATORS
                 ]
                 assert collaborators[0] == expected_collaborators
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/test-org/test-repo/collaborators",
-                    {},
+                    {"affiliation": "all"},
                 )

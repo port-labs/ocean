@@ -1,0 +1,45 @@
+{
+  "id": 1310047,
+  "name": "Frontend Team",
+  "external_source": "azure_devops",
+  "external_source_id": "3ebf8f5e-8653-4105-9445-0d17b28ce4f2",
+  "responsibilities": [
+    {
+      "id": 1841542,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841544,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841546,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841543,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841547,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841545,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    }
+  ],
+  "active": true
+}

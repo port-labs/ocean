@@ -1,6 +1,8 @@
 from abc import ABC
+from collections.abc import Mapping
+from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Dict, Type, TypeAlias, Optional
+from typing import Any, Protocol
 from uuid import uuid4
 from fastapi import Request
 from loguru import logger
@@ -8,9 +10,34 @@ from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import RAW_ITEM
 
+EventPayload = dict[str, Any]
+EventHeaders = dict[str, str]
 
-EventPayload: TypeAlias = Dict[str, Any]
-EventHeaders: TypeAlias = Dict[str, str]
+
+class WebhookOriginalRequest(Protocol):
+    """Minimal request interface for webhook signature verification."""
+
+    @property
+    def headers(self) -> Mapping[str, str]: ...
+
+    async def body(self) -> bytes: ...
+
+
+class WebhookRequestAdapter:
+    """Read-only adapter that satisfies :class:`WebhookOriginalRequest`.
+
+    The real Starlette ``Request`` is only available during the original HTTP
+    call. When events travel through the Redis ingestion path the raw payload
+    string is preserved so that HMAC signatures can still be verified without
+    a live HTTP connection.
+    """
+
+    def __init__(self, raw_body: bytes, headers: EventHeaders) -> None:
+        self._raw_body = raw_body
+        self.headers = headers
+
+    async def body(self) -> bytes:
+        return self._raw_body
 
 
 class LiveEventTimestamp(StrEnum):
@@ -26,7 +53,7 @@ class LiveEvent(ABC):
     """Represents a live event marker class"""
 
     def set_timestamp(
-        self, timestamp: LiveEventTimestamp, params: Optional[Dict[str, Any]] = None
+        self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event
 
@@ -50,36 +77,42 @@ class WebhookEvent(LiveEvent):
         trace_id: str,
         payload: EventPayload,
         headers: EventHeaders,
-        original_request: Request | None = None,
+        original_request: WebhookOriginalRequest | None = None,
         group_id: str | None = None,
+        created_at: datetime | None = None,
     ) -> None:
         self.trace_id = trace_id
         self.payload = payload
         self.headers = headers
         self._original_request = original_request
         self.group_id = group_id
+        self.created_at = created_at or datetime.now(timezone.utc)
 
     @classmethod
-    async def from_request(
-        cls: Type["WebhookEvent"], request: Request
-    ) -> "WebhookEvent":
+    async def from_request(cls, request: Request) -> "WebhookEvent":
         trace_id = str(uuid4())
         payload = await request.json()
+        created_at = datetime.now(timezone.utc)
 
         return cls(
             trace_id=trace_id,
             payload=payload,
             headers=dict(request.headers),
             original_request=request,
+            created_at=created_at,
         )
 
     @classmethod
-    def from_dict(cls: Type["WebhookEvent"], data: Dict[str, Any]) -> "WebhookEvent":
+    def from_dict(cls, data: dict[str, Any]) -> "WebhookEvent":
+        created_at = None
+        if "created_at" in data:
+            created_at = datetime.fromisoformat(data["created_at"])
         return cls(
             trace_id=data["trace_id"],
             payload=data["payload"],
             headers=data["headers"],
             original_request=None,
+            created_at=created_at,
         )
 
     def clone(self) -> "WebhookEvent":
@@ -88,10 +121,11 @@ class WebhookEvent(LiveEvent):
             payload=self.payload,
             headers=self.headers,
             original_request=self._original_request,
+            created_at=self.created_at,
         )
 
     def set_timestamp(
-        self, timestamp: LiveEventTimestamp, params: Optional[Dict[str, Any]] = None
+        self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event"""
         super().set_timestamp(
@@ -113,10 +147,33 @@ class WebhookEventRawResults:
         self,
         updated_raw_results: list[RAW_ITEM],
         deleted_raw_results: list[RAW_ITEM],
+        webhook_trace_id: str | None = None,
+        created_at: datetime | None = None,
     ) -> None:
         self._resource: ResourceConfig | None = None
+        self._resource_index: int | None = None
         self._updated_raw_results = updated_raw_results
         self._deleted_raw_results = deleted_raw_results
+        self._webhook_trace_id = webhook_trace_id
+        self._original_webhook: EventPayload | None = None
+        self._original_headers: EventHeaders | None = None
+        self._created_at = created_at or datetime.now(timezone.utc)
+
+    @property
+    def original_webhook(self) -> EventPayload | None:
+        return self._original_webhook
+
+    @original_webhook.setter
+    def original_webhook(self, value: EventPayload) -> None:
+        self._original_webhook = value
+
+    @property
+    def original_headers(self) -> EventHeaders | None:
+        return self._original_headers
+
+    @original_headers.setter
+    def original_headers(self, value: EventHeaders) -> None:
+        self._original_headers = value
 
     @property
     def resource(self) -> ResourceConfig:
@@ -129,9 +186,25 @@ class WebhookEventRawResults:
         self._resource = value
 
     @property
+    def has_resource(self) -> bool:
+        return self._resource is not None
+
+    @property
+    def resource_index(self) -> int | None:
+        return self._resource_index
+
+    @resource_index.setter
+    def resource_index(self, value: int | None) -> None:
+        self._resource_index = value
+
+    @property
     def updated_raw_results(self) -> list[RAW_ITEM]:
         return self._updated_raw_results
 
     @property
     def deleted_raw_results(self) -> list[RAW_ITEM]:
         return self._deleted_raw_results
+
+    @property
+    def created_at(self) -> datetime:
+        return self._created_at

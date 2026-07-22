@@ -1,3 +1,6 @@
+from github.webhook.webhook_processors.webhook_ping_processor import (
+    WebhookPingProcessor,
+)
 from port_ocean.context.ocean import ocean
 from github.webhook.webhook_processors.folder_webhook_processor import (
     FolderWebhookProcessor,
@@ -24,6 +27,9 @@ from github.webhook.webhook_processors.environment_webhook_processor import (
 )
 from github.webhook.webhook_processors.deployment_webhook_processor import (
     DeploymentWebhookProcessor,
+)
+from github.webhook.webhook_processors.deployment_status_webhook_processor import (
+    DeploymentStatusWebhookProcessor,
 )
 from github.webhook.webhook_processors.team_member_webhook_processor import (
     TeamMemberWebhookProcessor,
@@ -60,12 +66,17 @@ from github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_p
 from github.webhook.webhook_processors.secret_scanning_alert_webhook_processor import (
     SecretScanningAlertWebhookProcessor,
 )
+from github.webhook.webhook_processors.port_app_config_webhook_processor import (
+    PortAppConfigWebhookProcessor,
+)
 
 WEBHOOK_PATH = "/webhook"
 
 
 def register_live_events_webhooks() -> None:
     """Register all live event webhook processors."""
+    ocean.add_webhook_processor(WEBHOOK_PATH, WebhookPingProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, PortAppConfigWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, RepositoryWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, PullRequestWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
@@ -74,6 +85,7 @@ def register_live_events_webhooks() -> None:
     ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, EnvironmentWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentStatusWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, WorkflowRunWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, WorkflowWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, DependabotAlertWebhookProcessor)

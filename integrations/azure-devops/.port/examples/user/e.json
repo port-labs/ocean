@@ -1,0 +1,48 @@
+{
+  "user": {
+    "subjectKind": "user",
+    "metaType": "member",
+    "directoryAlias": "ppatel",
+    "domain": "8b2a3c91-11d2-4e89-a2c3-99b8d7621a55",
+    "principalName": "ppatel@technova.com",
+    "mailAddress": "ppatel@technova.com",
+    "origin": "aad",
+    "originId": "9f8e7d6c-5b4a-3f2e-1d0c-b9a8f7e6d5c4",
+    "displayName": "Priya Patel",
+    "_links": {
+      "self": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+      },
+      "memberships": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Memberships/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+      },
+      "membershipState": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/MembershipStates/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+      },
+      "storageKey": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/StorageKeys/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+      },
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+      }
+    },
+    "url": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg==",
+    "descriptor": "aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+  },
+  "extensions": [],
+  "id": "44444444-5555-6666-7777-888888888888",
+  "accessLevel": {
+    "licensingSource": "account",
+    "accountLicenseType": "express",
+    "msdnLicenseType": "none",
+    "gitHubLicenseType": "none",
+    "licenseDisplayName": "Basic",
+    "status": "active",
+    "statusMessage": "",
+    "assignmentSource": "groupRule"
+  },
+  "lastAccessedDate": "2026-04-01T08:05:43.9876543Z",
+  "dateCreated": "2025-06-22T10:10:10.0101010Z",
+  "projectEntitlements": [],
+  "groupAssignments": []
+}

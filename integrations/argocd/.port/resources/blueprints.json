@@ -190,6 +190,15 @@
           "type": "object",
           "title": "Annotations",
           "description": "Annotations are unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata"
+        },
+        "sources": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array",
+          "title": "Sources",
+          "icon": "Url",
+          "description": "This represents the sources of a multi-source Argocd app."
         }
       },
       "required": []

@@ -19,7 +19,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from github.helpers.utils import ObjectKind
 from integration import GithubFilePattern, GithubFileResourceConfig
 from loguru import logger
-
+from github.helpers.port_app_config import ORG_CONFIG_REPO
+from github.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+)
 
 YAML_SUFFIX = (".yaml", ".yml")
 JSON_SUFFIX = ".json"
@@ -34,11 +38,13 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        event_type = event.headers.get("x-github-event")
-
-        return event_type == "push" and event.payload.get("ref", "").startswith(
-            "refs/heads/"
+        is_push_event = event.headers.get("x-github-event") == "push"
+        is_github_private_repo = (
+            event.payload.get("repository", {}).get("name") == ORG_CONFIG_REPO
         )
+        has_branch_name = event.payload.get("ref", "").startswith("refs/heads/")
+
+        return is_push_event and not is_github_private_repo and has_branch_name
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.FILE]
@@ -46,7 +52,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
         repository = payload["repository"]
         before_sha = payload["before"]
         after_sha = payload["after"]
@@ -82,6 +88,16 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             repository,
             current_branch,
         )
+
+        if updated_raw_results and selector.included_files:
+            rest_client = create_github_client()
+            enricher = IncludedFilesEnricher(
+                client=rest_client,
+                strategy=FileIncludedFilesStrategy(
+                    included_files=selector.included_files,
+                ),
+            )
+            updated_raw_results = await enricher.enrich_batch(updated_raw_results)
 
         return WebhookEventRawResults(
             updated_raw_results=updated_raw_results,
@@ -202,6 +218,11 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                             branch=current_branch,
                         )
                     )
+                    if not file_content_response:
+                        logger.warning(
+                            f"No response for file {file_path} from {organization}"
+                        )
+                        continue
 
                     content = file_content_response.get("content")
                     if content is None:

@@ -10,9 +10,10 @@ from aws.core.exporters.ecs.service.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
+from aws.utils import RegionHelper
 
 
-class EcsServiceExporter(IResourceExporter):
+class EcsServiceExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "ecs"
     _model_cls: Type[Service] = Service
     _actions_map: Type[EcsServiceActionsMap] = EcsServiceActionsMap
@@ -27,8 +28,9 @@ class EcsServiceExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            cluster_arn = f"arn:aws:ecs:{options.region}:{options.account_id}:cluster/{options.cluster_name}"
-            service_arn = f"arn:aws:ecs:{options.region}:{options.account_id}:service/{options.cluster_name}/{options.service_name}"
+            partition = RegionHelper.get_partition()
+            cluster_arn = f"arn:{partition}:ecs:{options.region}:{options.account_id}:cluster/{options.cluster_name}"
+            service_arn = f"arn:{partition}:ecs:{options.region}:{options.account_id}:service/{options.cluster_name}/{options.service_name}"
 
             response = await inspector.inspect(
                 [service_arn],

@@ -1,4 +1,5 @@
 import time
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any, Dict
@@ -231,3 +232,61 @@ class TestBaseCheckmarxAuthenticator:
             )
             assert hasattr(authenticator, "_authenticate")
             assert callable(authenticator._authenticate)
+
+    @pytest.mark.asyncio
+    async def test_get_access_token_from_cache_correct_expiration(
+        self, authenticator: MockAuthenticator
+    ) -> None:
+        """Test that token expiration is correctly restored when loading from cache."""
+        # Simulate a token that expires in 20 minutes
+        expected_expires_at = time.time() + 1200  # 20 minutes from now
+
+        cached_token = {
+            "access_token": "cached_access_token",
+            "refresh_token": "cached_refresh_token",
+            "token_expires_at": expected_expires_at,
+        }
+
+        with patch.object(
+            authenticator, "_get_cached_token", return_value=cached_token
+        ):
+            result = await authenticator._get_access_token()
+
+            assert result == "cached_access_token"
+            assert authenticator._access_token == "cached_access_token"
+            assert authenticator._refresh_token == "cached_refresh_token"
+            # Verify expiration is calculated from cached_at, not current time
+            assert authenticator._token_expires_at is not None
+            assert abs(authenticator._token_expires_at - expected_expires_at) < 1.0
+
+    @pytest.mark.asyncio
+    async def test_token_expiration_not_extended_on_multiple_cache_loads(
+        self, authenticator: MockAuthenticator
+    ) -> None:
+        """Test that loading token from cache multiple times doesn't extend expiration."""
+        expected_expires_at = time.time() + 1200  # 20 minutes from now
+        cached_token = {
+            "access_token": "cached_access_token",
+            "refresh_token": "cached_refresh_token",
+            "token_expires_at": expected_expires_at,
+        }
+
+        with patch.object(
+            authenticator, "_get_cached_token", return_value=cached_token
+        ):
+            # Load token first time
+            await authenticator._get_access_token()
+            assert authenticator._token_expires_at is not None
+            first_expires_at = authenticator._token_expires_at
+
+            # Wait a bit
+            await asyncio.sleep(0.1)
+
+            # Load token second time
+            await authenticator._get_access_token()
+            assert authenticator._token_expires_at is not None
+            second_expires_at = authenticator._token_expires_at
+
+            # Expiration should be the same (not extended)
+            assert abs(first_expires_at - second_expires_at) < 1.0
+            assert abs(first_expires_at - expected_expires_at) < 1.0

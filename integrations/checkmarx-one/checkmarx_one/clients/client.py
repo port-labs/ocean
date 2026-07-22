@@ -9,7 +9,6 @@ from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
 
 from urllib.parse import urljoin
 
-
 PAGE_SIZE = 100
 
 
@@ -33,6 +32,16 @@ class CheckmarxOneClient:
         IgnoredError(
             status=404,
             message="Resource not found at endpoint",
+        ),
+        IgnoredError(
+            status=502,
+            message="Bad Gateway — transient upstream error",
+            type="BAD_GATEWAY",
+        ),
+        IgnoredError(
+            status=503,
+            message="Service Unavailable — transient server error",
+            type="SERVICE_UNAVAILABLE",
         ),
     ]
 

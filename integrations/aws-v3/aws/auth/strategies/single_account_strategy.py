@@ -4,6 +4,7 @@ from loguru import logger
 from typing import Any, AsyncIterator
 from aws.auth.utils import AWSSessionError
 from aws.auth.providers.base import CredentialProvider
+from aws.utils import RegionHelper
 
 
 class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
@@ -27,7 +28,9 @@ class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                     "aws_session_token": token,
                 }
             session = await self.provider.get_session(**session_kwargs)
-            async with session.create_client("sts", region_name=None) as sts:
+
+            region = await RegionHelper.get_custom_partition_region_or_none(session)
+            async with session.create_client("sts", region_name=region) as sts:
                 identity = await sts.get_caller_identity()
                 self.account_id = identity["Account"]
                 logger.info(f"Validated single account: {self.account_id}")
@@ -46,13 +49,11 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         if not self._session:
             await self.healthcheck()
-        if not self._session:
-            raise AWSSessionError(
-                "Session could not be established for single account."
-            )
         account_id = self.account_id
         if account_id is None:
             raise AWSSessionError("Account ID is not set for single account session.")
+        if self._session is None:
+            raise AWSSessionError("Session is not set for single account.")
         account_info = {
             "Id": account_id,
             "Name": f"Account {account_id}",
