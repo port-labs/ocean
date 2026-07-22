@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import Request
 from loguru import logger
 from pydantic.v1 import BaseModel, Field, root_validator
@@ -14,6 +14,7 @@ from port_ocean.core.handlers.queue import GroupQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
+from port_ocean.utils.relative_time import days_ago, to_rfc3339
 from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
     WebhookEvent,
@@ -376,7 +377,7 @@ class GithubPullRequestSelector(RepoSearchSelector):
     def updated_after(self) -> Optional[datetime]:
         if self.closed_since_date is not None:
             return None
-        return datetime.now(timezone.utc) - timedelta(days=self.since)
+        return days_ago(self.since)
 
     @property
     def closed_after(self) -> Optional[datetime]:
@@ -729,8 +730,7 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
     @property
     def created_after(self) -> Optional[str]:
         if self.since is not None:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
-            return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            return f">={to_rfc3339(days_ago(self.since))}"
         if self.since_date is not None:
             return f">={self.since_date}"
         return None

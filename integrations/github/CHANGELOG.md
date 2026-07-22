@@ -15,6 +15,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an `includeVariables` selector option for the `environment` kind that fetches environment variables (via the paginated GitHub variables REST API) and exposes them as `__variables` on each environment. (#3591)
 
 
+## 6.3.8 (2026-07-22)
+
+
+### Improvements
+
+- Implement fetching excluded fields individually as well as property-reduction for unknown 200 errors.
+
+
+## 6.3.7 (2026-07-22)
+
+
+### Improvements
+
+- Use shared Ocean relative time helpers for pull request and workflow run lookback selectors.
+
+
+## 6.3.6 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
 ## 6.3.5 (2026-07-22)
 
 
