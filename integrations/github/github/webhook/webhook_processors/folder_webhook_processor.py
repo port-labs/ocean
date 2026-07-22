@@ -82,13 +82,17 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
     def _has_matched_repo(
         self,
         pattern: FolderSelector,
+        organization: str,
         repository: dict[str, Any],
         branch: str,
     ) -> bool:
         """
         Checks if the provided repository and branch match the conditions specified in the pattern.
         """
-        if not pattern.repos:
+        if (
+            pattern.organization is not None
+            and pattern.organization.casefold() != organization.casefold()
+        ) or not pattern.repos:
             return False
 
         for selector_repo in pattern.repos:
@@ -160,7 +164,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             return []
 
         for pattern in folder_selector:
-            if not self._has_matched_repo(pattern, repo_data, branch):
+            if not self._has_matched_repo(pattern, organization, repo_data, branch):
                 continue
 
             logger.debug(

@@ -20,7 +20,6 @@ from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
 
-from github.clients.utils import get_github_organizations
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
     FileSearchOptions,
@@ -150,13 +149,14 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            async for batch in self.org_exporter.get_paginated_resources(
-                get_github_organizations(file_sel.organization)
-            ):
-                if not batch:
-                    continue
+            async for batch in self.org_exporter.get_paginated_resources():
                 for org in batch:
                     org_login = org["login"]
+                    if (
+                        file_sel.organization
+                        and file_sel.organization.casefold() != org_login.casefold()
+                    ):
+                        continue
                     org_type = org["type"]
                     async for repo_name, branch, _ in self.repo_selector.select_repos(
                         file_sel, self.repo_exporter, org_login, org_type

@@ -1,13 +1,8 @@
-from typing import Any, Dict, cast, TYPE_CHECKING
+from typing import Any, Dict
 
-from github.core.options import ListOrganizationOptions
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-
-if TYPE_CHECKING:
-    from integration import GithubPortAppConfig
 
 
 def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, Any]:
@@ -17,17 +12,11 @@ def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, 
     }
 
 
-def get_github_organizations(
-    organization: str | None = None,
-) -> ListOrganizationOptions:
-    """Get the organizations from the integration config."""
-    resolved_org = organization or ocean.integration_config.get("github_organization")
-    port_app_config = cast("GithubPortAppConfig", event.port_app_config)
-
-    options: ListOrganizationOptions = {
-        "allowed_multi_organizations": port_app_config.organizations,
-        "include_authenticated_user": port_app_config.include_authenticated_user,
-    }
-    if resolved_org:
-        options["organization"] = resolved_org
-    return options
+def can_access_organization(
+    authenticator: AbstractGitHubAuthenticator, organization: str | None
+) -> bool:
+    return (
+        authenticator.organization is None
+        or organization is None
+        or organization.casefold() == authenticator.organization.casefold()
+    )

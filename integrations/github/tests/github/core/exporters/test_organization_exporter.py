@@ -3,7 +3,6 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.core.exporters.organization_exporter import RestOrganizationExporter
-from github.core.options import ListOrganizationOptions
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.event import event_context
@@ -33,29 +32,6 @@ def unscoped_client(rest_client: GithubRestClient) -> GithubRestClient:
 
 @pytest.mark.asyncio
 class TestRestOrganizationExporter:
-    async def test_get_paginated_resources_with_organization_option(
-        self,
-        unscoped_client: GithubRestClient,
-    ) -> None:
-        exporter = RestOrganizationExporter(unscoped_client)
-
-        with patch.object(
-            unscoped_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.return_value = TEST_ORG
-
-            async with event_context("test_event"):
-                options = ListOrganizationOptions(organization="test-org")
-                orgs: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
-
-                assert len(orgs) == 1
-                assert orgs[0][0] == TEST_ORG
-                mock_request.assert_called_once_with(
-                    f"{unscoped_client.base_url}/users/test-org"
-                )
-
     async def test_get_paginated_resources_uses_authenticator_organization(
         self,
         unscoped_client: GithubRestClient,
@@ -63,15 +39,9 @@ class TestRestOrganizationExporter:
         exporter = RestOrganizationExporter(unscoped_client)
         unscoped_client.authenticator = MagicMock(organization="test-org")
 
-        with (
-            patch(
-                "github.core.exporters.organization_exporter.get_github_organizations",
-                return_value=ListOrganizationOptions(organization="test-org"),
-            ),
-            patch.object(
-                unscoped_client, "send_api_request", new_callable=AsyncMock
-            ) as mock_request,
-        ):
+        with patch.object(
+            unscoped_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
             mock_request.return_value = TEST_ORG
 
             async with event_context("test_event"):
@@ -114,44 +84,19 @@ class TestRestOrganizationExporter:
                     batch
                     async for batch in RestOrganizationExporter(
                         first_client
-                    ).get_paginated_resources(
-                        ListOrganizationOptions(organization="test1")
-                    )
+                    ).get_paginated_resources()
                 ]
                 second_batches = [
                     batch
                     async for batch in RestOrganizationExporter(
                         second_client
-                    ).get_paginated_resources(
-                        ListOrganizationOptions(organization="test2")
-                    )
+                    ).get_paginated_resources()
                 ]
 
         assert first_batches == [[{**TEST_ORG, "login": "test1"}]]
         assert second_batches == [[{**TEST_ORG, "login": "test2"}]]
         first_request.assert_called_once_with(f"{first_client.base_url}/users/test1")
         second_request.assert_called_once_with(f"{second_client.base_url}/users/test2")
-
-    async def test_get_paginated_resources_respects_allowed_multi_organizations(
-        self,
-        unscoped_client: GithubRestClient,
-    ) -> None:
-        exporter = RestOrganizationExporter(unscoped_client)
-
-        with patch.object(
-            unscoped_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            async with event_context("test_event"):
-                options = ListOrganizationOptions(
-                    organization="installed-org",
-                    allowed_multi_organizations=["other-org"],
-                )
-                orgs: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
-
-                assert orgs == []
-                mock_request.assert_not_called()
 
     async def test_get_paginated_resources_lists_all_orgs_when_unscoped(
         self,
@@ -171,10 +116,7 @@ class TestRestOrganizationExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 orgs: list[list[dict[str, Any]]] = [
-                    batch
-                    async for batch in exporter.get_paginated_resources(
-                        ListOrganizationOptions()
-                    )
+                    batch async for batch in exporter.get_paginated_resources()
                 ]
 
                 assert len(orgs) == 1
@@ -182,32 +124,6 @@ class TestRestOrganizationExporter:
                 mock_request.assert_called_once_with(
                     f"{unscoped_client.base_url}/user/orgs"
                 )
-
-    async def test_get_paginated_resources_filters_multi_organizations(
-        self,
-        unscoped_client: GithubRestClient,
-    ) -> None:
-        async def mock_paginated_request(
-            *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield TEST_ORGS
-
-        exporter = RestOrganizationExporter(unscoped_client)
-
-        with patch.object(
-            unscoped_client,
-            "send_paginated_request",
-            side_effect=mock_paginated_request,
-        ):
-            async with event_context("test_event"):
-                options = ListOrganizationOptions(
-                    allowed_multi_organizations=["org1", "org3"]
-                )
-                orgs: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
-
-                assert [o["login"] for o in orgs[0]] == ["org1", "org3"]
 
     async def test_get_paginated_resources_includes_personal_when_allowed(
         self,
@@ -224,7 +140,7 @@ class TestRestOrganizationExporter:
 
         with (
             patch.object(
-                exporter, "get_personal_org", new_callable=AsyncMock
+                exporter, "_get_personal_org", new_callable=AsyncMock
             ) as mock_get_personal,
             patch.object(
                 unscoped_client,
@@ -235,9 +151,8 @@ class TestRestOrganizationExporter:
             mock_get_personal.return_value = personal_user
 
             async with event_context("test_event"):
-                options = ListOrganizationOptions(include_authenticated_user=True)
                 orgs: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
+                    batch async for batch in exporter.get_paginated_resources()
                 ]
 
                 assert orgs[0][0]["login"] == "alice"

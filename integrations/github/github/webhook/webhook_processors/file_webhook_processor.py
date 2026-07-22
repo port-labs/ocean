@@ -68,7 +68,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         matching_patterns = self._get_matching_patterns(
-            file_patterns, repo_name, current_branch, default_branch
+            file_patterns, organization, repo_name, current_branch, default_branch
         )
 
         if not matching_patterns:
@@ -107,6 +107,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
     def _get_matching_patterns(
         self,
         file_patterns: list[GithubFilePattern],
+        organization: str,
         repo_name: str,
         current_branch: str,
         default_branch: str,
@@ -114,7 +115,11 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         matching = [
             pattern
             for pattern in file_patterns
-            if self._is_pattern_applicable_to_branch(
+            if (
+                pattern.organization is None
+                or pattern.organization.casefold() == organization.casefold()
+            )
+            and self._is_pattern_applicable_to_branch(
                 pattern, repo_name, current_branch, default_branch
             )
         ]

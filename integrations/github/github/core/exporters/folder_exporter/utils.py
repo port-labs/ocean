@@ -1,15 +1,13 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, List, Tuple
 from loguru import logger
-from github.clients.utils import get_github_organizations
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
     FolderSearchOptions,
     ListFolderOptions,
 )
 from github.helpers.repo_selectors import CompositeRepositorySelector
-from port_ocean.context.event import event
-from integration import FolderSelector, GithubPortAppConfig
+from integration import FolderSelector
 
 
 class FolderPatternMappingBuilder:
@@ -29,13 +27,14 @@ class FolderPatternMappingBuilder:
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
 
         for folder_sel in folders:
-            async for batch in self.org_exporter.get_paginated_resources(
-                get_github_organizations(folder_sel.organization)
-            ):
-                if not batch:
-                    continue
+            async for batch in self.org_exporter.get_paginated_resources():
                 for org in batch:
                     org_login = org["login"]
+                    if (
+                        folder_sel.organization
+                        and folder_sel.organization.casefold() != org_login.casefold()
+                    ):
+                        continue
                     org_type = org["type"]
                     async for (
                         repo_name,
