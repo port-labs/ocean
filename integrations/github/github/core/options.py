@@ -166,7 +166,7 @@ class SingleEnvironmentOptions(RepositoryIdentifier):
     """Options for fetching a single environment."""
 
     name: str
-    variables: NotRequired[bool]
+    include_variables: NotRequired[bool]
 
 
 class ListEnvironmentsOptions(RepositoryIdentifier):
