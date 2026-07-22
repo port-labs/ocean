@@ -1,9 +1,10 @@
 import json
 import re
 from copy import deepcopy
+from dataclasses import dataclass
 from enum import IntEnum
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from loguru import logger
 from yaml import YAMLError, safe_load
@@ -102,8 +103,30 @@ def parse_file_content(
         return content
 
 
-def build_search_query(search_path: str) -> str:
-    """Build a GitLab search query string from a file path pattern.
+@dataclass
+class SearchQuery:
+    """Parsed components of a file search path pattern.
+
+    ``path`` preserves the original pattern so tree-based lookups can glob-match
+    against it, while ``keyword``/``filename``/``directory`` back the search API
+    query string.
+    """
+
+    path: str
+    keyword: str
+    filename: str
+    directory: Optional[str] = None
+
+    def to_query_string(self) -> str:
+        """Build the GitLab search query string from components."""
+        parts = [self.keyword, f"filename:{self.filename}"]
+        if self.directory:
+            parts.insert(1, f"path:{self.directory}")
+        return " ".join(parts)
+
+
+def build_search_query(search_path: str) -> SearchQuery:
+    """Parse a file path pattern into search query components.
 
     The query always includes a ``filename:`` modifier so results are filtered
     by file name rather than just file contents.  When a directory component is
@@ -112,17 +135,20 @@ def build_search_query(search_path: str) -> str:
     they are preserved inside the ``filename:`` and ``path:`` modifiers.
 
     Examples:
-        ``readme.md``            -> ``readme.md filename:readme.md``
-        ``src/config/app.json``  -> ``app.json path:src/config filename:app.json``
-        ``home/directory/*.txt`` -> ``.txt path:home/directory filename:*.txt``
-        ``home/*/*.txt``         -> ``.txt path:home/* filename:*.txt``
+        ``readme.md``            -> keyword='readme', filename='readme.md'
+        ``src/config/app.json``  -> keyword='app', filename='app.json', directory='src/config'
+        ``home/directory/*.txt`` -> keyword='.txt', filename='*.txt', directory='home/directory'
+        ``home/*/*.txt``         -> keyword='.txt', filename='*.txt', directory='home/*'
     """
     if "/" not in search_path:
         keyword = search_path.replace("*", "")
-        return f"{keyword} filename:{search_path}"
+        return SearchQuery(path=search_path, keyword=keyword, filename=search_path)
+
     directory, filename = search_path.rsplit("/", 1)
     keyword = filename.replace("*", "")
-    return f"{keyword} path:{directory} filename:{filename}"
+    return SearchQuery(
+        path=search_path, keyword=keyword, filename=filename, directory=directory
+    )
 
 
 def enrich_resources_with_project(
