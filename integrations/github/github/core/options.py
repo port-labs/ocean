@@ -5,6 +5,10 @@ from github.helpers.models import RepoSearchParams
 from pydantic.v1 import BaseModel, Field
 
 
+class ListOrganizationOptions(BaseModel):
+    organization: Optional[str] = None
+
+
 class SingleOrganizationOptions(TypedDict):
     organization: Required[str]
 

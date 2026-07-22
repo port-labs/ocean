@@ -5,6 +5,7 @@ from github.core.exporters.organization_exporter import RestOrganizationExporter
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from github.core.options import (
     FolderSearchOptions,
+    ListOrganizationOptions,
     ListFolderOptions,
 )
 from github.helpers.repo_selectors import CompositeRepositorySelector
@@ -28,7 +29,9 @@ class FolderPatternMappingBuilder:
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
 
         for folder_sel in folders:
-            async for batch in self.org_exporter.get_paginated_resources():
+            async for batch in self.org_exporter.get_paginated_resources(
+                ListOrganizationOptions(organization=folder_sel.organization)
+            ):
                 for org in batch:
                     org_login = org["login"]
                     if (

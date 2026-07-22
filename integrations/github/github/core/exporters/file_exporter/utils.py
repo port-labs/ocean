@@ -24,6 +24,7 @@ from wcmatch import glob
 
 from github.core.options import (
     FileSearchOptions,
+    ListOrganizationOptions,
     ListFileSearchOptions,
 )
 from github.helpers.utils import GithubClientType, matches_glob_pattern
@@ -152,7 +153,9 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            async for batch in self.org_exporter.get_paginated_resources():
+            async for batch in self.org_exporter.get_paginated_resources(
+                ListOrganizationOptions(organization=file_sel.organization)
+            ):
                 for org in batch:
                     org_login = org["login"]
                     if (

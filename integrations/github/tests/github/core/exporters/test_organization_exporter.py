@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from integration import GithubPortAppConfig
 from github.core.exporters.organization_exporter import RestOrganizationExporter
+from github.core.options import ListOrganizationOptions
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.event import event, event_context
@@ -37,6 +38,32 @@ def unscoped_client(
 
 @pytest.mark.asyncio
 class TestRestOrganizationExporter:
+    async def test_get_paginated_resources_uses_requested_organization(
+        self,
+        unscoped_client: GithubRestClient,
+        mock_port_app_config: GithubPortAppConfig,
+    ) -> None:
+        exporter = RestOrganizationExporter(unscoped_client)
+
+        with patch.object(
+            unscoped_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = TEST_ORG
+
+            async with event_context("test_event"):
+                event.port_app_config = mock_port_app_config
+                orgs = [
+                    batch
+                    async for batch in exporter.get_paginated_resources(
+                        ListOrganizationOptions(organization="test-org")
+                    )
+                ]
+
+        assert orgs == [[TEST_ORG]]
+        mock_request.assert_called_once_with(
+            f"{unscoped_client.base_url}/users/test-org"
+        )
+
     async def test_get_paginated_resources_uses_authenticator_organization(
         self,
         unscoped_client: GithubRestClient,
@@ -172,10 +199,17 @@ class TestRestOrganizationExporter:
                 assert orgs[0][0]["login"] == "alice"
                 assert [o["login"] for o in orgs[1]] == [o["login"] for o in TEST_ORGS]
 
-    async def test_get_resource_raises_not_implemented(
+    async def test_get_resource_fetches_organization(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestOrganizationExporter(rest_client)
 
-        with pytest.raises(NotImplementedError):
-            await exporter.get_resource(None)
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = TEST_ORG
+
+            organization = await exporter.get_resource({"organization": "test-org"})
+
+        assert organization == TEST_ORG
+        mock_request.assert_awaited_once_with(f"{rest_client.base_url}/users/test-org")

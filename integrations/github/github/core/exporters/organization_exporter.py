@@ -9,13 +9,16 @@ from port_ocean.context.ocean import ocean
 from typing import Optional, cast
 
 from integration import GithubPortAppConfig
+from github.core.options import ListOrganizationOptions, SingleOrganizationOptions
 
 
 class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
     """Exporter for GitHub organizations using REST API."""
 
     @cache_iterator_result()
-    async def get_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources(
+        self, options: ListOrganizationOptions | None = None
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         If the authenticator or integration config scopes an organization, fetch it.
         Otherwise, fetch all organizations available to the authenticator,
@@ -28,13 +31,14 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         if organization := (
             self.client.authenticator.organization
             or ocean.integration_config.get("github_organization")
+            or (options.organization if options else None)
         ):
             logger.info(f"Fetching single organization {organization}")
-            yield [
-                await self.client.send_api_request(
-                    f"{self.client.base_url}/users/{organization}"
-                )
-            ]
+            organization_resource = await self.get_resource(
+                SingleOrganizationOptions(organization=organization)
+            )
+            if organization_resource:
+                yield [organization_resource]
             return
 
         async for batch in self._stream_selected_organizations(
@@ -42,10 +46,12 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         ):
             yield batch
 
-    async def get_resource[ExporterOptionsT: None](
-        self, options: None
+    async def get_resource[ExporterOptionsT: SingleOrganizationOptions](
+        self, options: SingleOrganizationOptions
     ) -> Optional[RAW_ITEM]:
-        raise NotImplementedError
+        return await self.client.send_api_request(
+            f"{self.client.base_url}/users/{options['organization']}"
+        )
 
     async def _stream_selected_organizations(
         self, allowed_multi_organizations: list[str], include_authenticated_user: bool
