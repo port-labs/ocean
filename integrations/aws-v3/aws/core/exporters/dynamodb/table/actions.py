@@ -27,9 +27,9 @@ class GetTableTagsAction(Action[list[dict[str, Any]]]):
         )
 
     async def _fetch_table_tags(self, table: dict[str, Any]) -> dict[str, Any]:
-        response = await self.client.list_tags_of_resource(ResourceArn=table["TableArn"])
-        # list_tags_of_resource paginates via NextToken, but AWS enforces a 50-tag
-        # cap per table — a single call always returns all tags.
+        response = await self.client.list_tags_of_resource(
+            ResourceArn=table["TableArn"]
+        )
         return {"Tags": response["Tags"]}
 
 
@@ -46,7 +46,9 @@ class GetTableBackupStatusAction(Action[list[dict[str, Any]]]):
         response = await self.client.describe_continuous_backups(
             TableName=table["TableName"]
         )
-        return {"ContinuousBackupsDescription": response["ContinuousBackupsDescription"]}
+        return {
+            "ContinuousBackupsDescription": response["ContinuousBackupsDescription"]
+        }
 
 
 class DynamoDBTableActionsMap(ActionMap[list[dict[str, Any]]]):
