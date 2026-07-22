@@ -20,16 +20,14 @@ def _as_utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def days_ago(days: int, *, now: datetime | None = None) -> datetime:
+def days_ago(days: int) -> datetime:
     """UTC datetime ``days`` ago (negative ``days`` = in the future)."""
-    current = _as_utc(now) if now is not None else datetime.now(timezone.utc)
-    return current - timedelta(days=days)
+    return datetime.now(timezone.utc) - timedelta(days=days)
 
 
-def months_ago(months: int, *, now: datetime | None = None) -> datetime:
+def months_ago(months: int) -> datetime:
     """UTC datetime ``months`` calendar months ago (negative = in the future)."""
-    current = _as_utc(now) if now is not None else datetime.now(timezone.utc)
-    return current - relativedelta(months=months)
+    return datetime.now(timezone.utc) - relativedelta(months=months)
 
 
 def to_rfc3339(
