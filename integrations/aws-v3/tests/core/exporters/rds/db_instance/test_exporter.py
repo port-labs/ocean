@@ -68,7 +68,9 @@ class TestRdsDbInstanceExporter:
                 Engine="mysql",
             )
         )
-        mock_inspector.inspect.return_value = [db_instance.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            db_instance.model_dump(exclude_none=True)
+        ]
 
         options = SingleDbInstanceRequest(
             region="us-west-2",
@@ -79,7 +81,7 @@ class TestRdsDbInstanceExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == db_instance.dict(exclude_none=True)
+        assert result == db_instance.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "rds")
         mock_inspector_class.assert_called_once()
         # The actual call will be with the mock client result, not the string directly
@@ -195,8 +197,8 @@ class TestRdsDbInstanceExporter:
         db3 = DbInstance(Properties=DbInstanceProperties(DBInstanceIdentifier="db-3"))
 
         mock_inspector.inspect.side_effect = [
-            [db1.dict(exclude_none=True), db2.dict(exclude_none=True)],
-            [db3.dict(exclude_none=True)],
+            [db1.model_dump(exclude_none=True), db2.model_dump(exclude_none=True)],
+            [db3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedDbInstanceRequest(
@@ -210,9 +212,9 @@ class TestRdsDbInstanceExporter:
             collected.extend(page)
 
         assert len(collected) == 3
-        assert collected[0] == db1.dict(exclude_none=True)
-        assert collected[1] == db2.dict(exclude_none=True)
-        assert collected[2] == db3.dict(exclude_none=True)
+        assert collected[0] == db1.model_dump(exclude_none=True)
+        assert collected[1] == db2.model_dump(exclude_none=True)
+        assert collected[2] == db3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "rds")
         mock_proxy.get_paginator.assert_called_once_with(
@@ -308,7 +310,9 @@ class TestRdsDbInstanceExporter:
         db_instance = DbInstance(
             Properties=DbInstanceProperties(DBInstanceIdentifier="db-55")
         )
-        mock_inspector.inspect.return_value = [db_instance.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            db_instance.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleDbInstanceRequest(

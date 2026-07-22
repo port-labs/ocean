@@ -55,7 +55,7 @@ class TestOrganizationsAccountExporter:
                 Email="a@b.com",
             )
         )
-        mock_inspector.inspect.return_value = [expected.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [expected.model_dump(exclude_none=True)]
 
         options = SingleAccountRequest(
             region="us-east-1",
@@ -65,7 +65,7 @@ class TestOrganizationsAccountExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == expected.dict(exclude_none=True)
+        assert result == expected.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-east-1", "organizations"
         )
@@ -107,8 +107,8 @@ class TestOrganizationsAccountExporter:
         acc3 = Account(Properties=AccountProperties(Id="333333333333"))
 
         mock_inspector.inspect.side_effect = [
-            [acc1.dict(exclude_none=True), acc2.dict(exclude_none=True)],
-            [acc3.dict(exclude_none=True)],
+            [acc1.model_dump(exclude_none=True), acc2.model_dump(exclude_none=True)],
+            [acc3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedAccountRequest(
@@ -120,9 +120,9 @@ class TestOrganizationsAccountExporter:
             results.extend(page)
 
         assert len(results) == 3
-        assert results[0] == acc1.dict(exclude_none=True)
-        assert results[1] == acc2.dict(exclude_none=True)
-        assert results[2] == acc3.dict(exclude_none=True)
+        assert results[0] == acc1.model_dump(exclude_none=True)
+        assert results[1] == acc2.model_dump(exclude_none=True)
+        assert results[2] == acc3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-east-1", "organizations"
