@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.46.0 (2026-07-21)
+
+### Bug Fixes
+
+- Remove `HTTP 400 Bad Request` and `HTTP 401 Unauthorized` from the default retry status codes. These are rather non-transient client errors and should fail immediately. Integrations that need 401 retries can opt in via `additional_retry_status_codes` in their `RetryConfig`. (**Breaking change**)
+
 ## 0.45.7 (2026-07-21)
 
 ### Improvements

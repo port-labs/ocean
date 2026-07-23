@@ -33,8 +33,6 @@ class TestRetryConfig:
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
-                HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
             ]
         )
         assert config.retry_after_headers == ["Retry-After", "x-ratelimit-reset"]
@@ -67,8 +65,6 @@ class TestRetryConfig:
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
-                HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
                 418,
                 420,
             ]
@@ -96,8 +92,6 @@ class TestRetryConfig:
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
-                HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
                 418,
                 420,
             ]
@@ -125,8 +119,6 @@ class TestRetryConfig:
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
-                HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
             ]
         )
 
