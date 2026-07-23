@@ -7,7 +7,11 @@ from github.clients.auth.retry_transport import (
     GitHubRetryTransport,
 )
 from github.clients.graphql_page_reduction import MIN_GRAPHQL_PAGE_SIZE
-from github.clients.http.graphql_client import GithubGraphQLClient, PAGE_SIZE
+from github.clients.http.graphql_client import (
+    GithubGraphQLClient,
+    GraphQLFallback,
+    PAGE_SIZE,
+)
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
 from github.helpers.exceptions import (
@@ -346,7 +350,7 @@ class TestGithubGraphQLClient:
                 async for p in client.send_paginated_request(
                     "PRIMARY",
                     params={"__path": "organization.repositories"},
-                    fallback_queries=["FALLBACK"],
+                    fallbacks=[GraphQLFallback("FALLBACK")],
                 )
             ]
 
@@ -399,7 +403,7 @@ class TestGithubGraphQLClient:
                 async for p in client.send_paginated_request(
                     "PRIMARY",
                     params={"__path": "organization.repositories"},
-                    fallback_queries=["FALLBACK"],
+                    fallbacks=[GraphQLFallback("FALLBACK")],
                 )
             ]
 
@@ -436,7 +440,7 @@ class TestGithubGraphQLClient:
                 async for _ in client.send_paginated_request(
                     "PRIMARY",
                     params={"__path": "organization.repositories"},
-                    fallback_queries=["FALLBACK"],
+                    fallbacks=[GraphQLFallback("FALLBACK")],
                 ):
                     pass
 
@@ -452,7 +456,7 @@ class TestGithubGraphQLClient:
                 async for _ in client.send_paginated_request(
                     "PRIMARY",
                     params={"__path": "organization.repositories"},
-                    fallback_queries=["FALLBACK"],
+                    fallbacks=[GraphQLFallback("FALLBACK")],
                 ):
                     pass
 
@@ -831,6 +835,79 @@ class TestGraphQLUnknownErrorPageReduction:
         assert pages == [[{"id": 1}], [{"id": 2}]]
         # 25 fails, 20 succeeds for page 1, then page 2 starts fresh at 25.
         assert seen_first == [25, 20, 25]
+
+    @pytest.mark.asyncio
+    async def test_strips_to_fallback_query_at_floor_and_recovers(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        seen: list[tuple[object, str]] = []
+
+        async def fake_make_request(**kwargs: object) -> httpx.Response:
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            query = cast(str, json_data["query"])
+            seen.append((variables["first"], query))
+            if query == "PRIMARY":
+                return httpx.Response(200, json=self._error_body())
+            return httpx.Response(200, json=self._page_body([{"id": 1}]))
+
+        with patch.object(client, "make_request", side_effect=fake_make_request):
+            pages = [
+                page
+                async for page in client.send_paginated_request(
+                    "PRIMARY",
+                    params={"__path": self._PATH},
+                    fallbacks=[GraphQLFallback("FALLBACK")],
+                )
+            ]
+
+        assert pages == [[{"id": 1}]]
+        # Primary walks the page size to the floor first, then the lighter query
+        # runs at the floor and recovers.
+        assert seen == [
+            (25, "PRIMARY"),
+            (20, "PRIMARY"),
+            (15, "PRIMARY"),
+            (10, "PRIMARY"),
+            (5, "PRIMARY"),
+            (1, "PRIMARY"),
+            (1, "FALLBACK"),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_unknown_errors_exhaust_page_size_then_fallbacks(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        seen: list[tuple[object, str]] = []
+
+        async def fake_make_request(**kwargs: object) -> httpx.Response:
+            json_data = cast(dict[str, object], kwargs["json_data"])
+            variables = cast(dict[str, object], json_data["variables"])
+            seen.append((variables["first"], cast(str, json_data["query"])))
+            return httpx.Response(200, json=self._error_body())
+
+        with patch.object(client, "make_request", side_effect=fake_make_request):
+            with pytest.raises(GraphQLErrorGroup):
+                [
+                    page
+                    async for page in client.send_paginated_request(
+                        "PRIMARY",
+                        params={"__path": self._PATH},
+                        fallbacks=[GraphQLFallback("FALLBACK")],
+                    )
+                ]
+
+        assert seen == [
+            (25, "PRIMARY"),
+            (20, "PRIMARY"),
+            (15, "PRIMARY"),
+            (10, "PRIMARY"),
+            (5, "PRIMARY"),
+            (1, "PRIMARY"),
+            (1, "FALLBACK"),
+        ]
 
     @pytest.mark.asyncio
     async def test_ignored_errors_do_not_trigger_reduction(

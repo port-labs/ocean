@@ -1,10 +1,14 @@
 from typing import Any
 from datetime import datetime
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class RepositoryProperties(BaseModel):
+class RepositoryProperties(BaseAWSPropertiesModel):
     repositoryName: str = Field(default_factory=str, alias="RepositoryName")
     repositoryArn: str = Field(default_factory=str, alias="RepositoryArn")
     repositoryUri: str = Field(default_factory=str, alias="RepositoryUri")
@@ -22,10 +26,6 @@ class RepositoryProperties(BaseModel):
     )
     repositoryPolicyText: str | None = Field(default=None, alias="RepositoryPolicyText")
     tags: list[dict[str, str]] = Field(default_factory=list, alias="Tags")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class Repository(ResourceModel[RepositoryProperties]):

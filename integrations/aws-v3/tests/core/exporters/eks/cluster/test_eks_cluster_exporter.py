@@ -61,7 +61,9 @@ class TestEksClusterExporter:
                 platformVersion="eks.5",
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_cluster.model_dump(exclude_none=True)
+        ]
 
         # Create options
         options = SingleEksClusterRequest(
@@ -75,7 +77,7 @@ class TestEksClusterExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_cluster.dict(exclude_none=True)
+        assert result == expected_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "eks")
         mock_inspector.inspect.assert_called_once_with(["test-cluster"], [])
 

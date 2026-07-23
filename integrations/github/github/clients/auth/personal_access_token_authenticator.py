@@ -10,8 +10,9 @@ from github.clients.auth.abstract_authenticator import (
 
 
 class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
-    def __init__(self, token: str):
+    def __init__(self, token: str, organization: str | None = None):
         self._token = GitHubToken(token=token)
+        self.organization = organization
 
     @property
     def rate_limit_scope(self) -> str:
@@ -19,7 +20,10 @@ class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
 
     @classmethod
     def from_config(cls) -> "PersonalTokenAuthenticator":
-        return cls(ocean.integration_config["github_token"])
+        return cls(
+            ocean.integration_config["github_token"],
+            ocean.integration_config.get("github_organization"),
+        )
 
     async def get_token(self) -> GitHubToken:
         logger.info("Using personal access token.")

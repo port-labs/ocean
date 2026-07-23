@@ -1,10 +1,14 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
-class CodeDeployApplicationProperties(BaseModel):
+class CodeDeployApplicationProperties(BaseAWSPropertiesModel):
     applicationName: str = Field(default_factory=str, alias="ApplicationName")
     applicationId: str = Field(default_factory=str, alias="ApplicationId")
     computePlatform: str | None = Field(default=None, alias="ComputePlatform")
@@ -12,10 +16,6 @@ class CodeDeployApplicationProperties(BaseModel):
     gitHubAccountName: str | None = Field(default=None, alias="GitHubAccountName")
     linkedToGitHub: bool | None = Field(default=None, alias="LinkedToGitHub")
     Tags: list[dict[str, Any]] | None = Field(default=None, alias="Tags")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class CodeDeployApplication(ResourceModel[CodeDeployApplicationProperties]):
