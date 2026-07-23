@@ -8,6 +8,7 @@ from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
 from github.helpers.exceptions import AuthenticationException
+from port_ocean.context.ocean import ocean
 
 _DISCOVERY_TTL_SECONDS = 15 * 60
 
@@ -43,6 +44,7 @@ def _authenticator(
 
 async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator]:
     app_auth = GitHubAppAuthenticator.from_config()
+    configured_organization = ocean.integration_config.get("github_organization")
     index: dict[str, GitHubAppInstallationAuthenticator] = {}
     async for page in app_auth.iter_app_installations():
         for installation in page:
@@ -53,11 +55,21 @@ async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator
                     f"Installation {installation} skipped: organization login missing or installation suspended."
                 )
                 continue
-            index[login] = _authenticator(
+            if (
+                configured_organization
+                and login.casefold() != configured_organization.casefold()
+            ):
+                continue
+            index[login.casefold()] = _authenticator(
                 app_auth=app_auth,
                 organization=login,
                 installation_id=str(installation["id"]),
             )
+
+    if configured_organization and not index:
+        raise AuthenticationException(
+            f"No GitHub App installation found for organization '{configured_organization}'"
+        )
     return index
 
 
@@ -87,9 +99,10 @@ async def get_installation_authenticator_for_organization(
     organization: str,
 ) -> GitHubAppInstallationAuthenticator:
     await _discover_installations()
-    if organization not in _authenticators_by_org:
+    normalized_organization = organization.casefold()
+    if normalized_organization not in _authenticators_by_org:
         raise AuthenticationException(
             f"No GitHub App installation found for organization '{organization}'"
         )
 
-    return _authenticators_by_org[organization]
+    return _authenticators_by_org[normalized_organization]

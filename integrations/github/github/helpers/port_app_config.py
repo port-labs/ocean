@@ -3,7 +3,7 @@ from typing import Any, Dict
 import yaml
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.options import FileContentOptions
 from port_ocean.exceptions.api import EmptyPortAppConfigError
@@ -26,7 +26,7 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
     branch and using it as the single global mapping.
     """
 
-    rest_client = create_github_client()
+    rest_client = await create_github_client_for_org(github_org)
     repo_metadata = await rest_client.send_api_request(
         f"{rest_client.base_url}/repos/{github_org}/{ORG_CONFIG_REPO}"
     )
