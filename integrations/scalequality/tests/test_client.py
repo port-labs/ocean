@@ -48,8 +48,10 @@ async def test_get_entities_returns_the_entities_array(
     client = ScaleQualityClient(
         base_url="https://app.scalequality.io/v1", api_key="sq_live_test"
     )
-    entities = await client.get_entities()
+    batches = [batch async for batch in client.get_entities()]
+    entities = [entity for batch in batches for entity in batch]
 
+    assert len(batches) == 1
     assert len(entities) == 1
     assert entities[0]["subject"]["id"] == "org-1"
     assert entities[0]["signals"]["durability"]["value"] == 72
@@ -66,6 +68,6 @@ async def test_get_entities_handles_empty_payload(
     client = ScaleQualityClient(
         base_url="https://app.scalequality.io/v1", api_key="sq_live_test"
     )
-    entities = await client.get_entities()
+    entities = [entity async for batch in client.get_entities() for entity in batch]
 
     assert entities == []

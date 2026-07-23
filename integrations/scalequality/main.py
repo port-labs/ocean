@@ -1,7 +1,6 @@
-from typing import Any
-
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import ScaleQualityClient
 from integration import ObjectKind
@@ -15,11 +14,11 @@ def init_client() -> ScaleQualityClient:
 
 
 @ocean.on_resync(ObjectKind.ENTITY)
-async def on_resync_entities(kind: str) -> list[dict[Any, Any]]:
+async def on_resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
-    entities = await client.get_entities()
-    logger.info(f"Resynced {len(entities)} ScaleQuality entities")
-    return entities
+    async for entities in client.get_entities():
+        logger.info(f"Resynced {len(entities)} ScaleQuality entities")
+        yield entities
 
 
 @ocean.on_start()
