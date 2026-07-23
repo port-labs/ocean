@@ -103,6 +103,39 @@ configurations:
     description: A list of tags used to exclude projects and resources that belong to them from syncing.
     type: array
     required: false
+actionsProcessingEnabled: true
+actions:
+  - name: trigger_pipeline
+    icon: AzureDevops
+    description: Trigger an Azure DevOps pipeline run
+    inputs:
+      - name: project
+        title: Project
+        type: string
+        description: The name or ID of the Azure DevOps project that contains the target pipeline
+        required: true
+      - name: pipelineId
+        title: Pipeline ID
+        type: string
+        description: The numeric ID of the pipeline to run. It can be found in the pipeline URL, for example - "12" for https://dev.azure.com/org/project/_build?definitionId=12
+        required: true
+      - name: branch
+        title: Branch
+        type: string
+        description: The branch (ref) to run the pipeline on, for example - "main". When omitted, the pipeline's default branch is used.
+      - name: reportPipelineStatus
+        title: Report pipeline status
+        type: boolean
+        description: Whether to report the pipeline run status back to Port once it completes
+        default: true
+      - name: templateParameters
+        title: Template parameters
+        type: jqObject
+        description: 'Runtime template parameters declared in the pipeline YAML. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
+      - name: variables
+        title: Variables
+        type: jqObject
+        description: 'Queue-time variables to pass to the pipeline run. Each value is sent as { "value": <value> }.'
 deploymentMethodOverride:
   - type: helm
 saas:
