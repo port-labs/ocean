@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.46.0 (2026-07-23)
+
+### Features
+
+- Added incremental sync infrastructure: cursor store, server-side and client-side strategies, `on_incremental_resync` handlers, and `incremental_sync_enabled` / `incremental_sync_interval` settings so integrations can sync only changes since the last cursor.
 
 ## 0.45.10 (2026-07-22)
 
