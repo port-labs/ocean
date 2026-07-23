@@ -1,9 +1,15 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+
+from pydantic import ConfigDict, Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class MemoryDbUserProperties(BaseModel):
+class MemoryDbUserProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
     Name: str = Field(default_factory=str)
     Status: str = Field(default_factory=str)
     AccessString: str | None = Field(default=None)
@@ -12,10 +18,6 @@ class MemoryDbUserProperties(BaseModel):
     ARN: str = Field(default_factory=str)
     Authentication: dict[str, Any] | None = Field(default=None)
     TagList: list[dict[str, Any]] = Field(default_factory=list)
-
-    class Config:
-        extra = "allow"
-        allow_population_by_field_name = True
 
 
 class MemoryDbUser(ResourceModel[MemoryDbUserProperties]):

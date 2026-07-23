@@ -7,6 +7,54 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.293-post1 (2026-07-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+0.2.292-post1 (2026-07-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+0.2.291-post1 (2026-07-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+0.2.290-post1 (2026-07-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+0.2.289-post1 (2026-07-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+0.2.288-post1 (2026-07-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
 0.2.287-post1 (2026-07-20)
 ==========================
 

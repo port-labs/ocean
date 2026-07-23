@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.46.1 (2026-07-23)
+
+### Bug Fixes
+
+- Wrap `get_raw_result_on_integration_sync_resource_config` in an event context (default `RESYNC`, optional `event_type` for `INCREMENTAL_RESYNC`) so integration sync tests work after incremental sync started reading `event.event_type` in `_get_resource_raw_results`.
+
+## 0.46.0 (2026-07-23)
+
+### Features
+
+- Added incremental sync infrastructure: cursor store, server-side and client-side strategies, `on_incremental_resync` handlers, and `incremental_sync_enabled` / `incremental_sync_interval` settings so integrations can sync only changes since the last cursor.
+
+## 0.45.10 (2026-07-22)
+
+### Bug Fixes
+
+- Removed misleading `Event Added To Queue` log from the Redis stream consumer; queue latency is already reported via `time_until_consumed_ms` in the Redis stream processed log.
+
+## 0.45.9 (2026-07-22)
+
+### Features
+
+- Added `port_ocean.utils.relative_time` helpers (`days_ago`, `months_ago`, `to_rfc3339`) for integration lookback selectors.
+
+## 0.45.8 (2026-07-21)
+
+### Improvements
+
+- Pass integration-run context to action-executor rate-limit checks.
+
+## 0.45.7 (2026-07-21)
+
+### Improvements
+
+- Report integration mapping on DSP resync started lifecycle notifications so DSP can use the config Ocean loaded without fetching from port-api.
 
 ## 0.45.6 (2026-07-21)
 
