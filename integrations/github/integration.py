@@ -805,7 +805,7 @@ class GithubPortAppConfig(PortAppConfig):
         title="Include Authenticated User",
         default=False,
         alias="includeAuthenticatedUser",
-        description="Include the authenticated user's personal account.",
+        description="Include the personal account of the authenticated user when using Classic PAT authentication.",
     )
     repository_type: str = Field(
         title="Repository Type",
