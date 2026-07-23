@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.13 (2026-07-23)
+
+
+### Bug Fixes
+
+- Fixed `reportPipelineStatus=false` incorrectly completing `trigger_pipeline` runs immediately instead of leaving them in progress, aligning behavior with the GitHub integration's `reportWorkflowStatus` (the run stays in progress until externally updated, e.g. via a CI job calling back into Port).
+
+
 ## 0.8.12 (2026-07-23)
 
 
