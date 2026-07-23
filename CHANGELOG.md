@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.46.1 (2026-07-23)
+
+### Bug Fixes
+
+- Wrap `get_raw_result_on_integration_sync_resource_config` in a resync event context so integration sync tests work after incremental sync started reading `event.event_type` in `_get_resource_raw_results`.
+
 ## 0.46.0 (2026-07-23)
 
 ### Features
