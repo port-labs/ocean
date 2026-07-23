@@ -8,6 +8,7 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.context.event import event as current_event
 from port_ocean.core.utils.json_compat import make_json_compatible
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
@@ -15,6 +16,7 @@ from port_ocean.core.models import (
     LakehouseEventType,
     ProcessingMode,
 )
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.version import __version__ as ocean_core_version
@@ -418,6 +420,20 @@ class IntegrationClientMixin:
             extensions={"retryable": True},
         )
         handle_port_status_code(response, should_raise=True, should_log=True)
+        try:
+            payload = response.json()
+        except Exception:
+            payload = {}
+        if isinstance(payload, dict) and payload.get("count") == 0:
+            logger.warning(
+                "Lakehouse reported zero pending inserts for raw data batch, aborting current resync"
+            )
+            try:
+                current_event.abort()
+            except EventContextNotFoundError:
+                logger.warning(
+                    "Lakehouse aborted response received without active event context"
+                )
         logger.debug("Finished POST raw data batch request")
 
     async def get_integration_cursor(self, kind: str, index: int) -> Optional[datetime]:

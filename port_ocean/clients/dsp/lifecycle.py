@@ -60,6 +60,9 @@ class LifecycleClient:
     async def _resync_url(self, event_id: str) -> str:
         return f"{await self._lifecycle_base_url()}/{event_id}"
 
+    def _api_resync_url(self, event_id: str) -> str:
+        return f"{self._lifecycle_auth.api_url.rstrip('/')}/lifecycle/{event_id}"
+
     async def _granular_url(self, event_id: str, granularity: GranularityType) -> str:
         return (
             f"{await self._lifecycle_base_url()}/{event_id}"
@@ -124,6 +127,18 @@ class LifecycleClient:
         await self._lifecycle_http_client.do_post(
             await self._resync_url(resync_id), json=body
         )
+
+    async def get_resync_status(self, resync_id: str) -> str | None:
+        logger.debug(f"Polling lifecycle API resync status, resync_id={resync_id}")
+        response = await self._lifecycle_http_client.do_get(
+            self._api_resync_url(resync_id)
+        )
+        if response is None:
+            return None
+        status = response.get("status")
+        if not isinstance(status, str):
+            return None
+        return status.lower()
 
     # ── Granular (3-segment URL) ──────────────────────────────────────────────
 
