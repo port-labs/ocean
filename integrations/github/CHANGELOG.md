@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated `githubAppInstallationId`; GitHub App organization scope is discovered from app installations. OAuth installations no longer publish `githubAppInstallationId` or `githubOrganization`, so `githubOrganization` remains editable in the integration config.
 
 
+## 6.4.1 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
 ## 6.4.0 (2026-07-22)
 
 
