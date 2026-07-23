@@ -10,6 +10,7 @@ from github.clients.auth.abstract_authenticator import (
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
@@ -62,7 +63,6 @@ from github.core.exporters.folder_exporter import (
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.exporters.organization_exporter import RestOrganizationExporter
 from github.clients.utils import can_access_organization
-
 from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
@@ -213,6 +213,7 @@ async def resync_organizations(
         yield organizations
 
 
+@ocean.on_incremental_resync(ObjectKind.REPOSITORY)
 @ocean.on_resync(ObjectKind.REPOSITORY)
 @_resync_per_authenticator
 async def resync_repositories(
@@ -234,6 +235,7 @@ async def resync_repositories(
         if included_files
         else None
     )
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         tasks = (
@@ -244,6 +246,7 @@ async def resync_repositories(
                     type=port_app_config.repository_type,
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
+                    incremental_cursor=cursor,
                 )
             )
             for org in organizations
@@ -389,6 +392,7 @@ async def resync_workflows(
                     yield workflows
 
 
+@ocean.on_incremental_resync(ObjectKind.WORKFLOW_RUN)
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
 @_resync_per_authenticator
 async def resync_workflow_runs(
@@ -404,6 +408,7 @@ async def resync_workflow_runs(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowRunConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -437,6 +442,7 @@ async def resync_workflow_runs(
                                         max_runs=100,
                                         status=status,
                                         created=config.selector.created_after,
+                                        incremental_cursor=cursor,
                                     )
                                 )
                                 for workflow in workflows
@@ -451,6 +457,7 @@ async def resync_workflow_runs(
                                         workflow_id=workflow["id"],
                                         max_runs=100,
                                         created=config.selector.created_after,
+                                        incremental_cursor=cursor,
                                     )
                                 )
                                 for workflow in workflows
@@ -460,6 +467,7 @@ async def resync_workflow_runs(
                         yield runs
 
 
+@ocean.on_incremental_resync(ObjectKind.PULL_REQUEST)
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 @_resync_per_authenticator
 async def resync_pull_requests(
@@ -473,6 +481,7 @@ async def resync_pull_requests(
     repository_exporter = RestRepositoryExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
@@ -507,6 +516,7 @@ async def resync_pull_requests(
                                 max_results=config.selector.effective_max_results,
                                 updated_after=config.selector.updated_after,
                                 closed_after=config.selector.closed_after,
+                                incremental_cursor=cursor,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
@@ -538,6 +548,7 @@ async def resync_pull_requests(
         )
 
 
+@ocean.on_incremental_resync(ObjectKind.ISSUE)
 @ocean.on_resync(ObjectKind.ISSUE)
 @_resync_per_authenticator
 async def resync_issues(
@@ -552,6 +563,7 @@ async def resync_issues(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubIssueConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -575,6 +587,7 @@ async def resync_issues(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 labels=config.selector.labels_str,
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -583,6 +596,7 @@ async def resync_issues(
                     yield issues
 
 
+@ocean.on_incremental_resync(ObjectKind.RELEASE)
 @ocean.on_resync(ObjectKind.RELEASE)
 @_resync_per_authenticator
 async def resync_releases(
@@ -597,6 +611,7 @@ async def resync_releases(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubReleaseConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -616,7 +631,9 @@ async def resync_releases(
                     tasks.append(
                         release_exporter.get_paginated_resources(
                             ListReleaseOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -767,6 +784,7 @@ async def resync_environments(
                     yield environments
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPLOYMENT)
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
 @_resync_per_authenticator
 async def resync_deployments(
@@ -782,6 +800,7 @@ async def resync_deployments(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -806,6 +825,7 @@ async def resync_deployments(
                                 task=config.selector.task,
                                 environment=config.selector.environment,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -891,6 +911,7 @@ async def resync_deployment_statuses(
                             yield statuses
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPENDABOT_ALERT)
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
 @_resync_per_authenticator
 async def resync_dependabot_alerts(
@@ -905,6 +926,7 @@ async def resync_dependabot_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDependabotAlertConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -930,6 +952,7 @@ async def resync_dependabot_alerts(
                                 state=list(config.selector.states),
                                 severity=config.selector.severity_str,
                                 ecosystem=config.selector.ecosystems_str,
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -938,6 +961,7 @@ async def resync_dependabot_alerts(
                     yield alerts
 
 
+@ocean.on_incremental_resync(ObjectKind.CODE_SCANNING_ALERT)
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
 @_resync_per_authenticator
 async def resync_code_scanning_alerts(
@@ -952,6 +976,7 @@ async def resync_code_scanning_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -975,6 +1000,7 @@ async def resync_code_scanning_alerts(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 severity=config.selector.severity,
+                                incremental_cursor=cursor,
                             )
                         )
                     )
