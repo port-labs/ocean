@@ -77,6 +77,15 @@ configurations:
     sensitive: false
     description: AWS Partition, defaults to "aws" which is the standard global one (optional).
     enum: ["aws", "aws-us-gov", "aws-cn"]
+  - name: liveEventsApiKey
+    required: false
+    type: string
+    sensitive: true
+    description: >-
+      POC: Shared secret expected on the `x-port-aws-ocean-api-key` header of
+      incoming live event webhook requests (e.g. from an EventBridge API
+      Destination). Only AWS::S3::Bucket create/delete events are currently
+      supported.
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:

@@ -74,6 +74,7 @@ from aws.core.exporters.codepipeline import (
     PaginatedCodePipelineActionExecutionRequest,
 )
 from aws.core.helpers.utils import is_access_denied_exception
+from aws.events.s3_bucket_webhook_processor import S3BucketWebhookProcessor
 
 from loguru import logger
 from resync import ResyncAWSService
@@ -81,6 +82,10 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
+
+# POC: live events support, currently limited to AWS::S3::Bucket.
+# See integrations/aws-v3/docs/live-events-project.md for the full plan.
+ocean.add_webhook_processor("/webhook", S3BucketWebhookProcessor)
 
 
 @ocean.on_resync_start()
