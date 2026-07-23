@@ -1,7 +1,12 @@
 import pytest
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from port_ocean.clients.dsp.lifecycle import (
+    SYNC_TYPE_FULL_SYNC,
+    SYNC_TYPE_INCREMENTAL_RESYNC,
+)
 from port_ocean.ocean import Ocean
 from port_ocean.config.settings import IntegrationConfiguration
+from port_ocean.utils.misc import IntegrationStateStatus
 
 
 @pytest.fixture
@@ -147,3 +152,66 @@ class TestBaseUrl:
         mock_ocean_with_integration_config.config.path_prefix = path_prefix
 
         assert mock_ocean_with_integration_config.base_url == expected
+
+
+def _build_abort_ocean(sync_type: str) -> Ocean:
+    """Build an Ocean instance wired for _report_resync_aborted testing."""
+    with patch("port_ocean.ocean.Ocean.__init__", return_value=None):
+        o = Ocean()
+    o.resync_state_updater = AsyncMock()
+    o.port_client = MagicMock()
+    o.port_client.get_current_integration = AsyncMock(
+        return_value={"resyncState": {"status": IntegrationStateStatus.Running.value}}
+    )
+    o.lifecycle_client = MagicMock()
+    o.lifecycle_client.notify_resync_aborted = AsyncMock()
+    o.config = MagicMock()
+    o.config.integration.identifier = "test-int"
+    o.config.integration.type = "test-type"
+    o.metrics = MagicMock()
+    o.metrics.event_id = "resync-123"
+    o.metrics.sync_type = sync_type
+    return o
+
+
+class TestReportResyncAborted:
+    @pytest.mark.parametrize(
+        "sync_type",
+        [SYNC_TYPE_FULL_SYNC, SYNC_TYPE_INCREMENTAL_RESYNC],
+    )
+    async def test_abort_forwards_active_sync_type(self, sync_type: str) -> None:
+        o = _build_abort_ocean(sync_type)
+        with patch(
+            "port_ocean.ocean.is_dsp_mode_enabled",
+            new=AsyncMock(return_value=True),
+        ):
+            await o._report_resync_aborted()
+
+        o.lifecycle_client.notify_resync_aborted.assert_called_once_with(
+            resync_id="resync-123",
+            integration_id="test-int",
+            integration_type="test-type",
+            sync_type=sync_type,
+        )
+
+    async def test_abort_defaults_to_full_sync_when_sync_type_unset(self) -> None:
+        o = _build_abort_ocean(sync_type="")
+        with patch(
+            "port_ocean.ocean.is_dsp_mode_enabled",
+            new=AsyncMock(return_value=True),
+        ):
+            await o._report_resync_aborted()
+
+        call_kwargs = o.lifecycle_client.notify_resync_aborted.call_args.kwargs
+        assert call_kwargs["sync_type"] == SYNC_TYPE_FULL_SYNC
+
+    async def test_abort_skips_lifecycle_when_no_resync_id(self) -> None:
+        o = _build_abort_ocean(sync_type=SYNC_TYPE_FULL_SYNC)
+        o.metrics.event_id = "  "
+        with patch(
+            "port_ocean.ocean.is_dsp_mode_enabled",
+            new=AsyncMock(return_value=True),
+        ):
+            await o._report_resync_aborted()
+
+        o.lifecycle_client.notify_resync_aborted.assert_not_called()

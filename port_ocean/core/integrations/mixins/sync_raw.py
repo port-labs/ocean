@@ -1270,6 +1270,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             EventType.INCREMENTAL_RESYNC, trigger_type=trigger_type
         ):
             ocean.metrics.event_id = event.id
+            ocean.metrics.sync_type = SYNC_TYPE_INCREMENTAL_RESYNC
 
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
@@ -1380,6 +1381,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             attributes={"resync_start_time": datetime.now(timezone.utc)},
         ):
             ocean.metrics.event_id = event.id
+            ocean.metrics.sync_type = SYNC_TYPE_FULL_SYNC
 
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache

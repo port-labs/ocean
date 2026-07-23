@@ -381,6 +381,21 @@ class TestIncrementalKindLifecycle:
 
         assert mock_ocean.metrics.event_id != ""
 
+    async def test_sync_incremental_sets_metrics_sync_type(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+
+        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            mock_ocean.metrics.sync_type = ""
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        assert mock_ocean.metrics.sync_type == SYNC_TYPE_INCREMENTAL_RESYNC
+
 
 class TestEventsMixinIncrementalRegistration:
     def test_on_incremental_resync_registers_handler(self) -> None:
