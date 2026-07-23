@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 from datetime import datetime
 
 from aws.core.exporters.ecr.repository.models import (
@@ -92,7 +92,7 @@ class TestRepositoryProperties:
             repositoryName="my-repo",
             tags=[{"Key": "Project", "Value": "demo"}],
         )
-        result = properties.dict(by_alias=True, exclude_none=True)
+        result = properties.model_dump(by_alias=True, exclude_none=True)
         assert result["RepositoryName"] == "my-repo"
         assert result["Tags"] == [{"Key": "Project", "Value": "demo"}]
         assert "RegistryId" not in result
@@ -145,7 +145,7 @@ class TestRepository:
         repository = Repository(
             Properties=RepositoryProperties(repositoryName="my-repo")
         )
-        data = repository.dict(by_alias=True, exclude_none=True)
+        data = repository.model_dump(by_alias=True, exclude_none=True)
         assert data["Type"] == "AWS::ECR::Repository"
         assert data["Properties"]["RepositoryName"] == "my-repo"
 

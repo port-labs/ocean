@@ -105,6 +105,6 @@ class TestAccountModel:
     def test_dict_exclude_none(self) -> None:
         props = AccountProperties(Name="prod")
         acc = Account(Properties=props)
-        d = acc.dict(exclude_none=True)
+        d = acc.model_dump(exclude_none=True)
         assert d["Type"] == "AWS::Organizations::Account"
         assert d["Properties"]["Name"] == "prod"

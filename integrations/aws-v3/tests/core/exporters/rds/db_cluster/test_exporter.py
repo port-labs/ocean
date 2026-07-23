@@ -64,7 +64,7 @@ class TestRdsDbClusterExporter:
                 DBClusterArn="arn:aws:rds:us-east-1:123456789012:cluster:cluster-1",
             )
         )
-        mock_inspector.inspect.return_value = [db_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [db_cluster.model_dump(exclude_none=True)]
 
         options = SingleDbClusterRequest(
             region="us-east-1",
@@ -75,7 +75,7 @@ class TestRdsDbClusterExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == db_cluster.dict(exclude_none=True)
+        assert result == db_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "rds")
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once()
@@ -188,8 +188,8 @@ class TestRdsDbClusterExporter:
         c3 = DbCluster(Properties=DbClusterProperties(DBClusterIdentifier="cluster-3"))
 
         mock_inspector.inspect.side_effect = [
-            [c1.dict(exclude_none=True), c2.dict(exclude_none=True)],
-            [c3.dict(exclude_none=True)],
+            [c1.model_dump(exclude_none=True), c2.model_dump(exclude_none=True)],
+            [c3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedDbClusterRequest(
@@ -203,9 +203,9 @@ class TestRdsDbClusterExporter:
             collected.extend(page)
 
         assert len(collected) == 3
-        assert collected[0] == c1.dict(exclude_none=True)
-        assert collected[1] == c2.dict(exclude_none=True)
-        assert collected[2] == c3.dict(exclude_none=True)
+        assert collected[0] == c1.model_dump(exclude_none=True)
+        assert collected[1] == c2.model_dump(exclude_none=True)
+        assert collected[2] == c3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "rds")
         mock_proxy.get_paginator.assert_called_once_with(
@@ -290,7 +290,7 @@ class TestRdsDbClusterExporter:
         db_cluster = DbCluster(
             Properties=DbClusterProperties(DBClusterIdentifier="cluster-55")
         )
-        mock_inspector.inspect.return_value = [db_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [db_cluster.model_dump(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleDbClusterRequest(

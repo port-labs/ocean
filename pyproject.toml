@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.45.8"
+version = "0.46.1"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -167,6 +167,9 @@ no_implicit_reexport = true
 # for strict mypy: (this is the tricky one :-))
 disallow_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = ["confluent_kafka", "confluent_kafka.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 # Never enforce `E501` (line length violations).
