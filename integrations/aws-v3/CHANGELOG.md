@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.16.1-beta (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 2.16.0-beta (2026-07-22)
+
+
+### Improvements
+
+- Internal data serialization models use Pydantic v2 instead of v1
+
+
+## 2.15.24-beta (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 2.15.23-beta (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
 ## 2.15.22-beta (2026-07-21)
 
 

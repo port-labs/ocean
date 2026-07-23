@@ -1,10 +1,14 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
-class DbInstanceProperties(BaseModel):
+class DbInstanceProperties(BaseAWSPropertiesModel):
     AllocatedStorage: int = Field(default=0)
     AutoMinorVersionUpgrade: bool = Field(default=False)
     AvailabilityZone: str = Field(default_factory=str)
@@ -67,10 +71,6 @@ class DbInstanceProperties(BaseModel):
     DedicatedLogVolume: bool = Field(default=False)
     IsStorageConfigUpgradeAvailable: bool = Field(default=False)
     EngineLifecycleSupport: str | None = Field(default=None)
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "ignore"
 
 
 class DbInstance(ResourceModel[DbInstanceProperties]):

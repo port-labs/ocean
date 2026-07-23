@@ -14,13 +14,45 @@ from github.core.options import (
     ListPullRequestOptions,
     PullRequestGraphQLOptions,
 )
+from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.gql_queries import (
-    EXPENSIVE_PR_GRAPHQL_FIELDS,
+    EXPENSIVE_PR_GRAPHQL_FIELD_TIERS,
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
 from github.core.exporters.pull_request_exporter.utils import filter_prs_by_date
 from integration import GithubPullRequestSelector
+
+
+def _paginated_call_matches(
+    call: Any,
+    *,
+    query: str,
+    variables: dict[str, Any],
+    fallback_queries: list[str],
+) -> bool:
+    """A send_paginated_request call with the given query/vars and fallbacks-with-enrichers."""
+    args, kwargs = call
+    fallbacks = kwargs.get("fallbacks") or []
+    return (
+        len(args) >= 2
+        and args[0] == query
+        and args[1] == variables
+        and [f.query for f in fallbacks] == fallback_queries
+        and all(callable(f.enrich) for f in fallbacks)
+    )
+
+
+def _pr_fallback_queries(
+    exporter: GraphQLPullRequestExporter,
+    options: PullRequestGraphQLOptions,
+    order_by_field: str = "CREATED_AT",
+) -> list[str]:
+    _, fallbacks = exporter._build_pr_queries(
+        "test-org", "repo1", options, order_by_field
+    )
+    return [f.query for f in fallbacks]
+
 
 TEST_PULL_REQUESTS = [
     {
@@ -57,7 +89,6 @@ def mock_datetime() -> Generator[datetime, None, None]:
 
 @pytest.mark.asyncio
 class TestPullRequestExporter:
-
     async def test_get_resource(self, rest_client: GithubRestClient) -> None:
         exporter = RestPullRequestExporter(rest_client)
 
@@ -943,38 +974,38 @@ class TestGraphQLPullRequestExporter:
 
         # Ensure GraphQL variables were built correctly for both calls
         open_options = PullRequestGraphQLOptions(enrich_with_first_commit=False)
-        mock_paginated.assert_any_call(
-            generate_list_pull_requests_gql(open_options),
-            {
-                "organization": "test-org",
-                "repo": "repo1",
-                "states": ["OPEN"],
-                "__path": "repository.pullRequests",
-            },
-            fallback_queries=[
-                generate_list_pull_requests_gql(
-                    open_options, extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS
-                )
-            ],
+        calls = mock_paginated.call_args_list
+        assert any(
+            _paginated_call_matches(
+                c,
+                query=generate_list_pull_requests_gql(open_options),
+                variables={
+                    "organization": "test-org",
+                    "repo": "repo1",
+                    "states": ["OPEN"],
+                    "__path": "repository.pullRequests",
+                },
+                fallback_queries=_pr_fallback_queries(exporter, open_options),
+            )
+            for c in calls
         )
-        mock_paginated.assert_any_call(
-            generate_list_pull_requests_gql(
-                open_options,
-                order_by_field="UPDATED_AT",
-            ),
-            {
-                "organization": "test-org",
-                "repo": "repo1",
-                "states": ["CLOSED", "MERGED"],
-                "__path": "repository.pullRequests",
-            },
-            fallback_queries=[
-                generate_list_pull_requests_gql(
-                    open_options,
-                    order_by_field="UPDATED_AT",
-                    extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS,
-                )
-            ],
+        assert any(
+            _paginated_call_matches(
+                c,
+                query=generate_list_pull_requests_gql(
+                    open_options, order_by_field="UPDATED_AT"
+                ),
+                variables={
+                    "organization": "test-org",
+                    "repo": "repo1",
+                    "states": ["CLOSED", "MERGED"],
+                    "__path": "repository.pullRequests",
+                },
+                fallback_queries=_pr_fallback_queries(
+                    exporter, open_options, order_by_field="UPDATED_AT"
+                ),
+            )
+            for c in calls
         )
 
     async def test_get_paginated_resources_passes_enriched_query_when_enabled(
@@ -1035,19 +1066,17 @@ class TestGraphQLPullRequestExporter:
         assert len(batches) == 1
         assert batches[0][0]["firstCommit"]["oid"] == "sha1"
         enriched_options = PullRequestGraphQLOptions(enrich_with_first_commit=True)
-        mock_paginated.assert_called_once_with(
-            generate_list_pull_requests_gql(enriched_options),
-            {
+        mock_paginated.assert_called_once()
+        assert _paginated_call_matches(
+            mock_paginated.call_args,
+            query=generate_list_pull_requests_gql(enriched_options),
+            variables={
                 "organization": "test-org",
                 "repo": "repo1",
                 "states": ["OPEN"],
                 "__path": "repository.pullRequests",
             },
-            fallback_queries=[
-                generate_list_pull_requests_gql(
-                    enriched_options, extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS
-                )
-            ],
+            fallback_queries=_pr_fallback_queries(exporter, enriched_options),
         )
 
     async def test_closed_prs_use_closed_at_filter_and_max_results(
@@ -1122,24 +1151,21 @@ class TestGraphQLPullRequestExporter:
         assert fields == ["closedAt", "updatedAt"]
 
         closed_options = PullRequestGraphQLOptions(enrich_with_first_commit=False)
-        mock_paginated.assert_called_once_with(
-            generate_list_pull_requests_gql(
-                closed_options,
-                order_by_field="UPDATED_AT",
+        mock_paginated.assert_called_once()
+        assert _paginated_call_matches(
+            mock_paginated.call_args,
+            query=generate_list_pull_requests_gql(
+                closed_options, order_by_field="UPDATED_AT"
             ),
-            {
+            variables={
                 "organization": "test-org",
                 "repo": "repo1",
                 "states": ["CLOSED", "MERGED"],
                 "__path": "repository.pullRequests",
             },
-            fallback_queries=[
-                generate_list_pull_requests_gql(
-                    closed_options,
-                    order_by_field="UPDATED_AT",
-                    extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS,
-                )
-            ],
+            fallback_queries=_pr_fallback_queries(
+                exporter, closed_options, order_by_field="UPDATED_AT"
+            ),
         )
         assert mock_normalize.call_count == 2
 
@@ -1278,6 +1304,136 @@ class TestGraphQLPullRequestExporter:
 
 
 class TestGraphQLPullRequestExporterInternals:
+    def test_build_pr_queries_strips_tiers_cumulatively(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        options = PullRequestGraphQLOptions()
+        primary, fallbacks = exporter._build_pr_queries("org", "repo1", options)
+
+        assert primary == generate_list_pull_requests_gql(options)
+        assert len(fallbacks) == len(EXPENSIVE_PR_GRAPHQL_FIELD_TIERS)
+        accumulated: set[str] = set()
+        for tier, fallback in zip(EXPENSIVE_PR_GRAPHQL_FIELD_TIERS, fallbacks):
+            accumulated.update(tier)
+            assert fallback.query == generate_list_pull_requests_gql(
+                options, extra_excluded_fields=accumulated
+            )
+            assert callable(fallback.enrich)
+
+    def test_build_pr_queries_skips_tier_already_excluded(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        first_tier = EXPENSIVE_PR_GRAPHQL_FIELD_TIERS[0]
+        options = PullRequestGraphQLOptions(exclude_graphql_fields=list(first_tier))
+        _, fallbacks = exporter._build_pr_queries("org", "repo1", options)
+
+        # First tier removes nothing new, so it produces no fallback; the
+        # remaining tiers still strip cumulatively on top of it.
+        remaining_tiers = EXPENSIVE_PR_GRAPHQL_FIELD_TIERS[1:]
+        assert len(fallbacks) == len(remaining_tiers)
+        accumulated = set(first_tier)
+        for tier, fallback in zip(remaining_tiers, fallbacks):
+            accumulated.update(tier)
+            assert fallback.query == generate_list_pull_requests_gql(
+                options, extra_excluded_fields=accumulated
+            )
+
+    def test_build_pr_queries_no_fallbacks_when_all_excluded(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        all_fields = [f for tier in EXPENSIVE_PR_GRAPHQL_FIELD_TIERS for f in tier]
+        options = PullRequestGraphQLOptions(exclude_graphql_fields=all_fields)
+        _, fallbacks = exporter._build_pr_queries("org", "repo1", options)
+        assert fallbacks == []
+
+    async def test_fallback_enricher_backfills_its_stripped_fields(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        _, fallbacks = exporter._build_pr_queries(
+            "org", "repo1", PullRequestGraphQLOptions()
+        )
+
+        fetch = AsyncMock(return_value="v")
+        with patch.object(exporter, "_fetch_single_pr_field", fetch):
+            await fallbacks[0].enrich([{"number": 1}])  # type: ignore[misc]
+
+        # The first fallback's enricher backfills exactly the first tier's fields.
+        requested = {call.args[0] for call in fetch.await_args_list}
+        assert requested == set(EXPENSIVE_PR_GRAPHQL_FIELD_TIERS[0])
+
+    async def test_backfill_merges_recovered_fields(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        node: dict[str, Any] = {"number": 7, "url": "u", "title": "t"}
+        details = {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "reviewRequests": {"nodes": ["rr"]},
+                        "labels": {"nodes": ["lbl"]},
+                    }
+                }
+            }
+        }
+
+        with patch.object(
+            exporter.client, "send_api_request", AsyncMock(return_value=details)
+        ):
+            await exporter._backfill_pr_node_fields(
+                node,
+                {"reviewRequests": "q1", "labels": "q2"},
+                "org",
+                "repo1",
+            )
+
+        assert node["reviewRequests"] == {"nodes": ["rr"]}
+        assert node["labels"] == {"nodes": ["lbl"]}
+
+    async def test_backfill_skips_and_logs_failed_field(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        node: dict[str, Any] = {"number": 7}
+
+        async def side_effect(*_: Any, **kwargs: Any) -> dict[str, Any]:
+            query = kwargs["json_data"]["query"]
+            if "reviewRequests" in query:
+                raise GraphQLErrorGroup([GraphQLClientError("boom")])
+            return {"data": {"repository": {"pullRequest": {"labels": {"nodes": []}}}}}
+
+        with patch.object(
+            exporter.client, "send_api_request", AsyncMock(side_effect=side_effect)
+        ):
+            await exporter._backfill_pr_node_fields(
+                node,
+                {"reviewRequests": "reviewRequests", "labels": "labels"},
+                "org",
+                "repo1",
+            )
+
+        # The failed field is left off the node; the healthy one is merged.
+        assert "reviewRequests" not in node
+        assert node["labels"] == {"nodes": []}
+
+    async def test_backfill_noop_without_pr_number(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        node: dict[str, Any] = {"url": "u"}
+        send = AsyncMock()
+
+        with patch.object(exporter.client, "send_api_request", send):
+            await exporter._backfill_pr_node_fields(
+                node, {"labels": "q"}, "org", "repo1"
+            )
+
+        send.assert_not_awaited()
+
     def test_normalize_pr_node_enriches_and_flattens(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
