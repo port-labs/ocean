@@ -154,11 +154,6 @@ async def on_start() -> None:
     if not base_url:
         return
 
-    github_organization = ocean.integration_config.get("github_organization")
-    if github_organization:
-        await _create_webhooks_for_organization(github_organization, base_url)
-        return
-
     await ocean.integration.port_app_config_handler.get_port_app_config()
     for authenticator in await get_auth_provider().list_authenticators():
         rest_client = create_github_client(authenticator)

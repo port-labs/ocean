@@ -8,6 +8,10 @@ from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
+from port_ocean.context.ocean import ocean
 
 
 class TestGithubAuthenticator:
@@ -185,3 +189,19 @@ class TestGithubAuthenticator:
 
             assert resp.status_code == 200
             assert len(calls) == 2
+
+
+class TestPersonalTokenAuthenticator:
+    def test_from_config_scopes_to_configured_organization(self) -> None:
+        authenticator = PersonalTokenAuthenticator.from_config()
+
+        assert authenticator.organization == "test-org"
+
+    def test_from_config_is_unscoped_without_configured_organization(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delitem(ocean.integration_config, "github_organization")
+
+        authenticator = PersonalTokenAuthenticator.from_config()
+
+        assert authenticator.organization is None

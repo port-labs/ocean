@@ -5,7 +5,6 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
 from typing import Optional, cast
 
 from integration import GithubPortAppConfig
@@ -31,7 +30,7 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         _auth_scope: str,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
-        If the authenticator or integration config scopes an organization, fetch it.
+        If the authenticator scopes an organization, fetch it.
         Otherwise, fetch all organizations available to the authenticator,
         optionally filtering them and including the authenticated user.
         """
@@ -55,7 +54,6 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         if organization := (
             requested_organization
             or authenticated_organization
-            or ocean.integration_config.get("github_organization")
         ):
             logger.info(f"Fetching single organization {organization}")
             organization_resource = await self.get_resource(
