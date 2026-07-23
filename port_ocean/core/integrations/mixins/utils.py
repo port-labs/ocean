@@ -30,7 +30,12 @@ from port_ocean.exceptions.core import (
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
-from port_ocean.core.models import IntegrationFeatureFlag, LakehouseDataEntry, LakehouseDataEntryMetadata, ProcessingMode
+from port_ocean.core.models import (
+    IntegrationFeatureFlag,
+    LakehouseDataEntry,
+    LakehouseDataEntryMetadata,
+    ProcessingMode,
+)
 
 
 def collect_export_env_variables(
@@ -143,7 +148,9 @@ async def is_dsp_mode_enabled() -> bool:
         )
         return False
     except Exception as e:
-        logger.bind(local_only=True).warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
+        logger.bind(local_only=True).warning(
+            f"Failed to check DSP mode, falling back to ocean-core: {e}"
+        )
         return False
 
 
@@ -169,7 +176,6 @@ async def is_redis_live_events_enabled() -> bool:
         return False
 
 
-
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     """
     Revised function to extract a simple path suitable for del() by analyzing pipe segments.
@@ -177,8 +183,8 @@ def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     expr = jq_expression.strip()
 
     # 1. Handle surrounding parentheses and extract the main chain
-    if expr.startswith('('):
-        match_paren = re.match(r'\((.*?)\)', expr, re.DOTALL)
+    if expr.startswith("("):
+        match_paren = re.match(r"\((.*?)\)", expr, re.DOTALL)
         if match_paren:
             chain = match_paren.group(1).strip()
         else:
@@ -188,18 +194,18 @@ def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
 
     # 2. Split the chain by the main pipe operator (excluding pipes inside quotes or brackets,
     # but for simplicity here, we split naively and check segments)
-    segments = chain.split('|')
+    segments = chain.split("|")
 
     # 3. Analyze each segment for a simple path
     for segment in segments:
         segment = segment.strip()
 
         # Ignore variable assignment segments like '. as $root'
-        if re.match(r'^\.\s+as\s+\$\w+', segment):
+        if re.match(r"^\.\s+as\s+\$\w+", segment):
             continue
 
         # Ignore identity and variable access like '.' or '$items'
-        if segment == '.' or segment.startswith('$'):
+        if segment == "." or segment.startswith("$"):
             continue
 
         # Look for the first genuine path accessor (e.g., .key, .[index], .key.nested, .key[0])
@@ -209,14 +215,16 @@ def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
         #   - .word (dot followed by word)
         #   - [index] (bracket directly after word, no dot)
         #   - .[index] (dot followed by bracket)
-        path_match = re.match(r'(\.[\w]+|\.\[[^\]]+\])(\.[\w]+|\[[^\]]+\]|\.\[[^\]]+\])*', segment)
+        path_match = re.match(
+            r"(\.[\w]+|\.\[[^\]]+\])(\.[\w]+|\[[^\]]+\]|\.\[[^\]]+\])*", segment
+        )
 
         if path_match:
             path = path_match.group(0).strip()
 
             # If the path is immediately followed by a simple fallback (// value),
             # we consider the path complete.
-            if re.search(r'\s*//\s*(\[\]|null|\.|\{.*?\})', segment):
+            if re.search(r"\s*//\s*(\[\]|null|\.|\{.*?\})", segment):
                 return path
 
             # If the path is just a path segment followed by nothing or the end of a complex
@@ -225,6 +233,7 @@ def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
 
     # Default case: No suitable path found after checking all segments
     return None
+
 
 @contextmanager
 def resync_error_handling() -> Generator[None, None, None]:
@@ -249,13 +258,17 @@ async def resync_function_wrapper(
 ) -> RAW_RESULT:
     with resync_error_handling():
         results = validate_result(await fn(kind))
-        await send_raw_data_examples(
-            results, kind, send_raw_data_examples_amount
-        )
+        await send_raw_data_examples(results, kind, send_raw_data_examples_amount)
         return results
 
-async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True) -> AsyncGenerator[list[dict[str, Any]], None]:
-    delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
+
+async def handle_items_to_parse(
+    result: RAW_RESULT,
+    items_to_parse_name: str,
+    items_to_parse: str | None = None,
+    items_to_parse_top_level_transform: bool = True,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    delete_target = extract_jq_deletion_path_revised(items_to_parse) or "."
     jq_expression = f". | del({delete_target})"
     batch_size = ocean.config.yield_items_to_parse_batch_size
 
@@ -288,9 +301,8 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
         if batch:
             yield batch
 
-async def send_raw_data_examples(
-    result: RAW_RESULT, kind: str, amount: int
-) -> int:
+
+async def send_raw_data_examples(result: RAW_RESULT, kind: str, amount: int) -> int:
     if amount <= 0 or not result:
         return 0
 
@@ -306,6 +318,7 @@ async def send_raw_data_examples(
             exc_info=True,
         )
         return 0
+
 
 async def resync_generator_wrapper(
     fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE],
@@ -331,20 +344,28 @@ async def resync_generator_wrapper(
                     )
 
                     if items_to_parse and not await is_dsp_mode_enabled():
-                        items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
+                        items_to_parse_generator = handle_items_to_parse(
+                            result,
+                            items_to_parse_name,
+                            items_to_parse,
+                            items_to_parse_top_level_transform,
+                        )
                         del result
                         async for batch in items_to_parse_generator:
                             yield batch
                     else:
                         yield result
 
-
             except OceanAbortException as error:
                 errors.append(error)
                 ocean.metrics.inc_metric(
                     name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , MetricPhase.ExtractResult.FAILED],
-                    value=1
+                    labels=[
+                        ocean.metrics.current_resource_kind(),
+                        MetricPhase.EXTRACT,
+                        MetricPhase.ExtractResult.FAILED,
+                    ],
+                    value=1,
                 )
     except StopAsyncIteration:
         if errors:
@@ -358,24 +379,48 @@ def is_resource_supported(
 ) -> bool:
     return bool(resync_event_mapping[kind] or resync_event_mapping[None])
 
+
 def unsupported_kind_response(
     kind: str, available_resync_kinds: list[str]
 ) -> tuple[RESYNC_RESULT, list[Exception]]:
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
 
+
+SUBPROCESS_JOIN_TIMEOUT_SECONDS = 2 * 60 * 60
+SUBPROCESS_TERMINATE_GRACE_PERIOD_SECONDS = 5
+
+
 class ProcessWrapper(multiprocessing.Process):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     async def join_async(self) -> None:
+        try:
+            await asyncio.wait_for(
+                self._wait_for_exit(), timeout=SUBPROCESS_JOIN_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"Process {self.pid} timed out after "
+                f"{SUBPROCESS_JOIN_TIMEOUT_SECONDS}s, terminating"
+            )
+            self.terminate()
+            await asyncio.sleep(SUBPROCESS_TERMINATE_GRACE_PERIOD_SECONDS)
+            if self.exitcode is None:
+                logger.error(f"Process {self.pid} did not terminate, killing")
+                self.kill()
+            self.join()
+
+    async def _wait_for_exit(self) -> None:
         while self.exitcode is None:
             await asyncio.sleep(2)
         if self.exitcode != 0:
             logger.error(f"Process {self.pid} failed with exit code {self.exitcode}")
         else:
             logger.info(f"Process {self.pid} finished with exit code {self.exitcode}")
-        return super().join()
+        self.join()
+
 
 def clear_http_client_context() -> None:
     try:
@@ -396,9 +441,11 @@ def clear_http_client_context() -> None:
     except (RuntimeError, AttributeError):
         pass
 
+
 def start_kind_tracking(kind: str) -> None:
     monitor = get_monitor()
     monitor.start_kind_tracking(kind)
+
 
 def stop_kind_tracking(kind: str) -> None:
     monitor = get_monitor()
@@ -406,15 +453,11 @@ def stop_kind_tracking(kind: str) -> None:
     stats = monitor.get_kind_stats(kind)
     if stats.sample_count > 0:
         # Report CPU metrics
-        ocean.metrics.set_metric(
-            MetricType.CPU_MAX_NAME, [kind], stats.cpu.cpu_max
-        )
+        ocean.metrics.set_metric(MetricType.CPU_MAX_NAME, [kind], stats.cpu.cpu_max)
         ocean.metrics.set_metric(
             MetricType.CPU_MEDIAN_NAME, [kind], stats.cpu.cpu_median
         )
-        ocean.metrics.set_metric(
-            MetricType.CPU_AVG_NAME, [kind], stats.cpu.cpu_avg
-        )
+        ocean.metrics.set_metric(MetricType.CPU_AVG_NAME, [kind], stats.cpu.cpu_avg)
         # Report memory metrics
         ocean.metrics.set_metric(
             MetricType.MEMORY_MAX_NAME, [kind], stats.memory.memory_max

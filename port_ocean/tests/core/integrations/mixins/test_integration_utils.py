@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -23,6 +23,7 @@ from port_ocean.core.integrations.mixins.utils import (
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
     is_redis_live_events_enabled,
+    ProcessWrapper,
     resync_function_wrapper,
     resync_generator_wrapper,
     selector_hash_from_query,
@@ -1010,3 +1011,74 @@ class TestProcessingModes:
         assert "Failed to check Redis live events feature flags" in (
             mock_bound.warning.call_args.args[0]
         )
+
+
+class TestProcessWrapper:
+    @pytest.mark.asyncio
+    async def test_join_async_returns_when_subprocess_exits(self) -> None:
+        process = ProcessWrapper()
+        mock_join = MagicMock()
+
+        with patch.object(
+            ProcessWrapper, "exitcode", new_callable=PropertyMock, return_value=0
+        ):
+            with patch.object(process, "join", mock_join):
+                await process.join_async()
+
+        mock_join.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_join_async_terminates_and_kills_on_timeout(self) -> None:
+        process = ProcessWrapper()
+        mock_terminate = MagicMock()
+        mock_kill = MagicMock()
+        mock_join = MagicMock()
+
+        with patch.object(
+            ProcessWrapper, "exitcode", new_callable=PropertyMock, return_value=None
+        ):
+            with patch.object(process, "terminate", mock_terminate):
+                with patch.object(process, "kill", mock_kill):
+                    with patch.object(process, "join", mock_join):
+                        with patch(
+                            "port_ocean.core.integrations.mixins.utils.SUBPROCESS_JOIN_TIMEOUT_SECONDS",
+                            0,
+                        ):
+                            with patch(
+                                "port_ocean.core.integrations.mixins.utils.SUBPROCESS_TERMINATE_GRACE_PERIOD_SECONDS",
+                                0,
+                            ):
+                                await process.join_async()
+
+        mock_terminate.assert_called_once()
+        mock_kill.assert_called_once()
+        mock_join.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_join_async_skips_kill_when_terminate_succeeds(self) -> None:
+        process = ProcessWrapper()
+        exitcode_state = {"value": None}
+        mock_kill = MagicMock()
+
+        def terminate() -> None:
+            exitcode_state["value"] = -15
+
+        with patch.object(
+            ProcessWrapper,
+            "exitcode",
+            property(lambda self: exitcode_state["value"]),
+        ):
+            with patch.object(process, "terminate", terminate):
+                with patch.object(process, "kill", mock_kill):
+                    with patch.object(process, "join"):
+                        with patch(
+                            "port_ocean.core.integrations.mixins.utils.SUBPROCESS_JOIN_TIMEOUT_SECONDS",
+                            0,
+                        ):
+                            with patch(
+                                "port_ocean.core.integrations.mixins.utils.SUBPROCESS_TERMINATE_GRACE_PERIOD_SECONDS",
+                                0,
+                            ):
+                                await process.join_async()
+
+        mock_kill.assert_not_called()
