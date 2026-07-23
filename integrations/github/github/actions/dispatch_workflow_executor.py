@@ -128,7 +128,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     async def _get_execution_client(self, run: IntegrationRun) -> GithubRestClient:
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
-            raise InvalidActionParametersException("organization is required")
+            raise InvalidActionParametersException("org is required")
         return await create_github_client_for_org(organization)
 
     async def _get_default_ref(

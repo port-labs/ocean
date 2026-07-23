@@ -33,11 +33,6 @@ class FolderPatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    if (
-                        folder_sel.organization
-                        and folder_sel.organization.casefold() != org_login.casefold()
-                    ):
-                        continue
                     org_type = org["type"]
                     async for (
                         repo_name,

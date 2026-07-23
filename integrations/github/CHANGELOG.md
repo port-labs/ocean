@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Migrated all GitHub API callers from legacy `create_github_client()` to installation-scoped `create_github_client_for_org()`.
+- Updated GitHub client creation to use authenticator-scoped `create_github_client()` for resyncs and `create_github_client_for_org()` for webhook and action requests.
 - Resync handlers iterate `get_auth_provider().list_authenticators()` and discover organizations via `RestOrganizationExporter.get_paginated_resources()`.
 - Removed `GitHubAuthenticatorFactory` and the sync legacy client factory path.
 - Removed deprecated `OrganizationLoginAndTypeGenerator`; file and folder pattern builders call `RestOrganizationExporter.get_paginated_resources()` directly.

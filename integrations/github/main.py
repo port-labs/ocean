@@ -203,7 +203,7 @@ def _resync_per_authenticator(
 async def resync_organizations(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all organizations the Personal Access Token user is a member of."""
+    """Resync all organizations."""
 
     rest_client = create_github_client(authenticator)
     exporter = RestOrganizationExporter(rest_client)

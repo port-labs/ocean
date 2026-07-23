@@ -60,7 +60,7 @@ async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator
                 and login.casefold() != configured_organization.casefold()
             ):
                 continue
-            index[login] = _authenticator(
+            index[login.casefold()] = _authenticator(
                 app_auth=app_auth,
                 organization=login,
                 installation_id=str(installation["id"]),
@@ -99,9 +99,10 @@ async def get_installation_authenticator_for_organization(
     organization: str,
 ) -> GitHubAppInstallationAuthenticator:
     await _discover_installations()
-    if organization not in _authenticators_by_org:
+    normalized_organization = organization.casefold()
+    if normalized_organization not in _authenticators_by_org:
         raise AuthenticationException(
             f"No GitHub App installation found for organization '{organization}'"
         )
 
-    return _authenticators_by_org[organization]
+    return _authenticators_by_org[normalized_organization]

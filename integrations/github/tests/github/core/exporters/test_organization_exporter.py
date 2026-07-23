@@ -111,18 +111,22 @@ class TestRestOrganizationExporter:
                     f"{unscoped_client.base_url}/users/test-org"
                 )
 
-    async def test_get_paginated_resources_scopes_each_authenticator_to_its_organization(
+    async def test_get_paginated_resources_cache_is_scoped_per_authenticator(
         self,
         unscoped_client: GithubRestClient,
         mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         first_client = GithubRestClient(
             github_host=unscoped_client.base_url,
-            authenticator=MagicMock(organization="test1"),
+            authenticator=MagicMock(
+                organization="test1", rate_limit_scope="installation:test-cache-1"
+            ),
         )
         second_client = GithubRestClient(
             github_host=unscoped_client.base_url,
-            authenticator=MagicMock(organization="test2"),
+            authenticator=MagicMock(
+                organization="test2", rate_limit_scope="installation:test-cache-2"
+            ),
         )
 
         with (

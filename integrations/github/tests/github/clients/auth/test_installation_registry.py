@@ -1,13 +1,15 @@
 import time
-from collections.abc import Generator
-from unittest.mock import AsyncMock, patch
+from collections.abc import AsyncGenerator, Generator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from github.clients.auth.github_app import installation_registry
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
+from port_ocean.context.ocean import ocean
 
 
 @pytest.fixture(autouse=True)
@@ -41,3 +43,29 @@ async def test_list_installations_refreshes_after_ttl() -> None:
 
     mock_fetch.assert_called_once()
     assert [auth.organization for auth in authenticators] == ["org-b"]
+
+
+@pytest.mark.asyncio
+async def test_get_installation_authenticator_is_case_insensitive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delitem(ocean.integration_config, "github_organization")
+
+    async def iter_installations() -> AsyncGenerator[list[dict[str, object]], None]:
+        yield [{"id": 1, "account": {"login": "myorg"}}]
+
+    app_auth = MagicMock()
+    app_auth.iter_app_installations = iter_installations
+
+    with patch.object(
+        GitHubAppAuthenticator,
+        "from_config",
+        return_value=app_auth,
+    ):
+        authenticator = (
+            await installation_registry.get_installation_authenticator_for_organization(
+                "MyOrg"
+            )
+        )
+
+    assert authenticator.organization == "myorg"

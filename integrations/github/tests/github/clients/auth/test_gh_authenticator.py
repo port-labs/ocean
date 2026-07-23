@@ -33,12 +33,6 @@ class TestGithubAuthenticator:
         assert github_auth.rate_limit_scope == "installation:12345"
 
     @pytest.mark.asyncio
-    async def test_get_installation_id_returns_cached_id(
-        self, github_auth: GitHubAppInstallationAuthenticator
-    ) -> None:
-        assert await github_auth._get_installation_id() == "12345"
-
-    @pytest.mark.asyncio
     async def test_token_generated(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
@@ -79,33 +73,6 @@ class TestGithubAuthenticator:
 
             mock_fetch_install_token.assert_called_once_with("12345")
             assert github_auth.cached_installation_token == mock_new_token
-
-    @pytest.mark.asyncio
-    async def test_installation_id_provided_no_fetch_call(
-        self, github_auth: GitHubAppInstallationAuthenticator
-    ) -> None:
-        mock_install_token = GitHubToken(
-            token="mock-installation-token",
-            expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
-        )
-
-        with (
-            patch.object(
-                github_auth.app_auth,
-                "fetch_installation_access_token",
-                AsyncMock(return_value=mock_install_token),
-            ) as mock_fetch_install_token,
-            patch.object(
-                github_auth.app_auth,
-                "get_installation_id_for_organization",
-                AsyncMock(),
-            ) as mock_get_installation_id,
-        ):
-            token = await github_auth.get_token()
-
-            mock_fetch_install_token.assert_called_once_with("12345")
-            mock_get_installation_id.assert_not_called()
-            assert token == mock_install_token
 
     @pytest.mark.asyncio
     async def test_client_returns_same_instance(

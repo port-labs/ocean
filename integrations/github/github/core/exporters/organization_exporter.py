@@ -51,10 +51,7 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
                 f"requested organization '{requested_organization}'"
             )
 
-        if organization := (
-            requested_organization
-            or authenticated_organization
-        ):
+        if organization := (requested_organization or authenticated_organization):
             logger.info(f"Fetching single organization {organization}")
             organization_resource = await self.get_resource(
                 SingleOrganizationOptions(organization=organization)

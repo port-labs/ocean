@@ -157,11 +157,6 @@ class FilePatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    if (
-                        file_sel.organization
-                        and file_sel.organization.casefold() != org_login.casefold()
-                    ):
-                        continue
                     org_type = org["type"]
                     async for repo_name, branch, _ in self.repo_selector.select_repos(
                         file_sel, self.repo_exporter, org_login, org_type
