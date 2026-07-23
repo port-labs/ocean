@@ -36,6 +36,8 @@ saas:
         gitlabHost: '"https://gitlab.com"'
   liveEvents:
     enabled: true
+  incrementalSync:
+    enabled: true
 actionsProcessingEnabled: true
 actions:
   - name: trigger_pipeline
