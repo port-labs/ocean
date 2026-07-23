@@ -128,7 +128,13 @@ async def test_handle_event_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {"Type": ObjectKind.S3_BUCKET, "Properties": {"BucketName": "bucket-to-delete"}}
+        {
+            "Type": ObjectKind.S3_BUCKET,
+            "Properties": {
+                "Arn": "arn:aws:s3:::bucket-to-delete",
+                "BucketName": "bucket-to-delete",
+            },
+        }
     ]
 
 
@@ -188,5 +194,11 @@ async def test_handle_event_create_treats_access_denied_as_deleted(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {"Type": ObjectKind.S3_BUCKET, "Properties": {"BucketName": "denied-bucket"}}
+        {
+            "Type": ObjectKind.S3_BUCKET,
+            "Properties": {
+                "Arn": "arn:aws:s3:::denied-bucket",
+                "BucketName": "denied-bucket",
+            },
+        }
     ]

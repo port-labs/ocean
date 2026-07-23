@@ -15,6 +15,8 @@ This is NOT meant to be production-ready. See
 (multi-kind support, dedupe, CloudTrail parser coverage, IaC, etc).
 """
 
+from typing import cast
+
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -29,6 +31,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+from integration import AWSResourceConfig
 from aws.auth.session_factory import get_session_for_account
 from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.exporters.s3.bucket.models import SingleBucketRequest
@@ -42,8 +45,18 @@ from aws.events.cloudtrail_parser import (
     is_supported_s3_bucket_event,
     parse_s3_bucket_event,
 )
+from aws.utils import RegionHelper
 
 LIVE_EVENTS_API_KEY_HEADER = "x-port-aws-ocean-api-key"
+
+
+def _bucket_arn(bucket_name: str) -> str:
+    partition = RegionHelper.get_partition()
+    return f"arn:{partition}:s3:::{bucket_name}"
+
+
+def _bucket_delete_payload(bucket_name: str) -> dict[str, str]:
+    return {"Arn": _bucket_arn(bucket_name), "BucketName": bucket_name}
 
 
 class S3BucketWebhookProcessor(AbstractWebhookProcessor):
@@ -86,7 +99,7 @@ class S3BucketWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[
                     {
                         "Type": ObjectKind.S3_BUCKET,
-                        "Properties": {"BucketName": parsed.bucket_name},
+                        "Properties": _bucket_delete_payload(parsed.bucket_name),
                     }
                 ],
             )
@@ -107,10 +120,17 @@ class S3BucketWebhookProcessor(AbstractWebhookProcessor):
             )
 
         exporter = S3BucketExporter(session)
+        include_actions: list[str] = []
+        if resource_config is not None:
+            include_actions = cast(
+                AWSResourceConfig, resource_config
+            ).selector.include_actions
+
         options = SingleBucketRequest(
             bucket_name=parsed.bucket_name,
             region=parsed.region,
             account_id=parsed.account_id,
+            include=include_actions,
         )
 
         try:
@@ -128,7 +148,7 @@ class S3BucketWebhookProcessor(AbstractWebhookProcessor):
                     deleted_raw_results=[
                         {
                             "Type": ObjectKind.S3_BUCKET,
-                            "Properties": {"BucketName": parsed.bucket_name},
+                            "Properties": _bucket_delete_payload(parsed.bucket_name),
                         }
                     ],
                 )
