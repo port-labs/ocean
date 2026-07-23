@@ -9,12 +9,12 @@ from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleIssueOptions, ListIssueOptions
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
-from github.clients.http.base_client import AbstractGithubClient
+from github.clients.http.rest_client import GithubRestClient
 
 ISSUE_INCREMENTAL = ServerSideTimestampStrategy(param_key="since")
 
 
-class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
+class RestIssueExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[ExporterOptionsT: SingleIssueOptions](
         self,
