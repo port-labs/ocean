@@ -101,6 +101,7 @@ class RetryConfig:
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
+                HTTPStatus.UNAUTHORIZED,
             ]
         )
 
@@ -417,22 +418,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 f" {type(error).__name__} - {str(error) or 'No error message'}, retrying in {sleep_time} seconds."
             )
 
-    def _log_non_retryable_client_error(
-        self, request: httpx.Request, response: httpx.Response
-    ) -> None:
-        if not self._logger:
-            return
-        if response.status_code == HTTPStatus.UNAUTHORIZED.value:
-            self._logger.warning(
-                f"Request {request.method} {request.url} received HTTP 401 Unauthorized. "
-                "Verify authentication credentials and token permissions."
-            )
-        elif response.status_code == HTTPStatus.BAD_REQUEST.value:
-            self._logger.warning(
-                f"Request {request.method} {request.url} received HTTP 400 Bad Request. "
-                "Not retrying. Verify request parameters and payload."
-            )
-
     def _should_log_response_size(self, request: httpx.Request) -> bool:
         return self._logger is not None and not request.url.host.endswith("port.io")
 
@@ -667,7 +652,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
                 ):
-                    self._log_non_retryable_client_error(request, response)
                     if self._should_prefetch_body_for_retry(request, response):
                         try:
                             await response.aread()
@@ -739,7 +723,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response.request = request
                 self._after_retry(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not self._should_retry(response):
-                    self._log_non_retryable_client_error(request, response)
                     if self._should_prefetch_body_for_retry(request, response):
                         try:
                             response.read()
