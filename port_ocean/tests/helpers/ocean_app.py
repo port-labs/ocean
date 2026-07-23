@@ -62,7 +62,9 @@ def get_integation_resource_configs(integration_path: str) -> List[ResourceConfi
 
 
 async def get_raw_result_on_integration_sync_resource_config(
-    app: Ocean, resource_config: ResourceConfig
+    app: Ocean,
+    resource_config: ResourceConfig,
+    event_type: str = EventType.RESYNC,
 ) -> Tuple[RESYNC_RESULT, List[Exception]]:
-    async with event_context(EventType.INCREMENTAL_RESYNC, trigger_type="machine"):
+    async with event_context(event_type, trigger_type="machine"):
         return await app.integration._get_resource_raw_results(resource_config)

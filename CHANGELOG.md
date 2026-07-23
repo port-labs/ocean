@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Wrap `get_raw_result_on_integration_sync_resource_config` in a resync event context so integration sync tests work after incremental sync started reading `event.event_type` in `_get_resource_raw_results`.
+- Wrap `get_raw_result_on_integration_sync_resource_config` in an event context (default `RESYNC`, optional `event_type` for `INCREMENTAL_RESYNC`) so integration sync tests work after incremental sync started reading `event.event_type` in `_get_resource_raw_results`.
 
 ## 0.46.0 (2026-07-23)
 
