@@ -24,8 +24,11 @@ def build_webhook_url(run_id: str) -> str | None:
     return f"{base_url.rstrip('/')}/integration{path}"
 
 
-def build_webhook_config(url: str, secret: str) -> dict[str, str]:
-    return {"url": url, "secret": secret}
+def build_webhook_config(url: str, secret: str | None = None) -> dict[str, str]:
+    config: dict[str, str] = {"url": url}
+    if secret is not None:
+        config["secret"] = secret
+    return config
 
 
 def build_agent_link(console_host: str, agent_id: str) -> str:

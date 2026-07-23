@@ -20,6 +20,11 @@ configurations:
     required: true
     sensitive: true
     description: Cursor API key used to authenticate with the Cloud Agents API. Generate one from Cursor Dashboard -> API Keys.
+  - name: webhookSigningSecret
+    type: string
+    required: false
+    sensitive: true
+    description: Optional secret used to sign and verify Cursor v0 agent status webhooks. When set, the integration derives a per-run signing secret and validates the X-Webhook-Signature header on incoming webhooks. When unset, webhook signature verification is skipped. Generate a random string (for example with openssl rand -hex 32) and store it as an organization secret during installation.
   - name: cursorApiHost
     type: url
     required: false
@@ -83,7 +88,7 @@ actions:
       - name: reportCompletion
         title: Report completion
         type: boolean
-        description: 'Only applies when apiVersion is v0. When true, attaches a webhook owned by the integration and keeps the Port run IN_PROGRESS until the agent reaches a terminal status (requires Ocean to have a reachable public URL - OCEAN__BASE_URL; the webhook secret is managed automatically). When true, config.webhook is rejected. When false on v0, launches without an integration webhook (you may set config.webhook yourself) and completes the Port run immediately after launch. Rejected when apiVersion is v1 (v1 has no webhooks).'
+        description: 'Only applies when apiVersion is v0. When true, attaches a webhook owned by the integration and keeps the Port run IN_PROGRESS until the agent reaches a terminal status (requires Ocean to have a reachable public URL - OCEAN__BASE_URL). When true, config.webhook is rejected. When false on v0, launches without an integration webhook (you may set config.webhook yourself) and completes the Port run immediately after launch. Rejected when apiVersion is v1 (v1 has no webhooks).'
         default: false
         required: false
       - name: config

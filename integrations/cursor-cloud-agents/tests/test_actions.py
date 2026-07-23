@@ -47,7 +47,9 @@ def _build_executor(executor_cls: type[T], client_mock: MagicMock) -> T:
 def _build_mock_ocean(*, base_url: str | None = "https://cca.example.com") -> MagicMock:
     mock_ocean = MagicMock()
     mock_ocean.app.base_url = base_url
-    mock_ocean.config.port.client_secret = "test-port-client-secret"
+    mock_ocean.integration_config = {
+        "webhook_signing_secret": "test-webhook-signing-secret",
+    }
     mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
@@ -287,6 +289,48 @@ async def test_create_agent_executor_v0_tracked_requires_base_url() -> None:
             await executor.execute(run)
     finally:
         _stop(patches)
+
+
+@pytest.mark.asyncio
+async def test_create_agent_executor_v0_tracked_works_without_webhook_signing_secret() -> (
+    None
+):
+    client_mock = MagicMock()
+    client_mock.get_console_host.return_value = "https://cursor.com"
+    client_mock.send_api_request = AsyncMock(return_value=_V0_LAUNCH_AGENT)
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.output = {}
+    run.execution_properties = {
+        "prompt": "Add a README",
+        "repository": "https://github.com/org/repo",
+        "apiVersion": "v0",
+        "reportCompletion": True,
+    }
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.integration_config = {}
+    mock_ocean.port_client.update_run_started = AsyncMock()
+    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
+    patches.append(
+        patch(
+            "actions.create_agent_executor.list_first_runs_page",
+            AsyncMock(return_value=[{"id": "run-1", "status": "CREATING"}]),
+        )
+    )
+    _apply(patches)
+    try:
+        await executor.execute(run)
+    finally:
+        _stop(patches)
+
+    launch_body = client_mock.send_api_request.await_args.kwargs["json_body"]
+    assert launch_body["webhook"]["url"] == (
+        "https://cca.example.com/integration/webhook/run_1"
+    )
+    assert "secret" not in launch_body["webhook"]
 
 
 @pytest.mark.asyncio

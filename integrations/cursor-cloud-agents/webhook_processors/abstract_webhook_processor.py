@@ -7,7 +7,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
 )
 
-from core.webhook_signing import derive_webhook_secret, verify_hmac_signature
+from core.webhook_signing import (
+    derive_webhook_secret,
+    get_webhook_signing_secret,
+    verify_hmac_signature,
+)
 from webhook_processors.utils import extract_port_run_id_from_request
 
 SIGNATURE_HEADER = "x-webhook-signature"
@@ -16,14 +20,21 @@ SIGNATURE_HEADER = "x-webhook-signature"
 class AbstractCursorWebhookProcessor(AbstractWebhookProcessor):
     """Base webhook processor for Cursor Cloud Agents v0 status callbacks.
 
-    Cursor signs the raw JSON body with HMAC-SHA256 using the webhook secret
-    configured at agent-launch time, sent as `X-Webhook-Signature: sha256=<hex>`.
-    The secret needs no customer configuration - it's derived from the Port
-    run id embedded in the callback URL path (see `core.webhook_signing`),
-    so verification is always enforced, never skipped.
+    When `webhookSigningSecret` is configured, Cursor's `X-Webhook-Signature`
+    header is verified using a per-run secret derived from that installation
+    secret, the org id, and the Port run id embedded in the callback URL path
+    (see `core.webhook_signing`). When it is not configured, signature
+    verification is skipped.
     """
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        if get_webhook_signing_secret() is None:
+            logger.warning(
+                "Skipping webhook signature verification because "
+                "webhookSigningSecret is not configured"
+            )
+            return True
+
         request = self.event._original_request
         if request is None:
             logger.error("Cannot verify webhook signature without the original request")
@@ -50,6 +61,8 @@ class AbstractCursorWebhookProcessor(AbstractWebhookProcessor):
 
         raw_body = (await request.body()).decode("utf-8")
         secret = await derive_webhook_secret(run_id)
+        if secret is None:
+            return True
         return verify_hmac_signature(secret, raw_body, signature)
 
     async def validate_payload(self, payload: EventPayload) -> bool:

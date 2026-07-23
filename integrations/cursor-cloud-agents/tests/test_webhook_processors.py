@@ -365,10 +365,13 @@ async def test_authenticate_accepts_valid_signature_derived_from_run_id() -> Non
     raw_body = '{"id":"bc-1","status":"FINISHED"}'
 
     mock_ocean = MagicMock()
-    mock_ocean.config.port.client_secret = "test-port-client-secret"
+    mock_ocean.integration_config = {
+        "webhook_signing_secret": "test-webhook-signing-secret",
+    }
     mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")
     with patch("core.webhook_signing.ocean", mock_ocean):
         secret = await derive_webhook_secret("run_1")
+        assert secret is not None
         request = _build_request(run_id="run_1", body=raw_body.encode())
         processor.event._original_request = request
 
@@ -382,10 +385,13 @@ async def test_authenticate_rejects_signature_for_wrong_run_id() -> None:
     raw_body = '{"id":"bc-1","status":"FINISHED"}'
 
     mock_ocean = MagicMock()
-    mock_ocean.config.port.client_secret = "test-port-client-secret"
+    mock_ocean.integration_config = {
+        "webhook_signing_secret": "test-webhook-signing-secret",
+    }
     mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")
     with patch("core.webhook_signing.ocean", mock_ocean):
         secret = await derive_webhook_secret("run_1")
+        assert secret is not None
         request = _build_request(run_id="run_2", body=raw_body.encode())
         processor.event._original_request = request
 
@@ -394,15 +400,35 @@ async def test_authenticate_rejects_signature_for_wrong_run_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_authenticate_skips_verification_when_webhook_signing_secret_not_configured() -> (
+    None
+):
+    processor = _build_processor()
+    raw_body = '{"id":"bc-1","status":"FINISHED"}'
+    request = _build_request(run_id="run_1", body=raw_body.encode())
+    processor.event._original_request = request
+
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {}
+    with patch("core.webhook_signing.ocean", mock_ocean):
+        assert await processor.authenticate({}, {}) is True
+
+
+@pytest.mark.asyncio
 async def test_authenticate_rejects_missing_run_id() -> None:
     processor = _build_processor()
     request = _build_request(run_id=None, body=b"{}")
     processor.event._original_request = request
 
-    assert (
-        await processor.authenticate({}, {"X-Webhook-Signature": "sha256=deadbeef"})
-        is False
-    )
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {
+        "webhook_signing_secret": "test-webhook-signing-secret",
+    }
+    with patch("core.webhook_signing.ocean", mock_ocean):
+        assert (
+            await processor.authenticate({}, {"X-Webhook-Signature": "sha256=deadbeef"})
+            is False
+        )
 
 
 @pytest.mark.asyncio
@@ -411,7 +437,12 @@ async def test_authenticate_rejects_missing_signature_header() -> None:
     request = _build_request(run_id="run_1", body=b"{}")
     processor.event._original_request = request
 
-    assert await processor.authenticate({}, {}) is False
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {
+        "webhook_signing_secret": "test-webhook-signing-secret",
+    }
+    with patch("core.webhook_signing.ocean", mock_ocean):
+        assert await processor.authenticate({}, {}) is False
 
 
 def test_get_processor_type_is_action() -> None:
