@@ -67,7 +67,7 @@ async def request_handler(
         )
         logger.bind(method=request.method).log(log_level, f"Request to {path} started")
         response = await _handle_silently(call_next, request)
-
+        print("hadar")
         end_time = get_time(seconds_precision=False)
         time_elapsed = round(end_time - start_time, 5)
         response.headers["X-Request-ID"] = request_id
