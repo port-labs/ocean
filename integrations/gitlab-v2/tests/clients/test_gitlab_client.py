@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -1371,6 +1372,43 @@ class TestGitLabClient:
             mock_get_resource_enrichment.assert_called_once_with(
                 mock_projects, "repository/tags", 5
             )
+
+    async def test_get_tags_with_incremental_cursor_stops_at_old_tags(
+        self, client: GitLabClient
+    ) -> None:
+        mock_projects = [
+            {"id": 1, "path_with_namespace": "test/project"},
+        ]
+        pages = [
+            [
+                {"name": "v3", "created_at": "2026-06-10T00:00:00Z"},
+                {"name": "v2", "created_at": "2026-06-05T00:00:00Z"},
+            ],
+            [
+                {"name": "v1", "created_at": "2026-05-01T00:00:00Z"},
+            ],
+        ]
+        cursor = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator(pages),
+        ) as mock_paginated:
+            results = []
+            async for batch in client.get_tags(
+                mock_projects,
+                max_concurrent=1,
+                incremental_cursor=cursor,
+            ):
+                results.extend(batch)
+
+            assert [tag["name"] for tag in results] == ["v3", "v2"]
+            assert all(
+                tag["__project"]["path_with_namespace"] == "test/project"
+                for tag in results
+            )
+            mock_paginated.assert_called_once_with("1", "repository/tags")
 
     async def test_get_releases(self, client: GitLabClient) -> None:
         """Test fetching releases for projects with enrichment"""

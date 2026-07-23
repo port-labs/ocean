@@ -1,21 +1,28 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeAlias
 
-from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    ServerSideTimestampStrategy,
+)
 
-GitlabQueryParams = dict[str, Any]
+GitlabQueryParams: TypeAlias = dict[str, Any]
+GitlabResource: TypeAlias = dict[str, Any]
 
 GITLAB_INCREMENTAL = ServerSideTimestampStrategy(
     param_key="updated_after",
     date_format="%Y-%m-%dT%H:%M:%SZ",
 )
 
+# Tags are returned newest-first by default (order_by=updated, sort=desc).
+# Lightweight tags have created_at=null; we fall back to commit.committed_date.
+TAG_INCREMENTAL = ClientSideCutoffStrategy(stop_field="created_at")
 
 def with_incremental_cursor(
     params: GitlabQueryParams,
     cursor: datetime | None,
 ) -> GitlabQueryParams:
-    """Inject ``updated_after`` from the Ocean incremental cursor when present."""
+    """Inject ``updated_after`` when an incremental cursor is active."""
     return GITLAB_INCREMENTAL.merge_params(params, cursor)
 
 
@@ -25,11 +32,10 @@ def with_project_incremental_cursor(
     *,
     has_search_queries: bool,
 ) -> GitlabQueryParams:
-    """Apply project incremental filters.
+    """Apply project-specific incremental filters.
 
     GitLab requires ``order_by=updated_at`` alongside ``updated_after``.
-    Search-query paths cannot use the list-endpoint incremental filter, so the
-    cursor is ignored when ``has_search_queries`` is true.
+    Search-query paths bypass the list-endpoint filter entirely.
     """
     if cursor is None or has_search_queries:
         return params
@@ -46,8 +52,8 @@ def build_merge_request_params(
 ) -> GitlabQueryParams:
     """Build MR list params for a single state.
 
-    On incremental sync the cursor applies to every state (including ``opened``).
-    On full resync, only non-``opened`` states use the selector lookback window.
+    Incremental: cursor applies to every state (including ``opened``).
+    Full resync: only non-``opened`` states use the selector lookback window.
     """
     params: GitlabQueryParams = {"state": state}
     if cursor is not None:
@@ -55,3 +61,13 @@ def build_merge_request_params(
     if state != "opened":
         params["updated_after"] = lookback_updated_after
     return params
+
+
+def ensure_tag_created_at(tag: GitlabResource) -> GitlabResource:
+    """Backfill ``created_at`` from the commit date for lightweight tags."""
+    if tag.get("created_at"):
+        return tag
+    committed_date = (tag.get("commit") or {}).get("committed_date")
+    if not committed_date:
+        return tag
+    return {**tag, "created_at": committed_date}

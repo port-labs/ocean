@@ -1,25 +1,31 @@
 import asyncio
+from datetime import datetime
 from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
+from urllib.parse import quote
 
 import anyio
 import httpx
 from loguru import logger
+from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
-from urllib.parse import quote
 from wcmatch import glob
 
+from gitlab.clients.rate_limiter.utils import RateLimitInfo
+from gitlab.clients.rest_client import RestClient
+from gitlab.helpers.incremental import (
+    GitlabResource,
+    TAG_INCREMENTAL,
+    ensure_tag_created_at,
+)
 from gitlab.helpers.utils import (
     parse_file_content,
     SearchQuery,
     is_bot_member,
 )
-
-from gitlab.clients.rate_limiter.utils import RateLimitInfo
-from gitlab.clients.rest_client import RestClient
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
@@ -247,22 +253,57 @@ class GitLabClient:
             if active_batch:
                 yield active_batch
 
+    async def _get_project_tags_incremental(
+        self,
+        project: GitlabResource,
+        cursor: datetime,
+    ) -> AsyncIterator[list[GitlabResource]]:
+        """Paginate a single project's tags with client-side cutoff."""
+        project_id = str(project["id"])
+        project_path = project["path_with_namespace"]
+
+        async def _pages() -> AsyncIterator[list[GitlabResource]]:
+            async for page in self.rest.get_paginated_project_resource(
+                project_id, "repository/tags"
+            ):
+                yield [ensure_tag_created_at(tag) for tag in page]
+
+        async for batch in paginate_with_strategy(
+            _pages(), cursor=cursor, strategy=TAG_INCREMENTAL
+        ):
+            yield [self.enrich_with_project_path(tag, project_path) for tag in batch]
+
     async def get_tags(
         self,
-        projects_batch: list[dict[str, Any]],
+        projects_batch: list[GitlabResource],
         max_concurrent: int = 10,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
+        incremental_cursor: datetime | None = None,
+    ) -> AsyncIterator[list[GitlabResource]]:
         """Fetch tags for each project in the batch.
 
-        Args:
-            projects_batch: List of projects to fetch tags for
-            max_concurrent: Maximum number of concurrent requests
+        When *incremental_cursor* is set, uses T2 client-side cutoff
+        (newest-first pagination stops once tags predate the cursor).
         """
-        async for tags_batch in self.get_projects_resource_with_enrichment(
-            projects_batch, "repository/tags", max_concurrent
-        ):
-            logger.info(f"Received batch with {len(tags_batch)} tags")
-            yield tags_batch
+        if incremental_cursor is None:
+            async for tags_batch in self.get_projects_resource_with_enrichment(
+                projects_batch, "repository/tags", max_concurrent
+            ):
+                logger.info(f"Received batch with {len(tags_batch)} tags")
+                yield tags_batch
+            return
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(self._get_project_tags_incremental, project, incremental_cursor),
+            )
+            for project in projects_batch
+        ]
+        async for tags_batch in stream_async_iterators_tasks(*tasks):
+            if tags_batch:
+                logger.info(f"Received batch with {len(tags_batch)} tags")
+                yield tags_batch
 
     async def get_releases(
         self,

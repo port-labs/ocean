@@ -4,8 +4,10 @@ import pytest
 
 from gitlab.helpers.incremental import (
     GITLAB_INCREMENTAL,
+    TAG_INCREMENTAL,
     GitlabQueryParams,
     build_merge_request_params,
+    ensure_tag_created_at,
     with_incremental_cursor,
     with_project_incremental_cursor,
 )
@@ -100,3 +102,58 @@ class TestMergeRequestParams:
             "state": "closed",
             "updated_after": LOOKBACK,
         }
+
+
+class TestTagIncremental:
+    """T2 client-side cutoff for tags (newest-first, stop on ``created_at``)."""
+
+    def test_build_params_is_empty(self, cursor: datetime) -> None:
+        """No extra query params — API already returns newest-first."""
+        assert TAG_INCREMENTAL.build_params(cursor) == {}
+
+    def test_filter_page_keeps_only_newer_tags(self, cursor: datetime) -> None:
+        page = [
+            {"name": "v2", "created_at": "2026-06-02T00:00:00Z"},
+            {"name": "v1", "created_at": "2026-05-01T00:00:00Z"},
+        ]
+        assert [t["name"] for t in TAG_INCREMENTAL.filter_page(page, cursor)] == ["v2"]
+
+    def test_should_break_when_page_contains_older_tag(self, cursor: datetime) -> None:
+        page = [
+            {"name": "v2", "created_at": "2026-06-02T00:00:00Z"},
+            {"name": "v1", "created_at": "2026-05-01T00:00:00Z"},
+        ]
+        assert TAG_INCREMENTAL.should_break_pagination(page, cursor) is True
+
+    def test_should_not_break_when_all_newer(self, cursor: datetime) -> None:
+        page = [
+            {"name": "v3", "created_at": "2026-07-01T00:00:00Z"},
+            {"name": "v2", "created_at": "2026-06-15T00:00:00Z"},
+        ]
+        assert TAG_INCREMENTAL.should_break_pagination(page, cursor) is False
+
+
+class TestEnsureTagCreatedAt:
+    """Backfill ``created_at`` for lightweight tags."""
+
+    def test_keeps_existing_created_at(self) -> None:
+        tag = {"name": "v1", "created_at": "2026-06-01T00:00:00Z"}
+        assert ensure_tag_created_at(tag) is tag
+
+    def test_falls_back_to_commit_date(self) -> None:
+        tag = {
+            "name": "v1",
+            "created_at": None,
+            "commit": {"committed_date": "2026-05-15T10:00:00Z"},
+        }
+        result = ensure_tag_created_at(tag)
+        assert result["created_at"] == "2026-05-15T10:00:00Z"
+        assert result is not tag  # returns a copy
+
+    def test_noop_when_no_dates_available(self) -> None:
+        tag = {"name": "v1"}
+        assert ensure_tag_created_at(tag) is tag
+
+    def test_noop_when_commit_has_no_date(self) -> None:
+        tag = {"name": "v1", "created_at": None, "commit": {}}
+        assert ensure_tag_created_at(tag) is tag

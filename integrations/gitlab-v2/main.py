@@ -18,6 +18,7 @@ from gitlab.clients.utils import (
     build_project_params,
 )
 from gitlab.helpers.incremental import (
+    GitlabQueryParams,
     build_merge_request_params,
     with_incremental_cursor,
     with_project_incremental_cursor,
@@ -200,7 +201,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             selector.updated_after_datetime if selector.updated_after else None
         ),
     )
-    base_params: dict[str, Any] = {
+    base_params: GitlabQueryParams = {
         key: value for key, value in options.items() if value is not None
     }
     params = with_incremental_cursor(base_params, active_incremental_cursor())
@@ -313,11 +314,13 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield merge_requests_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.TAG)
 @ocean.on_resync(ObjectKind.TAG)
 async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(TagResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
+    cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
         params=build_project_params(
@@ -329,7 +332,9 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Processing batch of {len(projects_batch)} projects for tags")
 
         async for tags_batch in client.get_tags(
-            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            incremental_cursor=cursor,
         ):
             yield tags_batch
 
