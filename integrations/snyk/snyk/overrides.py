@@ -13,7 +13,7 @@ class GenerateQueryParamMixin(BaseModel):
     def generate_query_params(self) -> dict[str, Any]:
         params = self.dict(exclude_none=True, exclude_unset=True)
         return {
-            key: ",".join(map(str, value)) if isinstance(value, list) else value
+            key: ",".join(value) if isinstance(value, list) else value
             for key, value in params.items()
             if not isinstance(value, list) or value
         }

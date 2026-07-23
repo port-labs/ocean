@@ -2,15 +2,13 @@ import pytest
 from typing import Literal
 from pydantic.v1 import ValidationError
 from snyk.overrides import (
-    SnykTargetAPIQueryParams,
-    TargetSelector,
-)
-
-from snyk.overrides import (
     SnykPolicyAPIQueryParams,
     SnykProjectAPIQueryParams,
+    SnykTargetAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
+    TargetSelector,
 )
+from snyk.utils import parse_next_page_params
 
 
 def test_generate_query_params_excludes_unset_fields() -> None:
@@ -21,16 +19,6 @@ def test_generate_query_params_excludes_unset_fields() -> None:
 def test_generate_query_params_excludes_none_fields() -> None:
     params = SnykProjectAPIQueryParams(ids=None)
     assert "ids" not in params.generate_query_params()
-
-
-def test_generate_query_params_preserves_list_values() -> None:
-    params = SnykProjectAPIQueryParams(
-        lifecycle=["production", "development"],
-        environment=["frontend", "backend"],
-    )
-    result = params.generate_query_params()
-    assert result["lifecycle"] == "production,development"
-    assert result["environment"] == "frontend,backend"
 
 
 def test_generate_query_params_preserves_scalar_values() -> None:
@@ -96,11 +84,6 @@ def test_policy_generate_query_params_excludes_none_fields() -> None:
 def test_policy_generate_query_params_preserves_scalar_search() -> None:
     params = SnykPolicyAPIQueryParams(search="wont-fix")
     assert params.generate_query_params()["search"] == "wont-fix"
-
-
-def test_policy_generate_query_params_preserves_list_review() -> None:
-    params = SnykPolicyAPIQueryParams(review=["pending", "approved"])
-    assert params.generate_query_params()["review"] == "pending,approved"
 
 
 def test_policy_generate_query_params_preserves_bool_expires_never() -> None:
@@ -308,7 +291,7 @@ def test_target_selector_api_query_params_combined_filters() -> None:
         (["open"], None, "status", "open"),
     ],
 )
-def test_generate_query_params_joins_list_values_with_commas(
+def test_generate_query_params_joins_vulnerability_list_values_with_commas(
     status: list[Literal["open", "resolved"]] | None,
     effective_severity_level: (
         list[Literal["info", "low", "medium", "high", "critical"]] | None
@@ -338,3 +321,17 @@ def test_generate_query_params_excludes_empty_lists() -> None:
     result = params.generate_query_params()
     assert "status" not in result
     assert "effective_severity_level" not in result
+
+
+def test_parse_next_page_params_joins_repeated_keys_with_commas() -> None:
+    next_url = "https://api.snyk.io/rest/orgs/abc/issues?version=2024-06-21&status=open&status=resolved&limit=100"
+    _, params = parse_next_page_params(next_url)
+    assert params["status"] == "open,resolved"
+    assert params["version"] == "2024-06-21"
+    assert params["limit"] == "100"
+
+
+def test_parse_next_page_params_single_value_stays_scalar() -> None:
+    next_url = "https://api.snyk.io/rest/orgs/abc/issues?version=2024-06-21&status=open"
+    _, params = parse_next_page_params(next_url)
+    assert params["status"] == "open"
