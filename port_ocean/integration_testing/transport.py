@@ -69,7 +69,18 @@ class Route:
         elif isinstance(self.url_pattern, re.Pattern):
             return bool(self.url_pattern.search(url_str))
         else:
-            return self.url_pattern in url_str
+            # Substring match. If the pattern ends with "/", treat it as a
+            # prefix (matches anything below that path). Otherwise, require a
+            # path boundary after the match — end of URL, query ("?"), or
+            # fragment ("#") — so "/users/foo" doesn't swallow
+            # "/users/foo/installation".
+            idx = url_str.find(self.url_pattern)
+            if idx == -1:
+                return False
+            if self.url_pattern.endswith("/"):
+                return True
+            end = idx + len(self.url_pattern)
+            return end == len(url_str) or url_str[end] in "?#"
 
     def build_response(self, request: httpx.Request) -> httpx.Response:
         self._call_count += 1
