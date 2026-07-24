@@ -49,7 +49,7 @@ def cursor() -> datetime:
         ),
         (
             REPOSITORY_INCREMENTAL,
-            {"sort": "created", "direction": "desc"},
+            {"sort": "updated", "direction": "desc"},
         ),
         (
             OPEN_PULL_REQUEST_INCREMENTAL_REST,

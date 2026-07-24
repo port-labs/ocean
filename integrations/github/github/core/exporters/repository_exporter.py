@@ -22,8 +22,8 @@ from port_ocean.core.incremental.strategies import (
 )
 
 REPOSITORY_INCREMENTAL = ClientSideCutoffStrategy(
-    stop_field="created_at",
-    query_params={"sort": "created", "direction": "desc"},
+    stop_field="updated_at",
+    query_params={"sort": "updated", "direction": "desc"},
 )
 
 if TYPE_CHECKING:
