@@ -1,5 +1,6 @@
 import asyncio
 import copy
+from datetime import datetime
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -84,7 +85,8 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         included_relations = options_dict.pop("included_relations", None)
 
         async for repos in self._fetch_repositories(
-            cast(ListRepositoryOptions, options_dict)
+            cast(ListRepositoryOptions, options_dict),
+            incremental_cursor=active_incremental_cursor(),
         ):
             if not included_relations:
                 yield repos
@@ -110,7 +112,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
 
     @cache_iterator_result()
     async def _fetch_repositories(
-        self, options: ListRepositoryOptions
+        self,
+        options: ListRepositoryOptions,
+        *,
+        incremental_cursor: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
         organization_type = params.pop("organization_type")
@@ -128,7 +133,8 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         strategy = self._search_strategy if use_search_api else self._list_strategy
 
         async for batch in strategy(
-            organization, organization_type, params, search_params
+            organization, organization_type, params, search_params,
+            incremental_cursor=incremental_cursor,
         ):
             yield batch
 
@@ -138,8 +144,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization_type: str,
         params: dict[str, Any],
         _: Optional[RepoSearchParams],
+        *,
+        incremental_cursor: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        incremental_cursor = active_incremental_cursor()
         url, final_params = self._build_repos_url_and_params(
             organization,
             organization_type,
@@ -162,8 +169,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         _: str,
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
+        *,
+        incremental_cursor: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        incremental_cursor = active_incremental_cursor()
         repository_type = params.pop("type")
         forced_qualifiers = (
             ["fork:true", f"is:{repository_type}"] if search_params is None else []
