@@ -16,6 +16,7 @@ from github.core.options import (
     SingleRepositoryOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -138,7 +139,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         _: Optional[RepoSearchParams],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        incremental_cursor = params.pop("incremental_cursor", None)
+        incremental_cursor = active_incremental_cursor()
         url, final_params = self._build_repos_url_and_params(
             organization,
             organization_type,
@@ -162,7 +163,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        incremental_cursor = params.pop("incremental_cursor", None)
+        incremental_cursor = active_incremental_cursor()
         repository_type = params.pop("type")
         forced_qualifiers = (
             ["fork:true", f"is:{repository_type}"] if search_params is None else []

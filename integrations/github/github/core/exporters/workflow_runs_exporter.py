@@ -1,6 +1,7 @@
 from typing import Any, cast, Optional
 from loguru import logger
 
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.rest_client import GithubRestClient
@@ -56,7 +57,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = params.pop("incremental_cursor", None)
+        incremental_cursor = active_incremental_cursor()
         workflow_id = params.pop("workflow_id")
         max_runs = params.pop("max_runs")
         request_params = WORKFLOW_RUN_INCREMENTAL.merge_params(

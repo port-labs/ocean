@@ -9,6 +9,7 @@ from github.core.exporters.pull_request_exporter import (
 from github.clients.http.rest_client import GithubRestClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from port_ocean.context.event import event_context
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from github.core.options import (
     SinglePullRequestOptions,
     ListPullRequestOptions,
@@ -150,11 +151,12 @@ class TestPullRequestExporter:
                     repo_name="repo1",
                     states=["open"],
                     max_results=10,
-                    incremental_cursor=cursor,
                 )
-                results = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
+                with with_active_incremental_cursor(cursor):
+                    results = [
+                        batch
+                        async for batch in exporter.get_paginated_resources(options)
+                    ]
 
             assert len(results) == 1
             assert len(results[0]) == 1

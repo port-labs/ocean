@@ -17,6 +17,7 @@ from github.helpers.utils import (
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -53,7 +54,7 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_name, organization, params = parse_github_options(dict(options))
         repo = cast(str, repo_name)
-        incremental_cursor = params.pop("incremental_cursor", None)
+        incremental_cursor = active_incremental_cursor()
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo}/deployments"
 
