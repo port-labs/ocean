@@ -272,7 +272,7 @@ class TestSyncIncrementalDspLifecycle:
 
         lifecycle_client.notify_resync_finished.assert_awaited_once()
         finished_kwargs = lifecycle_client.notify_resync_finished.await_args.kwargs
-        assert finished_kwargs["sync_type"] == SyncType.INCREMENTAL_RESYNC.value
+        assert "sync_type" not in finished_kwargs
         lifecycle_client.notify_resync_failed.assert_not_awaited()
         mock_ocean.metrics.clear_sync_context.assert_called()
 
@@ -299,7 +299,7 @@ class TestSyncIncrementalDspLifecycle:
         lifecycle_client.notify_resync_started.assert_awaited_once()
         lifecycle_client.notify_resync_failed.assert_awaited_once()
         failed_kwargs = lifecycle_client.notify_resync_failed.await_args.kwargs
-        assert failed_kwargs["sync_type"] == SyncType.INCREMENTAL_RESYNC.value
+        assert "sync_type" not in failed_kwargs
         lifecycle_client.notify_resync_finished.assert_not_awaited()
 
     async def test_skips_lifecycle_when_dsp_disabled(

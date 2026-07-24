@@ -245,7 +245,6 @@ class TestNotifyResyncFinished:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
-            sync_type=SyncType.FULL_SYNC.value,
         )
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
@@ -253,7 +252,6 @@ class TestNotifyResyncFinished:
         assert body["status"] == "finished"
         assert body["integration_id"] == "i1"
         assert body["integration_type"] == "github"
-        assert body["sync_type"] == "full_sync"
         assert "integration_version" in body
         assert "ocean_version" in body
 
@@ -267,12 +265,11 @@ class TestNotifyResyncFailed:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
-            sync_type=SyncType.FULL_SYNC.value,
         )
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
         body = mock_post.call_args[1]["json"]
-        assert body == {"status": "failed", "sync_type": "full_sync"}
+        assert body == {"status": "failed"}
 
     @pytest.mark.asyncio
     async def test_swallows_exception(
@@ -283,7 +280,6 @@ class TestNotifyResyncFailed:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
-            sync_type=SyncType.FULL_SYNC.value,
         )
 
 
@@ -296,12 +292,11 @@ class TestNotifyResyncAborted:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
-            sync_type=SyncType.FULL_SYNC.value,
         )
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
         body = mock_post.call_args[1]["json"]
-        assert body == {"status": "aborted", "sync_type": "full_sync"}
+        assert body == {"status": "aborted"}
 
     @pytest.mark.asyncio
     async def test_logs_warning_on_error_response(
@@ -318,7 +313,6 @@ class TestNotifyResyncAborted:
                 resync_id="r1",
                 integration_id="i1",
                 integration_type="github",
-                sync_type=SyncType.FULL_SYNC.value,
             )
 
         mock_logger.warning.assert_called_once()
@@ -339,7 +333,6 @@ class TestNotifyResyncAborted:
                 resync_id="r1",
                 integration_id="i1",
                 integration_type="github",
-                sync_type=SyncType.FULL_SYNC.value,
             )
 
         logged_body = mock_logger.warning.call_args[1]["response_body"]
@@ -431,7 +424,6 @@ class TestLifecycleClientIntegration:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
-            sync_type=SyncType.FULL_SYNC.value,
         )
         assert mock_post.call_count == 2
 
@@ -439,7 +431,6 @@ class TestLifecycleClientIntegration:
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
-            sync_type=SyncType.FULL_SYNC.value,
         )
         assert mock_post.call_count == 3
 

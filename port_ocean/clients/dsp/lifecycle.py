@@ -108,7 +108,6 @@ class LifecycleClient:
         resync_id: str,
         integration_id: str,
         integration_type: str,
-        sync_type: str,
     ) -> None:
         body = self._build_body(
             "finished",
@@ -116,7 +115,6 @@ class LifecycleClient:
             integration_type=integration_type,
             integration_version=__integration_version__,
             ocean_version=__version__,
-            sync_type=sync_type,
         )
         logger.info(f"Notifying lifecycle API resync finished, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
@@ -128,9 +126,8 @@ class LifecycleClient:
         resync_id: str,
         integration_id: str,
         integration_type: str,
-        sync_type: str,
     ) -> None:
-        body = self._build_body("failed", sync_type=sync_type)
+        body = self._build_body("failed")
         logger.info(f"Notifying lifecycle API resync failed, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
             await self._resync_url(resync_id), json=body
@@ -141,9 +138,8 @@ class LifecycleClient:
         resync_id: str,
         integration_id: str,
         integration_type: str,
-        sync_type: str,
     ) -> None:
-        body = self._build_body("aborted", sync_type=sync_type)
+        body = self._build_body("aborted")
         logger.info(f"Notifying lifecycle API resync aborted, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
             await self._resync_url(resync_id), json=body

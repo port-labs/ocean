@@ -214,7 +214,6 @@ class Metrics:
         self._installation_type: str = "Unknown"
         self._execution_mode: str = "Unknown"
         self._event_id = ""
-        self._sync_type = ""
         self.sync_state = SyncState.PENDING
 
     @property
@@ -225,17 +224,8 @@ class Metrics:
     def event_id(self, value: str) -> None:
         self._event_id = value
 
-    @property
-    def sync_type(self) -> str:
-        return self._sync_type
-
-    @sync_type.setter
-    def sync_type(self, value: str) -> None:
-        self._sync_type = value
-
     def clear_sync_context(self) -> None:
         self._event_id = ""
-        self._sync_type = ""
 
     @property
     def sync_state(self) -> str:
