@@ -10,7 +10,7 @@ import multiprocessing
 import httpx
 import json
 from loguru import logger
-from port_ocean.clients.dsp.lifecycle import GranularityType
+from port_ocean.clients.dsp.lifecycle import GranularityType, SyncType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.metric_resource import metric_resource_context
@@ -880,7 +880,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError:
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
-                if not is_incremental and dsp_enabled and resync_id:
+                if dsp_enabled and resync_id:
                     await ocean.app.lifecycle_client.notify_aborted(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
@@ -1260,6 +1260,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with event_context(
             EventType.INCREMENTAL_RESYNC, trigger_type=trigger_type
         ):
+            ocean.metrics.event_id = event.id
+            ocean.metrics.sync_type = SyncType.INCREMENTAL_RESYNC.value
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
@@ -1290,6 +1292,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_id=ocean.config.integration.identifier,
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
+                    sync_type=ocean.metrics.sync_type,
+                    kind_identifiers=[
+                        f"{resource_cfg.kind}-{index}"
+                        for index, resource_cfg in incremental_resources
+                    ],
                 )
 
             for index, resource_cfg in incremental_resources:
@@ -1320,6 +1327,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
                             integration_type=ocean.config.integration.type,
+                            sync_type=ocean.metrics.sync_type,
                         )
                     return
 
@@ -1328,6 +1336,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     resync_id=event.id,
                     integration_id=ocean.config.integration.identifier,
                     integration_type=ocean.config.integration.type,
+                    sync_type=ocean.metrics.sync_type,
                 )
 
             logger.info(
@@ -1362,6 +1371,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             attributes={"resync_start_time": datetime.now(timezone.utc)},
         ):
             ocean.metrics.event_id = event.id
+            ocean.metrics.sync_type = SyncType.FULL_SYNC.value
 
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache
@@ -1415,6 +1425,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
                     mapping=app_config.to_dsp_lifecycle_mapping(),
+                    sync_type=ocean.metrics.sync_type,
                 )
 
             try:
@@ -1461,6 +1472,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
+                        sync_type=ocean.metrics.sync_type,
                     )
                 raise
             except Exception as e:
@@ -1473,6 +1485,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
+                        sync_type=ocean.metrics.sync_type,
                     )
                 raise
             else:
@@ -1519,6 +1532,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
+                        sync_type=ocean.metrics.sync_type,
                     )
                     return True
 
@@ -1553,12 +1567,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
                             integration_type=ocean.config.integration.type,
+                            sync_type=ocean.metrics.sync_type,
                         )
                     else:
                         await ocean.app.lifecycle_client.notify_resync_failed(
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
                             integration_type=ocean.config.integration.type,
+                            sync_type=ocean.metrics.sync_type,
                         )
 
                 return success

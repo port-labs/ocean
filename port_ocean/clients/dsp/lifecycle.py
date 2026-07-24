@@ -21,6 +21,11 @@ class GranularityType(Enum):
     RECONCILIATION = "RECONCILIATION"
 
 
+class SyncType(Enum):
+    FULL_SYNC = "full_sync"
+    INCREMENTAL_RESYNC = "incremental_resync"
+
+
 class LifecycleClient:
     """Client for the integration-life-cycle service."""
 
@@ -73,8 +78,10 @@ class LifecycleClient:
         resync_id: str,
         integration_id: str,
         integration_type: str,
+        sync_type: str,
         started_at: datetime | None = None,
         mapping: dict[str, Any] | None = None,
+        kind_identifiers: list[str] | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
         extra = {"mapping": mapping} if mapping else {}
@@ -83,17 +90,25 @@ class LifecycleClient:
             integration_id=integration_id,
             integration_type=integration_type,
             integration_version=__integration_version__,
+            sync_type=sync_type,
             ocean_version=__version__,
             started_at=started_at.isoformat(),
             **extra,
         )
+        if kind_identifiers is not None:
+            body["kind_identifiers"] = kind_identifiers
+
         logger.info(f"Notifying lifecycle API resync started, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
             await self._resync_url(resync_id), json=body
         )
 
     async def notify_resync_finished(
-        self, resync_id: str, integration_id: str, integration_type: str
+        self,
+        resync_id: str,
+        integration_id: str,
+        integration_type: str,
+        sync_type: str,
     ) -> None:
         body = self._build_body(
             "finished",
@@ -101,6 +116,7 @@ class LifecycleClient:
             integration_type=integration_type,
             integration_version=__integration_version__,
             ocean_version=__version__,
+            sync_type=sync_type,
         )
         logger.info(f"Notifying lifecycle API resync finished, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
@@ -108,18 +124,26 @@ class LifecycleClient:
         )
 
     async def notify_resync_failed(
-        self, resync_id: str, integration_id: str, integration_type: str
+        self,
+        resync_id: str,
+        integration_id: str,
+        integration_type: str,
+        sync_type: str,
     ) -> None:
-        body = self._build_body("failed")
+        body = self._build_body("failed", sync_type=sync_type)
         logger.info(f"Notifying lifecycle API resync failed, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
             await self._resync_url(resync_id), json=body
         )
 
     async def notify_resync_aborted(
-        self, resync_id: str, integration_id: str, integration_type: str
+        self,
+        resync_id: str,
+        integration_id: str,
+        integration_type: str,
+        sync_type: str,
     ) -> None:
-        body = self._build_body("aborted")
+        body = self._build_body("aborted", sync_type=sync_type)
         logger.info(f"Notifying lifecycle API resync aborted, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
             await self._resync_url(resync_id), json=body

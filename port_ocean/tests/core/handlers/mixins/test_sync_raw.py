@@ -1758,11 +1758,15 @@ async def test_sync_raw_all_dsp_notifies_resync_started_with_mapping(
     assert call_kwargs["resync_id"] == mock_ocean.metrics.event_id
     assert call_kwargs["integration_id"] == "integration-id"
     assert call_kwargs["integration_type"] == "integration-type"
+    assert call_kwargs["sync_type"] == "full_sync"
     assert call_kwargs["mapping"] == expected_mapping
     mappings = call_kwargs["mapping"]["resources"][0]["port"]["entity"]["mappings"]
     assert isinstance(mappings, list)
     assert len(mappings) == 1
+    assert mock_ocean.metrics.sync_type == "full_sync"
     lifecycle_client.notify_resync_finished.assert_awaited_once()
+    finished_kwargs = lifecycle_client.notify_resync_finished.await_args.kwargs
+    assert finished_kwargs["sync_type"] == "full_sync"
 
 
 @pytest.mark.asyncio

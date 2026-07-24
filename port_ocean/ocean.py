@@ -160,6 +160,7 @@ class Ocean:
                                 resync_id=resync_id,
                                 integration_id=self.config.integration.identifier,
                                 integration_type=self.config.integration.type,
+                                sync_type=self.metrics.sync_type,
                             )
                 else:
                     logger.info(
