@@ -26,6 +26,12 @@ REPOSITORY_INCREMENTAL = ClientSideCutoffStrategy(
     query_params={"sort": "updated", "direction": "desc"},
 )
 
+
+REPOSITORY_SEARCH_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="updated_at",
+    query_params={"sort": "updated", "order": "desc"},
+)
+
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
 
@@ -156,7 +162,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        params.pop("incremental_cursor", None)
+        incremental_cursor = params.pop("incremental_cursor", None)
         repository_type = params.pop("type")
         forced_qualifiers = (
             ["fork:true", f"is:{repository_type}"] if search_params is None else []
@@ -168,9 +174,26 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else " ".join(forced_qualifiers).strip()
         )
 
-        query_params = {"q": f"org:{organization} {raw_q}", **params}
+        query_params = {
+            "q": f"org:{organization} {raw_q}",
+            **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, incremental_cursor),
+        }
         url = f"{self.client.base_url}/search/repositories"
 
+        async for repos in paginate_with_strategy(
+            self._search_result_items(url, query_params),
+            cursor=incremental_cursor,
+            strategy=REPOSITORY_SEARCH_INCREMENTAL,
+        ):
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
+            )
+            yield repos
+
+    async def _search_result_items(
+        self, url: str, query_params: dict[str, Any]
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Unwrap the search API envelope so pages are plain repository lists."""
         async for search_results in self.client.send_paginated_request(
             url, query_params
         ):
