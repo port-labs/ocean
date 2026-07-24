@@ -104,10 +104,7 @@ class LifecycleClient:
         )
 
     async def notify_resync_finished(
-        self,
-        resync_id: str,
-        integration_id: str,
-        integration_type: str,
+        self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body(
             "finished",
@@ -122,10 +119,7 @@ class LifecycleClient:
         )
 
     async def notify_resync_failed(
-        self,
-        resync_id: str,
-        integration_id: str,
-        integration_type: str,
+        self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("failed")
         logger.info(f"Notifying lifecycle API resync failed, resync_id={resync_id}")
@@ -134,10 +128,7 @@ class LifecycleClient:
         )
 
     async def notify_resync_aborted(
-        self,
-        resync_id: str,
-        integration_id: str,
-        integration_type: str,
+        self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("aborted")
         logger.info(f"Notifying lifecycle API resync aborted, resync_id={resync_id}")
