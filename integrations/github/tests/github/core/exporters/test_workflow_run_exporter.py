@@ -144,7 +144,7 @@ async def test_get_paginated_resources_with_incremental_cursor(
     options: ListWorkflowRunOptions = {
         "organization": "test-org",
         "repo_name": "test",
-        "max_runs": 100,
+        "max_runs": 1,
         "workflow_id": 159038,
         "incremental_cursor": datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc),
     }
@@ -154,13 +154,17 @@ async def test_get_paginated_resources_with_incremental_cursor(
         *args: Any, **kwargs: Any
     ) -> AsyncGenerator[dict[str, Any], None]:
         yield TEST_DATA
+        yield TEST_DATA
 
     with patch.object(
         rest_client, "send_paginated_request", side_effect=mock_paginated_request
     ) as mock_request:
         async with event_context("test_event"):
-            [batch async for batch in exporter.get_paginated_resources(options)]
+            batches = [
+                batch async for batch in exporter.get_paginated_resources(options)
+            ]
 
+        assert len(batches) == 2
         mock_request.assert_called_once_with(
             f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs",
             {"created": ">=2026-06-01T12:00:00Z"},
