@@ -233,6 +233,10 @@ class Metrics:
     def sync_type(self, value: str) -> None:
         self._sync_type = value
 
+    def clear_sync_context(self) -> None:
+        self._event_id = ""
+        self._sync_type = ""
+
     @property
     def sync_state(self) -> str:
         return self._sync_state
