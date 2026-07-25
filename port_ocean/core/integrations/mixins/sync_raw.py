@@ -1349,6 +1349,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         integration_type=ocean.config.integration.type,
                     )
                 raise
+            except Exception as e:
+                logger.error(f"Incremental sync failed unexpectedly: {e}")
+                if dsp_enabled:
+                    await ocean.app.lifecycle_client.notify_resync_failed(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
+                raise
             finally:
                 ocean.metrics.clear_sync_context()
 

@@ -302,6 +302,36 @@ class TestSyncIncrementalDspLifecycle:
         assert "sync_type" not in failed_kwargs
         lifecycle_client.notify_resync_finished.assert_not_awaited()
 
+    async def test_notifies_failed_on_unexpected_exception(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        """An unexpected exception (e.g. from cursor_store.get()) must still
+        call notify_resync_failed so the DSP lifecycle doesn't get stuck."""
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        mock_port_client.get_integration_cursor.side_effect = RuntimeError(
+            "cursor store unavailable"
+        )
+        lifecycle_client = _make_lifecycle_client()
+
+        with (
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=True),
+            ),
+        ):
+            _configure_ocean_for_incremental(
+                mock_ocean, mock_port_client, lifecycle_client
+            )
+            with pytest.raises(RuntimeError, match="cursor store unavailable"):
+                await mock_mixin.sync_incremental(interval_seconds=900)
+
+        lifecycle_client.notify_resync_started.assert_awaited_once()
+        lifecycle_client.notify_resync_failed.assert_awaited_once()
+        lifecycle_client.notify_resync_finished.assert_not_awaited()
+        mock_ocean.metrics.clear_sync_context.assert_called()
+
     async def test_skips_lifecycle_when_dsp_disabled(
         self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
     ) -> None:
