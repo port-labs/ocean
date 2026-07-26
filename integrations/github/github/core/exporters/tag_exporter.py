@@ -15,9 +15,9 @@ from github.clients.http.rest_client import GithubRestClient
 
 class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[
-        ExporterOptionsT: SingleTagOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleTagOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         tag_name = params["tag_name"]
@@ -39,9 +39,9 @@ class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
 
         return self._enrich_tag_with_name_and_commit(response, tag_name)
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListTagOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListTagOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all tags in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))

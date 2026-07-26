@@ -28,7 +28,6 @@ from typing import AsyncGenerator, List, Dict, Any
 
 from integration import GithubFilePattern, RepositoryBranchMapping
 
-
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
 
@@ -1041,7 +1040,7 @@ class TestFileExporterUtils:
         # Act
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
         async with event_context("test_event") as event:
-            # Minimal config used by OrganizationLoginAndTypeGenerator
+            # Minimal port app config for organization listing options
             event.port_app_config = MagicMock(include_authenticated_user=False)
             result = await builder.build(files)
 

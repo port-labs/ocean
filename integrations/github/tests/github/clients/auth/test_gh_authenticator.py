@@ -1,13 +1,17 @@
 from datetime import datetime, timedelta, timezone
 import pytest
 import httpx
-from unittest.mock import AsyncMock, Mock, patch, PropertyMock
+from unittest.mock import AsyncMock, patch
 
 from github.clients.auth.abstract_authenticator import GitHubToken
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
+from port_ocean.context.ocean import ocean
 
 
 class TestGithubAuthenticator:
@@ -23,10 +27,10 @@ class TestGithubAuthenticator:
             installation_id="12345",
         )
 
-    def test_rate_limit_scope_uses_organization(
+    def test_rate_limit_scope_uses_installation_id(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
-        assert github_auth.rate_limit_scope == "installation:test-org"
+        assert github_auth.rate_limit_scope == "installation:12345"
 
     @pytest.mark.asyncio
     async def test_token_generated(
@@ -69,75 +73,6 @@ class TestGithubAuthenticator:
 
             mock_fetch_install_token.assert_called_once_with("12345")
             assert github_auth.cached_installation_token == mock_new_token
-
-    @pytest.mark.asyncio
-    async def test_installation_id_provided_no_fetch_call(
-        self, github_auth: GitHubAppInstallationAuthenticator
-    ) -> None:
-        mock_install_token = GitHubToken(
-            token="mock-installation-token",
-            expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
-        )
-
-        with (
-            patch.object(
-                github_auth.app_auth,
-                "fetch_installation_access_token",
-                AsyncMock(return_value=mock_install_token),
-            ) as mock_fetch_install_token,
-            patch.object(
-                github_auth.app_auth,
-                "get_installation_id_for_organization",
-                AsyncMock(),
-            ) as mock_get_installation_id,
-        ):
-            token = await github_auth.get_token()
-
-            mock_fetch_install_token.assert_called_once_with("12345")
-            mock_get_installation_id.assert_not_called()
-            assert token == mock_install_token
-
-    @pytest.mark.asyncio
-    async def test_installation_id_fetched_when_not_provided(self) -> None:
-        github_auth = GitHubAppInstallationAuthenticator(
-            app_auth=GitHubAppAuthenticator(
-                app_id="test-app-id",
-                private_key="test-private-key",
-                github_host="https://api.github.com",
-            ),
-            organization="my-org",
-        )
-        mock_client = AsyncMock()
-        mock_response = Mock()
-        mock_response.json.return_value = {"id": 99999}
-        mock_response.raise_for_status = Mock()
-        mock_client.get = AsyncMock(return_value=mock_response)
-
-        with (
-            patch.object(
-                github_auth.app_auth,
-                "get_headers",
-                AsyncMock(
-                    return_value=AsyncMock(
-                        as_dict=lambda: {"Authorization": "Bearer jwt"}
-                    )
-                ),
-            ),
-            patch.object(
-                type(github_auth.app_auth),
-                "client",
-                new_callable=PropertyMock,
-                return_value=mock_client,
-            ),
-        ):
-            installation_id = await github_auth._get_installation_id()
-
-            mock_client.get.assert_called_once_with(
-                "https://api.github.com/users/my-org/installation",
-                headers={"Authorization": "Bearer jwt"},
-            )
-            assert installation_id == "99999"
-            assert github_auth.installation_id == "99999"
 
     @pytest.mark.asyncio
     async def test_client_returns_same_instance(
@@ -221,3 +156,19 @@ class TestGithubAuthenticator:
 
             assert resp.status_code == 200
             assert len(calls) == 2
+
+
+class TestPersonalTokenAuthenticator:
+    def test_from_config_scopes_to_configured_organization(self) -> None:
+        authenticator = PersonalTokenAuthenticator.from_config()
+
+        assert authenticator.organization == "test-org"
+
+    def test_from_config_is_unscoped_without_configured_organization(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delitem(ocean.integration_config, "github_organization")
+
+        authenticator = PersonalTokenAuthenticator.from_config()
+
+        assert authenticator.organization is None

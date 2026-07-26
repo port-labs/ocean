@@ -8,14 +8,15 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleIssueOptions, ListIssueOptions
-from github.clients.http.base_client import AbstractGithubClient
+from github.clients.http.rest_client import GithubRestClient
 
 
-class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
+class RestIssueExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[
-        ExporterOptionsT: SingleIssueOptions
-    ](self, options: ExporterOptionsT,) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleIssueOptions](
+        self,
+        options: ExporterOptionsT,
+    ) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         issue_number = params["issue_number"]
 
@@ -35,9 +36,9 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListIssueOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListIssueOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name, organization, params = parse_github_options(dict(options))
 

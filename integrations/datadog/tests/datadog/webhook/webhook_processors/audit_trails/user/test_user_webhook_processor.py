@@ -9,7 +9,6 @@ from datadog.webhook.webhook_processors.audit_trails.user.user_webhook_processor
     UserWebhookProcessor,
 )
 
-
 _USER_HTTP = {
     "method": "PATCH",
     "status_code": 200,

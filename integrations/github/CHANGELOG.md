@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.4.0 (2026-07-20)
+## 6.6.0 (2026-07-26)
 
 
 ### Features
@@ -22,7 +22,115 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [obra/superpowers](https://github.com/obra/superpowers)): `.claude-plugin/`,
   `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
   `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`, with
-  multi-org repository selectors
+  multi-org path selectors
+
+
+## 6.5.2 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 6.5.1 (2026-07-23)
+
+
+### Bug Fixes
+
+- Re-apply spec changes
+
+
+## 6.5.0 (2026-07-23)
+
+
+### Improvements
+
+- Updated GitHub client creation to use authenticator-scoped `create_github_client()` for resyncs and `create_github_client_for_org()` for webhook and action requests.
+- Resync handlers iterate `get_auth_provider().list_authenticators()` and discover organizations via `RestOrganizationExporter.get_paginated_resources()`.
+- Removed `GitHubAuthenticatorFactory` and the sync legacy client factory path.
+- Removed deprecated `OrganizationLoginAndTypeGenerator`; file and folder pattern builders call `RestOrganizationExporter.get_paginated_resources()` directly.
+- Deprecated `githubAppInstallationId`; GitHub App organization scope is discovered from app installations. OAuth installations no longer publish `githubAppInstallationId` or `githubOrganization`, so `githubOrganization` remains editable in the integration config.
+
+
+## 6.4.2 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 6.4.1 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 6.4.0 (2026-07-22)
+
+
+### Features
+
+- Added an `includeVariables` selector option for the `environment` kind that fetches environment variables (via the paginated GitHub variables REST API) and exposes them as `__variables` on each environment. (#3591)
+
+
+## 6.3.8 (2026-07-22)
+
+
+### Improvements
+
+- Implement fetching excluded fields individually as well as property-reduction for unknown 200 errors.
+
+
+## 6.3.7 (2026-07-22)
+
+
+### Improvements
+
+- Use shared Ocean relative time helpers for pull request and workflow run lookback selectors.
+
+
+## 6.3.6 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 6.3.5 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 6.3.4 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 6.3.3 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 6.3.2 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
 
 
 ## 6.3.1 (2026-07-20)

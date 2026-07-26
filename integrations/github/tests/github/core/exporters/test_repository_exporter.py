@@ -15,7 +15,6 @@ from github.clients.http.rest_client import GithubRestClient
 from integration import GithubRepositorySelector
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 
-
 TEST_REPOS = [
     {
         "id": 1,

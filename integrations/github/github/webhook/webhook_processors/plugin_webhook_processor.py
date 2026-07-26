@@ -2,7 +2,7 @@ from typing import cast
 
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter import (
     PluginExporter,
@@ -67,7 +67,7 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         file_exporter = RestFileExporter(rest_client)
         diff_data = await file_exporter.fetch_commit_diff(
             organization, repo_name, before_sha, after_sha

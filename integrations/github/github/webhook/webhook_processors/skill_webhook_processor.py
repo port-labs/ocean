@@ -3,7 +3,7 @@ from typing import Any, cast
 
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
     get_matching_files,
@@ -80,7 +80,7 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         exporter = RestFileExporter(rest_client)
         diff_data = await exporter.fetch_commit_diff(
             organization, repo_name, before_sha, after_sha

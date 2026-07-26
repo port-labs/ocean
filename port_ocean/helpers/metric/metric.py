@@ -224,6 +224,9 @@ class Metrics:
     def event_id(self, value: str) -> None:
         self._event_id = value
 
+    def clear_sync_context(self) -> None:
+        self._event_id = ""
+
     @property
     def sync_state(self) -> str:
         return self._sync_state

@@ -24,7 +24,6 @@ from github.helpers.gql_queries import (
     LIST_EXTERNAL_IDENTITIES_GQL,
 )
 
-
 TEST_TEAMS = [
     {
         "id": 1,

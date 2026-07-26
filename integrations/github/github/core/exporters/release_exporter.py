@@ -13,9 +13,9 @@ from github.helpers.utils import (
 
 class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[
-        ExporterOptionsT: SingleReleaseOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleReleaseOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         release_id = params["release_id"]
@@ -36,9 +36,9 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListReleaseOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListReleaseOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all releases in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))

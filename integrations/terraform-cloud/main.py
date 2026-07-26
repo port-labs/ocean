@@ -21,7 +21,6 @@ from webhook_processors.state_file_webhook_processor import StateFileWebhookProc
 from webhook_processors.assessment_webhook_processor import AssessmentWebhookProcessor
 from webhook_processors.webhook_client import TerraformWebhookClient
 
-
 SKIP_WEBHOOK_CREATION = False
 BATCH_SIZE = 25
 
