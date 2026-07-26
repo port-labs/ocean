@@ -149,7 +149,7 @@ _ESCALATION_POLICIES_RESOURCE: dict[str, Any] = {
     "kind": "escalation_policies",
     "selector": {
         "query": "true",
-        "attachOncallUsers": "false",
+        "attachOncallUsers": "true",
     },
     "port": {
         "entity": {

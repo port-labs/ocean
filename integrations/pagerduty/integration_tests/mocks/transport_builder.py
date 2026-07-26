@@ -1,3 +1,6 @@
+from typing import Any
+
+import httpx
 from port_ocean.integration_testing import InterceptTransport
 
 from mocks.payloads import (
@@ -10,6 +13,18 @@ from mocks.payloads import (
     service_response,
     user_response,
 )
+
+
+def _incidents_response(request: httpx.Request) -> dict[str, Any]:
+    statuses = request.url.params.get_list("statuses[]")
+    status = "resolved" if "resolved" in statuses else "triggered"
+    return {
+        "status_code": 200,
+        "json": paginated(
+            "incidents",
+            [incident_response(i, status=status) for i in range(1, RECORD_COUNT + 1)],
+        ),
+    }
 
 
 class PagerdutyMockTransportBuilder:
@@ -54,17 +69,7 @@ class PagerdutyMockTransportBuilder:
         return self
 
     def with_incidents(self) -> "PagerdutyMockTransportBuilder":
-        self._transport.add_route(
-            "GET",
-            "/incidents",
-            {
-                "status_code": 200,
-                "json": paginated(
-                    "incidents",
-                    [incident_response(i) for i in range(1, RECORD_COUNT + 1)],
-                ),
-            },
-        )
+        self._transport.add_route("GET", "/incidents", _incidents_response)
         return self
 
     def with_schedules(self) -> "PagerdutyMockTransportBuilder":

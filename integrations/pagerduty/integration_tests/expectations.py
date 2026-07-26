@@ -128,7 +128,7 @@ KIND_EXPECTATIONS: dict[str, KindExpectation] = {
                 properties={
                     "url": escalation_policy_response(i)["html_url"],
                     "description": f"Description {i}",
-                    "primaryOncall": None,
+                    "primaryOncall": ONCALL_USER_EMAILS[i - 1],
                     "escalationRules": [],
                 },
             )

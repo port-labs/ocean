@@ -23,8 +23,9 @@ _KIND_BUILDERS: dict[str, str] = {
 
 # Some kinds need additional endpoints
 _KIND_EXTRA_BUILDERS: dict[str, list[str]] = {
-    "services": ["with_oncalls"],   # update_oncall_users fetches /oncalls
-    "schedules": ["with_users"],    # transform_user_ids_to_emails fetches /users
+    "services": ["with_oncalls"],  # update_oncall_users fetches /oncalls
+    "schedules": ["with_users"],  # transform_user_ids_to_emails fetches /users
+    "escalation_policies": ["with_oncalls"],  # attachOncallUsers fetches /oncalls
 }
 
 
@@ -53,25 +54,27 @@ async def test_kind_resync(kind: str) -> None:
     finally:
         await harness.shutdown()
 
+    assert not result.errors, f"[{kind}] resync raised errors: {result.errors}"
+
     by_blueprint: dict[str, list[dict[str, Any]]] = {}
     for entity in result.upserted_entities:
         by_blueprint.setdefault(entity["blueprint"], []).append(entity)
     entities = by_blueprint.get(expectation.blueprint, [])
 
-    assert len(entities) == expectation.count, (
-        f"[{kind}] expected {expectation.count} entities, got {len(entities)}"
-    )
+    assert (
+        len(entities) == expectation.count
+    ), f"[{kind}] expected {expectation.count} entities, got {len(entities)}"
 
     for expected in expectation.entities:
         matching = [e for e in entities if e["identifier"] == expected.identifier]
-        assert len(matching) == 1, (
-            f"[{kind}] identifier {expected.identifier!r} not found in upserted entities"
-        )
+        assert (
+            len(matching) == 1
+        ), f"[{kind}] identifier {expected.identifier!r} not found in upserted entities"
         entity = matching[0]
         if expected.title is not None:
-            assert entity.get("title") == expected.title, (
-                f"[{kind}] title mismatch for {expected.identifier!r}"
-            )
+            assert (
+                entity.get("title") == expected.title
+            ), f"[{kind}] title mismatch for {expected.identifier!r}"
         for prop, value in expected.properties.items():
             actual = entity.get("properties", {}).get(prop)
             assert actual == value, (

@@ -1,7 +1,9 @@
 from typing import Any
 
 PAGERDUTY_API_URL = "https://api.pagerduty.com"
-PAGERDUTY_TOKEN = "test-api-token"  # does not start with "pd" → Token auth, no OAuth round-trip
+PAGERDUTY_TOKEN = (
+    "test-api-token"  # does not start with "pd" → Token auth, no OAuth round-trip
+)
 
 RECORD_COUNT = 2
 
@@ -51,11 +53,11 @@ def oncall_response(idx: int) -> dict[str, Any]:
     }
 
 
-def incident_response(idx: int) -> dict[str, Any]:
+def incident_response(idx: int, status: str = "triggered") -> dict[str, Any]:
     return {
         "id": INCIDENT_IDS[idx - 1],
         "title": f"Incident {idx}",
-        "status": "triggered",
+        "status": status,
         "html_url": _pd_url("incidents", INCIDENT_IDS[idx - 1]),
         "urgency": "high",
         "assignments": [

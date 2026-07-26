@@ -65,15 +65,23 @@ class TestPagerDutyHappyPath(BaseIntegrationTest):
             )
 
             for expected in expectation.entities:
-                matching = [e for e in entities if e["identifier"] == expected.identifier]
-                assert len(matching) >= 1, (
-                    f"[{kind}] identifier {expected.identifier!r} not found"
-                )
+                matching = [
+                    e for e in entities if e["identifier"] == expected.identifier
+                ]
+                assert (
+                    len(matching) >= 1
+                ), f"[{kind}] identifier {expected.identifier!r} not found"
+                if blueprint == _INCIDENTS_BLUEPRINT:
+                    statuses = {e.get("properties", {}).get("status") for e in matching}
+                    assert statuses == {"triggered", "resolved"}, (
+                        f"[{kind}] expected both triggered and resolved incidents "
+                        f"for {expected.identifier!r}, got statuses {statuses}"
+                    )
                 entity = matching[0]
                 if expected.title is not None:
-                    assert entity.get("title") == expected.title, (
-                        f"[{kind}] title mismatch for {expected.identifier!r}"
-                    )
+                    assert (
+                        entity.get("title") == expected.title
+                    ), f"[{kind}] title mismatch for {expected.identifier!r}"
                 for prop, value in expected.properties.items():
                     actual = entity.get("properties", {}).get(prop)
                     assert actual == value, (
