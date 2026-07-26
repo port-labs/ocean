@@ -5,12 +5,8 @@ from github.helpers.models import RepoSearchParams
 from pydantic.v1 import BaseModel, Field
 
 
-class ListOrganizationOptions(TypedDict):
-    """Options for listing organizations."""
-
-    organization: NotRequired[str]
-    allowed_multi_organizations: NotRequired[List[str]]
-    include_authenticated_user: NotRequired[bool]
+class ListOrganizationOptions(BaseModel):
+    organization: Optional[str] = None
 
 
 class SingleOrganizationOptions(TypedDict):

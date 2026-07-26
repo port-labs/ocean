@@ -2,7 +2,7 @@ from typing import cast
 
 from loguru import logger
 from github.helpers.utils import ObjectKind
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 
 from github.core.options import SingleEnvironmentOptions
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -43,7 +43,7 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        client = create_github_client()
+        client = await create_github_client_for_org(organization)
         environment_exporter = RestEnvironmentExporter(client)
         data_to_upsert = await environment_exporter.get_resource(
             SingleEnvironmentOptions(
