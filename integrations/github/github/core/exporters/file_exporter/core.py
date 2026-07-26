@@ -134,9 +134,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            tree, _truncated = await self.get_tree_recursive(
-                organization, repo_name, branch
-            )
+            tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
 
             matched = filter_github_tree_entries_by_pattern(tree, pattern)
 

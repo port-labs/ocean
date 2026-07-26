@@ -1,0 +1,19 @@
+{
+  "skill": {
+    "name": "release-notes",
+    "description": "",
+    "instructions": "# Release notes\n\nSummarize merged pull requests since the previous tag.\n",
+    "frontmatter": {},
+    "path": "packages/agent-kit/skills/release-notes",
+    "skillMdPath": "packages/agent-kit/skills/release-notes/SKILL.md",
+    "root": "packages/agent-kit/skills"
+  },
+  "__repository": {
+    "name": "agent-monorepo",
+    "full_name": "acme/agent-monorepo",
+    "html_url": "https://github.com/acme/agent-monorepo",
+    "default_branch": "main"
+  },
+  "__branch": "develop",
+  "__organization": "acme"
+}

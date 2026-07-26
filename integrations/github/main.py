@@ -124,7 +124,11 @@ from github.core.exporters.plugin_exporter import (
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
 )
-from github.core.options import ListOrganizationOptions
+from github.core.options import (
+    ListOrganizationOptions,
+    ListPluginOptions,
+    PluginRepositoryOptions,
+)
 from github.enrichments.included_files import (
     IncludedFilesEnricher,
     FileIncludedFilesStrategy,
@@ -1135,12 +1139,8 @@ async def resync_skills(
         repo_type=app_config.repository_type,
     )
     repo_path_map = await pattern_builder.build(file_patterns)
-    path_globs = [pattern.path for pattern in paths]
 
-    async for skills in skill_exporter.get_paginated_skills(
-        repo_path_map,
-        path_globs=path_globs,
-    ):
+    async for skills in skill_exporter.get_paginated_resources(repo_path_map):
         yield skills
 
 
@@ -1152,50 +1152,44 @@ async def resync_plugins(
     """Resync agent plugin packages detected via provider manifests."""
     config = cast(GithubPluginResourceConfig, event.resource_config)
     selector = config.selector
-    providers = selector.providers
-    repo_sels = [
-        repo_sel
-        for repo_sel in selector.repositories
-        if can_access_organization(authenticator, repo_sel.organization)
+    paths = [
+        path
+        for path in selector.paths
+        if can_access_organization(authenticator, path.organization)
     ]
-    if not repo_sels:
+    if not paths:
         return
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
-    plugin_exporter = PluginExporter(rest_client)
+    plugin_exporter = PluginExporter(rest_client, selector.providers)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_selector = CompositeRepositorySelector(app_config.repository_type)
 
-    for repo_sel in repo_sels:
+    for path in paths:
         async for orgs in org_exporter.get_paginated_resources(
-            ListOrganizationOptions(organization=repo_sel.organization)
+            ListOrganizationOptions(organization=path.organization)
         ):
             for org in orgs:
                 org_login = org["login"]
-                org_type = org["type"]
-                repos_batch: list[tuple[dict[str, Any], str]] = []
-                async for _repo_name, branch, repo_obj in repo_selector.select_repos(
-                    repo_sel, repo_exporter, org_login, org_type
-                ):
-                    repos_batch.append((repo_obj, branch))
-                    if len(repos_batch) >= MAX_CONCURRENT_REPOS:
-                        async for plugins in plugin_exporter.get_paginated_plugins(
-                            organization=org_login,
-                            repositories=repos_batch,
-                            providers=providers,
-                        ):
-                            yield plugins
-                        repos_batch = []
+                # The exporter caps how many repositories it scans concurrently,
+                # so the whole organization can be handed over in one call.
+                repositories = [
+                    PluginRepositoryOptions(
+                        organization=org_login, repository=repo_obj, branch=branch
+                    )
+                    async for _repo_name, branch, repo_obj in repo_selector.select_repos(
+                        path, repo_exporter, org_login, org["type"]
+                    )
+                ]
+                if not repositories:
+                    continue
 
-                if repos_batch:
-                    async for plugins in plugin_exporter.get_paginated_plugins(
-                        organization=org_login,
-                        repositories=repos_batch,
-                        providers=providers,
-                    ):
-                        yield plugins
+                async for plugins in plugin_exporter.get_paginated_resources(
+                    ListPluginOptions(organization=org_login, repositories=repositories)
+                ):
+                    yield plugins
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)

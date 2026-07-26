@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from loguru import logger
+from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
 from wcmatch import glob
 
@@ -23,6 +24,29 @@ DEFAULT_SKILL_PATHS: list[str] = [
 SKILL_MD_FILENAME = "SKILL.md"
 
 
+class Skill(BaseModel):
+    """Normalized Agent Skill parsed out of a single SKILL.md file."""
+
+    name: str
+    description: str = ""
+    instructions: str = ""
+    frontmatter: dict[str, Any] = Field(default_factory=dict)
+    path: str
+    skill_md_path: str = Field(serialization_alias="skillMdPath")
+    root: str
+
+
+class SkillRawItem(BaseModel):
+    """Raw item emitted for the `skill` kind, by both resync and webhooks."""
+
+    skill: Skill
+    repository: dict[str, Any] = Field(serialization_alias="__repository")
+    branch: str = Field(serialization_alias="__branch")
+    organization: Optional[str] = Field(
+        default=None, serialization_alias="__organization"
+    )
+
+
 def _glob_root(pattern: str) -> str:
     """Strip the SKILL.md suffix from a glob to get the configured root prefix."""
     cleaned = pattern.strip("/")
@@ -39,7 +63,7 @@ def _glob_root(pattern: str) -> str:
     return cleaned
 
 
-def infer_skill_root(skill_md_path: str, path_globs: list[str]) -> str:
+def _infer_skill_root(skill_md_path: str, path_globs: list[str]) -> str:
     """Root that matched this SKILL.md, for mapping filters."""
     for pattern in path_globs:
         if matches_glob_pattern(skill_md_path, pattern, flags=glob.DOTGLOB):
@@ -49,15 +73,6 @@ def infer_skill_root(skill_md_path: str, path_globs: list[str]) -> str:
     skill_dir = str(Path(skill_md_path).parent).replace("\\", "/")
     parent = str(Path(skill_dir).parent).replace("\\", "/")
     return parent if parent not in (".", "") else skill_dir
-
-
-def matches_skill_path(path: str, path_globs: list[str]) -> bool:
-    if Path(path).name.lower() != SKILL_MD_FILENAME.lower():
-        return False
-    return any(
-        matches_glob_pattern(path, pattern, flags=glob.DOTGLOB)
-        for pattern in path_globs
-    )
 
 
 def _parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
@@ -87,35 +102,33 @@ def _parse_skill_markdown(content: str) -> tuple[dict[str, Any], str]:
     return {}, body
 
 
-def build_skill_object(
+def _build_skill(
     *,
     skill_md_path: str,
     content: str,
     path_globs: list[str],
-) -> dict[str, Any]:
-    """Build the normalized `.skill` object from SKILL.md path and content."""
+) -> Skill:
     frontmatter, body = _parse_skill_markdown(content)
     path_obj = Path(skill_md_path)
     skill_dir = str(path_obj.parent).replace("\\", "/")
-    path_name = path_obj.parent.name
 
     name = frontmatter.get("name")
     if not isinstance(name, str) or not name.strip():
-        name = path_name
+        name = path_obj.parent.name
 
     description = frontmatter.get("description")
     if not isinstance(description, str):
         description = ""
 
-    return {
-        "name": name,
-        "description": description,
-        "instructions": body,
-        "frontmatter": frontmatter,
-        "path": skill_dir,
-        "skillMdPath": skill_md_path,
-        "root": infer_skill_root(skill_md_path, path_globs),
-    }
+    return Skill(
+        name=name,
+        description=description,
+        instructions=body,
+        frontmatter=frontmatter,
+        path=skill_dir,
+        skill_md_path=skill_md_path,
+        root=_infer_skill_root(skill_md_path, path_globs),
+    )
 
 
 def build_skill_raw_item(
@@ -124,18 +137,21 @@ def build_skill_raw_item(
     content: str,
     repository: dict[str, Any],
     branch: str,
-    organization: str | None = None,
     path_globs: list[str],
+    organization: Optional[str] = None,
 ) -> dict[str, Any]:
-    item: dict[str, Any] = {
-        "skill": build_skill_object(
+    """Single entry point for building a skill raw item.
+
+    Webhook deletes call this with an empty ``content`` so that deleted entities
+    carry the exact same identifiers as the upserted ones.
+    """
+    return SkillRawItem(
+        skill=_build_skill(
             skill_md_path=skill_md_path,
             content=content,
             path_globs=path_globs,
         ),
-        "__repository": repository,
-        "__branch": branch,
-    }
-    if organization is not None:
-        item["__organization"] = organization
-    return item
+        repository=repository,
+        branch=branch,
+        organization=organization,
+    ).model_dump(by_alias=True)

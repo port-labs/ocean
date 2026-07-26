@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, cast
 
 from loguru import logger
@@ -9,10 +8,7 @@ from github.core.exporters.file_exporter.utils import (
     get_matching_files,
     group_files_by_status,
 )
-from github.core.exporters.skill_exporter import (
-    build_skill_raw_item,
-    infer_skill_root,
-)
+from github.core.exporters.skill_exporter.utils import build_skill_raw_item
 from github.core.options import FileContentOptions
 from github.helpers.port_app_config import ORG_CONFIG_REPO
 from github.helpers.utils import ObjectKind
@@ -119,27 +115,17 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
                 )
             )
 
-        deleted_raw_results = []
-        for file_info in deleted_files:
-            filename = file_info["filename"]
-            path_obj = Path(filename)
-            skill_dir = str(path_obj.parent).replace("\\", "/")
-            deleted_raw_results.append(
-                {
-                    "skill": {
-                        "name": path_obj.parent.name,
-                        "description": "",
-                        "instructions": None,
-                        "frontmatter": {},
-                        "path": skill_dir,
-                        "skillMdPath": filename,
-                        "root": infer_skill_root(filename, path_globs),
-                    },
-                    "__repository": repository,
-                    "__branch": current_branch,
-                    "__organization": organization,
-                }
+        deleted_raw_results = [
+            build_skill_raw_item(
+                skill_md_path=file_info["filename"],
+                content="",
+                repository=repository,
+                branch=current_branch,
+                organization=organization,
+                path_globs=path_globs,
             )
+            for file_info in deleted_files
+        ]
 
         logger.info(
             f"Skill webhook processed {len(updated_raw_results)} updates and "

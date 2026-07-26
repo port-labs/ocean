@@ -4,12 +4,13 @@ from loguru import logger
 
 from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
-from github.core.exporters.plugin_exporter import (
-    PluginExporter,
-    all_manifest_paths,
+from github.core.exporters.plugin_exporter.core import PluginExporter
+from github.core.exporters.plugin_exporter.utils import (
+    build_plugin_raw_item,
     empty_plugin,
     path_touches_plugin,
 )
+from github.core.options import PluginRepositoryOptions
 from github.helpers.port_app_config import ORG_CONFIG_REPO
 from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
@@ -57,48 +58,45 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
         providers = selector.providers
 
         if not any(
-            (repo_sel.organization is None or repo_sel.organization == organization)
+            (path.organization is None or path.organization == organization)
             and self._is_applicable_to_repo_branch(
-                repo_sel, repo_name, current_branch, default_branch
+                path, repo_name, current_branch, default_branch
             )
-            for repo_sel in selector.repositories
+            for path in selector.paths
         ):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
         rest_client = await create_github_client_for_org(organization)
-        file_exporter = RestFileExporter(rest_client)
-        diff_data = await file_exporter.fetch_commit_diff(
+        diff_data = await RestFileExporter(rest_client).fetch_commit_diff(
             organization, repo_name, before_sha, after_sha
         )
         changed = diff_data.get("files") or []
-        manifest_paths = set(all_manifest_paths(providers))
 
-        touched = [
-            f for f in changed if path_touches_plugin(f.get("filename", ""), providers)
-        ]
-        if not touched:
+        if not any(
+            path_touches_plugin(file.get("filename", ""), providers) for file in changed
+        ):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        plugin_exporter = PluginExporter(rest_client)
-        result = await plugin_exporter.build_plugin_for_repo(
-            organization=organization,
-            repository=repository,
-            branch=current_branch,
-            manifest_paths=manifest_paths,
-            providers=providers,
+        exporter = PluginExporter(rest_client, providers)
+        plugin_item = await exporter.get_resource(
+            PluginRepositoryOptions(
+                organization=organization,
+                repository=repository,
+                branch=current_branch,
+            )
         )
 
-        if result.plugin_item:
+        if plugin_item:
             return WebhookEventRawResults(
-                updated_raw_results=[result.plugin_item],
+                updated_raw_results=[plugin_item],
                 deleted_raw_results=[],
             )
 
-        if result.tree_truncated:
+        if await exporter.is_tree_truncated(organization, repo_name, current_branch):
             logger.warning("Skipping plugin delete: GitHub tree response was truncated")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -108,11 +106,11 @@ class PluginWebhookProcessor(BaseRepositoryWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[],
             deleted_raw_results=[
-                {
-                    "plugin": empty_plugin(name=repo_name),
-                    "__repository": repository,
-                    "__branch": current_branch,
-                    "__organization": organization,
-                }
+                build_plugin_raw_item(
+                    plugin=empty_plugin(name=repo_name),
+                    repository=repository,
+                    branch=current_branch,
+                    organization=organization,
+                )
             ],
         )

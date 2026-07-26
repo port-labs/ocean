@@ -1,39 +1,36 @@
 from github.core.exporters.skill_exporter.utils import (
-    build_skill_object,
-    infer_skill_root,
-    matches_skill_path,
+    _build_skill,
+    _infer_skill_root,
     _parse_skill_markdown,
+    build_skill_raw_item,
 )
-from github.core.exporters.plugin_exporter.utils import normalize_plugin
+from github.core.exporters.plugin_exporter.utils import (
+    build_plugin_raw_item,
+    empty_plugin,
+    normalize_plugin,
+)
+
+REPOSITORY = {"name": "example-skills", "full_name": "acme/example-skills"}
 
 
 class TestSkillUtils:
     def test_infer_skill_root(self) -> None:
         globs = [".cursor/skills/**/SKILL.md", "skills/**/SKILL.md"]
         assert (
-            infer_skill_root(".cursor/skills/ponytail/SKILL.md", globs)
+            _infer_skill_root(".cursor/skills/ponytail/SKILL.md", globs)
             == ".cursor/skills"
         )
-        assert infer_skill_root("skills/hello/SKILL.md", globs) == "skills"
+        assert _infer_skill_root("skills/hello/SKILL.md", globs) == "skills"
 
-    def test_matches_skill_path(self) -> None:
-        globs = ["skills/**/SKILL.md", "packages/**/SKILL.md"]
-        assert matches_skill_path("skills/hello/SKILL.md", globs)
-        assert matches_skill_path("packages/ai/skills/x/SKILL.md", globs)
-        assert matches_skill_path(".cursor/skills/x/SKILL.md", [".cursor/**/SKILL.md"])
-        assert not matches_skill_path(
-            "packages/ai/skills/x/SKILL.md", ["skills/**/SKILL.md"]
-        )
-
-    def test_build_skill_object_multi_segment_root(self) -> None:
-        skill = build_skill_object(
+    def test_build_skill_multi_segment_root(self) -> None:
+        skill = _build_skill(
             skill_md_path=".cursor/skills/hello/SKILL.md",
             content="# Hello",
             path_globs=[".cursor/skills/**/SKILL.md"],
         )
-        assert skill["root"] == ".cursor/skills"
-        assert skill["path"] == ".cursor/skills/hello"
-        assert skill["instructions"] == "# Hello"
+        assert skill.root == ".cursor/skills"
+        assert skill.path == ".cursor/skills/hello"
+        assert skill.instructions == "# Hello"
 
     def test_parse_skill_markdown(self) -> None:
         content = """---
@@ -60,7 +57,7 @@ Body text.
         assert fm == {}
         assert body.startswith("---")
 
-    def test_build_skill_object_always_includes_body(self) -> None:
+    def test_build_skill_raw_item_always_includes_body(self) -> None:
         content = """---
 name: hello-skill
 description: A minimal example
@@ -68,27 +65,53 @@ description: A minimal example
 
 # Hello
 """
-        skill = build_skill_object(
+        item = build_skill_raw_item(
             skill_md_path="skills/hello-skill/SKILL.md",
             content=content,
+            repository=REPOSITORY,
+            branch="main",
+            organization="acme",
             path_globs=["skills/**/SKILL.md"],
         )
+        skill = item["skill"]
         assert skill["name"] == "hello-skill"
         assert skill["description"] == "A minimal example"
-        assert skill["instructions"] is not None
         assert "# Hello" in skill["instructions"]
         assert skill["path"] == "skills/hello-skill"
         assert skill["skillMdPath"] == "skills/hello-skill/SKILL.md"
         assert skill["root"] == "skills"
+        assert item["__repository"] == REPOSITORY
+        assert item["__branch"] == "main"
+        assert item["__organization"] == "acme"
 
-    def test_build_skill_object_name_fallback(self) -> None:
-        skill = build_skill_object(
+    def test_build_skill_raw_item_name_fallback(self) -> None:
+        item = build_skill_raw_item(
             skill_md_path="skills/my-skill/SKILL.md",
             content="# No frontmatter",
+            repository=REPOSITORY,
+            branch="main",
+            organization="acme",
             path_globs=["skills/**/SKILL.md"],
         )
-        assert skill["name"] == "my-skill"
-        assert skill["description"] == ""
+        assert item["skill"]["name"] == "my-skill"
+        assert item["skill"]["description"] == ""
+
+    def test_build_skill_raw_item_delete_stub_matches_upsert_identity(self) -> None:
+        """Webhook deletes reuse the builder so identifiers stay identical."""
+        kwargs = {
+            "skill_md_path": ".cursor/skills/hello/SKILL.md",
+            "repository": REPOSITORY,
+            "branch": "main",
+            "organization": "acme",
+            "path_globs": [".cursor/skills/**/SKILL.md"],
+        }
+        upserted = build_skill_raw_item(content="---\nname: hello\n---\n# Hi", **kwargs)  # type: ignore[arg-type]
+        deleted = build_skill_raw_item(content="", **kwargs)  # type: ignore[arg-type]
+
+        assert deleted["skill"]["path"] == upserted["skill"]["path"]
+        assert deleted["skill"]["root"] == upserted["skill"]["root"]
+        assert deleted["skill"]["skillMdPath"] == upserted["skill"]["skillMdPath"]
+        assert deleted["skill"]["name"] == "hello"
 
 
 class TestPluginUtils:
@@ -113,11 +136,14 @@ class TestPluginUtils:
             providers=["claude", "cursor", "codex"],
         )
         assert plugin is not None
-        assert plugin["name"] == "superpowers"
-        assert plugin["supports"]["claude"] is True
-        assert plugin["supports"]["cursor"] is True
-        assert plugin["supports"]["codex"] is False
-        assert plugin["claude"]["marketplaceName"] == "superpowers-dev"
+        dumped = plugin.model_dump(by_alias=True)
+        assert dumped["name"] == "superpowers"
+        assert dumped["displayName"] == "Superpowers"
+        assert dumped["supports"]["claude"] is True
+        assert dumped["supports"]["cursor"] is True
+        assert dumped["supports"]["codex"] is False
+        assert dumped["claude"]["marketplaceName"] == "superpowers-dev"
+        assert dumped["codex"] == {}
 
     def test_normalize_plugin_directory_only(self) -> None:
         repository = {"name": "opencode-plugin", "full_name": "acme/opencode-plugin"}
@@ -128,5 +154,59 @@ class TestPluginUtils:
             directory_supports={"opencode"},
         )
         assert plugin is not None
-        assert plugin["supports"]["opencode"] is True
-        assert plugin["supports"]["pi"] is False
+        assert plugin.name == "opencode-plugin"
+        assert plugin.supports["opencode"] is True
+        assert plugin.supports["pi"] is False
+        assert plugin.model_dump()["opencode"] == {"detected": True}
+
+    def test_normalize_plugin_marketplace_only_uses_first_entry(self) -> None:
+        repository = {"name": "agent-marketplace"}
+        plugin = normalize_plugin(
+            repository=repository,
+            manifests={
+                ".agents/plugins/marketplace.json": {
+                    "name": "acme-marketplace",
+                    "interface": {"displayName": "Acme Agents"},
+                    "plugins": [{"name": "acme-agents", "version": "0.4.0"}],
+                }
+            },
+            providers=["agents"],
+        )
+        assert plugin is not None
+        dumped = plugin.model_dump(by_alias=True)
+        assert dumped["name"] == "acme-agents"
+        assert dumped["displayName"] == "Acme Agents"
+        assert dumped["version"] == "0.4.0"
+        assert dumped["agents"]["marketplaceName"] == "acme-marketplace"
+
+    def test_normalize_plugin_returns_none_without_evidence(self) -> None:
+        assert (
+            normalize_plugin(
+                repository={"name": "plain-repo"},
+                manifests={},
+                providers=["claude", "cursor"],
+            )
+            is None
+        )
+
+    def test_normalize_plugin_ignores_unselected_providers(self) -> None:
+        plugin = normalize_plugin(
+            repository={"name": "repo"},
+            manifests={".cursor-plugin/plugin.json": {"name": "only-cursor"}},
+            providers=["claude"],
+        )
+        assert plugin is None
+
+    def test_build_plugin_raw_item(self) -> None:
+        item = build_plugin_raw_item(
+            plugin=empty_plugin(name="superpowers"),
+            repository={"name": "superpowers"},
+            branch="main",
+            organization="obra",
+        )
+        assert item["plugin"]["name"] == "superpowers"
+        assert item["plugin"]["displayName"] == "superpowers"
+        assert item["plugin"]["supports"]["claude"] is False
+        assert item["plugin"]["claude"] == {}
+        assert item["__branch"] == "main"
+        assert item["__organization"] == "obra"
