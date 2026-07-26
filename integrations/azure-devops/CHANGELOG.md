@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.34 (2026-07-23)
+
+
+### Features
+
+- Added a `trigger_pipeline` integration action that runs an Azure DevOps pipeline and reports its completion status back to Port via the pipeline run-state-changed service hook (Single Account mode). Queue-time variables are wrapped in the Azure DevOps API `{ "value": <value> }` format, and `reportPipelineStatus` defaults to enabled when the input is omitted.
+
+
 ## 0.10.33 (2026-07-23)
 
 
