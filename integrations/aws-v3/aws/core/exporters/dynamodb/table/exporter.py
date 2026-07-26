@@ -13,7 +13,6 @@ from aws.core.exporters.dynamodb.table.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from aws.utils import RegionHelper
 
 
 class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
@@ -28,15 +27,9 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            partition = RegionHelper.get_partition()
             result = await inspector.inspect(
                 DynamoDBTableActionInput(
-                    items=[
-                        {
-                            "TableName": options.table_name,
-                            "TableArn": f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{options.table_name}",
-                        }
-                    ],
+                    items=[{"TableName": options.table_name}],
                     region=options.region,
                     account_id=options.account_id,
                 ),
@@ -61,13 +54,8 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
 
             async for table_names in paginator.paginate():
                 if table_names:
-                    partition = RegionHelper.get_partition()
                     table_dicts = [
-                        {
-                            "TableName": table_name,
-                            "TableArn": f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{table_name}",
-                        }
-                        for table_name in table_names
+                        {"TableName": table_name} for table_name in table_names
                     ]
                     result = await inspector.inspect(
                         DynamoDBTableActionInput(

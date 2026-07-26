@@ -3,6 +3,7 @@ from typing import Any, Type
 
 from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from aws.core.helpers.utils import execute_concurrent_aws_operations
+from aws.utils import RegionHelper
 
 
 @dataclass
@@ -38,18 +39,19 @@ class GetTableTagsAction(Action[DynamoDBTableActionInput]):
     async def _execute(
         self, resources: DynamoDBTableActionInput
     ) -> list[dict[str, Any]]:
+        partition = RegionHelper.get_partition()
+
+        async def fetch_tags(table: dict[str, Any]) -> dict[str, Any]:
+            arn = f"arn:{partition}:dynamodb:{resources.region}:{resources.account_id}:table/{table['TableName']}"
+            response = await self.client.list_tags_of_resource(ResourceArn=arn)
+            return {"Tags": response["Tags"]}
+
         return await execute_concurrent_aws_operations(
             input_items=resources.items,
-            operation_func=self._fetch_table_tags,
-            get_resource_identifier=lambda t: t["TableArn"],
+            operation_func=fetch_tags,
+            get_resource_identifier=lambda t: t["TableName"],
             operation_name="table tags",
         )
-
-    async def _fetch_table_tags(self, table: dict[str, Any]) -> dict[str, Any]:
-        response = await self.client.list_tags_of_resource(
-            ResourceArn=table["TableArn"]
-        )
-        return {"Tags": response["Tags"]}
 
 
 class GetTableBackupStatusAction(Action[DynamoDBTableActionInput]):
