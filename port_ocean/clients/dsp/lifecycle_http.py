@@ -19,7 +19,10 @@ def _truncate(text: str, max_len: int = 256) -> str:
 
 
 class OceanResyncHttpClient(OceanAsyncClient):
-    """Best-effort authenticated HTTP client. Never raises; logs errors and swallows."""
+    """Authenticated lifecycle HTTP client.
+
+    POST requests raise on 4xx/5xx responses so callers can stop flow-critical work.
+    """
 
     def __init__(self, auth: PortAuthentication, timeout: int = 10) -> None:
         self._lifecycle_auth = auth
@@ -56,12 +59,15 @@ class OceanResyncHttpClient(OceanAsyncClient):
                     status_code=response.status_code,
                     response_body=_truncate(response.text),
                 )
+                response.raise_for_status()
             else:
                 logger.info(
                     f"API request succeeded for POST {url}",
                     status_code=response.status_code,
                     response_body=_truncate(response.text),
                 )
+        except httpx.HTTPStatusError:
+            raise
         except asyncio.CancelledError:
             raise
         except Exception as exc:
