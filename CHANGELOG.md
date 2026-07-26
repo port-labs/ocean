@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.46.2 (2026-07-26)
+
+### Changed
+
+- Changed the default `process_execution_mode` for OnPrem from `multi_process` to `single_process`. Multi-process can still be enabled via `OCEAN__PROCESS_EXECUTION_MODE=multi_process`.
+
 ## 0.46.1 (2026-07-23)
 
 ### Bug Fixes

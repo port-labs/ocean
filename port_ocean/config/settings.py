@@ -321,7 +321,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default=CachingStorageMode.disk
     )
     process_execution_mode: Optional[ProcessExecutionMode] = Field(
-        default=ProcessExecutionMode.multi_process
+        default=ProcessExecutionMode.single_process
     )
 
     upsert_entities_batch_max_length: int = 20
