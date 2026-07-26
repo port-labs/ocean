@@ -1,9 +1,11 @@
-from typing import Any, cast, Optional
+import asyncio
+from typing import Any, Awaitable, Callable, cast, Optional
 from datetime import datetime
 
+import httpx
 from loguru import logger
 
-from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.graphql_client import GithubGraphQLClient, GraphQLFallback
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
@@ -11,8 +13,10 @@ from github.core.options import (
     PullRequestGraphQLOptions,
     SinglePullRequestOptions,
 )
+from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.gql_queries import (
-    EXPENSIVE_PR_GRAPHQL_FIELDS,
+    ALL_OPTIONAL_PR_FIELD_NAMES,
+    EXPENSIVE_PR_GRAPHQL_FIELD_TIERS,
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
@@ -35,9 +39,10 @@ GRAPHQL_CLOSED_AT_FIELD = "closedAt"
 GRAPHQL_UPDATED_AT_FIELD = "updatedAt"
 GRAPHQL_ORDER_BY_UPDATED_AT = "UPDATED_AT"
 
+_UNRECOVERED_FIELD = object()
+
 
 class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
-
     async def get_resource[ExporterOptionsT: SinglePullRequestOptions](
         self,
         options: ExporterOptionsT,
@@ -244,25 +249,143 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             ):
                 yield batch
 
-    @staticmethod
-    def _build_pr_fallback_queries(
+    def _build_pr_queries(
+        self,
+        organization: str,
+        repo_name: str,
         pr_gql_options: PullRequestGraphQLOptions,
         order_by_field: str = "CREATED_AT",
-    ) -> list[str]:
-        """Lighter queries to retry with when the full query keeps timing out.
+    ) -> tuple[str, list[GraphQLFallback]]:
+        """The primary list query plus progressively lighter fallbacks for it.
 
-        A single fallback that drops the most expensive per-node fields; empty
-        when the user already excludes all of them, so no redundant retry is made.
+        Walks ``EXPENSIVE_PR_GRAPHQL_FIELD_TIERS`` in order, each fallback dropping
+        the next tier on top of all previous ones. A tier that removes nothing new
+        (its fields are already excluded) is skipped so no retry repeats the
+        previous attempt's query. Each fallback carries an enricher that backfills
+        the fields it drops beyond the user's own exclusions, per-PR.
         """
-        already_excluded = set(pr_gql_options.exclude_graphql_fields)
-        if all(field in already_excluded for field in EXPENSIVE_PR_GRAPHQL_FIELDS):
-            return []
-        stripped = generate_list_pull_requests_gql(
-            pr_gql_options,
-            order_by_field=order_by_field,
-            extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS,
+        primary = generate_list_pull_requests_gql(
+            pr_gql_options, order_by_field=order_by_field
         )
-        return [stripped]
+        user_excluded = set(pr_gql_options.exclude_graphql_fields)
+        excluded = set(user_excluded)
+        fallbacks: list[GraphQLFallback] = []
+        for tier in EXPENSIVE_PR_GRAPHQL_FIELD_TIERS:
+            if excluded.issuperset(tier):
+                continue
+            excluded.update(tier)
+            stripped_fields = sorted(excluded - user_excluded)
+            fallbacks.append(
+                GraphQLFallback(
+                    query=generate_list_pull_requests_gql(
+                        pr_gql_options,
+                        order_by_field=order_by_field,
+                        extra_excluded_fields=excluded,
+                    ),
+                    enrich=self._make_field_backfiller(
+                        organization, repo_name, pr_gql_options, stripped_fields
+                    ),
+                )
+            )
+        return primary, fallbacks
+
+    def _make_field_backfiller(
+        self,
+        organization: str,
+        repo_name: str,
+        pr_gql_options: PullRequestGraphQLOptions,
+        stripped_fields: list[str],
+    ) -> Callable[[list[dict[str, Any]]], Awaitable[list[dict[str, Any]]]]:
+        """Build an enricher that refills ``stripped_fields`` on each PR node.
+
+        The single-field queries depend only on the field, so they're built once
+        here and reused across every PR the enricher sees.
+        """
+        field_queries = {
+            field: generate_pull_request_details_gql(
+                pr_gql_options,
+                extra_excluded_fields=[
+                    f for f in ALL_OPTIONAL_PR_FIELD_NAMES if f != field
+                ],
+                include_required_fields=False,
+            )
+            for field in stripped_fields
+        }
+
+        async def backfill(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            for node in nodes:
+                await self._backfill_pr_node_fields(
+                    node, field_queries, organization, repo_name
+                )
+            return nodes
+
+        return backfill
+
+    async def _backfill_pr_node_fields(
+        self,
+        node: dict[str, Any],
+        field_queries: dict[str, str],
+        organization: str,
+        repo_name: str,
+    ) -> None:
+        """Fetch each dropped field on its own single-PR query and merge it back.
+
+        One field per query so an individually-too-expensive field fails in
+        isolation, leaving the rest of the PR intact.
+        """
+        pr_number = node.get("number")
+        if pr_number is None or not field_queries:
+            return
+
+        fields = list(field_queries)
+        values = await asyncio.gather(
+            *(
+                self._fetch_single_pr_field(
+                    field, field_queries[field], organization, repo_name, pr_number
+                )
+                for field in fields
+            )
+        )
+        failed = [
+            field for field, value in zip(fields, values) if value is _UNRECOVERED_FIELD
+        ]
+        for field, value in zip(fields, values):
+            if value is not _UNRECOVERED_FIELD:
+                node[field] = value
+        if failed:
+            logger.warning(
+                f"[GraphQL] Could not backfill {len(failed)} field(s) for PR "
+                f"{organization}/{repo_name}#{pr_number}: {failed}"
+            )
+
+    async def _fetch_single_pr_field(
+        self,
+        field: str,
+        query: str,
+        organization: str,
+        repo_name: str,
+        pr_number: int,
+    ) -> Any:
+        """Fetch one PR field; returns its value, or ``_UNRECOVERED_FIELD`` on failure."""
+        payload = self.client.build_graphql_payload(
+            query,
+            {"organization": organization, "repo": repo_name, "prNumber": pr_number},
+        )
+        try:
+            response = await self.client.send_api_request(
+                self.client.base_url, method="POST", json_data=payload
+            )
+        except (httpx.HTTPStatusError, GraphQLErrorGroup, GraphQLClientError) as exc:
+            logger.warning(
+                f"[GraphQL] Failed to backfill '{field}' for PR "
+                f"{organization}/{repo_name}#{pr_number}: {exc}"
+            )
+            return _UNRECOVERED_FIELD
+
+        pr = (response.get("data") or {}).get("repository", {}).get("pullRequest")
+        if pr is not None and field in pr:
+            return pr[field]
+        return _UNRECOVERED_FIELD
 
     async def _fetch_open_pull_requests(
         self,
@@ -282,10 +405,13 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         logger.info(f"[GraphQL] Fetching open PRs from {organization}/{repo_name}")
 
+        primary_query, fallbacks = self._build_pr_queries(
+            organization, repo_name, pr_gql_options
+        )
         async for pr_nodes in self.client.send_paginated_request(
-            generate_list_pull_requests_gql(pr_gql_options),
+            primary_query,
             variables,
-            fallback_queries=self._build_pr_fallback_queries(pr_gql_options),
+            fallbacks=fallbacks,
         ):
             if not pr_nodes:
                 continue
@@ -335,15 +461,14 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 pr, repo, organization, gql_options=pr_gql_options
             )
 
+        primary_query, fallbacks = self._build_pr_queries(
+            organization, repo_name, pr_gql_options, GRAPHQL_ORDER_BY_UPDATED_AT
+        )
         async for batch in paginate_closed_pull_requests(
             self.client.send_paginated_request(
-                generate_list_pull_requests_gql(
-                    pr_gql_options, order_by_field=GRAPHQL_ORDER_BY_UPDATED_AT
-                ),
+                primary_query,
                 variables,
-                fallback_queries=self._build_pr_fallback_queries(
-                    pr_gql_options, order_by_field=GRAPHQL_ORDER_BY_UPDATED_AT
-                ),
+                fallbacks=fallbacks,
             ),
             enrich=enrich,
             max_results=max_results,

@@ -53,6 +53,7 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
+        raise_on_404: bool = False,
     ) -> Response | None:
         auth_headers = await self._auth_provider.get_auth_headers()
         headers = {**(headers or {}), **auth_headers}
@@ -69,7 +70,7 @@ class HTTPBaseClient:
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            if response.status_code == 404:
+            if response.status_code == 404 and not raise_on_404:
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
                 return None
             else:

@@ -52,7 +52,7 @@ class TestEbsVolumeExporter:
                 Size=100,
             )
         )
-        mock_inspector.inspect.return_value = [volume.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [volume.model_dump(exclude_none=True)]
 
         mock_client.describe_volumes.return_value = {
             "Volumes": [{"VolumeId": "vol-111", "VolumeType": "gp3", "Size": 100}]
@@ -66,7 +66,7 @@ class TestEbsVolumeExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == volume.dict(exclude_none=True)
+        assert result == volume.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "ec2")
         mock_client.describe_volumes.assert_called_once_with(VolumeIds=["vol-111"])
         mock_inspector.inspect.assert_called_once_with(
@@ -135,8 +135,8 @@ class TestEbsVolumeExporter:
         vol3 = EbsVolume(Properties=EbsVolumeProperties(VolumeId="vol-333"))
 
         mock_inspector.inspect.side_effect = [
-            [vol1.dict(exclude_none=True), vol2.dict(exclude_none=True)],
-            [vol3.dict(exclude_none=True)],
+            [vol1.model_dump(exclude_none=True), vol2.model_dump(exclude_none=True)],
+            [vol3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedEbsVolumeRequest(
@@ -149,9 +149,9 @@ class TestEbsVolumeExporter:
             collected.extend(page)
 
         assert len(collected) == 3
-        assert collected[0] == vol1.dict(exclude_none=True)
-        assert collected[1] == vol2.dict(exclude_none=True)
-        assert collected[2] == vol3.dict(exclude_none=True)
+        assert collected[0] == vol1.model_dump(exclude_none=True)
+        assert collected[1] == vol2.model_dump(exclude_none=True)
+        assert collected[2] == vol3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "ec2")
         mock_proxy.get_paginator.assert_called_once_with("describe_volumes", "Volumes")

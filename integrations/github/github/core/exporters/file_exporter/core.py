@@ -1,7 +1,7 @@
 from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
@@ -266,14 +266,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         # Each file blob can be up to 100KB; 7 files keeps payloads safely under ~700KB,
         # reducing risk of GraphQL timeouts while improving efficiency over smaller batches.
 
-        client = create_github_client(client_type=GithubClientType.GRAPHQL)
-
         grouped: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = defaultdict(list)
         for entry in matched_file_entries:
             key = (entry["organization"], entry["repo_name"], entry["branch"])
             grouped[key].append(entry)
 
         for (organization, repo_name, branch), entries in grouped.items():
+            client = await create_github_client_for_org(
+                organization, GithubClientType.GRAPHQL
+            )
             for i in range(0, len(entries), batch_size):
                 batch_files = entries[i : i + batch_size]
                 logger.debug(
