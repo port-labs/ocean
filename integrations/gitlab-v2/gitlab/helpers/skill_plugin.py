@@ -59,8 +59,8 @@ PLUGIN_DIRECTORY_PREFIXES: dict[PluginProvider, str] = {
     "pi": ".pi/extensions/",
 }
 
-# GitLab search paths for directory-only plugin packaging.
-# Trailing /* discovers any file under the directory via Advanced Search.
+# Search paths for directory-only plugin packaging.
+# Trailing /* discovers any file directly under the directory.
 PLUGIN_DIRECTORY_SEARCH_PATHS: dict[PluginProvider, str] = {
     "opencode": ".opencode/plugins/*",
     "pi": ".pi/extensions/*",
@@ -83,26 +83,6 @@ def _glob_root(pattern: str) -> str:
         if lower.endswith(suffix.lower()):
             return cleaned[: -len(suffix)].strip("/")
     return cleaned
-
-
-def skill_search_paths(path_globs: list[str]) -> list[str]:
-    """Paths suitable for GitLab Advanced Search (no ** globs)."""
-    paths: list[str] = []
-    seen_roots: set[str] = set()
-    for pattern in path_globs:
-        root = _glob_root(pattern)
-        if not root or root in seen_roots:
-            continue
-        seen_roots.add(root)
-        # Nested skills: <root>/<skill-name>/SKILL.md
-        paths.append(f"{root}/*/{SKILL_MD_FILENAME}")
-        # Two-level nesting: <root>/<team>/<skill-name>/SKILL.md
-        paths.append(f"{root}/*/*/{SKILL_MD_FILENAME}")
-        # Skill at the root directory itself
-        paths.append(f"{root}/{SKILL_MD_FILENAME}")
-    # Broad fallback for non-standard layouts / deeper nesting
-    paths.append(SKILL_MD_FILENAME)
-    return paths
 
 
 def matches_skill_path(path: str, path_globs: list[str]) -> bool:
@@ -177,6 +157,24 @@ def build_skill_object(
         "instructions": body,
         "frontmatter": frontmatter,
         "path": skill_dir,
+        "skillMdPath": skill_md_path,
+        "root": infer_skill_root(skill_md_path, path_globs),
+    }
+
+
+def build_skill_delete_stub(
+    *,
+    skill_md_path: str,
+    path_globs: list[str],
+) -> dict[str, Any]:
+    """Skill shape for deletes, where the file content is no longer available."""
+    path_obj = Path(skill_md_path)
+    return {
+        "name": path_obj.parent.name,
+        "description": "",
+        "instructions": None,
+        "frontmatter": {},
+        "path": str(path_obj.parent).replace("\\", "/"),
         "skillMdPath": skill_md_path,
         "root": infer_skill_root(skill_md_path, path_globs),
     }
@@ -258,7 +256,7 @@ def path_touches_plugin(path: str, providers: list[PluginProvider]) -> bool:
 
 
 def plugin_search_paths(providers: list[PluginProvider]) -> list[str]:
-    """Exact manifests plus directory globs for GitLab Advanced Search."""
+    """Exact manifest paths plus directory globs to discover per project."""
     paths = all_manifest_paths(providers)
     for provider in providers:
         search = PLUGIN_DIRECTORY_SEARCH_PATHS.get(provider)

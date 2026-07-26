@@ -12,6 +12,20 @@ from gitlab.webhook.webhook_processors.push_constants import DELETED_COMMIT_SHA
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 
+def _compare_diffs(added: list[str]) -> dict[str, Any]:
+    return {
+        "diffs": [
+            {
+                "new_path": path,
+                "old_path": path,
+                "new_file": True,
+                "deleted_file": False,
+            }
+            for path in added
+        ]
+    }
+
+
 def make_plugin_resource_config(
     providers: list[str] | None = None,
     repos: list[str] | None = None,
@@ -44,7 +58,6 @@ class TestPluginPushWebhookProcessor:
             "before": "aaa111",
             "after": "bbb222",
             "ref": "refs/heads/main",
-            "total_commits_count": 1,
             "project": {
                 "id": 42,
                 "name": "project",
@@ -78,6 +91,23 @@ class TestPluginPushWebhookProcessor:
 
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
+        processor._gitlab_webhook_client.compare_repository.assert_not_called()
+
+    async def test_skips_when_default_branch_unknown(
+        self,
+        processor: PluginPushWebhookProcessor,
+        base_payload: dict[str, Any],
+    ) -> None:
+        project = {**base_payload["project"]}
+        project.pop("default_branch")
+        payload = {**base_payload, "project": project}
+        processor._gitlab_webhook_client = MagicMock()
+
+        result = await processor.handle_event(payload, make_plugin_resource_config())
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        processor._gitlab_webhook_client.compare_repository.assert_not_called()
 
     async def test_skips_branch_delete(
         self,
@@ -98,6 +128,9 @@ class TestPluginPushWebhookProcessor:
         base_payload: dict[str, Any],
     ) -> None:
         processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.compare_repository = AsyncMock(
+            return_value=_compare_diffs([".cursor-plugin/plugin.json"])
+        )
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
             return_value=[
                 {
@@ -128,6 +161,9 @@ class TestPluginPushWebhookProcessor:
         base_payload: dict[str, Any],
     ) -> None:
         processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.compare_repository = AsyncMock(
+            return_value=_compare_diffs([".cursor-plugin/plugin.json"])
+        )
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
             return_value=[]
         )
@@ -146,28 +182,19 @@ class TestPluginPushWebhookProcessor:
         assert result.deleted_raw_results[0]["plugin"]["name"] == "project"
         assert result.deleted_raw_results[0]["__branch"] == "main"
 
-    async def test_truncated_push_uses_compare_api(
+    async def test_compare_api_drives_touched_paths(
         self,
         processor: PluginPushWebhookProcessor,
         base_payload: dict[str, Any],
     ) -> None:
+        """The commits list misses the manifest; compare is the source of truth."""
         payload = {
             **base_payload,
-            "total_commits_count": 4,
             "commits": [{"added": ["README.md"], "modified": [], "removed": []}],
         }
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.compare_repository = AsyncMock(
-            return_value={
-                "diffs": [
-                    {
-                        "new_path": ".cursor-plugin/plugin.json",
-                        "old_path": ".cursor-plugin/plugin.json",
-                        "new_file": True,
-                        "deleted_file": False,
-                    }
-                ]
-            }
+            return_value=_compare_diffs([".cursor-plugin/plugin.json"])
         )
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
             return_value=[

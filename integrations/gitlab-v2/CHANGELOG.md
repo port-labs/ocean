@@ -17,9 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Skill/plugin push webhooks now ignore non-default branches and branch deletes
-- Truncated GitLab push payloads fall back to repository compare for changed paths
-- Skill Advanced Search covers two-level nested `SKILL.md` paths
+- Skill/plugin push webhooks only process the project default branch, and ignore branch deletes
+- File/skill/plugin push webhooks resolve changed paths from the repository compare API, falling back to the (capped) payload commits list
+- Skill and plugin discovery walks the repository tree with the configured glob patterns instead of relying on Advanced Search
 - Restored group id and query in Advanced Search fallback warning logs
 - Bumped ocean version to ^0.46.2
 

@@ -1,6 +1,7 @@
 from gitlab.helpers.skill_plugin import (
     DEFAULT_SKILL_PATHS,
     _parse_skill_markdown,
+    build_skill_delete_stub,
     build_skill_object,
     detect_directory_providers,
     empty_plugin,
@@ -9,7 +10,6 @@ from gitlab.helpers.skill_plugin import (
     normalize_plugin,
     path_touches_plugin,
     plugin_search_paths,
-    skill_search_paths,
 )
 
 
@@ -25,26 +25,6 @@ def test_default_skill_paths_cover_documented_agents() -> None:
         "skills",
     ):
         assert any(path.startswith(f"{root}/") for path in DEFAULT_SKILL_PATHS)
-
-
-def test_skill_search_paths_from_globs() -> None:
-    paths = skill_search_paths(
-        [
-            "skills/**/SKILL.md",
-            ".cursor/skills/**/SKILL.md",
-            ".github/skills/**/SKILL.md",
-        ]
-    )
-    assert "skills/*/SKILL.md" in paths
-    assert "skills/*/*/SKILL.md" in paths
-    assert "skills/SKILL.md" in paths
-    assert ".cursor/skills/*/SKILL.md" in paths
-    assert ".cursor/skills/*/*/SKILL.md" in paths
-    assert ".cursor/skills/SKILL.md" in paths
-    assert ".github/skills/*/SKILL.md" in paths
-    assert ".github/skills/*/*/SKILL.md" in paths
-    assert ".github/skills/SKILL.md" in paths
-    assert "SKILL.md" in paths
 
 
 def test_matches_skill_path() -> None:
@@ -110,6 +90,20 @@ description: desc
     assert "# Body" in skill["instructions"]
     assert skill["skillMdPath"] == "skills/hello/SKILL.md"
     assert skill["root"] == "skills"
+
+
+def test_build_skill_delete_stub() -> None:
+    stub = build_skill_delete_stub(
+        skill_md_path=".agents/skills/demo/SKILL.md",
+        path_globs=DEFAULT_SKILL_PATHS,
+    )
+    assert stub["name"] == "demo"
+    assert stub["description"] == ""
+    assert stub["instructions"] is None
+    assert stub["frontmatter"] == {}
+    assert stub["path"] == ".agents/skills/demo"
+    assert stub["skillMdPath"] == ".agents/skills/demo/SKILL.md"
+    assert stub["root"] == ".agents/skills"
 
 
 def test_parse_skill_markdown_unclosed_frontmatter() -> None:

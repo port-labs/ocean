@@ -58,24 +58,8 @@ def test_paths_from_compare_diffs() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_push_path_changes_uses_commits_when_complete() -> None:
-    client = MagicMock()
-    payload: dict[str, Any] = {
-        "before": "aaa",
-        "after": "bbb",
-        "total_commits_count": 1,
-        "commits": [
-            {"added": ["skills/x/SKILL.md"], "modified": [], "removed": []},
-        ],
-    }
-    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
-    assert changed == {"skills/x/SKILL.md"}
-    assert removed == set()
-    client.compare_repository.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_resolve_push_path_changes_uses_compare_when_truncated() -> None:
+async def test_resolve_push_path_changes_always_compares() -> None:
+    """Compare wins over the commits list, which GitLab caps at 20 commits."""
     client = MagicMock()
     client.compare_repository = AsyncMock(
         return_value={
@@ -85,21 +69,74 @@ async def test_resolve_push_path_changes_uses_compare_when_truncated() -> None:
                     "old_path": "skills/y/SKILL.md",
                     "new_file": True,
                     "deleted_file": False,
-                }
+                },
+                {
+                    "new_path": "skills/gone/SKILL.md",
+                    "old_path": "skills/gone/SKILL.md",
+                    "deleted_file": True,
+                },
             ]
         }
     )
     payload: dict[str, Any] = {
         "before": "aaa",
         "after": "bbb",
-        "total_commits_count": 10,
         "commits": [
-            {"added": ["README.md"], "modified": [], "removed": []},
+            {"added": ["skills/x/SKILL.md"], "modified": [], "removed": []},
         ],
     }
     changed, removed = await resolve_push_path_changes(client, "group/project", payload)
     client.compare_repository.assert_awaited_once_with("group/project", "aaa", "bbb")
     assert changed == {"skills/y/SKILL.md"}
+    assert removed == {"skills/gone/SKILL.md"}
+
+
+@pytest.mark.asyncio
+async def test_resolve_push_path_changes_falls_back_when_compare_fails() -> None:
+    client = MagicMock()
+    client.compare_repository = AsyncMock(side_effect=RuntimeError("compare failed"))
+    payload: dict[str, Any] = {
+        "before": "aaa",
+        "after": "bbb",
+        "commits": [
+            {"added": ["skills/x/SKILL.md"], "modified": [], "removed": ["old.md"]},
+        ],
+    }
+    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    assert changed == {"skills/x/SKILL.md"}
+    assert removed == {"old.md"}
+
+
+@pytest.mark.asyncio
+async def test_resolve_push_path_changes_falls_back_on_empty_compare_response() -> None:
+    """A 404 compare (force push) surfaces as an empty payload, not an error."""
+    client = MagicMock()
+    client.compare_repository = AsyncMock(return_value={})
+    payload: dict[str, Any] = {
+        "before": "aaa",
+        "after": "bbb",
+        "commits": [
+            {"added": ["skills/x/SKILL.md"], "modified": [], "removed": []},
+        ],
+    }
+    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    assert changed == {"skills/x/SKILL.md"}
+    assert removed == set()
+
+
+@pytest.mark.asyncio
+async def test_resolve_push_path_changes_keeps_empty_diff_list() -> None:
+    client = MagicMock()
+    client.compare_repository = AsyncMock(return_value={"diffs": []})
+    payload: dict[str, Any] = {
+        "before": "aaa",
+        "after": "bbb",
+        "commits": [
+            {"added": ["skills/x/SKILL.md"], "modified": [], "removed": []},
+        ],
+    }
+    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    assert changed == set()
     assert removed == set()
 
 
@@ -109,11 +146,24 @@ async def test_resolve_push_path_changes_skips_compare_on_blank_sha() -> None:
     payload: dict[str, Any] = {
         "before": DELETED_COMMIT_SHA,
         "after": "bbb",
-        "total_commits_count": 5,
         "commits": [
             {"added": ["skills/z/SKILL.md"], "modified": [], "removed": []},
         ],
     }
     changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    assert changed == {"skills/z/SKILL.md"}
+    client.compare_repository.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resolve_push_path_changes_skips_compare_on_missing_sha() -> None:
+    client = MagicMock()
+    payload: dict[str, Any] = {
+        "after": "bbb",
+        "commits": [
+            {"added": ["skills/z/SKILL.md"], "modified": [], "removed": []},
+        ],
+    }
+    changed, _ = await resolve_push_path_changes(client, "group/project", payload)
     assert changed == {"skills/z/SKILL.md"}
     client.compare_repository.assert_not_called()

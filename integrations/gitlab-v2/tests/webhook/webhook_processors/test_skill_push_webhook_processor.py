@@ -28,6 +28,20 @@ def make_skill_resource_config(
     return config
 
 
+def compare_diffs(
+    added: list[str] | None = None, deleted: list[str] | None = None
+) -> dict[str, Any]:
+    diffs: list[dict[str, Any]] = [
+        {"new_path": path, "old_path": path, "new_file": True, "deleted_file": False}
+        for path in added or []
+    ]
+    diffs.extend(
+        {"new_path": path, "old_path": path, "deleted_file": True}
+        for path in deleted or []
+    )
+    return {"diffs": diffs}
+
+
 @pytest.mark.asyncio
 class TestSkillPushWebhookProcessor:
     @pytest.fixture
@@ -49,7 +63,6 @@ class TestSkillPushWebhookProcessor:
             "before": "aaa111",
             "after": "bbb222",
             "ref": "refs/heads/main",
-            "total_commits_count": 1,
             "project": {
                 "id": 42,
                 "name": "project",
@@ -85,6 +98,22 @@ class TestSkillPushWebhookProcessor:
         assert result.deleted_raw_results == []
         processor._gitlab_webhook_client.compare_repository.assert_not_called()
 
+    async def test_skips_when_default_branch_unknown(
+        self,
+        processor: SkillPushWebhookProcessor,
+        base_payload: dict[str, Any],
+    ) -> None:
+        project = {**base_payload["project"]}
+        project.pop("default_branch")
+        payload = {**base_payload, "project": project}
+        processor._gitlab_webhook_client = MagicMock()
+
+        result = await processor.handle_event(payload, make_skill_resource_config())
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        processor._gitlab_webhook_client.compare_repository.assert_not_called()
+
     async def test_skips_branch_delete(
         self,
         processor: SkillPushWebhookProcessor,
@@ -103,19 +132,14 @@ class TestSkillPushWebhookProcessor:
         processor: SkillPushWebhookProcessor,
         base_payload: dict[str, Any],
     ) -> None:
-        payload = {
-            **base_payload,
-            "commits": [
-                {
-                    "added": [],
-                    "modified": [],
-                    "removed": [".agents/skills/demo/SKILL.md"],
-                }
-            ],
-        }
         processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.compare_repository = AsyncMock(
+            return_value=compare_diffs(deleted=[".agents/skills/demo/SKILL.md"])
+        )
 
-        result = await processor.handle_event(payload, make_skill_resource_config())
+        result = await processor.handle_event(
+            base_payload, make_skill_resource_config()
+        )
 
         assert result.updated_raw_results == []
         assert len(result.deleted_raw_results) == 1
@@ -132,6 +156,9 @@ class TestSkillPushWebhookProcessor:
         base_payload: dict[str, Any],
     ) -> None:
         processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.compare_repository = AsyncMock(
+            return_value=compare_diffs(added=[".cursor/skills/hello/SKILL.md"])
+        )
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
             return_value=[
                 {
@@ -158,46 +185,29 @@ class TestSkillPushWebhookProcessor:
             base_payload, make_skill_resource_config()
         )
 
+        processor._gitlab_webhook_client.compare_repository.assert_awaited_once_with(
+            "group/project", "aaa111", "bbb222"
+        )
         assert len(result.updated_raw_results) == 1
         skill = result.updated_raw_results[0]["skill"]
         assert skill["name"] == "hello"
         assert skill["skillMdPath"] == ".cursor/skills/hello/SKILL.md"
         assert result.deleted_raw_results == []
 
-    async def test_truncated_push_uses_compare_api(
+    async def test_falls_back_to_commits_when_compare_fails(
         self,
         processor: SkillPushWebhookProcessor,
         base_payload: dict[str, Any],
     ) -> None:
-        payload = {
-            **base_payload,
-            "total_commits_count": 5,
-            "commits": [
-                {
-                    "added": ["README.md"],
-                    "modified": [],
-                    "removed": [],
-                }
-            ],
-        }
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.compare_repository = AsyncMock(
-            return_value={
-                "diffs": [
-                    {
-                        "new_path": ".cursor/skills/from-compare/SKILL.md",
-                        "old_path": ".cursor/skills/from-compare/SKILL.md",
-                        "new_file": True,
-                        "deleted_file": False,
-                    }
-                ]
-            }
+            side_effect=RuntimeError("compare unavailable")
         )
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
             return_value=[
                 {
-                    "path": ".cursor/skills/from-compare/SKILL.md",
-                    "content": "---\nname: from-compare\ndescription: x\n---\n",
+                    "path": ".cursor/skills/hello/SKILL.md",
+                    "content": "---\nname: hello\n---\n",
                     "ref": "bbb222",
                 }
             ]
@@ -206,22 +216,21 @@ class TestSkillPushWebhookProcessor:
             return_value=[
                 {
                     "file": {
-                        "path": ".cursor/skills/from-compare/SKILL.md",
-                        "content": "---\nname: from-compare\ndescription: x\n---\n",
+                        "path": ".cursor/skills/hello/SKILL.md",
+                        "content": "---\nname: hello\n---\n",
                         "ref": "bbb222",
                     },
-                    "repo": payload["project"],
+                    "repo": base_payload["project"],
                 }
             ]
         )
 
-        result = await processor.handle_event(payload, make_skill_resource_config())
-
-        processor._gitlab_webhook_client.compare_repository.assert_awaited_once_with(
-            "group/project", "aaa111", "bbb222"
+        result = await processor.handle_event(
+            base_payload, make_skill_resource_config()
         )
+
         assert len(result.updated_raw_results) == 1
         assert (
             result.updated_raw_results[0]["skill"]["skillMdPath"]
-            == ".cursor/skills/from-compare/SKILL.md"
+            == ".cursor/skills/hello/SKILL.md"
         )

@@ -513,10 +513,10 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
-    group_params = build_group_params(
-        include_only_active_groups=selector.include_only_active_groups
+    project_params = build_project_params(
+        include_only_active_projects=selector.include_only_active_groups
     )
-    async for batch in resync_skills(client, selector, group_params):
+    async for batch in resync_skills(client, selector, project_params):
         yield batch
 
 
@@ -524,10 +524,10 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
-    group_params = build_group_params(
-        include_only_active_groups=selector.include_only_active_groups
+    project_params = build_project_params(
+        include_only_active_projects=selector.include_only_active_groups
     )
-    async for batch in resync_plugins(client, selector, group_params):
+    async for batch in resync_plugins(client, selector, project_params):
         yield batch
 
 

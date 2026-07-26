@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeGuard
 
 from loguru import logger
 
@@ -49,8 +49,8 @@ def paths_from_compare_diffs(
     return changed_files, removed_files
 
 
-def _is_usable_sha(sha: str | None) -> bool:
-    return bool(sha) and sha != DELETED_COMMIT_SHA
+def _is_usable_sha(sha: Any) -> TypeGuard[str]:
+    return isinstance(sha, str) and bool(sha) and sha != DELETED_COMMIT_SHA
 
 
 async def resolve_push_path_changes(
@@ -61,34 +61,29 @@ async def resolve_push_path_changes(
     """
     Resolve changed/removed paths for a push hook.
 
-    When GitLab truncates the commits list (`total_commits_count` > len(commits)),
-    fall back to the repository compare API using `before`/`after`.
+    GitLab caps the commits list embedded in a push hook, so the repository
+    compare API is the source of truth whenever `before`/`after` can be
+    compared. The commits list is only used when compare is impossible
+    (branch create/delete) or the compare call fails.
     """
-    commits = payload.get("commits") or []
-    total_commits_count = payload.get("total_commits_count", len(commits))
-    changed_files, removed_files = collect_paths_from_commits(payload)
-
-    if total_commits_count <= len(commits):
-        return changed_files, removed_files
-
     before = payload.get("before")
     after = payload.get("after")
-    if not isinstance(before, str) or not isinstance(after, str):
-        logger.warning(
-            "Push payload commits list is truncated but before/after SHAs are "
-            f"unusable for compare on project {project_path}; using commits only"
-        )
-        return changed_files, removed_files
-    if not _is_usable_sha(before) or not _is_usable_sha(after):
-        logger.warning(
-            "Push payload commits list is truncated but before/after SHAs are "
-            f"unusable for compare on project {project_path}; using commits only"
-        )
-        return changed_files, removed_files
 
-    logger.info(
-        f"Push commits truncated ({len(commits)}/{total_commits_count}) for "
-        f"{project_path}; resolving paths via repository compare"
-    )
-    compare = await client.compare_repository(project_path, before, after)
-    return paths_from_compare_diffs(compare.get("diffs") or [])
+    if _is_usable_sha(before) and _is_usable_sha(after):
+        try:
+            compare = await client.compare_repository(project_path, before, after)
+            diffs = compare.get("diffs")
+            if diffs is not None:
+                return paths_from_compare_diffs(diffs)
+            # Unreachable refs (force push, rebase) answer 404, which the REST
+            # client turns into an empty response rather than an error.
+            logger.warning(
+                f"Repository compare {before}..{after} returned no diffs for "
+                f"{project_path}; falling back to the push payload commits list"
+            )
+        except Exception as exc:
+            logger.warning(
+                f"Repository compare {before}..{after} failed for {project_path} "
+                f"({exc}); falling back to the push payload commits list"
+            )
+    return collect_paths_from_commits(payload)

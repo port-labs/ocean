@@ -399,18 +399,11 @@ class GitLabSkillPath(BaseModel):
         extra = "forbid"
 
 
-def _default_skill_paths() -> list["GitLabSkillPath"]:
-    return [GitLabSkillPath(path=path) for path in DEFAULT_SKILL_PATHS]
-
-
 class GitLabSkillSelector(GroupSelector):
     paths: list[GitLabSkillPath] = Field(
         title="Paths",
-        default_factory=_default_skill_paths,
-        description=(
-            "Glob patterns for SKILL.md discovery. Each entry can set repos "
-            "(same shape as the file kind). Multiple entries enable multi-scope filtration."
-        ),
+        default=[GitLabSkillPath(path=path) for path in DEFAULT_SKILL_PATHS],
+        description="Glob patterns for SKILL.md discovery",
     )
 
 
@@ -428,7 +421,7 @@ class GitLabSkillResourceConfig(ResourceConfig):
 class GitLabPluginSelector(GroupSelector):
     providers: list[PluginProvider] = Field(
         title="Providers",
-        default_factory=lambda: list(DEFAULT_PLUGIN_PROVIDERS),
+        default=list(DEFAULT_PLUGIN_PROVIDERS),
         description="Agent plugin providers to detect.",
     )
     repos: list[str] = Field(

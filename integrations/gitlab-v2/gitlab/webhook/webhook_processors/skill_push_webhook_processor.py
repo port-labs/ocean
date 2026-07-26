@@ -1,11 +1,10 @@
-from pathlib import Path
 from typing import cast
 
 from loguru import logger
 
 from gitlab.helpers.skill_plugin import (
+    build_skill_delete_stub,
     enrich_file_to_skill,
-    infer_skill_root,
     matches_skill_path,
 )
 from gitlab.helpers.utils import ObjectKind
@@ -44,10 +43,9 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         project_id = project["id"]
         branch = payload.get("ref", "").removeprefix("refs/heads/")
         repo_path = project["path_with_namespace"]
-        default_branch = project.get("default_branch")
-        if default_branch and branch != default_branch:
+        if branch != project.get("default_branch"):
             logger.info(
-                f"Skipping skill push for {repo_path} on non-default branch {branch}"
+                f"Skipping skill push for {repo_path}: {branch} is not the default branch"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -107,25 +105,16 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 if skill_item:
                     updated_results.append(skill_item)
 
-        deleted_results = []
-        for path in matching_removed:
-            path_obj = Path(path)
-            skill_dir = str(path_obj.parent).replace("\\", "/")
-            deleted_results.append(
-                {
-                    "skill": {
-                        "name": path_obj.parent.name,
-                        "description": "",
-                        "instructions": None,
-                        "frontmatter": {},
-                        "path": skill_dir,
-                        "skillMdPath": path,
-                        "root": infer_skill_root(path, path_globs),
-                    },
-                    "repo": project,
-                    "__branch": branch,
-                }
-            )
+        deleted_results = [
+            {
+                "skill": build_skill_delete_stub(
+                    skill_md_path=path, path_globs=path_globs
+                ),
+                "repo": project,
+                "__branch": branch,
+            }
+            for path in matching_removed
+        ]
 
         logger.info(
             f"Skill push webhook for {repo_path}: "
