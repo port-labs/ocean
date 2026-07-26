@@ -205,6 +205,7 @@ class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
     type: Optional[str] = None
+    body_contains: Optional[str] = None
 
 
 @cache.cache_coroutine_result()
