@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 from datetime import datetime, timezone
 
 from aws.core.exporters.eks.cluster.models import (

@@ -17,6 +17,7 @@ from gitlab.helpers.skill_plugin import (
     provider_for_manifest_path,
     skill_search_paths,
 )
+from gitlab.helpers.utils import build_search_query
 from integration import GitLabPluginSelector, GitLabSkillSelector
 
 
@@ -59,10 +60,10 @@ async def resync_skills(
     for search_path in unique_paths:
         async for files_batch in client.search_files(
             "blobs",
-            search_path,
-            repositories,
-            True,  # skip_parsing — SKILL.md is markdown
-            group_params,
+            build_search_query(search_path),
+            skip_parsing=True,  # SKILL.md is markdown
+            repositories=repositories,
+            params=group_params,
         ):
             enriched = await client._enrich_files_with_repos(files_batch)
             skills: list[dict[str, Any]] = []
@@ -113,10 +114,10 @@ async def resync_plugins(
 
         async for files_batch in client.search_files(
             "blobs",
-            search_path,
-            repositories,
-            False,  # parse JSON when applicable
-            group_params,
+            build_search_query(search_path),
+            skip_parsing=False,  # parse JSON when applicable
+            repositories=repositories,
+            params=group_params,
         ):
             enriched = await client._enrich_files_with_repos(files_batch)
             for entity in enriched:

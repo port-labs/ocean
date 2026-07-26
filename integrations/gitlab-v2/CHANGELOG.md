@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.9.0 (2026-07-22)
+## 0.9.0 (2026-07-26)
 
 
 ### Features
@@ -21,7 +21,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Truncated GitLab push payloads fall back to repository compare for changed paths
 - Skill Advanced Search covers two-level nested `SKILL.md` paths
 - Restored group id and query in Advanced Search fallback warning logs
-- Bumped ocean version to ^0.45.8
+- Bumped ocean version to ^0.46.2
+
+
+## 0.8.14 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.8.13 (2026-07-23)
+
+
+### Bug Fixes
+
+- Fixed `reportPipelineStatus=false` incorrectly completing `trigger_pipeline` runs immediately instead of leaving them in progress, aligning behavior with the GitHub integration's `reportWorkflowStatus` (the run stays in progress until externally updated, e.g. via a CI job calling back into Port).
+
+
+## 0.8.12 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.8.11 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.8.10 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.8.9 (2026-07-22)
+
+
+### Improvements
+
+- Added the `repositoryTree` search strategy to the file kind, which discovers files by walking the Git repository tree instead of the GitLab search API. It does not depend on the search index, so it returns complete and consistent results even when search is stale or disabled, at the cost of being slower.
 
 
 ## 0.8.8 (2026-07-22)

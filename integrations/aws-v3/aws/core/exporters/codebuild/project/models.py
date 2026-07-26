@@ -1,10 +1,14 @@
 from datetime import datetime
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class ProjectProperties(BaseModel):
+class ProjectProperties(BaseAWSPropertiesModel):
     arn: str = Field(default_factory=str, alias="Arn")
     artifacts: dict[str, Any] | None = Field(default=None, alias="Artifacts")
     autoRetryLimit: int | None = Field(default=None, alias="AutoRetryLimit")
@@ -46,10 +50,6 @@ class ProjectProperties(BaseModel):
     timeoutInMinutes: int | None = Field(default=None, alias="TimeoutInMinutes")
     vpcConfig: dict[str, Any] | None = Field(default=None, alias="VpcConfig")
     webhook: dict[str, Any] | None = Field(default=None, alias="Webhook")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class CodeBuildProject(ResourceModel[ProjectProperties]):
