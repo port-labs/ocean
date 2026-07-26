@@ -195,10 +195,12 @@ class TestServiceNowHappyPath(BaseIntegrationTest):
             assert props["number"] == record["number"]
             assert props["state"] == record["state"]
             assert props["category"] == record["category"]
+            assert props["reopenCount"] == record["reopen_count"]
             assert props["severity"] == record["severity"]
             assert props["assignedTo"] == record["assigned_to"]["link"]
             assert props["urgency"] == record["urgency"]
             assert props["contactType"] == record["contact_type"]
             assert props["createdOn"] == created_on_iso(i)
+            assert props["createdBy"] == record["sys_created_by"]
             assert props["isActive"] == record["active"]
             assert props["priority"] == record["priority"]
