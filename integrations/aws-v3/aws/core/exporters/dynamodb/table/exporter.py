@@ -1,7 +1,10 @@
 from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.dynamodb.table.actions import DynamoDBTableActionsMap
+from aws.core.exporters.dynamodb.table.actions import (
+    DynamoDBTableActionsMap,
+    DynamoDBTableActionInput,
+)
 from aws.core.exporters.dynamodb.table.models import (
     Table,
     SingleTableRequest,
@@ -13,7 +16,7 @@ from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.utils import RegionHelper
 
 
-class DynamoDBTableExporter(IResourceExporter[list[dict[str, Any]]]):
+class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
     _service_name: SupportedServices = "dynamodb"
     _model_cls: Type[Table] = Table
     _actions_map: Type[DynamoDBTableActionsMap] = DynamoDBTableActionsMap
@@ -26,12 +29,17 @@ class DynamoDBTableExporter(IResourceExporter[list[dict[str, Any]]]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             partition = RegionHelper.get_partition()
-            table_dict = {
-                "TableName": options.table_name,
-                "TableArn": f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{options.table_name}",
-            }
             result = await inspector.inspect(
-                [table_dict],
+                DynamoDBTableActionInput(
+                    items=[
+                        {
+                            "TableName": options.table_name,
+                            "TableArn": f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{options.table_name}",
+                        }
+                    ],
+                    region=options.region,
+                    account_id=options.account_id,
+                ),
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
@@ -62,7 +70,11 @@ class DynamoDBTableExporter(IResourceExporter[list[dict[str, Any]]]):
                         for table_name in table_names
                     ]
                     result = await inspector.inspect(
-                        table_dicts,
+                        DynamoDBTableActionInput(
+                            items=table_dicts,
+                            region=options.region,
+                            account_id=options.account_id,
+                        ),
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,

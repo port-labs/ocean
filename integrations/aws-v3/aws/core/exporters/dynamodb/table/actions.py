@@ -1,12 +1,29 @@
+from dataclasses import dataclass
 from typing import Any, Type
-from aws.core.interfaces.action import Action, ActionMap
+
+from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
-class GetTableDetailsAction(Action[list[dict[str, Any]]]):
-    async def _execute(self, tables: list[dict[str, Any]]) -> list[dict[str, Any]]:
+@dataclass
+class DynamoDBTableActionInput(BaseActionInput[dict[str, Any]]):
+    region: str
+    account_id: str
+
+
+class ListTablesAction(Action[DynamoDBTableActionInput]):
+    async def _execute(
+        self, resources: DynamoDBTableActionInput
+    ) -> list[dict[str, Any]]:
+        return resources.items
+
+
+class GetTableDetailsAction(Action[DynamoDBTableActionInput]):
+    async def _execute(
+        self, resources: DynamoDBTableActionInput
+    ) -> list[dict[str, Any]]:
         return await execute_concurrent_aws_operations(
-            input_items=tables,
+            input_items=resources.items,
             operation_func=self._fetch_table_details,
             get_resource_identifier=lambda t: t["TableName"],
             operation_name="table details",
@@ -17,10 +34,12 @@ class GetTableDetailsAction(Action[list[dict[str, Any]]]):
         return response["Table"]
 
 
-class GetTableTagsAction(Action[list[dict[str, Any]]]):
-    async def _execute(self, tables: list[dict[str, Any]]) -> list[dict[str, Any]]:
+class GetTableTagsAction(Action[DynamoDBTableActionInput]):
+    async def _execute(
+        self, resources: DynamoDBTableActionInput
+    ) -> list[dict[str, Any]]:
         return await execute_concurrent_aws_operations(
-            input_items=tables,
+            input_items=resources.items,
             operation_func=self._fetch_table_tags,
             get_resource_identifier=lambda t: t["TableArn"],
             operation_name="table tags",
@@ -30,16 +49,15 @@ class GetTableTagsAction(Action[list[dict[str, Any]]]):
         response = await self.client.list_tags_of_resource(
             ResourceArn=table["TableArn"]
         )
-        # list_tags_of_resource supports pagination via NextToken, but AWS enforces
-        # a hard limit of 50 tags per DynamoDB resource — a single call always
-        # returns all tags. Source: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html
         return {"Tags": response["Tags"]}
 
 
-class GetTableBackupStatusAction(Action[list[dict[str, Any]]]):
-    async def _execute(self, tables: list[dict[str, Any]]) -> list[dict[str, Any]]:
+class GetTableBackupStatusAction(Action[DynamoDBTableActionInput]):
+    async def _execute(
+        self, resources: DynamoDBTableActionInput
+    ) -> list[dict[str, Any]]:
         return await execute_concurrent_aws_operations(
-            input_items=tables,
+            input_items=resources.items,
             operation_func=self._fetch_backup_status,
             get_resource_identifier=lambda t: t["TableName"],
             operation_name="table backup status",
@@ -54,9 +72,12 @@ class GetTableBackupStatusAction(Action[list[dict[str, Any]]]):
         }
 
 
-class DynamoDBTableActionsMap(ActionMap[list[dict[str, Any]]]):
-    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
+class DynamoDBTableActionsMap(ActionMap[DynamoDBTableActionInput]):
+    defaults: list[Type[Action[DynamoDBTableActionInput]]] = [
+        ListTablesAction,
         GetTableDetailsAction,
-        GetTableTagsAction,
     ]
-    options: list[Type[Action[list[dict[str, Any]]]]] = [GetTableBackupStatusAction]
+    options: list[Type[Action[DynamoDBTableActionInput]]] = [
+        GetTableTagsAction,
+        GetTableBackupStatusAction,
+    ]

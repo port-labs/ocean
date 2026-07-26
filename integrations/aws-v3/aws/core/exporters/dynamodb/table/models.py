@@ -28,6 +28,11 @@ class TableProperties(BaseModel):
     DeletionProtectionEnabled: bool | None = None
     Replicas: list[dict[str, Any]] | None = None
     GlobalTableVersion: str | None = None
+    GlobalTableWitnesses: list[dict[str, Any]] | None = None
+    GlobalTableSettingsReplicationMode: str | None = None
+    OnDemandThroughput: dict[str, Any] | None = None
+    WarmThroughput: dict[str, Any] | None = None
+    MultiRegionConsistency: str | None = None
     Tags: list[dict[str, Any]] | None = None
     ContinuousBackupsDescription: dict[str, Any] | None = None
 

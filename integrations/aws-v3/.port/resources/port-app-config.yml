@@ -46,6 +46,8 @@ resources:
   - kind: AWS::DynamoDB::Table
     selector:
       query: 'true'
+      includeActions:
+        - GetTableTagsAction
     port:
       entity:
         mappings:
