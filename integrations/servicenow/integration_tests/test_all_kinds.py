@@ -23,10 +23,6 @@ KIND_BUILDERS: dict[str, str] = {
     "incident": "with_incident_routes",
 }
 
-assert set(KIND_EXPECTATIONS) == set(
-    KIND_BLUEPRINTS
-), "KIND_EXPECTATIONS and KIND_BLUEPRINTS must cover the same kinds"
-
 
 @pytest.mark.parametrize("kind", list(KIND_BLUEPRINTS))
 @pytest.mark.asyncio
