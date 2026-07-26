@@ -51,8 +51,7 @@ class LifecycleClient:
         return self._lifecycle_attributes
 
     async def _lifecycle_base_url(self) -> str:
-        attributes = await self.get_lifecycle_attributes()
-        return attributes["ingestUrl"].rstrip("/")
+        return f"{self._lifecycle_auth.api_url.rstrip('/')}/lifecycle"
 
     def _build_body(self, status: str, **extra: Any) -> dict[str, Any]:
         return {"status": status, **extra}
