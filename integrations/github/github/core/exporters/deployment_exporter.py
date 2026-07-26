@@ -57,9 +57,7 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         incremental_cursor = active_incremental_cursor()
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo}/deployments"
-        request_params = DEPLOYMENT_INCREMENTAL.merge_params(
-            params, incremental_cursor
-        )
+        request_params = DEPLOYMENT_INCREMENTAL.merge_params(params, incremental_cursor)
 
         if not enrich_first_commit:
             async for deployments in paginate_with_strategy(

@@ -133,7 +133,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         strategy = self._search_strategy if use_search_api else self._list_strategy
 
         async for batch in strategy(
-            organization, organization_type, params, search_params,
+            organization,
+            organization_type,
+            params,
+            search_params,
             incremental_cursor=incremental_cursor,
         ):
             yield batch
