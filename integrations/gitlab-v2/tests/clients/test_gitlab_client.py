@@ -1115,6 +1115,107 @@ class TestGitLabClient:
                     {"ref": "main", "path": "src/config", "recursive": False},
                 )
 
+    async def test_match_files_with_repository_tree_scopes_wildcard_prefix(
+        self, client: GitLabClient
+    ) -> None:
+        """Wildcard patterns recurse under their literal prefix, not the whole repo."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {
+                "type": "blob",
+                "name": "SKILL.md",
+                "path": ".cursor/skills/hello/SKILL.md",
+            },
+            {
+                "type": "blob",
+                "name": "readme.md",
+                "path": ".cursor/skills/hello/readme.md",
+            },
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project",
+                    build_search_query(".cursor/skills/**/SKILL.md"),
+                ):
+                    results.extend(batch)
+
+                assert [f["path"] for f in results] == [
+                    ".cursor/skills/hello/SKILL.md"
+                ]
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {
+                        "ref": "main",
+                        "path": ".cursor/skills",
+                        "recursive": True,
+                    },
+                )
+
+    async def test_match_files_with_repository_tree_patterns_one_walk(
+        self, client: GitLabClient
+    ) -> None:
+        """Multiple globs under one prefix share a single recursive tree walk."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {
+                "type": "blob",
+                "name": "plugin.json",
+                "path": ".claude-plugin/plugin.json",
+            },
+            {
+                "type": "blob",
+                "name": "marketplace.json",
+                "path": ".claude-plugin/marketplace.json",
+            },
+            {"type": "blob", "name": "other.txt", "path": ".claude-plugin/other.txt"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree_patterns(
+                    "group/project",
+                    [
+                        ".claude-plugin/plugin.json",
+                        ".claude-plugin/marketplace.json",
+                    ],
+                ):
+                    results.extend(batch)
+
+                assert sorted(f["path"] for f in results) == [
+                    ".claude-plugin/marketplace.json",
+                    ".claude-plugin/plugin.json",
+                ]
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {
+                        "ref": "main",
+                        "path": ".claude-plugin",
+                        "recursive": False,
+                    },
+                )
+
     async def test_match_files_with_repository_tree_pathless_is_recursive(
         self, client: GitLabClient
     ) -> None:

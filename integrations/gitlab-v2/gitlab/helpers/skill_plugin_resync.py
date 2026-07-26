@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from typing import Any, AsyncIterator
 
 from loguru import logger
@@ -17,11 +18,7 @@ from gitlab.helpers.skill_plugin import (
     provider_for_manifest_path,
 )
 from gitlab.helpers.utils import build_search_query
-from integration import GitLabPluginSelector, GitLabSkillSelector
-
-# Skills and plugins live in dot-directories that GitLab's Advanced Search does
-# not reliably index, so discovery always walks the repository tree instead.
-TREE_SEARCH_STRATEGY = "repositoryTree"
+from integration import GitLabPluginSelector, GitLabSkillPath, GitLabSkillSelector
 
 KNOWN_MANIFEST_PATHS = {
     path for paths in PLUGIN_MANIFEST_PATHS.values() for path in paths
@@ -36,6 +33,14 @@ async def resync_skills(
     path_entries = selector.paths
     path_globs = [entry.path for entry in path_entries]
     emitted_keys: set[str] = set()
+    strategy = selector.search_strategy
+
+    if strategy == "repositoryTree":
+        async for skills in _resync_skills_via_tree(
+            client, path_entries, path_globs, project_params, emitted_keys
+        ):
+            yield skills
+        return
 
     for entry in path_entries:
         async for files_batch in client.search_files(
@@ -44,24 +49,101 @@ async def resync_skills(
             skip_parsing=True,  # SKILL.md is markdown
             repositories=entry.repos or None,
             params=project_params,
-            strategy=TREE_SEARCH_STRATEGY,
+            strategy=strategy,
         ):
-            enriched = await client._enrich_files_with_repos(files_batch)
-            skills: list[dict[str, Any]] = []
-            for file_entity in enriched:
-                skill_item = enrich_file_to_skill(file_entity, path_globs=path_globs)
-                if not skill_item:
-                    continue
-                key = (
-                    f"{(skill_item.get('repo') or {}).get('id')}:"
-                    f"{skill_item['skill']['skillMdPath']}"
-                )
-                if key in emitted_keys:
-                    continue
-                emitted_keys.add(key)
-                skills.append(skill_item)
+            skills = _skills_from_files(
+                await client._enrich_files_with_repos(files_batch),
+                path_globs,
+                emitted_keys,
+            )
             if skills:
                 yield skills
+
+
+async def _resync_skills_via_tree(
+    client: GitLabClient,
+    path_entries: list[GitLabSkillPath],
+    path_globs: list[str],
+    project_params: dict[str, Any] | None,
+    emitted_keys: set[str],
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """One minimized tree-walk set per project, matching all applicable globs."""
+    patterns_by_repo, unrestricted_patterns = _partition_skill_patterns(path_entries)
+
+    # Common case: same globs for every project — concurrent tree walks.
+    if unrestricted_patterns and not patterns_by_repo:
+        async for files_batch in client.search_files_matching_patterns(
+            unrestricted_patterns,
+            skip_parsing=True,
+            params=project_params,
+        ):
+            skills = _skills_from_files(
+                await client._enrich_files_with_repos(files_batch),
+                path_globs,
+                emitted_keys,
+            )
+            if skills:
+                yield skills
+        return
+
+    repos_scope = (
+        [] if unrestricted_patterns else list(patterns_by_repo.keys())
+    )
+    async for projects_batch in _iter_projects(client, repos_scope, project_params):
+        for project in projects_batch:
+            repo = project["path_with_namespace"]
+            patterns = list(
+                dict.fromkeys(unrestricted_patterns + patterns_by_repo.get(repo, []))
+            )
+            if not patterns:
+                continue
+            async for files_batch in client.search_files_matching_patterns(
+                patterns,
+                skip_parsing=True,
+                repositories=[repo],
+            ):
+                skills = _skills_from_files(
+                    await client._enrich_files_with_repos(files_batch),
+                    path_globs,
+                    emitted_keys,
+                )
+                if skills:
+                    yield skills
+
+
+def _partition_skill_patterns(
+    path_entries: list[GitLabSkillPath],
+) -> tuple[dict[str, list[str]], list[str]]:
+    patterns_by_repo: dict[str, list[str]] = defaultdict(list)
+    unrestricted: list[str] = []
+    for entry in path_entries:
+        if not entry.repos:
+            unrestricted.append(entry.path)
+            continue
+        for repo in entry.repos:
+            patterns_by_repo[repo].append(entry.path)
+    return patterns_by_repo, unrestricted
+
+
+def _skills_from_files(
+    enriched: list[dict[str, Any]],
+    path_globs: list[str],
+    emitted_keys: set[str],
+) -> list[dict[str, Any]]:
+    skills: list[dict[str, Any]] = []
+    for file_entity in enriched:
+        skill_item = enrich_file_to_skill(file_entity, path_globs=path_globs)
+        if not skill_item:
+            continue
+        key = (
+            f"{(skill_item.get('repo') or {}).get('id')}:"
+            f"{skill_item['skill']['skillMdPath']}"
+        )
+        if key in emitted_keys:
+            continue
+        emitted_keys.add(key)
+        skills.append(skill_item)
+    return skills
 
 
 async def resync_plugins(
@@ -71,6 +153,7 @@ async def resync_plugins(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     providers = selector.providers
     search_paths = plugin_search_paths(providers)
+    strategy = selector.search_strategy
 
     # A plugin aggregates manifests spread over several paths (e.g. claude's
     # plugin.json and marketplace.json), so manifests are accumulated per
@@ -80,21 +163,31 @@ async def resync_plugins(
     async for projects_batch in _iter_projects(client, selector.repos, project_params):
         projects_by_id = {str(project["id"]): project for project in projects_batch}
         accumulated: dict[str, dict[str, Any]] = {}
+        repo_paths = [project["path_with_namespace"] for project in projects_batch]
 
-        for search_path in search_paths:
-            async for files_batch in client.search_files(
-                "blobs",
-                build_search_query(search_path),
-                skip_parsing=False,  # parse JSON when applicable
-                repositories=[
-                    project["path_with_namespace"] for project in projects_batch
-                ],
-                strategy=TREE_SEARCH_STRATEGY,
+        if strategy == "repositoryTree":
+            async for files_batch in client.search_files_matching_patterns(
+                search_paths,
+                skip_parsing=False,
+                repositories=repo_paths,
             ):
                 for file_data in files_batch:
                     _accumulate_plugin_file(
                         accumulated, projects_by_id, file_data, providers
                     )
+        else:
+            for search_path in search_paths:
+                async for files_batch in client.search_files(
+                    "blobs",
+                    build_search_query(search_path),
+                    skip_parsing=False,
+                    repositories=repo_paths,
+                    strategy=strategy,
+                ):
+                    for file_data in files_batch:
+                        _accumulate_plugin_file(
+                            accumulated, projects_by_id, file_data, providers
+                        )
 
         batch: list[dict[str, Any]] = []
         for entry in accumulated.values():

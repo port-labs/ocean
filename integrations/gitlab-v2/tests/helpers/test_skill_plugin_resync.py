@@ -21,6 +21,7 @@ class FakeGitLabClient:
         self.projects = projects or []
         self.projects_by_id = {str(p["id"]): p for p in self.projects}
         self.search_calls: list[dict[str, Any]] = []
+        self.pattern_search_calls: list[dict[str, Any]] = []
 
     async def search_files(
         self,
@@ -44,6 +45,42 @@ class FakeGitLabClient:
         files = self.files_by_path.get(query.path, [])
         if files:
             yield files
+
+    async def search_files_matching_patterns(
+        self,
+        path_patterns: list[str],
+        *,
+        skip_parsing: bool = False,
+        repositories: list[str] | None = None,
+        params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        self.pattern_search_calls.append(
+            {
+                "path_patterns": path_patterns,
+                "repositories": repositories,
+                "params": params,
+                "skip_parsing": skip_parsing,
+            }
+        )
+        seen: set[str] = set()
+        batch: list[dict[str, Any]] = []
+        for pattern in path_patterns:
+            for file_data in self.files_by_path.get(pattern, []):
+                key = f"{file_data.get('project_id')}:{file_data.get('path')}"
+                if key in seen:
+                    continue
+                if repositories:
+                    project = self.projects_by_id.get(str(file_data["project_id"]))
+                    if (
+                        not project
+                        or project["path_with_namespace"] not in repositories
+                    ):
+                        continue
+                seen.add(key)
+                batch.append(file_data)
+        if batch:
+            yield batch
 
     async def _enrich_files_with_repos(
         self, files_batch: list[dict[str, Any]]
@@ -100,7 +137,8 @@ async def test_resync_skills_walks_configured_globs_with_tree_strategy() -> None
                     "ref": "main",
                     "project_id": 1,
                 }
-            ]
+            ],
+            "skills/**/SKILL.md": [],
         },
         projects=[PROJECT],
     )
@@ -110,22 +148,48 @@ async def test_resync_skills_walks_configured_globs_with_tree_strategy() -> None
         async for batch in resync_skills(client, selector, {"min_access_level": 30})  # type: ignore[arg-type]
     ]
 
-    assert [call["query"].path for call in client.search_calls] == [
+    assert client.search_calls == []
+    assert len(client.pattern_search_calls) == 1
+    assert set(client.pattern_search_calls[0]["path_patterns"]) == {
         ".cursor/skills/**/SKILL.md",
         "skills/**/SKILL.md",
-    ]
-    assert {call["strategy"] for call in client.search_calls} == {"repositoryTree"}
-    assert [call["repositories"] for call in client.search_calls] == [
-        None,
-        ["group/project"],
-    ]
-    assert client.search_calls[0]["params"] == {"min_access_level": 30}
+    }
+    assert client.pattern_search_calls[0]["repositories"] == ["group/project"]
 
     assert len(batches) == 1
     skill = batches[0][0]["skill"]
     assert skill["name"] == "hello"
     assert skill["skillMdPath"] == ".cursor/skills/hello/SKILL.md"
     assert skill["root"] == ".cursor/skills"
+
+
+@pytest.mark.asyncio
+async def test_resync_skills_uses_search_api_when_strategy_opted_out() -> None:
+    selector = GitLabSkillSelector(
+        query="true",
+        searchStrategy="groupSearch",
+        paths=[GitLabSkillPath(path=".cursor/skills/**/SKILL.md")],
+    )
+    client = FakeGitLabClient(
+        files_by_path={
+            ".cursor/skills/**/SKILL.md": [
+                {
+                    "path": ".cursor/skills/hello/SKILL.md",
+                    "content": SKILL_CONTENT,
+                    "ref": "main",
+                    "project_id": 1,
+                }
+            ]
+        },
+        projects=[PROJECT],
+    )
+
+    batches = [batch async for batch in resync_skills(client, selector, None)]  # type: ignore[arg-type]
+
+    assert client.pattern_search_calls == []
+    assert {call["strategy"] for call in client.search_calls} == {"groupSearch"}
+    assert len(batches) == 1
+    assert batches[0][0]["skill"]["name"] == "hello"
 
 
 @pytest.mark.asyncio
@@ -154,6 +218,11 @@ async def test_resync_skills_emits_each_skill_once_across_overlapping_globs() ->
     batches = [batch async for batch in resync_skills(client, selector, None)]  # type: ignore[arg-type]
 
     assert sum(len(batch) for batch in batches) == 1
+    assert len(client.pattern_search_calls) == 1
+    assert set(client.pattern_search_calls[0]["path_patterns"]) == {
+        ".cursor/skills/**/SKILL.md",
+        "**/SKILL.md",
+    }
 
 
 @pytest.mark.asyncio
@@ -185,8 +254,12 @@ async def test_resync_plugins_accumulates_manifests_per_project() -> None:
         batch async for batch in resync_plugins(client, selector, {"active": True})  # type: ignore[arg-type]
     ]
 
-    assert {call["strategy"] for call in client.search_calls} == {"repositoryTree"}
-    assert client.search_calls[0]["repositories"] == ["group/project", "group/empty"]
+    assert client.search_calls == []
+    assert len(client.pattern_search_calls) == 1
+    assert client.pattern_search_calls[0]["repositories"] == [
+        "group/project",
+        "group/empty",
+    ]
 
     assert len(batches) == 1
     assert len(batches[0]) == 1
@@ -196,6 +269,34 @@ async def test_resync_plugins_accumulates_manifests_per_project() -> None:
     assert item["plugin"]["supports"]["opencode"] is True
     assert item["repo"]["path_with_namespace"] == "group/project"
     assert item["__branch"] == "main"
+
+
+@pytest.mark.asyncio
+async def test_resync_plugins_uses_search_api_when_strategy_opted_out() -> None:
+    selector = GitLabPluginSelector(
+        query="true",
+        providers=["cursor"],
+        searchStrategy="projectSearch",
+    )
+    client = FakeGitLabClient(
+        files_by_path={
+            ".cursor-plugin/plugin.json": [
+                {
+                    "path": ".cursor-plugin/plugin.json",
+                    "content": {"name": "cursor-plugin"},
+                    "ref": "main",
+                    "project_id": 1,
+                }
+            ]
+        },
+        projects=[PROJECT],
+    )
+
+    batches = [batch async for batch in resync_plugins(client, selector, None)]  # type: ignore[arg-type]
+
+    assert client.pattern_search_calls == []
+    assert {call["strategy"] for call in client.search_calls} == {"projectSearch"}
+    assert batches[0][0]["plugin"]["supports"]["cursor"] is True
 
 
 @pytest.mark.asyncio
@@ -219,7 +320,7 @@ async def test_resync_plugins_scopes_to_configured_repos() -> None:
 
     batches = [batch async for batch in resync_plugins(client, selector, None)]  # type: ignore[arg-type]
 
-    assert client.search_calls[0]["repositories"] == ["group/project"]
+    assert client.pattern_search_calls[0]["repositories"] == ["group/project"]
     assert len(batches) == 1
     assert batches[0][0]["plugin"]["supports"]["cursor"] is True
 

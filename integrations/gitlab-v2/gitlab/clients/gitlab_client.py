@@ -13,6 +13,7 @@ from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import (
+    build_search_query,
     parse_file_content,
     SearchQuery,
     is_bot_member,
@@ -51,6 +52,47 @@ def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
 def _is_wildcard_path(path: str) -> bool:
     """Check if a path contains glob wildcard characters."""
     return any(c in path for c in "*?[]")
+
+
+def _literal_tree_prefix(path: str) -> str:
+    """Return the fixed directory prefix before the first glob segment.
+
+    Examples:
+        ``.cursor/skills/**/SKILL.md`` -> ``.cursor/skills``
+        ``**/SKILL.md`` -> ``""`` (whole repository)
+        ``skills/**/SKILL.md`` -> ``skills``
+    """
+    parts: list[str] = []
+    for part in path.strip("/").split("/"):
+        if _is_wildcard_path(part):
+            break
+        if part:
+            parts.append(part)
+    return "/".join(parts)
+
+
+def _repository_tree_params(path: str) -> tuple[str, bool]:
+    """Map a concrete path or glob to GitLab ``repository/tree`` (path, recursive).
+
+    Wildcard patterns recurse under their literal prefix instead of always walking
+    the whole repository. Concrete paths list that directory non-recursively.
+    """
+    if not _is_wildcard_path(path):
+        return path, False
+    return _literal_tree_prefix(path), True
+
+
+def _minimize_tree_roots(roots: set[str]) -> list[str]:
+    """Drop roots already covered by a parent root (empty root covers everything)."""
+    if "" in roots:
+        return [""]
+    ordered = sorted(roots, key=lambda root: (root.count("/"), len(root), root))
+    kept: list[str] = []
+    for root in ordered:
+        if any(root == parent or root.startswith(f"{parent}/") for parent in kept):
+            continue
+        kept.append(root)
+    return kept
 
 
 class GitLabClient:
@@ -759,19 +801,27 @@ class GitLabClient:
         project: dict[str, Any],
         path: str,
         ref: str = "main",
+        *,
+        recursive: bool | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch repository tree items for a project.
 
-        Determines whether to fetch recursively (wildcard path) or a specific subdirectory.
-        Callers should filter the results according to their needs.
+        ``path`` may be a concrete directory or a glob. When ``recursive`` is
+        omitted, wildcards recurse under the literal prefix before the first
+        glob segment; concrete paths list that directory non-recursively.
+        Pass ``recursive`` explicitly when ``path`` is already a tree API path
+        (including ``""`` for the repository root).
         """
         project_path = project["path_with_namespace"]
-        is_wildcard = _is_wildcard_path(path)
+        if recursive is None:
+            api_path, recursive = _repository_tree_params(path)
+        else:
+            api_path = path
 
         params = {
             "ref": ref,
-            "path": "" if is_wildcard else path,
-            "recursive": is_wildcard,
+            "path": api_path,
+            "recursive": recursive,
         }
         async for batch in self.rest.get_paginated_project_resource(
             project_path, "repository/tree", params
@@ -1052,32 +1102,137 @@ class GitLabClient:
         is walked recursively and matches in subdirectories are not missed. A pattern
         with a directory component is matched against the full path as given.
         """
+        async for batch in self._match_files_with_repository_tree_patterns(
+            repo, [query.path]
+        ):
+            yield batch
+
+    async def _match_files_with_repository_tree_patterns(
+        self,
+        repo: str,
+        path_patterns: list[str],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Match multiple path globs with the minimum set of repository tree walks.
+
+        Patterns that share a fixed prefix (or whose roots nest) share a single
+        recursive tree listing; results are filtered against every pattern in memory.
+        """
+        if not path_patterns:
+            return
+
         project = await self.get_project(repo)
         if not project:
             return
 
         ref = project["default_branch"]
-        match_pattern = (
-            f"**/{query.filename}" if query.directory is None else query.path
-        )
-        is_wildcard = _is_wildcard_path(match_pattern)
-        tree_path = match_pattern if is_wildcard else (query.directory or "")
+        match_patterns: list[str] = []
+        # (api_path, recursive) — exact file paths keep a non-recursive directory list.
+        walks: set[tuple[str, bool]] = set()
+        for path_pattern in path_patterns:
+            query = build_search_query(path_pattern)
+            match_pattern = (
+                f"**/{query.filename}" if query.directory is None else query.path
+            )
+            match_patterns.append(match_pattern)
+            if _is_wildcard_path(match_pattern):
+                walks.add((_literal_tree_prefix(match_pattern), True))
+            else:
+                walks.add((query.directory or "", False))
 
-        async for items_batch in self.get_repository_tree(project, tree_path, ref):
-            files_batch = [
-                {
-                    **item,
-                    "ref": ref,
-                    "project_id": project["id"],
-                }
-                for item in items_batch
-                if item["type"] == "blob"
-                and glob.globmatch(
-                    item["path"], match_pattern, flags=glob.GLOBSTAR | glob.DOTGLOB
+        if any(path == "" and recursive for path, recursive in walks):
+            walk_list: list[tuple[str, bool]] = [("", True)]
+        else:
+            recursive_roots = _minimize_tree_roots(
+                {path for path, recursive in walks if recursive}
+            )
+            covered = set(recursive_roots)
+            walk_list = [(root, True) for root in recursive_roots]
+            for path, recursive in sorted(walks):
+                if recursive:
+                    continue
+                if any(
+                    path == parent or path.startswith(f"{parent}/")
+                    for parent in covered
+                ):
+                    continue
+                walk_list.append((path, False))
+                covered.add(path)
+
+        seen_paths: set[str] = set()
+        for api_path, recursive in walk_list:
+            async for items_batch in self.get_repository_tree(
+                project, api_path, ref, recursive=recursive
+            ):
+                files_batch = [
+                    {
+                        **item,
+                        "ref": ref,
+                        "project_id": project["id"],
+                    }
+                    for item in items_batch
+                    if item["type"] == "blob"
+                    and item["path"] not in seen_paths
+                    and any(
+                        glob.globmatch(
+                            item["path"],
+                            match_pattern,
+                            flags=glob.GLOBSTAR | glob.DOTGLOB,
+                        )
+                        for match_pattern in match_patterns
+                    )
+                ]
+                for file_item in files_batch:
+                    seen_paths.add(file_item["path"])
+                if files_batch:
+                    yield files_batch
+
+    async def search_files_matching_patterns(
+        self,
+        path_patterns: list[str],
+        *,
+        skip_parsing: bool = False,
+        repositories: list[str] | None = None,
+        params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Discover files matching any path pattern via scoped repository tree walks."""
+        if not path_patterns:
+            return
+
+        logger.info(
+            f"Using repository tree search for {len(path_patterns)} path pattern(s)"
+        )
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
+
+        async def _search_repo(repo: str) -> AsyncIterator[list[dict[str, Any]]]:
+            async for file_batch in self._match_files_with_repository_tree_patterns(
+                repo, path_patterns
+            ):
+                processed_batch = await self._process_file_batch(
+                    file_batch, repo, skip_parsing
                 )
+                if processed_batch:
+                    yield processed_batch
+
+        if repositories:
+            tasks = [
+                semaphore_async_iterator(semaphore, partial(_search_repo, repo))
+                for repo in repositories
             ]
-            if files_batch:
-                yield files_batch
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            return
+
+        async for projects_batch in self.get_projects(params=params):
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(_search_repo, project["path_with_namespace"]),
+                )
+                for project in projects_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
 
     async def _search_files_in_group_projects(
         self,

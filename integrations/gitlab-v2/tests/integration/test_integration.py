@@ -20,6 +20,8 @@ from integration import (
     GitlabDeploymentQueryParams,
     GitlabDeploymentSelector,
     FilesSelector,
+    GitLabPluginSelector,
+    GitLabSkillSelector,
 )
 
 
@@ -142,6 +144,24 @@ def test_files_selector_rejects_unknown_search_strategy() -> None:
                 "searchStrategy": "tree",
             }
         )
+
+
+def test_skill_selector_defaults_to_repository_tree_strategy() -> None:
+    selector = GitLabSkillSelector(query="true")
+
+    assert selector.search_strategy == "repositoryTree"
+
+
+def test_plugin_selector_defaults_to_repository_tree_strategy() -> None:
+    selector = GitLabPluginSelector(query="true")
+
+    assert selector.search_strategy == "repositoryTree"
+
+
+def test_skill_selector_accepts_group_search_strategy() -> None:
+    selector = GitLabSkillSelector(query="true", searchStrategy="groupSearch")
+
+    assert selector.search_strategy == "groupSearch"
 
 
 def test_generate_query_params_excludes_unset_fields() -> None:
