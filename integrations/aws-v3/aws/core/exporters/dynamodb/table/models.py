@@ -1,10 +1,17 @@
 from datetime import datetime
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+
+from pydantic import Field, ConfigDict
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class TableProperties(BaseModel):
+class TableProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
     TableName: str = Field(default_factory=str)
     TableArn: str | None = None
     TableId: str | None = None
@@ -35,10 +42,6 @@ class TableProperties(BaseModel):
     MultiRegionConsistency: str | None = None
     Tags: list[dict[str, Any]] | None = None
     ContinuousBackupsDescription: dict[str, Any] | None = None
-
-    class Config:
-        extra = "allow"
-        allow_population_by_field_name = True
 
 
 class Table(ResourceModel[TableProperties]):
