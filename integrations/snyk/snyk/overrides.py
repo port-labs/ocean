@@ -68,7 +68,7 @@ class SnykProjectAPIQueryParams(GenerateQueryParamMixin):
     tags: Optional[list[str]] = Field(
         default=None,
         title="Tags",
-        description="Return projects that match all the provided tags (key=value format)",
+        description="Return projects that match all the provided tags (key=value format). Tag values must not contain commas.",
     )
     business_criticality: Optional[
         list[Literal["critical", "high", "medium", "low"]]
