@@ -87,7 +87,6 @@ from aws.auth.session_factory import (
 async def initialize_aws_sessions() -> None:
     """Initialize AWS account sessions before resync."""
     await initialize_aws_account_sessions()
-    print('change')
 
 
 @ocean.on_resync_complete()
