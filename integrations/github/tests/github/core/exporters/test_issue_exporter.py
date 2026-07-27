@@ -1,9 +1,11 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import patch, AsyncMock
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.clients.http.rest_client import GithubRestClient
 from github.core.options import SingleIssueOptions, ListIssueOptions
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_ISSUES = [
     {
@@ -118,4 +120,36 @@ class TestIssueExporter:
             mock_paginated.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/repo1/issues",
                 {"state": "closed"},
+            )
+
+    async def test_get_paginated_resources_with_incremental_cursor(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestIssueExporter(rest_client)
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+        async def mock_issues_generator(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_ISSUES
+
+        with patch.object(
+            rest_client, "send_paginated_request", return_value=mock_issues_generator()
+        ) as mock_paginated:
+            with with_active_incremental_cursor(cursor):
+                async for _ in exporter.get_paginated_resources(
+                    ListIssueOptions(
+                        organization="test-org",
+                        repo_name="repo1",
+                        state="open",
+                    )
+                ):
+                    pass
+
+            mock_paginated.assert_called_once_with(
+                f"{rest_client.base_url}/repos/test-org/repo1/issues",
+                {
+                    "state": "open",
+                    "since": "2026-06-01T12:00:00+00:00",
+                },
             )
