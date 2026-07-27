@@ -20,9 +20,10 @@ If `token` is set it takes precedence. OAuth M2M access tokens are cached and re
 
 Only `jobs` and `job_runs` receive live webhook updates; every other resource kind is resync-only.
 
-When `appHost` is configured (and the event listener is not `ONCE`), the integration registers a Databricks
-notification destination of type webhook pointing at `<appHost>/integration/webhook` on startup. To receive
-live job run updates, point your Databricks job's notification settings at that registered destination.
+When a base URL is configured (via `OCEAN__BASE_URL`, or the legacy `appHost` config, and the event listener
+is not `ONCE`), the integration registers a Databricks notification destination of type webhook pointing at
+`<baseUrl>/integration/webhook` on startup. To receive live job run updates, point your Databricks job's
+notification settings at that registered destination.
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/data-engineering/databricks)
 

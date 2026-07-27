@@ -26,7 +26,7 @@ class DatabricksAuthenticator(ABC):
 class TokenAuthenticator(DatabricksAuthenticator):
     """Authenticates using a static Databricks Personal Access Token (PAT)."""
 
-    def __init__(self, token: str):
+    def __init__(self, token: str) -> None:
         if not token:
             raise MissingIntegrationCredentialException(
                 "A Databricks personal access token must be provided."
@@ -51,7 +51,7 @@ class OAuthM2MAuthenticator(DatabricksAuthenticator):
         client_id: str,
         client_secret: str,
         http_client: httpx.AsyncClient,
-    ):
+    ) -> None:
         if not client_id or not client_secret:
             raise MissingIntegrationCredentialException(
                 "Databricks client ID and client secret must be provided."

@@ -1,5 +1,6 @@
 from typing import cast
 
+import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -107,18 +108,24 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    app_host = ocean.integration_config.get("app_host")
-    if not app_host:
+    base_url = ocean.app.base_url
+    if not base_url:
         logger.warning(
-            "No app host provided, skipping webhook destination creation. "
-            "Without it, job run updates will only be reflected on the next resync "
-            "instead of in real time."
+            "No base URL configured (OCEAN__BASE_URL), skipping webhook destination "
+            "creation. Without it, job run updates will only be reflected on the next "
+            "resync instead of in real time."
         )
         return
 
-    invoke_url = f"{app_host}{WEBHOOK_INVOKE_PATH}"
+    invoke_url = f"{base_url.rstrip('/')}{WEBHOOK_INVOKE_PATH}"
     logger.info("Registering Databricks webhook notification destination")
-    await client.create_webhook_destination_if_not_exists(invoke_url)
+    try:
+        await client.create_webhook_destination_if_not_exists(invoke_url)
+    except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+        logger.error(
+            f"Failed to register Databricks webhook notification destination, "
+            f"continuing without live job run updates: {e}"
+        )
 
 
 ocean.add_webhook_processor("/webhook", JobRunWebhookProcessor)

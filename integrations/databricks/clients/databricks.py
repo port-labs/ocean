@@ -220,7 +220,8 @@ class DatabricksClient:
         self, catalog_names: Optional[list[str]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Lists all catalogs and schemas, then fans out to fetch tables per
-        catalog+schema pair with bounded concurrency.
+        catalog+schema pair with bounded concurrency, yielding each schema's
+        tables as soon as they're ready rather than waiting for every pair to finish.
         """
         schema_refs: list[tuple[str, str]] = []
         async for schema_batch in self.get_all_schemas(catalog_names):
@@ -241,35 +242,62 @@ class DatabricksClient:
                     tables.extend(table_batch)
                 return tables
 
-        results = await asyncio.gather(
-            *[
-                fetch_tables(catalog_name, schema_name)
-                for catalog_name, schema_name in schema_refs
-            ],
-            return_exceptions=True,
-        )
+        pending = {
+            asyncio.create_task(fetch_tables(catalog_name, schema_name)): (
+                catalog_name,
+                schema_name,
+            )
+            for catalog_name, schema_name in schema_refs
+        }
 
-        for (catalog_name, schema_name), result in zip(schema_refs, results):
-            if isinstance(result, BaseException):
-                logger.warning(
-                    f"Failed to fetch tables for {catalog_name}.{schema_name}: {result}"
-                )
-                continue
-            if result:
-                yield result
+        while pending:
+            done, _ = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                catalog_name, schema_name = pending.pop(task)
+                try:
+                    tables = task.result()
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to fetch tables for {catalog_name}.{schema_name}: {e}"
+                    )
+                    continue
+                if tables:
+                    yield tables
 
     async def create_webhook_destination_if_not_exists(self, url: str) -> None:
         """Idempotently creates a Databricks notification destination of type webhook
-        pointing at `url`, used as the target for job run notifications.
+        pointing at `url`, used as the target for job run notifications. If a
+        destination with the expected name already exists but points at a different
+        URL (e.g. the integration's public host changed), it's recreated so
+        Databricks keeps posting to the right place.
         """
         data = await self._get(NOTIFICATION_DESTINATIONS_ENDPOINT)
         destinations = data.get("results") or []
         for destination in destinations:
-            if destination.get("display_name") == WEBHOOK_DESTINATION_NAME:
+            if destination.get("display_name") != WEBHOOK_DESTINATION_NAME:
+                continue
+
+            destination_id = destination["id"]
+            full_destination = await self._get(
+                f"{NOTIFICATION_DESTINATIONS_ENDPOINT}/{destination_id}"
+            )
+            existing_url = (
+                full_destination.get("config", {}).get("generic_webhook", {}).get("url")
+            )
+            if existing_url == url:
                 logger.info(
-                    "Databricks webhook notification destination already exists, skipping creation"
+                    "Databricks webhook notification destination already exists and is up to date, skipping creation"
                 )
                 return
+
+            logger.info(
+                "Databricks webhook notification destination URL changed, recreating it"
+            )
+            await self._send_api_request(
+                f"{NOTIFICATION_DESTINATIONS_ENDPOINT}/{destination_id}",
+                method="DELETE",
+            )
+            break
 
         body = {
             "display_name": WEBHOOK_DESTINATION_NAME,

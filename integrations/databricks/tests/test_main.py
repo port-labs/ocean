@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, AsyncIterator, Generator, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from port_ocean.context.event import EventContext, _event_context_stack
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -255,7 +256,7 @@ async def test_on_start_skips_webhook_when_event_listener_is_once() -> None:
 
 
 @pytest.mark.asyncio
-async def test_on_start_registers_webhook_when_app_host_present() -> None:
+async def test_on_start_registers_webhook_when_base_url_present() -> None:
     import main
 
     mock_client = MagicMock()
@@ -267,7 +268,7 @@ async def test_on_start_registers_webhook_when_app_host_present() -> None:
     ):
         mock_class.from_ocean_configuration.return_value = mock_client
         mock_ocean.event_listener_type = "POLLING"
-        mock_ocean.integration_config = {"app_host": "https://app.example.com"}
+        mock_ocean.app.base_url = "https://app.example.com"
 
         await main.on_start()
 
@@ -277,7 +278,7 @@ async def test_on_start_registers_webhook_when_app_host_present() -> None:
 
 
 @pytest.mark.asyncio
-async def test_on_start_skips_webhook_when_no_app_host() -> None:
+async def test_on_start_skips_webhook_when_no_base_url() -> None:
     import main
 
     mock_client = MagicMock()
@@ -289,11 +290,35 @@ async def test_on_start_skips_webhook_when_no_app_host() -> None:
     ):
         mock_class.from_ocean_configuration.return_value = mock_client
         mock_ocean.event_listener_type = "POLLING"
-        mock_ocean.integration_config = {}
+        mock_ocean.app.base_url = None
 
         await main.on_start()
 
     mock_client.create_webhook_destination_if_not_exists.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_on_start_continues_when_webhook_registration_fails() -> None:
+    import main
+
+    mock_client = MagicMock()
+    mock_client.create_webhook_destination_if_not_exists = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "boom", request=MagicMock(), response=MagicMock(status_code=500)
+        )
+    )
+
+    with (
+        patch("main.DatabricksClient") as mock_class,
+        patch("main.ocean") as mock_ocean,
+    ):
+        mock_class.from_ocean_configuration.return_value = mock_client
+        mock_ocean.event_listener_type = "POLLING"
+        mock_ocean.app.base_url = "https://app.example.com"
+
+        await main.on_start()
+
+    mock_client.create_webhook_destination_if_not_exists.assert_called_once()
 
 
 @pytest.mark.asyncio

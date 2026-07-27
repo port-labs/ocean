@@ -429,7 +429,7 @@ class TestWebhookDestination:
         assert create_call.kwargs["method"] == "POST"
 
     @pytest.mark.asyncio
-    async def test_skips_creation_when_already_exists(
+    async def test_skips_creation_when_already_exists_with_same_url(
         self, client: DatabricksClient
     ) -> None:
         list_response = _mock_response(
@@ -439,15 +439,72 @@ class TestWebhookDestination:
                 ]
             }
         )
+        full_destination_response = _mock_response(
+            {
+                "id": "dest-1",
+                "display_name": "port-ocean-databricks-webhook",
+                "config": {
+                    "generic_webhook": {
+                        "url": "https://app.example.com/integration/webhook"
+                    }
+                },
+            }
+        )
 
         with patch.object(
-            client.http_client, "request", AsyncMock(return_value=list_response)
+            client.http_client,
+            "request",
+            AsyncMock(side_effect=[list_response, full_destination_response]),
         ) as mock_request:
             await client.create_webhook_destination_if_not_exists(
                 "https://app.example.com/integration/webhook"
             )
 
-        assert mock_request.await_count == 1
+        assert mock_request.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_recreates_destination_when_url_changed(
+        self, client: DatabricksClient
+    ) -> None:
+        list_response = _mock_response(
+            {
+                "results": [
+                    {"display_name": "port-ocean-databricks-webhook", "id": "dest-1"}
+                ]
+            }
+        )
+        full_destination_response = _mock_response(
+            {
+                "id": "dest-1",
+                "config": {
+                    "generic_webhook": {"url": "https://old.example.com/webhook"}
+                },
+            }
+        )
+        delete_response = _mock_response({})
+        create_response = _mock_response({"id": "dest-2"})
+
+        with patch.object(
+            client.http_client,
+            "request",
+            AsyncMock(
+                side_effect=[
+                    list_response,
+                    full_destination_response,
+                    delete_response,
+                    create_response,
+                ]
+            ),
+        ) as mock_request:
+            await client.create_webhook_destination_if_not_exists(
+                "https://new.example.com/integration/webhook"
+            )
+
+        assert mock_request.await_count == 4
+        delete_call = mock_request.call_args_list[2]
+        assert delete_call.kwargs["method"] == "DELETE"
+        create_call = mock_request.call_args_list[3]
+        assert create_call.kwargs["method"] == "POST"
 
 
 def test_from_ocean_configuration() -> None:
