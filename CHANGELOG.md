@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.46.3 (2026-07-27)
+
+### Bug Fixes
+
+- Remove `HTTP 400 Bad Request` from the default retry status codes. These are rather non-transient client errors and should fail immediately. Integrations that need 400 retries can opt in via `additional_retry_status_codes` in their `RetryConfig`.
+
 ## 0.46.2 (2026-07-26)
 
 ### Features
