@@ -1,6 +1,6 @@
 from datetime import datetime
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from aws.core.exporters.ec2.volume.models import (
     EbsVolume,
@@ -105,7 +105,7 @@ class TestEbsVolumeProperties:
 
     def test_dict_exclude_none(self) -> None:
         properties = EbsVolumeProperties(VolumeId="vol-111", VolumeType="gp3")
-        result = properties.dict(exclude_none=True)
+        result = properties.model_dump(exclude_none=True)
         assert result["VolumeId"] == "vol-111"
         assert result["VolumeType"] == "gp3"
         assert "Size" not in result
@@ -129,7 +129,7 @@ class TestEbsVolume:
 
     def test_dict_exclude_none(self) -> None:
         volume = EbsVolume(Properties=EbsVolumeProperties(VolumeId="vol-111"))
-        data = volume.dict(exclude_none=True)
+        data = volume.model_dump(exclude_none=True)
         assert data["Type"] == "AWS::EC2::Volume"
         assert data["Properties"]["VolumeId"] == "vol-111"
 

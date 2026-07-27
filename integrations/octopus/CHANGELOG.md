@@ -7,6 +7,153 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.139 (2026-07-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+# Port_Ocean 0.2.138 (2026-07-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+# Port_Ocean 0.2.137 (2026-07-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+# Port_Ocean 0.2.136 (2026-07-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+# Port_Ocean 0.2.135 (2026-07-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+# Port_Ocean 0.2.134 (2026-07-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+# Port_Ocean 0.2.133 (2026-07-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+# Port_Ocean 0.2.132 (2026-07-20)
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+# Port_Ocean 0.2.131 (2026-07-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+# Port_Ocean 0.2.130 (2026-07-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+# Port_Ocean 0.2.129 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+# Port_Ocean 0.2.128 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+# Port_Ocean 0.2.127 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+# Port_Ocean 0.2.126 (2026-07-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+# Port_Ocean 0.2.125 (2026-07-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+# Port_Ocean 0.2.124 (2026-07-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+# Port_Ocean 0.2.123 (2026-07-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+# Port_Ocean 0.2.122 (2026-07-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+# Port_Ocean 0.2.121 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+# Port_Ocean 0.2.120 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+# Port_Ocean 0.2.119 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
 # Port_Ocean 0.2.118 (2026-07-08)
 
 ### Improvements

@@ -129,6 +129,7 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config.process_in_queue_max_workers = 4
         ocean_mock.config.process_in_queue_timeout = 10
         ocean_mock.config.allow_environment_variables_jq_access = True
+        ocean_mock.config.delete_entities_max_batch_size = 50
         ocean_mock.port_client = mock_port_client
         ocean_mock.process_execution_mode = ProcessExecutionMode.single_process
         ocean_mock.cache_provider = InMemoryCacheProvider()

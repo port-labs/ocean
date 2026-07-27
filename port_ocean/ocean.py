@@ -71,6 +71,7 @@ class Ocean:
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
             feature_flags_cache_ttl_seconds=self.config.port.feature_flags_cache_ttl_seconds,
+            blueprint_cache_ttl_seconds=self.config.port.blueprint_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
         self.process_execution_mode: ProcessExecutionMode = (

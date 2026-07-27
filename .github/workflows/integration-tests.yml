@@ -22,7 +22,7 @@ jobs:
         || steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set integration test matrix
         id: set-matrix
@@ -60,13 +60,13 @@ jobs:
         folder: ${{ fromJson(needs.integration-test-matrix.outputs.matrix) }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install poetry
         run: pipx install 'poetry>=1.0.0,<2.0.0'
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: 'poetry'

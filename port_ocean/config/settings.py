@@ -26,6 +26,7 @@ from port_ocean.utils.misc import (
     get_integration_name,
     get_spec_file,
 )
+from port_ocean.utils.time import parse_interval_to_minutes
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -73,12 +74,23 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
+    blueprint_cache_ttl_seconds: float = 120.0
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     identifier: str
     type: str
     config: Any = Field(default_factory=dict)
+    incremental_sync_enabled: bool = False
+    incremental_sync_interval: int = (
+        15  # minutes; env may be "15m", "1h", or bare minutes
+    )
+
+    @validator("incremental_sync_interval", pre=True)
+    def parse_incremental_sync_interval(cls, value: Any) -> int:
+        if value is None:
+            return 15
+        return parse_interval_to_minutes(value)
 
     @root_validator(pre=True)
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -257,6 +269,7 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
+    is_redis_stream_consumer_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):
@@ -314,6 +327,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
+    disable_ip_outbound_blocker: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
     processing_mode: ProcessingMode = ProcessingMode.ocean_core
@@ -358,6 +372,15 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             return dict(v)
         except (TypeError, ValueError):
             return MetricsSettings(enabled=False, webhook_url=None)
+
+    @root_validator()
+    def set_disable_ip_outbound_blocker_default(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        if values.get("disable_ip_outbound_blocker") is None:
+            runtime = values.get("runtime", Runtime.OnPrem)
+            values["disable_ip_outbound_blocker"] = not runtime.is_saas_runtime
+        return values
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:

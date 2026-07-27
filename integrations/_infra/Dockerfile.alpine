@@ -1,4 +1,4 @@
-ARG BASE_PYTHON_IMAGE=alpine:3.20.1
+ARG BASE_PYTHON_IMAGE=python:3.13-alpine3.20
 
 FROM ${BASE_PYTHON_IMAGE} AS base
 
@@ -11,8 +11,11 @@ ENV LIBRDKAFKA_VERSION=2.8.2 \
     POETRY_NO_INTERACTION=1 \
     PIP_NO_CACHE_DIR=on \
     PIP_DEFAULT_TIMEOUT=100 \
+    PIP_ROOT_USER_ACTION=ignore \
     GRPC_PYTHON_DISABLE_LIBC_COMPATIBILITY=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=1 \
+    POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON=true
 
 # Install system dependencies and libraries
 RUN \
@@ -34,10 +37,6 @@ RUN \
         linux-headers \
         libstdc++ \
         libffi-dev \
-        py3-grpcio \
-        py3-protobuf \
-        python3-dev \
-        # librdkafka-dev \
     # Install community librdkafka-dev since the default in alpine is older
     && echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
     && echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
@@ -45,9 +44,8 @@ RUN \
         alpine-sdk \
         "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" \
         "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
-    && curl -sSL https://install.python-poetry.org | python3 - \
     && apk upgrade gcc linux-headers libstdc++ gcc g++ --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main/ \
-    && ln -s /root/.local/bin/poetry /usr/bin/poetry \
+    && pip install --no-cache-dir poetry \
     && poetry config virtualenvs.in-project true
 
 WORKDIR /app
@@ -63,33 +61,56 @@ RUN export GRPC_PYTHON_DISABLE_LIBC_COMPATIBILITY=1 \
 
 FROM ${BASE_PYTHON_IMAGE} AS prod
 
+ARG OCEAN_USER_ID=1001
+ARG OCEAN_GROUP_ID=1001
+
+RUN addgroup -g ${OCEAN_GROUP_ID} appgroup \
+    && adduser -D -u ${OCEAN_USER_ID} -G appgroup ocean
+
+RUN mkdir -p /tmp/ocean
+
 ARG INTEGRATION_VERSION
 ARG BUILD_CONTEXT
+ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
+ARG OAUTH_CONFIG_DIR=/tmp/ocean/.config
+ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
-ENV LIBRDKAFKA_VERSION=2.8.2
+ENV LIBRDKAFKA_VERSION=2.8.2 \
+    PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
+    STREAMING_LOCATION=${STREAMING_LOCATION} \
+    PIP_ROOT_USER_ACTION=ignore
 
-LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
-# Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
-LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
+RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
+RUN mkdir -p ${STREAMING_LOCATION}
+RUN mkdir -p ${OAUTH_CONFIG_DIR}
+RUN chmod -R 777 /tmp/ocean
 
 # Install only runtime dependencies
 RUN \
     apk add --no-cache \
         bash \
         oniguruma-dev \
-        python3 \
-    # Install community librdkafka-dev since the default in alpine is older
+        ca-certificates \
+        openssl \
+        curl \
+        acl \
+        yaml-dev \
+    # Install community librdkafka since the default in alpine is older
     && echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
     && echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
     && apk update \
     && apk add --no-cache \
-        alpine-sdk \
         "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" \
-        "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
     # Fix security issues
     && apk upgrade busybox libcrypto3 libssl3 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main/
 
+LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
+# Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
+LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
+
 WORKDIR /app
+
+USER ocean
 
 # Copy the application code
 COPY ./${BUILD_CONTEXT} /app
@@ -97,12 +118,19 @@ COPY ./${BUILD_CONTEXT} /app
 # Copy dependencies from the build stage
 COPY --from=base /app/.venv /app/.venv
 
+COPY ./integrations/_infra/sync_ca_certs.sh /app/sync_ca_certs.sh
 COPY ./integrations/_infra/init.sh /app/init.sh
+
+USER root
 
 # Ensure that ocean is available for all in path
 RUN chmod a+x /app/.venv/bin/ocean
-
 RUN chmod a+x /app/init.sh
+RUN chmod +x /app/sync_ca_certs.sh
 RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
+RUN chmod -R a+rX /app
+
+USER ocean
+
 # Run the application
 CMD ["bash", "/app/init.sh"]

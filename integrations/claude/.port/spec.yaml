@@ -8,17 +8,25 @@ features:
   - type: exporter
     section: AI Agents
     resources:
-      - kind: claude-usage-record
-      - kind: claude-cost-record
-      - kind: claude-code-analytics
+      - kind: claude-ai-user-activity
+      - kind: claude-ai-user-usage
+      - kind: claude-ai-user-cost
+      - kind: claude-platform-usage-record
+      - kind: claude-platform-cost-record
+      - kind: claude-platform-code-analytics
 saas:
   enabled: true
 configurations:
+  - name: isClaudeEnterprise
+    type: boolean
+    required: false
+    default: true
+    description: 'Whether this organization uses Claude AI (Enterprise). When enabled (the default), the integration syncs the per-user enterprise analytics endpoints (requires an admin key with the <code>read:analytics</code> scope). When disabled, it syncs the Claude Platform usage and cost reports (requires an admin key with the <code>api:admin</code> scope).'
   - name: anthropicApiKey
     type: string
     required: true
     sensitive: true
-    description: The Anthropic API key to authenticate with the Anthropic API. Refer <a href="https://platform.claude.com/docs/en/api/overview#prerequisites" target="_blank">Anthropic documentation</a> on how to create one.
+    description: The Anthropic admin API key used to authenticate with the Anthropic API. For Claude Enterprise it must carry the <code>read:analytics</code> scope; for Claude Platform it must carry the <code>api:admin</code> scope. Refer <a href="https://platform.claude.com/docs/en/api/overview#prerequisites" target="_blank">Anthropic documentation</a> on how to create one.
   - name: anthropicVersion
     type: string
     required: false

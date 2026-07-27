@@ -6,6 +6,133 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.46.2 (2026-07-26)
+
+### Features
+
+- Wire DSP lifecycle events and sync metrics for incremental resyncs: set the metrics event ID, emit kind-level started/finished/failed notifications, pass `sync_type` and `kind_identifiers` on resync started, and clear metrics sync context when the run completes.
+
+## 0.46.1 (2026-07-23)
+
+### Bug Fixes
+
+- Wrap `get_raw_result_on_integration_sync_resource_config` in an event context (default `RESYNC`, optional `event_type` for `INCREMENTAL_RESYNC`) so integration sync tests work after incremental sync started reading `event.event_type` in `_get_resource_raw_results`.
+
+## 0.46.0 (2026-07-23)
+
+### Features
+
+- Added incremental sync infrastructure: cursor store, server-side and client-side strategies, `on_incremental_resync` handlers, and `incremental_sync_enabled` / `incremental_sync_interval` settings so integrations can sync only changes since the last cursor.
+
+## 0.45.10 (2026-07-22)
+
+### Bug Fixes
+
+- Removed misleading `Event Added To Queue` log from the Redis stream consumer; queue latency is already reported via `time_until_consumed_ms` in the Redis stream processed log.
+
+## 0.45.9 (2026-07-22)
+
+### Features
+
+- Added `port_ocean.utils.relative_time` helpers (`days_ago`, `months_ago`, `to_rfc3339`) for integration lookback selectors.
+
+## 0.45.8 (2026-07-21)
+
+### Improvements
+
+- Pass integration-run context to action-executor rate-limit checks.
+
+## 0.45.7 (2026-07-21)
+
+### Improvements
+
+- Report integration mapping on DSP resync started lifecycle notifications so DSP can use the config Ocean loaded without fetching from port-api.
+
+## 0.45.6 (2026-07-21)
+
+### Improvements
+
+- Added `disable_ip_outbound_blocker` integration setting to disable outbound HTTP IP blocking. Defaults to false on SaaS runtimes and true on on-prem, preserving existing behavior.
+
+## 0.45.5 (2026-07-20)
+
+### Improvements
+
+- Log an error when `report_run_completed` is called with `success=False`, including the run ID for easier failure debugging.
+
+## 0.45.4 (2026-07-19)
+
+### Vulnerabilities
+
+- Fixed alot of vulnerabilities in the ocean-core dependencies.
+
+## 0.45.3 (2026-07-16)
+
+### Bug Fixes
+
+- Added in memory temporary caching for fetching blueprints. Cached blueprints are cleared when a resync is triggered/finished, and the cache has a default TTL of two minutes.
+
+## 0.45.2 (2026-07-16)
+
+### Improvements
+
+- Reduced datasource-entities reconciliation page size to 5,000 to lower per-request payload and memory usage
+
+
+## 0.45.1 (2026-07-16)
+
+### Bug Fixes
+
+- Fixed missing DSP KIND lifecycle notifications in multi-process mode by passing the parent resync id into kind subprocesses
+
+
+## 0.45.0 (2026-07-15)
+
+### Improvements
+
+- Updated entity reconciliation to use bulk delete API
+
+
+## 0.44.14 (2026-07-15)
+
+### Improvements
+
+- Added `OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED` (default `false`) as an integration-level opt-in for Redis live-events stream consumption, in addition to the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag.
+
+## 0.44.13 (2026-07-13)
+
+### Improvements
+
+- Added structured context (`status_code`, `method`, `url`, `reason`, `trace_id`) to Port API error logs to make failed requests easier to debug.
+
+## 0.44.12 (2026-07-14)
+
+### Improvements
+
+- Fail unregistered Ocean integration runs immediately by acknowledging and reporting them as failed instead of skipping them until the claim visibility timeout expires.
+
+## 0.44.11 (2026-07-13)
+
+### Bug Fixes
+
+- Fixed missing `links` field in `WorkflowNodeRun` patch on run start, so the GitHub Actions run URL now appears as a clickable link on workflow node runs in the Port UI.
+
+## 0.44.10 (2026-07-12)
+
+### Improvements
+
+- Refactored `LifecycleClient` to delegate lifecycle API POST requests to a dedicated `lifecycle_http_client` instead of inheriting HTTP transport behavior, improving separation of concerns and testability.
+
+### Bug Fixes
+
+- Fixed lifecycle HTTP client proxy resolution to return a context-bound client per access, preventing stale proxy reuse across different event loops.
+- Extended HTTP client context cleanup to include DSP lifecycle clients and aligned related tests, fixing flaky lifecycle/sync-raw test behavior.
+
+## 0.44.9 (2026-07-09)
+
+### Bug Fixes
+
+- Fixed lakehouse raw-data batch serialization when buffered items contain datetime values by applying `make_json_compatible` in `post_integration_raw_data_batch()` before HTTP JSON encoding.
 
 ## 0.44.7 (2026-07-08)
 

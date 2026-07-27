@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 from datetime import datetime
 
 from aws.core.exporters.rds.db_instance.models import (
@@ -144,7 +144,7 @@ class TestDbInstanceProperties:
             Engine="postgres",
             Tags=[{"Key": "Project", "Value": "demo"}],
         )
-        result = properties.dict(exclude_none=True)
+        result = properties.model_dump(exclude_none=True)
         assert result["DBInstanceIdentifier"] == "db-123"
         assert result["Engine"] == "postgres"
         assert result["Tags"] == [{"Key": "Project", "Value": "demo"}]
@@ -234,7 +234,7 @@ class TestDbInstanceProperties:
         )
 
         # Test that aliases are used in serialization
-        result = properties.dict(by_alias=True)
+        result = properties.model_dump(by_alias=True)
         assert "EnableIAMDatabaseAuthentication" in result
         assert "EnablePerformanceInsights" in result
         assert "Port" in result
@@ -284,7 +284,7 @@ class TestDbInstance:
         db_instance = DbInstance(
             Properties=DbInstanceProperties(DBInstanceIdentifier="db-1")
         )
-        data = db_instance.dict(exclude_none=True)
+        data = db_instance.model_dump(exclude_none=True)
         assert data["Type"] == "AWS::RDS::DBInstance"
         assert data["Properties"]["DBInstanceIdentifier"] == "db-1"
 
@@ -318,7 +318,7 @@ class TestDbInstance:
         )
         db_instance = DbInstance(Properties=properties)
 
-        data = db_instance.dict(exclude_none=True)
+        data = db_instance.model_dump(exclude_none=True)
         assert (
             data["Properties"]["Endpoint"]["Address"]
             == "db-complex.abc123.us-west-2.rds.amazonaws.com"
