@@ -21,7 +21,10 @@ class ListTablesAction(Action[DynamoDBTableActionInput]):
     async def _execute(
         self, resources: DynamoDBTableActionInput
     ) -> list[dict[str, Any]]:
-        return [{"TableName": table.table_name, "TableArn": table.table_arn} for table in resources.items]
+        return [
+            {"TableName": table.table_name, "TableArn": table.table_arn}
+            for table in resources.items
+        ]
 
 
 class GetTableDetailsAction(Action[DynamoDBTableActionInput]):
@@ -35,9 +38,7 @@ class GetTableDetailsAction(Action[DynamoDBTableActionInput]):
             operation_name="table details",
         )
 
-    async def _fetch_table_details(
-        self, table: TableIdentifier
-    ) -> dict[str, Any]:
+    async def _fetch_table_details(self, table: TableIdentifier) -> dict[str, Any]:
         response = await self.client.describe_table(TableName=table.table_name)
         return response["Table"]
 
@@ -53,12 +54,8 @@ class GetTableTagsAction(Action[DynamoDBTableActionInput]):
             operation_name="table tags",
         )
 
-    async def _fetch_table_tags(
-        self, table: TableIdentifier
-    ) -> dict[str, Any]:
-        response = await self.client.list_tags_of_resource(
-            ResourceArn=table.table_arn
-        )
+    async def _fetch_table_tags(self, table: TableIdentifier) -> dict[str, Any]:
+        response = await self.client.list_tags_of_resource(ResourceArn=table.table_arn)
         return {"Tags": response["Tags"]}
 
 
@@ -73,9 +70,7 @@ class GetTableBackupStatusAction(Action[DynamoDBTableActionInput]):
             operation_name="table backup status",
         )
 
-    async def _fetch_backup_status(
-        self, table: TableIdentifier
-    ) -> dict[str, Any]:
+    async def _fetch_backup_status(self, table: TableIdentifier) -> dict[str, Any]:
         response = await self.client.describe_continuous_backups(
             TableName=table.table_name
         )

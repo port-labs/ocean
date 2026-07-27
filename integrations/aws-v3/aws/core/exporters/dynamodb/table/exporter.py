@@ -85,5 +85,7 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
                     )
                     yield result
                 else:
-                    logger.debug(f"No tables returned from paginator for region {options.region}, yielding empty batch")
+                    logger.debug(
+                        f"No tables returned from paginator for region {options.region}, yielding empty batch"
+                    )
                     yield []
