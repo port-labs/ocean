@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
+import signal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -430,6 +431,7 @@ class IntegrationClientMixin:
             )
             try:
                 current_event.abort()
+                signal.raise_signal(signal.SIGINT)
             except EventContextNotFoundError:
                 logger.warning(
                     "Lakehouse aborted response received without active event context"
