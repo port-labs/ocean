@@ -10,7 +10,7 @@ from aws.core.modeling.resource_models import (
 
 
 class TableProperties(BaseAWSPropertiesModel):
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(extra="allow")
 
     TableName: str = Field(default_factory=str)
     TableArn: str | None = None
