@@ -405,19 +405,6 @@ class GitLabSkillSelector(GroupSelector):
         default=[GitLabSkillPath(path=path) for path in DEFAULT_SKILL_PATHS],
         description="Glob patterns for SKILL.md discovery",
     )
-    search_strategy: Literal["groupSearch", "projectSearch", "repositoryTree"] = Field(
-        default="repositoryTree",
-        alias="searchStrategy",
-        title="Search Strategy",
-        description=(
-            "Controls how SKILL.md files are discovered. repositoryTree (default) walks "
-            "the Git repository tree via the tree API and does not depend on GitLab's "
-            "search index, so it returns complete results even when search indexing is "
-            "stale or disabled. groupSearch and projectSearch query GitLab's search API "
-            "and are faster, but may miss skills in unindexed paths (especially "
-            "dot-directories)."
-        ),
-    )
 
 
 class GitLabSkillResourceConfig(ResourceConfig):
@@ -441,17 +428,6 @@ class GitLabPluginSelector(GroupSelector):
         title="Repositories",
         default_factory=list,
         description="Optional list of project path_with_namespace values to scan.",
-    )
-    search_strategy: Literal["groupSearch", "projectSearch", "repositoryTree"] = Field(
-        default="repositoryTree",
-        alias="searchStrategy",
-        title="Search Strategy",
-        description=(
-            "Controls how plugin manifests are discovered. repositoryTree (default) walks "
-            "the Git repository tree via the tree API and does not depend on GitLab's "
-            "search index. groupSearch and projectSearch query GitLab's search API and "
-            "are faster, but may miss manifests in unindexed paths."
-        ),
     )
 
 

@@ -17,7 +17,6 @@ from gitlab.helpers.skill_plugin import (
     plugin_search_paths,
     provider_for_manifest_path,
 )
-from gitlab.helpers.utils import build_search_query
 from integration import GitLabPluginSelector, GitLabSkillPath, GitLabSkillSelector
 
 KNOWN_MANIFEST_PATHS = {
@@ -33,31 +32,11 @@ async def resync_skills(
     path_entries = selector.paths
     path_globs = [entry.path for entry in path_entries]
     emitted_keys: set[str] = set()
-    strategy = selector.search_strategy
 
-    if strategy == "repositoryTree":
-        async for skills in _resync_skills_via_tree(
-            client, path_entries, path_globs, project_params, emitted_keys
-        ):
-            yield skills
-        return
-
-    for entry in path_entries:
-        async for files_batch in client.search_files(
-            "blobs",
-            build_search_query(entry.path),
-            skip_parsing=True,  # SKILL.md is markdown
-            repositories=entry.repos or None,
-            params=project_params,
-            strategy=strategy,
-        ):
-            skills = _skills_from_files(
-                await client._enrich_files_with_repos(files_batch),
-                path_globs,
-                emitted_keys,
-            )
-            if skills:
-                yield skills
+    async for skills in _resync_skills_via_tree(
+        client, path_entries, path_globs, project_params, emitted_keys
+    ):
+        yield skills
 
 
 async def _resync_skills_via_tree(
@@ -151,7 +130,6 @@ async def resync_plugins(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     providers = selector.providers
     search_paths = plugin_search_paths(providers)
-    strategy = selector.search_strategy
 
     # A plugin aggregates manifests spread over several paths (e.g. claude's
     # plugin.json and marketplace.json), so manifests are accumulated per
@@ -163,29 +141,15 @@ async def resync_plugins(
         accumulated: dict[str, dict[str, Any]] = {}
         repo_paths = [project["path_with_namespace"] for project in projects_batch]
 
-        if strategy == "repositoryTree":
-            async for files_batch in client.search_files_matching_patterns(
-                search_paths,
-                skip_parsing=False,
-                repositories=repo_paths,
-            ):
-                for file_data in files_batch:
-                    _accumulate_plugin_file(
-                        accumulated, projects_by_id, file_data, providers
-                    )
-        else:
-            for search_path in search_paths:
-                async for files_batch in client.search_files(
-                    "blobs",
-                    build_search_query(search_path),
-                    skip_parsing=False,
-                    repositories=repo_paths,
-                    strategy=strategy,
-                ):
-                    for file_data in files_batch:
-                        _accumulate_plugin_file(
-                            accumulated, projects_by_id, file_data, providers
-                        )
+        async for files_batch in client.search_files_matching_patterns(
+            search_paths,
+            skip_parsing=False,
+            repositories=repo_paths,
+        ):
+            for file_data in files_batch:
+                _accumulate_plugin_file(
+                    accumulated, projects_by_id, file_data, providers
+                )
 
         batch: list[dict[str, Any]] = []
         for entry in accumulated.values():

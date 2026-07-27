@@ -164,35 +164,6 @@ async def test_resync_skills_walks_configured_globs_with_tree_strategy() -> None
 
 
 @pytest.mark.asyncio
-async def test_resync_skills_uses_search_api_when_strategy_opted_out() -> None:
-    selector = GitLabSkillSelector(
-        query="true",
-        searchStrategy="groupSearch",
-        paths=[GitLabSkillPath(path=".cursor/skills/**/SKILL.md")],
-    )
-    client = FakeGitLabClient(
-        files_by_path={
-            ".cursor/skills/**/SKILL.md": [
-                {
-                    "path": ".cursor/skills/hello/SKILL.md",
-                    "content": SKILL_CONTENT,
-                    "ref": "main",
-                    "project_id": 1,
-                }
-            ]
-        },
-        projects=[PROJECT],
-    )
-
-    batches = [batch async for batch in resync_skills(client, selector, None)]  # type: ignore[arg-type]
-
-    assert client.pattern_search_calls == []
-    assert {call["strategy"] for call in client.search_calls} == {"groupSearch"}
-    assert len(batches) == 1
-    assert batches[0][0]["skill"]["name"] == "hello"
-
-
-@pytest.mark.asyncio
 async def test_resync_skills_emits_each_skill_once_across_overlapping_globs() -> None:
     selector = GitLabSkillSelector(
         query="true",
@@ -269,34 +240,6 @@ async def test_resync_plugins_accumulates_manifests_per_project() -> None:
     assert item["plugin"]["supports"]["opencode"] is True
     assert item["repo"]["path_with_namespace"] == "group/project"
     assert item["__branch"] == "main"
-
-
-@pytest.mark.asyncio
-async def test_resync_plugins_uses_search_api_when_strategy_opted_out() -> None:
-    selector = GitLabPluginSelector(
-        query="true",
-        providers=["cursor"],
-        searchStrategy="projectSearch",
-    )
-    client = FakeGitLabClient(
-        files_by_path={
-            ".cursor-plugin/plugin.json": [
-                {
-                    "path": ".cursor-plugin/plugin.json",
-                    "content": {"name": "cursor-plugin"},
-                    "ref": "main",
-                    "project_id": 1,
-                }
-            ]
-        },
-        projects=[PROJECT],
-    )
-
-    batches = [batch async for batch in resync_plugins(client, selector, None)]  # type: ignore[arg-type]
-
-    assert client.pattern_search_calls == []
-    assert {call["strategy"] for call in client.search_calls} == {"projectSearch"}
-    assert batches[0][0]["plugin"]["supports"]["cursor"] is True
 
 
 @pytest.mark.asyncio
