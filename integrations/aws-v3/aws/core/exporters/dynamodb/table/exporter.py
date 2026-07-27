@@ -4,6 +4,7 @@ from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.dynamodb.table.actions import (
     DynamoDBTableActionsMap,
     DynamoDBTableActionInput,
+    TableIdentifier,
 )
 from aws.core.exporters.dynamodb.table.models import (
     Table,
@@ -13,6 +14,8 @@ from aws.core.exporters.dynamodb.table.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
+from aws.utils import RegionHelper
+from loguru import logger
 
 
 class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
@@ -27,9 +30,15 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
+            partition = RegionHelper.get_partition()
             result = await inspector.inspect(
                 DynamoDBTableActionInput(
-                    items=[{"TableName": options.table_name}],
+                    items=[
+                        TableIdentifier(
+                            table_name=options.table_name,
+                            table_arn=f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{options.table_name}",
+                        )
+                    ],
                     region=options.region,
                     account_id=options.account_id,
                 ),
@@ -54,12 +63,17 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
 
             async for table_names in paginator.paginate():
                 if table_names:
-                    table_dicts = [
-                        {"TableName": table_name} for table_name in table_names
+                    partition = RegionHelper.get_partition()
+                    table_items = [
+                        TableIdentifier(
+                            table_name=table_name,
+                            table_arn=f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{table_name}",
+                        )
+                        for table_name in table_names
                     ]
                     result = await inspector.inspect(
                         DynamoDBTableActionInput(
-                            items=table_dicts,
+                            items=table_items,
                             region=options.region,
                             account_id=options.account_id,
                         ),
@@ -71,4 +85,5 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
                     )
                     yield result
                 else:
+                    logger.debug(f"No tables returned from paginator for region {options.region}, yielding empty batch")
                     yield []
