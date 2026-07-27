@@ -77,7 +77,7 @@ async def _resync_skills_via_tree(
             async for files_batch in client.search_files_matching_patterns(
                 patterns,
                 skip_parsing=True,
-                repositories=[repo],
+                repositories=[project],
             ):
                 skills = _skills_from_files(
                     await client._enrich_files_with_repos(files_batch),
@@ -139,12 +139,11 @@ async def resync_plugins(
     async for projects_batch in _iter_projects(client, selector.repos, project_params):
         projects_by_id = {str(project["id"]): project for project in projects_batch}
         accumulated: dict[str, dict[str, Any]] = {}
-        repo_paths = [project["path_with_namespace"] for project in projects_batch]
 
         async for files_batch in client.search_files_matching_patterns(
             search_paths,
             skip_parsing=False,
-            repositories=repo_paths,
+            repositories=projects_batch,
         ):
             for file_data in files_batch:
                 _accumulate_plugin_file(

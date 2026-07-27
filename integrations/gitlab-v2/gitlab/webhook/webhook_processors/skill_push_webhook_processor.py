@@ -54,7 +54,6 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         config = cast(GitLabSkillResourceConfig, resource_config)
         selector = config.selector
         path_entries = selector.paths
-        path_globs = [entry.path for entry in path_entries]
 
         applicable_globs = [
             entry.path
@@ -101,14 +100,14 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 processed
             )
             for entity in enriched:
-                skill_item = enrich_file_to_skill(entity, path_globs=path_globs)
+                skill_item = enrich_file_to_skill(entity, path_globs=applicable_globs)
                 if skill_item:
                     updated_results.append(skill_item)
 
         deleted_results = [
             {
                 "skill": build_skill_delete_stub(
-                    skill_md_path=path, path_globs=path_globs
+                    skill_md_path=path, path_globs=applicable_globs
                 ),
                 "repo": project,
                 "__branch": branch,

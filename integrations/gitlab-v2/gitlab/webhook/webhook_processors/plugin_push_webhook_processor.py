@@ -165,7 +165,9 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 ) in self._gitlab_webhook_client.rest.get_paginated_project_resource(
                     project_path,
                     "repository/tree",
-                    {"path": bare, "ref": ref, "recursive": True},
+                    # Non-recursive: match resync globs like `.opencode/plugins/*`
+                    # (one level under the provider directory).
+                    {"path": bare, "ref": ref, "recursive": False},
                 ):
                     for item in batch:
                         item_path = item.get("path")

@@ -51,7 +51,7 @@ class FakeGitLabClient:
         path_patterns: list[str],
         *,
         skip_parsing: bool = False,
-        repositories: list[str] | None = None,
+        repositories: list[str | dict[str, Any]] | None = None,
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -63,6 +63,12 @@ class FakeGitLabClient:
                 "skip_parsing": skip_parsing,
             }
         )
+        repo_paths: set[str] | None = None
+        if repositories:
+            repo_paths = {
+                (repo["path_with_namespace"] if isinstance(repo, dict) else repo)
+                for repo in repositories
+            }
         seen: set[str] = set()
         batch: list[dict[str, Any]] = []
         for pattern in path_patterns:
@@ -70,12 +76,9 @@ class FakeGitLabClient:
                 key = f"{file_data.get('project_id')}:{file_data.get('path')}"
                 if key in seen:
                     continue
-                if repositories:
+                if repo_paths is not None:
                     project = self.projects_by_id.get(str(file_data["project_id"]))
-                    if (
-                        not project
-                        or project["path_with_namespace"] not in repositories
-                    ):
+                    if not project or project["path_with_namespace"] not in repo_paths:
                         continue
                 seen.add(key)
                 batch.append(file_data)
@@ -154,7 +157,7 @@ async def test_resync_skills_walks_configured_globs_with_tree_strategy() -> None
         ".cursor/skills/**/SKILL.md",
         "skills/**/SKILL.md",
     }
-    assert client.pattern_search_calls[0]["repositories"] == ["group/project"]
+    assert client.pattern_search_calls[0]["repositories"] == [PROJECT]
 
     assert len(batches) == 1
     skill = batches[0][0]["skill"]
@@ -228,8 +231,8 @@ async def test_resync_plugins_accumulates_manifests_per_project() -> None:
     assert client.search_calls == []
     assert len(client.pattern_search_calls) == 1
     assert client.pattern_search_calls[0]["repositories"] == [
-        "group/project",
-        "group/empty",
+        PROJECT,
+        make_project(2, "group/empty"),
     ]
 
     assert len(batches) == 1
@@ -263,7 +266,7 @@ async def test_resync_plugins_scopes_to_configured_repos() -> None:
 
     batches = [batch async for batch in resync_plugins(client, selector, None)]  # type: ignore[arg-type]
 
-    assert client.pattern_search_calls[0]["repositories"] == ["group/project"]
+    assert client.pattern_search_calls[0]["repositories"] == [PROJECT]
     assert len(batches) == 1
     assert batches[0][0]["plugin"]["supports"]["cursor"] is True
 

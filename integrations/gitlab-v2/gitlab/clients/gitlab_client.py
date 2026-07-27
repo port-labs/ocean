@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
+from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, Union
 
 import anyio
 import httpx
@@ -1109,20 +1109,26 @@ class GitLabClient:
 
     async def _match_files_with_repository_tree_patterns(
         self,
-        repo: str,
+        repo: str | dict[str, Any],
         path_patterns: list[str],
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Match multiple path globs with the minimum set of repository tree walks.
 
         Patterns that share a fixed prefix (or whose roots nest) share a single
         recursive tree listing; results are filtered against every pattern in memory.
+
+        ``repo`` may be a project dict (avoids a redundant project GET) or a
+        path_with_namespace / id string.
         """
         if not path_patterns:
             return
 
-        project = await self.get_project(repo)
-        if not project:
-            return
+        if isinstance(repo, dict):
+            project = repo
+        else:
+            project = await self.get_project(repo)
+            if not project:
+                return
 
         ref = project["default_branch"]
         match_patterns: list[str] = []
@@ -1191,11 +1197,16 @@ class GitLabClient:
         path_patterns: list[str],
         *,
         skip_parsing: bool = False,
-        repositories: list[str] | None = None,
+        repositories: Sequence[str | dict[str, Any]] | None = None,
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Discover files matching any path pattern via scoped repository tree walks."""
+        """Discover files matching any path pattern via scoped repository tree walks.
+
+        ``repositories`` entries may be path_with_namespace strings or project
+        dicts. Prefer dicts when the caller already fetched projects to avoid
+        duplicate project GETs.
+        """
         if not path_patterns:
             return
 
@@ -1204,12 +1215,15 @@ class GitLabClient:
         )
         semaphore = asyncio.BoundedSemaphore(max_concurrent)
 
-        async def _search_repo(repo: str) -> AsyncIterator[list[dict[str, Any]]]:
+        async def _search_repo(
+            repo: str | dict[str, Any],
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            context = repo["path_with_namespace"] if isinstance(repo, dict) else repo
             async for file_batch in self._match_files_with_repository_tree_patterns(
                 repo, path_patterns
             ):
                 processed_batch = await self._process_file_batch(
-                    file_batch, repo, skip_parsing
+                    file_batch, context, skip_parsing
                 )
                 if processed_batch:
                     yield processed_batch
@@ -1227,7 +1241,7 @@ class GitLabClient:
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
-                    partial(_search_repo, project["path_with_namespace"]),
+                    partial(_search_repo, project),
                 )
                 for project in projects_batch
             ]
@@ -1293,7 +1307,7 @@ class GitLabClient:
             async for file_batch in self.rest.get_paginated_resource(
                 path, params=params
             ):
-                logger.info(f"Found {len(file_batch)} files in group search")
+                logger.info(f"Found {len(file_batch)} files in group {group_id} search")
                 processed_batch = await self._process_file_batch(
                     file_batch, group_id, skip_parsing
                 )
