@@ -16,10 +16,18 @@ from .version import (
 def validate(git: GitContext, *, base_ref: str, head_ref: str) -> list[str]:
     errors: list[str] = []
     release_files_by_target = _release_files_by_target(git, base_ref, head_ref)
+    targets = git.changed_release_targets(base_ref, head_ref)
 
-    for target in git.changed_release_targets(base_ref, head_ref):
+    print(f"Validating {len(targets)} release target(s) ({base_ref}...{head_ref})")
+    if release_files_by_target:
+        for (kind, name), files in release_files_by_target.items():
+            print(f"  Found release file(s) for {kind}/{name}: {len(files)}")
+
+    for target in targets:
+        print(f"Checking {target.label}")
         release_files = release_files_by_target.get((target.kind, target.name), [])
         if release_files:
+            print(f"  {target.label}: validating declarative release")
             errors.extend(_validate_declarative(git, target, release_files))
             continue
 
@@ -31,20 +39,28 @@ def validate(git: GitContext, *, base_ref: str, head_ref: str) -> list[str]:
         )
 
         if version_changed and changelog_changed:
+            print(f"  {target.label}: validating manual release")
             errors.extend(_validate_manual_version(git, target))
             continue
 
         if version_changed or changelog_changed:
+            print(f"  {target.label}: partial manual release detected")
             errors.append(
                 f"{target.label}: partial manual release — bump both version and changelog, "
                 "or revert and use a .ocean-release file instead"
             )
             continue
 
+        print(f"  {target.label}: missing release")
         errors.append(
             f"{target.label}: add a release file ({target.release_hint}) "
             "or manually bump version and changelog"
         )
+
+    if errors:
+        print(f"Validation finished with {len(errors)} error(s)")
+    else:
+        print("Validation passed")
 
     return errors
 

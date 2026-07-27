@@ -19,8 +19,16 @@ from .version import (
 def apply(git: GitContext, *, merge_sha: str, main_ref: str) -> list[AppliedRelease]:
     parent_ref = f"{merge_sha}^"
     applied: list[AppliedRelease] = []
+    release_files = git.release_files_added_in_diff(merge_sha)
 
-    for relative_path in git.release_files_added_in_diff(merge_sha):
+    print(f"Applying releases for merge {merge_sha} (version base: {main_ref})")
+    if not release_files:
+        print("No release files added in merge commit")
+        return applied
+
+    print(f"Found {len(release_files)} release file(s) in merge commit")
+    for relative_path in release_files:
+        print(f"Processing {relative_path}")
         target = target_from_release_path(git.repo_root, relative_path)
 
         if git.has_version_changed(parent_ref, merge_sha, target.pyproject_path):
@@ -43,6 +51,7 @@ def apply(git: GitContext, *, merge_sha: str, main_ref: str) -> list[AppliedRele
             f"Applied {target.label}: {release.previous_version} -> {release.new_version}"
         )
 
+    print(f"Applied {len(applied)} release(s)")
     return applied
 
 
@@ -56,6 +65,7 @@ def _apply_intent(
 ) -> AppliedRelease:
     current_version = parse_version(git.read_at_ref(main_ref, target.pyproject_path))
     new_version = bump_version(current_version, intent.bump)
+    print(f"  Bumping {target.label} from {current_version} to {new_version}")
 
     pyproject_content = git.read_worktree(target.pyproject_path)
     target.pyproject_path.write_text(
