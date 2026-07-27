@@ -1,7 +1,5 @@
 from typing import Any
 
-import httpx
-
 from port_ocean.integration_testing import InterceptTransport
 
 from mocks.payloads import (

@@ -45,7 +45,7 @@ class TestSnykHappyPath(BaseIntegrationTest):
     integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
     def create_third_party_transport(self) -> InterceptTransport:
-        t = InterceptTransport(strict=False)
+        t = InterceptTransport(strict=True)
 
         # Org listing — exact-path callable avoids prefix collision with sub-routes.
         t.add_route(
