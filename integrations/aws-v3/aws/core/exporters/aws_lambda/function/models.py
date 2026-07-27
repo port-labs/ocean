@@ -1,9 +1,13 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class LambdaFunctionProperties(BaseModel):
+class LambdaFunctionProperties(BaseAWSPropertiesModel):
     Architectures: list[str] = Field(default_factory=list)
     CodeSha256: str = Field(default_factory=str)
     CodeSize: int = Field(default=0)
@@ -41,10 +45,6 @@ class LambdaFunctionProperties(BaseModel):
     TracingConfig: dict[str, Any] | None = None
     Version: str = Field(default_factory=str)
     VpcConfig: dict[str, Any] | None = None
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "ignore"
 
 
 class LambdaFunction(ResourceModel[LambdaFunctionProperties]):

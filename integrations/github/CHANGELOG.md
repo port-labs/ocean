@@ -7,12 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.4.1 (2026-07-22)
+## 6.5.2 (2026-07-26)
 
 
-### Features
+### Improvements
 
-- Expanded team payload by fetching the external IdP group linked to each team via the GitHub EMU external groups API, enabling customers to relate `githubTeam` entities to Entra ID groups ingested from the Entra ID Ocean integration. Controlled by the new `include_external_group` selector field (default: `false`).
+- Bumped ocean version to ^0.46.2
+
+
+## 6.5.1 (2026-07-23)
+
+
+### Bug Fixes
+
+- Re-apply spec changes
+
+
+## 6.5.0 (2026-07-23)
+
+
+### Improvements
+
+- Updated GitHub client creation to use authenticator-scoped `create_github_client()` for resyncs and `create_github_client_for_org()` for webhook and action requests.
+- Resync handlers iterate `get_auth_provider().list_authenticators()` and discover organizations via `RestOrganizationExporter.get_paginated_resources()`.
+- Removed `GitHubAuthenticatorFactory` and the sync legacy client factory path.
+- Removed deprecated `OrganizationLoginAndTypeGenerator`; file and folder pattern builders call `RestOrganizationExporter.get_paginated_resources()` directly.
+- Deprecated `githubAppInstallationId`; GitHub App organization scope is discovered from app installations. OAuth installations no longer publish `githubAppInstallationId` or `githubOrganization`, so `githubOrganization` remains editable in the integration config.
+
+
+## 6.4.2 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 6.4.1 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
 
 
 ## 6.4.0 (2026-07-22)

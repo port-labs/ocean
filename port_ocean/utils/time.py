@@ -24,6 +24,17 @@ def convert_to_minutes(s: str) -> int:
         )
 
 
+def parse_interval_to_minutes(value: str | int, *, default_minutes: int = 15) -> int:
+    if isinstance(value, int):
+        return value
+    stripped = value.strip()
+    if not stripped:
+        return default_minutes
+    if stripped.isdigit():
+        return int(stripped)
+    return convert_to_minutes(stripped)
+
+
 def get_next_occurrence(
     interval_seconds: int,
     start_time: datetime.datetime,

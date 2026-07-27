@@ -1,9 +1,13 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class DeploymentTargetProperties(BaseModel):
+class DeploymentTargetProperties(BaseAWSPropertiesModel):
     deploymentId: str = Field(default_factory=str, alias="DeploymentId")
     deploymentTargetType: str | None = Field(default=None, alias="DeploymentTargetType")
     instanceTarget: dict[str, Any] | None = Field(default=None, alias="InstanceTarget")
@@ -12,10 +16,6 @@ class DeploymentTargetProperties(BaseModel):
     cloudFormationTarget: dict[str, Any] | None = Field(
         default=None, alias="CloudFormationTarget"
     )
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class CodeDeployDeploymentTarget(ResourceModel[DeploymentTargetProperties]):

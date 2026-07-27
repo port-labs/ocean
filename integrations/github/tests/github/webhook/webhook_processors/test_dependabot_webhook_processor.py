@@ -174,7 +174,7 @@ class TestDependabotAlertWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.dependabot_webhook_processor.create_github_client"
+                "github.webhook.webhook_processors.dependabot_webhook_processor.create_github_client_for_org"
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.dependabot_webhook_processor.RestDependabotAlertExporter",

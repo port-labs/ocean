@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from aws.core.exporters.sqs.queue.models import (
     QueueProperties,
@@ -174,7 +174,7 @@ class TestQueueProperties:
             QueueArn="arn:aws:sqs:us-east-1:123456789012:test-queue",
         )
 
-        props_dict = props.dict(exclude_none=True)
+        props_dict = props.model_dump(exclude_none=True)
 
         # Should not include None values
         assert "ApproximateNumberOfMessages" not in props_dict
@@ -216,7 +216,7 @@ class TestQueue:
     def test_dict_exclude_none(self) -> None:
         """Test that dict() excludes None values."""
         queue = Queue()
-        queue_dict = queue.dict(exclude_none=True)
+        queue_dict = queue.model_dump(exclude_none=True)
         assert "Properties" not in queue_dict or queue_dict["Properties"] is not None
 
     def test_properties_default_factory(self) -> None:
