@@ -60,10 +60,10 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             paginator = proxy.get_paginator("list_tables", "TableNames")
+            partition = RegionHelper.get_partition()
 
             async for table_names in paginator.paginate():
                 if table_names:
-                    partition = RegionHelper.get_partition()
                     table_items = [
                         TableIdentifier(
                             table_name=table_name,
