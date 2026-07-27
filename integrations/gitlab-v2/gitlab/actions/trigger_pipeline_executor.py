@@ -80,8 +80,3 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             ref=ref,
             external_id=external_id,
         )
-
-        if not run.execution_properties.get("reportPipelineStatus", True):
-            await ocean.port_client.report_run_completed(
-                run, True, "Pipeline triggered successfully"
-            )

@@ -75,6 +75,8 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+  incrementalSync:
+    enabled: true
   oauthConfiguration:
     requiredSecrets:
       - name: githubAppPrivateKey
