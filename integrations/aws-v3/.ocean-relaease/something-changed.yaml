@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Describe the change
