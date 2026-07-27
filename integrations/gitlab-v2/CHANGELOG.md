@@ -19,10 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Skill/plugin push webhooks only process the project default branch, and ignore branch deletes
 - File/skill/plugin push webhooks resolve changed paths from the repository compare API, falling back to the (capped) payload commits list
-- Skill and plugin discovery always walks the repository tree with the configured glob patterns (`repositoryTree` only; no search-API opt-out)
+- Skill and plugin discovery always walks the repository tree with the configured glob patterns
 - Repository tree discovery scopes walks to each pattern's fixed path prefix and matches multiple globs per repository in a single minimized set of walks
-- Restored group id and query in Advanced Search fallback warning logs
-- Bumped ocean version to ^0.46.3
 
 
 ## 0.8.14 (2026-07-26)
@@ -118,26 +116,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Upgraded integration dependencies (#1)
-
-
-## 0.8.3 (2026-07-20)
-
-
-### Features
-
-- Added `skill` kind to discover Agent Skills (`SKILL.md`) via glob paths
-  (defaults: `.agents/skills`, `.agent/skills`, `.cursor/skills`, `.claude/skills`,
-  `.codex/skills`, `.github/skills`, `.opencode/skills`, `skills`)
-- Added `plugin` kind to detect agent plugin packages (aligned with
-  [obra/superpowers](https://github.com/obra/superpowers)): `.claude-plugin/`,
-  `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
-  `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`
-
-
-### Breaking Changes
-
-- Skill selector now uses `paths: [{path, repos?}]` globs (no `content` / `roots`)
-- Skill/plugin raw data uses `repo` + `__branch` (folder-style), not `repository` / `branch`
 
 
 ## 0.8.2 (2026-07-20)
