@@ -11,7 +11,7 @@ import multiprocessing
 import httpx
 import json
 from loguru import logger
-from port_ocean.clients.dsp.lifecycle import GranularityType
+from port_ocean.clients.dsp.lifecycle import GranularityType, SyncType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.metric_resource import metric_resource_context
@@ -860,7 +860,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
             resync_id = ocean.metrics.event_id
-            if not is_incremental and dsp_enabled and resync_id:
+            if dsp_enabled and resync_id:
                 await ocean.app.lifecycle_client.notify_started(
                     event_id=resync_id,
                     integration_id=ocean.config.integration.identifier,
@@ -882,7 +882,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError:
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
-                if not is_incremental and dsp_enabled and resync_id:
+                if dsp_enabled and resync_id:
                     await ocean.app.lifecycle_client.notify_aborted(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
@@ -908,20 +908,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     dsp_enabled=dsp_enabled,
                 )
 
-                if dsp_enabled and resync_id:
-                    if ocean.metrics.sync_state == SyncState.FAILED:
-                        await ocean.app.lifecycle_client.notify_failed(
-                            event_id=resync_id,
-                            granularity=GranularityType.KIND,
-                            kind_identifier=resource_kind_id,
-                        )
-                    else:
-                        await ocean.app.lifecycle_client.notify_finished(
-                            event_id=resync_id,
-                            integration_type=ocean.config.integration.type,
-                            granularity=GranularityType.KIND,
-                            kind_identifier=resource_kind_id,
-                        )
+            if dsp_enabled and resync_id:
+                if ocean.metrics.sync_state == SyncState.FAILED:
+                    await ocean.app.lifecycle_client.notify_failed(
+                        event_id=resync_id,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
+                else:
+                    await ocean.app.lifecycle_client.notify_finished(
+                        event_id=resync_id,
+                        integration_type=ocean.config.integration.type,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
 
             return kind_results
 
@@ -1276,80 +1276,106 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with event_context(
             EventType.INCREMENTAL_RESYNC, trigger_type=trigger_type
         ):
-            app_config = await self.port_app_config_handler.get_port_app_config(
-                use_cache=False
-            )
-
-            incremental_resources = [
-                (index, resource_cfg)
-                for index, resource_cfg in enumerate(app_config.resources)
-                if self.event_strategy["incremental"].get(resource_cfg.kind)
-            ]
-
-            if not incremental_resources:
-                logger.info("No kinds registered for incremental sync, skipping")
-                return
-
-            logger.info(
-                "Incremental sync kinds registered",
-                kinds=[cfg.kind for _, cfg in incremental_resources],
-            )
-
+            ocean.metrics.event_id = event.id
             dsp_enabled = await is_dsp_mode_enabled()
-
-            cursor_store = CursorStore(ocean.port_client)
-            run_started_at = datetime.now(timezone.utc)
-
-            if dsp_enabled:
-                await ocean.app.lifecycle_client.notify_resync_started(
-                    resync_id=event.id,
-                    integration_id=ocean.config.integration.identifier,
-                    integration_type=ocean.config.integration.type,
-                    started_at=datetime.now(timezone.utc),
+            try:
+                app_config = await self.port_app_config_handler.get_port_app_config(
+                    use_cache=False
                 )
 
-            for index, resource_cfg in incremental_resources:
-                stored_cursor = await cursor_store.get(resource_cfg.kind, index)
-                effective_cursor = stored_cursor or (
-                    run_started_at - timedelta(seconds=interval_seconds)
-                )
+                incremental_resources = [
+                    (index, resource_cfg)
+                    for index, resource_cfg in enumerate(app_config.resources)
+                    if self.event_strategy["incremental"].get(resource_cfg.kind)
+                ]
 
-                logger.info(
-                    "Starting incremental sync for kind",
-                    kind=resource_cfg.kind,
-                    index=index,
-                    cursor=effective_cursor.isoformat(),
-                    next_cursor=run_started_at.isoformat(),
-                )
-
-                success = await self._sync_incremental_kind(
-                    resource_cfg,
-                    index,
-                    effective_cursor,
-                    run_started_at,
-                    cursor_store,
-                    user_agent_type,
-                )
-                if not success:
-                    if dsp_enabled:
-                        await ocean.app.lifecycle_client.notify_resync_failed(
-                            resync_id=event.id,
-                            integration_id=ocean.config.integration.identifier,
-                            integration_type=ocean.config.integration.type,
-                        )
+                if not incremental_resources:
+                    logger.info("No kinds registered for incremental sync, skipping")
                     return
 
-            if dsp_enabled:
-                await ocean.app.lifecycle_client.notify_resync_finished(
-                    resync_id=event.id,
-                    integration_id=ocean.config.integration.identifier,
-                    integration_type=ocean.config.integration.type,
+                logger.info(
+                    "Incremental sync kinds registered",
+                    kinds=[cfg.kind for _, cfg in incremental_resources],
                 )
 
-            logger.info(
-                "Incremental sync completed",
-                kinds=len(incremental_resources),
-            )
+                cursor_store = CursorStore(ocean.port_client)
+                run_started_at = datetime.now(timezone.utc)
+
+                if dsp_enabled:
+                    await ocean.app.lifecycle_client.notify_resync_started(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                        started_at=datetime.now(timezone.utc),
+                        sync_type=SyncType.INCREMENTAL_RESYNC.value,
+                        kind_identifiers=[
+                            f"{resource_cfg.kind}-{index}"
+                            for index, resource_cfg in incremental_resources
+                        ],
+                    )
+
+                for index, resource_cfg in incremental_resources:
+                    stored_cursor = await cursor_store.get(resource_cfg.kind, index)
+                    effective_cursor = stored_cursor or (
+                        run_started_at - timedelta(seconds=interval_seconds)
+                    )
+
+                    logger.info(
+                        "Starting incremental sync for kind",
+                        kind=resource_cfg.kind,
+                        index=index,
+                        cursor=effective_cursor.isoformat(),
+                        next_cursor=run_started_at.isoformat(),
+                    )
+
+                    success = await self._sync_incremental_kind(
+                        resource_cfg,
+                        index,
+                        effective_cursor,
+                        run_started_at,
+                        cursor_store,
+                        user_agent_type,
+                    )
+                    if not success:
+                        if dsp_enabled:
+                            await ocean.app.lifecycle_client.notify_resync_failed(
+                                resync_id=event.id,
+                                integration_id=ocean.config.integration.identifier,
+                                integration_type=ocean.config.integration.type,
+                            )
+                        return
+
+                if dsp_enabled:
+                    await ocean.app.lifecycle_client.notify_resync_finished(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
+
+                logger.info(
+                    "Incremental sync completed",
+                    kinds=len(incremental_resources),
+                )
+            except asyncio.CancelledError:
+                logger.warning("Incremental sync was aborted")
+                if dsp_enabled:
+                    await ocean.app.lifecycle_client.notify_resync_aborted(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
+                raise
+            except Exception as e:
+                logger.error(f"Incremental sync failed unexpectedly: {e}")
+                if dsp_enabled:
+                    await ocean.app.lifecycle_client.notify_resync_failed(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
+                raise
+            finally:
+                ocean.metrics.clear_sync_context()
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
@@ -1432,6 +1458,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
                     mapping=app_config.to_dsp_lifecycle_mapping(),
+                    sync_type=SyncType.FULL_SYNC.value,
                 )
                 lifecycle_poll_task = asyncio.create_task(
                     self._poll_for_lifecycle_abort(event.id)
@@ -1594,6 +1621,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             "Lifecycle abort poll task failed during cleanup",
                             error=str(e),
                         )
+                ocean.metrics.clear_sync_context()
                 await ocean.app.cache_provider.clear()
                 ocean.port_client.clear_blueprint_cache()
                 if (

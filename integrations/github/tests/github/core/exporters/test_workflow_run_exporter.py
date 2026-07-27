@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 from unittest.mock import patch
 import pytest
@@ -13,6 +14,7 @@ from github.core.options import (
 )
 from integration import GithubWorkflowRunSelector
 from port_ocean.context.event import event_context
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_DATA: dict[str, Any] = {
     "total_count": 1,
@@ -133,6 +135,41 @@ async def test_get_paginated_resources_with_filters(
         mock_request.assert_called_once_with(
             f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs",
             {"status": "in_progress", "created": ">=2024-01-01T00:00:00Z"},
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resources_with_incremental_cursor(
+    rest_client: GithubRestClient,
+) -> None:
+    options: ListWorkflowRunOptions = {
+        "organization": "test-org",
+        "repo_name": "test",
+        "max_runs": 1,
+        "workflow_id": 159038,
+    }
+    exporter = RestWorkflowRunExporter(rest_client)
+    cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+    async def mock_paginated_request(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        yield TEST_DATA
+        yield TEST_DATA
+
+    with patch.object(
+        rest_client, "send_paginated_request", side_effect=mock_paginated_request
+    ) as mock_request:
+        async with event_context("test_event"):
+            with with_active_incremental_cursor(cursor):
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        assert len(batches) == 2
+        mock_request.assert_called_once_with(
+            f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs",
+            {"created": ">=2026-06-01T12:00:00Z"},
         )
 
 

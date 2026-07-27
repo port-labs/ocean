@@ -20,6 +20,11 @@ class GranularityType(Enum):
     RECONCILIATION = "RECONCILIATION"
 
 
+class SyncType(Enum):
+    FULL_SYNC = "full_sync"
+    INCREMENTAL_RESYNC = "incremental_resync"
+
+
 class LifecycleClient:
     """Client for the integration-life-cycle service."""
 
@@ -49,8 +54,10 @@ class LifecycleClient:
         resync_id: str,
         integration_id: str,
         integration_type: str,
+        sync_type: str,
         started_at: datetime | None = None,
         mapping: dict[str, Any] | None = None,
+        kind_identifiers: list[str] | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
         extra = {"mapping": mapping} if mapping else {}
@@ -59,10 +66,14 @@ class LifecycleClient:
             integration_id=integration_id,
             integration_type=integration_type,
             integration_version=__integration_version__,
+            sync_type=sync_type,
             ocean_version=__version__,
             started_at=started_at.isoformat(),
             **extra,
         )
+        if kind_identifiers is not None:
+            body["kind_identifiers"] = kind_identifiers
+
         logger.info(f"Notifying lifecycle API resync started, resync_id={resync_id}")
         await self._lifecycle_http_client.do_post(
             await self._resync_url(resync_id), json=body
