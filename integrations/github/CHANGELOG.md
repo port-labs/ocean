@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.6.0 (2026-07-26)
+## 6.7.0 (2026-07-27)
 
 
 ### Features
@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
   `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`, with
   multi-org path selectors
+
+
+## 6.6.0 (2026-07-26)
+
+
+### Features
+
+- Added incremental sync for `repository`, `issue`, `pull-request`, `workflow-run`, `release`, `deployment`, `dependabot-alert`, and `code-scanning-alert`, so scheduled resyncs fetch only changes since the last cursor. Workflow runs filter on GitHub's `created` parameter only, so a run created before the cursor that finishes afterward may keep a stale `status`/`conclusion` until the next full sync. Releases and deployments intentionally use `created_at` for the cutoff because those resources are immutable
 
 
 ## 6.5.2 (2026-07-26)
