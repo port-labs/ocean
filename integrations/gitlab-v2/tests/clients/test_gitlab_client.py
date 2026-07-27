@@ -1158,6 +1158,106 @@ class TestGitLabClient:
                 "123", "other_file.txt", "main"
             )
 
+    async def test_resolve_file_references_relative_reference(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a relative file:// reference resolves normally."""
+        data = {"ref": "file://other_file.txt"}
+
+        with patch.object(
+            client,
+            "get_file_content",
+            AsyncMock(return_value="Referenced content"),
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "Referenced content"}
+        mock_get_file_content.assert_called_once_with("123", "other_file.txt", "main")
+
+    async def test_resolve_file_references_skips_absolute_triple_slash(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that file:/// (absolute-path URI) references are left untouched and never fetched."""
+        data = {"dest": "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7"}
+
+        with patch.object(
+            client, "get_file_content", AsyncMock()
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"dest": "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7"}
+        mock_get_file_content.assert_not_called()
+
+    async def test_resolve_file_references_leaves_any_leading_slash_variant_unresolved(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that any file:// value with a leading slash after the prefix (i.e. file:///...,
+        which is the only way a leading slash can appear there) is skipped rather than fetched
+        with a sanitized path -- matching the deprecation note that file:// was never meant to
+        carry an absolute path."""
+        data = {"ref": "file:////double/leading/slash.txt"}
+
+        with patch.object(
+            client, "get_file_content", AsyncMock()
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file:////double/leading/slash.txt"}
+        mock_get_file_content.assert_not_called()
+
+    async def test_resolve_file_references_best_effort_on_http_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a failed reference fetch (e.g. 400) is logged and left unresolved, not raised."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "400 Bad Request"}
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+        data = {"ref": "file://missing_file.txt"}
+
+        with patch.object(client, "get_file_content", AsyncMock(side_effect=error)):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file://missing_file.txt"}
+
+    async def test_resolve_file_references_nested_structures(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that resolution recurses through nested dicts/lists with mixed reference outcomes."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "400 Bad Request"}
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+        data = {
+            "nested": {
+                "resolved": "file://ok.txt",
+                "absolute": "file:///abs/path.txt",
+            },
+            "items": ["file://failing.txt", "plain string"],
+        }
+
+        async def side_effect(project_id: str, file_path: str, ref: str) -> str:
+            if file_path == "ok.txt":
+                return "ok content"
+            raise error
+
+        with patch.object(
+            client, "get_file_content", AsyncMock(side_effect=side_effect)
+        ):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {
+            "nested": {
+                "resolved": "ok content",
+                "absolute": "file:///abs/path.txt",
+            },
+            "items": ["file://failing.txt", "plain string"],
+        }
+
     async def test_get_pipeline_jobs(self, client: GitLabClient) -> None:
         """Test fetching jobs through pipelines"""
         # Arrange
