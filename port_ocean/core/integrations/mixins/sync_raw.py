@@ -1,6 +1,5 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-import signal
 import sys
 import uuid
 from graphlib import CycleError
@@ -1207,8 +1206,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 "Lifecycle API reported aborted status; cancelling Ocean resync",
                 resync_id=resync_id,
             )
-            event.abort()
-            signal.raise_signal(signal.SIGINT)
+            event.abort(external_abort=True)
             return
 
     async def _sync_incremental_kind(
@@ -1497,6 +1495,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
 
             except asyncio.CancelledError as e:
+                if event.external_abort:
+                    return
+
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )

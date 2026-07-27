@@ -1,6 +1,5 @@
 import asyncio
 from datetime import datetime, timezone
-import signal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -10,13 +9,13 @@ from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.context.event import event as current_event
-from port_ocean.core.utils.json_compat import make_json_compatible
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     LakehouseDataEntryBatch,
     LakehouseEventType,
     ProcessingMode,
 )
+from port_ocean.core.utils.json_compat import make_json_compatible
 from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -430,8 +429,7 @@ class IntegrationClientMixin:
                 "Lakehouse reported zero pending inserts for raw data batch, aborting current resync"
             )
             try:
-                current_event.abort()
-                signal.raise_signal(signal.SIGINT)
+                current_event.abort(external_abort=True)
             except EventContextNotFoundError:
                 logger.warning(
                     "Lakehouse aborted response received without active event context"
