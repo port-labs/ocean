@@ -294,6 +294,13 @@ class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSSESEmailIdentityResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SES::EmailIdentity"] = Field(
+        title="AWS SES Email Identity",
+        description="AWS SES Email Identity resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -325,6 +332,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodePipelineActionResourceConfig
         | AWSCodePipelinePipelineExecutionResourceConfig
         | AWSCodePipelineActionExecutionResourceConfig
+        | AWSSESEmailIdentityResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
