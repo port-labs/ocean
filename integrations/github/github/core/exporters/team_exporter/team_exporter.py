@@ -12,9 +12,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
     _EXTERNAL_GROUP_IGNORED_ERRORS = [
         IgnoredError(
             status=400,
-            message="Organization is not part of an externally managed enterprise",
+            message="Organization is not part of externally managed enterprise",
             type="NOT_EMU_ORG",
-            body_contains="Organization is not part of an externally managed enterprise",
+            body_contains="This organization is not part of externally managed enterprise.",
         ),
         IgnoredError(
             status=400,
