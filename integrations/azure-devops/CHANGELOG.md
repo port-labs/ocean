@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.36 (2026-07-27)
+
+
+### Bug Fixes
+
+- Default `includeRepo` to `true` for pipelines so the out-of-the-box mapping can relate Pipeline → Repository (Project → Repository → Pipeline → Pipeline Run) without requiring a manual mapping extension
+
+
 ## 0.10.35 (2026-07-26)
 
 
