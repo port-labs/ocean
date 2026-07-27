@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
+import signal
 import sys
 import uuid
 from graphlib import CycleError
@@ -66,7 +67,7 @@ from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
-LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 60
+LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 10
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
@@ -1207,6 +1208,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 resync_id=resync_id,
             )
             event.abort()
+            signal.raise_signal(signal.SIGINT)
             return
 
     async def _sync_incremental_kind(

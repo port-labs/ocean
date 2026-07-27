@@ -4,9 +4,8 @@ from typing import Any, TypedDict
 
 from loguru import logger
 
-from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.dsp.lifecycle_http import get_lifecycle_http_client
-from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.version import __integration_version__, __version__
 
 
@@ -29,27 +28,6 @@ class LifecycleClient:
         self._lifecycle_attributes: LifecycleAttributes | None = None
         self._lifecycle_auth = auth
 
-    async def _get_current_integration(self) -> dict[str, Any]:
-        logger.info(
-            f"Fetching integration with id: {self._lifecycle_auth.integration_identifier}"
-        )
-        response = await self._lifecycle_auth.client.get(
-            f"{self._lifecycle_auth.api_url}/integration/{self._lifecycle_auth.integration_identifier}",
-            headers=await self._lifecycle_auth.headers(),
-            params={
-                "oceanCoreVersion": __version__,
-                "isPolling": "false",
-            },
-        )
-        handle_port_status_code(response)
-        return response.json().get("integration", {})
-
-    async def get_lifecycle_attributes(self) -> LifecycleAttributes:
-        if self._lifecycle_attributes is None:
-            response = await self._get_current_integration()
-            self._lifecycle_attributes = response["lifecycleAttributes"]
-        return self._lifecycle_attributes
-
     async def _lifecycle_base_url(self) -> str:
         return f"{self._lifecycle_auth.api_url.rstrip('/')}/lifecycle"
 
@@ -61,8 +39,7 @@ class LifecycleClient:
 
     async def _granular_url(self, event_id: str, granularity: GranularityType) -> str:
         return (
-            f"{await self._lifecycle_base_url()}/{event_id}"
-            f"/{granularity.value.lower()}"
+            f"{await self._lifecycle_base_url()}/{event_id}/{granularity.value.lower()}"
         )
 
     # ── Resync-level (2-segment URL) ─────────────────────────────────────────
