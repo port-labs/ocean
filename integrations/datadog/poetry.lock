@@ -1609,13 +1609,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.45.7"
+version = "0.46.2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.45.7-py3-none-any.whl", hash = "sha256:508f5700ead84b4a05397b6836f616088c1305734acd24876a2300b8321d5f41"},
-    {file = "port_ocean-0.45.7.tar.gz", hash = "sha256:4a407e0a78ddcd00eb9127277dd66323a648e0eeda8f542a75f407ec455d4e8a"},
+    {file = "port_ocean-0.46.2-py3-none-any.whl", hash = "sha256:82ce12cffdc672792a78b75f0e41d766d32d85091b7414a43e8269666463742d"},
+    {file = "port_ocean-0.46.2.tar.gz", hash = "sha256:47afb768ef66263f646c8d1fff9e9aadc4b7ebecc2c0efb92b8546d65c9a675e"},
 ]
 
 [package.dependencies]
@@ -2576,4 +2576,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "ruff", "sph
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3a39b92798471f13407372c17329324d580fc3722fe5ff72694f37b8f0091a45"
+content-hash = "c3ab0a88a5e29d7604afd866c16da97f827505a4e1d1a6dcb28a4de411c010b1"

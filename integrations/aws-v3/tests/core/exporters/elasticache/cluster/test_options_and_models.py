@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 from datetime import datetime
 
 from aws.core.exporters.elasticache.cluster.models import (
@@ -135,7 +135,7 @@ class TestCacheClusterProperties:
             Engine="memcached",
             TagList=[{"Key": "Project", "Value": "demo"}],
         )
-        result = properties.dict(exclude_none=True)
+        result = properties.model_dump(exclude_none=True)
         assert result["CacheClusterId"] == "cluster-123"
         assert result["Engine"] == "memcached"
         assert result["TagList"] == [{"Key": "Project", "Value": "demo"}]
@@ -244,7 +244,7 @@ class TestCacheCluster:
         cache_cluster = CacheCluster(
             Properties=CacheClusterProperties(CacheClusterId="cluster-1")
         )
-        data = cache_cluster.dict(exclude_none=True)
+        data = cache_cluster.model_dump(exclude_none=True)
         assert data["Type"] == "AWS::ElastiCache::Cluster"
         assert data["Properties"]["CacheClusterId"] == "cluster-1"
 
@@ -282,7 +282,7 @@ class TestCacheCluster:
         )
         cache_cluster = CacheCluster(Properties=properties)
 
-        data = cache_cluster.dict(exclude_none=True)
+        data = cache_cluster.model_dump(exclude_none=True)
         assert (
             data["Properties"]["CacheNodes"][0]["Endpoint"]["Address"]
             == "cluster-complex.abc123.usw2.cache.amazonaws.com"

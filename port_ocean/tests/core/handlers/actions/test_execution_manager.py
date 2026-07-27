@@ -293,10 +293,10 @@ class TestExecutionManager:
         # Arrange
         few_seconds_away = datetime.now() + timedelta(seconds=0.1)
         mock_test_executor.is_close_to_rate_limit = AsyncMock(
-            side_effect=lambda: few_seconds_away > datetime.now()
+            side_effect=lambda _: few_seconds_away > datetime.now()
         )
         mock_test_executor.get_remaining_seconds_until_rate_limit = AsyncMock(
-            side_effect=lambda: (few_seconds_away - datetime.now()).total_seconds()
+            side_effect=lambda _: (few_seconds_away - datetime.now()).total_seconds()
         )
         execution_manager_without_executors.register_executor(mock_test_executor)
         mock_test_action_run = generate_mock_action_run()
@@ -310,6 +310,12 @@ class TestExecutionManager:
             ANY,
             level="WARNING",
             should_raise=False,
+        )
+        mock_test_executor.is_close_to_rate_limit.assert_called_with(
+            mock_test_action_run
+        )
+        mock_test_executor.get_remaining_seconds_until_rate_limit.assert_called_once_with(
+            mock_test_action_run
         )
 
     @pytest.mark.asyncio

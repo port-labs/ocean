@@ -1,10 +1,17 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+
+from pydantic import ConfigDict, Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
-class MskServerlessClusterProperties(BaseModel):
+class MskServerlessClusterProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
+
     activeOperationArn: str | None = Field(default=None, alias="ActiveOperationArn")
     clusterArn: str = Field(default_factory=str, alias="ClusterArn")
     clusterName: str = Field(default_factory=str, alias="ClusterName")
@@ -15,10 +22,6 @@ class MskServerlessClusterProperties(BaseModel):
     stateInfo: dict[str, Any] | None = Field(default=None, alias="StateInfo")
     tags: dict[str, str] | None = Field(default=None, alias="Tags")
     serverless: dict[str, Any] | None = Field(default=None, alias="Serverless")
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "allow"
 
 
 class MskServerlessCluster(ResourceModel[MskServerlessClusterProperties]):

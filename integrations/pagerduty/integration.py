@@ -7,12 +7,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.utils.relative_time import days_ago, to_rfc3339
 from pydantic.v1 import BaseModel, Field
-
-from clients.utils import (
-    get_date_range_for_last_n_months,
-    get_date_range_for_upcoming_n_months,
-)
 
 
 class ObjectKind:
@@ -104,9 +100,9 @@ class PagerdutyScheduleAPIQueryParams(BaseModel):
         if include := value.pop("include", None):
             value["include[]"] = include
         if until := value.pop("until", None):
-            value["until"] = get_date_range_for_upcoming_n_months(until)[1]
+            value["until"] = to_rfc3339(days_ago(-30 * until))
         if since := value.pop("since", None):
-            value["since"] = get_date_range_for_last_n_months(since)[0]
+            value["since"] = to_rfc3339(days_ago(30 * since))
         return value
 
 
@@ -133,9 +129,9 @@ class PagerdutyOncallAPIQueryParams(BaseModel):
         if include := value.pop("include", None):
             value["include[]"] = include
         if until := value.pop("until", None):
-            value["until"] = get_date_range_for_upcoming_n_months(until)[1]
+            value["until"] = to_rfc3339(days_ago(-30 * until))
         if since := value.pop("since", None):
-            value["since"] = get_date_range_for_last_n_months(since)[0]
+            value["since"] = to_rfc3339(days_ago(30 * since))
 
         return value
 

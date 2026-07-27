@@ -322,8 +322,10 @@ jobs:
   build-rc-integrations:
     name: Build RC integration images
     runs-on: ubuntu-latest
-    needs: [validate-inputs, prepare-matrix]
-    if: needs.prepare-matrix.outputs.matrix != '[]'
+    needs: [validate-inputs, prepare-matrix, publish-core-rc]
+    if: |
+      needs.prepare-matrix.outputs.matrix != '[]' &&
+      (needs.publish-core-rc.result == 'success' || needs.publish-core-rc.result == 'skipped')
     permissions:
       packages: write
       contents: read
