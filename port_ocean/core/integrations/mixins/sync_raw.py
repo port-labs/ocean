@@ -879,6 +879,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 if ocean.metrics.sync_state != SyncState.FAILED:
                     ocean.metrics.sync_state = SyncState.COMPLETED
             except asyncio.CancelledError:
+                if event.external_abort:
+                    raise
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
                 if dsp_enabled and resync_id:
