@@ -336,7 +336,7 @@ class TestTeamWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
+                "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org"
             ),
             patch(
                 "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
