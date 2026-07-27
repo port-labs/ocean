@@ -26,7 +26,7 @@ class GetTableDetailsAction(Action[DynamoDBTableActionInput]):
         return await execute_concurrent_aws_operations(
             input_items=resources.items,
             operation_func=self._fetch_table_details,
-            get_resource_identifier=lambda t: t["TableName"],
+            get_resource_identifier=lambda table: table["TableName"],
             operation_name="table details",
         )
 
@@ -49,7 +49,7 @@ class GetTableTagsAction(Action[DynamoDBTableActionInput]):
         return await execute_concurrent_aws_operations(
             input_items=resources.items,
             operation_func=fetch_tags,
-            get_resource_identifier=lambda t: t["TableName"],
+            get_resource_identifier=lambda table: table["TableName"],
             operation_name="table tags",
         )
 
@@ -61,7 +61,7 @@ class GetTableBackupStatusAction(Action[DynamoDBTableActionInput]):
         return await execute_concurrent_aws_operations(
             input_items=resources.items,
             operation_func=self._fetch_backup_status,
-            get_resource_identifier=lambda t: t["TableName"],
+            get_resource_identifier=lambda table: table["TableName"],
             operation_name="table backup status",
         )
 
