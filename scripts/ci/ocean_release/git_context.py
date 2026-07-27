@@ -107,7 +107,7 @@ class GitContext:
         self, base_ref: str, head_ref: str | None = None
     ) -> list[str]:
         if head_ref is None:
-            diff_args = (f"{base_ref}^", base_ref)
+            diff_args: tuple[str, ...] = (f"{base_ref}^", base_ref)
         else:
             diff_args = (f"{base_ref}...{head_ref}",)
         result = self.run_git(
