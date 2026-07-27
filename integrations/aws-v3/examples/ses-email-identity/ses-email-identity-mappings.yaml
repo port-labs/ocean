@@ -1,0 +1,22 @@
+resources:
+  - kind: AWS::SES::EmailIdentity
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.EmailIdentity
+          title: .Properties.EmailIdentity
+          blueprint: '"sesEmailIdentity"'
+          properties:
+            identityType: .Properties.IdentityType
+            verifiedForSendingStatus: .Properties.VerifiedForSendingStatus
+            feedbackForwardingStatus: .Properties.FeedbackForwardingStatus
+            dkimStatus: .Properties.DkimAttributes.Status
+            mailFromDomain: .Properties.MailFromAttributes.MailFromDomain
+            mailFromDomainStatus: .Properties.MailFromAttributes.MailFromDomainStatus
+            configurationSetName: .Properties.ConfigurationSetName
+            tags: .Properties.Tags
+            region: .__ExtraContext.Region
+          relations:
+            account: .__ExtraContext.AccountId

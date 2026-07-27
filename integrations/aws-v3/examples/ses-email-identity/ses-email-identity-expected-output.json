@@ -1,0 +1,28 @@
+{
+  "identifier": "example.com",
+  "title": "example.com",
+  "blueprint": "sesEmailIdentity",
+  "properties": {
+    "identityType": "DOMAIN",
+    "verifiedForSendingStatus": true,
+    "feedbackForwardingStatus": true,
+    "dkimStatus": "SUCCESS",
+    "mailFromDomain": "mail.example.com",
+    "mailFromDomainStatus": "SUCCESS",
+    "configurationSetName": "my-configuration-set",
+    "tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      }
+    ],
+    "region": "us-east-1"
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}
