@@ -63,12 +63,15 @@ class GitContext:
                 parts = Path(file_path).parts
                 if len(parts) >= 2:
                     name = parts[1]
+                    pyproject_path = Path(
+                        self.repo_root, "integrations", name, "pyproject.toml"
+                    )
+                    if not pyproject_path.exists():
+                        continue  # e.g. integrations/_infra — not a releasable integration
                     targets[f"integration:{name}"] = ReleaseTarget(
                         kind="integration",
                         name=name,
-                        pyproject_path=Path(
-                            self.repo_root, "integrations", name, "pyproject.toml"
-                        ),
+                        pyproject_path=pyproject_path,
                         changelog_path=Path(
                             self.repo_root, "integrations", name, "CHANGELOG.md"
                         ),
