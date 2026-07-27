@@ -92,6 +92,8 @@ class GitContext:
         if rel not in self.changed_files(base_ref, head_ref):
             return False
         base_content = self.read_at_ref(base_ref, pyproject)
+        if not base_content:
+            return True  # pyproject added in this PR — no version on base to compare
         head_content = self.read_worktree(pyproject)
         return parse_version(base_content) != parse_version(head_content)
 
