@@ -13,6 +13,9 @@ PROJECT_IDS = [f"project-id-{i}" for i in range(1, RECORD_COUNT + 1)]
 TARGET_IDS = [f"target-id-{i}" for i in range(1, RECORD_COUNT + 1)]
 VULN_IDS = [f"vuln-id-{i}" for i in range(1, RECORD_COUNT + 1)]
 VULN_KEYS = [f"SNYK-JS-LODASH-{i}" for i in range(1, RECORD_COUNT + 1)]
+POLICY_IDS = [f"policy-id-{i}" for i in range(1, RECORD_COUNT + 1)]
+IGNORED_BY_NAMES = ["Alice", "Bob"]
+IGNORED_BY_EMAILS = ["alice@example.com", "bob@example.com"]
 
 PACKAGE_NAMES = ["lodash", "express"]
 PACKAGE_VERSIONS = ["4.17.15", "4.17.1"]
@@ -102,5 +105,25 @@ def vulnerability_response(idx: int) -> dict[str, Any]:
         },
         "relationships": {
             "scan_item": {"data": {"id": PROJECT_IDS[idx - 1], "type": "project"}}
+        },
+    }
+
+
+def policy_response(idx: int) -> dict[str, Any]:
+    return {
+        "id": POLICY_IDS[idx - 1],
+        "type": "policy",
+        "attributes": {
+            "name": f"Ignore policy {idx}",
+            "ignore_type": "wont-fix" if idx == 1 else "not-vulnerable",
+            "ignored_by": {
+                "name": IGNORED_BY_NAMES[idx - 1],
+                "email": IGNORED_BY_EMAILS[idx - 1],
+            },
+            "reason": f"Reason {idx}",
+            "created_at": f"2024-02-0{idx}T10:00:00Z",
+        },
+        "relationships": {
+            "organization": {"data": {"id": ORG_ID, "type": "org"}},
         },
     }

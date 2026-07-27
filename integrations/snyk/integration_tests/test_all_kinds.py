@@ -16,6 +16,7 @@ KIND_BLUEPRINTS: dict[str, str] = {
     "project": "snykProject",
     "target": "snykTarget",
     "vulnerability": "snykVulnerability",
+    "policy": "snykPolicy",
 }
 
 KIND_BUILDERS: dict[str, str] = {
@@ -23,6 +24,7 @@ KIND_BUILDERS: dict[str, str] = {
     "project": "with_project_routes",
     "target": "with_target_routes",
     "vulnerability": "with_vulnerability_routes",
+    "policy": "with_policy_routes",
 }
 
 assert set(KIND_EXPECTATIONS) == set(

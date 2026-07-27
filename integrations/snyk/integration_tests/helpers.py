@@ -118,6 +118,28 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
                 }
             },
         },
+        "policy": {
+            "kind": "policy",
+            "selector": {"query": "true"},
+            "port": {
+                "entity": {
+                    "mappings": {
+                        "identifier": ".id",
+                        "title": ".attributes.name",
+                        "blueprint": '"snykPolicy"',
+                        "properties": {
+                            "ignoreType": ".attributes.ignore_type",
+                            "ignoredByName": ".attributes.ignored_by.name",
+                            "ignoredByEmail": ".attributes.ignored_by.email",
+                            "reason": ".attributes.reason",
+                        },
+                        "relations": {
+                            "snyk_organization": ".relationships.organization.data.id",
+                        },
+                    }
+                }
+            },
+        },
     }
 
     if kind not in resources:

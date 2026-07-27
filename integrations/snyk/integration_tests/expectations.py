@@ -2,16 +2,20 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from mocks.payloads import (
+    IGNORED_BY_EMAILS,
+    IGNORED_BY_NAMES,
     ORG_ID,
     ORG_NAME,
     ORG_SLUG,
     PACKAGE_NAMES,
     PACKAGE_VERSIONS,
+    POLICY_IDS,
     PROJECT_IDS,
     RECORD_COUNT,
     TARGET_IDS,
     VULN_IDS,
     VULN_KEYS,
+    policy_response,
     project_response,
     vulnerability_response,
 )
@@ -97,6 +101,23 @@ KIND_EXPECTATIONS: dict[str, KindExpectation] = {
                     "type": "package_vulnerability",
                 },
                 relations={"project": PROJECT_IDS[i - 1]},
+            )
+            for i in range(1, RECORD_COUNT + 1)
+        ),
+    ),
+    "policy": KindExpectation(
+        count=RECORD_COUNT,
+        entities=tuple(
+            EntityExpectation(
+                identifier=POLICY_IDS[i - 1],
+                title=f"Ignore policy {i}",
+                properties={
+                    "ignoreType": policy_response(i)["attributes"]["ignore_type"],
+                    "ignoredByName": IGNORED_BY_NAMES[i - 1],
+                    "ignoredByEmail": IGNORED_BY_EMAILS[i - 1],
+                    "reason": f"Reason {i}",
+                },
+                relations={"snyk_organization": ORG_ID},
             )
             for i in range(1, RECORD_COUNT + 1)
         ),

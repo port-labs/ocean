@@ -6,6 +6,7 @@ from mocks.payloads import (
     ORG_ID,
     RECORD_COUNT,
     org_response,
+    policy_response,
     project_response,
     target_response,
     vulnerability_response,
@@ -81,6 +82,14 @@ class SnykMockTransportBuilder:
         self._add_org_table_route(
             "issues",
             [vulnerability_response(i) for i in range(1, RECORD_COUNT + 1)],
+        )
+        self._add_org_route()
+        return self
+
+    def with_policy_routes(self) -> "SnykMockTransportBuilder":
+        self._add_org_table_route(
+            "policies",
+            [policy_response(i) for i in range(1, RECORD_COUNT + 1)],
         )
         self._add_org_route()
         return self
