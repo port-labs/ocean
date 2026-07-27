@@ -1,3 +1,3 @@
-bump: patch
+bump: patc
 changelog-type: bugfix
 changelog: Describe the change
