@@ -1,0 +1,45 @@
+{
+  "Type": "AWS::SES::EmailIdentity",
+  "Properties": {
+    "EmailIdentity": "example.com",
+    "IdentityType": "DOMAIN",
+    "VerifiedForSendingStatus": true,
+    "DkimEnabled": true,
+    "DkimAttributes": {
+      "SigningEnabled": true,
+      "Status": "SUCCESS",
+      "Tokens": [
+        "abc123dkim1",
+        "abc123dkim2",
+        "abc123dkim3"
+      ],
+      "SigningAttributesOrigin": "AWS_SES",
+      "NextSigningKeyLength": "RSA_2048_BIT",
+      "CurrentSigningKeyLength": "RSA_2048_BIT",
+      "LastKeyGenerationTimestamp": "2024-01-15T10:30:00Z"
+    },
+    "MailFromAttributes": {
+      "MailFromDomain": "mail.example.com",
+      "MailFromDomainStatus": "SUCCESS",
+      "BehaviorOnMxFailure": "USE_DEFAULT_VALUE"
+    },
+    "Policies": {},
+    "ConfigurationSetName": "my-config-set",
+    "VerificationStatus": "SUCCESS",
+    "VerificationInfo": null,
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      }
+    ]
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}
