@@ -86,9 +86,7 @@ async def _resync_skills_via_tree(
                 yield skills
         return
 
-    repos_scope = (
-        [] if unrestricted_patterns else list(patterns_by_repo.keys())
-    )
+    repos_scope = [] if unrestricted_patterns else list(patterns_by_repo.keys())
     async for projects_batch in _iter_projects(client, repos_scope, project_params):
         for project in projects_batch:
             repo = project["path_with_namespace"]

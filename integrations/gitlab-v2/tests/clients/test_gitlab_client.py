@@ -1150,9 +1150,7 @@ class TestGitLabClient:
                 ):
                     results.extend(batch)
 
-                assert [f["path"] for f in results] == [
-                    ".cursor/skills/hello/SKILL.md"
-                ]
+                assert [f["path"] for f in results] == [".cursor/skills/hello/SKILL.md"]
                 mock_get_paginated.assert_called_once_with(
                     "group/project",
                     "repository/tree",
