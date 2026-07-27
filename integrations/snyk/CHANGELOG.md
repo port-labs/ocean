@@ -8,12 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.62 (2026-07-27)
+## 0.5.63 (2026-07-27)
 
 
 ### Bug Fixes
 
 - Fixed serialization of array query parameters ensuring multi-value filters (such as `status` and `effective_severity_level`) are formatted correctly.
+
+
+## 0.5.62 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
 
 
 ## 0.5.61 (2026-07-26)
