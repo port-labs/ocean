@@ -62,7 +62,6 @@ from github.core.exporters.folder_exporter import (
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.exporters.organization_exporter import RestOrganizationExporter
 from github.clients.utils import can_access_organization
-
 from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
@@ -213,6 +212,7 @@ async def resync_organizations(
         yield organizations
 
 
+@ocean.on_incremental_resync(ObjectKind.REPOSITORY)
 @ocean.on_resync(ObjectKind.REPOSITORY)
 @_resync_per_authenticator
 async def resync_repositories(
@@ -389,6 +389,7 @@ async def resync_workflows(
                     yield workflows
 
 
+@ocean.on_incremental_resync(ObjectKind.WORKFLOW_RUN)
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
 @_resync_per_authenticator
 async def resync_workflow_runs(
@@ -460,6 +461,7 @@ async def resync_workflow_runs(
                         yield runs
 
 
+@ocean.on_incremental_resync(ObjectKind.PULL_REQUEST)
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 @_resync_per_authenticator
 async def resync_pull_requests(
@@ -538,6 +540,7 @@ async def resync_pull_requests(
         )
 
 
+@ocean.on_incremental_resync(ObjectKind.ISSUE)
 @ocean.on_resync(ObjectKind.ISSUE)
 @_resync_per_authenticator
 async def resync_issues(
@@ -583,6 +586,7 @@ async def resync_issues(
                     yield issues
 
 
+@ocean.on_incremental_resync(ObjectKind.RELEASE)
 @ocean.on_resync(ObjectKind.RELEASE)
 @_resync_per_authenticator
 async def resync_releases(
@@ -616,7 +620,8 @@ async def resync_releases(
                     tasks.append(
                         release_exporter.get_paginated_resources(
                             ListReleaseOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name,
+                                repo_name=repo["name"],
                             )
                         )
                     )
@@ -767,6 +772,7 @@ async def resync_environments(
                     yield environments
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPLOYMENT)
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
 @_resync_per_authenticator
 async def resync_deployments(
@@ -891,6 +897,7 @@ async def resync_deployment_statuses(
                             yield statuses
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPENDABOT_ALERT)
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
 @_resync_per_authenticator
 async def resync_dependabot_alerts(
@@ -938,6 +945,7 @@ async def resync_dependabot_alerts(
                     yield alerts
 
 
+@ocean.on_incremental_resync(ObjectKind.CODE_SCANNING_ALERT)
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
 @_resync_per_authenticator
 async def resync_code_scanning_alerts(
