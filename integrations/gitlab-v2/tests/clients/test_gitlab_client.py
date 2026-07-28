@@ -1222,6 +1222,19 @@ class TestGitLabClient:
 
         assert result == {"ref": "file://missing_file.txt"}
 
+    async def test_resolve_file_references_best_effort_on_transport_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a transport-level failure (timeout/connection error, not an HTTP status
+        error) is also caught and left unresolved rather than aborting the resync."""
+        error = httpx.ConnectTimeout("Connection timed out")
+        data = {"ref": "file://missing_file.txt"}
+
+        with patch.object(client, "get_file_content", AsyncMock(side_effect=error)):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file://missing_file.txt"}
+
     async def test_resolve_file_references_nested_structures(
         self, client: GitLabClient
     ) -> None:

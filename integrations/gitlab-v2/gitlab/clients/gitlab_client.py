@@ -1161,7 +1161,7 @@ class GitLabClient:
                         content = await self.get_file_content(
                             project_id, file_path, ref
                         )
-                    except httpx.HTTPStatusError as e:
+                    except httpx.HTTPError as e:
                         logger.warning(
                             f"Failed to resolve file:// reference '{value}' in project "
                             f"'{project_id}' (ref '{ref}'): {e}. Leaving reference unresolved."
