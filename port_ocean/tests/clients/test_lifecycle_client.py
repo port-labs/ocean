@@ -18,7 +18,6 @@ from port_ocean.clients.dsp.lifecycle_http import (
 )
 from port_ocean.core.integrations.mixins.utils import clear_http_client_context
 from port_ocean.helpers.retry import RetryTransport
-from port_ocean.version import __version__
 
 
 @pytest.fixture(autouse=True)
@@ -40,6 +39,7 @@ def reset_lifecycle_http_context() -> Generator[None, None, None]:
 def mock_auth() -> MagicMock:
     auth = MagicMock()
     auth.headers = AsyncMock(return_value={"Authorization": "Bearer test-token"})
+    auth.api_url = "https://api.port.io/v1"
     return auth
 
 
@@ -58,9 +58,10 @@ TEST_LIFECYCLE_INGEST_URL = "http://localhost:3017/v1/lifecycle"
 def _patch_lifecycle_ingest_url(
     client: LifecycleClient, ingest_url: str = TEST_LIFECYCLE_INGEST_URL
 ) -> None:
-    client.get_lifecycle_attributes = AsyncMock(  # type: ignore[method-assign]
-        return_value={"ingestUrl": ingest_url}
-    )
+    base_api_url = ingest_url.rstrip("/")
+    if base_api_url.endswith("/lifecycle"):
+        base_api_url = base_api_url[: -len("/lifecycle")]
+    client._lifecycle_auth.api_url = base_api_url
 
 
 @pytest_asyncio.fixture
@@ -338,6 +339,36 @@ class TestNotifyResyncAborted:
         logged_body = mock_logger.warning.call_args[1]["response_body"]
         assert len(logged_body) <= 257
         assert logged_body.endswith("…")
+
+
+class TestGetResyncStatus:
+    @pytest.mark.asyncio
+    async def test_returns_lowercased_status(
+        self, lifecycle_client: LifecycleClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_get = AsyncMock(return_value={"status": "ABORTED"})
+        monkeypatch.setattr(
+            lifecycle_client._lifecycle_http_client,
+            "do_get",
+            mock_get,
+        )
+
+        status = await lifecycle_client.get_resync_status("r1")
+        assert status == "aborted"
+        mock_get.assert_awaited_once_with(f"{TEST_LIFECYCLE_INGEST_URL}/r1")
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_response_missing_status(
+        self, lifecycle_client: LifecycleClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            lifecycle_client._lifecycle_http_client,
+            "do_get",
+            AsyncMock(return_value={"ok": True}),
+        )
+
+        status = await lifecycle_client.get_resync_status("r1")
+        assert status is None
 
 
 class TestNotifyGranularStarted:
@@ -684,12 +715,13 @@ class TestRetryBehavior:
             patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
             patch("port_ocean.clients.dsp.lifecycle_http.logger") as mock_logger,
         ):
-            await client.notify_resync_started(
-                resync_id="r1",
-                integration_id="i1",
-                integration_type="github",
-                sync_type=SyncType.FULL_SYNC.value,
-            )
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.notify_resync_started(
+                    resync_id="r1",
+                    integration_id="i1",
+                    integration_type="github",
+                    sync_type=SyncType.FULL_SYNC.value,
+                )
         assert inner.handle_async_request.await_count == max_attempts + 1
         mock_logger.warning.assert_called_once()
 
@@ -709,45 +741,12 @@ class TestLifecycleClientLoopSafety:
         assert first_id != second_id
 
 
-class TestGetLifecycleAttributes:
+class TestLifecycleBaseUrl:
     @pytest.mark.asyncio
-    async def test_fetches_and_caches_lifecycle_attributes(self) -> None:
+    async def test_builds_lifecycle_base_url_from_auth_api_url(self) -> None:
         auth = MagicMock()
-        auth.integration_identifier = "integration-1"
-        auth.api_url = "https://api.example.com/v1"
-        auth.headers = AsyncMock(return_value={"Authorization": "Bearer token"})
-        auth.client = MagicMock()
-        auth.client.get = AsyncMock(
-            return_value=MagicMock(
-                is_error=False,
-                status_code=200,
-                json=MagicMock(
-                    return_value={
-                        "integration": {
-                            "lifecycleAttributes": {
-                                "ingestUrl": "https://ingest.example.com/v1/lifecycle"
-                            }
-                        }
-                    }
-                ),
-            )
-        )
+        auth.api_url = "https://api.example.com/v1/"
 
         client = LifecycleClient(auth=auth)
-
-        with patch(
-            "port_ocean.clients.dsp.lifecycle.handle_port_status_code"
-        ) as mock_handle:
-            result = await client.get_lifecycle_attributes()
-
-        assert result == {"ingestUrl": "https://ingest.example.com/v1/lifecycle"}
-        auth.client.get.assert_called_once_with(
-            "https://api.example.com/v1/integration/integration-1",
-            headers={"Authorization": "Bearer token"},
-            params={"oceanCoreVersion": __version__, "isPolling": "false"},
-        )
-        mock_handle.assert_called_once()
-
-        result_again = await client.get_lifecycle_attributes()
-        assert result_again == {"ingestUrl": "https://ingest.example.com/v1/lifecycle"}
-        auth.client.get.assert_called_once()
+        result = await client._lifecycle_base_url()
+        assert result == "https://api.example.com/v1/lifecycle"

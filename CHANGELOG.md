@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.46.5 (2026-07-28)
+
+### Bug Fixes
+
+- Call patch config rather than full patch integration route when setting up a default origin integration in order to avoid double resync.
+
+## 0.46.4 (2026-07-27)
+
+### Bug Fixes
+
+- Updated external abort handling so lifecycle/lakehouse aborts cancel only the current resync work.
+
 ## 0.46.3 (2026-07-27)
 
 ### Bug Fixes
