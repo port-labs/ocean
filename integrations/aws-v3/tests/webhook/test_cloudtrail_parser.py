@@ -100,3 +100,78 @@ def test_parse_falls_back_to_detail_recipient_account_id() -> None:
 
     assert parsed is not None
     assert parsed.account_id == "111122223333"
+
+
+def _lambda_eventbridge_envelope(
+    event_name: str,
+    function_name: str | None = "my-function",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> dict[str, Any]:
+    detail: dict[str, Any] = {
+        "eventName": event_name,
+        "awsRegion": region,
+        "recipientAccountId": account,
+    }
+    if function_name is not None:
+        detail["requestParameters"] = {"functionName": function_name}
+    else:
+        detail["requestParameters"] = {}
+
+    return {
+        "version": "0",
+        "detail-type": "AWS API Call via CloudTrail",
+        "source": "aws.lambda",
+        "account": account,
+        "region": region,
+        "detail": detail,
+    }
+
+
+def test_is_supported_cloudtrail_event_true_for_create_function() -> None:
+    payload = _lambda_eventbridge_envelope("CreateFunction")
+    assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_is_supported_cloudtrail_event_true_for_delete_function() -> None:
+    payload = _lambda_eventbridge_envelope("DeleteFunction")
+    assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_create_function_event() -> None:
+    payload = _lambda_eventbridge_envelope(
+        "CreateFunction", function_name="my-function"
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.LAMBDA_FUNCTION
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == "my-function"
+    assert parsed.event_name == "CreateFunction"
+
+
+def test_parse_update_function_configuration_event() -> None:
+    payload = _lambda_eventbridge_envelope("UpdateFunctionConfiguration")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.LAMBDA_FUNCTION
+    assert parsed.action == CloudTrailEventAction.UPSERT
+
+
+def test_parse_delete_function_event() -> None:
+    payload = _lambda_eventbridge_envelope("DeleteFunction")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.LAMBDA_FUNCTION
+    assert parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_parse_returns_none_when_function_name_missing() -> None:
+    payload = _lambda_eventbridge_envelope("CreateFunction", function_name=None)
+    assert parse_cloudtrail_event(payload) is None

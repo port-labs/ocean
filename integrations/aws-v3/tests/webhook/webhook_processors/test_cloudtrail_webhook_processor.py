@@ -26,6 +26,32 @@ def _create_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
     }
 
 
+def _lambda_create_event(function_name: str = "my-function") -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "CreateFunction",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"functionName": function_name},
+        },
+    }
+
+
+def _lambda_delete_event(function_name: str = "my-function") -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "DeleteFunction",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"functionName": function_name},
+        },
+    }
+
+
 def _delete_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
     return {
         "account": "111122223333",
@@ -178,6 +204,62 @@ async def test_handle_event_create_skips_when_no_session_found(
         result = await processor.handle_event(_create_event(), None)  # type: ignore[arg-type]
 
     assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds_returns_lambda_function(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="t", payload=_lambda_create_event(), headers={})
+    assert await processor.get_matching_kinds(event) == [ObjectKind.LAMBDA_FUNCTION]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_lambda_delete_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    result = await processor.handle_event(
+        _lambda_delete_event("function-to-delete"), None  # type: ignore[arg-type]
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        {
+            "Type": ObjectKind.LAMBDA_FUNCTION,
+            "Properties": {
+                "FunctionArn": (
+                    "arn:aws:lambda:us-east-1:111122223333:function:function-to-delete"
+                ),
+                "FunctionName": "function-to-delete",
+            },
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_lambda_create_fetches_and_returns_resource(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    fake_resource = {
+        "Type": ObjectKind.LAMBDA_FUNCTION,
+        "Properties": {"FunctionName": "my-function"},
+    }
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(f"{MODULE}.EXPORTER_REGISTRY") as mock_registry,
+    ):
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
+        mock_registry.get.return_value.exporter_cls.return_value = mock_exporter
+
+        result = await processor.handle_event(_lambda_create_event(), None)  # type: ignore[arg-type]
+
+    mock_registry.get.return_value.exporter_cls.assert_called_once_with("session")
+    assert result.updated_raw_results == [fake_resource]
     assert result.deleted_raw_results == []
 
 

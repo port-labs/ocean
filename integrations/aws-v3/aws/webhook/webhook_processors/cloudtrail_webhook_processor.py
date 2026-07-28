@@ -1,7 +1,7 @@
 """Unified CloudTrail live-events webhook processor.
 
 All supported kinds share one processor. Per-kind behavior is delegated to
-``cloudtrail_parser`` (event normalization) and ``exporter_registry`` (fetch
+``cloudtrail_parser`` (event normalization) and ``exporter_bindings`` (fetch
 and delete payloads).
 """
 
@@ -27,7 +27,7 @@ from aws.webhook.cloudtrail_parser import (
     is_supported_cloudtrail_event,
     parse_cloudtrail_event,
 )
-from aws.webhook.exporter_registry import EXPORTER_REGISTRY
+from aws.webhook.exporter_bindings import EXPORTER_REGISTRY
 from aws.webhook.webhook_processors.base_webhook_processor import BaseWebhookProcessor
 
 

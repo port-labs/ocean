@@ -56,12 +56,37 @@ def _extract_s3_bucket_name(detail: dict[str, Any]) -> str | None:
     return bucket_name if isinstance(bucket_name, str) and bucket_name else None
 
 
+def _extract_lambda_function_name(detail: dict[str, Any]) -> str | None:
+    function_name = detail.get("requestParameters", {}).get("functionName")
+    return function_name if isinstance(function_name, str) and function_name else None
+
+
 EVENT_NAME_MAPPINGS: dict[str, _EventNameMapping] = {
     "CreateBucket": _EventNameMapping(
         ObjectKind.S3_BUCKET, CloudTrailEventAction.UPSERT, _extract_s3_bucket_name
     ),
     "DeleteBucket": _EventNameMapping(
         ObjectKind.S3_BUCKET, CloudTrailEventAction.DELETE, _extract_s3_bucket_name
+    ),
+    "CreateFunction": _EventNameMapping(
+        ObjectKind.LAMBDA_FUNCTION,
+        CloudTrailEventAction.UPSERT,
+        _extract_lambda_function_name,
+    ),
+    "UpdateFunctionConfiguration": _EventNameMapping(
+        ObjectKind.LAMBDA_FUNCTION,
+        CloudTrailEventAction.UPSERT,
+        _extract_lambda_function_name,
+    ),
+    "UpdateFunctionCode": _EventNameMapping(
+        ObjectKind.LAMBDA_FUNCTION,
+        CloudTrailEventAction.UPSERT,
+        _extract_lambda_function_name,
+    ),
+    "DeleteFunction": _EventNameMapping(
+        ObjectKind.LAMBDA_FUNCTION,
+        CloudTrailEventAction.DELETE,
+        _extract_lambda_function_name,
     ),
 }
 
