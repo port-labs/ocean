@@ -1,4 +1,6 @@
 import logging
+import json
+import asyncio
 from pathlib import PosixPath
 import sys
 import threading
@@ -14,6 +16,8 @@ from loguru import logger
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.misc import run_async_in_new_event_loop
+
+_MAX_LOG_BATCH_BYTES = 1_000_000  # 1 MB log size limit
 
 
 def _serialize_posix_paths(
@@ -124,10 +128,46 @@ class HTTPMemoryHandler(MemoryHandler):
             self._thread_pool.append(thread)
         self.release()
 
+    def _split_logs_into_size_bounded_chunks(
+        self, logs: list[dict[str, Any]]
+    ) -> list[list[dict[str, Any]]]:
+        chunks: list[list[dict[str, Any]]] = []
+        current_chunk: list[dict[str, Any]] = []
+        current_chunk_size = 0
+
+        for log in logs:
+            log_size = len(json.dumps(log).encode())
+            if current_chunk and current_chunk_size + log_size > _MAX_LOG_BATCH_BYTES:
+                chunks.append(current_chunk)
+                current_chunk = []
+                current_chunk_size = 0
+
+            current_chunk.append(log)
+            current_chunk_size += log_size
+
+        if current_chunk:
+            chunks.append(current_chunk)
+
+        return chunks
+
+    async def _send_logs_chunked(
+        self, _ocean: Ocean, logs: list[dict[str, Any]]
+    ) -> None:
+        if not logs:
+            return
+
+        result = await asyncio.gather(
+            *[
+                _ocean.port_client.ingest_integration_logs(logs=logs_chunk)
+                for logs_chunk in self._split_logs_into_size_bounded_chunks(logs)
+            ],
+            return_exceptions=True,
+        )
+        for chunk_result in result:
+            if isinstance(chunk_result, Exception):
+                logger.error(f"Failed to send logs chunk: {chunk_result}")
+
     async def send_logs(
         self, _ocean: Ocean, logs_to_send: list[dict[str, Any]]
     ) -> None:
-        try:
-            await _ocean.port_client.ingest_integration_logs(logs_to_send)
-        except Exception as e:
-            logger.error(f"Failed to send logs to Port with error: {e}")
+        await self._send_logs_chunked(_ocean, logs_to_send)
