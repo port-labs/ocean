@@ -65,6 +65,11 @@ def integration_client(monkeypatch: Any) -> IntegrationClientMixin:
     client.get.return_value = MagicMock()
     client.get.return_value.status_code = 200
     client.get.return_value.is_error = False
+    client.patch = AsyncMock()
+    client.patch.return_value = MagicMock()
+    client.patch.return_value.status_code = 200
+    client.patch.return_value.is_error = False
+    client.patch.return_value.json.return_value = {"integration": {}}
 
     integration_client = IntegrationClientMixin(
         integration_identifier=TEST_INTEGRATION_IDENTIFIER,
@@ -294,3 +299,23 @@ async def test_get_integration_resync_request_returns_empty_dict_when_request_is
         result = await integration_client.get_integration_resync_request()
 
     assert result == {}
+
+
+async def test_patch_integration_sends_skip_resync_header_when_requested(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await integration_client.patch_integration(skip_resync=True)
+
+    call_args = integration_client.client.patch.call_args
+    assert call_args[1]["headers"]["x-skip-resync"] == "true"
+
+
+async def test_patch_integration_omits_skip_resync_header_by_default(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await integration_client.patch_integration()
+
+    call_args = integration_client.client.patch.call_args
+    assert "x-skip-resync" not in call_args[1]["headers"]
