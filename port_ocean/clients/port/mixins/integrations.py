@@ -245,7 +245,7 @@ class IntegrationClientMixin:
 
     async def patch_integration_config(
         self,
-        port_app_config: "PortAppConfig",
+        port_app_config: PortAppConfig | None,
         skip_resync: bool = False,
     ) -> dict:
         logger.info(
