@@ -91,41 +91,6 @@ jobs:
         run: |
           make smoke/clean
 
-      - name: Run fake integration for core test with multiprocessing enabled
-        if: env.RUN_SMOKE_TESTS == 'true'
-        env:
-          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
-          SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
-          OCEAN__PROCESS_EXECUTION_MODE: multi_process
-          OCEAN__CACHING_STORAGE_MODE: disk
-        run: |
-          ./scripts/run-smoke-test.sh
-
-      - name: Smoke Test Core
-        if: env.RUN_SMOKE_TESTS == 'true'
-        env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
-        run: |
-          make smoke/test
-
-      - name: Cleanup Smoke Test
-        if: always() && env.RUN_SMOKE_TESTS == 'true'
-        env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
-        run: |
-          make smoke/clean
-
       - name: Install current core for all integrations
         run: |
           echo "Installing local core for all integrations"

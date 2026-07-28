@@ -1,4 +1,3 @@
-import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import prometheus_client
@@ -9,7 +8,7 @@ from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
 from httpx import AsyncClient
 from loguru import logger
-from prometheus_client import Gauge, multiprocess
+from prometheus_client import Gauge
 
 from port_ocean.context import metric_resource, resource
 from port_ocean.exceptions.context import ResourceContextNotFoundError
@@ -198,15 +197,11 @@ class Metrics:
         metrics_settings: "MetricsSettings",
         integration_configuration: "IntegrationSettings",
         port_client: "PortClient",
-        multiprocessing_enabled: bool = False,
     ) -> None:
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
         self.port_client = port_client
         self.registry = prometheus_client.CollectorRegistry()
-        if multiprocessing_enabled:
-            multiprocess.MultiProcessCollector(self.registry)
-        self.multiprocessing_enabled = multiprocessing_enabled
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
         self._integration_version: Optional[str] = None
@@ -304,22 +299,7 @@ class Metrics:
         """
         self.get_metric(name, labels).set(value)
 
-    @staticmethod
-    def cleanup_prometheus_metrics(pid: int | None = None) -> None:
-        try:
-            prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-            for file in os.listdir(prometheus_multiproc_dir):
-                if pid:
-                    if file.endswith(".db") and file[0:-3].split("_")[-1] == str(pid):
-                        os.remove(f"{prometheus_multiproc_dir}/{file}")
-                else:
-                    os.remove(f"{prometheus_multiproc_dir}/{file}")
-        except Exception as e:
-            logger.error(f"Failed to cleanup prometheus metrics: {e}")
-
     def initialize_metrics(self, kind_blockes: list[str]) -> None:
-        if self.multiprocessing_enabled:
-            self.cleanup_prometheus_metrics()
         for kind in kind_blockes:
             self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
             self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)

@@ -1,7 +1,7 @@
-import platform
 from typing import Any, Literal, Optional, Type
 from urllib.parse import urlparse
 
+from loguru import logger
 from pydantic.v1 import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
 from pydantic.v1.class_validators import root_validator, validator
 from pydantic.v1.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
@@ -321,7 +321,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default=CachingStorageMode.disk
     )
     process_execution_mode: Optional[ProcessExecutionMode] = Field(
-        default=ProcessExecutionMode.multi_process
+        default=ProcessExecutionMode.single_process
     )
 
     upsert_entities_batch_max_length: int = 20
@@ -350,14 +350,13 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     def validate_process_execution_mode(
         cls,
         process_execution_mode: ProcessExecutionMode,
-        values: dict[str, Any],
     ) -> ProcessExecutionMode:
-        # Check if the system is macos, if so, set the process execution mode to single process since multiprocessing behavior is different on macos and some asyncio error pop up
-        is_macos = platform.system() == "Darwin"
-        runtime = values.get("runtime", Runtime.OnPrem)
-        if is_macos or runtime == Runtime.Saas:
-            return ProcessExecutionMode.single_process
-        return process_execution_mode
+        if process_execution_mode == ProcessExecutionMode.multi_process:
+            logger.warning(
+                "process_execution_mode 'multi_process' is deprecated and will be ignored. "
+                "Ocean now runs in single_process mode only."
+            )
+        return ProcessExecutionMode.single_process
 
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:

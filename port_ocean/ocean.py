@@ -74,15 +74,11 @@ class Ocean:
             blueprint_cache_ttl_seconds=self.config.port.blueprint_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
-        self.process_execution_mode: ProcessExecutionMode = (
-            self._get_process_execution_mode()
-        )
+        self.process_execution_mode = ProcessExecutionMode.single_process
         self.metrics = port_ocean.helpers.metric.metric.Metrics(
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
-            multiprocessing_enabled=self.process_execution_mode
-            == ProcessExecutionMode.multi_process,
         )
         self.metrics.execution_mode = self.process_execution_mode.value
 
@@ -177,11 +173,6 @@ class Ocean:
                 pass
             self._status_heartbeat_task = None
 
-    def _get_process_execution_mode(self) -> ProcessExecutionMode:
-        if self.config.process_execution_mode:
-            return self.config.process_execution_mode
-        return ProcessExecutionMode.single_process
-
     def _get_caching_provider(self) -> CacheProvider:
         if self.config.caching_storage_mode:
             caching_type_to_provider = {
@@ -191,8 +182,6 @@ class Ocean:
             if self.config.caching_storage_mode in caching_type_to_provider:
                 return caching_type_to_provider[self.config.caching_storage_mode]()
 
-        if self.config.process_execution_mode == ProcessExecutionMode.multi_process:
-            return DiskCacheProvider()
         return InMemoryCacheProvider()
 
     def is_saas(self) -> bool:
