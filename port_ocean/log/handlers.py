@@ -1,4 +1,5 @@
 import logging
+import json
 from pathlib import PosixPath
 import sys
 import threading
@@ -14,6 +15,8 @@ from loguru import logger
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.misc import run_async_in_new_event_loop
+
+_MAX_LOG_BATCH_BYTES = 1_000_000  # 1 MB log size limit
 
 
 def _serialize_posix_paths(
@@ -124,10 +127,34 @@ class HTTPMemoryHandler(MemoryHandler):
             self._thread_pool.append(thread)
         self.release()
 
+    async def _send_logs_chunked(
+        self, _ocean: Ocean, logs: list[dict[str, Any]]
+    ) -> None:
+        if not logs:
+            return
+
+        current_chunk: list[dict[str, Any]] = []
+        current_chunk_size = 0
+
+        for log in logs:
+            log_size = len(json.dumps(log).encode())
+
+            if current_chunk and current_chunk_size + log_size > _MAX_LOG_BATCH_BYTES:
+                try:
+                    await _ocean.port_client.ingest_integration_logs(current_chunk)
+                except Exception as e:
+                    logger.error(f"Failed to send logs to Port with error: {e}")
+
+                current_chunk = []
+                current_chunk_size = 0
+
+            current_chunk.append(log)
+            current_chunk_size += log_size
+
+        if current_chunk:
+            await self.send_logs(_ocean, current_chunk)
+
     async def send_logs(
         self, _ocean: Ocean, logs_to_send: list[dict[str, Any]]
     ) -> None:
-        try:
-            await _ocean.port_client.ingest_integration_logs(logs_to_send)
-        except Exception as e:
-            logger.error(f"Failed to send logs to Port with error: {e}")
+        await self._send_logs_chunked(_ocean, logs_to_send)
