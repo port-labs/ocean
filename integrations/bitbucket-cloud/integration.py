@@ -19,7 +19,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.utils.signal import signal_handler
 from loguru import logger
 
-
 FILE_PROPERTY_PREFIX = "file://"
 
 UserRole = Literal["member", "contributor", "admin", "owner"]

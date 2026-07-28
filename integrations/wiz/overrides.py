@@ -6,6 +6,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 from pydantic.v1 import BaseModel, Field
 from typing import Literal, Optional
 
+from wiz.constants import VULNERABILITY_FINDING_SEVERITIES
+
 
 class IssueSelector(Selector):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
@@ -97,6 +99,54 @@ class ProjectResourceConfig(ResourceConfig):
     )
 
 
+class ParallelismSelector(BaseModel):
+    strategy: Literal["auto", "date", "severity"] = Field(
+        alias="strategy",
+        title="Strategy",
+        description=(
+            "Partition strategy. 'auto' prefers date windows then severity shards. "
+            "'date' uses firstSeenAt windows. 'severity' shards by severity."
+        ),
+        default="auto",
+    )
+    date_interval_days: int = Field(
+        alias="dateIntervalDays",
+        title="Date Interval Days",
+        description="Size of each date partition window in days.",
+        default=30,
+        ge=1,
+    )
+    lookback_days: int = Field(
+        alias="lookbackDays",
+        title="Lookback Days",
+        description="How many days back to partition when using date strategy.",
+        default=365,
+        ge=1,
+    )
+    api_requests_per_second: int = Field(
+        alias="apiRequestsPerSecond",
+        title="API Requests Per Second",
+        description=(
+            "Maximum Wiz API requests per second while parallel pagination is enabled. "
+            "Wiz allows up to 10 requests per second per service account."
+        ),
+        default=10,
+        ge=1,
+        le=10,
+    )
+    max_partition_entities: int = Field(
+        alias="maxPartitionEntities",
+        title="Max Partition Entities",
+        description=(
+            "Maximum entities allowed in a partition before it is split further "
+            "during probe/refine."
+        ),
+        default=500,
+        ge=1,
+        le=10_000,
+    )
+
+
 class VulnerabilityFindingSelector(Selector):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
         alias="statusList",
@@ -104,9 +154,7 @@ class VulnerabilityFindingSelector(Selector):
         description="List of statuses to filter vulnerability findings by",
         default=["OPEN", "IN_PROGRESS"],
     )
-    severity_list: Optional[
-        list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]
-    ] = Field(
+    severity_list: Optional[list[VULNERABILITY_FINDING_SEVERITIES]] = Field(
         alias="severityList",
         title="Severities",
         description="List of severities to filter vulnerability findings by. If empty, all severities are fetched.",
@@ -117,6 +165,12 @@ class VulnerabilityFindingSelector(Selector):
         title="Max Pages",
         description="Maximum number of pages to fetch for vulnerability findings.",
         default=500,
+    )
+    parallelism: Optional[ParallelismSelector] = Field(
+        alias="parallelism",
+        title="Parallelism",
+        description="Optional parallel pagination settings for vulnerability findings.",
+        default=None,
     )
 
 

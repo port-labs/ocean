@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -10,11 +11,11 @@ from pydantic.v1 import ValidationError
 from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from github.helpers.models import RepoSearchParams
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubRepositorySelector
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
-
 
 TEST_REPOS = [
     {
@@ -305,6 +306,51 @@ class TestRestRepositoryExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/search/repositories",
                     {"q": "org:test-org code in:name"},
+                )
+
+    async def test_search_strategy_applies_incremental_cursor(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        mixed_repos = [
+            {"id": 1, "name": "fresh-repo", "updated_at": "2026-06-02T00:00:00Z"},
+            {"id": 2, "name": "stale-repo", "updated_at": "2026-05-01T00:00:00Z"},
+        ]
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            yield {"items": mixed_repos}
+            yield {"items": mixed_repos}
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                with with_active_incremental_cursor(cursor):
+                    repos: list[list[dict[str, Any]]] = [
+                        batch
+                        async for batch in exporter.get_paginated_resources(options)
+                    ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == ["fresh-repo"]
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {
+                        "q": "org:test-org code in:name",
+                        "sort": "updated",
+                        "order": "desc",
+                    },
                 )
 
     async def test_get_paginated_resources_user_context_builds_user_repos_url(

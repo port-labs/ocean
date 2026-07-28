@@ -11,7 +11,6 @@ from confluent_kafka.admin import (  # type: ignore[attr-defined]
 )
 from loguru import logger
 
-
 DEFAULT_BATCH_SIZE = 50
 
 

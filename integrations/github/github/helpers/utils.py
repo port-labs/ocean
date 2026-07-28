@@ -19,10 +19,8 @@ from loguru import logger
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
-
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
-    from github.clients.http.graphql_client import GithubGraphQLClient
 
 
 BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
@@ -206,6 +204,7 @@ class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
     type: Optional[str] = None
+    body_contains: Optional[str] = None
 
 
 @cache.cache_coroutine_result()
@@ -278,7 +277,7 @@ def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
 
 @cache_coroutine_result()
 async def get_saml_identities(
-    client: "GithubGraphQLClient", organization: str
+    client: "AbstractGithubClient", organization: str
 ) -> dict[str, str]:
     """Fetch and cache SAML identities for an organization.
 
@@ -318,7 +317,7 @@ async def get_saml_identities(
 
 
 async def enrich_members_with_saml_email(
-    client: "GithubGraphQLClient",
+    client: "AbstractGithubClient",
     organization: str,
     members: list[dict[str, Any]],
     include_saml_email: bool,

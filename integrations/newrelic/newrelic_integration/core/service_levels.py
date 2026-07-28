@@ -89,7 +89,7 @@ class ServiceLevelsHandler:
 
     @staticmethod
     async def _extract_service_levels(
-        response: dict[Any, Any]
+        response: dict[Any, Any],
     ) -> Tuple[Optional[str], list[dict[Any, Any]]]:
         """Extract service levels from the response. used by send_paginated_graph_api_request"""
         if not response:

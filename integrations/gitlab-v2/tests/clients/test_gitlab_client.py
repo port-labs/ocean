@@ -7,7 +7,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.helpers.utils import is_bot_member
+from gitlab.helpers.utils import build_search_query, is_bot_member
 
 
 @pytest.fixture(autouse=True)
@@ -745,7 +745,7 @@ class TestGitLabClient:
         ]
         repos = ["group/project"]
         scope = "blobs"
-        query = "test.json"
+        query = build_search_query("test.json")
         with patch.object(
             client,
             "_search_files_in_repository",
@@ -763,7 +763,7 @@ class TestGitLabClient:
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
                 mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", "test.json filename:test.json", False
+                    "group/project", "blobs", query, False
                 )
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
@@ -773,7 +773,7 @@ class TestGitLabClient:
             {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
         ]
         scope = "blobs"
-        query = "test.yaml"
+        query = build_search_query("test.yaml")
 
         with patch.object(
             client, "get_groups", return_value=async_mock_generator([mock_groups])
@@ -805,7 +805,7 @@ class TestGitLabClient:
                         params={"min_access_level": 30}
                     )
                     mock_search_group.assert_called_once_with(
-                        "1", "blobs", "test.yaml filename:test.yaml", False
+                        "1", "blobs", query, False
                     )
 
     async def test_search_files_in_group_blobs_scope_unavailable(
@@ -833,7 +833,7 @@ class TestGitLabClient:
             ):
                 results = []
                 async for batch in client._search_files_in_group(
-                    "my-group", "blobs", "test.json"
+                    "my-group", "blobs", build_search_query("test.json")
                 ):
                     results.extend(batch)
 
@@ -842,7 +842,7 @@ class TestGitLabClient:
     async def test_search_files_in_group_other_400_raises(
         self, client: GitLabClient
     ) -> None:
-        """Test that _search_files_in_group re-raises 400 errors unrelated to blobs scope"""
+        """Test that _search_files_in_group re-raises 400 errors with unrecognized messages"""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
@@ -857,11 +857,16 @@ class TestGitLabClient:
             "get_paginated_resource",
             side_effect=error,
         ):
-            with pytest.raises(httpx.HTTPStatusError):
-                async for _ in client._search_files_in_group(
-                    "my-group", "blobs", "test.json"
-                ):
-                    pass
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+            ) as mock_fallback:
+                with pytest.raises(httpx.HTTPStatusError):
+                    async for _ in client._search_files_in_group(
+                        "my-group", "blobs", build_search_query("test.json")
+                    ):
+                        pass
+                mock_fallback.assert_not_called()
 
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""
@@ -928,7 +933,7 @@ class TestGitLabClient:
             assert exists is False
 
     async def test_get_repository_tree(self, client: GitLabClient) -> None:
-        """Test fetching repository tree (folders only) for a project"""
+        """Test fetching repository tree (files and folders) for a project"""
         project = {"path_with_namespace": "group/project"}
         path = "src"
         ref = "main"
@@ -946,11 +951,13 @@ class TestGitLabClient:
             async for batch in client.get_repository_tree(project, path, ref):
                 results.extend(batch)
 
-            assert len(results) == 2
-            assert results[0]["folder"]["name"] == "folder1"
-            assert results[1]["folder"]["name"] == "folder2"
-            assert all(r["repo"] == project for r in results)
-            assert all(r["__branch"] == ref for r in results)
+            assert len(results) == 3
+            assert results[0]["type"] == "tree"
+            assert results[0]["name"] == "folder1"
+            assert results[1]["type"] == "blob"
+            assert results[1]["name"] == "file.txt"
+            assert results[2]["type"] == "tree"
+            assert results[2]["name"] == "folder2"
             mock_get_paginated.assert_called_once_with(
                 "group/project",
                 "repository/tree",
@@ -971,8 +978,8 @@ class TestGitLabClient:
         }
 
         mock_tree = [
-            {"type": "tree", "name": "folder1"},
-            {"type": "blob", "name": "file.txt"},
+            {"type": "tree", "name": "folder1", "path": "src/folder1"},
+            {"type": "blob", "name": "file.txt", "path": "src/file.txt"},
         ]
 
         with patch.object(
@@ -1002,6 +1009,104 @@ class TestGitLabClient:
                     "repository/tree",
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
+
+    async def test_match_files_with_repository_tree_scoped_directory(
+        self, client: GitLabClient
+    ) -> None:
+        """A non-wildcard directory pattern scopes the tree listing to that directory
+        (non-recursive) and matches items against the full repo-root-relative path."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        # GitLab returns full repo-root-relative paths even when `path` scopes the listing.
+        mock_tree = [
+            {"type": "blob", "name": "app.json", "path": "src/config/app.json"},
+            {"type": "blob", "name": "other.json", "path": "src/config/other.json"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project", build_search_query("src/config/app.json")
+                ):
+                    results.extend(batch)
+
+                assert [f["path"] for f in results] == ["src/config/app.json"]
+                assert results[0]["ref"] == "main"
+                assert results[0]["project_id"] == "1"
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {"ref": "main", "path": "src/config", "recursive": False},
+                )
+
+    async def test_match_files_with_repository_tree_pathless_is_recursive(
+        self, client: GitLabClient
+    ) -> None:
+        """A pathless pattern (no directory) walks the whole tree recursively and
+        matches by filename anywhere, including subdirectories — mirroring the
+        search API's filename: behavior rather than only listing the repo root."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {"type": "blob", "name": "app.yaml", "path": "app.yaml"},
+            {"type": "blob", "name": "app.yaml", "path": "config/app.yaml"},
+            {"type": "blob", "name": "deep.yaml", "path": "a/b/deep.yaml"},
+            {"type": "blob", "name": "notes.md", "path": "docs/notes.md"},
+            {"type": "tree", "name": "config", "path": "config"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project", build_search_query("*.yaml")
+                ):
+                    results.extend(batch)
+
+                # Matches every *.yaml at any depth, not just the repo root.
+                assert sorted(f["path"] for f in results) == [
+                    "a/b/deep.yaml",
+                    "app.yaml",
+                    "config/app.yaml",
+                ]
+                # Whole-repo recursive listing (path empty, recursive True).
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {"ref": "main", "path": "", "recursive": True},
+                )
+
+    async def test_match_files_with_repository_tree_missing_project(
+        self, client: GitLabClient
+    ) -> None:
+        """No project resolved → no tree fetched, no results."""
+        with patch.object(client, "get_project", AsyncMock(return_value=None)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/missing", build_search_query("*.yaml")
+                ):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
 
     async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
         """Test that parsed file content with file:// reference fetches and resolves content."""

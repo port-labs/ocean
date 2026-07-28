@@ -21,7 +21,6 @@ from port_ocean.context.ocean import PortOceanContext
 from fastapi import Request
 from loguru import logger
 
-
 DEFAULT_USER_FIELDS = (
     "id,status,created,activated,lastLogin,lastUpdated,"
     "profile:(login,firstName,lastName,displayName,email,title,department,"

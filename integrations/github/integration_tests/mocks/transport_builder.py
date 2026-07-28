@@ -38,6 +38,32 @@ from mocks.payloads import (
     workflow_run_list_response,
 )
 
+GRAPHQL_UNKNOWN_ERROR: dict[str, Any] = {
+    "errors": [{"message": "something went wrong", "type": "UNKNOWN"}]
+}
+
+
+def _query_of(request: httpx.Request) -> str:
+    if "/graphql" not in str(request.url) or not request.content:
+        return ""
+    return json.loads(request.content).get("query", "")
+
+
+def _query_variables(request: httpx.Request) -> dict[str, Any]:
+    return json.loads(request.content).get("variables", {})
+
+
+def _query_has(request: httpx.Request, field: str) -> bool:
+    return field in _query_of(request)
+
+
+def _is_list_prs_query(request: httpx.Request) -> bool:
+    return "ListPullRequests" in _query_of(request)
+
+
+def _is_pr_details_query(request: httpx.Request) -> bool:
+    return "PullRequestDetails" in _query_of(request)
+
 
 class GithubMockTransportBuilder:
     """Builds a fake GitHub API transport with reusable base routes."""
@@ -246,6 +272,54 @@ class GithubMockTransportBuilder:
             return {"status_code": 200, "json": payload}
 
         self._transport.add_route("POST", matches, build_response)
+        return self
+
+    def fail_list_prs_when_query_has(self, field: str) -> "GithubMockTransportBuilder":
+        """Answer list-PR queries that still carry ``field`` with an unknown error.
+
+        Simulates a query being too heavy while it selects ``field``; chain
+        ``succeed_list_prs`` after this so a query with the field stripped wins.
+        """
+        self._transport.add_route(
+            "POST",
+            lambda r: _is_list_prs_query(r) and _query_has(r, field),
+            {"status_code": 200, "json": GRAPHQL_UNKNOWN_ERROR},
+        )
+        return self
+
+    def fail_all_list_prs(self) -> "GithubMockTransportBuilder":
+        """Answer every list-PR query with an unknown error (no fallback recovers)."""
+        self._transport.add_route(
+            "POST",
+            _is_list_prs_query,
+            {"status_code": 200, "json": GRAPHQL_UNKNOWN_ERROR},
+        )
+        return self
+
+    def succeed_list_prs(self) -> "GithubMockTransportBuilder":
+        """Answer any remaining list-PR query with the standard PR payload."""
+        self._transport.add_route(
+            "POST",
+            _is_list_prs_query,
+            lambda r: {
+                "status_code": 200,
+                "json": pull_requests_graphql_response(_query_variables(r)),
+            },
+        )
+        return self
+
+    def respond_pr_details(
+        self, pull_request: dict[str, Any]
+    ) -> "GithubMockTransportBuilder":
+        """Answer single-PR detail (field backfill) queries with ``pull_request``."""
+        self._transport.add_route(
+            "POST",
+            _is_pr_details_query,
+            {
+                "status_code": 200,
+                "json": {"data": {"repository": {"pullRequest": pull_request}}},
+            },
+        )
         return self
 
     def build(self, *, strict: bool = True) -> InterceptTransport:

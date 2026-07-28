@@ -1,10 +1,16 @@
 from typing import Any
 from datetime import datetime
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field, ConfigDict
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class EbsVolumeProperties(BaseModel):
+class EbsVolumeProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
+
     VolumeId: str = Field(default_factory=str)
     VolumeType: str | None = None
     Size: int | None = None
@@ -20,10 +26,6 @@ class EbsVolumeProperties(BaseModel):
     MultiAttachEnabled: bool | None = None
     KmsKeyId: str | None = None
     AutoEnableIO: bool | None = None
-
-    class Config:
-        extra = "allow"
-        allow_population_by_field_name = True
 
 
 class EbsVolume(ResourceModel[EbsVolumeProperties]):

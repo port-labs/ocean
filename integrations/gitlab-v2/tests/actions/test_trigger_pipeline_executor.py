@@ -16,7 +16,6 @@ from gitlab.helpers.exceptions import (
     MissingExecutionPropertyError,
 )
 
-
 PIPELINE_RESPONSE = {
     "id": 99,
     "project_id": 42,
@@ -78,7 +77,7 @@ class TestTriggerPipelineExecutor:
         assert mock_port_client.post_run_log.await_count == 2
         mock_port_client.report_run_completed.assert_not_called()
 
-    async def test_report_pipeline_status_false_completes_immediately(
+    async def test_report_pipeline_status_false_leaves_run_in_progress(
         self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
     ) -> None:
         run = make_run(
@@ -93,9 +92,7 @@ class TestTriggerPipelineExecutor:
             await executor.execute(run)
 
         mock_port_client.update_run_started.assert_called_once()
-        mock_port_client.report_run_completed.assert_called_once_with(
-            run, True, "Pipeline triggered successfully"
-        )
+        mock_port_client.report_run_completed.assert_not_called()
 
     async def test_missing_project_raises(
         self, executor: TriggerPipelineExecutor

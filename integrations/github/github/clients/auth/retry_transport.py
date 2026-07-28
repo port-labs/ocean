@@ -10,7 +10,6 @@ from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.graphql_page_reduction import reduce_graphql_page_size
 from github.clients.rate_limiter.utils import is_rest_rate_limit_response
 
-
 # Gateway errors that signal a query exceeded GitHub's GraphQL execution budget:
 # gateway timeouts (502/504) and the reverse proxy's client-closed 499. These
 # drive both the page-size backoff and the GraphQL query fallback.
@@ -284,11 +283,11 @@ class GitHubRetryTransport(RetryTransport):
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return await super()._should_retry_async(
-            response
-        ) or is_rest_rate_limit_response(response)
+        is_rate_limit = is_rest_rate_limit_response(response)
+        return await super()._should_retry_async(response) or is_rate_limit
 
     def _should_retry(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return super()._should_retry(response) or is_rest_rate_limit_response(response)
+        is_rate_limit = is_rest_rate_limit_response(response)
+        return super()._should_retry(response) or is_rate_limit
