@@ -1,7 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 
 from port_ocean.config.settings import IntegrationConfiguration
-from port_ocean.core.models import ProcessExecutionMode
 
 
 def _set_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -11,24 +12,28 @@ def _set_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OCEAN__INTEGRATION__IDENTIFIER", "test-id")
 
 
-def test_multi_process_execution_mode_is_deprecated(
+def test_warns_when_process_execution_mode_env_is_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _set_required_env(monkeypatch)
-    monkeypatch.setenv(
-        "OCEAN__PROCESS_EXECUTION_MODE", ProcessExecutionMode.multi_process
-    )
+    monkeypatch.setenv("OCEAN__PROCESS_EXECUTION_MODE", "multi_process")
 
-    config = IntegrationConfiguration()
+    with patch("port_ocean.config.settings.logger") as mock_logger:
+        IntegrationConfiguration()
 
-    assert config.process_execution_mode == ProcessExecutionMode.single_process
+    mock_logger.warning.assert_called_once()
+    message = mock_logger.warning.call_args[0][0]
+    assert "OCEAN__PROCESS_EXECUTION_MODE is no longer supported" in message
+    assert mock_logger.warning.call_args[1]["process_execution_mode"] == "multi_process"
 
 
-def test_single_process_execution_mode_default(
+def test_no_warning_when_process_execution_mode_env_is_not_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _set_required_env(monkeypatch)
+    monkeypatch.delenv("OCEAN__PROCESS_EXECUTION_MODE", raising=False)
 
-    config = IntegrationConfiguration()
+    with patch("port_ocean.config.settings.logger") as mock_logger:
+        IntegrationConfiguration()
 
-    assert config.process_execution_mode == ProcessExecutionMode.single_process
+    mock_logger.warning.assert_not_called()

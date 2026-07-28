@@ -28,7 +28,6 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
-from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
@@ -74,13 +73,12 @@ class Ocean:
             blueprint_cache_ttl_seconds=self.config.port.blueprint_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
-        self.process_execution_mode = ProcessExecutionMode.single_process
         self.metrics = port_ocean.helpers.metric.metric.Metrics(
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
         )
-        self.metrics.execution_mode = self.process_execution_mode.value
+        self.metrics.execution_mode = "single_process"
 
         self.webhook_manager = LiveEventsProcessorManager(
             self.integration_router,
