@@ -25,6 +25,8 @@ features:
       - kind: dependabot-alert
       - kind: code-scanning-alerts
       - kind: file
+      - kind: skill
+      - kind: plugin
       - kind: collaborator
 configurations:
   - name: githubHost
