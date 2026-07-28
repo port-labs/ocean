@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
@@ -239,6 +241,26 @@ class IntegrationClientMixin:
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
             headers=headers,
             json=json,
+        )
+        handle_port_status_code(response)
+        return response.json()["integration"]
+
+    async def patch_integration_config(
+        self,
+        port_app_config: PortAppConfig | None,
+        skip_resync: bool = False,
+    ) -> dict:
+        logger.info(
+            f"Updating config of integration with id: {self.integration_identifier}"
+        )
+        headers = await self.auth.headers()
+        if skip_resync:
+            headers["x-skip-resync"] = "true"
+
+        response = await self.client.patch(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/config",
+            headers=headers,
+            json={"config": port_app_config.to_request()},
         )
         handle_port_status_code(response)
         return response.json()["integration"]
