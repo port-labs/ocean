@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.1 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.9.0 (2026-07-26)
+
+
+### Features
+
+- Added `skill` and `plugin` kinds (Agent Skills / agent plugin packages)
+
+
+### Improvements
+
+- Skill/plugin push webhooks only process the project default branch, and ignore branch deletes
+- File/skill/plugin push webhooks resolve changed paths from the repository compare API, falling back to the (capped) payload commits list
+- Skill and plugin discovery always walks the repository tree with the configured glob patterns
+- Repository tree discovery scopes walks to each pattern's fixed path prefix and matches multiple globs per repository in a single minimized set of walks
+
+
 ## 0.8.16 (2026-07-27)
 
 

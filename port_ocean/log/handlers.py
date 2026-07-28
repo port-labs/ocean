@@ -152,7 +152,10 @@ class HTTPMemoryHandler(MemoryHandler):
             current_chunk_size += log_size
 
         if current_chunk:
-            await self.send_logs(_ocean, current_chunk)
+            try:
+                await _ocean.port_client.ingest_integration_logs(current_chunk)
+            except Exception as e:
+                logger.error(f"Failed to send logs to Port with error: {e}")
 
     async def send_logs(
         self, _ocean: Ocean, logs_to_send: list[dict[str, Any]]

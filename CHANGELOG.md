@@ -7,11 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.46.5 (2026-07-28)
+## 0.46.6 (2026-07-28)
 
 ### Bug Fixes
 
 - Split dynamically log batches that exceed the Port ingest size limit to prevent HTTP 413 (Payload Too Large) errors and avoid losing integration logs.
+
+## 0.46.5 (2026-07-28)
+
+### Bug Fixes
+
+- Call patch config rather than full patch integration route when setting up a default origin integration in order to avoid double resync.
 
 ## 0.46.4 (2026-07-27)
 
