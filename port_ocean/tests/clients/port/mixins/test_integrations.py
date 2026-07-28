@@ -5,6 +5,7 @@ import pytest
 import httpx
 
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 TEST_INTEGRATION_IDENTIFIER = "test-integration"
 TEST_INTEGRATION_VERSION = "1.0.0"
@@ -301,21 +302,40 @@ async def test_get_integration_resync_request_returns_empty_dict_when_request_is
     assert result == {}
 
 
-async def test_patch_integration_sends_skip_resync_header_when_requested(
+async def test_patch_integration_config_patches_config_route(
     integration_client: IntegrationClientMixin,
 ) -> None:
-    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
-        await integration_client.patch_integration(skip_resync=True)
+    # Arrange
+    port_app_config = PortAppConfig(resources=[])
 
+    # Act
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await integration_client.patch_integration_config(port_app_config)
+
+    # Assert
+    call_args = integration_client.client.patch.call_args
+
+    assert (
+        call_args[0][0]
+        == f"{TEST_API_URL}/integration/{TEST_INTEGRATION_IDENTIFIER}/config"
+    )
+    assert call_args[1]["json"] == {"config": port_app_config.to_request()}
+    assert "x-skip-resync" not in call_args[1]["headers"]
+
+
+async def test_patch_integration_config_sends_skip_resync_header_when_requested(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    # Arrange
+    port_app_config = PortAppConfig(resources=[])
+
+    # Act
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await integration_client.patch_integration_config(
+            port_app_config,
+            skip_resync=True,
+        )
+
+    # Assert
     call_args = integration_client.client.patch.call_args
     assert call_args[1]["headers"]["x-skip-resync"] == "true"
-
-
-async def test_patch_integration_omits_skip_resync_header_by_default(
-    integration_client: IntegrationClientMixin,
-) -> None:
-    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
-        await integration_client.patch_integration()
-
-    call_args = integration_client.client.patch.call_args
-    assert "x-skip-resync" not in call_args[1]["headers"]

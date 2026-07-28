@@ -245,40 +245,20 @@ class IntegrationClientMixin:
 
     async def patch_integration_config(
         self,
-        _type: str | None = None,
-        changelog_destination: dict[str, Any] | None = None,
-        port_app_config: PortAppConfig | None = None,
-        actions_processing_enabled: bool | None = None,
-        are_port_resources_initialized: bool | None = None,
-        processing_mode: ProcessingMode | None = None,
+        port_app_config: "PortAppConfig",
         skip_resync: bool = False,
     ) -> dict:
         logger.info(
             f"Updating config of integration with id: {self.integration_identifier}"
         )
         headers = await self.auth.headers()
-        json: dict[str, Any] = {}
-        if _type:
-            json["installationAppType"] = _type
-        if port_app_config:
-            json["config"] = port_app_config.to_request()
-        if are_port_resources_initialized is not None:
-            json["arePortResourcesInitialized"] = are_port_resources_initialized
-        if actions_processing_enabled is not None:
-            json["actionsProcessingEnabled"] = actions_processing_enabled
-        if changelog_destination is not None:
-            json["changelogDestination"] = changelog_destination
-        if processing_mode is not None:
-            json["processingMode"] = processing_mode.value
         if skip_resync:
             headers["x-skip-resync"] = "true"
-
-        json["version"] = self.integration_version
 
         response = await self.client.patch(
             f"{self.auth.api_url}/integration/{self.integration_identifier}/config",
             headers=headers,
-            json=json,
+            json={"config": port_app_config.to_request()},
         )
         handle_port_status_code(response)
         return response.json()["integration"]
