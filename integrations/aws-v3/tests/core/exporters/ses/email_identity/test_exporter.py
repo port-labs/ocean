@@ -1,4 +1,3 @@
-from typing import AsyncGenerator, List, Dict, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
@@ -6,6 +5,9 @@ from aws.core.exporters.ses.email_identity.exporter import SesEmailIdentityExpor
 from aws.core.exporters.ses.email_identity.models import (
     SingleEmailIdentityRequest,
     PaginatedEmailIdentityRequest,
+)
+from aws.core.exporters.ses.email_identity.regions import (
+    SES_EMAIL_IDENTITY_SUPPORTED_REGIONS,
 )
 
 
@@ -21,6 +23,11 @@ class TestSesEmailIdentityExporter:
 
     def test_service_name(self, exporter: SesEmailIdentityExporter) -> None:
         assert exporter._service_name == "sesv2"
+
+    def test_supported_regions(self, exporter: SesEmailIdentityExporter) -> None:
+        assert exporter._supported_regions == SES_EMAIL_IDENTITY_SUPPORTED_REGIONS
+        assert "us-east-1" in exporter._supported_regions
+        assert "ap-southeast-4" not in exporter._supported_regions
 
     def test_initialization(self, mock_session: AsyncMock) -> None:
         exporter = SesEmailIdentityExporter(mock_session)
@@ -100,21 +107,16 @@ class TestSesEmailIdentityExporter:
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
-        # Mock paginator
-        async def mock_paginate() -> AsyncGenerator[List[Dict[str, Any]], None]:
-            yield [
+        # Mock list_email_identities (no botocore paginator config exists for this operation)
+        mock_client.list_email_identities.return_value = {
+            "EmailIdentities": [
                 {"EmailIdentity": "example.com", "IdentityType": "DOMAIN"},
                 {
                     "EmailIdentity": "user@example.com",
                     "IdentityType": "EMAIL_ADDRESS",
                 },
             ]
-
-        class MockPaginator:
-            def paginate(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
-                return mock_paginate()
-
-        mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
+        }
 
         # Inspector
         mock_inspector = AsyncMock()
@@ -158,6 +160,69 @@ class TestSesEmailIdentityExporter:
     @patch(
         "aws.core.exporters.ses.email_identity.exporter.ResourceInspector"
     )
+    async def test_get_paginated_resources_follows_next_token(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: SesEmailIdentityExporter,
+    ) -> None:
+        # Setup proxy/client
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        # list_email_identities has no botocore paginator config, so the exporter
+        # must follow NextToken itself across multiple calls
+        mock_client.list_email_identities.side_effect = [
+            {
+                "EmailIdentities": [
+                    {"EmailIdentity": "example.com", "IdentityType": "DOMAIN"}
+                ],
+                "NextToken": "page-2",
+            },
+            {
+                "EmailIdentities": [
+                    {
+                        "EmailIdentity": "user@example.com",
+                        "IdentityType": "EMAIL_ADDRESS",
+                    }
+                ]
+            },
+        ]
+
+        # Inspector
+        mock_inspector = AsyncMock()
+        mock_inspector_class.return_value = mock_inspector
+        mock_inspector.inspect.side_effect = lambda identities, *a, **kw: identities
+
+        # Create request
+        request = PaginatedEmailIdentityRequest(
+            region="us-east-1",
+            include=[],
+            account_id="123456789012",
+        )
+
+        # Execute
+        results = []
+        async for page in exporter.get_paginated_resources(request):
+            results.extend(page)
+
+        # Verify
+        assert len(results) == 2
+        assert results[0]["EmailIdentity"] == "example.com"
+        assert results[1]["EmailIdentity"] == "user@example.com"
+        assert mock_client.list_email_identities.call_count == 2
+        mock_client.list_email_identities.assert_any_call()
+        mock_client.list_email_identities.assert_any_call(NextToken="page-2")
+
+    @pytest.mark.asyncio
+    @patch(
+        "aws.core.exporters.ses.email_identity.exporter.AioBaseClientProxy"
+    )
+    @patch(
+        "aws.core.exporters.ses.email_identity.exporter.ResourceInspector"
+    )
     async def test_get_paginated_resources_empty(
         self,
         mock_inspector_class: MagicMock,
@@ -170,15 +235,8 @@ class TestSesEmailIdentityExporter:
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
-        # Mock paginator returning empty list
-        async def mock_paginate() -> AsyncGenerator[List[Dict[str, Any]], None]:
-            yield []
-
-        class MockPaginator:
-            def paginate(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
-                return mock_paginate()
-
-        mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
+        # Mock list_email_identities returning no identities
+        mock_client.list_email_identities.return_value = {"EmailIdentities": []}
 
         # Inspector
         mock_inspector = AsyncMock()

@@ -6,6 +6,9 @@ from aws.core.exporters.ses.email_identity.models import (
     SingleEmailIdentityRequest,
     PaginatedEmailIdentityRequest,
 )
+from aws.core.exporters.ses.email_identity.regions import (
+    SES_EMAIL_IDENTITY_SUPPORTED_REGIONS,
+)
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
@@ -15,10 +18,9 @@ class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "sesv2"
     _model_cls: Type[EmailIdentity] = EmailIdentity
     _actions_map: Type[SesEmailIdentityActionsMap] = SesEmailIdentityActionsMap
+    _supported_regions: frozenset[str] = SES_EMAIL_IDENTITY_SUPPORTED_REGIONS
 
-    async def get_resource(
-        self, options: SingleEmailIdentityRequest
-    ) -> dict[str, Any]:
+    async def get_resource(self, options: SingleEmailIdentityRequest) -> dict[str, Any]:
         """Fetch detailed attributes of a single SES email identity."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
@@ -51,11 +53,15 @@ class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            paginator = proxy.get_paginator(
-                "list_email_identities", "EmailIdentities"
-            )
-
-            async for identities in paginator.paginate():
+            next_token: str | None = None
+            while True:
+                kwargs: dict[str, Any] = (
+                    {"NextToken": next_token} if next_token else {}
+                )
+                response = await proxy.client.list_email_identities(  # type: ignore[attr-defined]
+                    **kwargs
+                )
+                identities = response.get("EmailIdentities", [])
                 if identities:
                     action_result = await inspector.inspect(
                         identities,
@@ -68,3 +74,7 @@ class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
                     yield action_result
                 else:
                     yield []
+
+                next_token = response.get("NextToken")
+                if not next_token:
+                    break
