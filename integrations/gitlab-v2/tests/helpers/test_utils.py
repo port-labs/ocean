@@ -95,3 +95,19 @@ class TestBuildSearchQuery:
             build_search_query("**/skills/*/SKILL.md").to_query_string()
             == "SKILL.md path:**/skills/* filename:SKILL.md"
         )
+
+    def test_directory_wildcard_filename(self) -> None:
+        assert (
+            build_search_query(".opencode/plugins/*").to_query_string()
+            == "plugins path:.opencode/plugins filename:*"
+        )
+        assert (
+            build_search_query(".pi/extensions/*").to_query_string()
+            == "extensions path:.pi/extensions filename:*"
+        )
+
+    def test_nested_skill_path(self) -> None:
+        assert (
+            build_search_query(".cursor/skills/*/SKILL.md").to_query_string()
+            == "SKILL.md path:.cursor/skills/* filename:SKILL.md"
+        )
