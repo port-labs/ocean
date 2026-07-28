@@ -2,9 +2,6 @@ resources:
   - kind: AWS::SES::EmailIdentity
     selector:
       query: 'true'
-      includeActions:
-        - GetEmailIdentityAction
-        - ListEmailIdentityTagsAction
     port:
       entity:
         mappings:
@@ -14,7 +11,7 @@ resources:
           properties:
             identityType: .Properties.IdentityType
             verifiedForSendingStatus: .Properties.VerifiedForSendingStatus
-            dkimEnabled: .Properties.DkimEnabled
+            dkimEnabled: .Properties.DkimAttributes.SigningEnabled
             verificationStatus: .Properties.VerificationStatus
             configurationSetName: .Properties.ConfigurationSetName
             tags: .Properties.Tags

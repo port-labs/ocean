@@ -11,9 +11,11 @@ class EmailIdentityProperties(BaseAWSPropertiesModel):
     model_config = ConfigDict(extra="forbid")
 
     EmailIdentity: str = Field(default_factory=str)
+    IdentityName: str | None = None
     IdentityType: str | None = None
+    SendingEnabled: bool | None = None
+    FeedbackForwardingStatus: bool | None = None
     VerifiedForSendingStatus: bool | None = None
-    DkimEnabled: bool | None = None
     DkimAttributes: dict[str, Any] | None = None
     MailFromAttributes: dict[str, Any] | None = None
     Policies: dict[str, Any] | None = None

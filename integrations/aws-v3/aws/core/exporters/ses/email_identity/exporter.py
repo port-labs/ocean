@@ -62,6 +62,8 @@ class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
                     **kwargs
                 )
                 identities = response.get("EmailIdentities", [])
+                for identity in identities:
+                    identity["EmailIdentity"] = identity["IdentityName"]
                 if identities:
                     action_result = await inspector.inspect(
                         identities,

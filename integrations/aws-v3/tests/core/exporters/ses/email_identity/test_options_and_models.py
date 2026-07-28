@@ -23,7 +23,7 @@ class TestSingleEmailIdentityRequest:
         assert options.include == []
 
     def test_initialization_with_all_fields(self) -> None:
-        include_list = ["GetEmailIdentityAction", "ListEmailIdentityTagsAction"]
+        include_list = ["GetEmailIdentityAction"]
         options = SingleEmailIdentityRequest(
             region="eu-west-1",
             account_id="123456789012",
@@ -93,25 +93,34 @@ class TestEmailIdentityProperties:
         """Test EmailIdentityProperties with no arguments."""
         props = EmailIdentityProperties()
         assert props.EmailIdentity == ""
+        assert props.IdentityName is None
         assert props.IdentityType is None
+        assert props.SendingEnabled is None
+        assert props.FeedbackForwardingStatus is None
         assert props.VerifiedForSendingStatus is None
-        assert props.DkimEnabled is None
         assert props.Tags == []
 
     def test_initialization_with_properties(self) -> None:
         """Test EmailIdentityProperties with specific values."""
         props = EmailIdentityProperties(
             EmailIdentity="example.com",
+            IdentityName="example.com",
             IdentityType="DOMAIN",
+            SendingEnabled=True,
             VerifiedForSendingStatus=True,
-            DkimEnabled=True,
             VerificationStatus="SUCCESS",
         )
         assert props.EmailIdentity == "example.com"
+        assert props.IdentityName == "example.com"
         assert props.IdentityType == "DOMAIN"
+        assert props.SendingEnabled is True
         assert props.VerifiedForSendingStatus is True
-        assert props.DkimEnabled is True
         assert props.VerificationStatus == "SUCCESS"
+
+    def test_rejects_unknown_fields(self) -> None:
+        """Extra fields not present on either the list or get API responses still raise."""
+        with pytest.raises(ValidationError):
+            EmailIdentityProperties(EmailIdentity="example.com", SomeUnknownField="x")  # type: ignore[call-arg]
 
     def test_tags_default_empty_list(self) -> None:
         """Test that Tags defaults to an empty list."""

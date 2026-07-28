@@ -5,7 +5,6 @@ from botocore.exceptions import ClientError
 
 from aws.core.exporters.ses.email_identity.actions import (
     GetEmailIdentityAction,
-    ListEmailIdentityTagsAction,
     ListEmailIdentitiesAction,
     SesEmailIdentityActionsMap,
 )
@@ -32,11 +31,11 @@ class TestGetEmailIdentityAction:
 
     @pytest.mark.asyncio
     async def test_execute_success(self, action: GetEmailIdentityAction) -> None:
-        """Test successful execution of get_email_identity."""
+        """Test that the raw get_email_identity response is returned unchanged."""
         expected_response = {
             "IdentityType": "DOMAIN",
+            "FeedbackForwardingStatus": True,
             "VerifiedForSendingStatus": True,
-            "DkimEnabled": True,
             "DkimAttributes": {"SigningEnabled": True, "Status": "SUCCESS"},
             "MailFromAttributes": {
                 "MailFromDomain": "mail.example.com",
@@ -44,6 +43,7 @@ class TestGetEmailIdentityAction:
                 "BehaviorOnMxFailure": "USE_DEFAULT_VALUE",
             },
             "Policies": {},
+            "Tags": [{"Key": "Environment", "Value": "production"}],
             "ConfigurationSetName": "my-config-set",
             "VerificationStatus": "SUCCESS",
             "VerificationInfo": None,
@@ -54,11 +54,7 @@ class TestGetEmailIdentityAction:
         result = await action._execute(test_identities)
 
         assert len(result) == 1
-        assert result[0]["IdentityType"] == "DOMAIN"
-        assert result[0]["VerifiedForSendingStatus"] is True
-        assert result[0]["DkimEnabled"] is True
-        assert result[0]["VerificationStatus"] == "SUCCESS"
-        assert result[0]["ConfigurationSetName"] == "my-config-set"
+        assert result[0] == expected_response
 
         action.client.get_email_identity.assert_called_once_with(
             EmailIdentity="example.com"
@@ -110,8 +106,7 @@ class TestGetEmailIdentityAction:
             return {
                 "IdentityType": "DOMAIN",
                 "VerifiedForSendingStatus": True,
-                "DkimEnabled": True,
-                "DkimAttributes": None,
+                "DkimAttributes": {"SigningEnabled": True},
                 "MailFromAttributes": None,
                 "Policies": None,
                 "ConfigurationSetName": None,
@@ -151,110 +146,6 @@ class TestGetEmailIdentityAction:
             await action._execute(test_identities)
 
 
-class TestListEmailIdentityTagsAction:
-
-    @pytest.fixture
-    def mock_client(self) -> AsyncMock:
-        """Create a mock SESv2 client for testing."""
-        mock_client = AsyncMock()
-        mock_client.list_tags_for_resource = AsyncMock()
-        return mock_client
-
-    @pytest.fixture
-    def action(self, mock_client: AsyncMock) -> ListEmailIdentityTagsAction:
-        """Create a ListEmailIdentityTagsAction instance for testing."""
-        return ListEmailIdentityTagsAction(mock_client)
-
-    def test_inheritance(self, action: ListEmailIdentityTagsAction) -> None:
-        """Test that the action inherits from Action."""
-        assert isinstance(action, Action)
-
-    @pytest.mark.asyncio
-    async def test_execute_success(
-        self, action: ListEmailIdentityTagsAction
-    ) -> None:
-        """Test successful execution of list_tags_for_resource."""
-        expected_response = {
-            "Tags": [
-                {"Key": "Environment", "Value": "production"},
-                {"Key": "Team", "Value": "platform"},
-            ]
-        }
-        action.client.list_tags_for_resource.return_value = expected_response
-
-        test_identities = [
-            {
-                "EmailIdentity": "example.com",
-                "IdentityArn": "arn:aws:ses:us-east-1:123456789012:identity/example.com",
-            }
-        ]
-        result = await action._execute(test_identities)
-
-        assert len(result) == 1
-        assert len(result[0]["Tags"]) == 2
-        assert result[0]["Tags"][0]["Key"] == "Environment"
-
-    @pytest.mark.asyncio
-    async def test_execute_no_tags(
-        self, action: ListEmailIdentityTagsAction
-    ) -> None:
-        """Test execution with no tags."""
-        action.client.list_tags_for_resource.return_value = {"Tags": []}
-
-        test_identities = [
-            {
-                "EmailIdentity": "example.com",
-                "IdentityArn": "arn:aws:ses:us-east-1:123456789012:identity/example.com",
-            }
-        ]
-        result = await action._execute(test_identities)
-
-        assert len(result) == 1
-        assert result[0]["Tags"] == []
-
-    @pytest.mark.asyncio
-    async def test_execute_with_recoverable_exception(
-        self, action: ListEmailIdentityTagsAction
-    ) -> None:
-        """Test execution with recoverable exception preserves an empty placeholder."""
-        error = ClientError(
-            error_response={"Error": {"Code": "AccessDenied"}},
-            operation_name="ListTagsForResource",
-        )
-        action.client.list_tags_for_resource.side_effect = error
-
-        test_identities = [
-            {
-                "EmailIdentity": "example.com",
-                "IdentityArn": "arn:aws:ses:us-east-1:123456789012:identity/example.com",
-            }
-        ]
-        result = await action._execute(test_identities)
-
-        assert result == [{}]
-
-    @pytest.mark.asyncio
-    async def test_execute_with_non_recoverable_exception(
-        self, action: ListEmailIdentityTagsAction
-    ) -> None:
-        """Test execution with non-recoverable exception."""
-        error = ClientError(
-            error_response={"Error": {"Code": "InternalServerError"}},
-            operation_name="ListTagsForResource",
-        )
-        action.client.list_tags_for_resource.side_effect = error
-
-        test_identities = [
-            {
-                "EmailIdentity": "example.com",
-                "IdentityArn": "arn:aws:ses:us-east-1:123456789012:identity/example.com",
-            }
-        ]
-
-        with pytest.raises(ClientError):
-            await action._execute(test_identities)
-
-
 class TestListEmailIdentitiesAction:
 
     @pytest.fixture
@@ -275,20 +166,27 @@ class TestListEmailIdentitiesAction:
     async def test_execute_success(
         self, action: ListEmailIdentitiesAction
     ) -> None:
-        """Test successful execution returns identities as-is."""
+        """Test that raw list_email_identities items are returned unchanged."""
         test_identities = [
-            {"EmailIdentity": "example.com", "IdentityType": "DOMAIN"},
+            {
+                "EmailIdentity": "example.com",
+                "IdentityName": "example.com",
+                "IdentityType": "DOMAIN",
+                "SendingEnabled": True,
+                "VerificationStatus": "SUCCESS",
+            },
             {
                 "EmailIdentity": "user@example.com",
+                "IdentityName": "user@example.com",
                 "IdentityType": "EMAIL_ADDRESS",
+                "SendingEnabled": False,
+                "VerificationStatus": "PENDING",
             },
         ]
 
         result = await action._execute(test_identities)
 
-        assert len(result) == 2
-        assert result[0]["EmailIdentity"] == "example.com"
-        assert result[1]["EmailIdentity"] == "user@example.com"
+        assert result == test_identities
 
     @pytest.mark.asyncio
     async def test_execute_empty_list(
@@ -307,7 +205,7 @@ class TestSesEmailIdentityActionsMap:
         assert ListEmailIdentitiesAction in actions_map.defaults
         assert GetEmailIdentityAction in actions_map.defaults
 
-    def test_options_include_tag_action(self) -> None:
-        """Test that the options list contains the tag action."""
+    def test_no_options(self) -> None:
+        """Test that there are no optional actions (Tags already come from GetEmailIdentityAction)."""
         actions_map = SesEmailIdentityActionsMap()
-        assert ListEmailIdentityTagsAction in actions_map.options
+        assert actions_map.options == []

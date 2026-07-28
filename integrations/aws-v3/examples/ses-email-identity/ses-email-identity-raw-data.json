@@ -2,9 +2,11 @@
   "Type": "AWS::SES::EmailIdentity",
   "Properties": {
     "EmailIdentity": "example.com",
+    "IdentityName": "example.com",
     "IdentityType": "DOMAIN",
+    "SendingEnabled": true,
+    "FeedbackForwardingStatus": true,
     "VerifiedForSendingStatus": true,
-    "DkimEnabled": true,
     "DkimAttributes": {
       "SigningEnabled": true,
       "Status": "SUCCESS",

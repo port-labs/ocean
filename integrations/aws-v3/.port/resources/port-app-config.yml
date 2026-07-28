@@ -55,7 +55,7 @@ resources:
           properties:
             identityType: .Properties.IdentityType
             verifiedForSendingStatus: .Properties.VerifiedForSendingStatus
-            dkimEnabled: .Properties.DkimEnabled
+            dkimEnabled: .Properties.DkimAttributes.SigningEnabled
             verificationStatus: .Properties.VerificationStatus
             configurationSetName: .Properties.ConfigurationSetName
             tags: .Properties.Tags

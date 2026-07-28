@@ -57,7 +57,7 @@ class TestSesEmailIdentityExporter:
         mock_client.get_email_identity.return_value = {
             "IdentityType": "DOMAIN",
             "VerifiedForSendingStatus": True,
-            "DkimEnabled": True,
+            "DkimAttributes": {"SigningEnabled": True},
         }
 
         # Inspector
@@ -68,7 +68,6 @@ class TestSesEmailIdentityExporter:
             "EmailIdentity": "example.com",
             "IdentityType": "DOMAIN",
             "VerifiedForSendingStatus": True,
-            "DkimEnabled": True,
         }
         mock_inspector.inspect.return_value = [mock_identity_data]
 
@@ -110,9 +109,9 @@ class TestSesEmailIdentityExporter:
         # Mock list_email_identities (no botocore paginator config exists for this operation)
         mock_client.list_email_identities.return_value = {
             "EmailIdentities": [
-                {"EmailIdentity": "example.com", "IdentityType": "DOMAIN"},
+                {"IdentityName": "example.com", "IdentityType": "DOMAIN"},
                 {
-                    "EmailIdentity": "user@example.com",
+                    "IdentityName": "user@example.com",
                     "IdentityType": "EMAIL_ADDRESS",
                 },
             ]
@@ -177,14 +176,14 @@ class TestSesEmailIdentityExporter:
         mock_client.list_email_identities.side_effect = [
             {
                 "EmailIdentities": [
-                    {"EmailIdentity": "example.com", "IdentityType": "DOMAIN"}
+                    {"IdentityName": "example.com", "IdentityType": "DOMAIN"}
                 ],
                 "NextToken": "page-2",
             },
             {
                 "EmailIdentities": [
                     {
-                        "EmailIdentity": "user@example.com",
+                        "IdentityName": "user@example.com",
                         "IdentityType": "EMAIL_ADDRESS",
                     }
                 ]
@@ -208,10 +207,13 @@ class TestSesEmailIdentityExporter:
         async for page in exporter.get_paginated_resources(request):
             results.extend(page)
 
-        # Verify
+        # Verify the exporter added an EmailIdentity key (mirroring IdentityName)
+        # without removing IdentityName or any other raw field
         assert len(results) == 2
         assert results[0]["EmailIdentity"] == "example.com"
+        assert results[0]["IdentityName"] == "example.com"
         assert results[1]["EmailIdentity"] == "user@example.com"
+        assert results[1]["IdentityName"] == "user@example.com"
         assert mock_client.list_email_identities.call_count == 2
         mock_client.list_email_identities.assert_any_call()
         mock_client.list_email_identities.assert_any_call(NextToken="page-2")
