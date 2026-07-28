@@ -1186,8 +1186,6 @@ async def resync_plugins(
         ):
             for org in orgs:
                 org_login = org["login"]
-                # The exporter caps how many repositories it scans concurrently,
-                # so the whole organization can be handed over in one call.
                 repositories: list[PluginRepositoryOptions] = []
                 async for _repo_name, branch, repo_obj in repo_selector.select_repos(
                     path, repo_exporter, org_login, org["type"]
