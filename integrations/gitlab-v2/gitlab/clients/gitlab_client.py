@@ -1144,13 +1144,7 @@ class GitLabClient:
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str
     ) -> Union[dict[str, Any], list[Any], Any]:
-        """Find and replace file:// references with their content.
-
-        file:/// (absolute-path URIs) are left untouched -- they are not Port
-        includes. Remaining file:// references are resolved best-effort: any
-        fetch failure is logged and the original reference is preserved rather
-        than failing the containing file/kind.
-        """
+        """Find and replace file:// references with their content."""
         if isinstance(data, dict):
             for key, value in data.items():
                 if isinstance(value, str) and value.startswith("file://"):
