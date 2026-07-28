@@ -10,10 +10,9 @@ from github.core.exporters.file_exporter.utils import (
 )
 from github.core.exporters.skill_exporter.utils import build_skill_raw_item
 from github.core.options import FileContentOptions
-from github.helpers.port_app_config import ORG_CONFIG_REPO
 from github.helpers.utils import ObjectKind
-from github.webhook.webhook_processors.base_repository_webhook_processor import (
-    BaseRepositoryWebhookProcessor,
+from github.webhook.webhook_processors.file_webhook_processor import (
+    FileWebhookProcessor,
 )
 from integration import GithubFilePattern, GithubSkillResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -24,21 +23,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
-    async def _validate_payload(self, payload: EventPayload) -> bool:
-        required_keys = {"ref", "before", "after", "commits"}
-        return not (required_keys - payload.keys()) and "default_branch" in payload.get(
-            "repository", {}
-        )
-
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
-        is_push_event = event.headers.get("x-github-event") == "push"
-        is_github_private_repo = (
-            event.payload.get("repository", {}).get("name") == ORG_CONFIG_REPO
-        )
-        has_branch_name = event.payload.get("ref", "").startswith("refs/heads/")
-        return is_push_event and not is_github_private_repo and has_branch_name
-
+class SkillWebhookProcessor(FileWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.SKILL]
 
@@ -56,21 +41,22 @@ class SkillWebhookProcessor(BaseRepositoryWebhookProcessor):
         selector = cast(GithubSkillResourceConfig, resource_config).selector
         path_globs = [pattern.path for pattern in selector.paths]
 
-        # Same branch/org filtering as FileWebhookProcessor._get_matching_patterns
-        matching_patterns = [
-            GithubFilePattern(
-                path=pattern.path,
-                organization=pattern.organization,
-                repos=pattern.repos,
-                skipParsing=True,
-                validationCheck=False,
-            )
-            for pattern in selector.paths
-            if (pattern.organization is None or pattern.organization == organization)
-            and self._is_applicable_to_repo_branch(
-                pattern, repo_name, current_branch, default_branch
-            )
-        ]
+        matching_patterns = self._get_matching_patterns(
+            [
+                GithubFilePattern(
+                    path=pattern.path,
+                    organization=pattern.organization,
+                    repos=pattern.repos,
+                    skipParsing=True,
+                    validationCheck=False,
+                )
+                for pattern in selector.paths
+            ],
+            organization,
+            repo_name,
+            current_branch,
+            default_branch,
+        )
         if not matching_patterns:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
