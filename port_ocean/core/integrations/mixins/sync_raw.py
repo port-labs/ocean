@@ -66,6 +66,7 @@ from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
+LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 10
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
@@ -878,6 +879,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 if ocean.metrics.sync_state != SyncState.FAILED:
                     ocean.metrics.sync_state = SyncState.COMPLETED
             except asyncio.CancelledError:
+                if event.external_abort:
+                    raise
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
                 if dsp_enabled and resync_id:
@@ -1195,6 +1198,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kinds=[MetricResourceKind.RECONCILIATION], dsp_enabled=dsp_enabled
             )
 
+    async def _poll_for_lifecycle_abort(self, resync_id: str) -> None:
+        while not event.aborted:
+            await asyncio.sleep(LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS)
+            status = await ocean.app.lifecycle_client.get_resync_status(resync_id)
+            if status != "aborted":
+                continue
+            logger.warning(
+                "Lifecycle API reported aborted status; cancelling Ocean resync",
+                resync_id=resync_id,
+            )
+            event.abort(external_abort=True)
+            return
+
     async def _sync_incremental_kind(
         self,
         resource: ResourceConfig,
@@ -1397,6 +1413,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
 
             dsp_enabled = await is_dsp_mode_enabled()
+            lifecycle_poll_task: asyncio.Task[None] | None = None
             if dsp_enabled:
                 logger.bind(local_only=True).info(
                     "DSP mode active: ocean-core will skip transform, load and reconciliation"
@@ -1443,6 +1460,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     mapping=app_config.to_dsp_lifecycle_mapping(),
                     sync_type=SyncType.FULL_SYNC.value,
                 )
+                lifecycle_poll_task = asyncio.create_task(
+                    self._poll_for_lifecycle_abort(event.id)
+                )
 
             try:
                 # Execute resync_start hooks
@@ -1477,6 +1497,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
 
             except asyncio.CancelledError as e:
+                if event.external_abort:
+                    return
+
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
@@ -1590,6 +1613,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                 return success
             finally:
+                if lifecycle_poll_task is not None:
+                    lifecycle_poll_task.cancel()
+                    try:
+                        await lifecycle_poll_task
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception as e:
+                        logger.warning(
+                            "Lifecycle abort poll task failed during cleanup",
+                            error=str(e),
+                        )
                 ocean.metrics.clear_sync_context()
                 await ocean.app.cache_provider.clear()
                 ocean.port_client.clear_blueprint_cache()
