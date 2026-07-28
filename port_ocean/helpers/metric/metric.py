@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
+import os
+
 import prometheus_client
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
@@ -16,6 +18,28 @@ from port_ocean.exceptions.context import ResourceContextNotFoundError
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
     from port_ocean.config.settings import IntegrationSettings, MetricsSettings
+
+_prometheus_multiproc_dir_warning_issued = False
+
+
+def _warn_legacy_prometheus_multiproc_dir() -> None:
+    global _prometheus_multiproc_dir_warning_issued
+    if _prometheus_multiproc_dir_warning_issued:
+        return
+
+    multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+    if not multiproc_dir:
+        return
+
+    _prometheus_multiproc_dir_warning_issued = True
+    logger.warning(
+        "PROMETHEUS_MULTIPROC_DIR is set but Ocean no longer uses Prometheus multiprocess "
+        "collection. Metrics are exposed from a single-process registry only; leftover "
+        "multiprocess .db files in that directory may accumulate and are not cleaned up "
+        "automatically. Consider removing PROMETHEUS_MULTIPROC_DIR from your deployment "
+        "configuration.",
+        prometheus_multiproc_dir=multiproc_dir,
+    )
 
 
 class MetricPhase:
@@ -198,6 +222,7 @@ class Metrics:
         integration_configuration: "IntegrationSettings",
         port_client: "PortClient",
     ) -> None:
+        _warn_legacy_prometheus_multiproc_dir()
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
         self.port_client = port_client
