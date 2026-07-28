@@ -1,0 +1,38 @@
+{
+  "plugin": {
+    "name": "opencode-hooks",
+    "displayName": "opencode-hooks",
+    "description": "",
+    "version": null,
+    "supports": {
+      "claude": false,
+      "cursor": false,
+      "codex": false,
+      "agents": false,
+      "kimi": false,
+      "opencode": true,
+      "pi": true,
+      "antigravity": false
+    },
+    "claude": {},
+    "cursor": {},
+    "codex": {},
+    "agents": {},
+    "kimi": {},
+    "opencode": {
+      "detected": true
+    },
+    "pi": {
+      "detected": true
+    },
+    "antigravity": {}
+  },
+  "__repository": {
+    "name": "opencode-hooks",
+    "full_name": "acme/opencode-hooks",
+    "html_url": "https://github.com/acme/opencode-hooks",
+    "default_branch": "main"
+  },
+  "__branch": "main",
+  "__organization": "acme"
+}
