@@ -223,14 +223,14 @@ class ServicenowWebhookClient(ServicenowClient):
             "content_type": "application/json",
         }
 
-        fn_url = f"{self.table_base_url}/sys_rest_message_fn"
-        fn_response = await self.make_request(
-            fn_url, method="POST", json_data=function_payload
+        function_url = f"{self.table_base_url}/sys_rest_message_fn"
+        function_response = await self.make_request(
+            function_url, method="POST", json_data=function_payload
         )
-        if not fn_response:
+        if not function_response:
             return None
 
-        result = fn_response.json().get("result", {})
+        result = function_response.json().get("result", {})
         if result and "sys_id" in result:
             function_sys_id = result["sys_id"]
             logger.info(f"REST Message function created → sys_id: {function_sys_id}")
@@ -238,7 +238,7 @@ class ServicenowWebhookClient(ServicenowClient):
         else:
             logger.error(
                 f"Failed to create 'post' HTTP Method for '{REST_MESSAGE_NAME}' REST Message. Aborting setup...",
-                extra={"response": fn_response},
+                extra={"response": function_response},
             )
             return None
 
@@ -262,6 +262,7 @@ class ServicenowWebhookClient(ServicenowClient):
 
         parent_sys_id = await self._create_rest_message_parent(webhook_url)
         if not parent_sys_id:
+            logger.warning("REST Message parent creation failed, aborting webhook setup")
             return None
 
         if not await self._create_rest_message_function(parent_sys_id, webhook_url):
@@ -312,7 +313,7 @@ class ServicenowWebhookClient(ServicenowClient):
         """Create or update the Authorization header on the REST Message function."""
         function_sys_id = await self._find_rest_message_function(parent_sys_id)
         if not function_sys_id:
-            logger.error("Cannot upsert auth header — REST Message function not found")
+            logger.warning("Cannot upsert auth header — REST Message function not found")
             return False
         existing_header_sys_id = await self._get_existing_auth_header(function_sys_id)
 

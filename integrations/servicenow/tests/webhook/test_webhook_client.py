@@ -287,9 +287,7 @@ class TestOutboundMessage:
                 httpx.Response(
                     status_code=200, json={"result": [{"sys_id": "existing_id"}]}
                 ),
-                httpx.Response(
-                    status_code=200, json={"result": [{"sys_id": "fn_id"}]}
-                ),
+                httpx.Response(status_code=200, json={"result": [{"sys_id": "fn_id"}]}),
             ]
         )
 
@@ -433,7 +431,9 @@ class TestWebhookAuthHeader:
                 httpx.Response(
                     status_code=200, json={"result": [{"sys_id": "header_123"}]}
                 ),
-                httpx.Response(status_code=200, json={"result": {"sys_id": "header_123"}}),
+                httpx.Response(
+                    status_code=200, json={"result": {"sys_id": "header_123"}}
+                ),
             ]
         )
         with patch.object(webhook_client, "make_request", mock_request):

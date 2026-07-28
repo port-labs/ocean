@@ -49,9 +49,7 @@ class TestServicenowAbstractWebhookProcessor:
     async def test_authenticate_no_secret_configured(
         self, base_processor: MockServicenowProcessor
     ) -> None:
-        with patch(
-            "webhook.processors._base_processor.ocean", _mock_ocean_config()
-        ):
+        with patch("webhook.processors._base_processor.ocean", _mock_ocean_config()):
             result = await base_processor.authenticate({}, {})
             assert result is True
 
