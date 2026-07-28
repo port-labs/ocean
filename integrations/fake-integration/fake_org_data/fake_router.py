@@ -5,7 +5,6 @@ from port_ocean.context.ocean import ocean
 from fake_org_data.generator import generate_fake_persons, generate_fake_projects
 from fake_org_data.static import FAKE_OFFICES, FAKE_TEAMS
 
-
 FAKE_DEPARTMENT_EMPLOYEES = "/department/{department_id}/employees"
 
 

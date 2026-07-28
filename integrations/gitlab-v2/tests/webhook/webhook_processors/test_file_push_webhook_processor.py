@@ -64,6 +64,28 @@ class TestFilePushWebhookProcessor:
             ],
         }
 
+    @staticmethod
+    def mock_compare(
+        client: MagicMock,
+        added: list[str] | None = None,
+        deleted: list[str] | None = None,
+    ) -> None:
+        """Stub the repository compare API the processor resolves paths from."""
+        diffs: list[dict[str, Any]] = [
+            {
+                "new_path": path,
+                "old_path": path,
+                "new_file": True,
+                "deleted_file": False,
+            }
+            for path in added or []
+        ]
+        diffs.extend(
+            {"new_path": path, "old_path": path, "deleted_file": True}
+            for path in deleted or []
+        )
+        client.compare_repository = AsyncMock(return_value={"diffs": diffs})
+
     @pytest.fixture
     def mock_files_selector(self) -> MagicMock:
         """Mock the FilesSelector class with default no-repos config"""
@@ -128,6 +150,10 @@ class TestFilePushWebhookProcessor:
 
         # Create a fresh MagicMock for the client
         processor._gitlab_webhook_client = MagicMock()
+        self.mock_compare(
+            processor._gitlab_webhook_client,
+            added=["package.json", "src/data.json", "readme.md"],
+        )
 
         # Assign AsyncMock objects with return values to methods
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
@@ -194,6 +220,10 @@ class TestFilePushWebhookProcessor:
         ]
 
         processor._gitlab_webhook_client = MagicMock()
+        self.mock_compare(
+            processor._gitlab_webhook_client,
+            added=["package.json", "src/data.json", "readme.md"],
+        )
 
         # Assign AsyncMock objects with return values to methods
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
@@ -303,6 +333,10 @@ class TestFilePushWebhookProcessor:
         ]
 
         processor._gitlab_webhook_client = MagicMock()
+        self.mock_compare(
+            processor._gitlab_webhook_client,
+            deleted=["old-config.json", "deprecated/data.json"],
+        )
 
         processor._gitlab_webhook_client._process_file_batch = AsyncMock(
             return_value=deleted_file_data
@@ -340,6 +374,45 @@ class TestFilePushWebhookProcessor:
         assert len(result.deleted_raw_results) == 2
         assert result.deleted_raw_results == enriched_deleted_data
         assert not result.updated_raw_results
+
+    async def test_handle_event_falls_back_to_commits_when_compare_fails(
+        self,
+        processor: FilePushWebhookProcessor,
+        push_payload: dict[str, Any],
+        resource_config: ResourceConfig,
+    ) -> None:
+        """A failing compare degrades to the (capped) commits list in the payload."""
+        project_id = push_payload["project_id"]
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.compare_repository = AsyncMock(
+            side_effect=RuntimeError("compare unavailable")
+        )
+        processor._gitlab_webhook_client._process_file_batch = AsyncMock(
+            return_value=[]
+        )
+        processor._gitlab_webhook_client._enrich_files_with_repos = AsyncMock(
+            return_value=[]
+        )
+
+        await processor.handle_event(push_payload, resource_config)
+
+        processor._gitlab_webhook_client._process_file_batch.assert_called_once_with(
+            [
+                {
+                    "project_id": str(project_id),
+                    "path": "package.json",
+                    "ref": push_payload["after"],
+                },
+                {
+                    "project_id": str(project_id),
+                    "path": "src/data.json",
+                    "ref": push_payload["after"],
+                },
+            ],
+            context=f"project:{project_id}",
+            skip_parsing=False,
+        )
 
 
 @pytest.mark.asyncio

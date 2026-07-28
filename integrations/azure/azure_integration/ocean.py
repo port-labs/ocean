@@ -41,7 +41,7 @@ def _resolve_resync_method_for_resource(
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(ResourceKindsWithSpecialHandling):
+    if kind in ResourceKindsWithSpecialHandling:
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
     resource_selector = typing.cast(

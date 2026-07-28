@@ -11,6 +11,6 @@ class AbstractArmorcodeExporter[T: ArmorcodeClient](ABC):
         self.client = client
 
     @abstractmethod
-    def get_paginated_resources[
-        AnyOptions: Any
-    ](self, options: AnyOptions) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
+    def get_paginated_resources[AnyOptions: Any](
+        self, options: AnyOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...

@@ -192,7 +192,7 @@ async def resync_resources_for_account(
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(ResourceKindsWithSpecialHandling):
+    if kind in ResourceKindsWithSpecialHandling:
         return
 
     tasks = []

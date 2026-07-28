@@ -1,5 +1,16 @@
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List
+
+
+class BaseAWSPropertiesModel(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+
+class ExtraContextModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    AccountId: str | None = None
+    Region: str | None = None
 
 
 class ResourceModel[PropertiesT: BaseModel](BaseModel):
@@ -11,13 +22,13 @@ class ResourceModel[PropertiesT: BaseModel](BaseModel):
         Properties (PropertiesT): The properties of the AWS resource, typed as a Pydantic model.
     """
 
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
     Type: str
     Properties: PropertiesT
-    ExtraContext: BaseModel = Field(default_factory=BaseModel, alias="__ExtraContext")
-
-    class Config:
-        extra = "ignore"
-        """Extra fields not defined in the model will be ignored."""
+    ExtraContext: ExtraContextModel = Field(
+        default_factory=ExtraContextModel, alias="__ExtraContext"
+    )
 
 
 class ResourceRequestModel(BaseModel):
@@ -29,6 +40,8 @@ class ResourceRequestModel(BaseModel):
         include (List[str]): List of resource types or names to include in the export.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     region: str = Field(..., description="The AWS region to export resources from")
     account_id: str = Field(
         ..., description="The AWS account ID to export resources from"
@@ -36,7 +49,3 @@ class ResourceRequestModel(BaseModel):
     include: List[str] = Field(
         default_factory=list, description="The resources to include in the export"
     )
-
-    class Config:
-        extra = "allow"
-        """Extra fields not defined in the model are allowed."""

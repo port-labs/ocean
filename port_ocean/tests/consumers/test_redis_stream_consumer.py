@@ -274,6 +274,7 @@ class TestRedisStreamConsumerConnection:
             await consumer._read_loop()
 
         mock_redis.xreadgroup.assert_awaited_once()
+        assert mock_redis.xreadgroup.await_args is not None
         assert mock_redis.xreadgroup.await_args.kwargs["count"] == 25
 
     @pytest.mark.asyncio
@@ -422,6 +423,7 @@ class TestRedisStreamConsumerGroupCreation:
             consumer._redis = mock_redis
             await consumer._ensure_consumer_group()
 
+        assert mock_redis.xgroup_create.await_args is not None
         assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
         mock_redis.expire.assert_not_awaited()
 
@@ -447,6 +449,7 @@ class TestRedisStreamConsumerGroupCreation:
             consumer._redis = mock_redis
             await consumer._ensure_consumer_group()
 
+        assert mock_redis.xgroup_create.await_args is not None
         assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
         mock_redis.expire.assert_awaited_once_with("stream", 3600)
 
@@ -632,6 +635,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             await pel_worker._scan_and_requeue()
 
             mock_redis.xadd.assert_awaited_once()
+            assert mock_redis.xadd.await_args is not None
             requeued_fields: dict[str, str] = mock_redis.xadd.await_args.args[1]
             assert requeued_fields["requeue_count"] == "1"
 

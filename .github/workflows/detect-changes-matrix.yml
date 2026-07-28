@@ -42,7 +42,7 @@ jobs:
       has_code_changes: ${{ steps.set-all-matrix.outputs.has_code_changes }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Get list of changed files
         id: changed-files

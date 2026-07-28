@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, AsyncGenerator, List
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
@@ -7,7 +6,13 @@ from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from wiz.client import WizClient
-from wiz.options import SbomArtifactOptions, VulnerabilityFindingOptions
+from wiz.constants import VULNERABILITY_FINDING_SEVERITIES
+from wiz.options import (
+    SbomArtifactOptions,
+    VulnerabilityFindingOptions,
+    ParallelismConfig,
+)
+from wiz.pagination import PaginationPartition, VulnerabilityFindingPartitionStrategy
 
 
 def mock_paginated_generator(
@@ -22,6 +27,19 @@ def mock_paginated_generator(
             yield page
 
     return _gen()
+
+
+def _mock_ready_partition_crawl_stream(
+    generator: AsyncGenerator[List[Any], None],
+) -> type:
+    class MockReadyPartitionCrawlStream:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+        def __aiter__(self) -> AsyncGenerator[List[Any], None]:
+            return generator
+
+    return MockReadyPartitionCrawlStream
 
 
 @pytest.fixture(autouse=True)
@@ -87,38 +105,42 @@ async def test_make_graphql_query(mock_wiz_client: WizClient) -> None:
     variables = {"first": 10}
     mock_response_data = {"data": {"issues": {"nodes": [{"id": "issue1"}]}}}
 
-    with patch.object(
-        mock_wiz_client.http_client, "post", new_callable=AsyncMock
-    ) as mock_post:
-        with patch.object(
+    with (
+        patch.object(
+            mock_wiz_client.http_client, "post", new_callable=AsyncMock
+        ) as mock_post,
+        patch.object(
+            mock_wiz_client._api_rate_limiter,
+            "acquire",
+            new_callable=AsyncMock,
+        ) as mock_acquire,
+        patch.object(
             mock_wiz_client, "_get_token", new_callable=AsyncMock
-        ) as mock_get_token:
-            mock_get_token.return_value = MagicMock(
-                full_token="Bearer test_token",
-                expired=False,
-            )
+        ) as mock_get_token,
+    ):
+        mock_get_token.return_value = MagicMock(
+            full_token="Bearer test_token",
+            expired=False,
+        )
 
-            # Arrange
-            mock_response = MagicMock(status_code=200)
-            mock_response.json.return_value = mock_response_data
-            mock_post.return_value = mock_response
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = mock_response_data
+        mock_post.return_value = mock_response
 
-            # Act
-            result = await mock_wiz_client.make_graphql_query(query, variables)
+        result = await mock_wiz_client.make_graphql_query(query, variables)
 
-            # Assert
-            mock_post.assert_called_once_with(
-                url=mock_wiz_client.api_url,
-                json={"query": query, "variables": variables},
-                headers={
-                    "Authorization": "Bearer test_token",
-                    "Content-Type": "application/json",
-                },
-                extensions={"retryable": True},
-            )
+        mock_acquire.assert_awaited_once()
+        mock_post.assert_called_once_with(
+            url=mock_wiz_client.api_url,
+            json={"query": query, "variables": variables},
+            headers={
+                "Authorization": "Bearer test_token",
+                "Content-Type": "application/json",
+            },
+            extensions={"retryable": True},
+        )
 
-            # Verify the response data
-            assert result == mock_response_data["data"]
+        assert result == mock_response_data["data"]
 
 
 @pytest.mark.asyncio
@@ -181,13 +203,92 @@ async def test_get_paginated_resources_raises_on_missing_resource_data(
 
 
 @pytest.mark.asyncio
+async def test_get_resource_total_count(mock_wiz_client: WizClient) -> None:
+    with patch.object(
+        mock_wiz_client,
+        "make_graphql_query",
+        new_callable=AsyncMock,
+    ) as mock_graphql:
+        mock_graphql.return_value = {
+            "vulnerabilityFindings": {"totalCount": 42},
+        }
+
+        count = await mock_wiz_client.get_resource_total_count(
+            "vulnerabilityFindings",
+            {"first": 100, "filterBy": {"severity": ["CRITICAL"]}},
+        )
+
+        assert count == 42
+        mock_graphql.assert_awaited_once()
+        assert mock_graphql.await_args is not None
+        assert mock_graphql.await_args.args[1] == {
+            "filterBy": {"severity": ["CRITICAL"]},
+        }
+
+
+@pytest.mark.asyncio
+async def test_get_vulnerability_findings_with_parallelism(
+    mock_wiz_client: WizClient,
+) -> None:
+    options = VulnerabilityFindingOptions(
+        max_pages=2,
+        parallelism=ParallelismConfig(
+            strategy="severity",
+            date_interval_days=30,
+            lookback_days=365,
+            api_requests_per_second=10,
+            max_partition_entities=500,
+        ),
+    )
+
+    with (
+        patch(
+            "wiz.client.ReadyPartitionCrawlStream",
+        ) as mock_stream_class,
+        patch.object(
+            VulnerabilityFindingPartitionStrategy,
+            "build_partitions",
+            return_value=[
+                PaginationPartition(
+                    label="severity-critical",
+                    filter_overlay={"severity": ["CRITICAL"]},
+                )
+            ],
+        ),
+    ):
+        mock_stream_class.side_effect = _mock_ready_partition_crawl_stream(
+            mock_paginated_generator([{"id": "vuln-1"}])
+        )
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client.get_vulnerability_findings(options):
+            results.extend(batch)
+
+        mock_stream_class.assert_called_once_with(
+            mock_wiz_client,
+            "vulnerabilityFindings",
+            {"first": 100, "filterBy": {}},
+            [
+                PaginationPartition(
+                    label="severity-critical",
+                    filter_overlay={"severity": ["CRITICAL"]},
+                )
+            ],
+            options.parallelism,
+            mock_wiz_client._get_paginated_resources,
+            max_pages=2,
+        )
+        assert results == [{"id": "vuln-1"}]
+
+
+@pytest.mark.asyncio
 async def test_get_vulnerability_findings_with_filters(
     mock_wiz_client: WizClient,
 ) -> None:
     """Test that get_vulnerability_findings calls _get_paginated_resources with user overridden params."""
     options = VulnerabilityFindingOptions(
         status_list=["OPEN"],
-        severity_list=["CRITICAL"],
+        severity_list=[VULNERABILITY_FINDING_SEVERITIES.CRITICAL],
         max_pages=2,
     )
 
@@ -493,7 +594,7 @@ async def test_get_sbom_artifacts_for_grouped_name_adds_resource_filter(
 
 
 @pytest.mark.asyncio
-async def test_get_sbom_artifacts_wraps_group_fetches_with_semaphore(
+async def test_get_sbom_artifacts_fans_out_group_fetches(
     mock_wiz_client: WizClient,
 ) -> None:
     options = SbomArtifactOptions(
@@ -515,20 +616,11 @@ async def test_get_sbom_artifacts_wraps_group_fetches_with_semaphore(
         },
     ]
 
-    def _semaphore_passthrough(
-        semaphore: asyncio.BoundedSemaphore, fetcher: Any
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        return fetcher()
-
     with (
         patch.object(
             mock_wiz_client,
             "_get_paginated_resources",
         ) as mock_paginated,
-        patch(
-            "wiz.client.semaphore_async_iterator",
-            side_effect=_semaphore_passthrough,
-        ) as mock_semaphore_wrapper,
         patch.object(
             mock_wiz_client,
             "_get_sbom_artifacts_for_grouped_name",
@@ -544,6 +636,4 @@ async def test_get_sbom_artifacts_wraps_group_fetches_with_semaphore(
             results.extend(batch)
 
         assert len(results) == 2
-        assert mock_semaphore_wrapper.call_count == 2
-        for call in mock_semaphore_wrapper.call_args_list:
-            assert isinstance(call.args[0], asyncio.BoundedSemaphore)
+        assert mock_grouped_fetch.call_count == 2

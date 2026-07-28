@@ -7,6 +7,165 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.1 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.9.0 (2026-07-26)
+
+
+### Features
+
+- Added `skill` and `plugin` kinds (Agent Skills / agent plugin packages)
+
+
+### Improvements
+
+- Skill/plugin push webhooks only process the project default branch, and ignore branch deletes
+- File/skill/plugin push webhooks resolve changed paths from the repository compare API, falling back to the (capped) payload commits list
+- Skill and plugin discovery always walks the repository tree with the configured glob patterns
+- Repository tree discovery scopes walks to each pattern's fixed path prefix and matches multiple globs per repository in a single minimized set of walks
+
+
+## 0.8.16 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.8.15 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.8.14 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.8.13 (2026-07-23)
+
+
+### Bug Fixes
+
+- Fixed `reportPipelineStatus=false` incorrectly completing `trigger_pipeline` runs immediately instead of leaving them in progress, aligning behavior with the GitHub integration's `reportWorkflowStatus` (the run stays in progress until externally updated, e.g. via a CI job calling back into Port).
+
+
+## 0.8.12 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.8.11 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.8.10 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.8.9 (2026-07-22)
+
+
+### Improvements
+
+- Added the `repositoryTree` search strategy to the file kind, which discovers files by walking the Git repository tree instead of the GitLab search API. It does not depend on the search index, so it returns complete and consistent results even when search is stale or disabled, at the cost of being slower.
+
+
+## 0.8.8 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 0.8.7 (2026-07-21)
+
+
+### Improvements
+
+- Replaces the parameterized webhook route /hook/{group_id} with a static /webhook path
+
+## 0.8.6 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 0.8.5 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 0.8.4 (2026-07-21)
+
+
+### Bug Fixes
+
+- Fix group search fallback to recognize multiple GitLab error messages when blob scope is unavailable
+
+
+## 0.8.3 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 0.8.2 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 0.8.1 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 0.8.0 (2026-07-19)
+
+
+### Features
+
+- Added `searchStrategy` to GitLab file selectors, allowing project-level file search to be selected explicitly for broad repository scans.
+
+
 ## 0.7.62 (2026-07-16)
 
 

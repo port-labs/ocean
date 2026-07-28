@@ -17,6 +17,11 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
 from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
+from gitlab.helpers.skill_plugin import (
+    DEFAULT_PLUGIN_PROVIDERS,
+    DEFAULT_SKILL_PATHS,
+    PluginProvider,
+)
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
@@ -341,6 +346,18 @@ class FilesSelector(BaseModel):
         description="Skip parsing the files and just return the raw file content",
         title="Skip Parsing",
     )
+    search_strategy: Literal["groupSearch", "projectSearch", "repositoryTree"] = Field(
+        default="groupSearch",
+        alias="searchStrategy",
+        title="Search Strategy",
+        description=(
+            "Controls how files are discovered. groupSearch and projectSearch query GitLab's "
+            "search API; repositoryTree walks the Git repository tree via the tree API, which "
+            "does not depend on GitLab's search index, so it returns complete, consistent "
+            "results even when search indexing is stale or disabled, at the cost of being "
+            "considerably slower."
+        ),
+    )
 
 
 class GitLabFilesSelector(GroupSelector):
@@ -361,6 +378,67 @@ class GitLabFilesResourceConfig(ResourceConfig):
     selector: GitLabFilesSelector = Field(
         title="File Selector",
         description="Selector for the GitLab file resource.",
+    )
+
+
+class GitLabSkillPath(BaseModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
+    )
+    repos: list[str] = Field(
+        title="Repositories",
+        default_factory=list,
+        description=(
+            "Optional list of project path_with_namespace values to scan "
+            "for this path (same as file kind)."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GitLabSkillSelector(GroupSelector):
+    paths: list[GitLabSkillPath] = Field(
+        title="Paths",
+        default=[GitLabSkillPath(path=path) for path in DEFAULT_SKILL_PATHS],
+        description="Glob patterns for SKILL.md discovery",
+    )
+
+
+class GitLabSkillResourceConfig(ResourceConfig):
+    kind: Literal["skill"] = Field(
+        title="GitLab Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GitLabSkillSelector = Field(
+        title="Skill Selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GitLabPluginSelector(GroupSelector):
+    providers: list[PluginProvider] = Field(
+        title="Providers",
+        default=list(DEFAULT_PLUGIN_PROVIDERS),
+        description="Agent plugin providers to detect.",
+    )
+    repos: list[str] = Field(
+        title="Repositories",
+        default_factory=list,
+        description="Optional list of project path_with_namespace values to scan.",
+    )
+
+
+class GitLabPluginResourceConfig(ResourceConfig):
+    kind: Literal["plugin"] = Field(
+        title="GitLab Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GitLabPluginSelector = Field(
+        title="Plugin Selector",
+        description="Selector for discovering agent plugin repositories.",
     )
 
 
@@ -706,6 +784,8 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabProjectWithMembersResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
+        | GitLabSkillResourceConfig
+        | GitLabPluginResourceConfig
         | GitlabMergeRequestResourceConfig
         | TagResourceConfig
         | ReleaseResourceConfig

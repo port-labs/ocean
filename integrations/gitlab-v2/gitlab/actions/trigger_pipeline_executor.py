@@ -11,6 +11,7 @@ from gitlab.helpers.exceptions import (
     GitlabTriggerPipelineError,
     MissingExecutionPropertyError,
 )
+from gitlab.webhook.constants import WEBHOOK_PATH as GITLAB_WEBHOOK_PATH
 from gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor import (
     TriggerPipelineWebhookProcessor,
 )
@@ -19,7 +20,7 @@ from gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor import
 class TriggerPipelineExecutor(AbstractGitlabExecutor):
     ACTION_NAME = "trigger_pipeline"
     WEBHOOK_PROCESSOR_CLASS = TriggerPipelineWebhookProcessor
-    WEBHOOK_PATH = "/hook/{group_id}"
+    WEBHOOK_PATH = GITLAB_WEBHOOK_PATH
 
     async def execute(self, run: IntegrationRun) -> None:
         project = run.execution_properties.get("project")
@@ -79,8 +80,3 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             ref=ref,
             external_id=external_id,
         )
-
-        if not run.execution_properties.get("reportPipelineStatus", True):
-            await ocean.port_client.report_run_completed(
-                run, True, "Pipeline triggered successfully"
-            )

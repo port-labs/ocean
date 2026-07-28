@@ -14,7 +14,6 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from jira.overrides import JiraSprintSelector
 from webhook_processors.sprint_webhook_processor import SprintWebhookProcessor
 
-
 MOCK_SPRINT: dict[str, Any] = {
     "id": 1,
     "self": "https://example.atlassian.net/rest/agile/latest/sprint/1",

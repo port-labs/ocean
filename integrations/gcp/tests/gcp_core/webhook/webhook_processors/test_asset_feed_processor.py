@@ -11,7 +11,6 @@ from port_ocean.context.ocean import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 
-
 ASSET_TYPE = "compute.googleapis.com/Instance"
 ASSET_NAME = "//compute.googleapis.com/projects/test-project/zones/us-central1-a/instances/test-instance"
 ASSET_PROJECT = "projects/test-project"

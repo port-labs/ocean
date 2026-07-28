@@ -44,6 +44,17 @@ class AzureDevOpsRateLimiter:
         self._throttle_until: Optional[float] = None
 
     @property
+    def is_close_to_limit(self) -> bool:
+        """Whether the remaining request budget is at or below the configured threshold.
+
+        Returns False when no rate limit headers have been observed yet, since
+        Azure DevOps only sends them when approaching a limit.
+        """
+        if self._remaining is None:
+            return False
+        return self._remaining <= self._minimum_limit_remaining
+
+    @property
     def seconds_until_reset(self) -> float:
         """Calculate seconds until rate limit window resets.
 

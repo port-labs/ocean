@@ -8,8 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-
-from checkmarx_one.utils import days_ago_to_rfc3339
+from port_ocean.utils.relative_time import days_ago, to_rfc3339
 
 
 class CheckmarxOneScanModel(BaseModel):
@@ -37,7 +36,9 @@ class CheckmarxOneScanModel(BaseModel):
 
     @property
     def from_date(self) -> Optional[str]:
-        return days_ago_to_rfc3339(self.since) if self.since else None
+        if self.since is None:
+            return None
+        return to_rfc3339(days_ago(self.since), timespec="microseconds")
 
 
 class CheckmarxOneResultSelector(Selector):
@@ -209,7 +210,7 @@ class CheckmarxOneDastScanModel(BaseModel):
         If 'since' is not provided, defaults to 90 days ago.
         """
         days = self.since if self.since is not None else 90
-        return days_ago_to_rfc3339(days)
+        return to_rfc3339(days_ago(days), timespec="microseconds")
 
 
 class CheckmarxOneDastScanSelector(Selector, CheckmarxOneDastScanModel): ...

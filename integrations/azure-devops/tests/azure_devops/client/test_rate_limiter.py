@@ -6,7 +6,6 @@ import httpx
 import pytest
 from azure_devops.client.rate_limiter import AzureDevOpsRateLimiter
 
-
 pytestmark = pytest.mark.asyncio
 
 
