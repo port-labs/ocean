@@ -49,7 +49,7 @@ class DefaultOriginSetup(BaseSetup):
         try:
             logger.info("Found default resources, starting creation process")
             if not current_config:
-                await self.port_client.patch_integration(
+                await self.port_client.patch_integration_config(
                     port_app_config=self._default_mapping,
                     skip_resync=self.integration_config.runtime == Runtime.Saas,
                 )
