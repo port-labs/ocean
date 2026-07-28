@@ -23,6 +23,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repository tree discovery scopes walks to each pattern's fixed path prefix and matches multiple globs per repository in a single minimized set of walks
 
 
+## 0.8.16 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.8.15 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
 ## 0.8.14 (2026-07-26)
 
 

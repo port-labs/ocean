@@ -54,6 +54,8 @@ class ObjectKind(StrEnum):
     SECRET_SCANNING_ALERT = "secret-scanning-alerts"
     FILE = "file"
     COLLABORATOR = "collaborator"
+    SKILL = "skill"
+    PLUGIN = "plugin"
 
 
 def enrich_with_organization(
@@ -204,6 +206,7 @@ class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
     type: Optional[str] = None
+    body_contains: Optional[str] = None
 
 
 @cache.cache_coroutine_result()

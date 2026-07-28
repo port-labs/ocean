@@ -102,7 +102,10 @@ from integration import (
     GithubRepositoryConfig,
     GithubTagConfig,
     GithubTeamConfig,
+    GithubFilePattern,
     GithubFileResourceConfig,
+    GithubSkillResourceConfig,
+    GithubPluginResourceConfig,
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubDeploymentConfig,
@@ -110,6 +113,20 @@ from integration import (
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
     GithubUserConfig,
+)
+from github.core.exporters.skill_exporter import (
+    SkillExporter,
+)
+from github.core.exporters.plugin_exporter import (
+    PluginExporter,
+)
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+)
+from github.core.options import (
+    ListOrganizationOptions,
+    ListPluginOptions,
+    PluginRepositoryOptions,
 )
 from github.enrichments.included_files import (
     IncludedFilesEnricher,
@@ -343,6 +360,11 @@ async def resync_teams(
                                 team["members"]["nodes"],
                                 selector.include_saml_email,
                             )
+
+                if selector.include_external_group:
+                    teams = await RestTeamExporter(
+                        rest_client
+                    ).enrich_teams_with_external_group(teams, org_name)
 
                 yield teams
 
@@ -1090,6 +1112,98 @@ async def resync_files(
         if included_files_enricher:
             file_results = await included_files_enricher.enrich_batch(file_results)
         yield file_results
+
+
+@ocean.on_resync(ObjectKind.SKILL)
+@_resync_per_authenticator
+async def resync_skills(
+    kind: str, authenticator: AbstractGitHubAuthenticator
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync Agent Skills (SKILL.md) using glob path discovery."""
+    config = cast(GithubSkillResourceConfig, event.resource_config)
+    selector = config.selector
+    paths = [
+        pattern
+        for pattern in selector.paths
+        if can_access_organization(authenticator, pattern.organization)
+    ]
+    if not paths:
+        return
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    skill_exporter = SkillExporter(rest_client)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+
+    file_patterns = [
+        GithubFilePattern(
+            path=pattern.path,
+            organization=pattern.organization,
+            repos=pattern.repos,
+            skipParsing=True,
+            validationCheck=False,
+        )
+        for pattern in paths
+    ]
+    pattern_builder = FilePatternMappingBuilder(
+        org_exporter=org_exporter,
+        repo_exporter=repo_exporter,
+        repo_type=app_config.repository_type,
+    )
+    repo_path_map = await pattern_builder.build(file_patterns)
+
+    async for skills in skill_exporter.get_paginated_resources(repo_path_map):
+        yield skills
+
+
+@ocean.on_resync(ObjectKind.PLUGIN)
+@_resync_per_authenticator
+async def resync_plugins(
+    kind: str, authenticator: AbstractGitHubAuthenticator
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync agent plugin packages detected via provider manifests."""
+    config = cast(GithubPluginResourceConfig, event.resource_config)
+    selector = config.selector
+    paths = [
+        path
+        for path in selector.paths
+        if can_access_organization(authenticator, path.organization)
+    ]
+    if not paths:
+        return
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    plugin_exporter = PluginExporter(rest_client, selector.providers)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+    repo_selector = CompositeRepositorySelector(app_config.repository_type)
+
+    for path in paths:
+        async for orgs in org_exporter.get_paginated_resources(
+            ListOrganizationOptions(organization=path.organization)
+        ):
+            for org in orgs:
+                org_login = org["login"]
+                repositories: list[PluginRepositoryOptions] = []
+                async for _repo_name, branch, repo_obj in repo_selector.select_repos(
+                    path, repo_exporter, org_login, org["type"]
+                ):
+                    repositories.append(
+                        PluginRepositoryOptions(
+                            organization=org_login,
+                            repository=repo_obj,
+                            branch=branch,
+                        )
+                    )
+                if not repositories:
+                    continue
+
+                async for plugins in plugin_exporter.get_paginated_resources(
+                    ListPluginOptions(organization=org_login, repositories=repositories)
+                ):
+                    yield plugins
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)
