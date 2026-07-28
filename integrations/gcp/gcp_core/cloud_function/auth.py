@@ -1,14 +1,12 @@
 import asyncio
 import typing
 
+import google.auth.transport.requests
+import google.oauth2.id_token
 from loguru import logger
 
 
 async def get_id_token(audience: str) -> typing.Optional[str]:
-    """Fetch a GCP OIDC ID token for the given audience (Cloud Run URL) using ADC."""
-    import google.auth.transport.requests
-    import google.oauth2.id_token
-
     try:
         request = google.auth.transport.requests.Request()
         return await asyncio.to_thread(

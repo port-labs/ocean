@@ -122,21 +122,9 @@ class GCPCloudFunctionSelector(Selector):
         title="Secrets",
         description="Key-value pairs forwarded to the endpoint in every request body. Use for upstream API credentials.",
     )
-    timeout: float = Field(
-        default=60.0,
-        title="Timeout",
-        description="HTTP request timeout in seconds. Increase for endpoints that perform long-running queries.",
-    )
-    max_retries: int = Field(
-        default=3,
-        alias="maxRetries",
-        title="Max Retries",
-        description="Maximum number of retries on rate-limit (429) or transient server (503) errors.",
-    )
-    target_kind: str = Field(
-        alias="targetKind",
-        title="Target Kind",
-        description="Kind name forwarded to the cloud function endpoint so it can route internally (e.g. 'employees').",
+    resource: str = Field(
+        title="Resource",
+        description="Resource name forwarded to the cloud function endpoint so it can route internally (e.g. 'employees').",
     )
 
 
