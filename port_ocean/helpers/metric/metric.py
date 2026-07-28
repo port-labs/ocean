@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 _prometheus_multiproc_dir_warning_issued = False
 
 
-def _warn_legacy_prometheus_multiproc_dir() -> None:
+def _warn_legacy_prometheus_multiproc_dir(is_self_hosted: bool) -> None:
     global _prometheus_multiproc_dir_warning_issued
-    if _prometheus_multiproc_dir_warning_issued:
+    if _prometheus_multiproc_dir_warning_issued or not is_self_hosted:
         return
 
     multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
@@ -221,8 +221,9 @@ class Metrics:
         metrics_settings: "MetricsSettings",
         integration_configuration: "IntegrationSettings",
         port_client: "PortClient",
+        is_self_hosted: bool = False,
     ) -> None:
-        _warn_legacy_prometheus_multiproc_dir()
+        _warn_legacy_prometheus_multiproc_dir(is_self_hosted)
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
         self.port_client = port_client

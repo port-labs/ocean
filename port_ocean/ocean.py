@@ -77,6 +77,7 @@ class Ocean:
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
+            is_self_hosted=not self.is_saas(),
         )
         self.metrics.execution_mode = "single_process"
 
