@@ -216,6 +216,7 @@ class IntegrationClientMixin:
         actions_processing_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
         processing_mode: ProcessingMode | None = None,
+        skip_resync: bool = False,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -232,6 +233,8 @@ class IntegrationClientMixin:
             json["changelogDestination"] = changelog_destination
         if processing_mode is not None:
             json["processingMode"] = processing_mode.value
+        if skip_resync:
+            headers["x-skip-resync"] = "true"
 
         json["version"] = self.integration_version
 
