@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Split dynamically log batches that exceed the Port ingest size limit to prevent HTTP 413 (Payload Too Large) errors and avoid losing integration logs.
+- Dynamically split log batches that exceed the Port ingest size limit to prevent HTTP 413 (Payload Too Large) errors and avoid losing integration logs.
 
 ## 0.46.5 (2026-07-28)
 
