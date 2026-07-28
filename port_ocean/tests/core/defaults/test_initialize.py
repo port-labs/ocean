@@ -17,6 +17,7 @@ from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     IntegrationFeatureFlag,
     ProcessingMode,
+    Runtime,
 )
 from port_ocean.ocean import Ocean
 
@@ -440,6 +441,7 @@ async def test_default_setup_integration_not_exists(
         CreatePortResourcesOrigin.Default
     )
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
     mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
     # First call returns empty (integration doesn't exist), subsequent calls return created integration
@@ -732,6 +734,7 @@ async def test_none_origin_provision_disabled_integration_not_exists(
     """Test None origin with provision disabled when integration doesn't exist - should use Ocean and create it."""
     mock_integration_config.create_port_resources_origin = None
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
 
     # Mock provision disabled
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
