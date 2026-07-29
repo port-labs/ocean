@@ -43,24 +43,6 @@ resources:
             arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
           relations:
             account: .__ExtraContext.AccountId
-  - kind: AWS::SES::EmailIdentity
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .Properties.IdentityName
-          title: .Properties.IdentityName
-          blueprint: '"sesEmailIdentity"'
-          properties:
-            identityType: .Properties.IdentityType
-            verifiedForSendingStatus: .Properties.VerifiedForSendingStatus
-            dkimEnabled: .Properties.DkimAttributes.SigningEnabled
-            verificationStatus: .Properties.VerificationStatus
-            configurationSetName: .Properties.ConfigurationSetName
-            tags: .Properties.Tags
-          relations:
-            account: .__ExtraContext.AccountId
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
