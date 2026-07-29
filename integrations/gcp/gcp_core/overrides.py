@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Literal
+from typing import ClassVar, Literal
 
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -111,16 +111,10 @@ class GCPResourceConfig(ResourceConfig):
 
 
 class GCPCloudFunctionSelector(Selector):
-    query: str = Field(default="true", title="Query", description="JQ filter applied to results returned by the cloud function.")
     function_url: str = Field(
         alias="functionUrl",
         title="Function URL",
         description="URL of the HTTP endpoint implementing the cloud-function sync protocol (e.g. a Cloud Run service).",
-    )
-    secrets: dict[str, Any] = Field(
-        default_factory=dict,
-        title="Secrets",
-        description="Key-value pairs forwarded to the endpoint in every request body. Use for upstream API credentials.",
     )
     resource: str = Field(
         title="Resource",

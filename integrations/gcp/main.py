@@ -131,7 +131,8 @@ async def resync_cloud_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = typing.cast(GCPCloudFunctionResourceConfig, get_current_resource_config())
     integration_id = getattr(ocean.config.integration, "identifier", "gcp-integration")
     agent = f"gcp/{integration_id}"
-    async for page in resync_cloud_function_resources(config, agent):
+    secrets = ocean.integration_config.get("secret", {})
+    async for page in resync_cloud_function_resources(config, agent, secrets):
         yield page
 
 
