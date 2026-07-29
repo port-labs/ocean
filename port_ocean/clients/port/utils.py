@@ -52,7 +52,9 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
                 "base_delay": 0.3,
             },
             retry_config=RetryConfig(
-                additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR]
+                max_backoff_wait=FIVE_MINUETS,
+                base_delay=0.3,
+                additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
             ),
             timeout=PORT_HTTPX_TIMEOUT,
             limits=PORT_HTTPX_LIMITS,
