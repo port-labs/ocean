@@ -174,7 +174,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
-        additional_retry_status_codes: Iterable[int] | None = None,
         retry_config: Optional[RetryConfig] = None,
         logger: Any | None = None,
         retry_after_headers: Optional[List[str]] = None,
@@ -206,8 +205,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             retry_status_codes (Iterable[int], optional):
                 The HTTP status codes that can be retried.
                 Defaults to [429, 502, 503, 504].
-            additional_retry_status_codes (Iterable[int], optional):
-                Additional HTTP status codes that can be retried.
             retry_config (RetryConfig, optional):
                 Configuration for retry behavior. If not provided, uses default configuration.
             logger (Any): The logger to use for logging retries.
@@ -227,7 +224,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 respect_retry_after_header=respect_retry_after_header,
                 retryable_methods=retryable_methods,
                 retry_status_codes=retry_status_codes,
-                additional_retry_status_codes=additional_retry_status_codes,
                 retry_after_headers=retry_after_headers,
             )
 

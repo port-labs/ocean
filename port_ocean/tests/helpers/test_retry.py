@@ -234,17 +234,6 @@ class TestRetryTransport:
             "x-ratelimit-reset",
         ]
 
-    def test_retry_transport_additional_status_codes(self) -> None:
-        transport = RetryTransport(
-            wrapped_transport=Mock(),
-            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
-        )
-
-        assert (
-            HTTPStatus.INTERNAL_SERVER_ERROR
-            in transport._retry_config.retry_status_codes
-        )
-
     def test_is_retryable_method(self) -> None:
         """Test _is_retryable_method functionality."""
         mock_transport = Mock()

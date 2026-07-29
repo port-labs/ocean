@@ -31,12 +31,10 @@ def test_port_http_client_retries_internal_server_errors(
     ):
         port_utils._get_http_client_context(MagicMock())
 
-    transport_kwargs = ocean_async_client.call_args.kwargs["transport_kwargs"]
-    assert transport_kwargs["max_backoff_wait"] == port_utils.FIVE_MINUETS
-    assert transport_kwargs["base_delay"] == 0.3
-    assert transport_kwargs["additional_retry_status_codes"] == [
-        HTTPStatus.INTERNAL_SERVER_ERROR
-    ]
+    retry_config = ocean_async_client.call_args.kwargs["retry_config"]
+    assert retry_config.max_backoff_wait == port_utils.FIVE_MINUETS
+    assert retry_config.base_delay == 0.3
+    assert HTTPStatus.INTERNAL_SERVER_ERROR in retry_config.retry_status_codes
 
 
 class TestHandlePortStatusCode:
