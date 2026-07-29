@@ -48,8 +48,6 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
             TokenRetryTransport,
             transport_kwargs={
                 "port_client": port_client,
-                "max_backoff_wait": FIVE_MINUETS,
-                "base_delay": 0.3,
             },
             retry_config=RetryConfig(
                 max_backoff_wait=FIVE_MINUETS,
