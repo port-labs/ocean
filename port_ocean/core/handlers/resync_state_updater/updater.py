@@ -105,3 +105,5 @@ class ResyncStateUpdater:
             kinds=[ocean.metrics.current_resource_kind()],
             dsp_enabled=await is_dsp_mode_enabled(),
         )
+
+        ocean.metrics.clear_sync_context()
