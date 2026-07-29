@@ -4,15 +4,14 @@ These lock in that ``build`` emits the resource ``Type`` (passed via
 ``with_type``) alongside the accumulated ``Properties`` as a JSON-native dict.
 """
 
-from pydantic.v1 import BaseModel
+from pydantic import ConfigDict
 
 from aws.core.modeling.resource_builder import ResourceBuilder
-from aws.core.modeling.resource_models import ResourceModel
+from aws.core.modeling.resource_models import ResourceModel, BaseAWSPropertiesModel
 
 
-class _FakeProperties(BaseModel):
-    class Config:
-        extra = "allow"
+class _FakeProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
 
 
 class _FakeResource(ResourceModel[_FakeProperties]):
@@ -23,7 +22,7 @@ class _FakeResource(ResourceModel[_FakeProperties]):
 class TestResourceBuilder:
     def test_build_returns_type_and_properties(self) -> None:
         result = (
-            ResourceBuilder[_FakeResource, _FakeProperties](_FakeResource)
+            ResourceBuilder[_FakeResource](_FakeResource)
             .with_properties({"Name": "example", "Size": 42})
             .with_type("Test::Override::Type")
             .build()
@@ -36,7 +35,7 @@ class TestResourceBuilder:
 
     def test_repeated_with_properties_replaces(self) -> None:
         result = (
-            ResourceBuilder[_FakeResource, _FakeProperties](_FakeResource)
+            ResourceBuilder[_FakeResource](_FakeResource)
             .with_properties({"Name": "first"})
             .with_properties({"Name": "second"})
             .with_type("Test::Fake::Resource")

@@ -1,10 +1,14 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
-class EksClusterProperties(BaseModel):
+class EksClusterProperties(BaseAWSPropertiesModel):
     accessConfig: dict[str, Any] | None = Field(default=None, alias="AccessConfig")
     arn: str = Field(default_factory=str, alias="Arn")
     certificateAuthority: dict[str, Any] | None = Field(
@@ -32,10 +36,6 @@ class EksClusterProperties(BaseModel):
     zonalShiftConfig: dict[str, Any] | None = Field(
         default=None, alias="ZonalShiftConfig"
     )
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "ignore"
 
 
 class EksCluster(ResourceModel[EksClusterProperties]):

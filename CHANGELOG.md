@@ -6,6 +6,71 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.47.0 (2026-07-29)
+
+### Deprecations
+
+- Removed `OCEAN__PROCESS_EXECUTION_MODE` configuration. Ocean always runs in single_process mode. Setting the env var logs a warning and is ignored. Removed subprocess-based resync execution and Prometheus multiprocess metrics collection.
+
+## 0.46.6 (2026-07-29)
+
+### Bug Fixes
+
+- Moved `clear_sync_context` from `sync_raw_all` finalizer into `update_after_resync` so the runtime terminal metric is sent with the correct `eventId` before it is cleared. Previously the `eventId` was wiped before `update_after_resync` ran, causing integ-service's stale-heartbeat abort consumer to miss the terminal runtime metric and incorrectly abort completed syncs.
+
+## 0.46.5 (2026-07-28)
+
+### Bug Fixes
+
+- Call patch config rather than full patch integration route when setting up a default origin integration in order to avoid double resync.
+
+## 0.46.4 (2026-07-27)
+
+### Bug Fixes
+
+- Updated external abort handling so lifecycle/lakehouse aborts cancel only the current resync work.
+
+## 0.46.3 (2026-07-27)
+
+### Bug Fixes
+
+- Remove `HTTP 400 Bad Request` from the default retry status codes. These are rather non-transient client errors and should fail immediately. Integrations that need 400 retries can opt in via `additional_retry_status_codes` in their `RetryConfig`.
+
+## 0.46.2 (2026-07-26)
+
+### Features
+
+- Wire DSP lifecycle events and sync metrics for incremental resyncs: set the metrics event ID, emit kind-level started/finished/failed notifications, pass `sync_type` and `kind_identifiers` on resync started, and clear metrics sync context when the run completes.
+
+## 0.46.1 (2026-07-23)
+
+### Bug Fixes
+
+- Wrap `get_raw_result_on_integration_sync_resource_config` in an event context (default `RESYNC`, optional `event_type` for `INCREMENTAL_RESYNC`) so integration sync tests work after incremental sync started reading `event.event_type` in `_get_resource_raw_results`.
+
+## 0.46.0 (2026-07-23)
+
+### Features
+
+- Added incremental sync infrastructure: cursor store, server-side and client-side strategies, `on_incremental_resync` handlers, and `incremental_sync_enabled` / `incremental_sync_interval` settings so integrations can sync only changes since the last cursor.
+
+## 0.45.10 (2026-07-22)
+
+### Bug Fixes
+
+- Removed misleading `Event Added To Queue` log from the Redis stream consumer; queue latency is already reported via `time_until_consumed_ms` in the Redis stream processed log.
+
+## 0.45.9 (2026-07-22)
+
+### Features
+
+- Added `port_ocean.utils.relative_time` helpers (`days_ago`, `months_ago`, `to_rfc3339`) for integration lookback selectors.
+
+## 0.45.8 (2026-07-21)
+
+### Improvements
+
+- Pass integration-run context to action-executor rate-limit checks.
 
 ## 0.45.7 (2026-07-21)
 

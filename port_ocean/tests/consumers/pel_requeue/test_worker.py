@@ -195,6 +195,7 @@ class TestPELScanAndRequeue:
 
         await worker._scan_and_requeue()
 
+        assert redis.xautoclaim.await_args is not None
         assert redis.xautoclaim.await_args.kwargs["count"] == 25
 
     @pytest.mark.asyncio

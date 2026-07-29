@@ -1,10 +1,17 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+
+from pydantic import ConfigDict, Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
-class AccountProperties(BaseModel):
+class AccountProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
+
     Id: str = Field(default_factory=str)
     Arn: str = Field(default_factory=str)
     Name: str | None = None
@@ -15,10 +22,6 @@ class AccountProperties(BaseModel):
     State: str | None = None
     JoinedTimestamp: datetime | None = None
     JoinedMethod: str | None = None
-
-    class Config:
-        extra = "allow"
-        populate_by_name = True
 
 
 class Account(ResourceModel[AccountProperties]):
