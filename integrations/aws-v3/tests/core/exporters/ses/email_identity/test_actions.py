@@ -70,9 +70,7 @@ class TestGetEmailIdentityAction:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_empty_list(
-        self, action: GetEmailIdentityAction
-    ) -> None:
+    async def test_execute_empty_list(self, action: GetEmailIdentityAction) -> None:
         """Test execution with empty identities list."""
         result = await action._execute([])
 
@@ -172,9 +170,7 @@ class TestListEmailIdentitiesAction:
         assert isinstance(action, Action)
 
     @pytest.mark.asyncio
-    async def test_execute_success(
-        self, action: ListEmailIdentitiesAction
-    ) -> None:
+    async def test_execute_success(self, action: ListEmailIdentitiesAction) -> None:
         """Test that raw list_email_identities items are returned unchanged."""
         test_identities = [
             {
@@ -196,9 +192,7 @@ class TestListEmailIdentitiesAction:
         assert result == test_identities
 
     @pytest.mark.asyncio
-    async def test_execute_empty_list(
-        self, action: ListEmailIdentitiesAction
-    ) -> None:
+    async def test_execute_empty_list(self, action: ListEmailIdentitiesAction) -> None:
         """Test execution with empty identities list."""
         result = await action._execute([])
         assert result == []

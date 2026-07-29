@@ -73,7 +73,10 @@ from aws.core.exporters.codepipeline import (
     CodePipelineActionExecutionExporter,
     PaginatedCodePipelineActionExecutionRequest,
 )
-from aws.core.exporters.ses import SesEmailIdentityExporter, PaginatedEmailIdentityRequest
+from aws.core.exporters.ses import (
+    SesEmailIdentityExporter,
+    PaginatedEmailIdentityRequest,
+)
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
