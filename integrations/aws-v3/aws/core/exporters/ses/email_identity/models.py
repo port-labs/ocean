@@ -8,9 +8,8 @@ from aws.core.modeling.resource_models import (
 
 
 class EmailIdentityProperties(BaseAWSPropertiesModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
-    EmailIdentity: str = Field(default_factory=str)
     IdentityName: str | None = None
     IdentityType: str | None = None
     SendingEnabled: bool | None = None
@@ -27,15 +26,13 @@ class EmailIdentityProperties(BaseAWSPropertiesModel):
 
 class EmailIdentity(ResourceModel[EmailIdentityProperties]):
     Type: str = "AWS::SES::EmailIdentity"
-    Properties: EmailIdentityProperties = Field(
-        default_factory=EmailIdentityProperties
-    )
+    Properties: EmailIdentityProperties = Field(default_factory=EmailIdentityProperties)
 
 
 class SingleEmailIdentityRequest(ResourceRequestModel):
     """Options for exporting a single SES email identity."""
 
-    email_identity: str = Field(
+    identity_name: str = Field(
         ..., description="The email identity (email address or domain) to export"
     )
 

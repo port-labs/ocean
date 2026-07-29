@@ -49,8 +49,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Properties.EmailIdentity
-          title: .Properties.EmailIdentity
+          identifier: .Properties.IdentityName
+          title: .Properties.IdentityName
           blueprint: '"sesEmailIdentity"'
           properties:
             identityType: .Properties.IdentityType

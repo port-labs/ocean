@@ -31,8 +31,8 @@ class TestGetEmailIdentityAction:
 
     @pytest.mark.asyncio
     async def test_execute_success(self, action: GetEmailIdentityAction) -> None:
-        """Test that the raw get_email_identity response is returned unchanged."""
-        expected_response = {
+        """Test that the raw get_email_identity response is returned unchanged, minus ResponseMetadata."""
+        domain_fields = {
             "IdentityType": "DOMAIN",
             "FeedbackForwardingStatus": True,
             "VerifiedForSendingStatus": True,
@@ -48,13 +48,22 @@ class TestGetEmailIdentityAction:
             "VerificationStatus": "SUCCESS",
             "VerificationInfo": None,
         }
-        action.client.get_email_identity.return_value = expected_response
+        action.client.get_email_identity.return_value = {
+            "ResponseMetadata": {
+                "RequestId": "f0a4d20f-1d65-4265-adee-f6ce9d88ae64",
+                "HTTPStatusCode": 200,
+                "HTTPHeaders": {"content-type": "application/x-amz-json-1.1"},
+                "RetryAttempts": 0,
+            },
+            **domain_fields,
+        }
 
-        test_identities = [{"EmailIdentity": "example.com"}]
+        test_identities = [{"IdentityName": "example.com"}]
         result = await action._execute(test_identities)
 
         assert len(result) == 1
-        assert result[0] == expected_response
+        assert result[0] == domain_fields
+        assert "ResponseMetadata" not in result[0]
 
         action.client.get_email_identity.assert_called_once_with(
             EmailIdentity="example.com"
@@ -81,7 +90,7 @@ class TestGetEmailIdentityAction:
         )
         action.client.get_email_identity.side_effect = error
 
-        test_identities = [{"EmailIdentity": "example.com"}]
+        test_identities = [{"IdentityName": "example.com"}]
         result = await action._execute(test_identities)
 
         assert result == [{}]
@@ -117,9 +126,9 @@ class TestGetEmailIdentityAction:
         action.client.get_email_identity.side_effect = mock_get_email_identity
 
         identities = [
-            {"EmailIdentity": "first.com"},
-            {"EmailIdentity": "fail.com"},
-            {"EmailIdentity": "third.com"},
+            {"IdentityName": "first.com"},
+            {"IdentityName": "fail.com"},
+            {"IdentityName": "third.com"},
         ]
 
         result = await action._execute(identities)
@@ -140,7 +149,7 @@ class TestGetEmailIdentityAction:
         )
         action.client.get_email_identity.side_effect = error
 
-        test_identities = [{"EmailIdentity": "example.com"}]
+        test_identities = [{"IdentityName": "example.com"}]
 
         with pytest.raises(ClientError):
             await action._execute(test_identities)
@@ -169,14 +178,12 @@ class TestListEmailIdentitiesAction:
         """Test that raw list_email_identities items are returned unchanged."""
         test_identities = [
             {
-                "EmailIdentity": "example.com",
                 "IdentityName": "example.com",
                 "IdentityType": "DOMAIN",
                 "SendingEnabled": True,
                 "VerificationStatus": "SUCCESS",
             },
             {
-                "EmailIdentity": "user@example.com",
                 "IdentityName": "user@example.com",
                 "IdentityType": "EMAIL_ADDRESS",
                 "SendingEnabled": False,

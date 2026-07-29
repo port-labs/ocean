@@ -28,12 +28,8 @@ class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await proxy.client.get_email_identity(  # type: ignore[attr-defined]
-                EmailIdentity=options.email_identity
-            )
-            identity = {"EmailIdentity": options.email_identity, **response}
             result = await inspector.inspect(
-                [identity],
+                [{"IdentityName": options.identity_name}],
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
@@ -55,15 +51,11 @@ class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
 
             next_token: str | None = None
             while True:
-                kwargs: dict[str, Any] = (
-                    {"NextToken": next_token} if next_token else {}
-                )
+                kwargs: dict[str, Any] = {"NextToken": next_token} if next_token else {}
                 response = await proxy.client.list_email_identities(  # type: ignore[attr-defined]
                     **kwargs
                 )
                 identities = response.get("EmailIdentities", [])
-                for identity in identities:
-                    identity["EmailIdentity"] = identity["IdentityName"]
                 if identities:
                     action_result = await inspector.inspect(
                         identities,
