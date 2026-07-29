@@ -31,7 +31,7 @@ def _lambda_create_event(function_name: str = "my-function") -> dict[str, Any]:
         "account": "111122223333",
         "region": "us-east-1",
         "detail": {
-            "eventName": "CreateFunction",
+            "eventName": "CreateFunction20150331",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"functionName": function_name},
@@ -44,7 +44,7 @@ def _lambda_delete_event(function_name: str = "my-function") -> dict[str, Any]:
         "account": "111122223333",
         "region": "us-east-1",
         "detail": {
-            "eventName": "DeleteFunction",
+            "eventName": "DeleteFunction20150331",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"functionName": function_name},

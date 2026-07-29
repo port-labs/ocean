@@ -21,17 +21,22 @@ Expected payload shape (as delivered by an EventBridge API Destination):
 }
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Any
 
-from aws.core.helpers.types import ObjectKind
+from aws.webhook.event_name_mappings import (
+    EVENT_NAME_MAPPINGS,
+    CloudTrailEventAction,
+)
 
-
-class CloudTrailEventAction(StrEnum):
-    UPSERT = "upsert"
-    DELETE = "delete"
+__all__ = [
+    "CloudTrailEventAction",
+    "EVENT_NAME_MAPPINGS",
+    "NormalizedEvent",
+    "get_event_name",
+    "is_supported_cloudtrail_event",
+    "parse_cloudtrail_event",
+]
 
 
 @dataclass(frozen=True)
@@ -42,53 +47,6 @@ class NormalizedEvent:
     region: str
     action: CloudTrailEventAction
     event_name: str
-
-
-@dataclass(frozen=True)
-class _EventNameMapping:
-    kind: str
-    action: CloudTrailEventAction
-    extract_identifier: Callable[[dict[str, Any]], str | None]
-
-
-def _extract_s3_bucket_name(detail: dict[str, Any]) -> str | None:
-    bucket_name = detail.get("requestParameters", {}).get("bucketName")
-    return bucket_name if isinstance(bucket_name, str) and bucket_name else None
-
-
-def _extract_lambda_function_name(detail: dict[str, Any]) -> str | None:
-    function_name = detail.get("requestParameters", {}).get("functionName")
-    return function_name if isinstance(function_name, str) and function_name else None
-
-
-EVENT_NAME_MAPPINGS: dict[str, _EventNameMapping] = {
-    "CreateBucket": _EventNameMapping(
-        ObjectKind.S3_BUCKET, CloudTrailEventAction.UPSERT, _extract_s3_bucket_name
-    ),
-    "DeleteBucket": _EventNameMapping(
-        ObjectKind.S3_BUCKET, CloudTrailEventAction.DELETE, _extract_s3_bucket_name
-    ),
-    "CreateFunction": _EventNameMapping(
-        ObjectKind.LAMBDA_FUNCTION,
-        CloudTrailEventAction.UPSERT,
-        _extract_lambda_function_name,
-    ),
-    "UpdateFunctionConfiguration": _EventNameMapping(
-        ObjectKind.LAMBDA_FUNCTION,
-        CloudTrailEventAction.UPSERT,
-        _extract_lambda_function_name,
-    ),
-    "UpdateFunctionCode": _EventNameMapping(
-        ObjectKind.LAMBDA_FUNCTION,
-        CloudTrailEventAction.UPSERT,
-        _extract_lambda_function_name,
-    ),
-    "DeleteFunction": _EventNameMapping(
-        ObjectKind.LAMBDA_FUNCTION,
-        CloudTrailEventAction.DELETE,
-        _extract_lambda_function_name,
-    ),
-}
 
 
 def _get_detail(payload: dict[str, Any]) -> dict[str, Any]:

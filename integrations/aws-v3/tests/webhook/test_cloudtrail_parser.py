@@ -129,18 +129,29 @@ def _lambda_eventbridge_envelope(
 
 
 def test_is_supported_cloudtrail_event_true_for_create_function() -> None:
-    payload = _lambda_eventbridge_envelope("CreateFunction")
+    payload = _lambda_eventbridge_envelope("CreateFunction20150331")
     assert is_supported_cloudtrail_event(payload) is True
 
 
 def test_is_supported_cloudtrail_event_true_for_delete_function() -> None:
-    payload = _lambda_eventbridge_envelope("DeleteFunction")
+    payload = _lambda_eventbridge_envelope("DeleteFunction20150331")
     assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_is_supported_cloudtrail_event_false_for_unversioned_lambda_names() -> None:
+    for event_name in (
+        "CreateFunction",
+        "DeleteFunction",
+        "UpdateFunctionConfiguration",
+        "UpdateFunctionCode",
+    ):
+        payload = _lambda_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is False
 
 
 def test_parse_create_function_event() -> None:
     payload = _lambda_eventbridge_envelope(
-        "CreateFunction", function_name="my-function"
+        "CreateFunction20150331", function_name="my-function"
     )
 
     parsed = parse_cloudtrail_event(payload)
@@ -149,11 +160,11 @@ def test_parse_create_function_event() -> None:
     assert parsed.kind == ObjectKind.LAMBDA_FUNCTION
     assert parsed.action == CloudTrailEventAction.UPSERT
     assert parsed.identifier == "my-function"
-    assert parsed.event_name == "CreateFunction"
+    assert parsed.event_name == "CreateFunction20150331"
 
 
 def test_parse_update_function_configuration_event() -> None:
-    payload = _lambda_eventbridge_envelope("UpdateFunctionConfiguration")
+    payload = _lambda_eventbridge_envelope("UpdateFunctionConfiguration20150331v2")
 
     parsed = parse_cloudtrail_event(payload)
 
@@ -163,7 +174,7 @@ def test_parse_update_function_configuration_event() -> None:
 
 
 def test_parse_delete_function_event() -> None:
-    payload = _lambda_eventbridge_envelope("DeleteFunction")
+    payload = _lambda_eventbridge_envelope("DeleteFunction20150331")
 
     parsed = parse_cloudtrail_event(payload)
 
@@ -173,5 +184,35 @@ def test_parse_delete_function_event() -> None:
 
 
 def test_parse_returns_none_when_function_name_missing() -> None:
-    payload = _lambda_eventbridge_envelope("CreateFunction", function_name=None)
+    payload = _lambda_eventbridge_envelope("CreateFunction20150331", function_name=None)
     assert parse_cloudtrail_event(payload) is None
+
+
+def test_is_supported_cloudtrail_event_true_for_versioned_lambda_names() -> None:
+    for event_name in (
+        "CreateFunction20150331",
+        "DeleteFunction20150331",
+        "UpdateFunctionConfiguration20150331v2",
+        "UpdateFunctionCode20150331v2",
+    ):
+        payload = _lambda_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_versioned_lambda_event_names() -> None:
+    payload = _lambda_eventbridge_envelope(
+        "DeleteFunction20150331", function_name="my-function"
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.LAMBDA_FUNCTION
+    assert parsed.action == CloudTrailEventAction.DELETE
+    assert parsed.identifier == "my-function"
+    assert parsed.event_name == "DeleteFunction20150331"
+
+
+def test_is_supported_cloudtrail_event_false_for_unrelated_lambda_prefix() -> None:
+    payload = _lambda_eventbridge_envelope("GetFunction20150331v2")
+    assert is_supported_cloudtrail_event(payload) is False
