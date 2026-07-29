@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.16.8-beta (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 2.16.7-beta (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 2.16.6-beta (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
 ## 2.16.5-beta (2026-07-27)
 
 
-### Features
+### Improvements
 
-- Added DynamoDB Table support by fetching table metadata and tags concurrently per region, enabling customers to track table status, billing mode, item count, size, encryption type, and deletion protection directly in Port. Backup and PITR status is available as an optional action (`GetTableBackupStatusAction`).
+- Improve "ADDING NEW KINDS" instructions
 
 
 ## 2.16.4-beta (2026-07-27)

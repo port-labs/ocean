@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
@@ -8,13 +10,15 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.utils.json_compat import make_json_compatible
+from port_ocean.context.event import event as current_event
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     LakehouseDataEntryBatch,
     LakehouseEventType,
     ProcessingMode,
 )
+from port_ocean.core.utils.json_compat import make_json_compatible
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.version import __version__ as ocean_core_version
@@ -241,6 +245,26 @@ class IntegrationClientMixin:
         handle_port_status_code(response)
         return response.json()["integration"]
 
+    async def patch_integration_config(
+        self,
+        port_app_config: PortAppConfig | None,
+        skip_resync: bool = False,
+    ) -> dict:
+        logger.info(
+            f"Updating config of integration with id: {self.integration_identifier}"
+        )
+        headers = await self.auth.headers()
+        if skip_resync:
+            headers["x-skip-resync"] = "true"
+
+        response = await self.client.patch(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/config",
+            headers=headers,
+            json={"config": port_app_config.to_request()},
+        )
+        handle_port_status_code(response)
+        return response.json()["integration"]
+
     async def post_integration_sync_metrics(
         self, metrics: list[dict[str, Any]]
     ) -> None:
@@ -418,6 +442,20 @@ class IntegrationClientMixin:
             extensions={"retryable": True},
         )
         handle_port_status_code(response, should_raise=True, should_log=True)
+        try:
+            payload = response.json()
+        except Exception:
+            payload = {}
+        if isinstance(payload, dict) and payload.get("count") == 0:
+            logger.warning(
+                "Lakehouse reported zero pending inserts for raw data batch, aborting current resync"
+            )
+            try:
+                current_event.abort(external_abort=True)
+            except EventContextNotFoundError:
+                logger.warning(
+                    "Lakehouse aborted response received without active event context"
+                )
         logger.debug("Finished POST raw data batch request")
 
     async def get_integration_cursor(self, kind: str, index: int) -> Optional[datetime]:
