@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.371 (2026-07-28)
+## 0.1.374 (2026-07-29)
 
 
 ### Features
 
-- Added `gcpCloudFunction` kind to support syncing resources from external HTTP endpoints implementing the Fivetran Cloud Function Sync protocol. Configurable via `functionUrl`, `resource`, and `secrets` selector fields. GCP OIDC authentication is used automatically for private Cloud Run services.
+- Added `gcpCloudFunction` kind to support syncing resources from external HTTP endpoints implementing the Fivetran Cloud Function Sync protocol. Configurable via `functionUrl` and `resource` selector fields. GCP OIDC authentication is used automatically for private Cloud Run services. Secrets are passed via the integration-level `secret` config field (env var) rather than the Port mapping.
+
+
+## 0.1.373 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.1.372 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.1.371 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
 
 
 ## 0.1.370 (2026-07-27)
