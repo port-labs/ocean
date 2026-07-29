@@ -703,10 +703,6 @@ async def test_handle_webhook_does_not_call_log_webhook_event_when_events_debug_
     mock_log_webhook_event.assert_not_called()
 
 
-# /* Test modified by an AI
-#    this human has read it and takes full responsibility over it:
-#    NOBODY
-# */
 @pytest.mark.asyncio
 async def test_handle_webhook_reraises_client_disconnect(
     processor_manager: LiveEventsProcessorManager,
