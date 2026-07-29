@@ -11,10 +11,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.context.ocean import ocean
 
-from core.catalog import (
-    fetch_run_raw_for_catalog,
-    try_upsert_entity,
-)
+from core.catalog import normalize_raw_for_catalog
+from core.options import GetRunOptions
+from exporter_factory import create_runs_exporter
 from integration import ObjectKind
 from clients.client_factory import create_cursor_agents_client
 from webhook_processors.abstract_webhook_processor import (
@@ -22,8 +21,7 @@ from webhook_processors.abstract_webhook_processor import (
 )
 from webhook_processors.utils import (
     parse_webhook_timestamp,
-    resolve_cursor_run_id_for_webhook,
-    resolve_tracked_run,
+    resolve_newest_run_id_at_or_before,
 )
 
 # v0 webhook `status` values, mirroring `apps/workflow-service/.../postCursorCallback.ts`.
@@ -60,6 +58,19 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return []
 
+    async def _register_catalog_entity(
+        self, kind: str, raw: dict[str, object], *, console_host: str | None
+    ) -> None:
+        try:
+            await ocean.register_raw(
+                kind,
+                [normalize_raw_for_catalog(kind, raw, console_host=console_host)],
+            )
+        except Exception as error:
+            logger.warning(
+                f"Failed to upsert {kind} into the catalog (continuing): {error}"
+            )
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig | None
     ) -> WebhookEventRawResults:
@@ -67,10 +78,20 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
         status = payload.get("status")
 
         webhook_time = parse_webhook_timestamp(payload)
-        cursor_run_id = await resolve_cursor_run_id_for_webhook(agent_id, webhook_time)
-        run = await resolve_tracked_run(agent_id, cursor_run_id)
-        success = status == "FINISHED"
-        summary = payload.get("summary")
+        cursor_run_id = await resolve_newest_run_id_at_or_before(agent_id, webhook_time)
+
+        run = None
+        if cursor_run_id:
+            candidate = await ocean.port_client.find_run_by_external_id(cursor_run_id)
+            if candidate and ocean.port_client.is_run_in_progress(candidate):
+                run = candidate
+        if run is None:
+            candidate = await ocean.port_client.find_run_by_external_id(agent_id)
+            if candidate and ocean.port_client.is_run_in_progress(candidate):
+                run = candidate
+
+        client = create_cursor_agents_client()
+        console_host = client.get_console_host()
 
         if run is None:
             logger.info(
@@ -78,7 +99,30 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
                 f"(resolved Cursor run id={cursor_run_id}); "
                 f"webhook status {status} - upserting catalog entities only"
             )
-        elif isinstance(run, WorkflowNodeRun):
+            await self._register_catalog_entity(
+                ObjectKind.AGENT, dict(payload), console_host=console_host
+            )
+            if cursor_run_id is not None and isinstance(status, str):
+                runs_exporter = create_runs_exporter()
+                run_raw = await runs_exporter.get_resource(
+                    GetRunOptions(
+                        agent_id=agent_id,
+                        run_id=cursor_run_id,
+                        status=status,
+                        updated_at=webhook_time,
+                    )
+                )
+                await self._register_catalog_entity(
+                    ObjectKind.RUN, run_raw, console_host=console_host
+                )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        success = status == "FINISHED"
+        summary = payload.get("summary")
+
+        if isinstance(run, WorkflowNodeRun):
             output_update: dict[str, object] = {
                 "status": status,
                 "summary": summary,
@@ -88,34 +132,35 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
                 output_update["runId"] = cursor_run_id
             run.output.update(output_update)
 
-        client = create_cursor_agents_client()
-        console_host = client.get_console_host()
-        await try_upsert_entity(
+        await self._register_catalog_entity(
             ObjectKind.AGENT, dict(payload), console_host=console_host
         )
         if cursor_run_id is not None and isinstance(status, str):
-            run_raw = await fetch_run_raw_for_catalog(
-                client,
-                agent_id,
-                cursor_run_id,
-                status=status,
-                updated_at=webhook_time,
+            runs_exporter = create_runs_exporter()
+            run_raw = await runs_exporter.get_resource(
+                GetRunOptions(
+                    agent_id=agent_id,
+                    run_id=cursor_run_id,
+                    status=status,
+                    updated_at=webhook_time,
+                )
             )
-            await try_upsert_entity(ObjectKind.RUN, run_raw)
+            await self._register_catalog_entity(
+                ObjectKind.RUN, run_raw, console_host=console_host
+            )
 
-        if run is not None:
-            logger.info(
-                f"Reporting run {run.id} as {'success' if success else 'failure'} "
-                f"from Cursor agent {agent_id} webhook (status={status}, "
-                f"cursorRunId={cursor_run_id})",
-                run_id=run.id,
-                agent_id=agent_id,
-                cursor_run_id=cursor_run_id,
-            )
-            await ocean.port_client.report_run_completed(
-                run,
-                success,
-                summary or f"Cursor agent {agent_id} finished with status {status}",
-            )
+        logger.info(
+            f"Reporting run {run.id} as {'success' if success else 'failure'} "
+            f"from Cursor agent {agent_id} webhook (status={status}, "
+            f"cursorRunId={cursor_run_id})",
+            run_id=run.id,
+            agent_id=agent_id,
+            cursor_run_id=cursor_run_id,
+        )
+        await ocean.port_client.report_run_completed(
+            run,
+            success,
+            summary or f"Cursor agent {agent_id} finished with status {status}",
+        )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

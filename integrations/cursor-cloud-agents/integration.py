@@ -1,4 +1,5 @@
 from enum import StrEnum
+from datetime import datetime
 from typing import Literal
 
 from pydantic.v1 import Field
@@ -34,6 +35,24 @@ class RunSelector(Selector):
             "Whether to include runs for archived agents. Controls the agent "
             "list used when fanning out to List Runs (Cursor has no separate "
             "includeArchived flag on List Runs)."
+        ),
+    )
+    enrich_runs_with_usage: bool = Field(
+        default=True,
+        alias="enrichRunsWithUsage",
+        title="Enrich runs with usage",
+        description=(
+            "When true, fetches token usage per agent and merges it into each run "
+            "during sync. Set to false to skip usage API calls."
+        ),
+    )
+    oldest_run_date: datetime | None = Field(
+        default=None,
+        alias="oldestRunDate",
+        title="Oldest run date",
+        description=(
+            "When set (UTC), stops paginating runs for each agent once a run "
+            "older than this cutoff is reached. Runs are returned newest-first."
         ),
     )
 

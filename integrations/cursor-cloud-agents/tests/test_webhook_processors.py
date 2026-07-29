@@ -13,6 +13,8 @@ from port_ocean.core.models import WorkflowNodeRun
 import core.webhook_signing as webhook_signing
 from core.webhook_signing import derive_webhook_secret
 from integration import ObjectKind
+from core.exporters.agents_exporter import AgentsExporter
+from core.exporters.runs_exporter import RunsExporter
 from webhook_processors.cursor_agent_webhook_processor import (
     CursorAgentWebhookProcessor,
 )
@@ -81,19 +83,22 @@ def _patch_handle_event(mock_ocean: MagicMock, client_mock: MagicMock) -> ExitSt
     stack.enter_context(
         patch("webhook_processors.cursor_agent_webhook_processor.ocean", mock_ocean)
     )
-    stack.enter_context(patch("webhook_processors.utils.ocean", mock_ocean))
-    stack.enter_context(patch("core.catalog.ocean", mock_ocean))
-    stack.enter_context(patch("core.catalog.event_context", _noop_event_context))
     stack.enter_context(
         patch(
-            "webhook_processors.utils.create_cursor_agents_client",
+            "webhook_processors.cursor_agent_webhook_processor.create_cursor_agents_client",
             return_value=client_mock,
         )
     )
     stack.enter_context(
         patch(
-            "webhook_processors.cursor_agent_webhook_processor.create_cursor_agents_client",
-            return_value=client_mock,
+            "webhook_processors.utils.create_runs_exporter",
+            return_value=RunsExporter(client_mock, AgentsExporter(client_mock)),
+        )
+    )
+    stack.enter_context(
+        patch(
+            "webhook_processors.cursor_agent_webhook_processor.create_runs_exporter",
+            return_value=RunsExporter(client_mock, AgentsExporter(client_mock)),
         )
     )
     return stack

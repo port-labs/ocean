@@ -24,7 +24,7 @@ configurations:
     type: string
     required: false
     sensitive: true
-    description: Optional secret used to sign and verify Cursor v0 agent status webhooks. When set, the integration derives a per-run signing secret and validates the X-Webhook-Signature header on incoming webhooks. When unset, webhook signature verification is skipped. Generate a random string (for example with openssl rand -hex 32) and store it as an organization secret during installation.
+    description: Optional secret used to sign and verify Cursor v0 agent status webhooks. When set, the integration derives a per-run signing secret and validates the X-Webhook-Signature header on incoming webhooks. When unset, webhook signature verification is skipped. Generate a random string (for example with openssl rand -hex 32).
   - name: cursorApiHost
     type: url
     required: false
@@ -37,11 +37,6 @@ configurations:
     sensitive: false
     default: https://cursor.com
     description: The host of the Cursor console, used to build agent links in action run output. If not specified, the default will be https://cursor.com.
-  - name: cursorPageSize
-    type: integer
-    required: false
-    default: 20
-    description: Number of records fetched per page for paginated Cursor endpoints (max 100). Lower values reduce per-request load and tighten error scoping; higher values reduce sync duration.
 actionsProcessingEnabled: true
 actions:
   - name: create_agent

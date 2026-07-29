@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from collections.abc import AsyncIterator
+from typing import Any
 
 from clients.cursor_agents_client import CursorAgentsClient
 
@@ -12,7 +12,12 @@ class AbstractCursorExporter(ABC):
         self.client = client
 
     @abstractmethod
-    def get_paginated_resources(
-        self, *, include_archived: bool = False
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources(
+        self, options: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        if False:
+            yield []
+        raise NotImplementedError
+
+    async def get_resource(self, options: Any) -> dict[str, Any] | None:
         raise NotImplementedError

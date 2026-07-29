@@ -7,9 +7,8 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.models import IntegrationRun
-
 from clients.client_factory import create_cursor_agents_client
-from core.catalog import upsert_raw_entity
+from core.catalog import normalize_raw_for_catalog
 
 
 class AbstractCursorExecutor(AbstractExecutor):
@@ -20,22 +19,29 @@ class AbstractCursorExecutor(AbstractExecutor):
     def __init__(self) -> None:
         self.client = create_cursor_agents_client()
 
-    async def is_close_to_rate_limit(self) -> bool:
+    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         """The Cursor Cloud Agents API doesn't expose rate-limit state via
         response headers (see `CursorAgentsClient`), so there's nothing to
         check proactively here - `429`/`5xx` backoff is handled reactively by
         Ocean's retryable HTTP transport on each request."""
         return False
 
-    async def get_remaining_seconds_until_rate_limit(self) -> float:
+    async def get_remaining_seconds_until_rate_limit(
+        self, run: IntegrationRun
+    ) -> float:
         return 0.0
 
     async def register_entity(
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
         try:
-            await upsert_raw_entity(
-                kind, raw, console_host=self.client.get_console_host()
+            await ocean.register_raw(
+                kind,
+                [
+                    normalize_raw_for_catalog(
+                        kind, raw, console_host=self.client.get_console_host()
+                    )
+                ],
             )
         except Exception as error:
             message = f"Failed to upsert {kind} into the catalog (continuing): {error}"

@@ -1,9 +1,21 @@
 """Pytest configuration and fixtures."""
 
 from collections.abc import Generator
+from typing import Any, Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
+import port_ocean.utils.cache as cache_module
+
+
+def _noop_cache_iterator_result(*_args: Any, **_kwargs: Any) -> Callable[[Any], Any]:
+    def decorator(fn: Any) -> Any:
+        return fn
+
+    return decorator
+
+
+cache_module.cache_iterator_result = _noop_cache_iterator_result
 
 
 @pytest.fixture(autouse=True)

@@ -17,6 +17,6 @@ def create_cursor_agents_client() -> CursorAgentsClient:
         api_host=integration_config["cursor_api_host"],
         api_key=integration_config["cursor_api_key"],
         console_host=integration_config["cursor_console_host"],
-        page_size=int(integration_config.get("cursor_page_size") or DEFAULT_PAGE_SIZE),
+        page_size=DEFAULT_PAGE_SIZE,
     )
     return _cursor_agents_client

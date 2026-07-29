@@ -8,4 +8,5 @@ def create_agents_exporter() -> AgentsExporter:
 
 
 def create_runs_exporter() -> RunsExporter:
-    return RunsExporter(create_cursor_agents_client())
+    client = create_cursor_agents_client()
+    return RunsExporter(client, AgentsExporter(client))

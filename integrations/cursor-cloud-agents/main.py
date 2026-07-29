@@ -6,28 +6,29 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from actions.registry import register_action_executors
+from core.options import ListAgentOptions, ListRunOptions
 from exporter_factory import create_agents_exporter, create_runs_exporter
 from integration import AgentResourceConfig, ObjectKind, RunResourceConfig
 
 
 @ocean.on_resync(ObjectKind.AGENT)
 async def on_resync_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    selector = cast(AgentResourceConfig, event.resource_config).selector
+    options = ListAgentOptions.from_resource_config(
+        cast(AgentResourceConfig, event.resource_config)
+    )
     exporter = create_agents_exporter()
-    async for page in exporter.get_paginated_resources(
-        include_archived=selector.include_archived
-    ):
+    async for page in exporter.get_paginated_resources(options):
         if page:
             yield page
 
 
 @ocean.on_resync(ObjectKind.RUN)
 async def on_resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    selector = cast(RunResourceConfig, event.resource_config).selector
+    options = ListRunOptions.from_resource_config(
+        cast(RunResourceConfig, event.resource_config)
+    )
     exporter = create_runs_exporter()
-    async for page in exporter.get_paginated_resources(
-        include_archived=selector.include_archived
-    ):
+    async for page in exporter.get_paginated_resources(options):
         if page:
             yield page
 

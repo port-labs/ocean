@@ -8,8 +8,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 from core.webhook_signing import (
+    _get_webhook_signing_secret,
     derive_webhook_secret,
-    get_webhook_signing_secret,
     verify_hmac_signature,
 )
 from webhook_processors.utils import extract_port_run_id_from_request
@@ -28,7 +28,7 @@ class AbstractCursorWebhookProcessor(AbstractWebhookProcessor):
     """
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        if get_webhook_signing_secret() is None:
+        if _get_webhook_signing_secret() is None:
             logger.warning(
                 "Skipping webhook signature verification because "
                 "webhookSigningSecret is not configured"

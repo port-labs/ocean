@@ -61,9 +61,16 @@ def _patch_common(mock_ocean: MagicMock, *executor_modules: str) -> list[Any]:
     patches.append(patch("actions.abstract_executor.ocean", mock_ocean))
     patches.append(patch("actions.utils.ocean", mock_ocean))
     patches.append(patch("core.webhook_signing.ocean", mock_ocean))
-    patches.append(patch("core.catalog.ocean", mock_ocean))
-    patches.append(patch("core.catalog.event_context", _noop_event_context))
     return patches
+
+
+def _patch_v0_runs_exporter(runs: list[dict[str, object]]) -> Any:
+    runs_exporter = MagicMock()
+    runs_exporter.list_first_page = AsyncMock(return_value=runs)
+    return patch(
+        "actions.create_agent.v0_handler.create_runs_exporter",
+        return_value=runs_exporter,
+    )
 
 
 def _apply(patches: list[Any]) -> None:
@@ -98,7 +105,11 @@ async def test_create_agent_executor_uses_v1_by_default() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
+    )
     _apply(patches)
     try:
         await executor.execute(run)
@@ -159,13 +170,12 @@ async def test_create_agent_executor_v0_tracked_with_webhook() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.update_run_started = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[{"id": "run-1", "status": "CREATING"}]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([{"id": "run-1", "status": "CREATING"}]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -229,13 +239,12 @@ async def test_create_agent_executor_v0_without_tracking_completes_immediately()
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[{"id": "run-1", "status": "CREATING"}]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([{"id": "run-1", "status": "CREATING"}]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -280,7 +289,11 @@ async def test_create_agent_executor_v0_tracked_requires_base_url() -> None:
     }
 
     mock_ocean = _build_mock_ocean(base_url=None)
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
+    )
     _apply(patches)
     try:
         with pytest.raises(
@@ -313,13 +326,12 @@ async def test_create_agent_executor_v0_tracked_works_without_webhook_signing_se
     mock_ocean = _build_mock_ocean()
     mock_ocean.integration_config = {}
     mock_ocean.port_client.update_run_started = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[{"id": "run-1", "status": "CREATING"}]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([{"id": "run-1", "status": "CREATING"}]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -352,13 +364,12 @@ async def test_create_agent_executor_allows_v1_config_on_v0() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -399,7 +410,11 @@ async def test_create_agent_executor_allows_prompt_in_config_only() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
+    )
     _apply(patches)
     try:
         await executor.execute(run)
@@ -430,13 +445,12 @@ async def test_create_agent_executor_v0_allows_missing_source() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -466,13 +480,12 @@ async def test_create_agent_executor_v0_uses_model_id_string_from_config() -> No
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -508,13 +521,12 @@ async def test_create_agent_executor_v0_uses_model_object_from_config() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -551,13 +563,12 @@ async def test_create_agent_executor_v0_uses_webhook_from_config() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
-    patches.append(
-        patch(
-            "actions.create_agent_executor.list_first_runs_page",
-            AsyncMock(return_value=[]),
-        )
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
     )
+    patches.append(_patch_v0_runs_exporter([]))
     _apply(patches)
     try:
         await executor.execute(run)
@@ -641,7 +652,11 @@ async def test_create_agent_executor_v1_allows_env_config_without_repository() -
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
+    )
     _apply(patches)
     try:
         await executor.execute(run)
@@ -694,7 +709,11 @@ async def test_create_agent_executor_reports_cursor_api_error_on_v1_failure() ->
     }
 
     mock_ocean = _build_mock_ocean()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
+    )
     _apply(patches)
     try:
         with pytest.raises(ActionExecutionError, match="invalid_model.*composer-2.5"):
@@ -719,7 +738,11 @@ async def test_create_agent_executor_reports_failure_on_v1_error() -> None:
     }
 
     mock_ocean = _build_mock_ocean()
-    patches = _patch_common(mock_ocean, "actions.create_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean,
+        "actions.create_agent.v0_handler.ocean",
+        "actions.create_agent.v1_handler.ocean",
+    )
     _apply(patches)
     try:
         with pytest.raises(ActionExecutionError, match="boom"):
@@ -934,8 +957,9 @@ async def test_trigger_agent_executor_allows_unknown_config_keys() -> None:
 @pytest.mark.asyncio
 async def test_abstract_executor_is_never_close_to_rate_limit() -> None:
     executor = _build_executor(CreateAgentExecutor, MagicMock())
-    assert await executor.is_close_to_rate_limit() is False
-    assert await executor.get_remaining_seconds_until_rate_limit() == 0.0
+    run = MagicMock()
+    assert await executor.is_close_to_rate_limit(run) is False
+    assert await executor.get_remaining_seconds_until_rate_limit(run) == 0.0
 
 
 @pytest.mark.asyncio
@@ -950,8 +974,6 @@ async def test_register_entity_posts_warn_log_on_catalog_failure() -> None:
 
     patches = [
         patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("core.catalog.ocean", mock_ocean),
-        patch("core.catalog.event_context", _noop_event_context),
     ]
     _apply(patches)
     try:

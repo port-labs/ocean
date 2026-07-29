@@ -30,7 +30,7 @@ async def _get_org_id() -> str:
     return _org_id_cache
 
 
-def get_webhook_signing_secret() -> str | None:
+def _get_webhook_signing_secret() -> str | None:
     value = ocean.integration_config.get("webhook_signing_secret")
     if isinstance(value, str) and value:
         return value
@@ -38,7 +38,7 @@ def get_webhook_signing_secret() -> str | None:
 
 
 async def derive_webhook_secret(run_id: str) -> str | None:
-    signing_secret = get_webhook_signing_secret()
+    signing_secret = _get_webhook_signing_secret()
     if signing_secret is None:
         return None
     org_id = await _get_org_id()
