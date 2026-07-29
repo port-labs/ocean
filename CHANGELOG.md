@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.46.6 (2026-07-29)
+
+### Bug Fixes
+
+- Retry transient HTTP 500 responses from the Port API client.
+
 ## 0.46.5 (2026-07-28)
 
 ### Bug Fixes

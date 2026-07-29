@@ -1,16 +1,38 @@
 from io import StringIO
+from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
 import pytest
 import httpx
 from loguru import logger
+from werkzeug.local import LocalStack
 
+import port_ocean.clients.port.utils as port_utils
 from port_ocean.clients.port.utils import (
     OCEAN_INFO_PREFIX,
     get_event_context_params,
     handle_port_status_code,
 )
 from port_ocean.context.event import EventType, event_context
+
+
+def test_port_http_client_retries_internal_server_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(port_utils, "_http_client", LocalStack())
+
+    with (
+        patch("port_ocean.clients.port.utils.OceanAsyncClient") as ocean_async_client,
+        patch("port_ocean.clients.port.utils.ocean"),
+        patch(
+            "port_ocean.clients.port.utils.resolve_verify_param",
+            return_value=True,
+        ),
+    ):
+        port_utils._get_http_client_context(MagicMock())
+
+    retry_config = ocean_async_client.call_args.kwargs["retry_config"]
+    assert HTTPStatus.INTERNAL_SERVER_ERROR in retry_config.retry_status_codes
 
 
 class TestHandlePortStatusCode:
