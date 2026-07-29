@@ -18,7 +18,7 @@ class EmailIdentityProperties(BaseAWSPropertiesModel):
     DkimAttributes: dict[str, Any] | None = None
     MailFromAttributes: dict[str, Any] | None = None
     Policies: dict[str, Any] | None = None
-    Tags: list[dict[str, str]] = Field(default_factory=list)
+    Tags: list[dict[str, str]] | None = None
     ConfigurationSetName: str | None = None
     VerificationStatus: str | None = None
     VerificationInfo: dict[str, Any] | None = None

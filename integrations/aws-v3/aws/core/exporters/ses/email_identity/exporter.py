@@ -1,6 +1,9 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.ses.email_identity.actions import SesEmailIdentityActionsMap
+from aws.core.exporters.ses.email_identity.actions import (
+    EmailIdentityRecord,
+    SesEmailIdentityActionsMap,
+)
 from aws.core.exporters.ses.email_identity.models import EmailIdentity
 from aws.core.exporters.ses.email_identity.models import (
     SingleEmailIdentityRequest,
@@ -14,7 +17,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
+class SesEmailIdentityExporter(IResourceExporter[list[EmailIdentityRecord]]):
     _service_name: SupportedServices = "sesv2"
     _model_cls: Type[EmailIdentity] = EmailIdentity
     _actions_map: Type[SesEmailIdentityActionsMap] = SesEmailIdentityActionsMap
@@ -29,7 +32,7 @@ class SesEmailIdentityExporter(IResourceExporter[list[dict[str, Any]]]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             result = await inspector.inspect(
-                [{"IdentityName": options.identity_name}],
+                [EmailIdentityRecord(IdentityName=options.identity_name)],
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
