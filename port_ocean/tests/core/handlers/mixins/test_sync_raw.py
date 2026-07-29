@@ -1864,7 +1864,7 @@ async def test_sync_raw_all_dsp_notifies_resync_started_with_mapping(
     lifecycle_client.notify_resync_finished.assert_awaited_once()
     finished_kwargs = lifecycle_client.notify_resync_finished.await_args.kwargs
     assert "sync_type" not in finished_kwargs
-    assert mock_ocean.metrics.event_id == ""
+    assert mock_ocean.metrics.event_id != ""
 
 
 @pytest.mark.asyncio

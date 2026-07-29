@@ -1495,6 +1495,5 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             "Lifecycle abort poll task failed during cleanup",
                             error=str(e),
                         )
-                ocean.metrics.clear_sync_context()
                 await ocean.app.cache_provider.clear()
                 ocean.port_client.clear_blueprint_cache()

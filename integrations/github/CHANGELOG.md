@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.7.3 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 6.7.2 (2026-07-28)
+
+
+### Improvements
+
+- Omit unset repository filters from default Skill path schema entries.
+
+
 ## 6.7.1 (2026-07-28)
 
 

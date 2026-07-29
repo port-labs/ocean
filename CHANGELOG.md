@@ -12,6 +12,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Removed `OCEAN__PROCESS_EXECUTION_MODE` configuration. Ocean always runs in single_process mode. Setting the env var logs a warning and is ignored. Removed subprocess-based resync execution and Prometheus multiprocess metrics collection.
 
+## 0.46.6 (2026-07-29)
+
+### Bug Fixes
+
+- Moved `clear_sync_context` from `sync_raw_all` finalizer into `update_after_resync` so the runtime terminal metric is sent with the correct `eventId` before it is cleared. Previously the `eventId` was wiped before `update_after_resync` ran, causing integ-service's stale-heartbeat abort consumer to miss the terminal runtime metric and incorrectly abort completed syncs.
+
 ## 0.46.5 (2026-07-28)
 
 ### Bug Fixes
