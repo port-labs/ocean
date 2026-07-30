@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.17.1-beta (2026-07-30)
+
+
+### Features
+
+- Added SNS Topic support by fetching topic attributes and tags concurrently per region, enabling customers to track topic configuration, subscription counts, FIFO status, encryption, and tracing directly in Port. Tags are available as an optional action (`GetTopicTagsAction`).
+
+
 ## 2.17.0-beta (2026-07-30)
 
 
