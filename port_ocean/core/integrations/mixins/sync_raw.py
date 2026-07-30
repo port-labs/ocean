@@ -876,20 +876,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     dsp_enabled=dsp_enabled,
                 )
 
-                if dsp_enabled and resync_id:
-                    if ocean.metrics.sync_state == SyncState.FAILED:
-                        await ocean.app.lifecycle_client.notify_failed(
-                            event_id=resync_id,
-                            granularity=GranularityType.KIND,
-                            kind_identifier=resource_kind_id,
-                        )
-                    else:
-                        await ocean.app.lifecycle_client.notify_finished(
-                            event_id=resync_id,
-                            integration_type=ocean.config.integration.type,
-                            granularity=GranularityType.KIND,
-                            kind_identifier=resource_kind_id,
-                        )
+            if dsp_enabled and resync_id:
+                if ocean.metrics.sync_state == SyncState.FAILED:
+                    await ocean.app.lifecycle_client.notify_failed(
+                        event_id=resync_id,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
+                else:
+                    await ocean.app.lifecycle_client.notify_finished(
+                        event_id=resync_id,
+                        integration_type=ocean.config.integration.type,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
 
             return kind_results
 

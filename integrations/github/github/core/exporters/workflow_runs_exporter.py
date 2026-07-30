@@ -19,12 +19,6 @@ WORKFLOW_RUN_INCREMENTAL = ServerSideTimestampStrategy(
     value_prefix=">=",
 )
 
-WORKFLOW_RUN_INCREMENTAL = ServerSideTimestampStrategy(
-    param_key="created",
-    date_format="%Y-%m-%dT%H:%M:%SZ",
-    value_prefix=">=",
-)
-
 
 def build_workflow_run_params(options: ListWorkflowRunOptions) -> dict[str, Any]:
     params: dict[str, Any] = {}

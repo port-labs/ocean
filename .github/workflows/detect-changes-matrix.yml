@@ -43,8 +43,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Get list of changed files
         id: changed-files
