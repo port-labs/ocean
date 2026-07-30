@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.16.12-beta (2026-07-30)
+
+
+### Improvements
+
+- Added support for AWS::SES::EmailIdentity kind resource
+
+
+## 2.16.11-beta (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
 ## 2.16.10-beta (2026-07-29)
 
 
