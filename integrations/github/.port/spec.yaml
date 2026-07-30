@@ -35,7 +35,7 @@ configurations:
     type: url
     description: For Github Enterprise users, if Github url is not passed, the default Github API "api.github.com" will be used.
   - name: deploymentMode
-    description: How to connect to Github.
+    description: A GitHub App (recommended) acts as its own identity with scoped permissions, while a PAT acts as a specific user.
     required: false
     type: string
     enum: ["Github App", "Personal Access Token"]
