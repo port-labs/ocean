@@ -33,6 +33,7 @@ class ObjectKind(StrEnum):
     CODEPIPELINE_PIPELINE_EXECUTION = "AWS::CodePipeline::PipelineExecution"
     CODEPIPELINE_ACTION_EXECUTION = "AWS::CodePipeline::ActionExecution"
     SES_EMAIL_IDENTITY = "AWS::SES::EmailIdentity"
+    DYNAMODB_TABLE = "AWS::DynamoDB::Table"
 
 
 SupportedServices = Literal[
@@ -52,4 +53,5 @@ SupportedServices = Literal[
     "codedeploy",
     "codepipeline",
     "sesv2",
+    "dynamodb",
 ]
