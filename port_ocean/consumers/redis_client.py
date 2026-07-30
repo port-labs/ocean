@@ -25,5 +25,5 @@ async def create_redis_client(url: str, **kwargs: Any) -> RedisClient:
         await client.aclose()
         raise
 
-    logger.debug("Using standalone Redis client")
+    logger.info("Using standalone Redis client")
     return client
