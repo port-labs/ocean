@@ -1,4 +1,4 @@
-from typing import Literal, Optional, List
+from typing import Any, Literal, Optional, List, Type
 from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -45,7 +45,18 @@ class CheckmarxOneScanModel(BaseModel):
         return to_rfc3339(days_ago(self.since), timespec="microseconds")
 
 
-class CheckmarxOneResultSelector(Selector):
+class CheckmarxOneNestedFilterSelector(Selector):
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            for field in model.__fields__.values():
+                if isinstance(field.default, BaseModel):
+                    schema["properties"][field.alias]["default"] = field.default.dict(
+                        by_alias=True, exclude_none=True
+                    )
+
+
+class CheckmarxOneResultSelector(CheckmarxOneNestedFilterSelector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         title="Scan Filter",
@@ -86,7 +97,7 @@ class CheckmarxOneResultSelector(Selector):
     )
 
 
-class CheckmarxOneSastSelector(Selector):
+class CheckmarxOneSastSelector(CheckmarxOneNestedFilterSelector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         title="Scan Filter",
@@ -151,7 +162,7 @@ class CheckmarxOneSastSelector(Selector):
     )
 
 
-class CheckmarxOneApiSecSelector(Selector):
+class CheckmarxOneApiSecSelector(CheckmarxOneNestedFilterSelector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         title="Scan Filter",
@@ -195,7 +206,7 @@ class CheckmarxOneSastResourcesConfig(ResourceConfig):
     )
 
 
-class CheckmarxOneKicsSelector(Selector):
+class CheckmarxOneKicsSelector(CheckmarxOneNestedFilterSelector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         title="Scan Filter",
@@ -326,7 +337,7 @@ class CheckmarxOneDastScanResultFilter(BaseModel):
     )
 
 
-class CheckmarxOneDastScanResultSelector(Selector):
+class CheckmarxOneDastScanResultSelector(CheckmarxOneNestedFilterSelector):
     dast_scan_filter: CheckmarxOneDastScanModel = Field(
         default=CheckmarxOneDastScanModel(),
         title="DAST Scan Filter",
