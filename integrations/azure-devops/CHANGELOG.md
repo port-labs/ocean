@@ -7,6 +7,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.41 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.10.40 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.10.39 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.10.38 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.10.37 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.10.36 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.10.35 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.10.34 (2026-07-23)
+
+
+### Features
+
+- Added a `trigger_pipeline` integration action that runs an Azure DevOps pipeline and reports its completion status back to Port via the pipeline run-state-changed service hook (Single Account mode). Queue-time variables are wrapped in the Azure DevOps API `{ "value": <value> }` format, and `reportPipelineStatus` defaults to enabled when the input is omitted.
+
+
+## 0.10.33 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.10.32 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.10.31 (2026-07-22)
+
+
+### Improvements
+
+- Use shared Ocean relative time helpers for pull request lookback selectors.
+
+
+## 0.10.30 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.10.29 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
 ## 0.10.28 (2026-07-21)
 
 

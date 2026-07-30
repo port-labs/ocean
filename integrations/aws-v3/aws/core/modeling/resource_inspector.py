@@ -98,7 +98,7 @@ class ResourceInspector[
 
         resources = []
         for resource_props in resource_data.values():
-            builder = ResourceBuilder[ResourceModelT, Any](model_cls)
+            builder = ResourceBuilder[ResourceModelT](model_cls)
             builder.with_properties(resource_props)
             if extra_context:
                 builder.with_extra_context(extra_context)

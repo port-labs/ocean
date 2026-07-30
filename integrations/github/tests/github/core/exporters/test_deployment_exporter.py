@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+from datetime import datetime, timezone
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
@@ -8,6 +9,7 @@ from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_DEPLOYMENTS = [
     {
@@ -177,6 +179,78 @@ class TestRestDeploymentExporter:
         assert "__commitCount" not in by_id[1]["__firstCommit"]
         assert by_id[2]["__firstCommit"]["__sha"] == "deploy_old"
         assert by_id[2]["__commitCount"] == 1
+
+    async def test_enrich_first_commit_respects_incremental_cursor(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        deployments = [
+            {
+                "id": 1,
+                "environment": "production",
+                "sha": "deploy_new",
+                "created_at": "2026-06-02T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "environment": "production",
+                "sha": "deploy_old",
+                "created_at": "2026-05-01T00:00:00Z",
+            },
+        ]
+        pages_yielded = 0
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal pages_yielded
+            pages_yielded += 1
+            yield deployments
+            pages_yielded += 1
+            yield deployments
+
+        def mock_api(resource: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+            if "/compare/" in resource:
+                return {
+                    "files": [],
+                    "total_commits": 1,
+                    "commits": [
+                        {
+                            "sha": "commit_early",
+                            "commit": {"committer": {"date": "2026-06-01T13:00:00Z"}},
+                        },
+                    ],
+                }
+            return {
+                "sha": "deploy_old",
+                "commit": {"committer": {"date": "2026-05-01T00:00:00Z"}},
+            }
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            with patch.object(
+                rest_client,
+                "send_api_request",
+                new_callable=AsyncMock,
+                side_effect=mock_api,
+            ):
+                async with event_context("test_event"):
+                    with with_active_incremental_cursor(cursor):
+                        exporter = RestDeploymentExporter(rest_client)
+                        collected: list[dict[str, Any]] = []
+                        async for batch in exporter.get_paginated_resources(
+                            ListDeploymentsOptions(
+                                organization="test-org",
+                                repo_name="test-repo",
+                                enrich_with_first_commit=True,
+                            )
+                        ):
+                            collected.extend(batch)
+
+        assert [deployment["id"] for deployment in collected] == [1]
+        assert collected[0]["__firstCommit"]["__sha"] == "commit_early"
+        assert pages_yielded == 1
 
     async def test_get_paginated_resources_without_first_commit_skips_compare(
         self, rest_client: GithubRestClient

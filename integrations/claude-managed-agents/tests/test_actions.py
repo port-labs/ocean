@@ -91,7 +91,7 @@ async def test_is_close_to_rate_limit_false_when_no_status_cached() -> None:
     client_mock = _rate_limit_client_mock()
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
-    assert await executor.is_close_to_rate_limit() is False
+    assert await executor.is_close_to_rate_limit(MagicMock()) is False
 
 
 @pytest.mark.asyncio
@@ -110,7 +110,7 @@ async def test_is_close_to_rate_limit_false_with_healthy_headroom() -> None:
     )
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
-    assert await executor.is_close_to_rate_limit() is False
+    assert await executor.is_close_to_rate_limit(MagicMock()) is False
 
 
 @pytest.mark.asyncio
@@ -124,7 +124,7 @@ async def test_is_close_to_rate_limit_true_when_create_pool_nearly_exhausted() -
     )
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
-    assert await executor.is_close_to_rate_limit() is True
+    assert await executor.is_close_to_rate_limit(MagicMock()) is True
 
 
 @pytest.mark.asyncio
@@ -147,7 +147,7 @@ async def test_is_close_to_rate_limit_true_when_read_pool_nearly_exhausted() -> 
     )
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
-    assert await executor.is_close_to_rate_limit() is True
+    assert await executor.is_close_to_rate_limit(MagicMock()) is True
 
 
 @pytest.mark.asyncio
@@ -157,7 +157,7 @@ async def test_get_remaining_seconds_until_rate_limit_zero_when_no_status_cached
     client_mock = _rate_limit_client_mock()
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
-    assert await executor.get_remaining_seconds_until_rate_limit() == 0.0
+    assert await executor.get_remaining_seconds_until_rate_limit(MagicMock()) == 0.0
 
 
 @pytest.mark.asyncio
@@ -168,7 +168,7 @@ async def test_get_remaining_seconds_until_rate_limit_matches_reset_window() -> 
     )
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
-    remaining = await executor.get_remaining_seconds_until_rate_limit()
+    remaining = await executor.get_remaining_seconds_until_rate_limit(MagicMock())
     assert 40 <= remaining <= 42
 
 
@@ -191,7 +191,7 @@ async def test_get_remaining_seconds_until_rate_limit_waits_for_slower_pool() ->
     )
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
-    remaining = await executor.get_remaining_seconds_until_rate_limit()
+    remaining = await executor.get_remaining_seconds_until_rate_limit(MagicMock())
     assert 40 <= remaining <= 42
 
 
@@ -211,7 +211,7 @@ async def test_get_remaining_seconds_until_rate_limit_ignores_healthy_pool() -> 
     )
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
-    remaining = await executor.get_remaining_seconds_until_rate_limit()
+    remaining = await executor.get_remaining_seconds_until_rate_limit(MagicMock())
     assert 8 <= remaining <= 10
 
 
@@ -227,7 +227,7 @@ async def test_is_close_to_rate_limit_false_once_reset_time_has_passed() -> None
     )
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
-    assert await executor.is_close_to_rate_limit() is False
+    assert await executor.is_close_to_rate_limit(MagicMock()) is False
 
 
 @pytest.mark.asyncio

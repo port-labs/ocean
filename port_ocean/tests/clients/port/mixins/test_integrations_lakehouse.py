@@ -13,6 +13,7 @@ from port_ocean.core.models import (
     LakehouseEventType,
     LakehouseOperation,
 )
+from port_ocean.context.event import EventType, event_context
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse_batch
@@ -579,6 +580,36 @@ async def test_post_integration_raw_data_batch_serializes_datetime_values(
     assert entry["items"][0]["created_at"] == created_at.isoformat()
     assert entry["request"]["fetched_at"] == created_at.isoformat()
     assert entry["response"]["received_at"] == created_at.isoformat()
+
+
+async def test_post_integration_raw_data_batch_aborts_resync_on_zero_pending_count(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-abort"
+    kind = "repository"
+
+    response = MagicMock()
+    response.status_code = 200
+    response.is_error = False
+    response.json.return_value = {"ok": True, "count": 0}
+    lakehouse_integration_client.client.post.return_value = response
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={},
+        ) as current_event:
+            assert not current_event.aborted
+            batch_event = make_single_entry_lakehouse_batch(
+                raw_data, kind=kind, index=0
+            )
+            await lakehouse_integration_client.post_integration_raw_data_batch(
+                sync_id,
+                batch_event,
+            )
+            assert current_event.aborted
 
 
 @pytest.mark.asyncio

@@ -80,13 +80,6 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         response.raise_for_status()
         return response.json()
 
-    async def get_installation_id_for_organization(self, organization: str) -> str:
-        url = f"{self.github_host}/users/{organization}/installation"
-        headers = (await self.get_headers()).as_dict()
-        response = await self.client.get(url, headers=headers)
-        response.raise_for_status()
-        return str(response.json()["id"])
-
     async def fetch_installation_access_token(
         self, installation_id: str
     ) -> GitHubToken:

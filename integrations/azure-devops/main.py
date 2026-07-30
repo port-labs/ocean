@@ -66,6 +66,7 @@ from azure_devops.webhooks.webhook_processors.test_run_webhook_processor import 
 from azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor import (
     ReleaseDeploymentWebhookProcessor,
 )
+from azure_devops.actions.registry import register_actions_executors
 from integration import (
     AzureDevopsBuildConfig,
     AzureDevopsPipelineResourceConfig,
@@ -512,3 +513,5 @@ ocean.add_webhook_processor("/webhook", ReleaseWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseDefinitionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseDeploymentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", TestRunWebhookProcessor)
+
+register_actions_executors()

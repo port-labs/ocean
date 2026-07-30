@@ -1,10 +1,14 @@
 from datetime import datetime
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class PipelineProperties(BaseModel):
+class PipelineProperties(BaseAWSPropertiesModel):
     artifactStore: dict[str, Any] | None = Field(default=None, alias="ArtifactStore")
     artifactStores: dict[str, dict[str, Any]] | None = Field(
         default=None, alias="ArtifactStores"
@@ -22,10 +26,6 @@ class PipelineProperties(BaseModel):
     updated: datetime | None = Field(default=None, alias="Updated")
     variables: list[dict[str, Any]] | None = Field(default=None, alias="Variables")
     version: int | None = Field(default=None, alias="Version")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class Pipeline(ResourceModel[PipelineProperties]):

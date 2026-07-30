@@ -24,7 +24,6 @@ from port_ocean.consumers.redis_stream_utils import is_missing_stream_or_group_e
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
-    LiveEventTimestamp,
     WebhookEvent,
     WebhookRequestAdapter,
 )
@@ -301,7 +300,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 original_request=original_request,
             )
 
-            webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
             await self._on_message(webhook_path, webhook_event)
         except Exception as error:
             logger.exception(

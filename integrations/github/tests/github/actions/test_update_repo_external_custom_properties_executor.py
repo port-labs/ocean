@@ -1,6 +1,6 @@
 """Tests for UpdateRepoExternalCustomPropertiesExecutor."""
 
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -74,12 +74,14 @@ def mock_port_client() -> MagicMock:
 
 
 @pytest.fixture
-def executor(mock_rest_client: MagicMock) -> UpdateRepoExternalCustomPropertiesExecutor:
+def executor(
+    mock_rest_client: MagicMock,
+) -> Generator[UpdateRepoExternalCustomPropertiesExecutor, None, None]:
     with patch(
-        "github.actions.abstract_github_executor.create_github_client",
-        return_value=mock_rest_client,
+        "github.actions.update_repo_external_custom_properties_executor.create_github_client_for_org",
+        new=AsyncMock(return_value=mock_rest_client),
     ):
-        return UpdateRepoExternalCustomPropertiesExecutor()
+        yield UpdateRepoExternalCustomPropertiesExecutor()
 
 
 class TestUpdateRepoExternalCustomPropertiesExecutor:
