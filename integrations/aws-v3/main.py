@@ -79,6 +79,8 @@ from aws.core.exporters.ses import (
 )
 from aws.core.exporters.dynamodb import DynamoDBTableExporter
 from aws.core.exporters.dynamodb.table.models import PaginatedTableRequest
+from aws.core.exporters.sns import SNSTopicExporter
+from aws.core.exporters.sns.topic.models import PaginatedTopicRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -445,6 +447,15 @@ async def resync_ses_email_identity(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_dynamodb_table(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, DynamoDBTableExporter, PaginatedTableRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.SNS_TOPIC)
+async def resync_sns_topic(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, SNSTopicExporter, PaginatedTopicRequest, regional=True
     )
     async for batch in service:
         yield batch

@@ -308,6 +308,13 @@ class AWSDynamoDBTableResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSSNSTopicResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SNS::Topic"] = Field(
+        title="AWS SNS Topic",
+        description="AWS SNS Topic resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -341,6 +348,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodePipelineActionExecutionResourceConfig
         | AWSSESEmailIdentityResourceConfig
         | AWSDynamoDBTableResourceConfig
+        | AWSSNSTopicResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
