@@ -176,6 +176,7 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
         create_port_resources_origin: CreatePortResourcesOrigin = CreatePortResourcesOrigin.Ocean,
         actions_processing_enabled: Optional[bool] = False,
+        incremental_sync_enabled: Optional[bool] = False,
     ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -186,6 +187,7 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
             "config": {},
             "actionsProcessingEnabled": actions_processing_enabled,
+            "incrementalSyncEnabled": incremental_sync_enabled,
             "createPortResourcesOrigin": create_port_resources_origin.value,
         }
 
@@ -216,6 +218,7 @@ class IntegrationClientMixin:
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
         actions_processing_enabled: Optional[bool] = None,
+        incremental_sync_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
         processing_mode: ProcessingMode | None = None,
     ) -> dict:
@@ -230,6 +233,8 @@ class IntegrationClientMixin:
             json["arePortResourcesInitialized"] = are_port_resources_initialized
         if actions_processing_enabled is not None:
             json["actionsProcessingEnabled"] = actions_processing_enabled
+        if incremental_sync_enabled is not None:
+            json["incrementalSyncEnabled"] = incremental_sync_enabled
         if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
         if processing_mode is not None:
