@@ -1,5 +1,9 @@
+from dataclasses import dataclass
 from typing import cast
 
+from aws.core.exporters.exporter_metadata import kind_to_export_metadata
+from aws.core.interfaces.exporter import IResourceExporter
+from aws.core.modeling.resource_models import ResourceRequestModel
 from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
@@ -413,15 +417,16 @@ async def resync_codepipeline_pipeline_execution(
         yield batch
 
 
-@ocean.on_resync(ObjectKind.CODEPIPELINE_ACTION_EXECUTION)
-async def resync_codepipeline_action_execution(
-    kind: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodePipelineActionExecutionExporter,
-        PaginatedCodePipelineActionExecutionRequest,
-        regional=True,
-    )
-    async for batch in service:
+@ocean.on_resync()
+async def resync_standard_objects(kind: ObjectKind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind not in kind_to_export_metadata:
+        return
+
+    metadata = kind_to_export_metadata[kind]
+    async for batch in ResyncAWSService(
+        kind=kind,
+        exporter_cls=metadata.exporter,
+        request_cls=metadata.paginated_request_model,
+        regional=kind_to_export_metadata[kind].regional,
+    ):
         yield batch
