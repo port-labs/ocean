@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 
 from fastapi import APIRouter, Request
 from loguru import logger
+from starlette.requests import ClientDisconnect
 import asyncio
 import base64
 import json
@@ -406,6 +407,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                     self._log_webhook_event(webhook_event)
                 await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
+            except ClientDisconnect:
+                logger.warning("Webhook client disconnected before event was queued")
+                raise
             except Exception as e:
                 logger.exception(f"Error processing webhook: {str(e)}")
                 return {"status": "error", "message": str(e)}
