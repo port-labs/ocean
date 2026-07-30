@@ -99,15 +99,6 @@ async def cleanup_aws_sessions() -> None:
     await clear_aws_account_sessions()
 
 
-@ocean.on_resync(ObjectKind.S3_BUCKET)
-async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, S3BucketExporter, PaginatedBucketRequest, regional=False
-    )
-    async for batch in service:
-        yield batch
-
-
 @ocean.on_resync(ObjectKind.EC2_INSTANCE)
 async def resync_ec2_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
