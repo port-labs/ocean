@@ -63,26 +63,3 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
-  - kind: AWS::SNS::Topic
-    selector:
-      query: 'true'
-      includeActions:
-        - GetTopicTagsAction
-    port:
-      entity:
-        mappings:
-          identifier: .Properties.TopicArn
-          title: .Properties.TopicName
-          blueprint: '"snsTopic"'
-          properties:
-            topicArn: .Properties.TopicArn
-            displayName: .Properties.DisplayName
-            fifoTopic: .Properties.FifoTopic
-            subscriptionsConfirmed: .Properties.SubscriptionsConfirmed
-            subscriptionsPending: .Properties.SubscriptionsPending
-            kmsMasterKeyId: .Properties.KmsMasterKeyId
-            tracingConfig: .Properties.TracingConfig
-            region: .__ExtraContext.Region
-            tags: .Properties.Tags
-          relations:
-            account: .__ExtraContext.AccountId
