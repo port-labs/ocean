@@ -6,7 +6,7 @@ resources:
       entity:
         mappings:
           identifier: .Properties.TopicArn
-          title: .Properties.TopicName
+          title: .Properties.TopicArn | split(":") | last
           blueprint: '"snsTopic"'
           properties:
             topicArn: .Properties.TopicArn

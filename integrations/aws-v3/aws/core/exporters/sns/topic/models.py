@@ -7,10 +7,9 @@ from aws.core.modeling.resource_models import (
 
 
 class TopicProperties(BaseAWSPropertiesModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     TopicArn: str = Field(default_factory=str)
-    TopicName: str = Field(default_factory=str)
     Owner: str | None = None
     DisplayName: str | None = None
     Policy: str | None = None

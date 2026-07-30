@@ -8,7 +8,6 @@ from aws.core.helpers.utils import execute_concurrent_aws_operations
 @dataclass
 class TopicIdentifier:
     topic_arn: str
-    topic_name: str
 
 
 @dataclass
@@ -19,10 +18,7 @@ class SNSTopicActionInput(BaseActionInput[TopicIdentifier]):
 
 class ListTopicsAction(Action[SNSTopicActionInput]):
     async def _execute(self, resources: SNSTopicActionInput) -> list[dict[str, Any]]:
-        return [
-            {"TopicArn": topic.topic_arn, "TopicName": topic.topic_name}
-            for topic in resources.items
-        ]
+        return [{"TopicArn": topic.topic_arn} for topic in resources.items]
 
 
 class GetTopicAttributesAction(Action[SNSTopicActionInput]):

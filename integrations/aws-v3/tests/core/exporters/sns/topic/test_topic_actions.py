@@ -20,13 +20,7 @@ def _make_input(
     account_id: str = "123456789012",
 ) -> SNSTopicActionInput:
     return SNSTopicActionInput(
-        items=[
-            TopicIdentifier(
-                topic_arn=arn,
-                topic_name=arn.rsplit(":", 1)[-1],
-            )
-            for arn in arns
-        ],
+        items=[TopicIdentifier(topic_arn=arn) for arn in arns],
         region=region,
         account_id=account_id,
     )
@@ -57,13 +51,9 @@ class TestListTopicsAction:
         result = await action._execute(action_input)
 
         assert len(result) == 2
-        assert result[0] == {
-            "TopicArn": "arn:aws:sns:us-east-1:123456789012:my-topic",
-            "TopicName": "my-topic",
-        }
+        assert result[0] == {"TopicArn": "arn:aws:sns:us-east-1:123456789012:my-topic"}
         assert result[1] == {
-            "TopicArn": "arn:aws:sns:us-east-1:123456789012:my-topic.fifo",
-            "TopicName": "my-topic.fifo",
+            "TopicArn": "arn:aws:sns:us-east-1:123456789012:my-topic.fifo"
         }
 
     @pytest.mark.asyncio

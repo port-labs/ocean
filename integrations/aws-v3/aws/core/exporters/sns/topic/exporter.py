@@ -29,13 +29,11 @@ class SNSTopicExporter(IResourceExporter[SNSTopicActionInput]):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            topic_name = options.topic_arn.rsplit(":", 1)[-1]
             result = await inspector.inspect(
                 SNSTopicActionInput(
                     items=[
                         TopicIdentifier(
                             topic_arn=options.topic_arn,
-                            topic_name=topic_name,
                         )
                     ],
                     region=options.region,
@@ -63,11 +61,7 @@ class SNSTopicExporter(IResourceExporter[SNSTopicActionInput]):
             async for topics in paginator.paginate():
                 if topics:
                     topic_items = [
-                        TopicIdentifier(
-                            topic_arn=topic["TopicArn"],
-                            topic_name=topic["TopicArn"].rsplit(":", 1)[-1],
-                        )
-                        for topic in topics
+                        TopicIdentifier(topic_arn=topic["TopicArn"]) for topic in topics
                     ]
                     result = await inspector.inspect(
                         SNSTopicActionInput(

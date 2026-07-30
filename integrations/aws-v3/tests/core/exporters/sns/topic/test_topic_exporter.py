@@ -46,7 +46,6 @@ class TestSNSTopicExporter:
 
         mock_topic_data = {
             "TopicArn": "arn:aws:sns:us-east-1:123456789012:my-topic",
-            "TopicName": "my-topic",
             "Owner": "123456789012",
             "SubscriptionsConfirmed": "3",
         }
@@ -63,7 +62,7 @@ class TestSNSTopicExporter:
 
         assert isinstance(result, dict)
         assert result["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:my-topic"
-        assert result["TopicName"] == "my-topic"
+        assert result["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:my-topic"
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.sns.topic.exporter.AioBaseClientProxy")
@@ -124,12 +123,10 @@ class TestSNSTopicExporter:
         mock_topic_data = [
             {
                 "TopicArn": "arn:aws:sns:us-east-1:123456789012:topic-1",
-                "TopicName": "topic-1",
                 "Owner": "123456789012",
             },
             {
                 "TopicArn": "arn:aws:sns:us-east-1:123456789012:topic-2.fifo",
-                "TopicName": "topic-2.fifo",
                 "Owner": "123456789012",
             },
         ]
@@ -146,8 +143,10 @@ class TestSNSTopicExporter:
             results.extend(page)
 
         assert len(results) == 2
-        assert results[0]["TopicName"] == "topic-1"
-        assert results[1]["TopicName"] == "topic-2.fifo"
+        assert results[0]["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:topic-1"
+        assert (
+            results[1]["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:topic-2.fifo"
+        )
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.sns.topic.exporter.AioBaseClientProxy")
