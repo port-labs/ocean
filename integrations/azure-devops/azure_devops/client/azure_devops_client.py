@@ -2897,6 +2897,7 @@ class AzureDevopsClient(HTTPBaseClient):
         while window_start < now:
             window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
             params = {
+                "includeRunDetails": True,
                 **API_PARAMS,
                 "minLastUpdatedDate": window_start.isoformat(),
                 "maxLastUpdatedDate": window_end.isoformat(),

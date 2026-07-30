@@ -69,7 +69,7 @@ class HTTPBaseClient:
                     params=params,
                     headers=headers,
                 )
-                if response.status_code == 404:
+                if response.status_code == 404 and not raise_on_404:
                     logger.warning(
                         f"Couldn't access url: {url}. Failed due to 404 error"
                     )

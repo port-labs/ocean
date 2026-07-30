@@ -166,9 +166,9 @@ async def test_fetch_test_runs_incremental_uses_date_window_params(
                 pass
 
     assert captured_params
+    assert captured_params[0]["includeRunDetails"] is True
     assert captured_params[0]["minLastUpdatedDate"] == CURSOR.isoformat()
     assert "maxLastUpdatedDate" in captured_params[0]
-    assert "includeRunDetails" not in captured_params[0]
 
 
 @pytest.mark.asyncio
