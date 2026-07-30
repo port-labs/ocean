@@ -259,8 +259,6 @@ class CheckmarxOneContainersResourcesConfig(ResourceConfig):
     )
 
 
-
-
 class CheckmarxOneDastScanModel(BaseModel):
     scan_type: Optional[Literal["DAST", "DASTAPI"]] = Field(
         alias="scanType",
@@ -408,7 +406,9 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         | CheckmarxOneDastScanResultResourcesConfig
         | CheckmarxOneApplicationResourcesConfig
         | CheckmarxOneProjectResourcesConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class CheckmarxOneIntegration(BaseIntegration):
