@@ -294,6 +294,13 @@ class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSSESEmailIdentityResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SES::EmailIdentity"] = Field(
+        title="AWS SES Email Identity",
+        description="AWS SES Email Identity resource kind.",
+    )
+
+
 class AWSDynamoDBTableResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::DynamoDB::Table"] = Field(
         title="AWS DynamoDB Table",
@@ -332,6 +339,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodePipelineActionResourceConfig
         | AWSCodePipelinePipelineExecutionResourceConfig
         | AWSCodePipelineActionExecutionResourceConfig
+        | AWSSESEmailIdentityResourceConfig
         | AWSDynamoDBTableResourceConfig
     ] = Field(
         default_factory=list,
