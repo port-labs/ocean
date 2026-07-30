@@ -262,7 +262,9 @@ class ServicenowWebhookClient(ServicenowClient):
 
         parent_sys_id = await self._create_rest_message_parent(webhook_url)
         if not parent_sys_id:
-            logger.warning("REST Message parent creation failed, aborting webhook setup")
+            logger.warning(
+                "REST Message parent creation failed, aborting webhook setup"
+            )
             return None
 
         if not await self._create_rest_message_function(parent_sys_id, webhook_url):
@@ -313,7 +315,9 @@ class ServicenowWebhookClient(ServicenowClient):
         """Create or update the Authorization header on the REST Message function."""
         function_sys_id = await self._find_rest_message_function(parent_sys_id)
         if not function_sys_id:
-            logger.warning("Cannot upsert auth header — REST Message function not found")
+            logger.warning(
+                "Cannot upsert auth header — REST Message function not found"
+            )
             return False
         existing_header_sys_id = await self._get_existing_auth_header(function_sys_id)
 
