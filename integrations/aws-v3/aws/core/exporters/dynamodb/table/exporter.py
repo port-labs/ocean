@@ -15,7 +15,6 @@ from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.utils import RegionHelper
-from loguru import logger
 
 
 class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
@@ -63,29 +62,23 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
             partition = RegionHelper.get_partition()
 
             async for table_names in paginator.paginate():
-                if table_names:
-                    table_items = [
-                        TableIdentifier(
-                            table_name=table_name,
-                            table_arn=f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{table_name}",
-                        )
-                        for table_name in table_names
-                    ]
-                    result = await inspector.inspect(
-                        DynamoDBTableActionInput(
-                            items=table_items,
-                            region=options.region,
-                            account_id=options.account_id,
-                        ),
-                        options.include,
-                        extra_context={
-                            "AccountId": options.account_id,
-                            "Region": options.region,
-                        },
+                table_items = [
+                    TableIdentifier(
+                        table_name=table_name,
+                        table_arn=f"arn:{partition}:dynamodb:{options.region}:{options.account_id}:table/{table_name}",
                     )
-                    yield result
-                else:
-                    logger.debug(
-                        f"No tables returned from paginator for region {options.region}, yielding empty batch"
-                    )
-                    yield []
+                    for table_name in table_names
+                ]
+                result = await inspector.inspect(
+                    DynamoDBTableActionInput(
+                        items=table_items,
+                        region=options.region,
+                        account_id=options.account_id,
+                    ),
+                    options.include,
+                    extra_context={
+                        "AccountId": options.account_id,
+                        "Region": options.region,
+                    },
+                )
+                yield result
