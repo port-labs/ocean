@@ -1,0 +1,121 @@
+{
+  "identifier": "sqsQueue",
+  "title": "SQS Queue",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "arn": {
+        "type": "string",
+        "title": "Arn"
+      },
+      "region": {
+        "type": "string",
+        "title": "Region"
+      },
+      "queueUrl": {
+        "type": "string",
+        "format": "url",
+        "title": "Queue Url"
+      },
+      "approximateNumberOfMessages": {
+        "type": "number",
+        "title": "Approximate Number of Messages"
+      },
+      "visibilityTimeout": {
+        "type": "number",
+        "title": "Visibility Timeout"
+      },
+      "messageRetentionPeriod": {
+        "type": "number",
+        "title": "Message Retention Period"
+      },
+      "sqsManagedSseEnabled": {
+        "type": "boolean",
+        "title": "Sqs Managed Sse Enabled",
+        "default": false
+      },
+      "approximateNumberOfMessagesNotVisible": {
+        "type": "number",
+        "title": "Approximate Number Of Messages Not Visible"
+      },
+      "approximateNumberOfMessagesDelayed": {
+        "type": "number",
+        "title": "Approximate Number Of Messages Delayed"
+      },
+      "createdTimestamp": {
+        "type": "string",
+        "title": "Created Timestamp"
+      },
+      "lastModifiedTimestamp": {
+        "type": "string",
+        "title": "Last Modified Timestamp"
+      },
+      "maximumMessageSize": {
+        "type": "number",
+        "title": "MaximumMessageSize"
+      },
+      "delaySeconds": {
+        "type": "number",
+        "title": "Delay Seconds"
+      },
+      "receiveMessageWaitTimeSeconds": {
+        "type": "number",
+        "title": "Receive Message Wait Time Seconds"
+      },
+      "policy": {
+        "type": "string",
+        "title": "Policy"
+      },
+      "redrivePolicy": {
+        "type": "string",
+        "title": "Redrive Policy"
+      },
+      "redriveAllowPolicy": {
+        "type": "string",
+        "title": "Redrive Allow Policy"
+      },
+      "kmsMasterKeyId": {
+        "type": "string",
+        "title": "Kms Master Key Id"
+      },
+      "kmsDataKeyReusePeriodSeconds": {
+        "type": "number",
+        "title": "Kms Data Key Reuse Period Seconds"
+      },
+      "fifoQueue": {
+        "type": "boolean",
+        "title": "Fifo Queue",
+        "default": false
+      },
+      "contentBasedDeduplication": {
+        "type": "boolean",
+        "title": "Content Based Deduplication",
+        "default": false
+      },
+      "deduplicationScope": {
+        "type": "string",
+        "title": "Deduplication Scope"
+      },
+      "fifoThroughputLimit": {
+        "type": "string",
+        "title": "Fifo Throughput Limit"
+      },
+      "tags": {
+        "type": "object",
+        "title": "Tags"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

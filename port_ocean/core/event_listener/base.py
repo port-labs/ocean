@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import TypedDict, Callable, Any, Awaitable
 
-from pydantic import Extra
+from pydantic.v1 import Extra
 
 from port_ocean.config.base import BaseOceanModel
 from port_ocean.core.models import EventListenerType

@@ -1,0 +1,19 @@
+{
+  "identifier": "project-name:01fcf672-b1bd-4c23-b372-20634cd03045",
+  "title": "project-name - Build 1",
+  "properties": {
+    "arn": "arn:aws:codebuild:eu-west-1:123456789012:build/project-name:01fcf672-b1bd-4c23-b372-20634cd03045",
+    "projectName": "project-name",
+    "buildNumber": 1,
+    "buildStatus": "SUCCEEDED",
+    "currentPhase": "COMPLETED",
+    "startTime": "2026-05-31T09:56:30.410000+03:00",
+    "endTime": "2026-05-31T09:56:38.431000+03:00",
+    "buildComplete": true,
+    "initiator": "AWSReservedSSO_PowerUserAccess_123456789012/user@domain.com"
+  },
+  "relations": {
+    "account": "123456789012"
+  },
+  "icon": "AWS"
+}

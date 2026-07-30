@@ -59,12 +59,24 @@ class PortMockResponder:
             "/v1/entities/search",
             self._handle_search_entities,
         )
+        self.transport.add_route(
+            "POST",
+            "/v1/blueprints/entities/datasource-entities",
+            self._handle_datasource_entities,
+        )
 
         # Bulk entity upsert — must be before generic blueprints route
         self.transport.add_route(
             "POST",
             "/entities/bulk",
             self._handle_bulk_upsert,
+        )
+
+        # Bulk entity delete — must be before single entity upsert
+        self.transport.add_route(
+            "POST",
+            r"/v1/blueprints/[^/]+/bulk/entities/delete",
+            self._handle_bulk_delete,
         )
 
         # Single entity upsert (fallback)
@@ -144,6 +156,16 @@ class PortMockResponder:
         """Handle POST /v1/entities/search — returns entities for reconciliation diff."""
         return {"json": {"ok": True, "entities": self.search_entities_response}}
 
+    def _handle_datasource_entities(self, request: httpx.Request) -> dict[str, Any]:
+        """Handle POST /v1/blueprints/entities/datasource-entities for reconciliation."""
+        return {
+            "json": {
+                "ok": True,
+                "entities": self.search_entities_response,
+                "next": None,
+            }
+        }
+
     def _handle_integration(self, request: httpx.Request) -> dict[str, Any]:
         return {
             "json": {
@@ -169,6 +191,9 @@ class PortMockResponder:
                     "metricAttributes": {
                         "ingestId": "test-ingest",
                         "ingestUrl": "http://localhost:5555/logs/test",
+                    },
+                    "ingestAttributes": {
+                        "ingestUrl": "http://localhost:5555/ingest/test",
                     },
                 }
             }
@@ -228,6 +253,32 @@ class PortMockResponder:
             self.deleted_entities.append(deleted_entity)
 
         return {"json": {"ok": True}}
+
+    def _handle_bulk_delete(self, request: httpx.Request) -> dict[str, Any]:
+        url_path = str(request.url.path)
+        url_segments = [
+            segment for segment in url_path.strip("/").split("/") if segment
+        ]
+
+        # extract blueprint from /v1/blueprints/{blueprint}/bulk/entities/delete
+        BLUEPRINT_ID_INDEX = 2
+        blueprint = (
+            url_segments[BLUEPRINT_ID_INDEX]
+            if len(url_segments) > BLUEPRINT_ID_INDEX
+            else "unknown"
+        )
+
+        body = json_lib.loads(request.content.decode("utf-8"))
+        identifiers = body.get("entities", [])
+
+        for identifier in identifiers:
+            deleted_entity = {
+                "identifier": identifier,
+                "blueprint": blueprint,
+            }
+            self.deleted_entity_ids.append(identifier)
+            self.deleted_entities.append(deleted_entity)
+        return {"json": {"ok": True, "deletedEntities": identifiers}}
 
     def _handle_blueprint(self, request: httpx.Request) -> dict[str, Any]:
         url_path = str(request.url.path)

@@ -170,3 +170,6 @@ junit/*
 
 # Ocean Cache
 .ocean_cache/
+
+# macOS
+.DS_Store

@@ -5,6 +5,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
+from rate_limiter import ServiceNowRateLimiter
 
 PAGE_SIZE = 100
 
@@ -19,6 +20,7 @@ class ServicenowClient:
         self.table_base_url = f"{self.servicenow_url}/api/now/table"
         self.authenticator = authenticator
         self.http_client = http_async_client
+        self._rate_limiter = ServiceNowRateLimiter()
 
     async def _ensure_auth_headers(self) -> None:
         """Update HTTP client headers with current authentication."""
@@ -32,16 +34,18 @@ class ServicenowClient:
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
     ) -> Optional[httpx.Response]:
-        await self._ensure_auth_headers()
+        response = None
         try:
-            response = await self.http_client.request(
-                url=url,
-                params=params,
-                method=method,
-                json=json_data,
-            )
-            response.raise_for_status()
-            return response
+            async with self._rate_limiter:
+                await self._ensure_auth_headers()
+                response = await self.http_client.request(
+                    url=url,
+                    params=params,
+                    method=method,
+                    json=json_data,
+                )
+                response.raise_for_status()
+                return response
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.error(f"HTTP error occurred while fetching record: {str(e)}")
@@ -55,6 +59,9 @@ class ServicenowClient:
                 f"HTTP error occurred while fetching Servicenow data: {str(e)}"
             )
             raise
+        finally:
+            if response is not None:
+                await self._rate_limiter.update_from_headers(response.headers)
 
     async def get_record_by_sys_id(
         self, table_name: str, sys_id: str

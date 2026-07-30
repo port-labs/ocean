@@ -4,6 +4,7 @@ from typing import cast, Any, Dict
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from gitlab.actions.registry import register_actions_executors
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -15,9 +16,16 @@ from gitlab.clients.utils import (
     build_project_params,
     build_branch_params,
 )
-from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
+from gitlab.helpers.utils import (
+    ObjectKind,
+    build_search_query,
+    enrich_resources_with_project,
+)
+from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
 from integration import (
     GitLabFilesResourceConfig,
+    GitLabSkillResourceConfig,
+    GitLabPluginResourceConfig,
     GroupResourceConfig,
     ProjectResourceConfig,
     GitLabFoldersResourceConfig,
@@ -31,8 +39,10 @@ from integration import (
     TagResourceConfig,
     GitlabIssueResourceConfig,
     BranchResourceConfig,
+    GitlabDeploymentResourceConfig,
 )
 
+from gitlab.webhook.constants import WEBHOOK_PATH
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
 )
@@ -43,6 +53,7 @@ from gitlab.webhook.webhook_processors.group_webhook_processor import (
     GroupWebhookProcessor,
 )
 from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
+from gitlab.webhook.webhook_factory.project_webhook_factory import ProjectWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
@@ -61,6 +72,12 @@ from gitlab.webhook.webhook_processors.group_with_member_webhook_processor impor
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.skill_push_webhook_processor import (
+    SkillPushWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.plugin_push_webhook_processor import (
+    PluginPushWebhookProcessor,
+)
 from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
 )
@@ -78,6 +95,9 @@ from gitlab.webhook.webhook_processors.release_webhook_processor import (
 )
 from gitlab.webhook.webhook_processors.branch_webhook_processor import (
     BranchWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.deployment_webhook_processor import (
+    DeploymentWebhookProcessor,
 )
 from gitlab.clients.options import IssueOptions
 
@@ -114,10 +134,15 @@ async def on_start() -> None:
         return
 
     if base_url := ocean.app.base_url:
-        logger.info(f"Creating webhooks for all groups at {base_url}")
         client = create_gitlab_client()
-        webhook_factory = GroupWebHook(client, base_url)
-        await webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for all groups at {base_url}")
+        group_webhook_factory = GroupWebHook(client, base_url)
+        await group_webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for personal namespace projects at {base_url}")
+        project_webhook_factory = ProjectWebHook(client, base_url)
+        await project_webhook_factory.create_webhooks_for_personal_projects()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -196,6 +221,11 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(PipelineResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
 
+    params = (
+        selector.api_query_params.generate_query_params()
+        if selector.api_query_params
+        else None
+    )
     async for projects_batch in client.get_projects(
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
@@ -210,7 +240,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         }
 
         async for pipelines_batch in client.get_projects_resource(
-            projects_batch, "pipelines"
+            projects_batch, "pipelines", params=params
         ):
             if pipelines_batch:
                 enriched_pipelines = enrich_resources_with_project(
@@ -230,6 +260,12 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(JobResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
 
+    pipeline_params = (
+        selector.pipeline_query_params.generate_query_params()
+        if selector.pipeline_query_params
+        else None
+    )
+
     async for projects_batch in client.get_projects(
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
@@ -238,7 +274,9 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         include_languages=False,
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
-        async for jobs_batch in client.get_pipeline_jobs(projects_batch):
+        async for jobs_batch in client.get_pipeline_jobs(
+            projects_batch, pipeline_params=pipeline_params
+        ):
             yield jobs_batch
 
 
@@ -427,6 +465,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     search_path = selector.files.path
     scope = "blobs"
     skip_parsing = selector.files.skip_parsing
+    search_strategy = selector.files.search_strategy
 
     repositories = (
         selector.files.repos
@@ -435,7 +474,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     files_cache: dict[str, dict[str, Any]] = {}
-    found_any_files = False
 
     async def _enrich_and_yield(
         files_batch: list[dict[str, Any]],
@@ -452,36 +490,45 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 file_entity["__includedFiles"] = files_cache[repo_key]
         return enriched_batch
 
+    params = (
+        build_project_params(include_only_active_projects=include_only_active_groups)
+        if search_strategy in ("projectSearch", "repositoryTree")
+        else build_group_params(include_only_active_groups=include_only_active_groups)
+    )
+
     async for files_batch in client.search_files(
         scope,
-        search_path,
-        repositories,
-        skip_parsing,
-        build_group_params(include_only_active_groups=include_only_active_groups),
+        build_search_query(search_path),
+        skip_parsing=skip_parsing,
+        repositories=repositories,
+        params=params,
+        strategy=search_strategy,
     ):
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
-            found_any_files = True
             yield enriched_batch
 
-    if not found_any_files and not repositories:
-        logger.info(
-            "Group-level file search returned no results. "
-            "Falling back to project-level file search."
-        )
-        # control project filtering using group selector to avoid adding a new selector
-        params = build_project_params(
-            include_only_active_projects=include_only_active_groups
-        )
-        async for files_batch in client.search_files_in_projects(
-            scope,
-            search_path,
-            skip_parsing,
-            params,
-        ):
-            enriched_batch = await _enrich_and_yield(files_batch)
-            if enriched_batch:
-                yield enriched_batch
+
+@ocean.on_resync(ObjectKind.SKILL)
+async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
+    project_params = build_project_params(
+        include_only_active_projects=selector.include_only_active_groups
+    )
+    async for batch in resync_skills(client, selector, project_params):
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.PLUGIN)
+async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
+    project_params = build_project_params(
+        include_only_active_projects=selector.include_only_active_groups
+    )
+    async for batch in resync_plugins(client, selector, project_params):
+        yield batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -560,18 +607,56 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield folders_batch
 
 
-ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", PushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", PipelineWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", JobWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", MemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ProjectWithMemberWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
-ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)
+async def _resync_deployments(
+    include_only_active_projects: bool | None,
+    params: dict[str, Any] | None,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    async for projects_batch in client.get_projects(
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(
+            f"Processing batch of {len(projects_batch)} projects for deployments"
+        )
+        async for deployments_batch in client.get_deployments(
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            params=params,
+        ):
+            yield deployments_batch
+
+
+@ocean.on_resync(ObjectKind.DEPLOYMENT)
+async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
+    async for batch in _resync_deployments(
+        selector.include_only_active_projects,
+        selector.generate_query_params() or None,
+    ):
+        yield batch
+
+
+ocean.add_webhook_processor(WEBHOOK_PATH, GroupWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, MergeRequestWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PipelineWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, JobWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, MemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, GroupWithMemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, FilePushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, SkillPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, PluginPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, FolderPushWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ProjectWithMemberWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, TagWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ReleaseWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
+
+register_actions_executors()

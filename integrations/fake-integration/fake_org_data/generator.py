@@ -4,8 +4,15 @@ from typing import Any, Dict, Union
 
 from faker import Faker
 
-from .static import FAKE_DEPARTMENTS
-from .types import FakePerson, FakePersonStatus
+from .static import DEFAULT_PROJECT_COUNT, FAKE_DEPARTMENTS, FAKE_TEAMS
+from .types import (
+    FakeOwner,
+    FakePerson,
+    FakePersonStatus,
+    FakeProject,
+    ProjectMetadata,
+    ProjectTier,
+)
 
 fake = Faker()
 
@@ -54,4 +61,27 @@ async def generate_fake_persons(
     if latency_to_use > 0:
         await asyncio.sleep(latency_to_use)
 
+    return {"results": results}
+
+
+async def generate_fake_projects(count: int = DEFAULT_PROJECT_COUNT) -> Dict[str, Any]:
+    results = []
+    tiers = ["gold", "silver", "bronze", "platinum"]
+    for index in range(count if count > 0 else DEFAULT_PROJECT_COUNT):
+        team = FAKE_TEAMS[index % len(FAKE_TEAMS)]
+        project = FakeProject(
+            id=f"project-{index + 1:03d}",
+            name=fake.catch_phrase(),
+            owner=FakeOwner(
+                id=team.lead.email.split("@")[0],
+                name=team.lead.name,
+                department=team.department,
+            ),
+            metadata=(
+                ProjectMetadata(tier=ProjectTier(level=tiers[index % len(tiers)]))
+                if index % 2 == 0
+                else None
+            ),
+        )
+        results.append(project.dict())
     return {"results": results}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
 
@@ -112,6 +112,12 @@ class Selector(_FieldMetadataEnforcer):
         title="Query",
         description="JQ expression that will filter which objects of the specified kind will be ingested into Port.",
     )
+    export_env_variables: list[str] = Field(
+        alias="exportEnvVariables",
+        default_factory=list,
+        title="Export Env Variables",
+        description="Environment variable names whose values should be included in lakehouse ingest payloads for DSP processing.",
+    )
 
 
 class ResourceConfig(_FieldMetadataEnforcer):
@@ -156,8 +162,8 @@ class PortAppConfig(_FieldMetadataEnforcer):
         default=0.9,
         ge=0,
         le=1,
-        title="Deletion safety limit",
-        description="Skip deletion if the number of entities to delete exceeds this percentage of total entities. Set between 0 and 1. Protects against accidental mass deletion from misconfigurations.",
+        title="Allow entity deletion",
+        description="When on - deletes entities missing from the source, keeping the catalog in sync. When off - no deletions, stale entities may remain.",
     )
     resources: list[ResourceConfig] = Field(
         default_factory=list,
@@ -184,6 +190,15 @@ class PortAppConfig(_FieldMetadataEnforcer):
                 for resource in self.resources
             ],
         }
+
+    def to_dsp_lifecycle_mapping(self) -> dict[str, Any]:
+        mapping = self.to_request()
+        for resource in mapping.get("resources", []):
+            entity = resource.get("port", {}).get("entity", {})
+            mappings = entity.get("mappings")
+            if mappings is not None and not isinstance(mappings, list):
+                entity["mappings"] = [mappings]
+        return mapping
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)

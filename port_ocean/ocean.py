@@ -6,14 +6,14 @@ from typing import Any, AsyncIterator, Callable, Dict, Type
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from starlette.types import Receive, Scope, Send
 
 import port_ocean.helpers.metric.metric
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
-from port_ocean.clients.lifecycle import LifecycleClient
+from port_ocean.clients.dsp.lifecycle import LifecycleClient
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import (
@@ -28,7 +28,6 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
-from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
@@ -56,6 +55,7 @@ class Ocean:
             _integration_config_model=config_factory,
             **(config_override or {}),
         )
+        self._warn_non_default_ssl_settings()
         # add the integration sensitive configuration to the sensitive patterns to mask out
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
@@ -69,21 +69,17 @@ class Ocean:
             integration_identifier=self.config.integration.identifier,
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
-            ingest_url=self.config.port.ingest_url,
             feature_flags_cache_ttl_seconds=self.config.port.feature_flags_cache_ttl_seconds,
+            blueprint_cache_ttl_seconds=self.config.port.blueprint_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
-        self.process_execution_mode: ProcessExecutionMode = (
-            self._get_process_execution_mode()
-        )
         self.metrics = port_ocean.helpers.metric.metric.Metrics(
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
-            multiprocessing_enabled=self.process_execution_mode
-            == ProcessExecutionMode.multi_process,
+            is_self_hosted=not self.is_saas(),
         )
-        self.metrics.execution_mode = self.process_execution_mode.value
+        self.metrics.execution_mode = "single_process"
 
         self.webhook_manager = LiveEventsProcessorManager(
             self.integration_router,
@@ -100,6 +96,7 @@ class Ocean:
             poll_check_interval_seconds=self.config.actions_processor.poll_check_interval_seconds,
             visibility_timeout_ms=self.config.actions_processor.visibility_timeout_ms,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+            max_runs_buffer_util_pct_per_action=self.config.actions_processor.max_runs_buffer_util_pct_per_action,
         )
 
         self.integration = (
@@ -110,7 +107,6 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
         self.lifecycle_client: LifecycleClient = LifecycleClient(
-            base_url=str(self.config.port.lifecycle_url),
             auth=self.port_client.auth,
         )
         self.app_initialized = False
@@ -118,6 +114,19 @@ class Ocean:
 
         signal_handler.register(self._report_resync_aborted, priority=100)
         signal_handler.register(self._stop_status_heartbeat, priority=90)
+
+    def _warn_non_default_ssl_settings(self) -> None:
+        for label, client_ssl in (
+            ("Port API", self.config.ssl.port),
+            ("Third-party", self.config.ssl.third_party),
+        ):
+            if not client_ssl.verify:
+                description = "verify=false"
+            elif not client_ssl.x509.strict:
+                description = "x509.strict=false"
+            else:
+                continue
+            logger.warning(f"{label} SSL settings are non-default ({description}). ")
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -163,11 +172,6 @@ class Ocean:
                 pass
             self._status_heartbeat_task = None
 
-    def _get_process_execution_mode(self) -> ProcessExecutionMode:
-        if self.config.process_execution_mode:
-            return self.config.process_execution_mode
-        return ProcessExecutionMode.single_process
-
     def _get_caching_provider(self) -> CacheProvider:
         if self.config.caching_storage_mode:
             caching_type_to_provider = {
@@ -177,8 +181,6 @@ class Ocean:
             if self.config.caching_storage_mode in caching_type_to_provider:
                 return caching_type_to_provider[self.config.caching_storage_mode]()
 
-        if self.config.process_execution_mode == ProcessExecutionMode.multi_process:
-            return DiskCacheProvider()
         return InMemoryCacheProvider()
 
     def is_saas(self) -> bool:

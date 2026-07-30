@@ -1,0 +1,80 @@
+{
+  "Type": "AWS::EKS::Cluster",
+  "Properties": {
+    "Name": "my-production-cluster",
+    "Arn": "arn:aws:eks:us-west-2:123456789012:cluster/my-production-cluster",
+    "CreatedAt": "2025-09-25T09:24:31.701000+00:00",
+    "Version": "1.33",
+    "Endpoint": "https://ABCDEF1234567890ABCDEF1234567890.sk1.us-west-2.eks.amazonaws.com",
+    "RoleArn": "arn:aws:iam::123456789012:role/AmazonEKSClusterRole",
+    "ResourcesVpcConfig": {
+      "subnetIds": [
+        "subnet-12345678901234567",
+        "subnet-23456789012345678",
+        "subnet-34567890123456789"
+      ],
+      "securityGroupIds": [],
+      "clusterSecurityGroupId": "sg-12345678901234567",
+      "vpcId": "vpc-12345678901234567",
+      "endpointPublicAccess": true,
+      "endpointPrivateAccess": true,
+      "publicAccessCidrs": [
+        "0.0.0.0/0"
+      ]
+    },
+    "KubernetesNetworkConfig": {
+      "serviceIpv4Cidr": "172.20.0.0/16",
+      "ipFamily": "ipv4",
+      "elasticLoadBalancing": {
+        "enabled": true
+      }
+    },
+    "Logging": {
+      "clusterLogging": [
+        {
+          "types": [
+            "api",
+            "audit",
+            "authenticator",
+            "controllerManager",
+            "scheduler"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    "Identity": {
+      "oidc": {
+        "issuer": "https://oidc.eks.us-west-2.amazonaws.com/id/ABCDEF1234567890ABCDEF1234567890"
+      }
+    },
+    "Status": "ACTIVE",
+    "CertificateAuthority": {
+      "data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJek1EY3hNVEV3TkRVeU1sb1hEVE16TURjd09ERXdORFV5TWxvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTXVuCnhYNEFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEKQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQpBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBCkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEKQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQpBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBCkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEKQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+    },
+    "PlatformVersion": "eks.14",
+    "Tags": {},
+    "AccessConfig": {
+      "authenticationMode": "API"
+    },
+    "UpgradePolicy": {
+      "supportType": "STANDARD"
+    },
+    "ZonalShiftConfig": {
+      "enabled": true
+    },
+    "ComputeConfig": {
+      "enabled": true,
+      "nodePools": [
+        "general-purpose",
+        "system"
+      ],
+      "nodeRoleArn": "arn:aws:iam::123456789012:role/AmazonEKSNodeRole"
+    },
+    "StorageConfig": {
+      "blockStorage": {
+        "enabled": true
+      }
+    }
+  }
+}

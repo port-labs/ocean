@@ -7,6 +7,526 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.79 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.7.78 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.7.77 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.7.76 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.7.75 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.7.74 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.7.73 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.7.72 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.7.71 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.7.70 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.7.69 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.7.68 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 0.7.67 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 0.7.66 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 0.7.65 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 0.7.64 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 0.7.63 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 0.7.62 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.7.61 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.7.60 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.7.59 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.7.58 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.7.57 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.7.56 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.7.55 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.7.54 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.7.53 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.7.52 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.7.51 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.7.50 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.7.49 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.7.48 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.7.47 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.7.46 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.7.45 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.7.44 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.7.43 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.7.42 (2026-06-15)
+
+
+### Improvements
+
+- Added support for the `component` kind, enabling syncing of project components into Port with issue counts, lead assignments, and assignee routing configuration.
+
+
+## 0.7.41 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.7.40 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.7.39 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.7.38 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.7.37 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.7.36 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.7.35 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.7.34 (2026-06-02)
+
+
+### Improvements
+
+- Added `sprint` kind to sync Jira sprints into Port using the Jira Software Cloud Agile REST API.
+
+
+## 0.7.33 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.7.32 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.7.31 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.7.30 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.7.29 (2026-05-31)
+
+
+### Improvements
+
+- Added `backlog` kind to sync Backlog issues into Port using the Jira Software Cloud REST API.
+
+
+## 0.7.28 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.7.27 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.7.26 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.7.25 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.7.24 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.7.23 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 0.7.22 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 0.7.21 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 0.7.20 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 0.7.19 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 0.7.18 (2026-05-22)
+
+
+### Improvements
+
+- Added support for syncing Jira Epics as a new `epic` kind in Port.
+
+
+## 0.7.17 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.7.16 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.7.15 (2026-05-20)
+
+
+### Improvements
+
+- Added support for Issue Worklogs to sync worklog entries from Jira issues into Port, including worklog author, time spent, and comments. This allows teams to track time spent on issues directly within Port and gain insights into effort distribution across projects and tasks.
+
+
 ## 0.7.14 (2026-05-19)
 
 

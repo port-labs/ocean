@@ -7,6 +7,494 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.121 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.5.120 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.5.119 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.5.118 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.5.117 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.5.116 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.5.115 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.5.114 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.5.113 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.5.112 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.5.111 (2026-07-22)
+
+
+### Improvements
+
+- Use shared Ocean relative time helpers for schedule and on-call lookback selectors and remove local date-range helpers.
+
+
+## 0.5.110 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.5.109 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 0.5.108 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 0.5.107 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 0.5.106 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 0.5.105 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 0.5.104 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 0.5.103 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.5.102 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.5.101 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.5.100 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.5.99 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.5.98 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.5.97 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.5.96 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.5.95 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.5.94 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.5.93 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.5.92 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.5.91 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.5.90 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.5.89 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.5.88 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.5.87 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.5.86 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.5.85 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.5.84 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.5.83 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.5.82 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.5.81 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.5.80 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.5.79 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.5.78 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.5.77 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.5.76 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.5.75 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.5.74 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.5.73 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.5.72 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.5.71 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.5.70 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.5.69 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.5.68 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.5.67 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 0.5.66 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 0.5.65 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 0.5.64 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 0.5.63 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 0.5.62 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.5.61 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
 ## 0.5.60 (2026-05-19)
 
 

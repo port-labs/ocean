@@ -8,14 +8,19 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleIssueOptions, ListIssueOptions
-from github.clients.http.base_client import AbstractGithubClient
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
+from github.clients.http.rest_client import GithubRestClient
+
+ISSUE_INCREMENTAL = ServerSideTimestampStrategy(param_key="since")
 
 
-class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
+class RestIssueExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[
-        ExporterOptionsT: SingleIssueOptions
-    ](self, options: ExporterOptionsT,) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleIssueOptions](
+        self,
+        options: ExporterOptionsT,
+    ) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         issue_number = params["issue_number"]
 
@@ -35,15 +40,17 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListIssueOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListIssueOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name, organization, params = parse_github_options(dict(options))
+        incremental_cursor = active_incremental_cursor()
+        request_params = ISSUE_INCREMENTAL.merge_params(params, incremental_cursor)
 
         async for issues in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{organization}/{repo_name}/issues",
-            params,
+            request_params,
         ):
             logger.info(
                 f"Fetched batch of {len(issues)} issues from repository {repo_name} from {organization}"

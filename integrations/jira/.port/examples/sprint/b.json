@@ -1,0 +1,11 @@
+{
+  "id": 914,
+  "self": "https://getport.atlassian.net/rest/agile/1.0/sprint/914",
+  "state": "active",
+  "name": "Active Sprint",
+  "startDate": "2025-11-17T10:30:54.037Z",
+  "endDate": "2025-11-30T22:00:00.000Z",
+  "createdDate": "2025-11-17T10:27:02.775Z",
+  "originBoardId": 8,
+  "goal": ""
+}

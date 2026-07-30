@@ -1,0 +1,11 @@
+{
+  "id": 1047,
+  "self": "https://getport.atlassian.net/rest/agile/1.0/sprint/1047",
+  "state": "active",
+  "name": "TSKF January 2026",
+  "startDate": "2026-01-05T09:28:20.254Z",
+  "endDate": "2026-01-31T21:30:00.000Z",
+  "createdDate": "2026-01-05T09:12:31.836Z",
+  "originBoardId": 387,
+  "goal": ""
+}

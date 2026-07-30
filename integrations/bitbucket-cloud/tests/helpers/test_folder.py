@@ -115,7 +115,7 @@ async def test_process_folder_patterns(
 
     # Mock repositories generator
     async def mock_get_repositories(
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         repos_data: List[Dict[str, Any]] = [
             {"name": "repo1", "slug": "repo1", "mainbranch": {"name": "main"}},

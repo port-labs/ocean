@@ -1,5 +1,8 @@
 import pytest
+from typing import Any
 from unittest.mock import AsyncMock
+from botocore.exceptions import ClientError
+
 from aws.core.exporters.ecs.task_definition.actions import (
     ListTaskDefinitionsAction,
     DescribeTaskDefinitionsAction,
@@ -139,6 +142,46 @@ class TestDescribeTaskDefinitionsAction:
         )
 
         assert result[0]["Tags"] == []
+
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self,
+    ) -> None:
+        """Middle task definition fails recoverably; results stay aligned."""
+        mock_client = AsyncMock()
+
+        async def mock_describe(
+            taskDefinition: str, include: list[str], **kwargs: Any
+        ) -> dict[str, Any]:
+            if taskDefinition.endswith("task2:1"):
+                raise ClientError(
+                    {"Error": {"Code": "AccessDenied", "Message": "denied"}},
+                    "DescribeTaskDefinition",
+                )
+            family = taskDefinition.split("/")[-1].split(":")[0]
+            return {
+                "taskDefinition": {
+                    "taskDefinitionArn": taskDefinition,
+                    "family": family,
+                },
+                "tags": [],
+            }
+
+        mock_client.describe_task_definition.side_effect = mock_describe
+
+        action = DescribeTaskDefinitionsAction(mock_client)
+        arns = [
+            "arn:aws:ecs:us-east-1:123456789012:task-definition/task1:1",
+            "arn:aws:ecs:us-east-1:123456789012:task-definition/task2:1",
+            "arn:aws:ecs:us-east-1:123456789012:task-definition/task3:1",
+        ]
+
+        result = await action._execute(arns)
+
+        assert len(result) == 3
+        assert result[0]["family"] == "task1"
+        assert result[1] == {}
+        assert result[2]["family"] == "task3"
 
 
 class TestEcsTaskDefinitionActionsMap:

@@ -10,7 +10,6 @@ from misc import ResourceKindsWithSpecialHandling
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
 
-
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 PAGE_SIZE = 100
@@ -222,7 +221,11 @@ class ArgocdClient:
         logger.info(f"Fetching managed resources for application: {application_name}")
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}/managed-resources"
 
-        async for managed_resources in self.get_paginated_resources(url):
+        application_namespace = application["metadata"].get("namespace")
+        params = (
+            {"appNamespace": application_namespace} if application_namespace else None
+        )
+        async for managed_resources in self.get_paginated_resources(url, params=params):
             yield [
                 {**managed_resource, "__application": application}
                 for managed_resource in managed_resources

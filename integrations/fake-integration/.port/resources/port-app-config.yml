@@ -29,3 +29,51 @@ resources:
             bio: .bio
           relations:
             department: .department.id
+  - kind: fake-office
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"fake-office"'
+          properties:
+            name: .name
+            city: .address.city
+            country: .address.country
+            geo_lat: .address.geo.lat
+            geo_lng: .address.geo.lng
+            city_upper: '(.address.city | ascii_upcase)'
+            first_line: .address.lines[0]
+  - kind: fake-team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"fake-team"'
+          properties:
+            name: .name
+            lead_email: .lead.email
+            lead_name: .lead.name
+            dept_name: .department.name
+          relations:
+            department: .department.id
+  - kind: fake-project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"fake-project"'
+          properties:
+            name: .name
+            owner_name: .owner.name
+            owner_id: .owner.id
+          relations:
+            department: .owner.department.id

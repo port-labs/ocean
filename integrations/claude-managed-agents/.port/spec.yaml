@@ -1,0 +1,115 @@
+title: Claude Managed Agents
+description: Claude Managed Agents integration for Port Ocean
+icon: Claude
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/ai-agents/claude-managed-agents
+recommendedInstallationMethod: Saas
+formMappingEnabled: true
+features:
+  - type: exporter
+    section: AI Agents
+    resources:
+      - kind: agent
+      - kind: environment
+      - kind: session
+      - kind: vault
+      - kind: memory-store
+      - kind: skill
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
+configurations:
+  - name: anthropicApiKey
+    type: string
+    required: true
+    sensitive: true
+    description: The Anthropic API key to authenticate with the Anthropic API. Refer <a href="https://platform.claude.com/docs/en/api/overview#prerequisites" target="_blank">Anthropic documentation</a> on how to create one.
+  - name: anthropicVersion
+    type: string
+    required: false
+    sensitive: false
+    default: "2023-06-01"
+    description: The version of the Anthropic API to use. If not specified, the default will be "2023-06-01".
+  - name: anthropicApiHost
+    type: url
+    required: false
+    sensitive: false
+    default: https://api.anthropic.com
+    description: The host of the Anthropic api instance. If not specified, the default will be https://api.anthropic.com.
+  - name: platformConsoleHost
+    type: url
+    required: false
+    sensitive: false
+    default: https://platform.claude.com
+    description: The host of the Claude Console, used to build session links in action run output. If not specified, the default will be https://platform.claude.com.
+  - name: webhookSigningSecret
+    type: string
+    required: false
+    sensitive: true
+    description: The signing secret from the Claude Console webhook configuration. Required only to enable live events (webhooks). Refer <a href="https://platform.claude.com/docs/en/api/typescript/beta/webhooks" target="_blank">Anthropic webhooks documentation</a>.
+  - name: githubAuthorizationToken
+    type: string
+    required: false
+    sensitive: true
+    description: Optional GitHub personal access token injected into github_repository session resources when authorization_token is omitted. Configure this when workflow forms collect repository URLs only.
+actionsProcessingEnabled: true
+actions:
+  - name: create_agent
+    icon: Claude
+    description: Create a new Claude managed agent
+    inputs:
+      - name: name
+        title: Name
+        type: string
+        description: Human-readable name for the agent
+        required: true
+      - name: model
+        title: Model
+        type: string
+        description: Model identifier, for example claude-opus-4-8
+        required: true
+      - name: systemPrompt
+        title: System prompt
+        type: string
+        description: System prompt for the agent
+        required: false
+      - name: config
+        title: Additional configuration
+        type: jqObject
+        description: 'Optional advanced agent configuration passed through to the Anthropic API (for example tools, mcp_servers, skills, metadata, description). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.'
+        required: false
+  - name: trigger_agent
+    icon: Claude
+    description: Trigger a Claude managed agent by starting or continuing a session and sending a user message
+    inputs:
+      - name: agentId
+        title: Agent ID
+        type: string
+        description: The ID of the agent to run
+        required: true
+      - name: sessionId
+        title: Session ID
+        type: string
+        description: Optional session to continue. When omitted, a new session is created. When provided, the session must be idle (not running, terminated, or waiting for tool confirmation).
+        required: false
+      - name: environmentId
+        title: Environment ID
+        type: string
+        description: The ID of the environment defining the container configuration for the session. Required only when starting a new session (when sessionId is omitted).
+        required: false
+      - name: prompt
+        title: Prompt
+        type: string
+        description: The user message sent to the agent
+        required: true
+      - name: config
+        title: Additional configuration
+        type: jqObject
+        description: 'Optional session configuration passed through to the Anthropic API when starting a new session (for example title, metadata, vault_ids, resources). Ignored when continuing an existing session. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.'
+        required: false
+      - name: reportSessionStatus
+        title: Report session status
+        type: boolean
+        description: Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires a webhook to be configured on the integration (see webhookSigningSecret); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.
+        default: false
+        required: false

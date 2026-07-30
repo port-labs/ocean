@@ -3,7 +3,7 @@ from aws.core.interfaces.action import Action, ActionMap
 from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
-class GetRepositoryPolicyAction(Action):
+class GetRepositoryPolicyAction(Action[list[dict[str, Any]]]):
     """Fetches repository policy for ECR repositories."""
 
     async def _execute(
@@ -27,7 +27,7 @@ class GetRepositoryPolicyAction(Action):
         return {"repositoryPolicyText": response["policyText"]}
 
 
-class GetLifecyclePolicyAction(Action):
+class GetLifecyclePolicyAction(Action[list[dict[str, Any]]]):
     """Fetches lifecycle policy for ECR repositories."""
 
     async def _execute(
@@ -50,7 +50,7 @@ class GetLifecyclePolicyAction(Action):
         return {"lifecyclePolicy": response}
 
 
-class ListTagsForResourceAction(Action):
+class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
     """Fetches tags for ECR repositories."""
 
     async def _execute(
@@ -74,7 +74,7 @@ class ListTagsForResourceAction(Action):
         return {"tags": tags}
 
 
-class DescribeRepositoriesAction(Action):
+class DescribeRepositoriesAction(Action[list[dict[str, Any]]]):
     """Process the initial list of repositories from AWS."""
 
     async def _execute(
@@ -84,13 +84,13 @@ class DescribeRepositoriesAction(Action):
         return repositories
 
 
-class EcrRepositoryActionsMap(ActionMap):
+class EcrRepositoryActionsMap(ActionMap[list[dict[str, Any]]]):
     """Groups all actions for ECR repositories."""
 
-    defaults: list[Type[Action]] = [
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         DescribeRepositoriesAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         GetRepositoryPolicyAction,
         GetLifecyclePolicyAction,
         ListTagsForResourceAction,

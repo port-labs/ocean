@@ -8,6 +8,8 @@ from aws.auth.utils import CredentialsProviderError
 from loguru import logger
 from typing import Any
 
+from aws.utils import RegionHelper
+
 
 class AssumeRoleProvider(CredentialProvider):
     """
@@ -28,8 +30,14 @@ class AssumeRoleProvider(CredentialProvider):
 
     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
         try:
+            region = kwargs.get("region")
+            if not region:
+                region = await RegionHelper.get_custom_partition_region_or_none(
+                    self.aws_client_factory_session
+                )
+
             async with self.aws_client_factory_session.create_client(
-                "sts", region_name=kwargs.get("region")
+                "sts", region_name=region
             ) as sts_client:
                 role_arn = kwargs["role_arn"]
                 assume_role_params = {

@@ -20,9 +20,15 @@ def mock_client() -> MagicMock:
 def advanced_security_processor(
     mock_client: MagicMock, monkeypatch: pytest.MonkeyPatch
 ) -> AdvancedSecurityWebhookProcessor:
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.advanced_security_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return AdvancedSecurityWebhookProcessor(MagicMock(spec=WebhookEvent))
 
@@ -44,7 +50,10 @@ async def test_advanced_security_validate_payload(
     valid_payload = {
         "eventType": AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
         "publisherId": ADVANCED_SECURITY_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "proj-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "proj-123"},
+        },
         "resource": {
             "repositoryId": "repo-123",
             "alertId": "alert-123",
@@ -99,7 +108,10 @@ async def test_advanced_security_handle_event(
 ) -> None:
     # Setup
     payload = {
-        "resourceContainers": {"project": {"id": "proj-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "proj-123"},
+        },
         "resource": {
             "repositoryId": "repo-123",
             "alertId": "alert-123",
@@ -129,9 +141,9 @@ async def test_advanced_security_handle_event(
         payload, mock_resource_config
     )
 
-    # Assertions
+    # Assertions (base class enriches results with __organizationUrl/__organizationName)
     assert len(result.updated_raw_results) == 1
-    assert result.updated_raw_results[0] == {"id": "alert-123"}
+    assert result.updated_raw_results[0]["id"] == "alert-123"
 
     # Verify client calls
     mock_client.get_single_advanced_security_alert.assert_called_with(

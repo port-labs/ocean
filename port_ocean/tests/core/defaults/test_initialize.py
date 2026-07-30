@@ -16,6 +16,8 @@ from port_ocean.core.models import (
     Blueprint,
     CreatePortResourcesOrigin,
     IntegrationFeatureFlag,
+    ProcessingMode,
+    Runtime,
 )
 from port_ocean.ocean import Ocean
 
@@ -76,6 +78,7 @@ def mock_integration_config() -> IntegrationConfiguration:
     config.event_listener.get_changelog_destination_details = MagicMock(return_value={})
     config.actions_processor = MagicMock()
     config.actions_processor.enabled = False
+    config.processing_mode = ProcessingMode.ocean_core
     return config
 
 
@@ -416,6 +419,7 @@ async def test_empty_setup_integration_exists(
         "portCreateResourcesOrigin": CreatePortResourcesOrigin.Empty.value,
         "actionsProcessingEnabled": False,
         "changelogDestination": {},
+        "processingMode": ProcessingMode.ocean_core,
     }
 
     await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
@@ -437,6 +441,7 @@ async def test_default_setup_integration_not_exists(
         CreatePortResourcesOrigin.Default
     )
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
     mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
     # First call returns empty (integration doesn't exist), subsequent calls return created integration
@@ -729,6 +734,7 @@ async def test_none_origin_provision_disabled_integration_not_exists(
     """Test None origin with provision disabled when integration doesn't exist - should use Ocean and create it."""
     mock_integration_config.create_port_resources_origin = None
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
 
     # Mock provision disabled
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]

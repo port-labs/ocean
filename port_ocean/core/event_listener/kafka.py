@@ -20,7 +20,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from pydantic import validator
+from pydantic.v1 import validator
 from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 

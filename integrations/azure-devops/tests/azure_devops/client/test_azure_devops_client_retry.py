@@ -5,12 +5,12 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
+from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES
 from azure_devops.client.file_processing import PathDescriptor, RecursionLevel
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.helpers.retry import RetryTransport
-
 
 MOCK_ORG_URL = "https://dev.azure.com/test_org"
 MOCK_PROJECT_ID = "proj-id"
@@ -33,7 +33,9 @@ def _make_client_with_mock_transport(
     # the outermost wrapper and we can swap the transport it wraps.
     mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
 
-    client = AzureDevopsClient(MOCK_ORG_URL, "fake_pat", "fake_username")
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, PatAuthProvider("fake_pat"), "fake_username"
+    )
     retry_transport = cast(RetryTransport, client._client._transport)
     retry_transport._wrapped_transport = httpx.MockTransport(handler)
     return client

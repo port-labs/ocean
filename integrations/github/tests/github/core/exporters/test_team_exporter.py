@@ -24,7 +24,6 @@ from github.helpers.gql_queries import (
     LIST_EXTERNAL_IDENTITIES_GQL,
 )
 
-
 TEST_TEAMS = [
     {
         "id": 1,
@@ -86,6 +85,88 @@ class TestRestTeamExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/orgs/test-org/teams/team-alpha"
             )
+
+    async def test_enrich_enterprise_teams_with_members_populates_members(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        enterprise_team = {
+            "id": 999,
+            "slug": "ent:security-team",
+            "name": "Security Team",
+            "__organization": "test-org",
+        }
+        rest_members = [
+            {"login": "alice", "id": 1, "role": "maintainer"},
+            {"login": "bob", "id": 2, "role": "member"},
+        ]
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield rest_members
+
+        exporter = RestTeamExporter(rest_client)
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            result = await exporter.enrich_enterprise_teams_with_members(
+                [copy.deepcopy(enterprise_team)], "test-org"
+            )
+
+        assert result[0]["members"] == {"nodes": rest_members}
+        mock_request.assert_called_once_with(
+            f"{rest_client.base_url}/orgs/test-org/teams/ent:security-team/members"
+        )
+
+    async def test_enrich_enterprise_teams_with_members_skips_org_teams(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        org_team = {
+            "id": 1,
+            "slug": "devops",
+            "name": "DevOps",
+            "__organization": "test-org",
+        }
+        exporter = RestTeamExporter(rest_client)
+        with patch.object(rest_client, "send_paginated_request") as mock_request:
+            result = await exporter.enrich_enterprise_teams_with_members(
+                [copy.deepcopy(org_team)], "test-org"
+            )
+
+        assert "members" not in result[0]
+        mock_request.assert_not_called()
+
+    async def test_enrich_enterprise_teams_with_members_mixed_batch(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        enterprise_team = {
+            "id": 999,
+            "slug": "ent:security-team",
+            "__organization": "test-org",
+        }
+        org_team = {
+            "id": 1,
+            "slug": "devops",
+            "__organization": "test-org",
+        }
+        rest_members = [{"login": "alice", "id": 1, "role": "maintainer"}]
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield rest_members
+
+        exporter = RestTeamExporter(rest_client)
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            result = await exporter.enrich_enterprise_teams_with_members(
+                [copy.deepcopy(enterprise_team), copy.deepcopy(org_team)], "test-org"
+            )
+
+        assert result[0]["members"] == {"nodes": rest_members}
+        assert "members" not in result[1]
+        mock_request.assert_called_once()
 
     async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
         # Create an async mock to return the test teams
@@ -540,3 +621,68 @@ class TestGraphQLTeamWithMembersExporterExtrasEnrichment:
 
         assert "extra_field" not in teams[0]
         assert teams[1]["extra_field"] == "extra-value"
+
+
+EXTERNAL_GROUP = {
+    "group_id": "28836910a68075ab3dbe",
+    "group_name": "engineering",
+    "updated_at": "2024-01-01T00:00:00Z",
+}
+
+
+@pytest.mark.asyncio
+class TestRestTeamExporterExternalGroup:
+    async def test_enrich_teams_with_external_group(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"},
+            {"slug": "team-beta", "__organization": "test-org"},
+        ]
+
+        async def mock_send_api_request(url: str, **kwargs: Any) -> dict[str, Any]:
+            if "team-alpha" in url:
+                return {"groups": [EXTERNAL_GROUP]}
+            return {"groups": []}
+
+        with patch.object(
+            rest_client, "send_api_request", side_effect=mock_send_api_request
+        ):
+            result = await exporter.enrich_teams_with_external_group(teams, "test-org")
+
+        assert result[0]["__external_group"] == EXTERNAL_GROUP
+        assert result[1]["__external_group"] is None
+
+    async def test_enrich_teams_with_external_group_handles_non_emu_org(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"}
+        ]
+
+        with patch.object(rest_client, "send_api_request", return_value={}):
+            result = await exporter.enrich_teams_with_external_group(teams, "test-org")
+
+        assert result[0]["__external_group"] is None
+
+    async def test_enrich_teams_with_external_group_calls_correct_url(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"}
+        ]
+
+        with patch.object(
+            rest_client,
+            "send_api_request",
+            return_value={"groups": [EXTERNAL_GROUP]},
+        ) as mock_request:
+            await exporter.enrich_teams_with_external_group(teams, "test-org")
+
+        mock_request.assert_called_once_with(
+            f"{rest_client.base_url}/orgs/test-org/teams/team-alpha/external-groups",
+            ignored_errors=RestTeamExporter._EXTERNAL_GROUP_IGNORED_ERRORS,
+        )

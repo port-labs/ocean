@@ -1,0 +1,11 @@
+{
+  "id": 26,
+  "self": "https://getport.atlassian.net/rest/agile/1.0/sprint/26",
+  "state": "active",
+  "name": "DEMO Sprint 1",
+  "startDate": "2024-01-30T07:51:18.262Z",
+  "endDate": "2027-02-28T22:00:00.000Z",
+  "createdDate": "2023-09-21T16:23:30.428Z",
+  "originBoardId": 2,
+  "goal": ""
+}

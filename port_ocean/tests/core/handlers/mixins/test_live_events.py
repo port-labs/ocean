@@ -261,7 +261,6 @@ def mock_port_client(mock_http_client: MagicMock) -> PortClient:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(
@@ -385,6 +384,34 @@ async def test_parse_raw_event_results_to_entities_deletion(
 
     assert entities_to_create == []
     assert entities_to_delete == [entity]
+    mock_live_events_mixin.entity_processor.parse_items.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_parse_raw_event_results_to_entities_skips_results_without_resource(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Action webhook results have no resource and must not trigger entity parsing."""
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (
+        CalculationResult(
+            entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+            errors=[],
+            misconfigured_entity_keys={},
+        )
+    )
+
+    action_result = WebhookEventRawResults([], [])
+
+    (
+        entities_to_create,
+        entities_to_delete,
+    ) = await mock_live_events_mixin._parse_raw_event_results_to_entities(
+        [action_result, one_webhook_event_raw_results_for_creation]
+    )
+
+    assert entities_to_create == [entity]
+    assert entities_to_delete == []
     mock_live_events_mixin.entity_processor.parse_items.assert_called_once()
 
 

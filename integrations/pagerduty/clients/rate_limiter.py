@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Type
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 @dataclass

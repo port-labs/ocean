@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EcsTaskDefinitionExporter(IResourceExporter):
+class EcsTaskDefinitionExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "ecs"
     _model_cls: Type[TaskDefinition] = TaskDefinition
     _actions_map: Type[EcsTaskDefinitionActionsMap] = EcsTaskDefinitionActionsMap

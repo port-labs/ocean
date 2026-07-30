@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from port_ocean.core.integrations.mixins.utils import collect_export_env_variables
 from port_ocean.core.models import (
     LakehouseDataEntry,
     LakehouseDataEntryBatch,
@@ -23,6 +24,8 @@ def make_single_entry_lakehouse_batch(
     event_type: LakehouseEventType | None = None,
     event_id: str | None = None,
     extraction_timestamp: int | None = None,
+    export_env_variables: list[str] | None = None,
+    selector_hash: str | None = None,
 ) -> LakehouseDataEntryBatch:
     """Build a batch payload with one data entry (mirrors typical single-chunk sends)."""
     et = event_type or LakehouseEventType.LIVE_EVENT
@@ -39,8 +42,13 @@ def make_single_entry_lakehouse_batch(
             "operation": operation,
             "resource_index": index,
             "extraction_timestamp": ts,
+            "selector_hash": selector_hash,
         },
     }
+    if export_env_variables is not None:
+        environment_data = collect_export_env_variables(export_env_variables)
+        if environment_data is not None:
+            entry["environment_data"] = environment_data
     return {
         "event_id": event_id,
         "type": et.value,

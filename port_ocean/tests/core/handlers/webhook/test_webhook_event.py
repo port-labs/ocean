@@ -3,8 +3,9 @@ from fastapi import Request
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
-    WebhookEvent,
     LiveEventTimestamp,
+    WebhookEvent,
+    WebhookRequestAdapter,
 )
 
 
@@ -104,3 +105,25 @@ def test_setTimestamp_setsTimestampCorrectly(
 
     event.set_timestamp(LiveEventTimestamp.FinishedProcessingSuccessfully)
     assert event._timestamp == LiveEventTimestamp.FinishedProcessingSuccessfully
+
+
+class TestWebhookRequestAdapter:
+    @pytest.mark.asyncio
+    async def test_body_returns_raw_bytes(self) -> None:
+        raw = b'{"action":"opened"}'
+        adapter = WebhookRequestAdapter(raw_body=raw, headers={})
+        assert await adapter.body() == raw
+
+    @pytest.mark.asyncio
+    async def test_body_is_idempotent(self) -> None:
+        raw = b'{"x":1}'
+        adapter = WebhookRequestAdapter(raw_body=raw, headers={})
+        assert await adapter.body() == await adapter.body()
+
+    def test_headers_accessible(self) -> None:
+        headers = {
+            "x-hub-signature-256": "sha256=abc",
+            "content-type": "application/json",
+        }
+        adapter = WebhookRequestAdapter(raw_body=b"", headers=headers)
+        assert adapter.headers == headers

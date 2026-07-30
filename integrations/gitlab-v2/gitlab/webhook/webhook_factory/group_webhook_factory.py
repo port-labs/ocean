@@ -5,7 +5,7 @@ from loguru import logger
 """
 GitLab access levels:
 - 10: Guest
-- 20: Reporter  
+- 20: Reporter
 - 30: Developer
 - 40: Maintainer
 - 50: Owner
@@ -40,7 +40,7 @@ class GroupWebHook(BaseWebhookFactory[GroupEvents]):
         Returns:
             Boolean indicating successful webhook creation
         """
-        group_webhook_url = f"{self._app_host}/integration/hook/{group_id}"
+        group_webhook_url = self.build_integration_webhook_url()
 
         try:
             response = await self.create(group_webhook_url, f"groups/{group_id}/hooks")

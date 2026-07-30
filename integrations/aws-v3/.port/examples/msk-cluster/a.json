@@ -1,0 +1,97 @@
+{
+  "Type": "AWS::MSK::Cluster",
+  "Properties": {
+    "ClusterArn": "arn:aws:kafka:eu-west-1:123456789012:cluster/demo-cluster-1/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "ClusterName": "demo-cluster-1",
+    "State": "ACTIVE",
+    "CreationTime": "2026-04-19T14:51:13.196000+00:00",
+    "CurrentVersion": "K2EUQ1WTGCTBG2",
+    "BrokerNodeGroupInfo": {
+      "BrokerAZDistribution": "DEFAULT",
+      "ClientSubnets": [
+        "subnet-0123456789abcdef0",
+        "subnet-0123456789abcdef1",
+        "subnet-0123456789abcdef2"
+      ],
+      "InstanceType": "express.m7g.large",
+      "SecurityGroups": [
+        "sg-0123456789abcdef0"
+      ],
+      "ConnectivityInfo": {
+        "PublicAccess": {
+          "Type": "DISABLED"
+        },
+        "VpcConnectivity": {
+          "ClientAuthentication": {
+            "Sasl": {
+              "Scram": {
+                "Enabled": false
+              },
+              "Iam": {
+                "Enabled": false
+              }
+            },
+            "Tls": {
+              "Enabled": false
+            }
+          }
+        },
+        "NetworkType": "IPV4"
+      },
+      "ZoneIds": [
+        "euw1-az1",
+        "euw1-az3",
+        "euw1-az2"
+      ]
+    },
+    "ClientAuthentication": {
+      "Sasl": {
+        "Scram": {
+          "Enabled": false
+        },
+        "Iam": {
+          "Enabled": true
+        }
+      },
+      "Tls": {
+        "CertificateAuthorityArnList": [],
+        "Enabled": false
+      },
+      "Unauthenticated": {
+        "Enabled": false
+      }
+    },
+    "EncryptionInfo": {
+      "EncryptionAtRest": {
+        "DataVolumeKMSKeyId": "arn:aws:kms:eu-west-1:123456789012:key/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      },
+      "EncryptionInTransit": {
+        "ClientBroker": "TLS",
+        "InCluster": true
+      }
+    },
+    "CurrentBrokerSoftwareInfo": {
+      "KafkaVersion": "3.9.x.kraft"
+    },
+    "EnhancedMonitoring": "DEFAULT",
+    "OpenMonitoring": {
+      "Prometheus": {
+        "JmxExporter": {
+          "EnabledInBroker": false
+        },
+        "NodeExporter": {
+          "EnabledInBroker": false
+        }
+      }
+    },
+    "NumberOfBrokerNodes": 3,
+    "Tags": {
+      "Environment": "demo",
+      "Team": "platform"
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}

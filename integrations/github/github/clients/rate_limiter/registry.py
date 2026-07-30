@@ -11,10 +11,15 @@ class GitHubRateLimiterRegistry:
     _lock = Lock()
 
     @classmethod
+    def reset_for_fork(cls) -> None:
+        cls._instances.clear()
+        cls._lock = Lock()
+
+    @classmethod
     def get_limiter(
-        cls, host: str, config: GitHubRateLimiterConfig
+        cls, host: str, config: GitHubRateLimiterConfig, scope: str = "default"
     ) -> GitHubRateLimiter:
-        key = f"{host}:{config.api_type}"
+        key = f"{host}:{config.api_type}:{scope}"
 
         with cls._lock:
             if key not in cls._instances:

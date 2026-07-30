@@ -60,11 +60,13 @@ async def _verify_integration_configuration(
         or integration.get("version") != ocean.port_client.integration_version
         or integration.get("actionsProcessingEnabled")
         != integration_config.actions_processor.enabled
+        or integration.get("processingMode") != integration_config.processing_mode
     ):
         await ocean.port_client.patch_integration(
             _type=integration_config.integration.type,
             changelog_destination=changelog_destination,
             actions_processing_enabled=integration_config.actions_processor.enabled,
+            processing_mode=integration_config.processing_mode,
         )
 
 

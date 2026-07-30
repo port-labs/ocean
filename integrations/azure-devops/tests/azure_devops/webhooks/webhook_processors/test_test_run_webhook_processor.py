@@ -16,9 +16,15 @@ def test_run_processor(
 ) -> TestRunWebhookProcessor:
     mock_client = MagicMock()
     mock_client.get_test_runs_by_build = AsyncMock(return_value=[])
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.test_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return TestRunWebhookProcessor(event)
 
@@ -73,7 +79,10 @@ async def test_validate_payload_valid(
     payload = {
         "eventType": BuildEvents.BUILD_COMPLETE,
         "publisherId": "tfs",
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"id": 456},
     }
     assert await test_run_processor.validate_payload(payload) is True
@@ -85,7 +94,9 @@ async def test_validate_payload_missing_project(
     mock_event_context: None,
 ) -> None:
     payload = {
-        "resourceContainers": {},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
         "resource": {"id": 456},
     }
     assert await test_run_processor.validate_payload(payload) is False
@@ -97,7 +108,10 @@ async def test_validate_payload_missing_build_id(
     mock_event_context: None,
 ) -> None:
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await test_run_processor.validate_payload(payload) is False
@@ -115,13 +129,22 @@ async def test_handle_event_success(
     ]
     mock_client = MagicMock()
     mock_client.get_test_runs_by_build = AsyncMock(return_value=mock_test_runs)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.test_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"id": 456},
     }
     resource_config = MagicMock()
@@ -148,13 +171,22 @@ async def test_handle_event_no_test_runs(
 ) -> None:
     mock_client = MagicMock()
     mock_client.get_test_runs_by_build = AsyncMock(return_value=[])
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.test_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"id": 456},
     }
     resource_config = MagicMock()

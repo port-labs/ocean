@@ -1,0 +1,12 @@
+{
+  "Type": "AWS::Organizations::Account",
+  "Properties": {
+    "Id": "123456789013",
+    "Arn": "arn:aws:organizations::123456789012:account/o-exampleorg11/123456789013",
+    "Email": "dev-team@example.com",
+    "Name": "dev-account",
+    "Status": "ACTIVE",
+    "JoinedMethod": "CREATED",
+    "JoinedTimestamp": "2023-06-15T09:00:00.000Z"
+  }
+}
