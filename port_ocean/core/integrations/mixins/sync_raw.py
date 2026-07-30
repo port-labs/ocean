@@ -826,7 +826,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
             resync_id = ocean.metrics.event_id
-            if not is_incremental and dsp_enabled and resync_id:
+            if dsp_enabled and resync_id:
                 await ocean.app.lifecycle_client.notify_started(
                     event_id=resync_id,
                     integration_id=ocean.config.integration.identifier,
@@ -850,7 +850,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     raise
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
-                if not is_incremental and dsp_enabled and resync_id:
+                if dsp_enabled and resync_id:
                     await ocean.app.lifecycle_client.notify_aborted(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
