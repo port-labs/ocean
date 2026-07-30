@@ -8,9 +8,7 @@ from aws.core.exporters.ses.configuration_set.models import (
     SingleConfigurationSetRequest,
     PaginatedConfigurationSetRequest,
 )
-from aws.core.exporters.ses.email_identity.regions import (
-    SES_EMAIL_IDENTITY_SUPPORTED_REGIONS,
-)
+from aws.core.exporters.ses.regions import SES_SUPPORTED_REGIONS
 
 
 class TestSesConfigurationSetExporter:
@@ -26,7 +24,7 @@ class TestSesConfigurationSetExporter:
         assert exporter._service_name == "sesv2"
 
     def test_supported_regions(self, exporter: SesConfigurationSetExporter) -> None:
-        assert exporter._supported_regions == SES_EMAIL_IDENTITY_SUPPORTED_REGIONS
+        assert exporter._supported_regions == SES_SUPPORTED_REGIONS
         assert "us-east-1" in exporter._supported_regions
         assert "ap-southeast-4" not in exporter._supported_regions
 

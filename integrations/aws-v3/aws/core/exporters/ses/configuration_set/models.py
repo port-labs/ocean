@@ -18,6 +18,7 @@ class ConfigurationSetProperties(BaseAWSPropertiesModel):
     Tags: list[dict[str, str]] | None = None
     SuppressionOptions: dict[str, Any] | None = None
     VdmOptions: dict[str, Any] | None = None
+    ArchivingOptions: dict[str, Any] | None = None
 
 
 class ConfigurationSet(ResourceModel[ConfigurationSetProperties]):

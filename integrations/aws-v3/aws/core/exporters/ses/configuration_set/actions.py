@@ -18,6 +18,7 @@ class ConfigurationSetRecord(TypedDict):
     Tags: NotRequired[list[dict[str, str]]]
     SuppressionOptions: NotRequired[dict[str, Any]]
     VdmOptions: NotRequired[dict[str, Any]]
+    ArchivingOptions: NotRequired[dict[str, Any]]
 
 
 class GetConfigurationSetAction(Action[list[ConfigurationSetRecord]]):

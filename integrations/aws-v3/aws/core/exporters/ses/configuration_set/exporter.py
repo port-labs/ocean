@@ -9,9 +9,7 @@ from aws.core.exporters.ses.configuration_set.models import (
     SingleConfigurationSetRequest,
     PaginatedConfigurationSetRequest,
 )
-from aws.core.exporters.ses.email_identity.regions import (
-    SES_EMAIL_IDENTITY_SUPPORTED_REGIONS,
-)
+from aws.core.exporters.ses.regions import SES_SUPPORTED_REGIONS
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
@@ -21,7 +19,7 @@ class SesConfigurationSetExporter(IResourceExporter[list[ConfigurationSetRecord]
     _service_name: SupportedServices = "sesv2"
     _model_cls: Type[ConfigurationSet] = ConfigurationSet
     _actions_map: Type[SesConfigurationSetActionsMap] = SesConfigurationSetActionsMap
-    _supported_regions: frozenset[str] = SES_EMAIL_IDENTITY_SUPPORTED_REGIONS
+    _supported_regions: frozenset[str] = SES_SUPPORTED_REGIONS
 
     async def get_resource(
         self, options: SingleConfigurationSetRequest
