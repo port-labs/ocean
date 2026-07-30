@@ -4,6 +4,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 from aws.core.exporters.ses.email_identity.actions import (
+    EmailIdentityRecord,
     GetEmailIdentityAction,
     ListEmailIdentitiesAction,
     SesEmailIdentityActionsMap,
@@ -58,7 +59,7 @@ class TestGetEmailIdentityAction:
             **domain_fields,
         }
 
-        test_identities = [{"IdentityName": "example.com"}]
+        test_identities: list[EmailIdentityRecord] = [{"IdentityName": "example.com"}]
         result = await action._execute(test_identities)
 
         assert len(result) == 1
@@ -88,7 +89,7 @@ class TestGetEmailIdentityAction:
         )
         action.client.get_email_identity.side_effect = error
 
-        test_identities = [{"IdentityName": "example.com"}]
+        test_identities: list[EmailIdentityRecord] = [{"IdentityName": "example.com"}]
         result = await action._execute(test_identities)
 
         assert result == [{}]
@@ -123,7 +124,7 @@ class TestGetEmailIdentityAction:
 
         action.client.get_email_identity.side_effect = mock_get_email_identity
 
-        identities = [
+        identities: list[EmailIdentityRecord] = [
             {"IdentityName": "first.com"},
             {"IdentityName": "fail.com"},
             {"IdentityName": "third.com"},
@@ -147,7 +148,7 @@ class TestGetEmailIdentityAction:
         )
         action.client.get_email_identity.side_effect = error
 
-        test_identities = [{"IdentityName": "example.com"}]
+        test_identities: list[EmailIdentityRecord] = [{"IdentityName": "example.com"}]
 
         with pytest.raises(ClientError):
             await action._execute(test_identities)
@@ -172,7 +173,7 @@ class TestListEmailIdentitiesAction:
     @pytest.mark.asyncio
     async def test_execute_success(self, action: ListEmailIdentitiesAction) -> None:
         """Test that raw list_email_identities items are returned unchanged."""
-        test_identities = [
+        test_identities: list[EmailIdentityRecord] = [
             {
                 "IdentityName": "example.com",
                 "IdentityType": "DOMAIN",
