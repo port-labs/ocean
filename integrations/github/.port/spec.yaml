@@ -38,7 +38,7 @@ configurations:
     description: How to connect to Github.
     required: false
     type: string
-    enum: [ "Personal Access Token", "Github App" ]
+    enum: ["Personal Access Token", "Github App"]
     format: "tabSwitcher"
     default: "Personal Access Token"
   - name: githubToken
