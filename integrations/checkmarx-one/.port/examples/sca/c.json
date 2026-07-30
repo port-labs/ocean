@@ -1,0 +1,58 @@
+{
+  "type": "sca",
+  "id": "CVE-2023-23934",
+  "alternateId": "8Nh+JVRYolZEjrLrBgYSuYDVhMrcrkBVytdvFrfGPUI=",
+  "similarityId": "CVE-2023-23934",
+  "status": "RECURRENT",
+  "state": "TO_VERIFY",
+  "severity": "LOW",
+  "confidenceLevel": 0,
+  "created": "2025-10-28T13:32:32Z",
+  "firstFoundAt": "2025-10-28T13:29:29Z",
+  "foundAt": "2025-10-28T13:32:32Z",
+  "firstScanId": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "description": "Werkzeug is a comprehensive WSGI web application library. Browsers may allow \"nameless\" cookies that look like \"=value\" instead of \"key=value\". A vulnerable browser may allow a compromised application on an adjacent subdomain to exploit this to set a cookie like \"=__Host-test=bad\" for another subdomain. Werkzeug prior to 2.2.3 will parse the cookie \"=__Host-test=bad\" as \"__Host-test=bad\". If a Werkzeug application is running next to a vulnerable or malicious subdomain which sets such a cookie using a vulnerable browser, the Werkzeug application will see the bad cookie value but the valid cookie key.",
+  "data": {
+    "packageIdentifier": "Python-Werkzeug-0.14",
+    "publishedAt": "2023-02-14T20:15:00+00:00",
+    "recommendations": "3.0.6",
+    "recommendedVersion": "3.0.6",
+    "exploitableMethods": null,
+    "packageData": [
+      {
+        "url": "https://github.com/advisories/GHSA-px8h-6qxv-m22q",
+        "type": "Advisory"
+      },
+      {
+        "url": "https://github.com/pallets/werkzeug/commit/cf275f42acad1b5950c50ffe8ef58fe62cdce028",
+        "type": "Commit"
+      },
+      {
+        "url": "https://github.com/pallets/werkzeug/releases/tag/2.2.3",
+        "type": "Release Note"
+      }
+    ]
+  },
+  "comments": {
+    "comments": ""
+  },
+  "vulnerabilityDetails": {
+    "cvssScore": 3.5,
+    "cveName": "CVE-2023-23934",
+    "cweId": "CWE-20",
+    "cvss": {
+      "scope": "UNCHANGED",
+      "score": 3.5,
+      "version": 3,
+      "severity": "Low",
+      "integrity": "LOW",
+      "attackVector": "ADJACENT_NETWORK",
+      "availability": "NONE",
+      "confidentiality": "NONE",
+      "userInteraction": "REQUIRED",
+      "attackComplexity": "LOW",
+      "privilegesRequired": "NONE"
+    }
+  },
+  "__scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440"
+}
