@@ -34,12 +34,8 @@ class TestSesConfigurationSetExporter:
         assert exporter._client is None
 
     @pytest.mark.asyncio
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy"
-    )
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.ResourceInspector"
-    )
+    @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ses.configuration_set.exporter.ResourceInspector")
     async def test_get_resource_success(
         self,
         mock_inspector_class: MagicMock,
@@ -85,12 +81,8 @@ class TestSesConfigurationSetExporter:
         ]
 
     @pytest.mark.asyncio
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy"
-    )
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.ResourceInspector"
-    )
+    @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ses.configuration_set.exporter.ResourceInspector")
     async def test_get_resource_empty_result(
         self,
         mock_inspector_class: MagicMock,
@@ -122,12 +114,8 @@ class TestSesConfigurationSetExporter:
         assert result == {}
 
     @pytest.mark.asyncio
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy"
-    )
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.ResourceInspector"
-    )
+    @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ses.configuration_set.exporter.ResourceInspector")
     async def test_get_paginated_resources_success(
         self,
         mock_inspector_class: MagicMock,
@@ -179,12 +167,8 @@ class TestSesConfigurationSetExporter:
         assert results[1]["ConfigurationSetName"] == "another-config-set"
 
     @pytest.mark.asyncio
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy"
-    )
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.ResourceInspector"
-    )
+    @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ses.configuration_set.exporter.ResourceInspector")
     async def test_get_paginated_resources_follows_next_token(
         self,
         mock_inspector_class: MagicMock,
@@ -211,9 +195,7 @@ class TestSesConfigurationSetExporter:
         # Inspector passes through
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
-        mock_inspector.inspect.side_effect = (
-            lambda config_sets, *a, **kw: config_sets
-        )
+        mock_inspector.inspect.side_effect = lambda config_sets, *a, **kw: config_sets
 
         # Create request
         request = PaginatedConfigurationSetRequest(
@@ -236,12 +218,8 @@ class TestSesConfigurationSetExporter:
         mock_client.list_configuration_sets.assert_any_call(NextToken="page-2")
 
     @pytest.mark.asyncio
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy"
-    )
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.ResourceInspector"
-    )
+    @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ses.configuration_set.exporter.ResourceInspector")
     async def test_get_paginated_resources_empty(
         self,
         mock_inspector_class: MagicMock,
@@ -255,9 +233,7 @@ class TestSesConfigurationSetExporter:
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
         # Mock list_configuration_sets returning no sets
-        mock_client.list_configuration_sets.return_value = {
-            "ConfigurationSets": []
-        }
+        mock_client.list_configuration_sets.return_value = {"ConfigurationSets": []}
 
         # Inspector
         mock_inspector = AsyncMock()
@@ -280,12 +256,8 @@ class TestSesConfigurationSetExporter:
         assert len(results) == 0
 
     @pytest.mark.asyncio
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy"
-    )
-    @patch(
-        "aws.core.exporters.ses.configuration_set.exporter.ResourceInspector"
-    )
+    @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ses.configuration_set.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
