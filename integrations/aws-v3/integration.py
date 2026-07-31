@@ -308,6 +308,13 @@ class AWSDynamoDBTableResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSSESConfigurationSetResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SES::ConfigurationSet"] = Field(
+        title="AWS SES Configuration Set",
+        description="AWS SES Configuration Set resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -341,6 +348,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodePipelineActionExecutionResourceConfig
         | AWSSESEmailIdentityResourceConfig
         | AWSDynamoDBTableResourceConfig
+        | AWSSESConfigurationSetResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

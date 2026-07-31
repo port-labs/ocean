@@ -1,4 +1,4 @@
-SES_EMAIL_IDENTITY_SUPPORTED_REGIONS: frozenset[str] = frozenset(
+SES_SUPPORTED_REGIONS: frozenset[str] = frozenset(
     {
         "af-south-1",
         "ap-northeast-1",

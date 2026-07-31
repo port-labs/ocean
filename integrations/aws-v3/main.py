@@ -76,6 +76,8 @@ from aws.core.exporters.codepipeline import (
 from aws.core.exporters.ses import (
     SesEmailIdentityExporter,
     PaginatedEmailIdentityRequest,
+    SesConfigurationSetExporter,
+    PaginatedConfigurationSetRequest,
 )
 from aws.core.exporters.dynamodb import DynamoDBTableExporter
 from aws.core.exporters.dynamodb.table.models import PaginatedTableRequest
@@ -445,6 +447,18 @@ async def resync_ses_email_identity(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_dynamodb_table(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, DynamoDBTableExporter, PaginatedTableRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.SES_CONFIGURATION_SET)
+async def resync_ses_configuration_set(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        SesConfigurationSetExporter,
+        PaginatedConfigurationSetRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch
