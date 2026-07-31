@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.7.7 (2026-07-30)
+
+
+### Improvements
+
+- Github form displays either PAT or App fields and marks them as required
+
+
 ## 6.7.6 (2026-07-30)
 
 
