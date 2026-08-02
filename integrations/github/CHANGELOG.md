@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.7.7 (2026-07-30)
+
+
+### Improvements
+
+- Github form displays either PAT or App fields and marks them as required
+
+
+## 6.7.6 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 6.7.5 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 6.7.4 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 6.7.3 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 6.7.2 (2026-07-28)
+
+
+### Improvements
+
+- Omit unset repository filters from default Skill path schema entries.
+
+
+## 6.7.1 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
 ## 6.7.0 (2026-07-27)
 
 

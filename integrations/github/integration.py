@@ -308,6 +308,14 @@ class GithubSkillSelector(Selector):
         ),
     )
 
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(exclude_none=True) for path in default_paths
+            ]
+
 
 class GithubSkillResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.SKILL] = Field(
