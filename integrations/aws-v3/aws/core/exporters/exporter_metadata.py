@@ -5,8 +5,7 @@ from aws.core.exporters.codepipeline import (
     CodePipelineActionExecutionExporter,
     PaginatedCodePipelineActionExecutionRequest,
 )
-from aws.core.exporters.s3.bucket.exporter import S3BucketExporter
-from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
+from aws.core.exporters.s3 import S3BucketExporter, PaginatedBucketRequest
 from aws.core.helpers.types import ObjectKind
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_models import ResourceRequestModel
