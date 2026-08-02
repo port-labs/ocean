@@ -97,14 +97,12 @@ async def iter_work_items(
     wiql: Optional[str] = None,
     expand: Optional[str] = None,
     incremental_cursor: Optional[datetime] = None,
-    changed_after: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_work_items(
             wiql=wiql,
             expand=expand,
             incremental_cursor=incremental_cursor,
-            changed_after=changed_after,
         )
     ):
         yield batch
@@ -149,13 +147,11 @@ async def iter_release_definitions(
 async def iter_builds(
     enrich_with_first_commit: bool = False,
     incremental_cursor: Optional[datetime] = None,
-    min_time: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_builds(
             enrich_with_first_commit=enrich_with_first_commit,
             incremental_cursor=incremental_cursor,
-            min_time=min_time,
         )
     ):
         yield batch
@@ -176,13 +172,11 @@ async def iter_environments() -> AsyncGenerator[list[dict[str, Any]], None]:
 
 
 async def iter_release_deployments(
-    additional_params: Optional[dict[str, Any]] = None,
     incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_release_deployments(
-            additional_params=additional_params,
-            incremental_cursor=incremental_cursor,
+            incremental_cursor=incremental_cursor
         )
     ):
         yield batch
@@ -227,16 +221,12 @@ async def iter_test_runs(
     include_results: bool = False,
     coverage_config: Any = None,
     incremental_cursor: Optional[datetime] = None,
-    min_last_updated_date: Optional[str] = None,
-    max_last_updated_date: Optional[str] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.fetch_test_runs(
             include_results,
             coverage_config,
             incremental_cursor=incremental_cursor,
-            min_last_updated_date=min_last_updated_date,
-            max_last_updated_date=max_last_updated_date,
         )
     ):
         yield batch

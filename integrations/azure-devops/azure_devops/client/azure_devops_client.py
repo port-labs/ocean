@@ -969,7 +969,6 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = dict(additional_params or {})
         if incremental_cursor is not None:
-            params.pop("minCreatedTime", None)
             params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
         async for projects in self.generate_projects():
             for project in projects:
@@ -1300,19 +1299,15 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         enrich_with_first_commit: bool = False,
         incremental_cursor: Optional[datetime] = None,
-        min_time: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
         Uses continuation token pagination as per Azure DevOps Builds API.
         https://learn.microsoft.com/en-us/rest/api/azure/devops/build/builds/list?view=azure-devops-rest-7.1
         """
-        effective_min_time = (
-            incremental_cursor if incremental_cursor is not None else min_time
-        )
         async for projects in self.generate_projects():
             tasks = [
-                self._generate_builds_for_project(project, min_time=effective_min_time)
+                self._generate_builds_for_project(project, min_time=incremental_cursor)
                 for project in projects
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
@@ -1504,15 +1499,13 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_release_deployments(
         self,
-        additional_params: dict[str, Any] | None = None,
         incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        additional_params: dict[str, Any] = {}
         if incremental_cursor is not None:
             additional_params = RELEASE_DEPLOYMENT_INCREMENTAL.build_params(
                 incremental_cursor
             )
-        else:
-            additional_params = additional_params or {}
         async for projects in self.generate_projects():
             for project in projects:
                 deployments_url = (
@@ -1607,7 +1600,6 @@ class AzureDevopsClient(HTTPBaseClient):
         wiql: Optional[str],
         expand: str,
         incremental_cursor: Optional[datetime] = None,
-        changed_after: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -1615,9 +1607,6 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
         of 20,000 results per query.
         """
-        effective_changed_after = (
-            incremental_cursor if incremental_cursor is not None else changed_after
-        )
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
             tasks = [
@@ -1628,7 +1617,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         project,
                         wiql,
                         expand,
-                        effective_changed_after,
+                        incremental_cursor,
                     ),
                 )
                 for project in projects
@@ -2893,55 +2882,37 @@ class AzureDevopsClient(HTTPBaseClient):
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"],
         incremental_cursor: Optional[datetime] = None,
-        min_last_updated_date: Optional[str] = None,
-        max_last_updated_date: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        if incremental_cursor is not None:
-            window_start = incremental_cursor
-            now = datetime.now(timezone.utc)
-            while window_start < now:
-                window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
-                params = {
-                    "includeRunDetails": True,
-                    **API_PARAMS,
-                    "minLastUpdatedDate": window_start.isoformat(),
-                    "maxLastUpdatedDate": window_end.isoformat(),
-                }
-                async for runs in self._get_paginated_by_top_and_skip(
-                    url, params=params
-                ):
-                    yield await self._enrich_test_runs(
-                        runs, project_id, include_results, coverage_config
-                    )
-                window_start = window_end
-            return
-
-        if min_last_updated_date or max_last_updated_date:
-            params: dict[str, Any] = {"includeRunDetails": True, **API_PARAMS}
-            if min_last_updated_date:
-                params["minLastUpdatedDate"] = min_last_updated_date
-            if max_last_updated_date:
-                params["maxLastUpdatedDate"] = max_last_updated_date
+        if incremental_cursor is None:
+            params = {"includeRunDetails": True, **API_PARAMS}
             async for runs in self._get_paginated_by_top_and_skip(url, params=params):
                 yield await self._enrich_test_runs(
                     runs, project_id, include_results, coverage_config
                 )
             return
 
-        params = {"includeRunDetails": True, **API_PARAMS}
-        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
-            yield await self._enrich_test_runs(
-                runs, project_id, include_results, coverage_config
-            )
+        window_start = incremental_cursor
+        now = datetime.now(timezone.utc)
+        while window_start < now:
+            window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
+            params = {
+                "includeRunDetails": True,
+                **API_PARAMS,
+                "minLastUpdatedDate": window_start.isoformat(),
+                "maxLastUpdatedDate": window_end.isoformat(),
+            }
+            async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+                yield await self._enrich_test_runs(
+                    runs, project_id, include_results, coverage_config
+                )
+            window_start = window_end
 
     async def fetch_test_runs(
         self,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"] = None,
         incremental_cursor: Optional[datetime] = None,
-        min_last_updated_date: Optional[str] = None,
-        max_last_updated_date: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
@@ -2958,8 +2929,6 @@ class AzureDevopsClient(HTTPBaseClient):
                         include_results,
                         coverage_config,
                         incremental_cursor,
-                        min_last_updated_date,
-                        max_last_updated_date,
                     ),
                 )
                 for project in projects
