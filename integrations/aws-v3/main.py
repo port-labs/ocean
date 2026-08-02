@@ -1,9 +1,6 @@
-from dataclasses import dataclass
 from typing import cast
 
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
-from aws.core.interfaces.exporter import IResourceExporter
-from aws.core.modeling.resource_models import ResourceRequestModel
 from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
@@ -11,9 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
-from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.helpers.types import ObjectKind
-from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from aws.core.exporters.ec2.instance import PaginatedEC2InstanceRequest
 from aws.core.exporters.ec2.instance import EC2InstanceExporter
 from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
@@ -74,8 +69,6 @@ from aws.core.exporters.codepipeline import (
     PaginatedCodePipelineActionRequest,
     CodePipelinePipelineExecutionExporter,
     PaginatedPipelineExecutionRequest,
-    CodePipelineActionExecutionExporter,
-    PaginatedCodePipelineActionExecutionRequest,
 )
 from aws.core.exporters.ses import (
     SesEmailIdentityExporter,
