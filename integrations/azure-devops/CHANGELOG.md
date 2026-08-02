@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.43 (2026-08-02)
+
+
+### Features
+
+- Added incremental sync for `work-item`, `build`, `pull-request`, `release`, `release-deployment`, `pipeline-run`, `test-run`, and `advanced-security-alert`.
+
+
 ## 0.10.42 (2026-07-30)
 
 
