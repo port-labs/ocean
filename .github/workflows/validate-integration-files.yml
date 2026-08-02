@@ -13,6 +13,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Identify machine user (temporary)
+        run: |
+          curl -s -H "Authorization: Bearer ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}" \
+            https://api.github.com/user | jq -r '.login'
+
       - name: No integration changes
         if: needs.detect-changes.outputs.has_integration_code_changes != 'true'
         run: echo "No integration changes detected"
