@@ -34,6 +34,7 @@ class ObjectKind(StrEnum):
     CODEPIPELINE_ACTION_EXECUTION = "AWS::CodePipeline::ActionExecution"
     SES_EMAIL_IDENTITY = "AWS::SES::EmailIdentity"
     DYNAMODB_TABLE = "AWS::DynamoDB::Table"
+    SES_CONFIGURATION_SET = "AWS::SES::ConfigurationSet"
 
 
 SupportedServices = Literal[
