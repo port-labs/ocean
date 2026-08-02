@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Awaitable, Callable, Optional
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 from httpx import ConnectTimeout, ReadError, ReadTimeout, Response
@@ -16,7 +16,6 @@ from azure_devops.client.rate_limiter import (
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 
 PAGE_SIZE = 50
-SendRequestFn = Callable[..., Awaitable[Response | None]]
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
@@ -69,14 +68,9 @@ class HTTPBaseClient:
                     params=params,
                     headers=headers,
                 )
-                if response.status_code == 404 and not raise_on_404:
-                    logger.warning(
-                        f"Couldn't access url: {url}. Failed due to 404 error"
-                    )
-                    return None
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            if response.status_code == 404 and not raise_on_404:
+            if response.status_code == 404:
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
                 return None
             else:
@@ -106,11 +100,9 @@ class HTTPBaseClient:
         url: str,
         data_key: str = "value",
         additional_params: Optional[dict[str, Any]] = None,
-        send_request_fn: Optional[SendRequestFn] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         continuation_token = None
         timeout_retries = 0
-        request = send_request_fn or self.send_request
 
         while True:
             params: dict[str, Any] = {
@@ -123,7 +115,7 @@ class HTTPBaseClient:
                 params["continuationToken"] = continuation_token
 
             try:
-                response = await request(
+                response = await self.send_request(
                     "GET",
                     url,
                     params=params,

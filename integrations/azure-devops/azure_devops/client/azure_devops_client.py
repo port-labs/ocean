@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
-from httpx import HTTPStatusError, ReadTimeout, Response
+from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -379,66 +379,6 @@ class AzureDevopsClient(HTTPBaseClient):
             if projects:
                 yield projects
 
-    async def _send_advanced_security_request(
-        self,
-        method: str,
-        url: str,
-        data: Optional[Any] = None,
-        params: Optional[dict[str, Any]] = None,
-        headers: Optional[dict[str, Any]] = None,
-    ) -> Response | None:
-        """Send a request to the Advanced Security alerts API.
-
-        Returns None when GHAS is not enabled for the repository (HTTP 400).
-        """
-        try:
-            return await self.send_request(
-                method=method,
-                url=url,
-                data=data,
-                params=params,
-                headers=headers,
-            )
-        except HTTPStatusError as e:
-            if e.response.status_code == 400:
-                logger.warning(
-                    f"Skipping Advanced Security alerts for {url}: "
-                    "GHAS not enabled or repository not onboarded (HTTP 400)"
-                )
-                return None
-            raise
-
-    async def _send_analytics_request(
-        self,
-        method: str,
-        url: str,
-        data: Optional[Any] = None,
-        params: Optional[dict[str, Any]] = None,
-        headers: Optional[dict[str, Any]] = None,
-    ) -> Response | None:
-        """Send a request to the Azure DevOps Analytics OData API.
-
-        Returns None when Analytics is not enabled or inaccessible (HTTP 403/404).
-        """
-        try:
-            return await self.send_request(
-                method=method,
-                url=url,
-                data=data,
-                params=params,
-                headers=headers,
-                raise_on_404=True,
-            )
-        except HTTPStatusError as e:
-            if e.response.status_code in (403, 404):
-                logger.warning(
-                    f"Skipping Analytics OData request for {url}: "
-                    "Analytics is not enabled, the project is not onboarded, or access "
-                    f"is denied (HTTP {e.response.status_code})"
-                )
-                return None
-            raise
-
     async def get_single_advanced_security_alert(
         self,
         project_id: str,
@@ -446,11 +386,19 @@ class AzureDevopsClient(HTTPBaseClient):
         alert_id: str,
     ) -> dict[str, Any] | None:
         security_alert_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts/{alert_id}"
-        response = await self._send_advanced_security_request("GET", security_alert_url)
+        try:
+            response = await self.send_request("GET", security_alert_url)
+        except HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.warning(
+                    f"Skipping Advanced Security alerts for {security_alert_url}: "
+                    "GHAS not enabled or repository not onboarded (HTTP 400)"
+                )
+                return None
+            raise
         if not response:
             return None
-        security_alert = response.json()
-        return security_alert
+        return response.json()
 
     async def generate_advanced_security_alerts(
         self,
@@ -472,20 +420,28 @@ class AzureDevopsClient(HTTPBaseClient):
             ),
             incremental_cursor,
         )
-        async for (
-            security_alerts
-        ) in self._get_paginated_by_top_and_continuation_token(
-            security_alerts_url,
-            additional_params=additional_params,
-            send_request_fn=self._send_advanced_security_request,
-        ):
-            enriched_alerts = [
-                self._enrich_security_alert(
-                    security_alert, repository_id, project_id
+        try:
+            async for (
+                security_alerts
+            ) in self._get_paginated_by_top_and_continuation_token(
+                security_alerts_url,
+                additional_params=additional_params,
+            ):
+                enriched_alerts = [
+                    self._enrich_security_alert(
+                        security_alert, repository_id, project_id
+                    )
+                    for security_alert in security_alerts
+                ]
+                yield enriched_alerts
+        except HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.warning(
+                    f"Skipping Advanced Security alerts for {security_alerts_url}: "
+                    "GHAS not enabled or repository not onboarded (HTTP 400)"
                 )
-                for security_alert in security_alerts
-            ]
-            yield enriched_alerts
+                return
+            raise
 
     def _enrich_security_alert(
         self, security_alert: dict[str, Any], repository_id: str, project_id: str
@@ -1123,9 +1079,22 @@ class AzureDevopsClient(HTTPBaseClient):
         next_url: str | None = url
         next_params: dict[str, Any] | None = params
         while next_url:
-            response = await self._send_analytics_request(
-                "GET", next_url, params=next_params
-            )
+            try:
+                response = await self.send_request(
+                    "GET",
+                    next_url,
+                    params=next_params,
+                    raise_on_404=True,
+                )
+            except HTTPStatusError as e:
+                if e.response.status_code in (403, 404):
+                    logger.warning(
+                        f"Skipping Analytics OData request for {next_url}: "
+                        "Analytics is not enabled, the project is not onboarded, or access "
+                        f"is denied (HTTP {e.response.status_code})"
+                    )
+                    return
+                raise
             if not response:
                 return
             payload = response.json()

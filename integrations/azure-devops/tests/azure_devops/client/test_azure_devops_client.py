@@ -2272,49 +2272,54 @@ async def test_generate_repository_policies() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_advanced_security_request_returns_none_on_400() -> None:
+async def test_get_single_advanced_security_alert_returns_none_on_400() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-    advsec_url = (
-        "https://advsec.your_organization_url.com/proj1/_apis/alert/"
-        "repositories/repo1/alerts"
-    )
-    error_response = Response(400, text="GHAS not enabled")
     error = HTTPStatusError(
         "bad request",
-        request=Request("GET", advsec_url),
-        response=error_response,
-    )
-
-    with patch.object(client, "send_request", side_effect=error) as mock_send:
-        result = await client._send_advanced_security_request("GET", advsec_url)
-
-    assert result is None
-    mock_send.assert_awaited_once_with(
-        method="GET",
-        url=advsec_url,
-        data=None,
-        params=None,
-        headers=None,
-    )
-
-
-@pytest.mark.asyncio
-async def test_send_advanced_security_request_reraises_non_400_errors() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-    advsec_url = (
-        "https://advsec.your_organization_url.com/proj1/_apis/alert/"
-        "repositories/repo1/alerts/1"
-    )
-    error_response = Response(500, text="server error")
-    error = HTTPStatusError(
-        "server error",
-        request=Request("GET", advsec_url),
-        response=error_response,
+        request=Request("GET", "https://advsec.example/alerts/1"),
+        response=Response(400, text="GHAS not enabled"),
     )
 
     with patch.object(client, "send_request", side_effect=error):
-        with pytest.raises(HTTPStatusError):
-            await client._send_advanced_security_request("GET", advsec_url)
+        result = await client.get_single_advanced_security_alert(
+            "proj1", "repo1", "alert1"
+        )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_generate_advanced_security_alerts_skips_on_400() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    repository: dict[str, Any] = {
+        "id": "repo1",
+        "name": "Repo One",
+        "project": {"id": "proj1", "name": "Project One"},
+    }
+    error = HTTPStatusError(
+        "bad request",
+        request=Request("GET", "https://advsec.example/alerts"),
+        response=Response(400, text="GHAS not enabled"),
+    )
+
+    async def failing_pagination(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        raise error
+        yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=failing_pagination,
+    ):
+        alerts = [
+            alert
+            async for batch in client.generate_advanced_security_alerts(repository)
+            for alert in batch
+        ]
+
+    assert alerts == []
 
 
 @pytest.mark.asyncio
