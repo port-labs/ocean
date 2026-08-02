@@ -77,6 +77,14 @@ from aws.core.exporters.codepipeline import (
     CodePipelineActionExecutionExporter,
     PaginatedCodePipelineActionExecutionRequest,
 )
+from aws.core.exporters.ses import (
+    SesEmailIdentityExporter,
+    PaginatedEmailIdentityRequest,
+    SesConfigurationSetExporter,
+    PaginatedConfigurationSetRequest,
+)
+from aws.core.exporters.dynamodb import DynamoDBTableExporter
+from aws.core.exporters.dynamodb.table.models import PaginatedTableRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -193,7 +201,6 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     aws_resource_config = cast(AWSResourceConfig, event.resource_config)
 
     async for account, session in get_all_account_sessions():
-
         logger.info(
             f"Attempting to fetch organizations accounts from account {account['Id']}"
         )
@@ -420,4 +427,34 @@ async def resync_standard_objects(kind: ObjectKind) -> ASYNC_GENERATOR_RESYNC_TY
         request_cls=metadata.paginated_request_model,
         regional=kind_to_export_metadata[kind].regional,
     ):
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.SES_EMAIL_IDENTITY)
+async def resync_ses_email_identity(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, SesEmailIdentityExporter, PaginatedEmailIdentityRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.DYNAMODB_TABLE)
+async def resync_dynamodb_table(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, DynamoDBTableExporter, PaginatedTableRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.SES_CONFIGURATION_SET)
+async def resync_ses_configuration_set(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        SesConfigurationSetExporter,
+        PaginatedConfigurationSetRequest,
+        regional=True,
+    )
+    async for batch in service:
         yield batch
