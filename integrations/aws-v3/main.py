@@ -420,7 +420,7 @@ async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind not in kind_to_export_metadata:
         return
 
-    metadata = kind_to_export_metadata[kind]
+    metadata = kind_to_export_metadata[ObjectKind(kind)]
     async for batch in ResyncAWSService(
         kind=kind,
         exporter_cls=metadata.exporter,
