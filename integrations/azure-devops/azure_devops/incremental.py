@@ -13,16 +13,25 @@ RELEASE_INCREMENTAL = ServerSideTimestampStrategy(param_key="minCreatedTime")
 RELEASE_DEPLOYMENT_INCREMENTAL = ServerSideTimestampStrategy(
     param_key="minModifiedTime"
 )
+ADVANCED_SECURITY_INCREMENTAL = ServerSideTimestampStrategy(
+    param_key="criteria.modifiedSince"
+)
 
 
-def wiql_changed_after_clause(cursor: datetime) -> str:
+def wiql_changed_after_clause(
+    cursor: datetime, *, time_precision: bool = False
+) -> str:
     """Build a WIQL fragment filtering work items changed on or after *cursor*.
 
-    ``[System.ChangedDate]`` is date-precision only; ADO rejects ISO datetimes
-    with a time component in WIQL queries.
+    When *time_precision* is False, only the UTC calendar date is used (ADO default
+    date-precision WIQL). When True, a full UTC ISO timestamp is used and the WIQL
+    request must include ``timePrecision=true``.
     """
-    cursor_date = cursor.astimezone(timezone.utc).date().isoformat()
-    return f"[System.ChangedDate] >= '{cursor_date}'"
+    if time_precision:
+        cursor_value = cursor.astimezone(timezone.utc).isoformat()
+    else:
+        cursor_value = cursor.astimezone(timezone.utc).date().isoformat()
+    return f"[System.ChangedDate] >= '{cursor_value}'"
 
 
 def flatten_advanced_security_params(params: dict[str, Any]) -> dict[str, Any]:
@@ -36,18 +45,6 @@ def flatten_advanced_security_params(params: dict[str, Any]) -> dict[str, Any]:
         elif value is not None:
             flattened[key] = value
     return flattened
-
-
-def merge_advanced_security_incremental(
-    params: dict[str, Any], cursor: datetime | None
-) -> dict[str, Any]:
-    if cursor is None:
-        return params
-    merged = {**params}
-    criteria = {**(merged.get("criteria") or {})}
-    criteria["modifiedSince"] = cursor.isoformat()
-    merged["criteria"] = criteria
-    return merged
 
 
 def build_pipeline_runs_analytics_filter(cursor: datetime) -> str:

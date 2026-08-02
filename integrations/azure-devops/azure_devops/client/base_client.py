@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Awaitable, Callable, Optional
 
 import httpx
 from httpx import ConnectTimeout, ReadError, ReadTimeout, Response
@@ -14,9 +14,9 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RETRY_AFTER_HEADER,
 )
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
-from azure_devops.misc import is_advanced_security_alerts_list_url
 
 PAGE_SIZE = 50
+SendRequestFn = Callable[..., Awaitable[Response | None]]
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
@@ -74,15 +74,6 @@ class HTTPBaseClient:
                         f"Couldn't access url: {url}. Failed due to 404 error"
                     )
                     return None
-                if (
-                    response.status_code == 400
-                    and is_advanced_security_alerts_list_url(url)
-                ):
-                    logger.warning(
-                        f"Skipping Advanced Security alerts for {url}: "
-                        "GHAS not enabled or repository not onboarded (HTTP 400)"
-                    )
-                    return None
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
             if response.status_code == 404 and not raise_on_404:
@@ -115,9 +106,11 @@ class HTTPBaseClient:
         url: str,
         data_key: str = "value",
         additional_params: Optional[dict[str, Any]] = None,
+        send_request_fn: Optional[SendRequestFn] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         continuation_token = None
         timeout_retries = 0
+        request = send_request_fn or self.send_request
 
         while True:
             params: dict[str, Any] = {
@@ -130,7 +123,7 @@ class HTTPBaseClient:
                 params["continuationToken"] = continuation_token
 
             try:
-                response = await self.send_request(
+                response = await request(
                     "GET",
                     url,
                     params=params,

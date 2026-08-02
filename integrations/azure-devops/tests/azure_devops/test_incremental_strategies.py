@@ -3,12 +3,12 @@ from datetime import datetime, timezone
 import pytest
 
 from azure_devops.incremental import (
+    ADVANCED_SECURITY_INCREMENTAL,
     BUILD_INCREMENTAL,
     RELEASE_DEPLOYMENT_INCREMENTAL,
     RELEASE_INCREMENTAL,
     build_pipeline_runs_analytics_filter,
     flatten_advanced_security_params,
-    merge_advanced_security_incremental,
     wiql_changed_after_clause,
 )
 
@@ -43,24 +43,29 @@ def test_build_merge_params_overrides_selector_min_created_time() -> None:
     ) == {"minCreatedTime": CURSOR.isoformat()}
 
 
-def test_merge_advanced_security_incremental_adds_modified_since() -> None:
-    assert merge_advanced_security_incremental(
-        {"criteria": {"states": "active"}}, CURSOR
+def test_advanced_security_incremental_merge_params_adds_modified_since() -> None:
+    assert ADVANCED_SECURITY_INCREMENTAL.merge_params(
+        flatten_advanced_security_params({"criteria": {"states": "active"}}),
+        CURSOR,
     ) == {
-        "criteria": {
-            "states": "active",
-            "modifiedSince": CURSOR.isoformat(),
-        }
+        "criteria.states": "active",
+        "criteria.modifiedSince": CURSOR.isoformat(),
     }
 
 
-def test_merge_advanced_security_incremental_noop_without_cursor() -> None:
-    params = {"criteria": {"states": "active"}}
-    assert merge_advanced_security_incremental(params, None) is params
+def test_advanced_security_incremental_merge_params_noop_without_cursor() -> None:
+    params = flatten_advanced_security_params({"criteria": {"states": "active"}})
+    assert ADVANCED_SECURITY_INCREMENTAL.merge_params(params, None) == params
 
 
-def test_wiql_changed_after_clause_uses_date_precision_only() -> None:
+def test_wiql_changed_after_clause_uses_date_precision_by_default() -> None:
     assert wiql_changed_after_clause(CURSOR) == "[System.ChangedDate] >= '2026-06-01'"
+
+
+def test_wiql_changed_after_clause_uses_time_precision_when_requested() -> None:
+    assert wiql_changed_after_clause(CURSOR, time_precision=True) == (
+        "[System.ChangedDate] >= '2026-06-01T12:00:00+00:00'"
+    )
 
 
 def test_flatten_advanced_security_params_expands_criteria() -> None:

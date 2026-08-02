@@ -517,7 +517,11 @@ class AzureDevopsBuildConfig(ResourceConfig):
 class AzureDevopsPipelineRunConfig(ResourceConfig):
     kind: Literal[Kind.PIPELINE_RUN] = Field(
         title="Azure Devops Pipeline Run",
-        description="Azure Devops pipeline run resource kind.",
+        description=(
+            "Azure Devops pipeline run resource kind. Incremental sync discovers "
+            "completed runs via the Analytics OData endpoint (analytics.*), which "
+            "requires Azure DevOps Analytics to be enabled for the organization."
+        ),
     )
     selector: AzureDevopsSelector = Field(
         title="Pipeline run selector",

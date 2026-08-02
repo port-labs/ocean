@@ -162,7 +162,3 @@ class AzureDevopsFolderResourceConfig(ResourceConfig):
         title="Folder selector",
         description="Selector for the folder resource.",
     )
-
-
-def is_advanced_security_alerts_list_url(url: str) -> bool:
-    return "advsec." in url and "/alert/repositories/" in url and "/alerts" in url

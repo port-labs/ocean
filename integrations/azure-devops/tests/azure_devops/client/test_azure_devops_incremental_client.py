@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator, Generator, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from httpx import HTTPStatusError, Request, Response
 from port_ocean.context.event import EventContext, event_context
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -113,14 +114,49 @@ async def test_generate_release_deployments_passes_min_modified_time(
 
 
 @pytest.mark.asyncio
-async def test_fetch_work_item_id_batches_injects_changed_date_filter(
+async def test_fetch_work_item_id_batches_injects_changed_date_filter_with_time_precision(
     mock_event_context: MagicMock,
 ) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, "port")
     captured_queries: list[str] = []
+    captured_params: list[dict[str, Any]] = []
 
     async def mock_send_request(method: str, url: str, **kwargs: Any) -> Any:
         captured_queries.append(kwargs["data"])
+        captured_params.append(kwargs.get("params") or {})
+        response = type("Resp", (), {})()
+        response.json = lambda: {"workItems": []}
+        return response
+
+    project = {"id": "proj1", "name": "Project One"}
+    with patch.object(client, "send_request", side_effect=mock_send_request):
+        async with event_context("test_event"):
+            async for _ in client._fetch_work_item_id_batches(
+                project,
+                wiql=None,
+                changed_after=CURSOR,
+                wiql_time_precision=True,
+            ):
+                pass
+
+    assert captured_queries
+    query = captured_queries[0]
+    assert "[System.ChangedDate] >=" in query
+    assert "2026-06-01T12:00:00+00:00" in query
+    assert captured_params[0]["timePrecision"] == "true"
+
+
+@pytest.mark.asyncio
+async def test_fetch_work_item_id_batches_uses_date_only_without_time_precision(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, "port")
+    captured_queries: list[str] = []
+    captured_params: list[dict[str, Any]] = []
+
+    async def mock_send_request(method: str, url: str, **kwargs: Any) -> Any:
+        captured_queries.append(kwargs["data"])
+        captured_params.append(kwargs.get("params") or {})
         response = type("Resp", (), {})()
         response.json = lambda: {"workItems": []}
         return response
@@ -138,6 +174,7 @@ async def test_fetch_work_item_id_batches_injects_changed_date_filter(
     assert "[System.ChangedDate] >=" in query
     assert "2026-06-01" in query
     assert "T12:00:00" not in query
+    assert "timePrecision" not in captured_params[0]
 
 
 @pytest.mark.asyncio
@@ -169,6 +206,73 @@ async def test_fetch_test_runs_incremental_uses_date_window_params(
     assert captured_params[0]["includeRunDetails"] is True
     assert captured_params[0]["minLastUpdatedDate"] == CURSOR.isoformat()
     assert "maxLastUpdatedDate" in captured_params[0]
+
+
+@pytest.mark.asyncio
+async def test_send_analytics_request_returns_none_on_403() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, "port")
+    analytics_url = (
+        "https://analytics.dev.azure.com/testorg/proj1/_odata/v4.0-preview/PipelineRuns"
+    )
+    error_response = Response(403, text="Analytics disabled")
+    error = HTTPStatusError(
+        "forbidden",
+        request=Request("GET", analytics_url),
+        response=error_response,
+    )
+
+    with patch.object(client, "send_request", side_effect=error) as mock_send:
+        result = await client._send_analytics_request("GET", analytics_url)
+
+    assert result is None
+    mock_send.assert_awaited_once_with(
+        method="GET",
+        url=analytics_url,
+        data=None,
+        params=None,
+        headers=None,
+        raise_on_404=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_send_analytics_request_returns_none_on_404() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, "port")
+    analytics_url = (
+        "https://analytics.dev.azure.com/testorg/proj1/_odata/v4.0-preview/PipelineRuns"
+    )
+    error_response = Response(404, text="not found")
+    error = HTTPStatusError(
+        "not found",
+        request=Request("GET", analytics_url),
+        response=error_response,
+    )
+
+    with patch.object(client, "send_request", side_effect=error):
+        result = await client._send_analytics_request("GET", analytics_url)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_discover_pipeline_runs_from_analytics_skips_unavailable_analytics(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, "port")
+
+    with patch.object(
+        client, "_send_analytics_request", new_callable=AsyncMock, return_value=None
+    ) as mock_analytics_request:
+        async with event_context("test_event"):
+            batches = [
+                batch
+                async for batch in client._discover_pipeline_runs_from_analytics_for_project(
+                    "proj1", "CompletedDate ge 2026-06-01T12:00:00+00:00"
+                )
+            ]
+
+    assert batches == []
+    mock_analytics_request.assert_awaited_once()
 
 
 @pytest.mark.asyncio

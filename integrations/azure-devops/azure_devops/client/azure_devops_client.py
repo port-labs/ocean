@@ -3,13 +3,12 @@ import asyncio
 import functools
 import json
 import re
-import httpx
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
-from httpx import HTTPStatusError, ReadTimeout
+from httpx import HTTPStatusError, ReadTimeout, Response
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -37,7 +36,7 @@ from azure_devops.incremental import (
     RELEASE_DEPLOYMENT_INCREMENTAL,
     RELEASE_INCREMENTAL,
     build_pipeline_runs_analytics_filter,
-    merge_advanced_security_incremental,
+    ADVANCED_SECURITY_INCREMENTAL,
     flatten_advanced_security_params,
     wiql_changed_after_clause,
 )
@@ -380,6 +379,66 @@ class AzureDevopsClient(HTTPBaseClient):
             if projects:
                 yield projects
 
+    async def _send_advanced_security_request(
+        self,
+        method: str,
+        url: str,
+        data: Optional[Any] = None,
+        params: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, Any]] = None,
+    ) -> Response | None:
+        """Send a request to the Advanced Security alerts API.
+
+        Returns None when GHAS is not enabled for the repository (HTTP 400).
+        """
+        try:
+            return await self.send_request(
+                method=method,
+                url=url,
+                data=data,
+                params=params,
+                headers=headers,
+            )
+        except HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.warning(
+                    f"Skipping Advanced Security alerts for {url}: "
+                    "GHAS not enabled or repository not onboarded (HTTP 400)"
+                )
+                return None
+            raise
+
+    async def _send_analytics_request(
+        self,
+        method: str,
+        url: str,
+        data: Optional[Any] = None,
+        params: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, Any]] = None,
+    ) -> Response | None:
+        """Send a request to the Azure DevOps Analytics OData API.
+
+        Returns None when Analytics is not enabled or inaccessible (HTTP 403/404).
+        """
+        try:
+            return await self.send_request(
+                method=method,
+                url=url,
+                data=data,
+                params=params,
+                headers=headers,
+                raise_on_404=True,
+            )
+        except HTTPStatusError as e:
+            if e.response.status_code in (403, 404):
+                logger.warning(
+                    f"Skipping Analytics OData request for {url}: "
+                    "Analytics is not enabled, the project is not onboarded, or access "
+                    f"is denied (HTTP {e.response.status_code})"
+                )
+                return None
+            raise
+
     async def get_single_advanced_security_alert(
         self,
         project_id: str,
@@ -387,7 +446,7 @@ class AzureDevopsClient(HTTPBaseClient):
         alert_id: str,
     ) -> dict[str, Any] | None:
         security_alert_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts/{alert_id}"
-        response = await self.send_request("GET", security_alert_url)
+        response = await self._send_advanced_security_request("GET", security_alert_url)
         if not response:
             return None
         security_alert = response.json()
@@ -404,36 +463,29 @@ class AzureDevopsClient(HTTPBaseClient):
         This method fetches alerts for all repositories across all projects using the Advanced Security API.
         read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/advancedsecurity/alerts/list?view=azure-devops-rest-7.2
         """
-        try:
-            project_id = repository["project"]["id"]
-            repository_id = repository["id"]
-            security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
-            additional_params = flatten_advanced_security_params(
-                merge_advanced_security_incremental(
-                    {**ADVANCED_SECURITY_API_PARAMS, **(params or {})},
-                    incremental_cursor,
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
+        additional_params = ADVANCED_SECURITY_INCREMENTAL.merge_params(
+            flatten_advanced_security_params(
+                {**ADVANCED_SECURITY_API_PARAMS, **(params or {})}
+            ),
+            incremental_cursor,
+        )
+        async for (
+            security_alerts
+        ) in self._get_paginated_by_top_and_continuation_token(
+            security_alerts_url,
+            additional_params=additional_params,
+            send_request_fn=self._send_advanced_security_request,
+        ):
+            enriched_alerts = [
+                self._enrich_security_alert(
+                    security_alert, repository_id, project_id
                 )
-            )
-            async for (
-                security_alerts
-            ) in self._get_paginated_by_top_and_continuation_token(
-                security_alerts_url, additional_params=additional_params
-            ):
-                enriched_alerts = [
-                    self._enrich_security_alert(
-                        security_alert, repository_id, project_id
-                    )
-                    for security_alert in security_alerts
-                ]
-                yield enriched_alerts
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 400:
-                logger.warning(
-                    f"Advanced Security not enabled for repository "
-                    f"{repository['name']} in project {project_id} (HTTP 400)"
-                )
-                return
-            raise
+                for security_alert in security_alerts
+            ]
+            yield enriched_alerts
 
     def _enrich_security_alert(
         self, security_alert: dict[str, Any], repository_id: str, project_id: str
@@ -1025,7 +1077,12 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Discover completed pipeline runs via Analytics OData, enrich via Runs Get."""
+        """Discover completed pipeline runs via Analytics OData, enrich via Runs Get.
+
+        Prerequisite: Azure DevOps Analytics must be enabled for the organization.
+        Incremental discovery uses the ``analytics.*`` OData endpoint; organizations
+        without Analytics skip per project with a warning instead of failing the kind.
+        """
         if incremental_cursor is None:
             return
         analytics_filter = build_pipeline_runs_analytics_filter(incremental_cursor)
@@ -1047,6 +1104,11 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         analytics_filter: str,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Discover completed pipeline runs for a project via Analytics OData.
+
+        Requires the organization's Analytics service (``analytics.*`` endpoint).
+        HTTP 403/404 responses are logged and skipped for this project.
+        """
         url = (
             f"{self._format_service_url(ANALYTICS_PUBLISHER_ID)}/{project_id}"
             f"{ANALYTICS_PIPELINE_RUNS_ODATA_PATH}"
@@ -1061,9 +1123,11 @@ class AzureDevopsClient(HTTPBaseClient):
         next_url: str | None = url
         next_params: dict[str, Any] | None = params
         while next_url:
-            response = await self.send_request("GET", next_url, params=next_params)
+            response = await self._send_analytics_request(
+                "GET", next_url, params=next_params
+            )
             if not response:
-                break
+                return
             payload = response.json()
             rows = payload.get("value") or []
             if rows:
@@ -1573,9 +1637,13 @@ class AzureDevopsClient(HTTPBaseClient):
         wiql: Optional[str],
         expand: str,
         changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for work_item_ids in self._fetch_work_item_id_batches(
-            project, wiql, changed_after=changed_after
+            project,
+            wiql,
+            changed_after=changed_after,
+            wiql_time_precision=wiql_time_precision,
         ):
             if not work_item_ids:
                 logger.debug(
@@ -1607,6 +1675,7 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
         of 20,000 results per query.
         """
+        wiql_time_precision = incremental_cursor is not None
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
             tasks = [
@@ -1618,6 +1687,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         wiql,
                         expand,
                         incremental_cursor,
+                        wiql_time_precision=wiql_time_precision,
                     ),
                 )
                 for project in projects
@@ -1653,11 +1723,26 @@ class AzureDevopsClient(HTTPBaseClient):
         order_part = wiql_stripped[order_by_idx + len(order_by_marker) :].strip()
         return filter_part or None, order_part or None
 
+    def _wiql_request_params(
+        self,
+        *,
+        changed_after: Optional[datetime],
+        wiql_time_precision: bool,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "api-version": "7.1-preview.2",
+            "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+        }
+        if changed_after is not None and wiql_time_precision:
+            params["timePrecision"] = "true"
+        return params
+
     async def _fetch_work_item_id_batches(
         self,
         project: dict[str, Any],
         wiql: Optional[str],
         changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[int], None]:
         """
         Executes WIQL queries to fetch work item IDs for a project.
@@ -1671,7 +1756,8 @@ class AzureDevopsClient(HTTPBaseClient):
         :param project: The project dict containing id and name.
         :param wiql: Optional user-provided WIQL filter to append to the WHERE clause.
         :param changed_after: When set (incremental sync), only work items changed on or
-            after the cursor's calendar day (WIQL date precision; time is not supported).
+            after the cursor. With ``wiql_time_precision``, uses full timestamp + ADO
+            ``timePrecision=true``; otherwise uses UTC calendar date only.
         :yield: Batches of work item IDs (each batch up to MAX_WORK_ITEMS_RESULTS_PER_PROJECT).
         """
         filter_part, user_order_part = self._parse_wiql_with_order_by(wiql)
@@ -1681,7 +1767,12 @@ class AzureDevopsClient(HTTPBaseClient):
             wiql_base += f" AND ({filter_part})"
             logger.info(f"Using WIQL filter: {filter_part}")
         if changed_after is not None:
-            wiql_base += f" AND {wiql_changed_after_clause(changed_after)}"
+            wiql_base += f" AND {wiql_changed_after_clause(changed_after, time_precision=wiql_time_precision)}"
+
+        wiql_params = self._wiql_request_params(
+            changed_after=changed_after,
+            wiql_time_precision=wiql_time_precision,
+        )
 
         if user_order_part:
             logger.warning(
@@ -1694,10 +1785,7 @@ class AzureDevopsClient(HTTPBaseClient):
             wiql_response = await self.send_request(
                 "POST",
                 wiql_url,
-                params={
-                    "api-version": "7.1-preview.2",
-                    "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
-                },
+                params=wiql_params,
                 data=json.dumps({"query": wiql_query}),
                 headers={"Content-Type": "application/json"},
             )
@@ -1726,10 +1814,7 @@ class AzureDevopsClient(HTTPBaseClient):
             wiql_response = await self.send_request(
                 "POST",
                 wiql_url,
-                params={
-                    "api-version": "7.1-preview.2",
-                    "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
-                },
+                params=wiql_params,
                 data=json.dumps({"query": wiql_query}),
                 headers={"Content-Type": "application/json"},
             )
