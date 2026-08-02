@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from aws.core.exporters.codepipeline import CodePipelineActionExecutionExporter, \
     PaginatedCodePipelineActionExecutionRequest
@@ -11,7 +12,7 @@ from aws.core.modeling.resource_models import ResourceRequestModel
 
 @dataclass
 class ExporterMetadata:
-    exporter: type[IResourceExporter]
+    exporter: type[IResourceExporter[Any]]
     paginated_request_model: type[ResourceRequestModel]
     regional: bool = True
 
