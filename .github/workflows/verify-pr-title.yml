@@ -8,6 +8,11 @@ jobs:
   check-title:
     runs-on: ubuntu-latest
     steps:
+      - name: Identify machine user (temporary)
+        run: |
+          curl -s -H "Authorization: Bearer ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}" \
+            https://api.github.com/user | jq -r '.login'
+
       - name: "Check PR title convention"
         id: title-check
         env:

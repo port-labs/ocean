@@ -17,11 +17,6 @@ jobs:
     name: Apply declarative release
     runs-on: ubuntu-latest
     steps:
-      - name: Identify machine user (temporary)
-        run: |
-          curl -s -H "Authorization: Bearer ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}" \
-            https://api.github.com/user | jq -r '.login'
-
       - name: Checkout
         uses: actions/checkout@v7
         with:
