@@ -425,7 +425,7 @@ async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind=kind,
         exporter_cls=metadata.exporter,
         request_cls=metadata.paginated_request_model,
-        regional=kind_to_export_metadata[kind].regional,
+        regional=metadata.regional,
     ):
         yield batch
 
