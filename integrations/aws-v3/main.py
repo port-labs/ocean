@@ -416,7 +416,7 @@ async def resync_codepipeline_pipeline_execution(
 
 
 @ocean.on_resync()
-async def resync_standard_objects(kind: ObjectKind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind not in kind_to_export_metadata:
         return
 
