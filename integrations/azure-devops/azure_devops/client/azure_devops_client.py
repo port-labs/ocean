@@ -1033,12 +1033,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Discover completed pipeline runs via Analytics OData, enrich via Runs Get.
-
-        Prerequisite: Azure DevOps Analytics must be enabled for the organization.
-        Incremental discovery uses the ``analytics.*`` OData endpoint; organizations
-        without Analytics skip per project with a warning instead of failing the kind.
-        """
+        """Discover completed pipeline runs via Analytics OData, enrich via Runs Get."""
         if incremental_cursor is None:
             return
         analytics_filter = build_pipeline_runs_analytics_filter(incremental_cursor)
@@ -1060,11 +1055,7 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         analytics_filter: str,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Discover completed pipeline runs for a project via Analytics OData.
-
-        Requires the organization's Analytics service (``analytics.*`` endpoint).
-        HTTP 403/404 responses are logged and skipped for this project.
-        """
+        """Discover completed pipeline runs for a project via Analytics OData."""
         url = (
             f"{self._format_service_url(ANALYTICS_PUBLISHER_ID)}/{project_id}"
             f"{ANALYTICS_PIPELINE_RUNS_ODATA_PATH}"
