@@ -30,6 +30,8 @@ features:
       - kind: AWS::CodePipeline::PipelineExecution
       - kind: AWS::CodePipeline::ActionExecution
       - kind: AWS::SES::EmailIdentity
+      - kind: AWS::DynamoDB::Table
+      - kind: AWS::SES::ConfigurationSet
 configurations:
   - name: credentialProviderPriority
     required: false

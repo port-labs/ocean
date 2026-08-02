@@ -1,0 +1,18 @@
+{
+  "risk_id": "d9662f9c-80c6-4529-b161-290e01f7c04f",
+  "api_id": "73b9de4e-8a7f-43e1-b3d4-6b9fc6a35845",
+  "severity": "high",
+  "name": "Deserialization_of_Untrusted_Data",
+  "status": "recurrent",
+  "http_method": "HEAD",
+  "url": "/load",
+  "origin": "code",
+  "documented": null,
+  "authenticated": null,
+  "discovery_date": "2025-10-28 13:29:59+00:00",
+  "scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "sast_risk_id": "8+/x3f09AT4CQ6lAbAZ5FQmIohc=",
+  "project_id": "6ace8769-7ad3-4812-8990-0d4111ba0156",
+  "state": "to_verify",
+  "__scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440"
+}
