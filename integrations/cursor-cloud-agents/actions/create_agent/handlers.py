@@ -3,8 +3,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from actions.abstract_executor import AbstractCursorExecutor
-from actions.config_validation import API_VERSION_V0, API_VERSION_V1
-from actions.create_agent.context import CreateAgentContext
+from actions.create_agent.context import (
+    API_VERSION_V0,
+    API_VERSION_V1,
+    CreateAgentContext,
+)
 
 
 class CreateAgentHandler(ABC):

@@ -32,13 +32,12 @@ class CursorAgentsClient:
         api_host: str,
         api_key: str,
         console_host: str,
-        page_size: int = DEFAULT_PAGE_SIZE,
         request_timeout_seconds: int = 30,
     ) -> None:
         self._client = http_async_client
         self._base_url = api_host.rstrip("/")
         self._console_host = console_host.rstrip("/")
-        self._page_size = page_size
+        self._page_size = DEFAULT_PAGE_SIZE
         self._request_timeout_seconds = request_timeout_seconds
         encoded_key = base64.b64encode(f"{api_key}:".encode()).decode()
         self._headers = {

@@ -1,7 +1,6 @@
 from port_ocean.core.models import IntegrationRun
 
 from actions.abstract_executor import AbstractCursorExecutor
-from actions.config_validation import validate_report_completion_policy
 from actions.create_agent.context import CreateAgentContext
 from actions.create_agent.handlers import get_handler
 
@@ -26,5 +25,4 @@ class CreateAgentExecutor(AbstractCursorExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         ctx = CreateAgentContext.from_run(run)
-        validate_report_completion_policy(ctx.api_version, ctx.report_completion)
         await get_handler(ctx.api_version).execute(self, ctx)

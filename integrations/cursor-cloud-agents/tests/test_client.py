@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from clients.cursor_agents_client import CursorAgentsClient
+from clients.cursor_agents_client import DEFAULT_PAGE_SIZE, CursorAgentsClient
 from clients.exceptions import CursorAgentsPaginationError
 
 
@@ -16,8 +16,8 @@ def client() -> CursorAgentsClient:
         api_host="https://api.cursor.com",
         api_key="test-api-key",
         console_host="https://cursor.com",
-        page_size=2,
     )
+    instance._page_size = 2
     instance._client = AsyncMock()
     return instance
 
@@ -45,9 +45,8 @@ def test_page_size_property() -> None:
         api_host="https://api.cursor.com",
         api_key="test-api-key",
         console_host="https://cursor.com",
-        page_size=42,
     )
-    assert instance.page_size == 42
+    assert instance.page_size == DEFAULT_PAGE_SIZE
 
 
 @pytest.mark.asyncio

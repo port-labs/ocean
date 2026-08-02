@@ -1,9 +1,7 @@
 import pytest
+from unittest.mock import MagicMock
 
-from actions.config_validation import (
-    parse_api_version,
-    validate_report_completion_policy,
-)
+from actions.create_agent.context import CreateAgentContext
 from actions.exceptions import InvalidActionParametersException
 from actions.request_bodies import (
     parse_v0_create_body,
@@ -13,18 +11,39 @@ from actions.request_bodies import (
 from actions.utils import build_v0_launch_body, build_v1_create_body, build_v1_run_body
 
 
+def _context_from_props(**props: object) -> CreateAgentContext:
+    run = MagicMock()
+    run.execution_properties = props
+    return CreateAgentContext.from_run(run)
+
+
 def test_parse_api_version_defaults_to_v1() -> None:
-    assert parse_api_version(None) == "v1"
+    ctx = _context_from_props(prompt="go", repository="https://github.com/org/repo")
+    assert ctx.api_version == "v1"
 
 
 def test_parse_api_version_normalizes_case() -> None:
-    assert parse_api_version("V0") == "v0"
-    assert parse_api_version(" V1 ") == "v1"
+    ctx = _context_from_props(
+        prompt="go",
+        repository="https://github.com/org/repo",
+        apiVersion="V0",
+    )
+    assert ctx.api_version == "v0"
+    ctx = _context_from_props(
+        prompt="go",
+        repository="https://github.com/org/repo",
+        apiVersion=" V1 ",
+    )
+    assert ctx.api_version == "v1"
 
 
 def test_parse_api_version_rejects_invalid() -> None:
     with pytest.raises(InvalidActionParametersException, match="apiVersion must be"):
-        parse_api_version("v2")
+        _context_from_props(
+            prompt="go",
+            repository="https://github.com/org/repo",
+            apiVersion="v2",
+        )
 
 
 def test_validate_report_completion_policy_rejects_v1() -> None:
@@ -32,7 +51,12 @@ def test_validate_report_completion_policy_rejects_v1() -> None:
         InvalidActionParametersException,
         match="only supported on create_agent with apiVersion v0",
     ):
-        validate_report_completion_policy("v1", True)
+        _context_from_props(
+            prompt="go",
+            repository="https://github.com/org/repo",
+            apiVersion="v1",
+            reportCompletion=True,
+        )
 
 
 def test_parse_v0_create_body_rejects_webhook_with_report_completion() -> None:
