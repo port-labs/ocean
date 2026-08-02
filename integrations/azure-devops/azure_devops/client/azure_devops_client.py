@@ -969,7 +969,7 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = dict(additional_params or {})
         if incremental_cursor is not None:
-             params.pop("minCreatedTime", None)
+            params.pop("minCreatedTime", None)
             params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
         async for projects in self.generate_projects():
             for project in projects:
