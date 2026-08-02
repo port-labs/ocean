@@ -1,7 +1,7 @@
 title: Cursor Cloud Agents
 description: Cursor Cloud Agents integration for Port Ocean
 icon: Cursor
-docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/ai-agents/cursor-cloud-agents
+docs: https://docs.port.io/agent-management/external-agents/cursor-cloud-agents
 recommendedInstallationMethod: Saas
 formMappingEnabled: true
 features:
