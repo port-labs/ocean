@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.0 (2026-08-03)
+
+
+### Features
+
+- Added incremental sync support for resources `work-item`, `build`, `release`, `release-deployment`, `pipeline-run`, `test-run`, and `advanced-security-alert`.
+
+
+### Improvements
+
+- Pipeline-run incremental sync skips projects gracefully when the Analytics OData endpoint is unavailable (HTTP 403/404) instead of failing the kind.
+- Return warning when advanced security alert is not enabled in the account, instead of error which fails the resync.
+
+
 ## 0.10.43 (2026-08-03)
 
 
