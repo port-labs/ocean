@@ -174,7 +174,14 @@ class ServicenowWebhookClient(ServicenowClient):
         if not response:
             return None
         if result := response.json().get("result", []):
-            return result[0]["sys_id"]
+            try:
+                return result[0]["sys_id"]
+            except (IndexError, KeyError):
+                logger.warning(
+                    f"Unexpected REST Message response for {name}",
+                    extra={"result": result},
+                )
+                return None
         return None
 
     async def _create_rest_message_parent(
@@ -286,7 +293,14 @@ class ServicenowWebhookClient(ServicenowClient):
             )
             return None
         if result := response.json().get("result", []):
-            return result[0]["sys_id"]
+            try:
+                return result[0]["sys_id"]
+            except (IndexError, KeyError):
+                logger.warning(
+                    f"Unexpected REST Message function response for parent {parent_sys_id}",
+                    extra={"result": result},
+                )
+                return None
         logger.debug(f"No REST Message function found for parent {parent_sys_id}")
         return None
 
@@ -305,7 +319,14 @@ class ServicenowWebhookClient(ServicenowClient):
             )
             return None
         if result := response.json().get("result", []):
-            return result[0]["sys_id"]
+            try:
+                return result[0]["sys_id"]
+            except (IndexError, KeyError):
+                logger.warning(
+                    f"Unexpected auth header response for function {function_sys_id}",
+                    extra={"result": result},
+                )
+                return None
         logger.debug(f"No existing auth header found for function {function_sys_id}")
         return None
 
@@ -358,7 +379,9 @@ class ServicenowWebhookClient(ServicenowClient):
 
         parent_sys_id = await self._create_rest_message_if_not_exists(webhook_url)
         if not parent_sys_id:
-            logger.error("Cannot proceed without REST Message")
+            logger.error(
+                "Webhook setup failed — could not find or create REST Message and its POST function in ServiceNow"
+            )
             return
 
         webhook_secret = ocean.integration_config.get(WEBHOOK_SECRET_CONFIG_KEY)
