@@ -45,6 +45,11 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: skipWebhookCreation
+    type: boolean
+    required: false
+    default: false
+    description: When enabled, the integration will not create webhook subscriptions in Datadog.
   - name: datadogAccessToken
     description: Datadog access token (optional). This is used to authenticate with Datadog using OAuth2. You shouldn't set this value manually.
     type: string

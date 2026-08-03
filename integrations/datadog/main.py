@@ -183,6 +183,12 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
+    if ocean.integration_config.get("skip_webhook_creation"):
+        logger.info(
+            "Skipping webhook creation because skip_webhook_creation is enabled"
+        )
+        return
+
     if base_url := ocean.app.base_url:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
