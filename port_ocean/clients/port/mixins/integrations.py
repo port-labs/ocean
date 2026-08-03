@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
@@ -8,13 +10,15 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.utils.json_compat import make_json_compatible
+from port_ocean.context.event import event as current_event
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     LakehouseDataEntryBatch,
     LakehouseEventType,
     ProcessingMode,
 )
+from port_ocean.core.utils.json_compat import make_json_compatible
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.version import __version__ as ocean_core_version
@@ -24,6 +28,28 @@ if TYPE_CHECKING:
 
 INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.55
+
+RESYNC_STALE_ERROR_CODE = "resync_stale"
+
+
+def _is_resync_stale_lakehouse_response(response: httpx.Response) -> bool:
+    if response.status_code != 409:
+        return False
+    try:
+        payload = response.json()
+    except Exception:
+        return False
+    if not isinstance(payload, dict):
+        return False
+    error = payload.get("error")
+    code: str | None = None
+    if isinstance(error, dict):
+        code = error.get("code") or error.get("name")
+    else:
+        code = payload.get("code")
+    return code == RESYNC_STALE_ERROR_CODE
+
+
 INTEGRATION_POLLING_RETRY_LIMIT = 30
 CREATE_RESOURCES_PARAM_NAME = "integration_modes"
 CREATE_RESOURCES_PARAM_VALUE = ["create_resources"]
@@ -241,6 +267,26 @@ class IntegrationClientMixin:
         handle_port_status_code(response)
         return response.json()["integration"]
 
+    async def patch_integration_config(
+        self,
+        port_app_config: PortAppConfig | None,
+        skip_resync: bool = False,
+    ) -> dict:
+        logger.info(
+            f"Updating config of integration with id: {self.integration_identifier}"
+        )
+        headers = await self.auth.headers()
+        if skip_resync:
+            headers["x-skip-resync"] = "true"
+
+        response = await self.client.patch(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/config",
+            headers=headers,
+            json={"config": port_app_config.to_request()},
+        )
+        handle_port_status_code(response)
+        return response.json()["integration"]
+
     async def post_integration_sync_metrics(
         self, metrics: list[dict[str, Any]]
     ) -> None:
@@ -417,6 +463,17 @@ class IntegrationClientMixin:
             json=body,
             extensions={"retryable": True},
         )
+        if _is_resync_stale_lakehouse_response(response):
+            logger.warning(
+                "Lakehouse reported resync is stale, aborting current resync"
+            )
+            try:
+                current_event.abort(external_abort=True)
+            except EventContextNotFoundError:
+                logger.warning(
+                    "Lakehouse stale response received without active event context"
+                )
+            return
         handle_port_status_code(response, should_raise=True, should_log=True)
         logger.debug("Finished POST raw data batch request")
 

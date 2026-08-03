@@ -6,6 +6,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.47.4 (2026-08-03)
+
+### Bug Fixes
+
+- Do not abort DSP resyncs when Lakehouse returns `count: 0` on an idempotent raw-data write retry; abort only when Lakehouse reports an explicit `resync_stale` error (HTTP 409).
+
+## 0.47.3 (2026-08-03)
+
+### Improvements
+
+- Installed pydantic settings in order to enable progress in pydantic v2 migration.
+
+## 0.47.2 (2026-07-30)
+
+### Improvements
+
+- Upgraded `redis` to `^6.1.0` and auto-detect Redis Cluster connections for live events stream consumption.
+
+## 0.47.1 (2026-07-29)
+
+### Bug Fixes
+
+- Propagate webhook client disconnects instead of silently acknowledging events that were never queued.
+
+## 0.47.0 (2026-07-29)
+
+### Deprecations
+
+- Removed `OCEAN__PROCESS_EXECUTION_MODE` configuration. Ocean always runs in single_process mode. Setting the env var logs a warning and is ignored. Removed subprocess-based resync execution and Prometheus multiprocess metrics collection.
+
+## 0.46.6 (2026-07-29)
+
+### Bug Fixes
+
+- Moved `clear_sync_context` from `sync_raw_all` finalizer into `update_after_resync` so the runtime terminal metric is sent with the correct `eventId` before it is cleared. Previously the `eventId` was wiped before `update_after_resync` ran, causing integ-service's stale-heartbeat abort consumer to miss the terminal runtime metric and incorrectly abort completed syncs.
+
+## 0.46.5 (2026-07-28)
+
+### Bug Fixes
+
+- Call patch config rather than full patch integration route when setting up a default origin integration in order to avoid double resync.
+
+## 0.46.4 (2026-07-27)
+
+### Bug Fixes
+
+- Updated external abort handling so lifecycle/lakehouse aborts cancel only the current resync work.
+
+## 0.46.3 (2026-07-27)
+
+### Bug Fixes
+
+- Remove `HTTP 400 Bad Request` from the default retry status codes. These are rather non-transient client errors and should fail immediately. Integrations that need 400 retries can opt in via `additional_retry_status_codes` in their `RetryConfig`.
+
+## 0.46.2 (2026-07-26)
+
+### Features
+
+- Wire DSP lifecycle events and sync metrics for incremental resyncs: set the metrics event ID, emit kind-level started/finished/failed notifications, pass `sync_type` and `kind_identifiers` on resync started, and clear metrics sync context when the run completes.
+
 ## 0.46.1 (2026-07-23)
 
 ### Bug Fixes

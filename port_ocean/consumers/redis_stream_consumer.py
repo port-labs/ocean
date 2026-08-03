@@ -11,11 +11,11 @@ from typing import Any
 from uuid import uuid4
 
 from loguru import logger
-from redis.asyncio import Redis
 from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
+from port_ocean.consumers.redis_client import RedisClient, create_redis_client
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
@@ -50,7 +50,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._on_message = on_message
         self._consumer_group = self._resolve_consumer_group()
         self._registered_paths = registered_paths or set()
-        self._redis: Redis | None = None
+        self._redis: RedisClient | None = None
         self._ssl_cert_file: str | None = None
         self._ssl_key_file: str | None = None
         self._is_running = False
@@ -116,7 +116,9 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         return kwargs
 
     async def start(self) -> None:
-        self._redis = Redis.from_url(self._settings.url, **self._redis_client_kwargs())
+        self._redis = await create_redis_client(
+            self._settings.url, **self._redis_client_kwargs()
+        )
         await self._ensure_consumer_group()
         self._is_running = True
         self._read_task = asyncio.create_task(self._read_loop())
@@ -168,7 +170,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             )
             await self._ensure_consumer_group()
 
-    def _require_redis(self) -> Redis:
+    def _require_redis(self) -> RedisClient:
         if self._redis is None:
             raise RuntimeError(
                 "Redis stream consumer has not been started or has been stopped"

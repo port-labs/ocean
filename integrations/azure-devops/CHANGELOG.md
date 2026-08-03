@@ -7,6 +7,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.1 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.11.0 (2026-08-03)
+
+
+### Features
+
+- Added incremental sync support for resources `work-item`, `build`, `release`, `release-deployment`, `pipeline-run`, `test-run`, and `advanced-security-alert`.
+
+
+### Improvements
+
+- Pipeline-run incremental sync skips projects gracefully when the Analytics OData endpoint is unavailable (HTTP 403/404) instead of failing the kind.
+- Return warning when advanced security alert is not enabled in the account, instead of error which fails the resync.
+
+
+## 0.10.43 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.10.42 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.10.41 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.10.40 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.10.39 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.10.38 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.10.37 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.10.36 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.10.35 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.10.34 (2026-07-23)
+
+
+### Features
+
+- Added a `trigger_pipeline` integration action that runs an Azure DevOps pipeline and reports its completion status back to Port via the pipeline run-state-changed service hook (Single Account mode). Queue-time variables are wrapped in the Azure DevOps API `{ "value": <value> }` format, and `reportPipelineStatus` defaults to enabled when the input is omitted.
+
+
 ## 0.10.33 (2026-07-23)
 
 

@@ -19,14 +19,14 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from integration import (
-    CheckmarxOneScanResultResourcesConfig,
+    CheckmarxOneContainersResourcesConfig,
     CheckmarxOneResultSelector,
 )
 
 
 @pytest.fixture
-def containers_scan_result_resource_config() -> CheckmarxOneScanResultResourcesConfig:
-    return CheckmarxOneScanResultResourcesConfig(
+def containers_scan_result_resource_config() -> CheckmarxOneContainersResourcesConfig:
+    return CheckmarxOneContainersResourcesConfig(
         kind="containers",
         selector=CheckmarxOneResultSelector(
             query="true",
@@ -191,7 +191,7 @@ class TestContainersScanResultWebhookProcessor:
     async def test_handle_event_success(
         self,
         containers_scan_result_webhook_processor: ContainersScanResultWebhookProcessor,
-        containers_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        containers_scan_result_resource_config: CheckmarxOneContainersResourcesConfig,
     ) -> None:
         """Test successful handling of containers scan result webhook event."""
         containers_scan_result_data = [
@@ -264,7 +264,7 @@ class TestContainersScanResultWebhookProcessor:
     async def test_handle_event_empty_results(
         self,
         containers_scan_result_webhook_processor: ContainersScanResultWebhookProcessor,
-        containers_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        containers_scan_result_resource_config: CheckmarxOneContainersResourcesConfig,
     ) -> None:
         """Test handling when no containers scan results are found."""
         payload: EventPayload = {
@@ -300,7 +300,7 @@ class TestContainersScanResultWebhookProcessor:
     async def test_handle_event_exporter_error(
         self,
         containers_scan_result_webhook_processor: ContainersScanResultWebhookProcessor,
-        containers_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        containers_scan_result_resource_config: CheckmarxOneContainersResourcesConfig,
     ) -> None:
         """Test handling when the exporter raises an error."""
         payload: EventPayload = {
@@ -336,7 +336,7 @@ class TestContainersScanResultWebhookProcessor:
     async def test_handle_event_multiple_batches(
         self,
         containers_scan_result_webhook_processor: ContainersScanResultWebhookProcessor,
-        containers_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        containers_scan_result_resource_config: CheckmarxOneContainersResourcesConfig,
     ) -> None:
         """Test handling containers scan result event with multiple batches."""
         batch1 = [
@@ -394,7 +394,7 @@ class TestContainersScanResultWebhookProcessor:
     async def test_handle_event_passes_project_id_in_options(
         self,
         containers_scan_result_webhook_processor: ContainersScanResultWebhookProcessor,
-        containers_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        containers_scan_result_resource_config: CheckmarxOneContainersResourcesConfig,
     ) -> None:
         """Test that project_id from the payload is passed through to ListScanResultOptions."""
         payload: EventPayload = {
@@ -431,7 +431,7 @@ class TestContainersScanResultWebhookProcessor:
     ) -> None:
         """Test handling with different selector options."""
         # Create a resource config with different selector options
-        resource_config = CheckmarxOneScanResultResourcesConfig(
+        resource_config = CheckmarxOneContainersResourcesConfig(
             kind="containers",
             selector=CheckmarxOneResultSelector(
                 query="true",

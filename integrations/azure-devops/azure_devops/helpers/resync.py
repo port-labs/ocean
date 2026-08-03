@@ -5,6 +5,7 @@ the resource config selector, and yields batches enriched with
 __organizationUrl / __organizationName.
 """
 
+from datetime import datetime
 from typing import Any, AsyncGenerator, Optional
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
@@ -95,9 +96,14 @@ async def iter_repository_policies() -> AsyncGenerator[list[dict[str, Any]], Non
 async def iter_work_items(
     wiql: Optional[str] = None,
     expand: Optional[str] = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_work_items(wiql=wiql, expand=expand)
+        lambda client: client.generate_work_items(
+            wiql=wiql,
+            expand=expand,
+            incremental_cursor=incremental_cursor,
+        )
     ):
         yield batch
 
@@ -116,10 +122,12 @@ async def iter_boards() -> AsyncGenerator[list[dict[str, Any]], None]:
 
 async def iter_releases(
     additional_params: Optional[dict[str, Any]] = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_releases(
-            additional_params=additional_params or {}
+            additional_params=additional_params or {},
+            incremental_cursor=incremental_cursor,
         )
     ):
         yield batch
@@ -138,10 +146,12 @@ async def iter_release_definitions(
 
 async def iter_builds(
     enrich_with_first_commit: bool = False,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_builds(
-            enrich_with_first_commit=enrich_with_first_commit
+            enrich_with_first_commit=enrich_with_first_commit,
+            incremental_cursor=incremental_cursor,
         )
     ):
         yield batch
@@ -161,9 +171,13 @@ async def iter_environments() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield batch
 
 
-async def iter_release_deployments() -> AsyncGenerator[list[dict[str, Any]], None]:
+async def iter_release_deployments(
+    incremental_cursor: Optional[datetime] = None,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_release_deployments()
+        lambda client: client.generate_release_deployments(
+            incremental_cursor=incremental_cursor
+        )
     ):
         yield batch
 
@@ -192,12 +206,28 @@ async def iter_pipeline_runs() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield batch
 
 
+async def iter_pipeline_runs_incremental(
+    incremental_cursor: Optional[datetime] = None,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async for batch in iterate_per_organization(
+        lambda client: client.generate_pipeline_runs_incremental(
+            incremental_cursor=incremental_cursor
+        )
+    ):
+        yield batch
+
+
 async def iter_test_runs(
     include_results: bool = False,
     coverage_config: Any = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.fetch_test_runs(include_results, coverage_config)
+        lambda client: client.fetch_test_runs(
+            include_results,
+            coverage_config,
+            incremental_cursor=incremental_cursor,
+        )
     ):
         yield batch
 
@@ -221,20 +251,26 @@ async def iter_area_paths(
 async def _advanced_security_alerts_per_client(
     client: AzureDevopsClient,
     params: dict[str, Any],
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async for repositories in client.generate_repositories():
+    async for repositories in client.generate_repositories(
+        include_disabled_repositories=False
+    ):
         for repository in repositories:
             async for alerts in client.generate_advanced_security_alerts(
-                repository, params
+                repository, params, incremental_cursor=incremental_cursor
             ):
                 yield alerts
 
 
 async def iter_advanced_security_alerts(
     params: Optional[dict[str, Any]] = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     resolved_params = params or {}
     async for batch in iterate_per_organization(
-        lambda client: _advanced_security_alerts_per_client(client, resolved_params)
+        lambda client: _advanced_security_alerts_per_client(
+            client, resolved_params, incremental_cursor
+        )
     ):
         yield batch

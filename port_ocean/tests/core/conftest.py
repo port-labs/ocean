@@ -24,7 +24,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.models import Entity, ProcessExecutionMode
+from port_ocean.core.models import Entity
 from port_ocean.helpers.metric.metric import Metrics
 from port_ocean.ocean import Ocean
 
@@ -131,7 +131,6 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config.allow_environment_variables_jq_access = True
         ocean_mock.config.delete_entities_max_batch_size = 50
         ocean_mock.port_client = mock_port_client
-        ocean_mock.process_execution_mode = ProcessExecutionMode.single_process
         ocean_mock.cache_provider = InMemoryCacheProvider()
         ocean_mock.lifecycle_client = None  # type: ignore
         metrics_settings = MetricsSettings(enabled=True)

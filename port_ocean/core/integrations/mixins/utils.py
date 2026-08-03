@@ -1,6 +1,4 @@
-import asyncio
 import hashlib
-import multiprocessing
 import os
 import re
 from contextlib import contextmanager
@@ -363,19 +361,6 @@ def unsupported_kind_response(
 ) -> tuple[RESYNC_RESULT, list[Exception]]:
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
-
-class ProcessWrapper(multiprocessing.Process):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    async def join_async(self) -> None:
-        while self.exitcode is None:
-            await asyncio.sleep(2)
-        if self.exitcode != 0:
-            logger.error(f"Process {self.pid} failed with exit code {self.exitcode}")
-        else:
-            logger.info(f"Process {self.pid} finished with exit code {self.exitcode}")
-        return super().join()
 
 def clear_http_client_context() -> None:
     try:

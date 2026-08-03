@@ -1595,13 +1595,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.46.1"
+version = "0.47.4"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.46.1-py3-none-any.whl", hash = "sha256:d41bff7f9ef5f77752cfb06321b15f046726d4a980ef19b80a8f405d9499dc38"},
-    {file = "port_ocean-0.46.1.tar.gz", hash = "sha256:441b224725ab1e777ea96082780e48b9d19aa9acc9a2e9709e02ce2e18faea4a"},
+    {file = "port_ocean-0.47.4-py3-none-any.whl", hash = "sha256:d99a04bae86e0a14ad1aeba6f6249ec595d1ef116d065c6d57166fb31c3cf3e8"},
+    {file = "port_ocean-0.47.4.tar.gz", hash = "sha256:eae70d8e4a5099c8c0ec8ff6104fa7b847b6cbb557c7db804be6a0d396eba093"},
 ]
 
 [package.dependencies]
@@ -1625,6 +1625,7 @@ loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
 psutil = ">=7.2.1,<8.0.0"
 pydantic = {version = ">=2.13.4,<3.0.0", extras = ["dotenv"]}
+pydantic-settings = ">=2.13.0,<3.0.0"
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjwt = ">=2.13.0,<3.0.0"
@@ -1632,7 +1633,7 @@ pytest-cov = ">=6,<8"
 python-dateutil = ">=2.9.0.post0,<3.0.0"
 python-dotenv = ">=1.2.2,<2.0.0"
 pyyaml = ">=6.0,<7.0"
-redis = {version = ">=5.2.1,<6.0.0", extras = ["hiredis"]}
+redis = {version = ">=6.1.0,<7.0.0", extras = ["hiredis"]}
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
 starlette = ">=1.0.1,<2.0"
@@ -1856,6 +1857,29 @@ files = [
 
 [package.dependencies]
 typing-extensions = ">=4.14.1"
+
+[[package]]
+name = "pydantic-settings"
+version = "2.14.2"
+description = "Settings management using Pydantic"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "pydantic_settings-2.14.2-py3-none-any.whl", hash = "sha256:a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440"},
+    {file = "pydantic_settings-2.14.2.tar.gz", hash = "sha256:c19dd64b19097f1de80184f0cc7b0272a13ae6e170cbf240a3e27e381ed14a5f"},
+]
+
+[package.dependencies]
+pydantic = ">=2.7.0"
+python-dotenv = ">=0.21.0"
+typing-inspection = ">=0.4.0"
+
+[package.extras]
+aws-secrets-manager = ["boto3 (>=1.35.0)", "types-boto3[secretsmanager]"]
+azure-key-vault = ["azure-identity (>=1.16.0)", "azure-keyvault-secrets (>=4.8.0)"]
+gcp-secret-manager = ["google-cloud-secret-manager (>=2.23.1)"]
+toml = ["tomli (>=2.0.1)"]
+yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
 name = "pydispatcher"
@@ -2214,22 +2238,22 @@ files = [
 
 [[package]]
 name = "redis"
-version = "5.3.1"
+version = "6.4.0"
 description = "Python client for Redis database and key-value store"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "redis-5.3.1-py3-none-any.whl", hash = "sha256:dc1909bd24669cc31b5f67a039700b16ec30571096c5f1f0d9d2324bff31af97"},
-    {file = "redis-5.3.1.tar.gz", hash = "sha256:ca49577a531ea64039b5a36db3d6cd1a0c7a60c34124d46924a45b956e8cf14c"},
+    {file = "redis-6.4.0-py3-none-any.whl", hash = "sha256:f0544fa9604264e9464cdf4814e7d4830f74b165d52f2a330a760a88dd248b7f"},
+    {file = "redis-6.4.0.tar.gz", hash = "sha256:b01bc7282b8444e28ec36b261df5375183bb47a07eb9c603f284e89cbc5ef010"},
 ]
 
 [package.dependencies]
-hiredis = {version = ">=3.0.0", optional = true, markers = "extra == \"hiredis\""}
-PyJWT = ">=2.9.0"
+hiredis = {version = ">=3.2.0", optional = true, markers = "extra == \"hiredis\""}
 
 [package.extras]
-hiredis = ["hiredis (>=3.0.0)"]
-ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==23.2.1)", "requests (>=2.31.0)"]
+hiredis = ["hiredis (>=3.2.0)"]
+jwt = ["pyjwt (>=2.9.0)"]
+ocsp = ["cryptography (>=36.0.1)", "pyopenssl (>=20.0.1)", "requests (>=2.31.0)"]
 
 [[package]]
 name = "requests"
@@ -2562,4 +2586,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "ruff", "sph
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "396320ac621cc0d9db06944e13cd804b16117698cb43e9b4b335fbc06f399f19"
+content-hash = "9659f788ad61fcd3c1dc117bff82d47b9eb0cb2ae983f82f0d1838775caf4e38"

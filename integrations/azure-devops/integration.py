@@ -514,17 +514,6 @@ class AzureDevopsBuildConfig(ResourceConfig):
     )
 
 
-class AzureDevopsPipelineStageConfig(ResourceConfig):
-    kind: Literal[Kind.PIPELINE_STAGE] = Field(
-        title="Azure Devops Pipeline Stage",
-        description="Azure Devops pipeline stage resource kind.",
-    )
-    selector: AzureDevopsSelector = Field(
-        title="Pipeline stage selector",
-        description="Selector for the pipeline stage resource.",
-    )
-
-
 class AzureDevopsPipelineRunConfig(ResourceConfig):
     kind: Literal[Kind.PIPELINE_RUN] = Field(
         title="Azure Devops Pipeline Run",
@@ -533,6 +522,17 @@ class AzureDevopsPipelineRunConfig(ResourceConfig):
     selector: AzureDevopsSelector = Field(
         title="Pipeline run selector",
         description="Selector for the pipeline run resource.",
+    )
+
+
+class AzureDevopsPipelineStageConfig(ResourceConfig):
+    kind: Literal[Kind.PIPELINE_STAGE] = Field(
+        title="Azure Devops Pipeline Stage",
+        description="Azure Devops pipeline stage resource kind.",
+    )
+    selector: AzureDevopsSelector = Field(
+        title="Pipeline stage selector",
+        description="Selector for the pipeline stage resource.",
     )
 
 
@@ -719,12 +719,14 @@ class AzureDevopsIntegration(BaseIntegration, AzureDevopsHandlerMixin):
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
         # Replace the Ocean's webhook manager with our custom one
-        self.context.app.webhook_manager = AzureDevopsLiveEventsProcessorManager(
+        processor_manager = AzureDevopsLiveEventsProcessorManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
+        self.context.app.webhook_manager = processor_manager
+        self.context.app.execution_manager._webhook_manager = processor_manager
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitPortAppConfig
