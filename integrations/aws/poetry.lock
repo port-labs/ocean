@@ -2949,13 +2949,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.47.2"
+version = "0.47.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.47.2-py3-none-any.whl", hash = "sha256:331f3d9739db351829602e68e7a4ae4f6c2c50662d806a00627acb97acbc39b0"},
-    {file = "port_ocean-0.47.2.tar.gz", hash = "sha256:05d5c4e360e91e4eed26696bf1478edd4539c8b5c2032e82039d19ba0c36724c"},
+    {file = "port_ocean-0.47.3-py3-none-any.whl", hash = "sha256:d3065825baa2c1e8d307c2fb14df4f12b779b84a212a22fa209587547ac4de32"},
+    {file = "port_ocean-0.47.3.tar.gz", hash = "sha256:d694d9a67885ecee5c41adf663cbf7e0b4e589c5dc7779c3ef7c8c726430b2be"},
 ]
 
 [package.dependencies]
@@ -2979,6 +2979,7 @@ loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
 psutil = ">=7.2.1,<8.0.0"
 pydantic = {version = ">=2.13.4,<3.0.0", extras = ["dotenv"]}
+pydantic-settings = ">=2.13.0,<3.0.0"
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjwt = ">=2.13.0,<3.0.0"
@@ -3340,6 +3341,29 @@ files = [
 
 [package.dependencies]
 typing-extensions = ">=4.14.1"
+
+[[package]]
+name = "pydantic-settings"
+version = "2.14.2"
+description = "Settings management using Pydantic"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "pydantic_settings-2.14.2-py3-none-any.whl", hash = "sha256:a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440"},
+    {file = "pydantic_settings-2.14.2.tar.gz", hash = "sha256:c19dd64b19097f1de80184f0cc7b0272a13ae6e170cbf240a3e27e381ed14a5f"},
+]
+
+[package.dependencies]
+pydantic = ">=2.7.0"
+python-dotenv = ">=0.21.0"
+typing-inspection = ">=0.4.0"
+
+[package.extras]
+aws-secrets-manager = ["boto3 (>=1.35.0)", "types-boto3[secretsmanager]"]
+azure-key-vault = ["azure-identity (>=1.16.0)", "azure-keyvault-secrets (>=4.8.0)"]
+gcp-secret-manager = ["google-cloud-secret-manager (>=2.23.1)"]
+toml = ["tomli (>=2.0.1)"]
+yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
 name = "pydispatcher"
@@ -5138,4 +5162,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "64de2ddb277416fa97c28f783e086359eabe47fba492e01741efa4efcbd8a748"
+content-hash = "5e6cc6777484d9750bac70a865f78e3c45c0f680c3d4a40fde8857cac0e3925e"
