@@ -14,6 +14,10 @@ from aws.core.exporters.organizations.account.exporter import (
 )
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
 from aws.core.helpers.utils import is_access_denied_exception
+from aws.webhook.consts import CLOUDTRAIL_WEBHOOK_PATH
+from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
+    CloudTrailWebhookProcessor,
+)
 
 from loguru import logger
 from resync import ResyncAWSService
@@ -21,7 +25,6 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
-
 
 @ocean.on_resync_start()
 async def initialize_aws_sessions() -> None:
@@ -102,3 +105,6 @@ async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         regional=metadata.regional,
     ):
         yield batch
+
+
+ocean.add_webhook_processor(CLOUDTRAIL_WEBHOOK_PATH, CloudTrailWebhookProcessor)
