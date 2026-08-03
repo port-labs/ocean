@@ -96,7 +96,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
             account_id=parsed.account_id,
             region=parsed.region,
         )
-        delete_properties_factory = metadata.live_event_delete_properties_factory
+        live_events = metadata.live_events
 
         if parsed.action == CloudTrailEventAction.DELETE:
             logger.info(
@@ -107,7 +107,9 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[
                     {
                         "Type": parsed.kind,
-                        "Properties": delete_properties_factory(live_event_context),
+                        "Properties": live_events.delete_properties_factory(
+                            live_event_context
+                        ),
                     }
                 ],
             )
@@ -134,7 +136,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
             ).selector.include_actions
 
         exporter = metadata.exporter(session)
-        options = metadata.live_event_request_factory(live_event_context, include_actions)
+        options = live_events.request_factory(live_event_context, include_actions)
 
         try:
             resource = await exporter.get_resource(options)
@@ -151,7 +153,9 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
                     deleted_raw_results=[
                         {
                             "Type": parsed.kind,
-                            "Properties": delete_properties_factory(live_event_context),
+                            "Properties": live_events.delete_properties_factory(
+                                live_event_context
+                            ),
                         }
                     ],
                 )

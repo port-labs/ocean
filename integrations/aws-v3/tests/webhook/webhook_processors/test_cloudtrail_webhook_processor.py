@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from aws.core.exporters.exporter_metadata import ExporterMetadata
+from aws.core.exporters.metadata.types import ExporterMetadata, LiveEventFactories
 from aws.core.helpers.types import ObjectKind
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
 from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
@@ -20,11 +20,14 @@ def _live_event_metadata(
     mock_exporter = AsyncMock()
     mock_exporter.get_resource = AsyncMock()
     exporter = exporter_cls or MagicMock(return_value=mock_exporter)
+    live_events = LiveEventFactories(
+        request_factory=MagicMock(),
+        delete_properties_factory=MagicMock(),
+    )
     return ExporterMetadata(
         exporter=exporter,
         paginated_request_model=MagicMock(),
-        live_event_request_factory=MagicMock(),
-        live_event_delete_properties_factory=MagicMock(),
+        live_events=live_events,
     )
 
 
@@ -292,7 +295,7 @@ async def test_handle_event_create_treats_access_denied_as_deleted(
         response = {"Error": {"Code": "AccessDenied"}}
 
     metadata = _live_event_metadata()
-    metadata.live_event_delete_properties_factory.return_value = {
+    metadata.live_events.delete_properties_factory.return_value = {
         "Arn": "arn:aws:s3:::denied-bucket",
         "BucketName": "denied-bucket",
     }
