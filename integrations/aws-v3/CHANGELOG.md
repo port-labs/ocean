@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.18.3-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 2.18.2-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 2.18.1-beta (2026-08-02)
+
+
+### Improvements
+
+- Added dict from kind to exporter metadata instead of needing to have an on_resync for each kind
+
+
+## 2.18.0-beta (2026-07-31)
+
+
+### Features
+
+- Add support for AWS::SES::ConfigurationSet kind
+
+
+## 2.17.0-beta (2026-07-30)
+
+
+### Features
+
+- Added DynamoDB Table support by fetching table metadata and tags concurrently per region, enabling customers to track table status, billing mode, item count, size, encryption type, and deletion protection directly in Port. Backup and PITR status is available as an optional action (`GetTableBackupStatusAction`).
+
+
+## 2.16.12-beta (2026-07-30)
+
+
+### Improvements
+
+- Added support for AWS::SES::EmailIdentity kind resource
+
+
+## 2.16.11-beta (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
 ## 2.16.10-beta (2026-07-29)
 
 

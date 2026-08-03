@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.130 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.3.129 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
 ## 0.3.128 (2026-07-30)
 
 
-### Features
+### Improvements
 
-- Added webhook authentication support by introducing a `webhookSecret` configuration field, enabling automatic creation and validation of an Authorization header on ServiceNow outbound REST Messages for secure live event forwarding
+- Bumped ocean version to ^0.47.2
 
 
 ## 0.3.127 (2026-07-29)

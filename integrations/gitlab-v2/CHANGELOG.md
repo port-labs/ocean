@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.8 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.9.7 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.9.6 (2026-07-30)
+
+
+### Bug Fixes
+
+- Fixed the `file` kind's `file://` reference resolution so an absolute-path URI (`file:///...`) is left unresolved instead of being requested with a leading slash, and made resolution of a `file://` reference best-effort: a failed fetch (e.g. HTTP 400 or transport error) is now logged and the reference is left unresolved instead of aborting the entire `file` kind resync.
+
+
+## 0.9.5 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
 ## 0.9.4 (2026-07-29)
 
 
