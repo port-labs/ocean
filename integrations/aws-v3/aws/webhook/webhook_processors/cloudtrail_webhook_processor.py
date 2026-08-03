@@ -36,6 +36,7 @@ from aws.webhook.cloudtrail_parser import (
     parse_cloudtrail_event,
 )
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
+from aws.webhook.feature_flags import is_aws_v3_live_events_enabled
 
 
 class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
@@ -44,6 +45,10 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
+        if not await is_aws_v3_live_events_enabled():
+            logger.warning("AWS-v3 live events are disabled by organization feature flag")
+            return False
+
         expected_api_key = ocean.integration_config.get("live_events_api_key")
         if not expected_api_key:
             logger.warning(
@@ -63,6 +68,8 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         return None
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
+        if not await is_aws_v3_live_events_enabled():
+            return False
         return is_supported_cloudtrail_event(event.payload)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:

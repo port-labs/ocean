@@ -83,6 +83,14 @@ def _delete_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
     }
 
 
+@pytest.fixture(autouse=True)
+def _live_events_feature_flag_enabled() -> None:
+    with patch(
+        f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
+    ):
+        yield
+
+
 @pytest.fixture
 def processor() -> CloudTrailWebhookProcessor:
     return CloudTrailWebhookProcessor(
@@ -117,12 +125,30 @@ async def test_get_matching_kinds_returns_s3_bucket(
 
 
 @pytest.mark.asyncio
-async def test_authenticate_succeeds_with_matching_api_key(
+async def test_authenticate_fails_when_feature_flag_disabled(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
     with patch(
-        "aws.webhook.webhook_processors.cloudtrail_webhook_processor.ocean"
-    ) as mock_ocean:
+        f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=False)
+    ):
+        result = await processor.authenticate(
+            {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
+        )
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_authenticate_succeeds_with_matching_api_key(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    with (
+        patch(
+            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
+        ),
+        patch(
+            "aws.webhook.webhook_processors.cloudtrail_webhook_processor.ocean"
+        ) as mock_ocean,
+    ):
         mock_ocean.integration_config = {"live_events_api_key": "secret"}
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
@@ -134,9 +160,14 @@ async def test_authenticate_succeeds_with_matching_api_key(
 async def test_authenticate_fails_with_wrong_api_key(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with patch(
-        "aws.webhook.webhook_processors.cloudtrail_webhook_processor.ocean"
-    ) as mock_ocean:
+    with (
+        patch(
+            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
+        ),
+        patch(
+            "aws.webhook.webhook_processors.cloudtrail_webhook_processor.ocean"
+        ) as mock_ocean,
+    ):
         mock_ocean.integration_config = {"live_events_api_key": "secret"}
         result = await processor.authenticate({}, {LIVE_EVENTS_API_KEY_HEADER: "wrong"})
     assert result is False
@@ -146,9 +177,14 @@ async def test_authenticate_fails_with_wrong_api_key(
 async def test_authenticate_fails_when_not_configured(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with patch(
-        "aws.webhook.webhook_processors.cloudtrail_webhook_processor.ocean"
-    ) as mock_ocean:
+    with (
+        patch(
+            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
+        ),
+        patch(
+            "aws.webhook.webhook_processors.cloudtrail_webhook_processor.ocean"
+        ) as mock_ocean,
+    ):
         mock_ocean.integration_config = {}
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "anything"}
