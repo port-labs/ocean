@@ -221,9 +221,7 @@ async def on_start() -> None:
         return
 
     if ocean.integration_config.get("skip_webhook_creation"):
-        logger.info(
-            "Skipping webhook creation because skipWebhookCreation is enabled"
-        )
+        logger.info("Skipping webhook creation because skipWebhookCreation is enabled")
         return
 
     if base_url := ocean.app.base_url:
