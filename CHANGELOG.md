@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.47.4 (2026-08-03)
+
+### Bug Fixes
+
+- Do not abort DSP resyncs when Lakehouse returns `count: 0` on an idempotent raw-data write retry; abort only when Lakehouse reports an explicit `resync_stale` error (HTTP 409).
+
+## 0.47.3 (2026-08-03)
+
+### Improvements
+
+- Installed pydantic settings in order to enable progress in pydantic v2 migration.
+
 ## 0.47.2 (2026-07-30)
 
 ### Improvements

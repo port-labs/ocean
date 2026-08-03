@@ -1744,14 +1744,14 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.47.2"
+version = "0.47.4"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "port_ocean-0.47.2-py3-none-any.whl", hash = "sha256:331f3d9739db351829602e68e7a4ae4f6c2c50662d806a00627acb97acbc39b0"},
-    {file = "port_ocean-0.47.2.tar.gz", hash = "sha256:05d5c4e360e91e4eed26696bf1478edd4539c8b5c2032e82039d19ba0c36724c"},
+    {file = "port_ocean-0.47.4-py3-none-any.whl", hash = "sha256:d99a04bae86e0a14ad1aeba6f6249ec595d1ef116d065c6d57166fb31c3cf3e8"},
+    {file = "port_ocean-0.47.4.tar.gz", hash = "sha256:eae70d8e4a5099c8c0ec8ff6104fa7b847b6cbb557c7db804be6a0d396eba093"},
 ]
 
 [package.dependencies]
@@ -1775,6 +1775,7 @@ loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
 psutil = ">=7.2.1,<8.0.0"
 pydantic = {version = ">=2.13.4,<3.0.0", extras = ["dotenv"]}
+pydantic-settings = ">=2.13.0,<3.0.0"
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjwt = ">=2.13.0,<3.0.0"
@@ -2012,6 +2013,29 @@ files = [
 
 [package.dependencies]
 typing-extensions = ">=4.14.1"
+
+[[package]]
+name = "pydantic-settings"
+version = "2.14.2"
+description = "Settings management using Pydantic"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "pydantic_settings-2.14.2-py3-none-any.whl", hash = "sha256:a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440"},
+    {file = "pydantic_settings-2.14.2.tar.gz", hash = "sha256:c19dd64b19097f1de80184f0cc7b0272a13ae6e170cbf240a3e27e381ed14a5f"},
+]
+
+[package.dependencies]
+pydantic = ">=2.7.0"
+python-dotenv = ">=0.21.0"
+typing-inspection = ">=0.4.0"
+
+[package.extras]
+aws-secrets-manager = ["boto3 (>=1.35.0)", "types-boto3[secretsmanager]"]
+azure-key-vault = ["azure-identity (>=1.16.0)", "azure-keyvault-secrets (>=4.8.0)"]
+gcp-secret-manager = ["google-cloud-secret-manager (>=2.23.1)"]
+toml = ["tomli (>=2.0.1)"]
+yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
 name = "pydispatcher"
@@ -2943,4 +2967,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "ruff", "sph
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "5597106f6b64b91ba4ae755b7a2e768e7ccc6c9b91c56475791d663dbc63e897"
+content-hash = "2359f98bb04f6a03a89907e0de92f22bd0c013657971ea50af1cb1a8d3681690"
