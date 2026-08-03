@@ -386,7 +386,6 @@ Added `skipWebhookCreation` configuration option to prevent the integration from
 ### Bug Fixes
 
 - Reworked Datadog live-event bootstrap to reliably create/update webhook configuration and to automatically provision monitor notification rules.
->>>>>>> main
 
 
 ## 0.4.4 (2026-06-07)
