@@ -1,6 +1,9 @@
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.push_path_changes import (
+    resolve_push_path_changes,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -44,13 +47,9 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        changed_files = set()
-        removed_files = set()
-
-        for commit in payload.get("commits", []):
-            changed_files.update(commit.get("added", []))
-            changed_files.update(commit.get("modified", []))
-            removed_files.update(commit.get("removed", []))
+        changed_files, removed_files = await resolve_push_path_changes(
+            self._gitlab_webhook_client, repo_path, payload
+        )
 
         # Process changed and deleted files
         matching_files = sorted(

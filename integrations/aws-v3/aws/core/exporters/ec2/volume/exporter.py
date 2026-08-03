@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EbsVolumeExporter(IResourceExporter):
+class EbsVolumeExporter(IResourceExporter[list[dict[str, Any]]]):
     """Exports AWS EBS volumes using the ec2:DescribeVolumes API."""
 
     _service_name: SupportedServices = "ec2"

@@ -1,6 +1,6 @@
 from typing import Type, Any, Dict
 
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_integration_class

@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class ListFunctionsAction(Action):
+class ListFunctionsAction(Action[list[dict[str, Any]]]):
     """List Lambda functions as a pass-through function."""
 
     async def _execute(self, functions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -13,7 +13,7 @@ class ListFunctionsAction(Action):
         return functions
 
 
-class ListTagsAction(Action):
+class ListTagsAction(Action[list[dict[str, Any]]]):
     """Fetches tags for Lambda functions."""
 
     async def _execute(self, functions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -25,6 +25,7 @@ class ListTagsAction(Action):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, tag_result in enumerate(tag_results):
             if isinstance(tag_result, Exception):
                 function_name = functions[idx].get("FunctionName", "unknown")
@@ -32,6 +33,7 @@ class ListTagsAction(Action):
                     logger.warning(
                         f"Skipping tags for Lambda function '{function_name}': {tag_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(
@@ -39,7 +41,8 @@ class ListTagsAction(Action):
                     )
                     raise tag_result
             results.extend(cast(list[dict[str, Any]], tag_result))
-        logger.info(f"Successfully fetched tags for {len(results)} Lambda functions")
+            success_count += 1
+        logger.info(f"Successfully fetched tags for {success_count} Lambda functions")
         return results
 
     async def _fetch_tags(self, function: dict[str, Any]) -> list[dict[str, Any]]:
@@ -47,10 +50,10 @@ class ListTagsAction(Action):
         return [{"Tags": response["Tags"]}]
 
 
-class LambdaFunctionActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [
+class LambdaFunctionActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         ListFunctionsAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         ListTagsAction,
     ]

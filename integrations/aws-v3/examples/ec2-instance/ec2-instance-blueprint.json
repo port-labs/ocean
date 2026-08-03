@@ -1,0 +1,114 @@
+{
+  "identifier": "ec2Instance",
+  "title": "EC2 Instance",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "instanceType": {
+        "type": "string",
+        "title": "Instance Type",
+        "description": "The instance type (e.g., t3.medium, m5.large)"
+      },
+      "state": {
+        "type": "string",
+        "title": "State",
+        "description": "The current state of the instance",
+        "enum": [
+          "pending",
+          "running",
+          "shutting-down",
+          "terminated",
+          "stopping",
+          "stopped"
+        ]
+      },
+      "publicIpAddress": {
+        "type": "string",
+        "title": "Public IP Address",
+        "description": "The public IPv4 address assigned to the instance"
+      },
+      "privateIpAddress": {
+        "type": "string",
+        "title": "Private IP Address",
+        "description": "The private IPv4 address of the instance"
+      },
+      "imageId": {
+        "type": "string",
+        "title": "AMI ID",
+        "description": "The ID of the Amazon Machine Image used to launch the instance"
+      },
+      "subnetId": {
+        "type": "string",
+        "title": "Subnet ID",
+        "description": "The ID of the subnet in which the instance is running"
+      },
+      "vpcId": {
+        "type": "string",
+        "title": "VPC ID",
+        "description": "The ID of the VPC in which the instance is running"
+      },
+      "launchTime": {
+        "type": "string",
+        "title": "Launch Time",
+        "description": "The time the instance was launched",
+        "format": "date-time"
+      },
+      "platform": {
+        "type": "string",
+        "title": "Platform",
+        "description": "The platform of the instance (e.g., Linux/UNIX, Windows)"
+      },
+      "architecture": {
+        "type": "string",
+        "title": "Architecture",
+        "description": "The architecture of the instance (e.g., x86_64, arm64)"
+      },
+      "keyName": {
+        "type": "string",
+        "title": "Key Name",
+        "description": "The name of the key pair used to launch the instance"
+      },
+      "availabilityZone": {
+        "type": "string",
+        "title": "Availability Zone",
+        "description": "The Availability Zone in which the instance is running"
+      },
+      "monitoring": {
+        "type": "string",
+        "title": "Monitoring",
+        "description": "The status of detailed monitoring for the instance"
+      },
+      "securityGroups": {
+        "type": "array",
+        "title": "Security Groups",
+        "description": "The security groups associated with the instance",
+        "items": {
+          "type": "object"
+        }
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Tags associated with the instance",
+        "items": {
+          "type": "object"
+        }
+      },
+      "arn": {
+        "type": "string",
+        "title": "ARN",
+        "description": "The Amazon Resource Name (ARN) of the instance"
+      }
+    },
+    "required": []
+  },
+  "calculationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

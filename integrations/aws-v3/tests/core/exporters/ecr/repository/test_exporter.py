@@ -51,7 +51,7 @@ class TestEcrRepositoryExporter:
                 repositoryArn="arn:aws:ecr:us-east-1:123456789012:repository/my-repo",
             )
         )
-        mock_inspector.inspect.return_value = [repository.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [repository.model_dump(exclude_none=True)]
 
         mock_client.describe_repositories.return_value = {
             "repositories": [
@@ -71,7 +71,7 @@ class TestEcrRepositoryExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == repository.dict(exclude_none=True)
+        assert result == repository.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecr")
         mock_client.describe_repositories.assert_called_once_with(
             repositoryNames=["my-repo"]
@@ -159,8 +159,8 @@ class TestEcrRepositoryExporter:
         repo3 = Repository(Properties=RepositoryProperties(repositoryName="repo3"))
 
         mock_inspector.inspect.side_effect = [
-            [repo1.dict(exclude_none=True), repo2.dict(exclude_none=True)],
-            [repo3.dict(exclude_none=True)],
+            [repo1.model_dump(exclude_none=True), repo2.model_dump(exclude_none=True)],
+            [repo3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedRepositoryRequest(
@@ -174,9 +174,9 @@ class TestEcrRepositoryExporter:
             collected.extend(page)
 
         assert len(collected) == 3
-        assert collected[0] == repo1.dict(exclude_none=True)
-        assert collected[1] == repo2.dict(exclude_none=True)
-        assert collected[2] == repo3.dict(exclude_none=True)
+        assert collected[0] == repo1.model_dump(exclude_none=True)
+        assert collected[1] == repo2.model_dump(exclude_none=True)
+        assert collected[2] == repo3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "ecr")
         mock_proxy.get_paginator.assert_called_once_with(

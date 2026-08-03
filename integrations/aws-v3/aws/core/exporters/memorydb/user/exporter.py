@@ -13,7 +13,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class MemoryDbUserExporter(IResourceExporter):
+class MemoryDbUserExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "memorydb"
     _model_cls: Type[MemoryDbUser] = MemoryDbUser
     _actions_map: Type[MemoryDbUserActionsMap] = MemoryDbUserActionsMap

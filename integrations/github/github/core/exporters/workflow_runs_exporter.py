@@ -1,17 +1,38 @@
 from typing import Any, cast, Optional
 from loguru import logger
 
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import ListWorkflowRunOptions, SingleWorkflowRunOptions
-from github.helpers.utils import enrich_with_organization, enrich_with_repository
+from github.helpers.utils import (
+    enrich_with_organization,
+    enrich_with_repository,
+    parse_github_options,
+)
+
+WORKFLOW_RUN_INCREMENTAL = ServerSideTimestampStrategy(
+    param_key="created",
+    date_format="%Y-%m-%dT%H:%M:%SZ",
+    value_prefix=">=",
+)
+
+
+def build_workflow_run_params(options: ListWorkflowRunOptions) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if status := options.get("status"):
+        params["status"] = status
+    if created := options.get("created"):
+        params["created"] = created
+    return params
 
 
 class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleWorkflowRunOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleWorkflowRunOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         repo_name = options["repo_name"]
         run_id = options["run_id"]
@@ -31,18 +52,23 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, repo_name), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListWorkflowRunOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListWorkflowRunOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
-        organization = options["organization"]
-        repo_name = options["repo_name"]
-        workflow_id = options["workflow_id"]
+        repo_name, organization, params = parse_github_options(dict(options))
+        incremental_cursor = active_incremental_cursor()
+        workflow_id = params.pop("workflow_id")
+        max_runs = params.pop("max_runs")
+        request_params = WORKFLOW_RUN_INCREMENTAL.merge_params(
+            build_workflow_run_params(cast(ListWorkflowRunOptions, params)),
+            incremental_cursor,
+        )
 
-        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/workflows/{options['workflow_id']}/runs"
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/workflows/{workflow_id}/runs"
         fetched_batch = 0
 
-        async for workflows in self.client.send_paginated_request(url):
+        async for workflows in self.client.send_paginated_request(url, request_params):
             workflow_batch = cast(dict[str, Any], workflows)
             workflow_runs = workflow_batch["workflow_runs"]
 
@@ -52,16 +78,17 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             )
             batch = [
                 enrich_with_organization(
-                    enrich_with_repository(workflow_run, repo_name), organization
+                    enrich_with_repository(workflow_run, cast(str, repo_name)),
+                    organization,
                 )
                 for workflow_run in workflow_runs
             ]
             yield batch
 
             fetched_batch = fetched_batch + len(workflow_runs)
-            if fetched_batch >= options["max_runs"]:
+            if incremental_cursor is None and fetched_batch >= max_runs:
                 logger.info(
-                    f"Reached maximum limit of {options['max_runs']} workflow runs"
+                    f"Reached maximum limit of {max_runs} workflow runs"
                     f"for workflow {workflow_id} in {repo_name} from {organization}"
                 )
                 return

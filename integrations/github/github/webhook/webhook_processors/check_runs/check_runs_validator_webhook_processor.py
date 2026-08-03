@@ -1,7 +1,7 @@
 import asyncio
 from typing import List, cast
 from loguru import logger
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.check_runs.file_validation import (
     get_file_validation_mappings,
     ResourceConfigToPatternMapping,
@@ -96,7 +96,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             f"Fetching commit diff for repository {repo_name} of organization: {organization} from {base_sha} to {head_sha}"
         )
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         file_exporter = RestFileExporter(rest_client)
         diff_data = await file_exporter.fetch_commit_diff(
             organization, repo_name, base_sha, head_sha

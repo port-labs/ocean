@@ -4,9 +4,9 @@ import hmac
 from dataclasses import asdict
 from typing import Any, cast
 
-from fastapi import Request
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.webhook.webhook_event import WebhookOriginalRequest
 
 from client import BitbucketClient
 from helpers import BitbucketClientConfig
@@ -296,7 +296,7 @@ class BitbucketServerWebhookClient(BitbucketClient):
         else:
             await self.create_projects_webhook(projects)
 
-    async def verify_webhook_signature(self, request: Request) -> bool:
+    async def verify_webhook_signature(self, request: WebhookOriginalRequest) -> bool:
         """
         Verify webhook request signature.
 

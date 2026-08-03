@@ -34,6 +34,37 @@ class ObjectKind(StrEnum):
     SQS_QUEUE = "AWS::SQS::Queue"  # Example
 ```
 
+**File:** `integration.py`
+
+Create a new `AWSResourceConfig` subclass named `AWS<Resource>ResourceConfig`. Its `kind` field must be a `Literal` matching the exact `ObjectKind` string value added above:
+
+```python
+class AWSSQSQueueResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SQS::Queue"] = Field(
+        title="AWS SQS Queue",
+        description="AWS SQS Queue resource kind.",
+    )
+```
+
+**File:** `integration.py`
+
+Append the new subclass to the `Union` in `AWSPortAppConfig.resources` so Ocean can validate `port-app-config.yml` entries for this kind.
+
+```python
+class AWSPortAppConfig(PortAppConfig):
+    resources: List[
+        AWSS3BucketResourceConfig
+        | AWSEC2InstanceResourceConfig
+        | AWSECSClusterResourceConfig
+        | AWSSQSQueueResourceConfig # example
+    ] = Field(
+        default_factory=list,
+        title="Resources",
+        description="The list of resource configurations to sync from AWS.",
+    )  # type: ignore[assignment]
+
+```
+
 **Why:** This defines the resource type that Ocean will recognize and trigger resync events for.
 
 ### Step 2: Create the Resource Models
@@ -95,7 +126,7 @@ from loguru import logger
 import asyncio
 
 
-class GetResourceDetailsAction(Action):
+class GetResourceDetailsAction(Action[List[Dict[str, Any]]]):
     """Fetches detailed information about the resource."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -133,7 +164,7 @@ class GetResourceDetailsAction(Action):
         }
 
 
-class GetResourceTagsAction(Action):
+class GetResourceTagsAction(Action[List[Dict[str, Any]]]):
     """Fetches tags for the resource."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -167,7 +198,7 @@ class GetResourceTagsAction(Action):
                 raise
 
 
-class ListResourcesAction(Action):
+class ListResourcesAction(Action[List[Dict[str, Any]]]):
     """Processes the initial list of resources from AWS."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

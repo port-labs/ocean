@@ -15,7 +15,7 @@ jobs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Prepare matrix
         id: prepare-matrix
@@ -65,7 +65,7 @@ jobs:
         integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Prepare Docker images tags
         id: prepare_tags
@@ -185,7 +185,7 @@ jobs:
 
       - name: Configure AWS Credentials 🔒
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}
           role-to-assume: ${{ vars.ECR_PULL_THROUGH_CACHE_DELETE_ROLE_ARN }}
@@ -233,11 +233,11 @@ jobs:
     needs: release-integration
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -387,7 +387,7 @@ jobs:
     steps:
       - name: Send Slack notification
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
           method: 'POST'

@@ -1,17 +1,19 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import ReadTimeout, Response
+from httpx import ConnectTimeout, ReadError, ReadTimeout, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from azure_devops.client.auth import AuthProvider
 from azure_devops.client.rate_limiter import (
+    ADO_RATE_LIMIT_WINDOW_SECONDS,
     AzureDevOpsRateLimiter,
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
+from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
@@ -20,18 +22,29 @@ MAX_TIMEMOUT_RETRIES = 3
 
 
 class HTTPBaseClient:
-    def __init__(self, auth_provider: AuthProvider) -> None:
+    def __init__(
+        self,
+        auth_provider: AuthProvider,
+    ) -> None:
+        self._auth_provider = auth_provider
+        self._rate_limiter = AzureDevOpsRateLimiter()
         self._client = OceanAsyncClient(
+            AzureDevOpsRetryTransport,
+            transport_kwargs={
+                "rate_limiter": self._rate_limiter,
+                "auth_header_refresher": self._auth_provider.get_auth_headers,
+            },
             retry_config=RetryConfig(
                 retry_after_headers=[
                     LIMIT_RESET_HEADER,
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
+                max_backoff_wait=ADO_RATE_LIMIT_WINDOW_SECONDS,
+                base_delay=ADO_RATE_LIMIT_WINDOW_SECONDS,
+                max_attempts=10,
             ),
             timeout=ocean.config.client_timeout,
         )
-        self._auth_provider = auth_provider
-        self._rate_limiter = AzureDevOpsRateLimiter()
 
     async def send_request(
         self,
@@ -40,6 +53,7 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
+        raise_on_404: bool = False,
     ) -> Response | None:
         auth_headers = await self._auth_provider.get_auth_headers()
         headers = {**(headers or {}), **auth_headers}
@@ -57,6 +71,8 @@ class HTTPBaseClient:
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
             if response.status_code == 404:
+                if raise_on_404:
+                    raise
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
                 return None
             else:
@@ -65,10 +81,15 @@ class HTTPBaseClient:
                         f"Couldn't access url {url}. Make sure the {self._auth_provider.auth_description} is valid!"
                     )
                 logger.error(
-                    f"Request with bad status code {response.status_code}: {method} to url {url}"
+                    f"Request with bad status code {response.status_code}: {method} to url {url}. Response body: {e.response.text}"
                 )
                 raise e
         except httpx.HTTPError as e:
+            if isinstance(e, (ReadTimeout, ConnectTimeout, ReadError)):
+                await self._rate_limiter.signal_throttle(
+                    ADO_RATE_LIMIT_WINDOW_SECONDS,
+                    reason=type(e).__name__,
+                )
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
         finally:

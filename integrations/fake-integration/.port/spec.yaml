@@ -8,6 +8,9 @@ features:
     resources:
       - kind: fake-department
       - kind: fake-person
+      - kind: fake-office
+      - kind: fake-team
+      - kind: fake-project
 configurations:
   - name: entityAmount
     required: false

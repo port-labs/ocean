@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig, Selector
 
@@ -32,6 +32,7 @@ class Kind(StrEnum):
     USER = "user"
     FOLDER = "folder"
     ITERATION = "iteration"
+    AREA_PATH = "area-path"
     BRANCH = "branch"
     ADVANCED_SECURITY_ALERT = "advanced-security-alert"
     GROUP = "group"

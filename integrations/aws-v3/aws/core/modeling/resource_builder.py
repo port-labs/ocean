@@ -1,39 +1,36 @@
-from typing import Any, Self
+from typing import Any, Dict, Self
+
+
 from aws.core.modeling.resource_models import ResourceModel
-from pydantic import BaseModel
-from typing import Dict
-import json
 
 
-class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: BaseModel]:
+class ResourceBuilder[ResourceModelT: ResourceModel[Any]]:
     """
     Builder class for constructing AWS resource models with strongly-typed properties.
 
-    Provides a fluent interface to set multiple fields on the `Properties`
-    attribute of a given resource model, which is expected to be a subclass of
-    `BaseResponseModel` parameterized with a Pydantic `BaseModel` for its properties.
-
-    Type Parameters:
-        ResourceModelT: A subclass of `BaseResponseModel` with properties of type `TProperties`.
-        TProperties: A Pydantic `BaseModel` representing the resource's properties.
+    Provides a fluent interface to collect the resource's `Type`, `Properties`
+    and extra context, then constructs the model in a single pass at `build`.
 
     Example:
-        >>> builder = ModelBuilder(MyResourceModel(Type="...", Properties=MyProperties()))
-        >>> resource = builder.with_data({"Name": "example", "Size": 42}).build()
+        >>> builder = ResourceBuilder(MyResourceModel)
+        >>> resource = builder.with_properties({"Name": "example", "Size": 42}).build()
     """
 
-    def __init__(self, model: ResourceModelT) -> None:
+    def __init__(self, model_cls: type[ResourceModelT]) -> None:
         """
-        Initialize the builder with a resource model instance.
+        Initialize the builder for a resource model class.
 
         Args:
-            model: An instance of a resource model to be built or modified.
+            model_cls: The resource model class to construct on `build`.
         """
-        self._model = model
+        self._model_cls = model_cls
+        self._properties: dict[str, Any] | None = None
+        self._type: str | None = None
+        self._extra_context: dict[str, Any] | None = None
 
     def with_properties(self, data: dict[str, Any]) -> Self:
         """
-        Set multiple fields in the resource's `Properties` attribute.
+        Set the fields of the resource's `Properties`.
 
         Args:
             data: A dictionary of property names and their corresponding values to set.
@@ -41,25 +38,21 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-
-        current_data = self._model.Properties.dict(exclude_unset=True)
-        current_data.update(data)
-        self._model.Properties = type(self._model.Properties)(**current_data)
-        self._props_set = True
+        self._properties = data
         return self
 
     def with_extra_context(self, data: dict[str, Any]) -> Self:
         """
         Set enrichments for the resource model.
         """
-        self._model.ExtraContext = self._model.ExtraContext.copy(update=data)
+        self._extra_context = data
         return self
 
     def with_type(self, type: str) -> Self:
         """
         Set the type of the resource model.
         """
-        self._model.Type = type
+        self._type = type
         return self
 
     def build(self) -> Dict[str, Any]:
@@ -69,10 +62,15 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Dict[str, Any]: The built resource model dictionary.
         """
-        if not self._props_set:
-            raise ValueError(
-                "No data has been set for the resource model, use `with_data` to set data."
-            )
+        # Explicitly set ``Type`` so it survives ``exclude_unset=True``.
+        fields: dict[str, Any] = {
+            "Type": self._type,
+            "Properties": self._properties,
+        }
 
-        resource_json = self._model.json(exclude_unset=True, by_alias=True)
-        return json.loads(resource_json)
+        if self._extra_context:
+            fields["ExtraContext"] = self._extra_context
+
+        model = self._model_cls(**fields)
+
+        return model.model_dump(mode="json", exclude_unset=True, by_alias=True)

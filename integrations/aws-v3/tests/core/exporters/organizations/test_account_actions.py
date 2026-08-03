@@ -156,6 +156,62 @@ class TestListTagsForResourceAction:
                 "Failed to list tags for account 222222222222: ResourceNotFoundException"
             )
 
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.organizations.account.actions.logger")
+    async def test_execute_preserves_index_alignment_with_recoverable_failures(
+        self,
+        mock_logger: MagicMock,
+        action: ListTagsForResourceAction,
+    ) -> None:
+        """Middle accounts fail with recoverable errors; tag results keep aligned positions.
+
+        Account 1 succeeds, account 2 hits AccessDenied, account 3 hits
+        ResourceNotFound, account 4 succeeds. The output must contain four
+        entries in the original order so positional merges in
+        ResourceInspector do not shift data onto the wrong accounts.
+        """
+        accounts = [
+            {"Id": "111111111111"},
+            {"Id": "222222222222"},
+            {"Id": "333333333333"},
+            {"Id": "444444444444"},
+        ]
+
+        class MockPaginator:
+            def paginate(self, **kwargs: Any) -> AsyncGenerator[Dict[str, Any], None]:
+                async def _gen() -> AsyncGenerator[Dict[str, Any], None]:
+                    resource_id = kwargs["ResourceId"]
+                    if resource_id == "111111111111":
+                        yield {"Tags": [{"Key": "Env", "Value": "first"}]}
+                    elif resource_id == "222222222222":
+                        raise Exception("AccessDeniedException")
+                    elif resource_id == "333333333333":
+                        raise Exception("ResourceNotFoundException")
+                    else:
+                        yield {"Tags": [{"Key": "Env", "Value": "fourth"}]}
+
+                return _gen()
+
+        action.client.get_paginator = MagicMock(return_value=MockPaginator())
+
+        with (
+            patch(
+                "aws.core.exporters.organizations.account.actions.is_access_denied_exception",
+                side_effect=lambda e: "AccessDeniedException" in str(e),
+            ),
+            patch(
+                "aws.core.exporters.organizations.account.actions.is_resource_not_found_exception",
+                side_effect=lambda e: "ResourceNotFoundException" in str(e),
+            ),
+        ):
+            result = await action.execute(accounts)
+
+        assert len(result) == 4
+        assert result[0] == {"Tags": [{"Key": "Env", "Value": "first"}]}
+        assert result[1] == {}
+        assert result[2] == {}
+        assert result[3] == {"Tags": [{"Key": "Env", "Value": "fourth"}]}
+
 
 class TestOrganizationsAccountActionsMap:
     def test_merge_defaults_only(self) -> None:

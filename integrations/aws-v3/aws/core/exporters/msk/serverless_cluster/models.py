@@ -1,24 +1,27 @@
-from typing import Optional, Any
-from pydantic import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from typing import Any
+
+from pydantic import ConfigDict, Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 from datetime import datetime
 
 
-class MskServerlessClusterProperties(BaseModel):
-    activeOperationArn: Optional[str] = Field(default=None, alias="ActiveOperationArn")
+class MskServerlessClusterProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
+
+    activeOperationArn: str | None = Field(default=None, alias="ActiveOperationArn")
     clusterArn: str = Field(default_factory=str, alias="ClusterArn")
     clusterName: str = Field(default_factory=str, alias="ClusterName")
-    clusterType: Optional[str] = Field(default=None, alias="ClusterType")
-    creationTime: Optional[datetime] = Field(default=None, alias="CreationTime")
-    currentVersion: Optional[str] = Field(default=None, alias="CurrentVersion")
-    state: Optional[str] = Field(default=None, alias="State")
-    stateInfo: Optional[dict[str, Any]] = Field(default=None, alias="StateInfo")
-    tags: Optional[dict[str, str]] = Field(default=None, alias="Tags")
-    serverless: Optional[dict[str, Any]] = Field(default=None, alias="Serverless")
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "allow"
+    clusterType: str | None = Field(default=None, alias="ClusterType")
+    creationTime: datetime | None = Field(default=None, alias="CreationTime")
+    currentVersion: str | None = Field(default=None, alias="CurrentVersion")
+    state: str | None = Field(default=None, alias="State")
+    stateInfo: dict[str, Any] | None = Field(default=None, alias="StateInfo")
+    tags: dict[str, str] | None = Field(default=None, alias="Tags")
+    serverless: dict[str, Any] | None = Field(default=None, alias="Serverless")
 
 
 class MskServerlessCluster(ResourceModel[MskServerlessClusterProperties]):

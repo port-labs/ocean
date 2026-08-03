@@ -1,0 +1,22 @@
+{
+  "Type": "AWS::CodePipeline::PipelineExecution",
+  "Properties": {
+    "ArtifactRevisions": [],
+    "ExecutionMode": "SUPERSEDED",
+    "LastUpdateTime": "2026-06-04T14:11:40.176000+03:00",
+    "PipelineExecutionId": "43858f3d-2987-40c7-9332-f82611de1449",
+    "PipelineName": "my-pipeline",
+    "PipelineVersion": 1,
+    "SourceRevisions": [],
+    "StartTime": "2026-06-04T14:11:28.350000+03:00",
+    "Status": "Failed",
+    "Trigger": {
+      "triggerType": "CreatePipeline",
+      "triggerDetail": "arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_PowerUserAccess_43dd902745d50632/my_user@port.io"
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}

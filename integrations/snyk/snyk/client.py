@@ -12,8 +12,8 @@ from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
 from snyk.overrides import (
     SnykProjectAPIQueryParams,
-    SnykTargetAPIQueryParams,
     SnykPolicyAPIQueryParams,
+    SnykTargetAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
 )
 from snyk.utils import enrich_batch_with_data, parse_next_page_params
@@ -76,18 +76,22 @@ class SnykClient:
         self,
         url: str,
         method: str = "GET",
-        query_params: Optional[dict[str, Any]] = None,
+        query_params_parsed: Optional[dict[str, Any]] = None,
         version: str | None = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        query_params = {
-            **(query_params or {}),
+        raw_query_params = {
+            **(query_params_parsed or {}),
             **({"version": version} if version is not None else {}),
+        }
+        query_params_parsed = {
+            k: ",".join(v) if isinstance(v, list) else v
+            for k, v in raw_query_params.items()
         }
         async with self.rate_limiter, self.semaphore:
             try:
                 response = await self.http_client.request(
-                    method=method, url=url, params=query_params, json=json_data
+                    method=method, url=url, params=query_params_parsed, json=json_data
                 )
                 response.raise_for_status()
                 return response.json()
@@ -101,7 +105,7 @@ class SnykClient:
                     )
                     return {}
                 logger.error(
-                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params_parsed}, "
                     f"version: {version}, json: {json_data}. "
                     f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
                 )
@@ -118,7 +122,7 @@ class SnykClient:
                 data = await self._send_api_request(
                     url=f"{self.rest_api_url}{url_path}",
                     method=method,
-                    query_params={**(query_params or {}), "limit": PAGE_SIZE},
+                    query_params_parsed={**(query_params or {}), "limit": PAGE_SIZE},
                 )
 
                 yield data.get("data", [])
@@ -152,7 +156,11 @@ class SnykClient:
         return issues
 
     async def get_project_vulnerabilities(
-        self, org_id: str, project: dict[str, Any], query_params: dict[str, Any]
+        self,
+        org_id: str,
+        project: dict[str, Any],
+        query_params: dict[str, Any],
+        attach_ignore: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"/orgs/{org_id}/issues"
         async for issues in self._get_paginated_resources(
@@ -163,6 +171,11 @@ class SnykClient:
                 "scan_item.type": project["type"],
             },
         ):
+            if attach_ignore and issues:
+                project_ignores = await self._get_project_ignore_data(org_id, project)
+                for issue in issues:
+                    issue_key = issue["attributes"]["key"]
+                    issue["__ignore_data"] = project_ignores.get(issue_key, [])
             yield enrich_batch_with_data(issues, project, enrichment_key="__project")
 
     async def get_paginated_issues(
@@ -171,6 +184,7 @@ class SnykClient:
         api_params: Optional[SnykVulnerabilityAPIQueryParams] = None,
         project_params: Optional[SnykProjectAPIQueryParams] = None,
         attach_project: bool = False,
+        attach_ignore: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching paginated issues for organization: {org['id']}")
         base_params = {"version": self.snyk_api_version}
@@ -180,7 +194,7 @@ class SnykClient:
             else base_params
         )
 
-        if project_params or attach_project:
+        if project_params or attach_project or attach_ignore:
             if project_params:
                 logger.info(
                     "Project filters set, fetching issues from matching projects",
@@ -192,7 +206,9 @@ class SnykClient:
                 enrich_with_org=False,
             ):
                 tasks = [
-                    self.get_project_vulnerabilities(org["id"], project, query_params)
+                    self.get_project_vulnerabilities(
+                        org["id"], project, query_params, attach_ignore=attach_ignore
+                    )
                     for project in projects
                 ]
 
@@ -253,6 +269,24 @@ class SnykClient:
             url_path=url, query_params=params
         ):
             yield projects
+
+    @cache_coroutine_result()
+    async def _get_project_ignore_data(
+        self, org_id: str, project: dict[str, Any]
+    ) -> dict[str, Any]:
+        logger.info(
+            f"fetching ignore data for project: {project['id']}",
+            project_name=project["attributes"]["name"],
+        )
+        url = f"{self.api_url}/org/{org_id}/project/{project['id']}/ignores"
+        response = await self._send_api_request(
+            url=url, method="GET", version=f"{self.snyk_api_version}"
+        )
+
+        if not response:
+            return {}
+
+        return response
 
     async def _process_target(
         self,
@@ -335,7 +369,7 @@ class SnykClient:
         response = await self._send_api_request(
             url=url,
             method="GET",
-            query_params=query_params,
+            query_params_parsed=query_params,
             version=self.snyk_api_version,
         )
         project = response.get("data", {})

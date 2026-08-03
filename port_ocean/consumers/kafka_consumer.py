@@ -5,7 +5,7 @@ from typing import Any, Callable, Awaitable
 
 from confluent_kafka import Consumer, KafkaException, Message, TopicPartition
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 class KafkaConsumerConfig(BaseModel):

@@ -1,4 +1,4 @@
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 from http_server.overrides import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,

@@ -1,0 +1,13 @@
+{
+  "identifier": "awsAccount",
+  "title": "AWS Account",
+  "icon": "AWS",
+  "schema": {
+    "properties": {},
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {}
+}

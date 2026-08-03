@@ -2,7 +2,7 @@ from os import environ
 from port_ocean.clients.port.client import PortClient
 
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from port_ocean.tests.helpers.integration import cleanup_integration
 from port_ocean.tests.helpers.port_client import get_port_client_for_integration

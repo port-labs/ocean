@@ -1,5 +1,5 @@
 import pytest
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from port_ocean.config.dynamic import NoTrailingSlashUrl
 from typing import cast
 

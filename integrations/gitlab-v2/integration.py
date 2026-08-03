@@ -1,6 +1,6 @@
 from typing import Literal, Any, Type, List, Optional
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
@@ -16,7 +16,12 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
-from gitlab.helpers.utils import GitlabAccessLevel
+from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
+from gitlab.helpers.skill_plugin import (
+    DEFAULT_PLUGIN_PROVIDERS,
+    DEFAULT_SKILL_PATHS,
+    PluginProvider,
+)
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
@@ -341,6 +346,18 @@ class FilesSelector(BaseModel):
         description="Skip parsing the files and just return the raw file content",
         title="Skip Parsing",
     )
+    search_strategy: Literal["groupSearch", "projectSearch", "repositoryTree"] = Field(
+        default="groupSearch",
+        alias="searchStrategy",
+        title="Search Strategy",
+        description=(
+            "Controls how files are discovered. groupSearch and projectSearch query GitLab's "
+            "search API; repositoryTree walks the Git repository tree via the tree API, which "
+            "does not depend on GitLab's search index, so it returns complete, consistent "
+            "results even when search indexing is stale or disabled, at the cost of being "
+            "considerably slower."
+        ),
+    )
 
 
 class GitLabFilesSelector(GroupSelector):
@@ -361,6 +378,67 @@ class GitLabFilesResourceConfig(ResourceConfig):
     selector: GitLabFilesSelector = Field(
         title="File Selector",
         description="Selector for the GitLab file resource.",
+    )
+
+
+class GitLabSkillPath(BaseModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
+    )
+    repos: list[str] = Field(
+        title="Repositories",
+        default_factory=list,
+        description=(
+            "Optional list of project path_with_namespace values to scan "
+            "for this path (same as file kind)."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GitLabSkillSelector(GroupSelector):
+    paths: list[GitLabSkillPath] = Field(
+        title="Paths",
+        default=[GitLabSkillPath(path=path) for path in DEFAULT_SKILL_PATHS],
+        description="Glob patterns for SKILL.md discovery",
+    )
+
+
+class GitLabSkillResourceConfig(ResourceConfig):
+    kind: Literal["skill"] = Field(
+        title="GitLab Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GitLabSkillSelector = Field(
+        title="Skill Selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GitLabPluginSelector(GroupSelector):
+    providers: list[PluginProvider] = Field(
+        title="Providers",
+        default=list(DEFAULT_PLUGIN_PROVIDERS),
+        description="Agent plugin providers to detect.",
+    )
+    repos: list[str] = Field(
+        title="Repositories",
+        default_factory=list,
+        description="Optional list of project path_with_namespace values to scan.",
+    )
+
+
+class GitLabPluginResourceConfig(ResourceConfig):
+    kind: Literal["plugin"] = Field(
+        title="GitLab Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GitLabPluginSelector = Field(
+        title="Plugin Selector",
+        description="Selector for discovering agent plugin repositories.",
     )
 
 
@@ -569,6 +647,127 @@ class BranchResourceConfig(ResourceConfig):
     )
 
 
+class GitlabDeploymentQueryParams(BaseModel):
+    """GitLab API query params that filters returned deployments."""
+
+    class Config:
+        allow_population_by_field_name = True
+        use_enum_values = True
+
+    environment: str | None = Field(
+        default=None,
+        title="Environment",
+        description="Return only deployments for the given environment name.",
+    )
+    status: GitLabDeploymentStatus | None = Field(
+        default=None,
+        title="Status",
+        description=(
+            "Filter by deployment status. Omit to include all deployments regardless of status."
+        ),
+    )
+    updated_after: str | None = Field(
+        default=None,
+        alias="updatedAfter",
+        title="Updated After",
+        description=(
+            "Limit synced deployments to those updated after this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-01-15T10:00:00Z). "
+            "This controls which deployments are synced into Port — deployments outside "
+            "this window will be removed from Port during reconciliation."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    updated_before: str | None = Field(
+        default=None,
+        alias="updatedBefore",
+        title="Updated Before",
+        description=(
+            "Limit synced deployments to those updated before this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
+            "Use together with updatedAfter to define a fixed sync window."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    finished_after: str | None = Field(
+        default=None,
+        alias="finishedAfter",
+        title="Finished After",
+        description=(
+            "Limit synced deployments to those whose CI job finished after this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-01-01T00:00:00Z). "
+            "Requires status to be 'success'. "
+            "Deployments outside this window will be removed from Port during reconciliation."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    finished_before: str | None = Field(
+        default=None,
+        alias="finishedBefore",
+        title="Finished Before",
+        description=(
+            "Limit synced deployments to those whose CI job finished before this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
+            "Requires status to be 'success'. "
+            "Use together with finishedAfter to define a fixed sync window."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+
+    @validator("finished_before", always=True)
+    def _finished_at_window_requires_success_status(
+        cls,
+        finished_before: str | None,
+        values: dict[str, Any],
+    ) -> str | None:
+        if not (values.get("finished_after") or finished_before):
+            return finished_before
+        if values.get("status") != GitLabDeploymentStatus.SUCCESS:
+            raise ValueError(
+                "status must be 'success' when finishedAfter or finishedBefore is set"
+            )
+        return finished_before
+
+    def generate_query_params(self) -> dict[str, Any]:
+        params = self.dict(exclude_unset=True, exclude_none=True)
+        if "finished_after" in params or "finished_before" in params:
+            params["order_by"] = "finished_at"
+        return params
+
+
+class GitlabDeploymentSelector(Selector):
+    include_only_active_projects: bool | None = Field(
+        default=None,
+        alias="includeOnlyActiveProjects",
+        title="Include Only Active Projects",
+        description=(
+            "If true, only include deployments from active (non-archived) projects. Defaults to None (no filter)."
+        ),
+    )
+    query_params: GitlabDeploymentQueryParams | None = Field(
+        default=None,
+        alias="apiQueryParams",
+        title="API Query Params",
+        description="Query parameters applied to the GitLab deployments API.",
+    )
+
+    def generate_query_params(self) -> dict[str, Any]:
+        if self.query_params:
+            return self.query_params.generate_query_params()
+        return {}
+
+
+class GitlabDeploymentResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.DEPLOYMENT] = Field(
+        title="GitLab Deployment",
+        description="GitLab deployment resource kind, representing a CI/CD deployment to an environment.",
+    )
+    selector: GitlabDeploymentSelector = Field(
+        title="Deployment Selector",
+        description="Selector for the GitLab deployment resource.",
+    )
+
+
 class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
@@ -585,12 +784,15 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabProjectWithMembersResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
+        | GitLabSkillResourceConfig
+        | GitLabPluginResourceConfig
         | GitlabMergeRequestResourceConfig
         | TagResourceConfig
         | ReleaseResourceConfig
         | PipelineResourceConfig
         | JobResourceConfig
         | BranchResourceConfig
+        | GitlabDeploymentResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
@@ -651,4 +853,7 @@ class GitlabIntegration(BaseIntegration):
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
+        )
+        self.context.app.execution_manager._webhook_manager = (
+            self.context.app.webhook_manager
         )

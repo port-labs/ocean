@@ -123,7 +123,7 @@ class TestListTagsForResourceAction:
     async def test_execute_with_recoverable_exception(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
-        """Test that recoverable exceptions are skipped and logged as warnings."""
+        """Test that recoverable exceptions return placeholders and log warnings."""
         db_clusters = [
             {
                 "DBClusterIdentifier": "cluster-1",
@@ -149,7 +149,10 @@ class TestListTagsForResourceAction:
 
         result = await action.execute(db_clusters)
 
-        assert result == [{"TagList": [{"Key": "Environment", "Value": "production"}]}]
+        assert result == [
+            {"TagList": [{"Key": "Environment", "Value": "production"}]},
+            {},
+        ]
         mock_logger.warning.assert_called_once()
         assert (
             "Skipping DB cluster tags for 'cluster-2'"

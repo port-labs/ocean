@@ -1,27 +1,41 @@
 import datetime
 import http
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from datadog.overrides import SLOHistoryResourceConfig
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.queue_utils import process_in_queue
 
-from datadog.core.exporters.base_exporter import PaginatedExporter
+from datadog.core.exporters.base_exporter import ListOptions, PaginatedExporter
 from datadog.core.exporters.slo_exporter import ListSloOptions, SloExporter
-from utils import (
+from datadog.utils import (
     generate_time_windows_from_interval_days,
     get_start_of_the_day_in_seconds_x_day_back,
     get_start_of_the_month_in_seconds_x_months_back,
 )
 
 
-class ListSloHistoryOptions(BaseModel):
+class ListSloHistoryOptions(ListOptions["SLOHistoryResourceConfig"]):
     timeframe: int
     concurrency: int
     period_of_time_in_months: int
     period_of_time_in_days: Optional[int] = None
+
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "SLOHistoryResourceConfig"
+    ) -> "ListSloHistoryOptions":
+        selector = resource_config.selector
+        return cls(
+            timeframe=selector.timeframe,
+            concurrency=selector.concurrency,
+            period_of_time_in_months=selector.period_of_time_in_months,
+            period_of_time_in_days=selector.period_of_time_in_days,
+        )
 
 
 def _resolve_start_timestamp(options: ListSloHistoryOptions) -> int:

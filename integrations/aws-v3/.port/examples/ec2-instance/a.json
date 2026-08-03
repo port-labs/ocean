@@ -1,0 +1,51 @@
+{
+  "Type": "AWS::EC2::Instance",
+  "Properties": {
+    "InstanceId": "i-0a1b2c3d4e5f67890",
+    "InstanceType": "t3.medium",
+    "State": {
+      "Code": 16,
+      "Name": "running"
+    },
+    "PublicIpAddress": "54.123.45.67",
+    "PrivateIpAddress": "10.0.1.100",
+    "ImageId": "ami-0abcdef1234567890",
+    "SubnetId": "subnet-12345678901234567",
+    "VpcId": "vpc-12345678901234567",
+    "LaunchTime": "2024-03-15T08:30:00.000Z",
+    "Platform": "Linux/UNIX",
+    "Architecture": "x86_64",
+    "KeyName": "my-key-pair",
+    "Placement": {
+      "AvailabilityZone": "us-east-1a",
+      "Tenancy": "default"
+    },
+    "Monitoring": {
+      "State": "disabled"
+    },
+    "SecurityGroups": [
+      {
+        "GroupId": "sg-12345678901234567",
+        "GroupName": "my-security-group"
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "my-production-server"
+      },
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "backend"
+      }
+    ]
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}
