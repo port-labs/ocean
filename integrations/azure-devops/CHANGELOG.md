@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.10.43 (2026-08-02)
+## 0.11.0 (2026-08-03)
 
 
 ### Features
@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Pipeline-run incremental sync skips projects gracefully when the Analytics OData endpoint is unavailable (HTTP 403/404) instead of failing the kind.
 - Return warning when advanced security alert is not enabled in the account, instead of error which fails the resync.
+
+
+## 0.10.43 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
 
 
 ## 0.10.42 (2026-07-30)
