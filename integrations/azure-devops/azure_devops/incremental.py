@@ -18,9 +18,7 @@ ADVANCED_SECURITY_INCREMENTAL = ServerSideTimestampStrategy(
 )
 
 
-def wiql_changed_after_clause(
-    cursor: datetime, *, time_precision: bool = False
-) -> str:
+def wiql_changed_after_clause(cursor: datetime, *, time_precision: bool = False) -> str:
     """Build a WIQL fragment filtering work items changed on or after *cursor*.
 
     When *time_precision* is False, only the UTC calendar date is used (ADO default

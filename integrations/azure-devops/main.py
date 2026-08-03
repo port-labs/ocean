@@ -18,7 +18,6 @@ from azure_devops.misc import (
     AzureDevopsFolderResourceConfig,
     Kind,
     create_closed_pull_request_search_criteria,
-    create_incremental_pull_request_search_criteria,
 )
 from azure_devops.webhooks.setup import setup_webhooks_for_all_orgs
 from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
@@ -186,20 +185,11 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield pipelines
 
 
-@ocean.on_incremental_resync(Kind.PULL_REQUEST)
 @ocean.on_resync(Kind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(
         AzureDevopsPullRequestResourceConfig, event.resource_config
     ).selector
-    cursor = active_incremental_cursor()
-
-    if cursor is not None:
-        for search_filter in create_incremental_pull_request_search_criteria(cursor):
-            async for pull_requests in resync.iter_pull_requests(search_filter):
-                logger.info(f"Resyncing {len(pull_requests)} pull_requests")
-                yield pull_requests
-        return
 
     async for pull_requests in resync.iter_pull_requests(
         ACTIVE_PULL_REQUEST_SEARCH_CRITERIA

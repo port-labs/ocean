@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added incremental sync support for resources `work-item`, `build`, `pull-request`, `release`, `release-deployment`, `pipeline-run`, `test-run`, and `advanced-security-alert`.
+- Added incremental sync support for resources `work-item`, `build`, `release`, `release-deployment`, `pipeline-run`, `test-run`, and `advanced-security-alert`.
 
 
 ### Improvements
