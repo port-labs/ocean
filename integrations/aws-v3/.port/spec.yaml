@@ -32,6 +32,7 @@ features:
       - kind: AWS::SES::EmailIdentity
       - kind: AWS::DynamoDB::Table
       - kind: AWS::SES::ConfigurationSet
+      - kind: AWS::SNS::Topic
 configurations:
   - name: credentialProviderPriority
     required: false
