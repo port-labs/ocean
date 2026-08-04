@@ -2,7 +2,7 @@
 
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
-source "${SCRIPT_BASE}/lib/version.sh"
+source "${SCRIPT_BASE}/version.sh"
 CURRENT_DIR=$(pwd)
 VERSION="^${1:-$(pip index versions port-ocean | grep 'port-ocean' | cut -d' ' -f2 | tr -d '()')}"
 
