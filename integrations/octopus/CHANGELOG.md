@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.148 (2026-08-04)
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
 # Port_Ocean 0.2.147 (2026-08-03)
 
 ### Improvements
