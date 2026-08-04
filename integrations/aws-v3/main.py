@@ -104,10 +104,3 @@ async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-@ocean.on_resync(ObjectKind.SNS_TOPIC)
-async def resync_sns_topic(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, SNSTopicExporter, PaginatedTopicRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
