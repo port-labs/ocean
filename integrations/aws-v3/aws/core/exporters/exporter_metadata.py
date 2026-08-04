@@ -173,7 +173,5 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
     ObjectKind.SES_CONFIGURATION_SET: ExporterMetadata(
         SesConfigurationSetExporter, PaginatedConfigurationSetRequest
     ),
-    ObjectKind.SNS_TOPIC: ExporterMetadata(
-        SNSTopicExporter, PaginatedTopicRequest
-    ),
+    ObjectKind.SNS_TOPIC: ExporterMetadata(SNSTopicExporter, PaginatedTopicRequest),
 }

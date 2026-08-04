@@ -102,5 +102,3 @@ async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         regional=metadata.regional,
     ):
         yield batch
-
-
