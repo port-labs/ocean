@@ -17,7 +17,7 @@ configurations:
     required: false
     description: The allowed number of requests to the GCP assets inventory. By default it is set to 400, but can be adjusted per to your GCP plan. For more information see the <a href="https://cloud.google.com/asset-inventory/docs/quota#project_quota" target="_blank">GCP quota documentation</a>
     default: 400
-  - name: secret
+  - name: cloudFunctionSecret
     type: object
     required: false
     sensitive: true
