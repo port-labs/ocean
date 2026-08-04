@@ -23,6 +23,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
         self._valid_arns: set[str] = set()
         self._valid_sessions: dict[str, AioSession] = {}
+        self._sessions_by_account_id: dict[str, AioSession] = {}
 
     @property
     def valid_arns(self) -> set[str]:
@@ -49,6 +50,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
     async def healthcheck(self) -> bool:
         self._valid_arns = set()
         self._valid_sessions = {}
+        self._sessions_by_account_id = {}
 
         arns = normalize_arn_list(self.config.get("account_role_arns", []))
         if not arns:
@@ -86,8 +88,9 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                     if session:
                         self._valid_arns.add(arn)
                         self._valid_sessions[arn] = session
-                        successful += 1
                         account_id = extract_account_from_arn(arn)
+                        self._sessions_by_account_id[account_id] = session
+                        successful += 1
                         logger.debug(f"Role ARN validated for account {account_id}")
                 except Exception as e:
                     logger.warning(f"Health check failed for role ARN {arn}: {e}")
@@ -129,3 +132,15 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
         logger.debug(
             f"Session provision complete: {len(self._valid_arns)} sessions yielded"
         )
+
+    def _ensure_account_session_index(self) -> None:
+        if self._sessions_by_account_id:
+            return
+        for arn, session in self._valid_sessions.items():
+            self._sessions_by_account_id[extract_account_from_arn(arn)] = session
+
+    async def get_session_for_account(self, account_id: str) -> AioSession | None:
+        if not self._valid_sessions:
+            await self.healthcheck()
+        self._ensure_account_session_index()
+        return self._sessions_by_account_id.get(account_id)

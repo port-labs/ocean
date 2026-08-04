@@ -30,6 +30,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         self._valid_sessions: dict[str, AioSession] = {}
         self._organization_session: AioSession | None = None
         self._discovered_accounts: List[Dict[str, str]] = []
+        self._sessions_by_account_id: dict[str, AioSession] = {}
 
     @property
     def valid_arns(self) -> set[str]:
@@ -290,6 +291,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         role_arn = self._build_role_arn(account_id)
         self._valid_arns.add(role_arn)
         self._valid_sessions[role_arn] = session
+        self._sessions_by_account_id[account_id] = session
 
     async def _fallback_to_single_account(self) -> bool:
         """Fall back to single account mode when organizations is not available."""
@@ -357,6 +359,7 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
         self._valid_arns = set()
         self._valid_sessions = {}
         self._discovered_accounts = []
+        self._sessions_by_account_id = {}
 
         try:
             # Discover accounts first
@@ -428,6 +431,18 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
             else:
                 logger.error(f"Health check failed: {e}")
                 raise AWSSessionError(f"Organizations health check failed: {e}")
+
+    def _ensure_account_session_index(self) -> None:
+        if self._sessions_by_account_id:
+            return
+        for arn, session in self._valid_sessions.items():
+            self._sessions_by_account_id[extract_account_from_arn(arn)] = session
+
+    async def get_session_for_account(self, account_id: str) -> AioSession | None:
+        if not self.valid_sessions:
+            await self.healthcheck()
+        self._ensure_account_session_index()
+        return self._sessions_by_account_id.get(account_id)
 
 
 class OrganizationsStrategy(OrganizationsHealthCheckMixin):

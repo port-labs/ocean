@@ -142,16 +142,9 @@ async def get_session_for_account(account_id: str) -> AioSession | None:
     Used by live event processors, which receive a single account ID per
     event and need a session scoped to that account rather than iterating
     over every configured account.
-
-    Note: this is a thin/naive implementation for the live events POC. It
-    walks all configured account sessions until it finds a match, which is
-    fine for a handful of accounts but should be optimized (e.g. cached
-    lookup or direct session creation) before this is used in production.
     """
-    async for account_info, session in get_all_account_sessions():
-        if account_info["Id"] == account_id:
-            return session
-    return None
+    strategy = await AccountStrategyFactory.create()
+    return await strategy.get_session_for_account(account_id)
 
 
 async def clear_aws_account_sessions() -> None:
