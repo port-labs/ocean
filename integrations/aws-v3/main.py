@@ -15,7 +15,6 @@ from aws.core.exporters.organizations.account.exporter import (
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
 from aws.core.helpers.utils import is_access_denied_exception
 from aws.webhook.consts import CLOUDTRAIL_WEBHOOK_PATH
-from aws.webhook.feature_flags import is_aws_v3_live_events_enabled
 from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
     CloudTrailWebhookProcessor,
 )
@@ -28,13 +27,7 @@ from aws.auth.session_factory import (
 )
 
 
-@ocean.on_start()
-async def register_live_events_webhooks() -> None:
-    if await is_aws_v3_live_events_enabled():
-        ocean.add_webhook_processor(CLOUDTRAIL_WEBHOOK_PATH, CloudTrailWebhookProcessor)
-        logger.info("AWS-v3 CloudTrail live events webhook registered")
-    else:
-        logger.info("AWS-v3 live events disabled by organization feature flag")
+ocean.add_webhook_processor(CLOUDTRAIL_WEBHOOK_PATH, CloudTrailWebhookProcessor)
 
 
 @ocean.on_resync_start()
