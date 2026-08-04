@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "octopus"
-version = "0.2.148"
+version = "0.2.149"
 description = "This integration ingest data from octopus deploy"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>"]
 
@@ -58,8 +58,8 @@ package = "port_ocean"
   showcontent = true
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 exclude = [

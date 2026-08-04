@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sonarqube"
-version = "0.1.422"
+version = "0.1.423"
 description = "SonarQube projects and code quality analysis integration"
 authors = ["Port Team <support@getport.io>"]
 
@@ -61,7 +61,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

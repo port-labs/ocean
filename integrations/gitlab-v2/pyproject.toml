@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab-v2"
-version = "0.9.8"
+version = "0.9.9"
 description = "Gitlab"
 authors = ["Shariff <mohammed.s@getport.io>"]
 
@@ -65,7 +65,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
