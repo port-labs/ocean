@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aws"
-version = "0.3.116"
+version = "0.3.117"
 description = "This integration will map all your resources in all the available accounts to your Port entities"
 authors = ["Shalev Avhar <shalev@getport.io>", "Erik Zaadi <erik@getport.io>"]
 
@@ -67,7 +67,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

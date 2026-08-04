@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "statuspage"
-version = "0.2.81"
+version = "0.2.82"
 description = "Connect Statuspage to Ocean and automatically ingest incidents, updates, and impacted components for comprehensive monitoring"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
@@ -59,7 +59,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

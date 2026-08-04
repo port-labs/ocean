@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "azure"
-version = "0.1.402"
+version = "0.1.403"
 description = "Azure integration"
 authors = ["Tom Tankilevitch <tom@getport.io>"]
 
@@ -65,7 +65,7 @@ filename = "CHANGELOG.md"
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

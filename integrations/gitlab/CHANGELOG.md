@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.304-post1 (2026-08-04)
+==========================
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
 0.2.303-post1 (2026-08-03)
 ==========================
 

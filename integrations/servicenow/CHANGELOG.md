@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.0 (2026-08-03)
+## 0.3.131 (2026-08-04)
 
 
-### Features
+### Improvements
 
-- Added webhook authentication support by introducing a `webhookSecret` configuration field, enabling automatic creation and validation of an Authorization header on ServiceNow outbound REST Messages for secure live event forwarding
+- Bump poetry to 2.X with range
 
 
 ## 0.3.130 (2026-08-03)
