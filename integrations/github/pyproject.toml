@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "github-ocean"
-version = "6.7.10"
+version = "6.7.11"
 description = "This integration ingest data from github"
 authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
@@ -64,7 +64,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

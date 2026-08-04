@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mend"
-version = "0.1.40"
+version = "0.1.41"
 description = "An integration for Mend.io project and scan results types"
 authors = ["Het Saliya <het.saliya@crestdata.ai>"]
 
@@ -60,7 +60,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

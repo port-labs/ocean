@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "azure-rg"
-version = "0.2.177-beta"
+version = "0.2.178-beta"
 description = "Azure multi-subscription integration for Port based on Azure Resource Graph"
 authors = ["Michael Armah <mikeyarmah@gmail.com>", "Melody Anyaegbulam <melody.anyaegbulam@port.io>", "Niv Meshorer <nivm@getport.io>"]
 
@@ -65,7 +65,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

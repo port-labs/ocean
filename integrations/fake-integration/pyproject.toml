@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fake-integration"
-version = "0.1.314-dev"
+version = "0.1.315-dev"
 description = "A useless fake integration that helps us test the Ocean Core"
 authors = ["Erik Zaadi <erik@getport.io>"]
 
@@ -62,7 +62,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

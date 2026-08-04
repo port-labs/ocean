@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.131 (2026-08-04)
+## 0.3.132 (2026-08-04)
 
 
 ### Bug Fixes
 
 - Improved ServiceNow 429 handling by using longer retry backoff, honoring ServiceNow retry headers, and pausing requests when 429 responses do not include retry timing headers
+
+
+## 0.3.131 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
 
 
 ## 0.3.130 (2026-08-03)
