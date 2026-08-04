@@ -7,6 +7,8 @@ All supported kinds share one processor. Per-kind behavior is delegated to
 
 from typing import Any, cast
 
+import hmac
+
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -52,12 +54,14 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         expected_api_key = ocean.integration_config.get("live_events_api_key")
         if not expected_api_key:
             logger.warning(
-                "liveEventsApiKey is not configured; rejecting all live events"
+                "live_events_api_key is not configured, rejecting all live events"
             )
             return False
 
         provided_api_key = self._get_auth_header_value(headers)
-        return provided_api_key == expected_api_key
+        if provided_api_key is None:
+            return False
+        return hmac.compare_digest(provided_api_key, str(expected_api_key))
 
     @staticmethod
     def _get_auth_header_value(headers: dict[str, Any]) -> str | None:
@@ -78,7 +82,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         return parse_cloudtrail_event(payload) is not None
 
     async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
+        self, payload: EventPayload, resource_config: ResourceConfig | None
     ) -> WebhookEventRawResults:
         parsed = parse_cloudtrail_event(payload)
         if parsed is None:
