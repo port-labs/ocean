@@ -54,7 +54,7 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_name, organization, params = parse_github_options(dict(options))
         repo = cast(str, repo_name)
-        incremental_cursor = active_incremental_cursor()
+        incremental_cursor = active_incremental_cursor() or options.get("created_since")
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo}/deployments"
         request_params = DEPLOYMENT_INCREMENTAL.merge_params(params, incremental_cursor)

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bump poetry to 2.X with range
+- Added incremental-sync time-window selector fields for full resync on `work-item`, `build`, `release`, `release-deployment`, `test-run`, and `advanced-security-alert` (ignored during incremental sync)
 
 
 ## 0.11.1 (2026-08-03)

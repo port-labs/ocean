@@ -49,7 +49,7 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all releases in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
+        incremental_cursor = active_incremental_cursor() or options.get("created_since")
         request_params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
 
         async for releases in paginate_with_strategy(

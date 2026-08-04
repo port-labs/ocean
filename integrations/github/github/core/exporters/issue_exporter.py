@@ -45,7 +45,7 @@ class RestIssueExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
+        incremental_cursor = active_incremental_cursor() or options.get("since")
         request_params = ISSUE_INCREMENTAL.merge_params(params, incremental_cursor)
 
         async for issues in self.client.send_paginated_request(
