@@ -7,7 +7,6 @@ from aws.auth.session_factory import (
     AccountStrategyFactory,
     get_all_account_sessions,
     clear_aws_account_sessions,
-    get_session_for_account,
 )
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
@@ -547,112 +546,6 @@ class TestGetAllAccountSessions:
                         }
                         assert sessions_by_id["123456789012"] == mock_session_1
                         assert sessions_by_id["987654321098"] == mock_session_2
-
-
-class TestGetSessionForAccount:
-    """Test get_session_for_account function."""
-
-    @pytest.fixture(autouse=True)
-    def reset_cached_strategy(self) -> Generator[None, None, None]:
-        AccountStrategyFactory._cached_strategy = None
-        yield
-
-    @pytest.mark.asyncio
-    async def test_get_session_for_account_found(
-        self, mock_aiosession: AsyncMock
-    ) -> None:
-        with patch(
-            "aws.auth.session_factory.AccountStrategyFactory.create"
-        ) as mock_create:
-            mock_strategy = MagicMock(spec=MultiAccountStrategy)
-            mock_strategy.get_session_for_account = AsyncMock(return_value=mock_aiosession)
-            mock_create.return_value = mock_strategy
-
-            session = await get_session_for_account("123456789012")
-
-            assert session == mock_aiosession
-            mock_strategy.get_session_for_account.assert_awaited_once_with(
-                "123456789012"
-            )
-
-    @pytest.mark.asyncio
-    async def test_get_session_for_account_not_found(self) -> None:
-        with patch(
-            "aws.auth.session_factory.AccountStrategyFactory.create"
-        ) as mock_create:
-            mock_strategy = MagicMock(spec=MultiAccountStrategy)
-            mock_strategy.get_session_for_account = AsyncMock(return_value=None)
-            mock_create.return_value = mock_strategy
-
-            session = await get_session_for_account("000000000000")
-
-            assert session is None
-
-    @pytest.mark.asyncio
-    async def test_get_session_for_account_single_account_success(
-        self, mock_single_account_config: dict[str, object]
-    ) -> None:
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
-            mock_ocean.integration_config = mock_single_account_config
-            mock_session = AsyncMock()
-
-            async def fake_healthcheck(self: SingleAccountStrategy) -> bool:
-                self._session = mock_session
-                self.account_id = "123456789012"
-                return True
-
-            with patch.object(
-                SingleAccountStrategy, "healthcheck", new=fake_healthcheck
-            ):
-                with patch(
-                    "aws.auth.session_factory.AccountStrategyFactory.create",
-                    new=AsyncMock(
-                        return_value=SingleAccountStrategy(
-                            StaticCredentialProvider(), mock_single_account_config
-                        )
-                    ),
-                ):
-                    session = await get_session_for_account("123456789012")
-                    assert session == mock_session
-
-    @pytest.mark.asyncio
-    async def test_get_session_for_account_multi_account_success(
-        self, mock_multi_account_config: dict[str, object]
-    ) -> None:
-        with patch("aws.auth.session_factory.ocean") as mock_ocean:
-            mock_ocean.integration_config = mock_multi_account_config
-            mock_session_1 = AsyncMock()
-            mock_session_2 = AsyncMock()
-
-            async def fake_healthcheck(self: MultiAccountStrategy) -> bool:
-                self._valid_arns = {
-                    "arn:aws:iam::123456789012:role/test-role-1",
-                    "arn:aws:iam::987654321098:role/test-role-2",
-                }
-                self._valid_sessions = {
-                    "arn:aws:iam::123456789012:role/test-role-1": mock_session_1,
-                    "arn:aws:iam::987654321098:role/test-role-2": mock_session_2,
-                }
-                self._sessions_by_account_id = {
-                    "123456789012": mock_session_1,
-                    "987654321098": mock_session_2,
-                }
-                return True
-
-            with patch.object(
-                MultiAccountStrategy, "healthcheck", new=fake_healthcheck
-            ):
-                with patch(
-                    "aws.auth.session_factory.AccountStrategyFactory.create",
-                    new=AsyncMock(
-                        return_value=MultiAccountStrategy(
-                            AssumeRoleProvider(), mock_multi_account_config
-                        )
-                    ),
-                ):
-                    assert await get_session_for_account("123456789012") == mock_session_1
-                    assert await get_session_for_account("987654321098") == mock_session_2
-                    assert await get_session_for_account("000000000000") is None
 
 
 @pytest.fixture

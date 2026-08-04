@@ -18,11 +18,6 @@ class AWSSessionStrategy(ABC):
         """Yield (AccountInfo, AioSession) pairs for each account managed by this strategy."""
         pass
 
-    @abstractmethod
-    async def get_session_for_account(self, account_id: str) -> AioSession | None:
-        """Return a pre-validated session for the given account ID, if available."""
-        pass
-
 
 class HealthCheckMixin(ABC):
     @abstractmethod

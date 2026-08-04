@@ -60,7 +60,16 @@ def get_event_name(payload: dict[str, Any]) -> str | None:
     return event_name if isinstance(event_name, str) else None
 
 
+def _has_error_code(detail: dict[str, Any]) -> bool:
+    """Return True when the CloudTrail event records a failed API call."""
+    error_code = detail.get("errorCode")
+    return isinstance(error_code, str) and bool(error_code)
+
+
 def is_supported_cloudtrail_event(payload: dict[str, Any]) -> bool:
+    detail = _get_detail(payload)
+    if _has_error_code(detail):
+        return False
     event_name = get_event_name(payload)
     return event_name in EVENT_NAME_MAPPINGS if event_name is not None else False
 
@@ -68,10 +77,13 @@ def is_supported_cloudtrail_event(payload: dict[str, Any]) -> bool:
 def parse_cloudtrail_event(payload: dict[str, Any]) -> NormalizedEvent | None:
     """Parse an EventBridge/CloudTrail payload into a normalized live event.
 
-    Returns ``None`` when required fields are missing or the event is not
-    mapped to a supported kind.
+    Returns ``None`` when required fields are missing, the API call failed
+    (``errorCode`` present), or the event is not mapped to a supported kind.
     """
     detail = _get_detail(payload)
+    if _has_error_code(detail):
+        return None
+
     event_name = detail.get("eventName")
     if not isinstance(event_name, str):
         return None

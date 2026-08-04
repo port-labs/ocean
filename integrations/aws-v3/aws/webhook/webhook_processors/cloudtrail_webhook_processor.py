@@ -68,8 +68,6 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         return None
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        if not await is_aws_v3_live_events_enabled():
-            return False
         return is_supported_cloudtrail_event(event.payload)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -148,9 +146,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         try:
             resource = await exporter.get_resource(options)
         except Exception as error:
-            if is_access_denied_exception(error) or is_resource_not_found_exception(
-                error
-            ):
+            if is_resource_not_found_exception(error):
                 logger.warning(
                     f"Could not fetch {parsed.kind} {parsed.identifier} after live "
                     f"event ({error}); treating as deleted"
@@ -165,6 +161,14 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
                             ),
                         }
                     ],
+                )
+            if is_access_denied_exception(error):
+                logger.warning(
+                    f"Access denied fetching {parsed.kind} {parsed.identifier} after "
+                    f"live event ({error}); skipping"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
                 )
             raise
 

@@ -143,8 +143,10 @@ async def get_session_for_account(account_id: str) -> AioSession | None:
     event and need a session scoped to that account rather than iterating
     over every configured account.
     """
-    strategy = await AccountStrategyFactory.create()
-    return await strategy.get_session_for_account(account_id)
+    async for account_info, session in get_all_account_sessions():
+        if account_info["Id"] == account_id:
+            return session
+    return None
 
 
 async def clear_aws_account_sessions() -> None:

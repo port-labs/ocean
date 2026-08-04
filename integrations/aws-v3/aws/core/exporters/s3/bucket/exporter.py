@@ -23,6 +23,10 @@ class S3BucketExporter(IResourceExporter[list[dict[str, Any]]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # ListBucketsAction only shapes the input dict and does not call AWS.
+            # Verify the bucket exists first so missing buckets raise (e.g.
+            # NoSuchBucket) instead of returning a synthesized stub resource.
+            await proxy.client.head_bucket(Bucket=options.bucket_name)  # type: ignore[attr-defined]
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()

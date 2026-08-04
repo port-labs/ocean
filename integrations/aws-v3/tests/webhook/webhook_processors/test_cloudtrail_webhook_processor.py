@@ -324,17 +324,13 @@ async def test_handle_event_lambda_create_fetches_and_returns_resource(
 
 
 @pytest.mark.asyncio
-async def test_handle_event_create_treats_access_denied_as_deleted(
+async def test_handle_event_create_skips_access_denied(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
     class FakeAccessDenied(Exception):
         response = {"Error": {"Code": "AccessDenied"}}
 
     metadata = _live_event_metadata()
-    metadata.live_events.delete_properties_factory.return_value = {
-        "Arn": "arn:aws:s3:::denied-bucket",
-        "BucketName": "denied-bucket",
-    }
 
     with (
         patch(
@@ -351,12 +347,43 @@ async def test_handle_event_create_treats_access_denied_as_deleted(
         result = await processor.handle_event(_create_event("denied-bucket"), None)  # type: ignore[arg-type]
 
     assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_handle_event_create_treats_not_found_as_deleted(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    class FakeNotFound(Exception):
+        response = {"Error": {"Code": "NoSuchBucket"}}
+
+    metadata = _live_event_metadata()
+    metadata.live_events.delete_properties_factory.return_value = {
+        "Arn": "arn:aws:s3:::missing-bucket",
+        "BucketName": "missing-bucket",
+    }
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.S3_BUCKET: metadata},
+        ),
+    ):
+        mock_exporter = metadata.exporter.return_value
+        mock_exporter.get_resource = AsyncMock(side_effect=FakeNotFound())
+
+        result = await processor.handle_event(_create_event("missing-bucket"), None)  # type: ignore[arg-type]
+
+    assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
         {
             "Type": ObjectKind.S3_BUCKET,
             "Properties": {
-                "Arn": "arn:aws:s3:::denied-bucket",
-                "BucketName": "denied-bucket",
+                "Arn": "arn:aws:s3:::missing-bucket",
+                "BucketName": "missing-bucket",
             },
         }
     ]

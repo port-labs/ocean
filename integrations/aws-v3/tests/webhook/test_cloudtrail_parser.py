@@ -54,6 +54,19 @@ def test_is_supported_cloudtrail_event_false_for_malformed_payload() -> None:
     assert is_supported_cloudtrail_event({"detail": "not-a-dict"}) is False
 
 
+def test_is_supported_cloudtrail_event_false_when_error_code_present() -> None:
+    payload = _eventbridge_envelope("DeleteBucket")
+    payload["detail"]["errorCode"] = "AccessDenied"
+    assert is_supported_cloudtrail_event(payload) is False
+
+
+def test_parse_returns_none_when_error_code_present() -> None:
+    payload = _eventbridge_envelope("DeleteBucket")
+    payload["detail"]["errorCode"] = "BucketNotEmpty"
+    payload["detail"]["errorMessage"] = "The bucket you tried to delete is not empty"
+    assert parse_cloudtrail_event(payload) is None
+
+
 def test_parse_create_bucket_event() -> None:
     payload = _eventbridge_envelope("CreateBucket", bucket_name="my-bucket")
 

@@ -59,10 +59,3 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
             "Name": f"Account {account_id}",
         }
         yield account_info, self._session
-
-    async def get_session_for_account(self, account_id: str) -> AioSession | None:
-        if not self._session:
-            await self.healthcheck()
-        if self.account_id == account_id and self._session is not None:
-            return self._session
-        return None
