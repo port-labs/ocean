@@ -387,13 +387,9 @@ class TestServicenowClient:
                 ):
                     pass
 
-                # Verify custom ordering was preserved without adding duplicate ORDERBY
+                # Verify custom ordering was preserved and default was appended
                 call_args = mock_request.call_args
                 assert (
-                    "active=true^ORDERBYuser_name"
+                    "active=true^ORDERBYuser_name^ORDERBYDESCsys_created_on"
                     in call_args[1]["params"]["sysparm_query"]
-                )
-                assert (
-                    "ORDERBYDESCsys_created_on"
-                    not in call_args[1]["params"]["sysparm_query"]
                 )

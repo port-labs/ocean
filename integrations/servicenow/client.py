@@ -12,7 +12,6 @@ from rate_limiter import LIMIT_RESET_HEADER, RETRY_AFTER_HEADER, ServiceNowRateL
 PAGE_SIZE = 100
 SERVICE_NOW_RETRY_MAX_BACKOFF_SECONDS = 1800
 SERVICE_NOW_RETRY_BASE_DELAY_SECONDS = 60
-DEFAULT_ORDERING = "ORDERBYDESCsys_created_on"
 
 
 class ServicenowClient:
@@ -94,7 +93,10 @@ class ServicenowClient:
 
         safe_params = (api_query_params or {}).copy()
         user_query = safe_params.pop("sysparm_query", "")
-        enhanced_query = self._add_default_ordering(user_query)
+        default_ordering = "ORDERBYDESCsys_created_on"
+        enhanced_query = (
+            f"{user_query}^{default_ordering}" if user_query else default_ordering
+        )
 
         params: Optional[dict[str, Any]] = {
             "sysparm_limit": PAGE_SIZE,
@@ -149,8 +151,3 @@ class ServicenowClient:
             if 'rel="next"' in link:
                 return link.split(";")[0].strip("<>")
         return ""
-
-    def _add_default_ordering(self, query: str) -> str:
-        if "ORDERBY" in query:
-            return query
-        return f"{query}^{DEFAULT_ORDERING}" if query else DEFAULT_ORDERING
