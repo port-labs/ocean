@@ -45,7 +45,7 @@ RUN \
         "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" \
         "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
     && apk upgrade gcc linux-headers libstdc++ gcc g++ --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main/ \
-    && pip install --no-cache-dir poetry \
+    && pip install --no-cache-dir 'poetry>=2.0.0,<3.0.0' \
     && poetry config virtualenvs.in-project true
 
 WORKDIR /app

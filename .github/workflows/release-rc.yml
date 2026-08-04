@@ -346,7 +346,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Poetry
-        run: pip install poetry
+        run: pip install 'poetry>=2.0.0,<3.0.0'
 
       - name: Prepare Docker image tags
         id: prepare_tags
@@ -415,7 +415,7 @@ jobs:
         run: |
           cd ${{ steps.prepare_tags.outputs.context_dir }}
           echo "Regenerating poetry.lock for ${{ steps.prepare_tags.outputs.type }}..."
-          poetry lock --no-update || poetry lock
+          poetry lock
           echo "poetry.lock regenerated successfully"
 
       - name: '[DRY RUN] Skip poetry lock regeneration'

@@ -7,12 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.18.0-beta (2026-07-30)
+## 2.18.4-beta (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 2.18.3-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 2.18.2-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 2.18.1-beta (2026-08-02)
+
+
+### Improvements
+
+- Added dict from kind to exporter metadata instead of needing to have an on_resync for each kind
+
+
+## 2.18.0-beta (2026-07-31)
 
 
 ### Features
 
-- Added SNS Topic support by fetching topic attributes and tags concurrently per region, enabling customers to track topic configuration, subscription counts, FIFO status, encryption, and tracing directly in Port. Tags are available as an optional action (`GetTopicTagsAction`).
+- Add support for AWS::SES::ConfigurationSet kind
 
 
 ## 2.17.0-beta (2026-07-30)

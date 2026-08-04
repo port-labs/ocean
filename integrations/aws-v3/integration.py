@@ -308,6 +308,13 @@ class AWSDynamoDBTableResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSSESConfigurationSetResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SES::ConfigurationSet"] = Field(
+        title="AWS SES Configuration Set",
+        description="AWS SES Configuration Set resource kind.",
+    )
+
+
 class AWSSNSTopicResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::SNS::Topic"] = Field(
         title="AWS SNS Topic",
@@ -348,6 +355,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodePipelineActionExecutionResourceConfig
         | AWSSESEmailIdentityResourceConfig
         | AWSDynamoDBTableResourceConfig
+        | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
     ] = Field(
         default_factory=list,
