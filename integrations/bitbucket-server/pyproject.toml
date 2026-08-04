@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "bitbucket-server"
 
-version = "0.2.40"
+version = "0.2.41"
 
 description = "Bitbucket Server integration for Port"
 authors = ["Ayodeji Adeoti <ayodeji.adeoti@getport.io>"]
