@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "custom"
-version = "0.6.91"
+version = "0.6.92"
 description = "Ocean Custom Integration"
 authors = ["Port Team <support@getport.io>"]
 
@@ -60,7 +60,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
