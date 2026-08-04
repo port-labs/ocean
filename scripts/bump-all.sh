@@ -2,6 +2,7 @@
 
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
+source "${SCRIPT_BASE}/lib/version.sh"
 CURRENT_DIR=$(pwd)
 VERSION="^${1:-$(pip index versions port-ocean | grep 'port-ocean' | cut -d' ' -f2 | tr -d '()')}"
 
@@ -32,7 +33,7 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
     towncrier create --content "Bumped ocean version to ${VERSION}" +random.improvement.md
 
     echo "Run towncrier build"
-    CURRENT_VERSION=$(poetry version --short)
+    CURRENT_VERSION=$(get_pyproject_version)
 
     echo "Current version: ${CURRENT_VERSION}, updating patch version"
     IFS='.' read -ra VERSION_COMPONENTS <<< "${CURRENT_VERSION}"
