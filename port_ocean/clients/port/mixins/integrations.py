@@ -28,6 +28,28 @@ if TYPE_CHECKING:
 
 INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.55
+
+RESYNC_STALE_ERROR_CODE = "resync_stale"
+
+
+def _is_resync_stale_lakehouse_response(response: httpx.Response) -> bool:
+    if response.status_code != 409:
+        return False
+    try:
+        payload = response.json()
+    except Exception:
+        return False
+    if not isinstance(payload, dict):
+        return False
+    error = payload.get("error")
+    code: str | None = None
+    if isinstance(error, dict):
+        code = error.get("code") or error.get("name")
+    else:
+        code = payload.get("code")
+    return code == RESYNC_STALE_ERROR_CODE
+
+
 INTEGRATION_POLLING_RETRY_LIMIT = 30
 CREATE_RESOURCES_PARAM_NAME = "integration_modes"
 CREATE_RESOURCES_PARAM_VALUE = ["create_resources"]
@@ -176,6 +198,7 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
         create_port_resources_origin: CreatePortResourcesOrigin = CreatePortResourcesOrigin.Ocean,
         actions_processing_enabled: Optional[bool] = False,
+        incremental_sync_enabled: Optional[bool] = False,
     ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -186,6 +209,7 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
             "config": {},
             "actionsProcessingEnabled": actions_processing_enabled,
+            "incrementalSyncEnabled": incremental_sync_enabled,
             "createPortResourcesOrigin": create_port_resources_origin.value,
         }
 
@@ -216,6 +240,7 @@ class IntegrationClientMixin:
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
         actions_processing_enabled: Optional[bool] = None,
+        incremental_sync_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
         processing_mode: ProcessingMode | None = None,
     ) -> dict:
@@ -230,6 +255,8 @@ class IntegrationClientMixin:
             json["arePortResourcesInitialized"] = are_port_resources_initialized
         if actions_processing_enabled is not None:
             json["actionsProcessingEnabled"] = actions_processing_enabled
+        if incremental_sync_enabled is not None:
+            json["incrementalSyncEnabled"] = incremental_sync_enabled
         if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
         if processing_mode is not None:
@@ -441,21 +468,18 @@ class IntegrationClientMixin:
             json=body,
             extensions={"retryable": True},
         )
-        handle_port_status_code(response, should_raise=True, should_log=True)
-        try:
-            payload = response.json()
-        except Exception:
-            payload = {}
-        if isinstance(payload, dict) and payload.get("count") == 0:
+        if _is_resync_stale_lakehouse_response(response):
             logger.warning(
-                "Lakehouse reported zero pending inserts for raw data batch, aborting current resync"
+                "Lakehouse reported resync is stale, aborting current resync"
             )
             try:
                 current_event.abort(external_abort=True)
             except EventContextNotFoundError:
                 logger.warning(
-                    "Lakehouse aborted response received without active event context"
+                    "Lakehouse stale response received without active event context"
                 )
+            return
+        handle_port_status_code(response, should_raise=True, should_log=True)
         logger.debug("Finished POST raw data batch request")
 
     async def get_integration_cursor(self, kind: str, index: int) -> Optional[datetime]:

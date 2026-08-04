@@ -1,4 +1,5 @@
 import pytest
+from pydantic.v1 import ValidationError
 
 from port_ocean.config.settings import IntegrationSettings
 from port_ocean.utils.time import parse_interval_to_minutes
@@ -44,3 +45,17 @@ class TestIncrementalSyncIntervalParsing:
         settings = IntegrationSettings(identifier="test", type="github")
 
         assert settings.incremental_sync_interval == 15
+
+    @pytest.mark.parametrize("interval", [15, 30, 60])
+    def test_accepts_allowed_intervals(self, interval: int) -> None:
+        settings = IntegrationSettings(
+            identifier="test", type="github", incremental_sync_interval=interval
+        )
+        assert settings.incremental_sync_interval == interval
+
+    @pytest.mark.parametrize("interval", [5, 10, 20, 45, 90, 120])
+    def test_rejects_disallowed_intervals(self, interval: int) -> None:
+        with pytest.raises(ValidationError, match="incremental_sync_interval must be"):
+            IntegrationSettings(
+                identifier="test", type="github", incremental_sync_interval=interval
+            )
