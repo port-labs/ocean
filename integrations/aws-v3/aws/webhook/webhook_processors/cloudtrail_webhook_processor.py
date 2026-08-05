@@ -23,10 +23,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_session_for_account
-from aws.core.exporters.exporter_metadata import (
-    LiveEventContext,
-    kind_to_export_metadata,
-)
+from aws.core.exporters.exporter_metadata import kind_to_export_metadata
+from aws.core.exporters.metadata.types import LiveEventContext
 from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import (
     is_access_denied_exception,

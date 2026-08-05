@@ -53,11 +53,7 @@ from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
 from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
-from aws.core.exporters.metadata.types import (
-    ExporterMetadata,
-    LiveEventContext,
-    LiveEventFactories,
-)
+from aws.core.exporters.metadata.types import ExporterMetadata
 from aws.core.exporters.msk import MskClusterExporter, MskServerlessClusterExporter
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.msk.serverless_cluster.models import (
@@ -78,13 +74,6 @@ from aws.core.exporters.ses import (
 from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.helpers.types import ObjectKind
-
-__all__ = [
-    "ExporterMetadata",
-    "LiveEventContext",
-    "LiveEventFactories",
-    "kind_to_export_metadata",
-]
 
 kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
     ObjectKind.S3_BUCKET: ExporterMetadata(

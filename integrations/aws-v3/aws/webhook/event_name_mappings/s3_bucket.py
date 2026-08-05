@@ -9,7 +9,7 @@ def _extract_s3_bucket_name(detail: dict[str, Any]) -> str | None:
     return bucket_name if isinstance(bucket_name, str) and bucket_name else None
 
 
-MAPPINGS: dict[str, EventNameMapping] = {
+S3_MAPPINGS: dict[str, EventNameMapping] = {
     "CreateBucket": EventNameMapping(
         ObjectKind.S3_BUCKET, CloudTrailEventAction.UPSERT, _extract_s3_bucket_name
     ),

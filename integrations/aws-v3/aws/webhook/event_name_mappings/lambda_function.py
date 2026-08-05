@@ -9,7 +9,7 @@ def _extract_lambda_function_name(detail: dict[str, Any]) -> str | None:
     return function_name if isinstance(function_name, str) and function_name else None
 
 
-MAPPINGS: dict[str, EventNameMapping] = {
+LAMBDA_MAPPINGS: dict[str, EventNameMapping] = {
     "CreateFunction20150331": EventNameMapping(
         ObjectKind.LAMBDA_FUNCTION,
         CloudTrailEventAction.UPSERT,

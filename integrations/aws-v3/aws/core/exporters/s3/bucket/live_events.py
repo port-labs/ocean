@@ -1,6 +1,11 @@
-from aws.core.exporters.live_events.arn import s3_bucket_arn
 from aws.core.exporters.metadata.types import LiveEventContext, LiveEventFactories
 from aws.core.exporters.s3.bucket.models import SingleBucketRequest
+from aws.utils import RegionHelper
+
+
+def _bucket_arn(bucket_name: str) -> str:
+    partition = RegionHelper.get_partition()
+    return f"arn:{partition}:s3:::{bucket_name}"
 
 
 def _request_factory(
@@ -16,7 +21,7 @@ def _request_factory(
 
 def _delete_properties(context: LiveEventContext) -> dict[str, str]:
     return {
-        "Arn": s3_bucket_arn(context.identifier),
+        "Arn": _bucket_arn(context.identifier),
         "BucketName": context.identifier,
     }
 

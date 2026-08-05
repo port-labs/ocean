@@ -1,6 +1,6 @@
-from aws.webhook.event_name_mappings.lambda_function import MAPPINGS as LAMBDA_MAPPINGS
+from aws.webhook.event_name_mappings.lambda_function import LAMBDA_MAPPINGS
 from aws.webhook.event_name_mappings.mapping import EventNameMapping
-from aws.webhook.event_name_mappings.s3_bucket import MAPPINGS as S3_MAPPINGS
+from aws.webhook.event_name_mappings.s3_bucket import S3_MAPPINGS
 
 _ALL_MAPPINGS: tuple[dict[str, EventNameMapping], ...] = (
     S3_MAPPINGS,

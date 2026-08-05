@@ -1,6 +1,14 @@
 from aws.core.exporters.aws_lambda.function.models import SingleLambdaFunctionRequest
-from aws.core.exporters.live_events.arn import regional_service_arn
 from aws.core.exporters.metadata.types import LiveEventContext, LiveEventFactories
+from aws.utils import RegionHelper
+
+
+def _function_arn(context: LiveEventContext) -> str:
+    partition = RegionHelper.get_partition()
+    return (
+        f"arn:{partition}:lambda:{context.region}:{context.account_id}:"
+        f"function:{context.identifier}"
+    )
 
 
 def _request_factory(
@@ -16,9 +24,7 @@ def _request_factory(
 
 def _delete_properties(context: LiveEventContext) -> dict[str, str]:
     return {
-        "FunctionArn": regional_service_arn(
-            "lambda", context, f"function:{context.identifier}"
-        ),
+        "FunctionArn": _function_arn(context),
         "FunctionName": context.identifier,
     }
 
