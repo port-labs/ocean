@@ -264,7 +264,10 @@ jobs:
 
       - name: Set current code coverage
         id: set-current-coverage
-        run: echo "CURRENT_COVERAGE=${{ fromJson(steps.get-current-coverage.outputs.entity).properties.coverage_percent }}" >> $GITHUB_OUTPUT
+        env:
+          PORT_ENTITY: ${{ steps.get-current-coverage.outputs.entity }}
+        run: |
+          echo "CURRENT_COVERAGE=$(echo "$PORT_ENTITY" | jq -r '.properties.coverage_percent')" >> $GITHUB_OUTPUT
 
       - name: Comment if Coverage Regression
         if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
