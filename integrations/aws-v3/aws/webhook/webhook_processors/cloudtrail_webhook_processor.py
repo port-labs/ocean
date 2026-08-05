@@ -24,7 +24,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_session_for_account
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
-from aws.core.exporters.metadata.types import LiveEventContext
+from aws.core.exporters.metadata.types import (
+    ExporterMetadata,
+    LiveEventContext,
+    LiveEventFactories,
+)
 from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import (
     is_access_denied_exception,
@@ -39,6 +43,10 @@ from aws.webhook.cloudtrail_parser import (
 )
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
 from aws.utils.feature_flags import is_aws_v3_live_events_enabled
+
+_EMPTY_RESULTS = WebhookEventRawResults(
+    updated_raw_results=[], deleted_raw_results=[]
+)
 
 
 class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
@@ -94,43 +102,43 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         return self._get_parsed_event(payload) is not None
 
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig | None
-    ) -> WebhookEventRawResults:
-        parsed = cast(NormalizedEvent, self._get_parsed_event(payload))
-
+    def _resolve_live_event_metadata(
+        self, parsed: NormalizedEvent
+    ) -> tuple[ExporterMetadata, LiveEventFactories] | None:
         metadata = kind_to_export_metadata.get(ObjectKind(parsed.kind))
-        if metadata is None or not metadata.supports_live_events:
+        if metadata is None or metadata.live_events is None:
             logger.warning(
                 f"No live event metadata for kind {parsed.kind}; skipping live event"
             )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
+            return None
+        return metadata, metadata.live_events
 
-        live_event_context = LiveEventContext(
-            identifier=parsed.identifier,
-            account_id=parsed.account_id,
-            region=parsed.region,
+    @staticmethod
+    def _build_deletion_result(
+        kind: str,
+        live_events: LiveEventFactories,
+        context: LiveEventContext,
+    ) -> WebhookEventRawResults:
+        return WebhookEventRawResults(
+            updated_raw_results=[],
+            deleted_raw_results=[
+                {
+                    "Type": kind,
+                    "Properties": live_events.deletion_identifier_properties_factory(
+                        context
+                    ),
+                }
+            ],
         )
-        live_events = metadata.live_events
 
-        if parsed.action == CloudTrailEventAction.DELETE:
-            logger.info(
-                f"Processing {parsed.kind} delete live event: {parsed.identifier}"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[
-                    {
-                        "Type": parsed.kind,
-                        "Properties": live_events.deletion_identifier_properties_factory(
-                            live_event_context
-                        ),
-                    }
-                ],
-            )
-
+    async def _fetch_and_upsert(
+        self,
+        parsed: NormalizedEvent,
+        metadata: ExporterMetadata,
+        live_events: LiveEventFactories,
+        context: LiveEventContext,
+        resource_config: ResourceConfig | None,
+    ) -> WebhookEventRawResults:
         logger.info(
             f"Processing {parsed.kind} {parsed.event_name} live event: "
             f"{parsed.identifier} (account={parsed.account_id}, region={parsed.region})"
@@ -142,9 +150,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
                 f"No session available for account {parsed.account_id}; "
                 f"skipping live event for {parsed.kind} {parsed.identifier}"
             )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
+            return _EMPTY_RESULTS
 
         include_actions: list[str] = []
         if resource_config is not None:
@@ -153,7 +159,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
             ).selector.include_actions
 
         exporter = metadata.exporter(session)
-        options = live_events.request_factory(live_event_context, include_actions)
+        options = live_events.request_factory(context, include_actions)
 
         try:
             resource = await exporter.get_resource(options)
@@ -163,27 +169,40 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
                     f"Could not fetch {parsed.kind} {parsed.identifier} after live "
                     f"event ({error}); treating as deleted"
                 )
-                return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[
-                        {
-                            "Type": parsed.kind,
-                            "Properties": live_events.deletion_identifier_properties_factory(
-                                live_event_context
-                            ),
-                        }
-                    ],
-                )
+                return self._build_deletion_result(parsed.kind, live_events, context)
             if is_access_denied_exception(error):
                 logger.warning(
                     f"Access denied fetching {parsed.kind} {parsed.identifier} after "
                     f"live event ({error}); skipping"
                 )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
+                return _EMPTY_RESULTS
             raise
 
         return WebhookEventRawResults(
             updated_raw_results=[resource], deleted_raw_results=[]
+        )
+
+    async def handle_event(
+        self, payload: EventPayload, resource_config: ResourceConfig | None
+    ) -> WebhookEventRawResults:
+        parsed = cast(NormalizedEvent, self._get_parsed_event(payload))
+        resolved = self._resolve_live_event_metadata(parsed)
+        if resolved is None:
+            return _EMPTY_RESULTS
+
+        metadata, live_events = resolved
+        context = LiveEventContext(
+            identifier=parsed.identifier,
+            account_id=parsed.account_id,
+            region=parsed.region,
+        )
+
+        if parsed.action == CloudTrailEventAction.DELETE:
+            logger.info(
+                f"Processing {parsed.kind} delete live event: {parsed.identifier}"
+            )
+            return self._build_deletion_result(parsed.kind, live_events, context)
+
+        return await self._fetch_and_upsert(
+            parsed, metadata, live_events, context, resource_config
         )
