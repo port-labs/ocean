@@ -22,7 +22,7 @@ def _request_factory(
     )
 
 
-def _delete_properties(context: LiveEventContext) -> dict[str, str]:
+def _deletion_identifier_properties(context: LiveEventContext) -> dict[str, str]:
     return {
         "FunctionArn": _function_arn(context),
         "FunctionName": context.identifier,
@@ -31,5 +31,5 @@ def _delete_properties(context: LiveEventContext) -> dict[str, str]:
 
 LIVE_EVENTS = LiveEventFactories(
     request_factory=_request_factory,
-    delete_properties_factory=_delete_properties,
+    deletion_identifier_properties_factory=_deletion_identifier_properties,
 )

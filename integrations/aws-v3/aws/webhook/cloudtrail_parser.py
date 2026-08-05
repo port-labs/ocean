@@ -2,23 +2,6 @@
 
 Maps CloudTrail ``eventName`` values to a normalized event that the single
 ``CloudTrailWebhookProcessor`` can route through ``kind_to_export_metadata``.
-
-Expected payload shape (as delivered by an EventBridge API Destination):
-
-{
-    "version": "0",
-    "detail-type": "AWS API Call via CloudTrail",
-    "source": "aws.s3",
-    "account": "111122223333",
-    "region": "us-east-1",
-    "detail": {
-        "eventName": "CreateBucket",
-        "awsRegion": "us-east-1",
-        "recipientAccountId": "111122223333",
-        "requestParameters": {"bucketName": "my-bucket"},
-        ...
-    }
-}
 """
 
 from dataclasses import dataclass

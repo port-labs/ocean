@@ -114,7 +114,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[
                     {
                         "Type": parsed.kind,
-                        "Properties": live_events.delete_properties_factory(
+                        "Properties": live_events.deletion_identifier_properties_factory(
                             live_event_context
                         ),
                     }
@@ -158,7 +158,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
                     deleted_raw_results=[
                         {
                             "Type": parsed.kind,
-                            "Properties": live_events.delete_properties_factory(
+                            "Properties": live_events.deletion_identifier_properties_factory(
                                 live_event_context
                             ),
                         }

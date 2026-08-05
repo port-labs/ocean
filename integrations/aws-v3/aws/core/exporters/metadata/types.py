@@ -15,8 +15,13 @@ class LiveEventContext:
 
 @dataclass(frozen=True)
 class LiveEventFactories:
+    """Factories for CloudTrail live-event handling."""
+
     request_factory: Callable[[LiveEventContext, list[str]], ResourceRequestModel]
-    delete_properties_factory: Callable[[LiveEventContext], dict[str, str]]
+    # Properties that identify the entity in Port when emitting deleted_raw_results
+    deletion_identifier_properties_factory: Callable[
+        [LiveEventContext], dict[str, str]
+    ]
 
 
 @dataclass

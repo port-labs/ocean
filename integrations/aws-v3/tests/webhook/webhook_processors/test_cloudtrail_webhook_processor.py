@@ -22,7 +22,7 @@ def _live_event_metadata(
     exporter = exporter_cls or MagicMock(return_value=mock_exporter)
     live_events = LiveEventFactories(
         request_factory=MagicMock(),
-        delete_properties_factory=MagicMock(),
+        deletion_identifier_properties_factory=MagicMock(),
     )
     return ExporterMetadata(
         exporter=exporter,
@@ -358,7 +358,7 @@ async def test_handle_event_create_treats_not_found_as_deleted(
         response = {"Error": {"Code": "NoSuchBucket"}}
 
     metadata = _live_event_metadata()
-    metadata.live_events.delete_properties_factory.return_value = {
+    metadata.live_events.deletion_identifier_properties_factory.return_value = {
         "Arn": "arn:aws:s3:::missing-bucket",
         "BucketName": "missing-bucket",
     }
