@@ -5,15 +5,20 @@ Maps CloudTrail ``eventName`` values to a normalized event that the single
 """
 
 from dataclasses import dataclass
-from typing import Any
 
-from aws.webhook.event_name_mappings import (
+from aws.core.exporters.metadata.cloudtrail_event_mappings import (
     EVENT_NAME_MAPPINGS,
+)
+from aws.core.exporters.metadata.types import (
+    CloudTrailDetail,
     CloudTrailEventAction,
+    EventBridgeCloudTrailPayload,
 )
 
 __all__ = [
+    "CloudTrailDetail",
     "CloudTrailEventAction",
+    "EventBridgeCloudTrailPayload",
     "EVENT_NAME_MAPPINGS",
     "NormalizedEvent",
     "get_event_name",
@@ -32,45 +37,36 @@ class NormalizedEvent:
     event_name: str
 
 
-def _get_detail(payload: dict[str, Any]) -> dict[str, Any]:
+def _get_detail(payload: EventBridgeCloudTrailPayload) -> CloudTrailDetail:
     detail = payload.get("detail")
     return detail if isinstance(detail, dict) else {}
 
 
-def get_event_name(payload: dict[str, Any]) -> str | None:
+def get_event_name(payload: EventBridgeCloudTrailPayload) -> str | None:
     """Extract the CloudTrail eventName from an EventBridge envelope."""
-    event_name = _get_detail(payload).get("eventName")
-    return event_name if isinstance(event_name, str) else None
+    return _get_detail(payload).get("eventName")
 
 
-def _has_error_code(detail: dict[str, Any]) -> bool:
-    """Return True when the CloudTrail event records a failed API call."""
-    error_code = detail.get("errorCode")
-    return isinstance(error_code, str) and bool(error_code)
-
-
-def is_supported_cloudtrail_event(payload: dict[str, Any]) -> bool:
+def is_supported_cloudtrail_event(payload: EventBridgeCloudTrailPayload) -> bool:
     detail = _get_detail(payload)
-    if _has_error_code(detail):
+    if detail.get("errorCode"):
         return False
-    event_name = get_event_name(payload)
-    return event_name in EVENT_NAME_MAPPINGS if event_name is not None else False
+    return detail.get("eventName") in EVENT_NAME_MAPPINGS
 
 
-def parse_cloudtrail_event(payload: dict[str, Any]) -> NormalizedEvent | None:
+def parse_cloudtrail_event(
+    payload: EventBridgeCloudTrailPayload,
+) -> NormalizedEvent | None:
     """Parse an EventBridge/CloudTrail payload into a normalized live event.
 
     Returns ``None`` when required fields are missing, the API call failed
     (``errorCode`` present), or the event is not mapped to a supported kind.
     """
     detail = _get_detail(payload)
-    if _has_error_code(detail):
+    if detail.get("errorCode"):
         return None
 
     event_name = detail.get("eventName")
-    if not isinstance(event_name, str):
-        return None
-
     mapping = EVENT_NAME_MAPPINGS.get(event_name)
     if mapping is None:
         return None

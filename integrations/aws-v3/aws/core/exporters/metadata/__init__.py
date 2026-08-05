@@ -1,7 +1,21 @@
 from aws.core.exporters.metadata.types import (
+    CloudTrailDetail,
+    CloudTrailEventAction,
+    CloudTrailEventMapping,
+    EventBridgeCloudTrailPayload,
+    EventNameMapping,
     ExporterMetadata,
     LiveEventContext,
     LiveEventFactories,
 )
 
-__all__ = ["ExporterMetadata", "LiveEventContext", "LiveEventFactories"]
+__all__ = [
+    "CloudTrailDetail",
+    "CloudTrailEventAction",
+    "CloudTrailEventMapping",
+    "EventBridgeCloudTrailPayload",
+    "EventNameMapping",
+    "ExporterMetadata",
+    "LiveEventContext",
+    "LiveEventFactories",
+]

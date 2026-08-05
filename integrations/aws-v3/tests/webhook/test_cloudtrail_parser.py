@@ -1,8 +1,8 @@
-from typing import Any
-
 from aws.core.helpers.types import ObjectKind
 from aws.webhook.cloudtrail_parser import (
+    CloudTrailDetail,
     CloudTrailEventAction,
+    EventBridgeCloudTrailPayload,
     is_supported_cloudtrail_event,
     parse_cloudtrail_event,
 )
@@ -13,8 +13,8 @@ def _eventbridge_envelope(
     bucket_name: str | None = "my-bucket",
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
-) -> dict[str, Any]:
-    detail: dict[str, Any] = {
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
         "eventName": event_name,
         "awsRegion": region,
         "recipientAccountId": account,
@@ -120,8 +120,8 @@ def _lambda_eventbridge_envelope(
     function_name: str | None = "my-function",
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
-) -> dict[str, Any]:
-    detail: dict[str, Any] = {
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
         "eventName": event_name,
         "awsRegion": region,
         "recipientAccountId": account,

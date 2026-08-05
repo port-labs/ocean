@@ -6,6 +6,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 from aws.core.exporters.metadata.types import ExporterMetadata, LiveEventFactories
 from aws.core.helpers.types import ObjectKind
+from aws.webhook.cloudtrail_parser import parse_cloudtrail_event
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
 from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
     CloudTrailWebhookProcessor,
@@ -204,6 +205,23 @@ async def test_validate_payload_false_for_malformed_payload(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
     assert await processor.validate_payload({}) is False
+
+
+@pytest.mark.asyncio
+async def test_parse_cloudtrail_event_called_once_per_processor(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    payload = _delete_event()
+    event = WebhookEvent(trace_id="t", payload=payload, headers={})
+
+    with patch(
+        f"{MODULE}.parse_cloudtrail_event", wraps=parse_cloudtrail_event
+    ) as mock_parse:
+        assert await processor.get_matching_kinds(event) == [ObjectKind.S3_BUCKET]
+        assert await processor.validate_payload(payload) is True
+        await processor.handle_event(payload, None)  # type: ignore[arg-type]
+
+    assert mock_parse.call_count == 1
 
 
 @pytest.mark.asyncio

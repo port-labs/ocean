@@ -11,6 +11,7 @@ async def is_aws_v3_live_events_enabled() -> bool:
         return IntegrationFeatureFlag.AWS_V3_LIVE_EVENTS_ENABLED in flags
     except Exception as error:
         logger.warning(
-            f"Failed to check AWS-v3 live events feature flag, assuming disabled: {error}"
+            "Failed to check AWS-v3 live events feature flag, assuming disabled",
+            error=str(error),
         )
         return False

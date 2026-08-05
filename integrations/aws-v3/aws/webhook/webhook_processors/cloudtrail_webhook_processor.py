@@ -32,15 +32,28 @@ from aws.core.helpers.utils import (
 )
 from aws.webhook.cloudtrail_parser import (
     CloudTrailEventAction,
+    EventBridgeCloudTrailPayload,
+    NormalizedEvent,
     is_supported_cloudtrail_event,
     parse_cloudtrail_event,
 )
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
-from aws.webhook.feature_flags import is_aws_v3_live_events_enabled
+from aws.utils.feature_flags import is_aws_v3_live_events_enabled
 
 
 class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
     """Handles CloudTrail live events for all registered resource kinds."""
+
+    _cached_parsed_event: NormalizedEvent | None = None
+    _parsed_event_loaded: bool = False
+
+    def _get_parsed_event(self, payload: EventPayload) -> NormalizedEvent | None:
+        if not self._parsed_event_loaded:
+            self._cached_parsed_event = parse_cloudtrail_event(
+                cast(EventBridgeCloudTrailPayload, payload)
+            )
+            self._parsed_event_loaded = True
+        return self._cached_parsed_event
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]
@@ -70,24 +83,21 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         return None
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return is_supported_cloudtrail_event(event.payload)
+        return is_supported_cloudtrail_event(
+            cast(EventBridgeCloudTrailPayload, event.payload)
+        )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        parsed = parse_cloudtrail_event(event.payload)
+        parsed = self._get_parsed_event(event.payload)
         return [parsed.kind] if parsed is not None else []
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return parse_cloudtrail_event(payload) is not None
+        return self._get_parsed_event(payload) is not None
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig | None
     ) -> WebhookEventRawResults:
-        parsed = parse_cloudtrail_event(payload)
-        if parsed is None:
-            logger.warning("Received an unparsable CloudTrail live event, skipping")
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
+        parsed = cast(NormalizedEvent, self._get_parsed_event(payload))
 
         metadata = kind_to_export_metadata.get(ObjectKind(parsed.kind))
         if metadata is None or not metadata.supports_live_events:
