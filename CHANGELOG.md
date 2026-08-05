@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.47.7 (2026-08-05)
+
+### Improvements
+
+- Default `processing_mode` to `dsp` and `lakehouse_enabled` to `true`. DSP still only activates when the required org feature flags are present; otherwise Ocean falls back to `ocean-core`.
+
 ## 0.47.6 (2026-08-04)
 
 ### Improvements
