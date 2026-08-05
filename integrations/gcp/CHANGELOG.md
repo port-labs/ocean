@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed a bug where a single asset lacking versioned resource data (e.g. certain BigQuery Table assets returned by the Cloud Asset API) would abort syncing for its entire kind across all projects. Such assets are now skipped with a warning log instead. Additionally, an unexpected error while searching a single project no longer cancels syncing for other projects of the same kind; it's now logged and that project is skipped.
+- Fixed a bug where a single asset lacking versioned resource data (e.g. certain BigQuery Table assets) would abort syncing for its entire kind across all projects. Such assets are now skipped with a warning instead. Additionally, an unexpected error in one project no longer stops other projects from syncing; the error is now surfaced once all projects finish instead of being swallowed or cancelling the others.
 
 
 ## 0.2.0 (2026-08-05)

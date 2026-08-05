@@ -104,11 +104,11 @@ async def search_all_resources_in_project(
             logger.info(
                 f"Couldn't perform search_all_resources on project {project_name} since it's deleted. Error: {str(e)}"
             )
-        except Exception as e:
-            logger.error(
-                f"Unexpected error while searching for {asset_type}'s in project {project_name}. "
-                f"Skipping this project for this kind. Error: {str(e)}"
+        except Exception:
+            logger.exception(
+                f"Unexpected error while searching for {asset_type}'s in project {project_name}"
             )
+            raise
         else:
             logger.info(
                 f"Successfully searched all resources within project {project_name}"

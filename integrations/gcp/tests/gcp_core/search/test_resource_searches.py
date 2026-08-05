@@ -389,13 +389,16 @@ async def test_search_all_resources_in_project_skips_malformed_asset(
 
 
 @pytest.mark.asyncio
-async def test_search_all_resources_in_project_handles_unexpected_error(
+async def test_search_all_resources_in_project_reraises_unexpected_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     An unexpected error while searching a single project (beyond PermissionDenied/NotFound)
-    should be logged and swallowed, rather than propagating up and cancelling sibling
-    project tasks fanned out via `iterate_per_available_project`.
+    must NOT be silently swallowed: it should propagate out of
+    `search_all_resources_in_project` so the kind's resync is correctly reported as
+    failed (Ocean then skips the delete phase, avoiding deletion of entities that
+    still exist but simply failed to be fetched this run). Isolating this from
+    sibling projects is handled one level up, in `iterate_per_available_project`.
     """
     from gcp_core.search import resource_searches
 
@@ -410,12 +413,9 @@ async def test_search_all_resources_in_project_handles_unexpected_error(
     project = {"name": "projects/456"}
     semaphore = BoundedSemaphore(1)
 
-    # Act
-    results: list[Any] = []
-    async for batch in resource_searches.search_all_resources_in_project(
-        project, "bigquery.googleapis.com/Table", semaphore
-    ):
-        results.extend(batch)
-
-    # Assert: no exception propagated, and no results were produced
-    assert results == []
+    # Act / Assert
+    with pytest.raises(ValueError, match="boom"):
+        async for _ in resource_searches.search_all_resources_in_project(
+            project, "bigquery.googleapis.com/Table", semaphore
+        ):
+            pass
