@@ -110,6 +110,7 @@ jobs:
         with:
           name: coverage-core
           path: .coverage
+          include-hidden-files: true
           if-no-files-found: ignore
 
       - name: Publish Test Report
@@ -159,6 +160,7 @@ jobs:
         with:
           name: coverage-${{ matrix.folder }}
           path: integrations/${{ matrix.folder }}/.coverage
+          include-hidden-files: true
           if-no-files-found: ignore
 
       - name: Publish Test Report
