@@ -73,14 +73,15 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
     fi
 
 
-    poetry version "${NEW_VERSION}"
+    sed -i.bak "s/^version = \".*\"/version = \"${NEW_VERSION}\"/" pyproject.toml
+    rm -f pyproject.toml.bak
     echo "New version: ${NEW_VERSION}"
 
     echo "Run towncrier build to increment the patch version"
     towncrier build --keep --version "${NEW_VERSION}" && rm changelog/*
     git add poetry.lock pyproject.toml CHANGELOG.md
-    echo "Committing ${INTEGRATION}"
-    SKIP="trailing-whitespace,end-of-file-fixer" git commit -m "Bumped ocean version to ${VERSION} for ${INTEGRATION}"
+#    echo "Committing ${INTEGRATION}"
+#    SKIP="trailing-whitespace,end-of-file-fixer" git commit -m "Bumped ocean version to ${VERSION} for ${INTEGRATION}"
     deactivate
 done
 cd "${CURRENT_DIR}" || return
