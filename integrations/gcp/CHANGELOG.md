@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.1 (2026-08-05)
+
+
+### Bug Fixes
+
+- Fixed a bug where a single asset lacking versioned resource data (e.g. certain BigQuery Table assets returned by the Cloud Asset API) would abort syncing for its entire kind across all projects. Such assets are now skipped with a warning log instead. Additionally, an unexpected error while searching a single project no longer cancels syncing for other projects of the same kind; it's now logged and that project is skipped.
+
+
 ## 0.2.0 (2026-08-05)
 
 
