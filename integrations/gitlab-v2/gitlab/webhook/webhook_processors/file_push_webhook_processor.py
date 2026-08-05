@@ -27,12 +27,20 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        project_id = payload["project"]["id"]
+        project = payload["project"]
+        project_id = project["id"]
         branch = payload.get("ref", "").replace("refs/heads/", "")
-        repo_path = payload["project"]["path_with_namespace"]
+        repo_path = project["path_with_namespace"]
         logger.info(
             f"Processing push event for project {project_id} on branch {branch}"
         )
+        if branch != project.get("default_branch"):
+            logger.info(
+                f"Skipping file push for {repo_path}: {branch} is not the default branch"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         config = cast(GitLabFilesResourceConfig, resource_config)
         selector = config.selector

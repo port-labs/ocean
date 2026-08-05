@@ -26,9 +26,9 @@ class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
             or event.payload.get("event_type")
             or event.payload.get("object_kind")
         )
+        gitlab_event = event.headers.get("x-gitlab-event")
         return bool(
-            event.headers["x-gitlab-event"] in self.hooks
-            and event_identifier in self.events
+            gitlab_event in self.hooks and event_identifier in self.events
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:
