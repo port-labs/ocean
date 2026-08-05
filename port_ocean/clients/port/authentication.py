@@ -4,7 +4,8 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic.alias_generators import to_camel
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import handle_port_status_code
@@ -12,11 +13,11 @@ from port_ocean.utils.misc import get_time
 
 
 class TokenResponse(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(alias_generator=to_camel)
 
-    access_token: str = Field(alias="accessToken")
-    expires_in: int = Field(alias="expiresIn")
-    token_type: str = Field(alias="tokenType")
+    access_token: str
+    expires_in: int
+    token_type: str
     _retrieved_time: int = PrivateAttr(default_factory=lambda: int(get_time()))
 
     @property
