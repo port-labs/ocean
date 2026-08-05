@@ -331,11 +331,11 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
-    lakehouse_enabled: bool = False
+    lakehouse_enabled: bool = True
     disable_ip_outbound_blocker: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
-    processing_mode: ProcessingMode = ProcessingMode.ocean_core
+    processing_mode: ProcessingMode = ProcessingMode.dsp
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(
