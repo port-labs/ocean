@@ -79,7 +79,9 @@ async def test_sync_pagination_passes_state() -> None:
     mock_http.post = AsyncMock(side_effect=[page1, page2])
 
     with patch(f"{_MODULE}.http_async_client", mock_http):
-        pages = [page async for page in _make_client().send_paginated_request("employee")]
+        pages = [
+            page async for page in _make_client().send_paginated_request("employee")
+        ]
 
     assert pages == [[{"id": "1"}], [{"id": "2"}]]
     assert mock_http.post.call_count == 2
@@ -92,7 +94,9 @@ async def test_sync_skips_empty_pages() -> None:
     mock_http, _ = _mock_post({"insert": [], "hasMore": False, "state": None})
 
     with patch(f"{_MODULE}.http_async_client", mock_http):
-        pages = [page async for page in _make_client().send_paginated_request("employee")]
+        pages = [
+            page async for page in _make_client().send_paginated_request("employee")
+        ]
 
     assert pages == []
 
@@ -112,10 +116,13 @@ async def test_sync_stops_when_state_does_not_advance() -> None:
     mock_http = MagicMock()
     mock_http.post = AsyncMock(return_value=stuck_page)
 
-    with patch(f"{_MODULE}.http_async_client", mock_http), patch(
-        f"{_MODULE}.logger"
-    ) as mock_logger:
-        pages = [page async for page in _make_client().send_paginated_request("employee")]
+    with (
+        patch(f"{_MODULE}.http_async_client", mock_http),
+        patch(f"{_MODULE}.logger") as mock_logger,
+    ):
+        pages = [
+            page async for page in _make_client().send_paginated_request("employee")
+        ]
 
     assert pages == [[{"id": "1"}]]
     assert mock_http.post.call_count == 1
@@ -127,7 +134,9 @@ async def test_fetch_sends_bearer_token() -> None:
     mock_http, mock_post = _mock_post({"insert": [], "hasMore": False, "state": None})
 
     with patch(f"{_MODULE}.http_async_client", mock_http):
-        async for _ in _make_client(token="my-id-token").send_paginated_request("employee"):
+        async for _ in _make_client(token="my-id-token").send_paginated_request(
+            "employee"
+        ):
             pass
 
     headers = mock_post.call_args.kwargs["headers"]
@@ -151,7 +160,9 @@ async def test_fetch_forwards_secrets() -> None:
     mock_http, mock_post = _mock_post({"insert": [], "hasMore": False, "state": None})
 
     with patch(f"{_MODULE}.http_async_client", mock_http):
-        async for _ in _make_client(secrets={"hibobToken": "abc123"}).send_paginated_request("employee"):
+        async for _ in _make_client(
+            secrets={"hibobToken": "abc123"}
+        ).send_paginated_request("employee"):
             pass
 
     payload = mock_post.call_args.kwargs["json"]
@@ -192,9 +203,10 @@ async def test_fetch_logs_error_before_raising() -> None:
     mock_http = MagicMock()
     mock_http.post = AsyncMock(return_value=mock_response)
 
-    with patch(f"{_MODULE}.http_async_client", mock_http), patch(
-        f"{_MODULE}.logger"
-    ) as mock_logger:
+    with (
+        patch(f"{_MODULE}.http_async_client", mock_http),
+        patch(f"{_MODULE}.logger") as mock_logger,
+    ):
         with pytest.raises(httpx.HTTPStatusError):
             async for _ in _make_client().send_paginated_request("employee"):
                 pass
@@ -208,14 +220,19 @@ async def test_fetch_logs_error_before_raising() -> None:
 async def test_dict_insert_is_flattened() -> None:
     mock_http, _ = _mock_post(
         {
-            "insert": {"employees": [{"id": "1"}, {"id": "2"}], "managers": [{"id": "3"}]},
+            "insert": {
+                "employees": [{"id": "1"}, {"id": "2"}],
+                "managers": [{"id": "3"}],
+            },
             "hasMore": False,
             "state": None,
         }
     )
 
     with patch(f"{_MODULE}.http_async_client", mock_http):
-        pages = [page async for page in _make_client().send_paginated_request("employee")]
+        pages = [
+            page async for page in _make_client().send_paginated_request("employee")
+        ]
 
     assert len(pages) == 1
     assert len(pages[0]) == 3

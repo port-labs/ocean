@@ -18,7 +18,9 @@ class CloudFunctionClient:
         self._secrets = secrets
         self._token_supplier = token_supplier
 
-    async def send_paginated_request(self, resource: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def send_paginated_request(
+        self, resource: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         has_more = True
         state: Optional[dict[str, Any]] = None
         while has_more:
