@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.3 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 0.11.2 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 0.11.1 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.11.0 (2026-08-03)
+
+
+### Features
+
+- Added incremental sync support for resources `work-item`, `build`, `release`, `release-deployment`, `pipeline-run`, `test-run`, and `advanced-security-alert`.
+
+
+### Improvements
+
+- Pipeline-run incremental sync skips projects gracefully when the Analytics OData endpoint is unavailable (HTTP 403/404) instead of failing the kind.
+- Return warning when advanced security alert is not enabled in the account, instead of error which fails the resync.
+
+
+## 0.10.43 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.10.42 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.10.41 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.10.40 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.10.39 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
 ## 0.10.38 (2026-07-28)
 
 

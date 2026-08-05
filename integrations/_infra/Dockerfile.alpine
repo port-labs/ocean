@@ -45,7 +45,7 @@ RUN \
         "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" \
         "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
     && apk upgrade gcc linux-headers libstdc++ gcc g++ --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main/ \
-    && pip install --no-cache-dir poetry \
+    && pip install --no-cache-dir 'poetry>=2.0.0,<3.0.0' \
     && poetry config virtualenvs.in-project true
 
 WORKDIR /app
@@ -71,16 +71,13 @@ RUN mkdir -p /tmp/ocean
 
 ARG INTEGRATION_VERSION
 ARG BUILD_CONTEXT
-ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
 ARG OAUTH_CONFIG_DIR=/tmp/ocean/.config
 ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
 ENV LIBRDKAFKA_VERSION=2.8.2 \
-    PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
     STREAMING_LOCATION=${STREAMING_LOCATION} \
     PIP_ROOT_USER_ACTION=ignore
 
-RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 RUN mkdir -p ${STREAMING_LOCATION}
 RUN mkdir -p ${OAUTH_CONFIG_DIR}
 RUN chmod -R 777 /tmp/ocean

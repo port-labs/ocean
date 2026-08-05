@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.47.6 (2026-08-04)
+
+### Improvements
+
+- Reconcile `incrementalSyncEnabled` with Port during integration initialization when the configured value diverges from Port.
+- Add `incrementalSyncEnabled` support to integration create and patch API calls in `IntegrationClientMixin`.
+- Restrict `incremental_sync_interval` to allowed values of 15, 30, or 60 minutes.
+
+## 0.47.5 (2026-08-04)
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+## 0.47.4 (2026-08-03)
+
+### Bug Fixes
+
+- Do not abort DSP resyncs when Lakehouse returns `count: 0` on an idempotent raw-data write retry; abort only when Lakehouse reports an explicit `resync_stale` error (HTTP 409).
+
+## 0.47.3 (2026-08-03)
+
+### Improvements
+
+- Installed pydantic settings in order to enable progress in pydantic v2 migration.
+
+## 0.47.2 (2026-07-30)
+
+### Improvements
+
+- Upgraded `redis` to `^6.1.0` and auto-detect Redis Cluster connections for live events stream consumption.
+
+## 0.47.1 (2026-07-29)
+
+### Bug Fixes
+
+- Propagate webhook client disconnects instead of silently acknowledging events that were never queued.
+
+## 0.47.0 (2026-07-29)
+
+### Deprecations
+
+- Removed `OCEAN__PROCESS_EXECUTION_MODE` configuration. Ocean always runs in single_process mode. Setting the env var logs a warning and is ignored. Removed subprocess-based resync execution and Prometheus multiprocess metrics collection.
+
+## 0.46.6 (2026-07-29)
+
+### Bug Fixes
+
+- Moved `clear_sync_context` from `sync_raw_all` finalizer into `update_after_resync` so the runtime terminal metric is sent with the correct `eventId` before it is cleared. Previously the `eventId` was wiped before `update_after_resync` ran, causing integ-service's stale-heartbeat abort consumer to miss the terminal runtime metric and incorrectly abort completed syncs.
 
 ## 0.46.5 (2026-07-28)
 

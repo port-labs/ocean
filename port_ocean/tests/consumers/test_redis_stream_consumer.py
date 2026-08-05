@@ -502,8 +502,8 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.Redis.from_url",
-                return_value=mock_redis,
+                "port_ocean.consumers.redis_stream_consumer.create_redis_client",
+                new=AsyncMock(return_value=mock_redis),
             ),
             patch(
                 "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
@@ -544,8 +544,8 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.Redis.from_url",
-                return_value=mock_redis,
+                "port_ocean.consumers.redis_stream_consumer.create_redis_client",
+                new=AsyncMock(return_value=mock_redis),
             ),
             patch(
                 "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
