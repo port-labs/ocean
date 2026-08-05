@@ -14,10 +14,7 @@ from aws.core.exporters.organizations.account.exporter import (
 )
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
 from aws.core.helpers.utils import is_access_denied_exception
-from aws.webhook.consts import CLOUDTRAIL_WEBHOOK_PATH
-from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
-    CloudTrailWebhookProcessor,
-)
+from aws.webhook.registry import register_cloudtrail_live_events
 
 from loguru import logger
 from resync import ResyncAWSService
@@ -27,7 +24,7 @@ from aws.auth.session_factory import (
 )
 
 
-ocean.add_webhook_processor(CLOUDTRAIL_WEBHOOK_PATH, CloudTrailWebhookProcessor)
+register_cloudtrail_live_events()
 
 
 @ocean.on_resync_start()
