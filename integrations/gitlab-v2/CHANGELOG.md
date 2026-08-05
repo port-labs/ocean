@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.11 (2026-08-05)
+
+
+### Bug Fixes
+
+- Fixed GitLab file live events to ignore non-default branch pushes, keeping file-kind webhook behavior consistent with default-branch-only resync discovery.
+- Fixed GitLab webhook matching to ignore non-GitLab webhook requests instead of failing when the `x-gitlab-event` header is missing.
+
+
 ## 0.9.10 (2026-08-04)
 
 
