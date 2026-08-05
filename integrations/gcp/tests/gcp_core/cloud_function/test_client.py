@@ -1,5 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Optional
+from typing import Any, Optional
 
 import pytest
 
@@ -11,7 +11,7 @@ _MODULE = "gcp_core.cloud_function.client"
 def _make_client(
     token: Optional[str] = "test-token",
     function_url: str = "https://example.run.app/sync",
-    secrets: dict | None = None,
+    secrets: dict[str, Any] | None = None,
 ) -> CloudFunctionClient:
     async def token_supplier() -> Optional[str]:
         return token
@@ -24,7 +24,7 @@ def _make_client(
     )
 
 
-def _mock_post(response_body: dict) -> tuple[MagicMock, AsyncMock]:
+def _mock_post(response_body: dict[str, Any]) -> tuple[MagicMock, AsyncMock]:
     """Return (mock_http_client, mock_post) configured to return response_body."""
     mock_response = MagicMock()
     mock_response.is_error = False
