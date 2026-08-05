@@ -6,7 +6,7 @@ from aws.webhook.event_name_mappings.mapping import CloudTrailEventAction, Event
 
 def _extract_s3_bucket_name(detail: dict[str, Any]) -> str | None:
     bucket_name = detail.get("requestParameters", {}).get("bucketName")
-    return bucket_name if isinstance(bucket_name, str) and bucket_name else None
+    return bucket_name if isinstance(bucket_name, str) else None
 
 
 S3_MAPPINGS: dict[str, EventNameMapping] = {

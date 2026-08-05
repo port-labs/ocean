@@ -46,7 +46,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
         if not await is_aws_v3_live_events_enabled():
-            logger.warning("AWS-v3 live events are disabled by organization feature flag")
+            logger.debug("AWS-v3 live events are disabled by organization feature flag")
             return False
 
         expected_api_key = ocean.integration_config.get("live_events_api_key")
