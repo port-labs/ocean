@@ -31,3 +31,19 @@ class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         return not ({"object_kind", "project"} - payload.keys())
+
+    def _get_branch_name(self, payload: EventPayload) -> str:
+        return payload.get("ref", "").removeprefix("refs/heads/")
+
+    def _is_default_branch_push(
+        self, payload: EventPayload, resource_name: str
+    ) -> bool:
+        project = payload["project"]
+        branch = self._get_branch_name(payload)
+        if branch != project.get("default_branch"):
+            logger.info(
+                f"Skipping {resource_name} push for {project['path_with_namespace']}: "
+                f"{branch} is not the default branch"
+            )
+            return False
+        return True
