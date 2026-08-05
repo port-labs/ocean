@@ -46,12 +46,9 @@ class PluginPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         project = payload["project"]
         project_id = project["id"]
-        branch = payload.get("ref", "").removeprefix("refs/heads/")
+        branch = self._get_branch_name(payload)
         repo_path = project["path_with_namespace"]
-        if branch != project.get("default_branch"):
-            logger.info(
-                f"Skipping plugin push for {repo_path}: {branch} is not the default branch"
-            )
+        if not self._is_default_branch_push(payload, "plugin"):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
