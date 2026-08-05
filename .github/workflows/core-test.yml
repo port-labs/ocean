@@ -123,7 +123,7 @@ jobs:
           fail_on_failure: true
 
   test-integrations:
-    name: ${{ format('🌊 Test {0} with local core', matrix.folder) }}
+    name: ${{ format('🌊 Test integrations shard {0}/10', matrix.shard) }}
     needs: test
     runs-on: ubuntu-latest
     if: ${{ needs.test.outputs.integrations != '[]' }}
@@ -131,7 +131,7 @@ jobs:
       fail-fast: false
       max-parallel: 10
       matrix:
-        folder: ${{ fromJson(needs.test.outputs.integrations) }}
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v7
@@ -145,21 +145,53 @@ jobs:
           python-version: '3.12'
           cache: 'poetry'
 
-      - name: Install local core
-        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
-        run: make install/local-core
-
-      - name: Test integration with local core
-        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+      - name: Test integrations with local core
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/test-results-core-change/${{ matrix.folder }}.xml
-        run: make test
+          INTEGRATIONS: ${{ needs.test.outputs.integrations }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mapfile -t folders < <(
+            echo "$INTEGRATIONS" | jq -r --argjson shard "$SHARD" '
+              . as $all |
+              ($all | length) as $len |
+              10 as $count |
+              ((($len + $count - 1) / $count) | floor) as $size |
+              ($shard * $size) as $start |
+              $all[$start:$start + $size][]
+            '
+          )
 
-      - name: Upload integration coverage
+          if [ ${#folders[@]} -eq 0 ]; then
+            echo "No integrations assigned to shard ${SHARD}"
+            exit 0
+          fi
+
+          echo "Shard ${SHARD} integrations: ${folders[*]}"
+          exit_code=0
+
+          for folder in "${folders[@]}"; do
+            echo "Installing local core for ${folder}"
+            if ! (cd "integrations/${folder}" && make install/local-core); then
+              exit_code=1
+              continue
+            fi
+
+            echo "Testing ${folder} with local core"
+            if ! (
+              cd "integrations/${folder}" &&
+              PYTEST_ADDOPTS="--cov --cov-report= --cov-append --junitxml=junit/test-results-core-change/${folder}.xml" make test
+            ); then
+              exit_code=1
+            fi
+          done
+
+          exit $exit_code
+
+      - name: Upload shard coverage
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-${{ matrix.folder }}
-          path: integrations/${{ matrix.folder }}/.coverage
+          name: coverage-shard-${{ matrix.shard }}
+          path: integrations/**/.coverage
           include-hidden-files: true
           if-no-files-found: ignore
 
@@ -167,7 +199,7 @@ jobs:
         uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}
         with:
-          report_paths: ${{ format('integrations/{0}/junit/test-results-core-change/*.xml', matrix.folder) }}
+          report_paths: 'integrations/**/junit/test-results-core-change/*.xml'
           include_passed: true
           require_tests: true
           fail_on_failure: true
