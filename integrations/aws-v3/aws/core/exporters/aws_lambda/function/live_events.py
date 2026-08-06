@@ -42,7 +42,7 @@ def _deletion_identifier_properties(context: LiveEventContext) -> dict[str, str]
     }
 
 
-LIVE_EVENTS = LiveEventFactories(
+LAMBDA_FUNCTION_LIVE_EVENTS = LiveEventFactories(
     request_factory=_request_factory,
     deletion_identifier_properties_factory=_deletion_identifier_properties,
     cloudtrail_mappings={

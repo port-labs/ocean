@@ -1,6 +1,6 @@
 from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExporter
 from aws.core.exporters.aws_lambda.function.live_events import (
-    LIVE_EVENTS as LAMBDA_FUNCTION_LIVE_EVENTS,
+    LAMBDA_FUNCTION_LIVE_EVENTS,
 )
 from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
 from aws.core.exporters.codebuild import (
@@ -64,7 +64,7 @@ from aws.core.exporters.rds.db_cluster.models import PaginatedDbClusterRequest
 from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
 from aws.core.exporters.s3 import PaginatedBucketRequest, S3BucketExporter
-from aws.core.exporters.s3.bucket.live_events import LIVE_EVENTS as S3_BUCKET_LIVE_EVENTS
+from aws.core.exporters.s3.bucket.live_events import S3_BUCKET_LIVE_EVENTS
 from aws.core.exporters.ses import (
     PaginatedConfigurationSetRequest,
     PaginatedEmailIdentityRequest,
