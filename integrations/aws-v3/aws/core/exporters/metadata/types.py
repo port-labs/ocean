@@ -71,7 +71,3 @@ class ExporterMetadata:
     paginated_request_model: type[ResourceRequestModel]
     regional: bool = True
     live_events: LiveEventFactories | None = None
-
-    @property
-    def supports_live_events(self) -> bool:
-        return self.live_events is not None
