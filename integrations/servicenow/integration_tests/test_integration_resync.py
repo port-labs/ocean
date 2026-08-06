@@ -8,28 +8,15 @@ from port_ocean.integration_testing import (
     ResyncResult,
 )
 
+from helpers import all_mappings, integration_config
 from mocks.payloads import (
     RECORD_COUNT,
-    SERVICENOW_PASSWORD,
-    SERVICENOW_URL,
-    SERVICENOW_USERNAME,
     created_on_iso,
     incident_response,
     service_catalog_response,
     sys_id,
     user_group_response,
 )
-
-_CREATED_ON = (
-    '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-)
-_SELECTOR: dict[str, Any] = {
-    "query": "true",
-    "apiQueryParams": {
-        "sysparmDisplayValue": "true",
-        "sysparmExcludeReferenceLink": "false",
-    },
-}
 
 
 class TestServiceNowHappyPath(BaseIntegrationTest):
@@ -72,81 +59,10 @@ class TestServiceNowHappyPath(BaseIntegrationTest):
         return t
 
     def create_mapping_config(self) -> dict[str, Any]:
-        def _resource(kind: str, blueprint: str, mappings: dict[str, Any]) -> dict[str, Any]:
-            return {
-                "kind": kind,
-                "selector": _SELECTOR,
-                "port": {"entity": {"mappings": {"blueprint": f'"{blueprint}"', **mappings}}},
-            }
-
-        return {
-            "resources": [
-                _resource(
-                    "sys_user_group",
-                    "servicenowGroup",
-                    {
-                        "identifier": ".sys_id",
-                        "title": ".name",
-                        "properties": {
-                            "description": ".description",
-                            "isActive": ".active",
-                            "createdOn": _CREATED_ON,
-                            "createdBy": ".sys_created_by",
-                        },
-                    },
-                ),
-                _resource(
-                    "sc_catalog",
-                    "servicenowCatalog",
-                    {
-                        "identifier": ".sys_id",
-                        "title": ".title",
-                        "properties": {
-                            "description": ".description",
-                            "isActive": ".active",
-                            "createdOn": _CREATED_ON,
-                            "createdBy": ".sys_created_by",
-                        },
-                    },
-                ),
-                _resource(
-                    "incident",
-                    "servicenowIncident",
-                    {
-                        "identifier": ".sys_id",
-                        "title": ".short_description",
-                        "properties": {
-                            "number": ".number | tostring",
-                            "state": ".state",
-                            "category": ".category",
-                            "reopenCount": ".reopen_count",
-                            "severity": ".severity",
-                            "assignedTo": ".assigned_to.link",
-                            "urgency": ".urgency",
-                            "contactType": ".contact_type",
-                            "createdOn": _CREATED_ON,
-                            "createdBy": ".sys_created_by",
-                            "isActive": ".active",
-                            "priority": ".priority",
-                        },
-                    },
-                ),
-            ]
-        }
+        return all_mappings()
 
     def create_integration_config(self) -> dict[str, Any]:
-        return {
-            "integration": {
-                "identifier": "test-servicenow",
-                "type": "servicenow",
-                "config": {
-                    "servicenow_url": SERVICENOW_URL,
-                    "servicenow_username": SERVICENOW_USERNAME,
-                    "servicenow_password": SERVICENOW_PASSWORD,
-                    "enable_tables_live_events_webhooks": False,
-                },
-            }
-        }
+        return integration_config()
 
     @pytest.mark.asyncio
     async def test_happy_path(self, resync: ResyncResult) -> None:

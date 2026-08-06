@@ -45,8 +45,11 @@ def _resource(kind: str, blueprint: str, mappings: dict[str, Any]) -> dict[str, 
     }
 
 
-def mapping_for_kind(kind: str) -> dict[str, Any]:
-    resources: dict[str, dict[str, Any]] = {
+_ALL_KINDS = ("sys_user_group", "sc_catalog", "incident")
+
+
+def _kind_resources() -> dict[str, dict[str, Any]]:
+    return {
         "sys_user_group": _resource(
             "sys_user_group",
             "servicenowGroup",
@@ -99,7 +102,15 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
         ),
     }
 
+
+def mapping_for_kind(kind: str) -> dict[str, Any]:
+    resources = _kind_resources()
     if kind not in resources:
         raise ValueError(f"No mapping defined for kind: {kind}")
 
     return {"resources": [resources[kind]]}
+
+
+def all_mappings() -> dict[str, Any]:
+    resources = _kind_resources()
+    return {"resources": [resources[kind] for kind in _ALL_KINDS]}
