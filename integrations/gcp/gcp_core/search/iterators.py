@@ -20,13 +20,17 @@ async def iterate_per_available_project(
     **kwargs: Any,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
-    Fans out `project_dependent_callable` across every available project.
+    Fans out `project_dependent_callable` across every available project, across
+    every page of projects.
 
     A failing project doesn't stop the others: errors are deferred and raised
     together, as an `ExceptionGroup`, only after every project has finished.
     """
     semaphore = BoundedSemaphore(max_concurrent_projects)
     asset_type = kwargs.get("asset_type", "unknown")
+    context = f"iterate_per_available_project[{asset_type}]"
+    errors: list[Exception] = []
+
     async for projects in search_all_projects():
         tasks = [
             semaphore_async_iterator(
@@ -39,9 +43,17 @@ async def iterate_per_available_project(
             logger.warning(
                 f"Searched {len(projects)} projects and found no accessible resources for {asset_type}. This may be due to unset permissions or no currently existing projects."
             )
-            return
+            continue
 
-        async for batch in stream_independent_async_iterators(
-            *tasks, context=f"iterate_per_available_project[{asset_type}]"
-        ):
-            yield batch
+        try:
+            async for batch in stream_independent_async_iterators(
+                *tasks, context=context
+            ):
+                yield batch
+        except ExceptionGroup as page_errors:  # noqa: F821
+            errors.extend(page_errors.exceptions)
+
+    if errors:
+        raise ExceptionGroup(  # noqa: F821
+            f"{context} failed with {len(errors)} error(s)", errors
+        )
