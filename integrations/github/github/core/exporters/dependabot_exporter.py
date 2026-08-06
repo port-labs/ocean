@@ -52,7 +52,7 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all Dependabot alerts in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
+        incremental_cursor = active_incremental_cursor() or options.get("updated_since")
         params["state"] = ",".join(params["state"])
         request_params = DEPENDABOT_INCREMENTAL.merge_params(params, incremental_cursor)
 
