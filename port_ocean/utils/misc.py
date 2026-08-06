@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 from enum import Enum
 from importlib.util import module_from_spec, spec_from_file_location
 import multiprocessing
@@ -67,11 +68,21 @@ def get_integration_name() -> str:
     return ""
 
 
+SPEC_FILE_CANDIDATES = ("spec.json", "spec.yaml", "spec.yml")
+
+
 def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
-    try:
-        return yaml.safe_load((path / ".port/spec.yaml").read_text())
-    except FileNotFoundError:
-        return None
+    spec_dir = path / ".port"
+    for filename in SPEC_FILE_CANDIDATES:
+        spec_path = spec_dir / filename
+        if not spec_path.is_file():
+            continue
+        if filename.endswith(".json"):
+            result = json.loads(spec_path.read_text())
+        else:
+            result = yaml.safe_load(spec_path.read_text())
+        return result if isinstance(result, dict) else None
+    return None
 
 
 def load_module(file_path: str) -> ModuleType:
