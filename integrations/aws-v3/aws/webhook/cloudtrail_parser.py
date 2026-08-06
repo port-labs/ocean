@@ -6,6 +6,8 @@ Maps CloudTrail ``eventName`` values to a normalized event that the single
 
 from dataclasses import dataclass
 
+from loguru import logger
+
 from aws.core.exporters.metadata.cloudtrail_event_mappings import (
     EVENT_NAME_MAPPINGS,
 )
@@ -50,6 +52,10 @@ def get_event_name(payload: EventBridgeCloudTrailPayload) -> str | None:
 def is_supported_cloudtrail_event(payload: EventBridgeCloudTrailPayload) -> bool:
     detail = _get_detail(payload)
     if detail.get("errorCode"):
+        logger.warning(
+            f"CloudTrail event has error code {detail['errorCode']}; "
+            f"skipping live event (eventName={detail.get('eventName')})"
+        )
         return False
     return detail.get("eventName") in EVENT_NAME_MAPPINGS
 
