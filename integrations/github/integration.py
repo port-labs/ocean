@@ -33,6 +33,11 @@ from typing import Any, Dict, List, Optional, Type, Literal
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
+from github.core.exporters.skill_exporter.utils import DEFAULT_SKILL_PATHS
+from github.core.exporters.plugin_exporter.utils import (
+    DEFAULT_PLUGIN_PROVIDERS,
+    PluginProvider,
+)
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
@@ -282,6 +287,77 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class GithubSkillPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubSkillSelector(Selector):
+    paths: list[GithubSkillPattern] = Field(
+        title="Paths",
+        default=[GithubSkillPattern(path=path) for path in DEFAULT_SKILL_PATHS],
+        description=(
+            "Glob patterns for SKILL.md discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtration."
+        ),
+    )
+
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(exclude_none=True) for path in default_paths
+            ]
+
+
+class GithubSkillResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.SKILL] = Field(
+        title="Github Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GithubSkillSelector = Field(
+        title="Skill selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GithubPluginSelector(Selector):
+    providers: list[PluginProvider] = Field(
+        title="Providers",
+        default=list(DEFAULT_PLUGIN_PROVIDERS),
+        description=(
+            "Agent plugin providers to detect. A repository is treated as a "
+            "plugin when any matching manifest/dir exists."
+        ),
+    )
+    paths: list[RepositorySourceModel] = Field(
+        title="Paths",
+        default=[RepositorySourceModel()],
+        description=(
+            "Org/repo scopes to scan. Each entry can set organization and repos. "
+            "Multiple entries enable multi-org filtration."
+        ),
+    )
+
+
+class GithubPluginResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PLUGIN] = Field(
+        title="Github Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GithubPluginSelector = Field(
+        title="Plugin selector",
+        description="Selector for discovering agent plugin repositories.",
+    )
+
+
 class IncludeSAMLEmailSelector(Selector):
     include_saml_email: bool = Field(
         title="Include SAML email",
@@ -440,6 +516,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
         title="Include Members",
         default=True,
         description="Include team members in the exported data.",
+    )
+    include_external_group: bool = Field(
+        title="Include External IdP Group",
+        default=False,
+        description="Include the external IdP group linked to each team via GET /orgs/{org}/teams/{slug}/external-groups. Only available for organizations using GitHub Enterprise with managed user accounts and external SCIM.",
     )
 
 
@@ -825,6 +906,8 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubSkillResourceConfig
+        | GithubPluginResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig

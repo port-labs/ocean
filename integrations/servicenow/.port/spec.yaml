@@ -1,6 +1,6 @@
 title: ServiceNow
 description: ServiceNow integration for Port Ocean
-icon: Servicenow # Should be one of the available icons in Port
+icon: Servicenow  # Should be one of the available icons in Port
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow
 formMappingEnabled: true
 features:
@@ -48,6 +48,11 @@ configurations:
     items:
       type: string
     description: "Optional list of specific table names to configure for live events. If not specified but enableTablesLiveEventsWebhooks is true, all supported tables will be configured. Use this to limit which tables trigger live events."
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: "A secret token used to authenticate incoming webhook requests from ServiceNow. When configured, the integration will automatically add this as an Authorization header on the outbound REST Message in ServiceNow and validate it on incoming requests."
 installationDocs:
   saas:
     - name: SaasOAuth2
