@@ -78,16 +78,17 @@ def extract_and_enrich_batch(
 
 
 async def process_endpoints_concurrently(
-    endpoints: List[Tuple[str, Dict[str, str]]],
+    endpoints: List[Tuple[str, Dict[str, str], Dict[str, Any]]],
     fetch_fn: Callable[
-        [str, Dict[str, str]], AsyncGenerator[List[Dict[str, Any]], None]
+        [str, Dict[str, str], Dict[str, Any]],
+        AsyncGenerator[List[Dict[str, Any]], None],
     ],
     concurrency_limit: int = DEFAULT_CONCURRENCY_LIMIT,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """Process multiple endpoints concurrently with bounded concurrency
 
     Args:
-        endpoints: List of (endpoint_url, path_params) tuples to process
+        endpoints: List of (endpoint_url, path_params, dynamic_query_params) tuples to process
         fetch_fn: Async generator function that fetches data for an endpoint
         concurrency_limit: Maximum number of concurrent requests
 
@@ -106,9 +107,9 @@ async def process_endpoints_concurrently(
     tasks = [
         semaphore_async_iterator(
             semaphore,
-            functools.partial(fetch_fn, endpoint, path_params),
+            functools.partial(fetch_fn, endpoint, path_params, dynamic_query_params),
         )
-        for endpoint, path_params in endpoints
+        for endpoint, path_params, dynamic_query_params in endpoints
     ]
 
     async for batch in stream_async_iterators_tasks(*tasks):

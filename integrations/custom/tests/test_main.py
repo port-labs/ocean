@@ -9,20 +9,20 @@ from http_server.overrides import HttpServerResourceConfig, HttpServerSelector
 
 
 async def mock_resolve_single_endpoint() -> (
-    AsyncGenerator[List[tuple[str, Dict[str, str]]], None]
+    AsyncGenerator[List[tuple[str, Dict[str, str], Dict[str, Any]]], None]
 ):
     """Helper mock generator that yields a single batch with one endpoint"""
-    yield [("/api/v1/users", {})]
+    yield [("/api/v1/users", {}, {})]
 
 
 async def mock_process_endpoints(
-    endpoints: List[tuple[str, Dict[str, str]]],
+    endpoints: List[tuple[str, Dict[str, str], Dict[str, Any]]],
     fetch_fn: Any,
     concurrency_limit: int = 10,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """Mock concurrent processing that just calls fetch_fn for each endpoint"""
-    for endpoint, path_params in endpoints:
-        async for batch in fetch_fn(endpoint, path_params):
+    for endpoint, path_params, dynamic_query_params in endpoints:
+        async for batch in fetch_fn(endpoint, path_params, dynamic_query_params):
             yield batch
 
 
@@ -214,3 +214,61 @@ class TestListResponseHandling:
 
                 assert len(batch) == 1
                 assert batch[0]["id"] == 1
+
+    @pytest.mark.asyncio
+    async def test_dynamic_query_parameters_override_static_selector_values(
+        self: "TestListResponseHandling", monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test dynamic query parameter values override static selector.query_params."""
+        with patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ):
+            import main
+
+            mock_client = AsyncMock()
+
+            mock_resource_config = MagicMock(spec=HttpServerResourceConfig)
+            mock_selector = MagicMock(spec=HttpServerSelector)
+            mock_selector.method = "GET"
+            mock_selector.query_params = {"status": "static", "limit": "25"}
+            mock_selector.headers = {}
+            mock_selector.data_path = "."
+            mock_resource_config.selector = mock_selector
+
+            monkeypatch.setattr(
+                main, "event", SimpleNamespace(resource_config=mock_resource_config)
+            )
+
+            async def mock_resolve_endpoint_with_dynamic_query() -> (
+                AsyncGenerator[List[tuple[str, Dict[str, str], Dict[str, Any]]], None]
+            ):
+                yield [("/api/v1/users", {}, {"status": "dynamic"})]
+
+            request_query_params: Dict[str, Any] = {}
+
+            async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
+                request_query_params.update(kwargs.get("query_params", {}))
+                yield [{"id": 1, "name": "Alice"}]
+
+            mock_client.fetch_paginated_data = mock_fetch_paginated_data
+
+            with (
+                patch(
+                    "main.get_client", new_callable=AsyncMock, return_value=mock_client
+                ),
+                patch(
+                    "main.resolve_dynamic_endpoints",
+                    return_value=mock_resolve_endpoint_with_dynamic_query(),
+                ),
+                patch(
+                    "main.process_endpoints_concurrently",
+                    side_effect=mock_process_endpoints,
+                ),
+            ):
+                assert main.resync_resources is not None
+                result = main.resync_resources("/api/v1/users")
+                result_iter = cast(AsyncIterator[List[Dict[str, Any]]], result)
+                await result_iter.__anext__()
+
+                assert request_query_params == {"status": "dynamic", "limit": "25"}
