@@ -1,7 +1,7 @@
 from typing import Any
 
 from aws.core.exporters.aws_lambda.function.models import SingleLambdaFunctionRequest
-from aws.core.exporters.metadata.types import (
+from aws.core.helpers.metadata.types import (
     CloudTrailDetail,
     CloudTrailEventAction,
     CloudTrailEventMapping,

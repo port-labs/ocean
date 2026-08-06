@@ -1,5 +1,5 @@
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
-from aws.core.exporters.metadata.types import EventNameMapping
+from aws.core.helpers.metadata.types import EventNameMapping
 
 
 def build_event_name_mappings() -> dict[str, EventNameMapping]:

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from aws.core.exporters.metadata.types import ExporterMetadata, LiveEventFactories
+from aws.core.helpers.metadata.types import ExporterMetadata, LiveEventFactories
 from aws.core.helpers.types import ObjectKind
 from aws.webhook.cloudtrail_parser import parse_cloudtrail_event
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER

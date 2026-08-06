@@ -24,7 +24,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_session_for_account
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
-from aws.core.exporters.metadata.types import (
+from aws.core.helpers.metadata.types import (
     ExporterMetadata,
     LiveEventContext,
     LiveEventFactories,

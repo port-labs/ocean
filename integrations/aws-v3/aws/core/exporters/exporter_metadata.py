@@ -53,7 +53,7 @@ from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
 from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
-from aws.core.exporters.metadata.types import ExporterMetadata
+from aws.core.helpers.metadata.types import ExporterMetadata
 from aws.core.exporters.msk import MskClusterExporter, MskServerlessClusterExporter
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.msk.serverless_cluster.models import (

@@ -8,10 +8,10 @@ from dataclasses import dataclass
 
 from loguru import logger
 
-from aws.core.exporters.metadata.cloudtrail_event_mappings import (
+from aws.core.helpers.metadata.cloudtrail_event_mappings import (
     EVENT_NAME_MAPPINGS,
 )
-from aws.core.exporters.metadata.types import (
+from aws.core.helpers.metadata.types import (
     CloudTrailDetail,
     CloudTrailEventAction,
     EventBridgeCloudTrailPayload,
