@@ -66,9 +66,9 @@ async def search_all_resources_in_project(
                     }
                 )
             except ResourceNotFoundError as e:
-                asset_identifier = asset.get("name") or asset.get("asset_type")
                 logger.warning(
-                    f"Skipping unparsable {asset_type} asset {asset_identifier!r} "
+                    f"Skipping unparsable {asset_type} asset "
+                    f"{asset.get('name') or asset.get('asset_type')!r} "
                     f"in project {project_name}: {e}"
                 )
         return latest_resources
