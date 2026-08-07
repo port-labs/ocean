@@ -2189,18 +2189,45 @@ class AzureDevopsClient(HTTPBaseClient):
 
         results = await asyncio.gather(
             *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
-            return_exceptions=True,
         )
 
-        subscriptions: list[WebhookSubscription] = []
-        for result in results:
-            if isinstance(result, asyncio.CancelledError):
-                raise result
-            if isinstance(result, BaseException):
-                logger.warning(f"Failed to fetch webhook subscriptions: {result}")
-                continue
-            subscriptions.extend(result)
-        return subscriptions
+        return [sub for batch in results for sub in batch]
+
+    @staticmethod
+    def _find_duplicate_subscriptions(
+        subscriptions: list[WebhookSubscription],
+    ) -> tuple[list[WebhookSubscription], list[WebhookSubscription]]:
+        """Identify duplicate webhook subscriptions, keeping one per unique key.
+
+        Returns (kept, duplicates). Duplicates should be deleted by the caller.
+        """
+        seen: dict[
+            tuple[str, str, Optional[str], Optional[str]], WebhookSubscription
+        ] = {}
+        duplicates: list[WebhookSubscription] = []
+
+        for subscription in subscriptions:
+            key = (
+                subscription.publisherId,
+                subscription.eventType,
+                subscription.consumerInputs.get("url")
+                if subscription.consumerInputs
+                else None,
+                subscription.publisherInputs.get("projectId")
+                if subscription.publisherInputs
+                else None,
+            )
+            if key in seen:
+                duplicates.append(subscription)
+            else:
+                seen[key] = subscription
+
+        if duplicates:
+            logger.warning(
+                f"Found {len(duplicates)} duplicate webhook subscriptions to clean up"
+            )
+
+        return list(seen.values()), duplicates
 
     async def create_subscription(
         self,
@@ -2257,6 +2284,32 @@ class AzureDevopsClient(HTTPBaseClient):
             headers=headers,
             params=params,
         )
+
+    async def _bounded_delete_subscription(
+        self,
+        subscription: WebhookSubscription,
+        semaphore: asyncio.BoundedSemaphore,
+    ) -> None:
+        async with semaphore:
+            await self.delete_subscription(subscription)
+
+    async def _delete_subscriptions(
+        self, subscriptions: list[WebhookSubscription]
+    ) -> None:
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+        results = await asyncio.gather(
+            *[
+                self._bounded_delete_subscription(sub, semaphore)
+                for sub in subscriptions
+            ],
+            return_exceptions=True,
+        )
+        for subscription, result in zip(subscriptions, results):
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to delete subscription {subscription.id} "
+                    f"(eventType={subscription.eventType}): {result}"
+                )
 
     async def _get_item_content(
         self, file_path: str, repository_id: str, version_type: str, version: str
@@ -2608,7 +2661,16 @@ class AzureDevopsClient(HTTPBaseClient):
             existing_subscriptions = await self.get_filtered_webhook_subscriptions()
 
         subs_to_create = []
-        subs_to_delete = []
+        subs_to_delete: list[WebhookSubscription] = []
+
+        if len(existing_subscriptions) > len(AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS):
+            logger.debug(
+                f"Checking {len(existing_subscriptions)} existing subscriptions for duplicates"
+            )
+            existing_subscriptions, duplicate_subscriptions = (
+                self._find_duplicate_subscriptions(existing_subscriptions)
+            )
+            subs_to_delete.extend(duplicate_subscriptions)
         # IDs of existing healthy subscriptions we keep as-is — needed for
         # the subscription registry so incoming events can be routed.
         kept_sub_ids: list[str] = []
@@ -2625,7 +2687,6 @@ class AzureDevopsClient(HTTPBaseClient):
             existing_sub = sub.get_event_by_subscription(existing_subscriptions)
 
             if existing_sub and not existing_sub.is_enabled():
-                # Disabled subscription — recreate it.
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
             elif existing_sub and existing_sub.id:
@@ -2634,9 +2695,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 subs_to_create.append(sub)
 
         if subs_to_delete:
-            await asyncio.gather(
-                *[self.delete_subscription(sub) for sub in subs_to_delete]
-            )
+            await self._delete_subscriptions(subs_to_delete)
 
         created_sub_ids: list[str] = []
         if subs_to_create:
