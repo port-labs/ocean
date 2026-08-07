@@ -2872,18 +2872,16 @@ async def test_get_filtered_webhook_subscriptions_bounded_concurrency() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
+async def test_get_filtered_webhook_subscriptions_aborts_on_failure() -> None:
     from azure_devops.webhooks.events import PushEvents
 
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-
-    good_sub = WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)
 
     async def mock_fetch(
         publisher_id: str, event_type: str
     ) -> List[WebhookSubscription]:
         if event_type == PushEvents.PUSH:
-            return [good_sub]
+            return [WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)]
         raise Exception("429 rate limited")
 
     with patch.object(
@@ -2892,9 +2890,72 @@ async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
         new_callable=AsyncMock,
         side_effect=mock_fetch,
     ):
-        result = await client.get_filtered_webhook_subscriptions()
+        with pytest.raises(Exception, match="429 rate limited"):
+            await client.get_filtered_webhook_subscriptions()
 
-    assert good_sub in result
+
+def test_find_duplicate_subscriptions_identifies_extras() -> None:
+    kept = WebhookSubscription(
+        id="sub-1",
+        publisherId="tfs",
+        eventType="git.push",
+        consumerInputs={"url": "https://host/webhook"},
+        publisherInputs={"projectId": "proj-1"},
+    )
+    dup1 = WebhookSubscription(
+        id="sub-2",
+        publisherId="tfs",
+        eventType="git.push",
+        consumerInputs={"url": "https://host/webhook"},
+        publisherInputs={"projectId": "proj-1"},
+    )
+    dup2 = WebhookSubscription(
+        id="sub-3",
+        publisherId="tfs",
+        eventType="git.push",
+        consumerInputs={"url": "https://host/webhook"},
+        publisherInputs={"projectId": "proj-1"},
+    )
+    unique = WebhookSubscription(
+        id="sub-4",
+        publisherId="tfs",
+        eventType="git.pullrequest.created",
+        consumerInputs={"url": "https://host/webhook"},
+        publisherInputs={"projectId": "proj-1"},
+    )
+
+    result, duplicates = AzureDevopsClient._find_duplicate_subscriptions(
+        [kept, dup1, dup2, unique]
+    )
+
+    assert len(result) == 2
+    assert kept in result
+    assert unique in result
+    assert len(duplicates) == 2
+    duplicate_ids = {subscription.id for subscription in duplicates}
+    assert duplicate_ids == {"sub-2", "sub-3"}
+
+
+def test_find_duplicate_subscriptions_no_duplicates() -> None:
+    sub1 = WebhookSubscription(
+        id="sub-1",
+        publisherId="tfs",
+        eventType="git.push",
+        consumerInputs={"url": "https://host/webhook"},
+    )
+    sub2 = WebhookSubscription(
+        id="sub-2",
+        publisherId="tfs",
+        eventType="git.pullrequest.created",
+        consumerInputs={"url": "https://host/webhook"},
+    )
+
+    result, duplicates = AzureDevopsClient._find_duplicate_subscriptions(
+        [sub1, sub2]
+    )
+
+    assert len(result) == 2
+    assert len(duplicates) == 0
 
 
 @pytest.mark.asyncio
