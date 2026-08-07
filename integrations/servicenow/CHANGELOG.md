@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.3 (2026-08-09)
+
+
+### Bug Fixes
+
+- Updated ServiceNow retries to refresh authentication headers before retrying requests, preventing stale OAuth tokens from being reused after long retry delays
+
+
 ## 0.4.2 (2026-08-05)
 
 
