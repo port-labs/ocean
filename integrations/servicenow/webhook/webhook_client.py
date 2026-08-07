@@ -4,7 +4,7 @@ from port_ocean.context.ocean import ocean
 from typing import List, Dict, Any, Optional
 import asyncio
 
-from webhook.events import DEFAULT_FIELDS_PER_TABLE
+from webhook.events import DEFAULT_FIELDS_PER_TABLE, DEFAULT_GENERIC_FIELDS
 
 REST_MESSAGE_NAME = "Ocean Port Webhook"
 WEBHOOK_ENDPOINT = "/webhook"
@@ -16,13 +16,13 @@ class ServicenowWebhookClient(ServicenowClient):
     """Handles ServiceNow outbound webhook setup (REST Message + Business Rules)"""
 
     def _generate_business_rule_script(
-        self, fields: List[str], delete_event: bool = False
+        self, table_name: str, fields: List[str], delete_event: bool = False
     ) -> str:
-        payload_lines: List[str] = []
+        source = "previous" if delete_event else "current"
+        payload_lines: List[str] = [f'    "__table_name": "{table_name}",']
 
         for field in fields:
             safe_name = field.replace(".", "_")
-            source = "previous" if delete_event else "current"
             payload_lines.append(f'    "{safe_name}": {source}.{field} + "",')
 
         if payload_lines:
@@ -51,7 +51,7 @@ class ServicenowWebhookClient(ServicenowClient):
         order: int,
     ) -> Dict[str, Any]:
         """Build the payload for an `upsert event` business rule."""
-        upsert_event_script = self._generate_business_rule_script(fields)
+        upsert_event_script = self._generate_business_rule_script(table_name, fields)
         return {
             "name": rule_name,
             "sys_scope": "global",
@@ -78,7 +78,7 @@ class ServicenowWebhookClient(ServicenowClient):
     ) -> Dict[str, Any]:
         """Build the payload for a `delete event` business rule."""
         delete_event_script = self._generate_business_rule_script(
-            fields, delete_event=True
+            table_name, fields, delete_event=True
         )
         return {
             "name": f"{rule_name} (delete)",
@@ -396,21 +396,18 @@ class ServicenowWebhookClient(ServicenowClient):
         order = 200
 
         for table_name in tables:
-            if table_name not in DEFAULT_FIELDS_PER_TABLE:
-                logger.warning(f"Skipping unknown table: {table_name}")
-                continue
-
+            fields = DEFAULT_FIELDS_PER_TABLE.get(table_name, DEFAULT_GENERIC_FIELDS)
             tasks.append(
                 self._create_business_rule_if_not_exists(
                     table_name,
-                    DEFAULT_FIELDS_PER_TABLE[table_name],
+                    fields,
                     order=order,
                 )
             )
-            order += 10  # prevent order collisions
+            order += 10
 
         if tasks:
             await asyncio.gather(*tasks)
             logger.success(f"Webhook configuration completed for {len(tasks)} tables")
         else:
-            logger.info("No valid tables to configure")
+            logger.info("No tables to configure")

@@ -41,13 +41,13 @@ configurations:
     required: false
     type: boolean
     default: false
-    description: "Enable automatic creation of Business Rules in ServiceNow for real-time events forwarding to Port. This is a heavy operation that creates Business Rules for All/specified tables by `liveEventTables`."
+    description: "Enable automatic creation of Business Rules in ServiceNow for real-time events forwarding to Port. When enabled, business rules are created for every table in your mapping configuration, or only for tables specified in `liveEventTables`."
   - name: liveEventTables
     required: false
     type: array
     items:
       type: string
-    description: "Optional list of specific table names to configure for live events. If not specified but enableTablesLiveEventsWebhooks is true, all supported tables will be configured. Use this to limit which tables trigger live events."
+    description: "Optional list of specific table names to configure for live events. If not specified but enableTablesLiveEventsWebhooks is true, all tables from the mapping configuration will be configured. Use this to limit which tables trigger live events."
   - name: webhookSecret
     required: false
     type: string
