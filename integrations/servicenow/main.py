@@ -69,8 +69,10 @@ async def on_start() -> None:
     if live_event_tables:
         tables = [table.strip() for table in live_event_tables]
     else:
-        app_config = await ocean.integration.port_app_config_handler.get_port_app_config()
-        tables = list({resource.kind for resource in app_config.resources})
+        app_config = (
+            await ocean.integration.port_app_config_handler.get_port_app_config()
+        )
+        tables = sorted({resource.kind for resource in app_config.resources})
     logger.info(f"Configuring live events for {len(tables)} tables: {tables}")
 
     webhook_client = initialize_webhook_client()

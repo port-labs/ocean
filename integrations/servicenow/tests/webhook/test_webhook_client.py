@@ -139,6 +139,9 @@ class TestServicenowWebhookClient:
                 )
 
                 assert mock_create_rule.call_count == 2
+                mock_create_rule.assert_any_call(
+                    "cmdb_ci_server", ["sys_id"], order=210
+                )
 
     @pytest.mark.asyncio
     async def test_create_webhook_no_rest_message(
