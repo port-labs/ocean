@@ -2289,34 +2289,6 @@ class AzureDevopsClient(HTTPBaseClient):
             params=params,
         )
 
-    async def _bounded_delete_subscription(
-        self,
-        subscription: WebhookSubscription,
-        semaphore: asyncio.BoundedSemaphore,
-    ) -> None:
-        async with semaphore:
-            await self.delete_subscription(subscription)
-
-    async def _delete_subscriptions(
-        self, subscriptions: list[WebhookSubscription]
-    ) -> None:
-        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
-        results = await asyncio.gather(
-            *[
-                self._bounded_delete_subscription(sub, semaphore)
-                for sub in subscriptions
-            ],
-            return_exceptions=True,
-        )
-        for subscription, result in zip(subscriptions, results):
-            if isinstance(result, asyncio.CancelledError):
-                raise result
-            if isinstance(result, Exception):
-                logger.warning(
-                    f"Failed to delete subscription {subscription.id} "
-                    f"(eventType={subscription.eventType}): {result}"
-                )
-
     async def _get_item_content(
         self, file_path: str, repository_id: str, version_type: str, version: str
     ) -> bytes:
@@ -2667,16 +2639,12 @@ class AzureDevopsClient(HTTPBaseClient):
             existing_subscriptions = await self.get_filtered_webhook_subscriptions()
 
         subs_to_create = []
-        subs_to_delete: list[WebhookSubscription] = []
+        subs_to_delete = []
 
         if len(existing_subscriptions) > len(AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS):
-            logger.debug(
-                f"Checking {len(existing_subscriptions)} existing subscriptions for duplicates"
+            existing_subscriptions, _ = self._find_duplicate_subscriptions(
+                existing_subscriptions
             )
-            existing_subscriptions, duplicate_subscriptions = (
-                self._find_duplicate_subscriptions(existing_subscriptions)
-            )
-            subs_to_delete.extend(duplicate_subscriptions)
         # IDs of existing healthy subscriptions we keep as-is — needed for
         # the subscription registry so incoming events can be routed.
         kept_sub_ids: list[str] = []
@@ -2701,7 +2669,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 subs_to_create.append(sub)
 
         if subs_to_delete:
-            await self._delete_subscriptions(subs_to_delete)
+            await asyncio.gather(
+                *[self.delete_subscription(sub) for sub in subs_to_delete]
+            )
 
         created_sub_ids: list[str] = []
         if subs_to_create:
