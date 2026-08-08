@@ -2950,9 +2950,7 @@ def test_find_duplicate_subscriptions_no_duplicates() -> None:
         consumerInputs={"url": "https://host/webhook"},
     )
 
-    result, duplicates = AzureDevopsClient._find_duplicate_subscriptions(
-        [sub1, sub2]
-    )
+    result, duplicates = AzureDevopsClient._find_duplicate_subscriptions([sub1, sub2])
 
     assert len(result) == 2
     assert len(duplicates) == 0

@@ -2210,12 +2210,16 @@ class AzureDevopsClient(HTTPBaseClient):
             key = (
                 subscription.publisherId,
                 subscription.eventType,
-                subscription.consumerInputs.get("url")
-                if subscription.consumerInputs
-                else None,
-                subscription.publisherInputs.get("projectId")
-                if subscription.publisherInputs
-                else None,
+                (
+                    subscription.consumerInputs.get("url")
+                    if subscription.consumerInputs
+                    else None
+                ),
+                (
+                    subscription.publisherInputs.get("projectId")
+                    if subscription.publisherInputs
+                    else None
+                ),
             )
             if key in seen:
                 duplicates.append(subscription)
@@ -2305,7 +2309,9 @@ class AzureDevopsClient(HTTPBaseClient):
             return_exceptions=True,
         )
         for subscription, result in zip(subscriptions, results):
-            if isinstance(result, BaseException):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, Exception):
                 logger.warning(
                     f"Failed to delete subscription {subscription.id} "
                     f"(eventType={subscription.eventType}): {result}"
