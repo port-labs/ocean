@@ -1,0 +1,135 @@
+[
+    {
+        "identifier": "cursor_agent",
+        "title": "Cursor Agent",
+        "icon": "Cursor",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": [
+                        "ACTIVE",
+                        "ARCHIVED"
+                    ],
+                    "enumColors": {
+                        "ACTIVE": "blue",
+                        "ARCHIVED": "lightGray"
+                    }
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Cursor URL",
+                    "format": "url"
+                },
+                "repoUrls": {
+                    "type": "array",
+                    "title": "Repository URLs",
+                    "items": {
+                        "type": "string",
+                        "format": "url"
+                    }
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "cursor_run",
+        "title": "Cursor Run",
+        "icon": "Cursor",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": [
+                        "CREATING",
+                        "RUNNING",
+                        "FINISHED",
+                        "ERROR",
+                        "CANCELLED",
+                        "EXPIRED"
+                    ],
+                    "enumColors": {
+                        "CREATING": "lightGray",
+                        "RUNNING": "blue",
+                        "FINISHED": "green",
+                        "ERROR": "red",
+                        "CANCELLED": "yellow",
+                        "EXPIRED": "yellow"
+                    }
+                },
+                "durationMs": {
+                    "type": "number",
+                    "title": "Duration (ms)"
+                },
+                "branches": {
+                    "type": "array",
+                    "title": "Pushed branches",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "prUrls": {
+                    "type": "array",
+                    "title": "Pull request URLs",
+                    "items": {
+                        "type": "string",
+                        "format": "url"
+                    }
+                },
+                "inputTokens": {
+                    "type": "number",
+                    "title": "Input tokens"
+                },
+                "outputTokens": {
+                    "type": "number",
+                    "title": "Output tokens"
+                },
+                "cacheReadTokens": {
+                    "type": "number",
+                    "title": "Cache read tokens"
+                },
+                "cacheWriteTokens": {
+                    "type": "number",
+                    "title": "Cache write tokens"
+                },
+                "totalTokens": {
+                    "type": "number",
+                    "title": "Total tokens"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "agent": {
+                "title": "Agent",
+                "target": "cursor_agent",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]

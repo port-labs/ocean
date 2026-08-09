@@ -102,7 +102,6 @@ class RetryConfig:
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
                 HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
             ]
         )
 
