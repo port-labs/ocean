@@ -679,11 +679,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     request = refreshed_request
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
-                retry_request = await self.before_retry_after_sleep_async(
+                post_sleep_request = await self.before_retry_after_sleep_async(
                     request, response, sleep_time, attempts_made
                 )
-                if retry_request is not None:
-                    request = retry_request
+                if post_sleep_request is not None:
+                    request = post_sleep_request
 
             error = None
             response = None
@@ -757,11 +757,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     request = refreshed_request
                 self._log_before_retry(request, sleep_time, response, error)
                 time.sleep(sleep_time)
-                retry_request = self.before_retry_after_sleep(
+                post_sleep_request = self.before_retry_after_sleep(
                     request, response, sleep_time, attempts_made
                 )
-                if retry_request is not None:
-                    request = retry_request
+                if post_sleep_request is not None:
+                    request = post_sleep_request
 
             error = None
             response = None
