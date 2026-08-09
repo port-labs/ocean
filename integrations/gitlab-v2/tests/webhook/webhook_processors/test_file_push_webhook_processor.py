@@ -51,6 +51,7 @@ class TestFilePushWebhookProcessor:
                 "id": 68204746,
                 "name": "project7",
                 "path_with_namespace": "getport-labs/project7",
+                "default_branch": "main",
                 "url": "https://gitlab.example.com/getport-labs/project7.git",
                 "description": "Test repository",
                 "homepage": "https://gitlab.example.com/getport-labs/project7",
@@ -116,6 +117,81 @@ class TestFilePushWebhookProcessor:
     ) -> None:
         """Test that get_matching_kinds returns the FILE kind"""
         assert await processor.get_matching_kinds(mock_event) == [ObjectKind.FILE]
+
+    async def test_skips_non_default_branch(
+        self,
+        processor: FilePushWebhookProcessor,
+        push_payload: dict[str, Any],
+        resource_config: ResourceConfig,
+    ) -> None:
+        """Test that file push events only process default branch changes"""
+        payload = {**push_payload, "ref": "refs/heads/feature"}
+        processor._gitlab_webhook_client = MagicMock()
+
+        result = await processor.handle_event(payload, resource_config)
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        processor._gitlab_webhook_client.compare_repository.assert_not_called()
+
+    async def test_skips_when_default_branch_unknown(
+        self,
+        processor: FilePushWebhookProcessor,
+        push_payload: dict[str, Any],
+        resource_config: ResourceConfig,
+    ) -> None:
+        """Test that file push events are skipped when the default branch is missing"""
+        project = {**push_payload["project"]}
+        project.pop("default_branch")
+        payload = {**push_payload, "project": project}
+        processor._gitlab_webhook_client = MagicMock()
+
+        result = await processor.handle_event(payload, resource_config)
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        processor._gitlab_webhook_client.compare_repository.assert_not_called()
+
+    async def test_processes_default_branch_push(
+        self,
+        processor: FilePushWebhookProcessor,
+        push_payload: dict[str, Any],
+        resource_config: ResourceConfig,
+    ) -> None:
+        """Test that default branch file push events resolve changed paths."""
+        project_id = push_payload["project_id"]
+        processor._gitlab_webhook_client = MagicMock()
+        self.mock_compare(
+            processor._gitlab_webhook_client,
+            added=["package.json"],
+        )
+        processor._gitlab_webhook_client._process_file_batch = AsyncMock(
+            return_value=[]
+        )
+        processor._gitlab_webhook_client._enrich_files_with_repos = AsyncMock(
+            return_value=[]
+        )
+
+        result = await processor.handle_event(push_payload, resource_config)
+
+        processor._gitlab_webhook_client.compare_repository.assert_awaited_once_with(
+            push_payload["project"]["path_with_namespace"],
+            push_payload["before"],
+            push_payload["after"],
+        )
+        processor._gitlab_webhook_client._process_file_batch.assert_called_once_with(
+            [
+                {
+                    "project_id": str(project_id),
+                    "path": "package.json",
+                    "ref": push_payload["after"],
+                }
+            ],
+            context=f"project:{project_id}",
+            skip_parsing=False,
+        )
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
 
     async def test_handle_event_with_no_repos(
         self,
