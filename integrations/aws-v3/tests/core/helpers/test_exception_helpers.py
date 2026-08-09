@@ -13,7 +13,10 @@ def _client_error(code: str) -> ClientError:
 def test_is_resource_not_found_exception_includes_s3_codes() -> None:
     assert is_resource_not_found_exception(_client_error("NoSuchBucket")) is True
     assert is_resource_not_found_exception(_client_error("404")) is True
-    assert is_resource_not_found_exception(_client_error("ResourceNotFoundException")) is True
+    assert (
+        is_resource_not_found_exception(_client_error("ResourceNotFoundException"))
+        is True
+    )
     assert is_resource_not_found_exception(_client_error("AccessDenied")) is False
 
 

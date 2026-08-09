@@ -10,9 +10,7 @@ from port_ocean.core.models import IntegrationFeatureFlag
 async def test_is_aws_v3_live_events_enabled_when_flag_present() -> None:
     with patch(
         "aws.utils.feature_flags.ocean.port_client.get_organization_feature_flags",
-        new=AsyncMock(
-            return_value=[IntegrationFeatureFlag.AWS_V3_LIVE_EVENTS_ENABLED]
-        ),
+        new=AsyncMock(return_value=[IntegrationFeatureFlag.AWS_V3_LIVE_EVENTS_ENABLED]),
     ):
         assert await is_aws_v3_live_events_enabled() is True
 

@@ -57,12 +57,8 @@ class LiveEventFactories:
 
     request_factory: Callable[[LiveEventContext, list[str]], ResourceRequestModel]
     # Properties that identify the entity in Port when emitting deleted_raw_results
-    deletion_identifier_properties_factory: Callable[
-        [LiveEventContext], dict[str, str]
-    ]
-    cloudtrail_mappings: dict[str, CloudTrailEventMapping] = field(
-        default_factory=dict
-    )
+    deletion_identifier_properties_factory: Callable[[LiveEventContext], dict[str, str]]
+    cloudtrail_mappings: dict[str, CloudTrailEventMapping] = field(default_factory=dict)
 
 
 @dataclass

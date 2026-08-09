@@ -44,9 +44,7 @@ from aws.webhook.cloudtrail_parser import (
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
 from aws.utils.feature_flags import is_aws_v3_live_events_enabled
 
-_EMPTY_RESULTS = WebhookEventRawResults(
-    updated_raw_results=[], deleted_raw_results=[]
-)
+_EMPTY_RESULTS = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
 
 class CloudTrailWebhookProcessor(AbstractWebhookProcessor):

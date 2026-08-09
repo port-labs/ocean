@@ -1,3 +1,5 @@
+from typing import cast
+
 from aws.core.helpers.types import ObjectKind
 from aws.webhook.cloudtrail_parser import (
     CloudTrailDetail,
@@ -14,24 +16,32 @@ def _eventbridge_envelope(
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {
-        "eventName": event_name,
-        "awsRegion": region,
-        "recipientAccountId": account,
-    }
+    detail: CloudTrailDetail = {"eventName": event_name}
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
     if bucket_name is not None:
         detail["requestParameters"] = {"bucketName": bucket_name}
     else:
         detail["requestParameters"] = {}
 
-    return {
-        "version": "0",
-        "detail-type": "AWS API Call via CloudTrail",
-        "source": "aws.s3",
-        "account": account,
-        "region": region,
+    payload: EventBridgeCloudTrailPayload = {
         "detail": detail,
     }
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.s3",
+        },
+    )
 
 
 def test_is_supported_cloudtrail_event_true_for_create() -> None:
@@ -51,7 +61,12 @@ def test_is_supported_cloudtrail_event_false_for_unsupported_event() -> None:
 
 def test_is_supported_cloudtrail_event_false_for_malformed_payload() -> None:
     assert is_supported_cloudtrail_event({}) is False
-    assert is_supported_cloudtrail_event({"detail": "not-a-dict"}) is False
+    assert (
+        is_supported_cloudtrail_event(
+            cast(EventBridgeCloudTrailPayload, {"detail": "not-a-dict"})
+        )
+        is False
+    )
 
 
 def test_is_supported_cloudtrail_event_false_when_error_code_present() -> None:
@@ -121,24 +136,32 @@ def _lambda_eventbridge_envelope(
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {
-        "eventName": event_name,
-        "awsRegion": region,
-        "recipientAccountId": account,
-    }
+    detail: CloudTrailDetail = {"eventName": event_name}
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
     if function_name is not None:
         detail["requestParameters"] = {"functionName": function_name}
     else:
         detail["requestParameters"] = {}
 
-    return {
-        "version": "0",
-        "detail-type": "AWS API Call via CloudTrail",
-        "source": "aws.lambda",
-        "account": account,
-        "region": region,
+    payload: EventBridgeCloudTrailPayload = {
         "detail": detail,
     }
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.lambda",
+        },
+    )
 
 
 def test_is_supported_cloudtrail_event_true_for_create_function() -> None:

@@ -1,4 +1,5 @@
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Generator, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -6,6 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 from aws.core.helpers.metadata.types import ExporterMetadata, LiveEventFactories
 from aws.core.helpers.types import ObjectKind
+from aws.core.interfaces.exporter import IResourceExporter
 from aws.webhook.cloudtrail_parser import parse_cloudtrail_event
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
 from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
@@ -15,9 +17,15 @@ from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
 MODULE = "aws.webhook.webhook_processors.cloudtrail_webhook_processor"
 
 
+@dataclass
+class _LiveEventMetadataFixture:
+    metadata: ExporterMetadata
+    exporter_cls: MagicMock
+
+
 def _live_event_metadata(
     exporter_cls: MagicMock | None = None,
-) -> ExporterMetadata:
+) -> _LiveEventMetadataFixture:
     mock_exporter = AsyncMock()
     mock_exporter.get_resource = AsyncMock()
     exporter = exporter_cls or MagicMock(return_value=mock_exporter)
@@ -25,11 +33,12 @@ def _live_event_metadata(
         request_factory=MagicMock(),
         deletion_identifier_properties_factory=MagicMock(),
     )
-    return ExporterMetadata(
-        exporter=exporter,
+    metadata = ExporterMetadata(
+        exporter=cast(type[IResourceExporter[Any]], exporter),
         paginated_request_model=MagicMock(),
         live_events=live_events,
     )
+    return _LiveEventMetadataFixture(metadata=metadata, exporter_cls=exporter)
 
 
 def _create_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
@@ -85,7 +94,7 @@ def _delete_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
 
 
 @pytest.fixture(autouse=True)
-def _live_events_feature_flag_enabled() -> None:
+def _live_events_feature_flag_enabled() -> Generator[None, None, None]:
     with patch(
         f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
     ):
@@ -219,7 +228,7 @@ async def test_parse_cloudtrail_event_called_once_per_processor(
     ) as mock_parse:
         assert await processor.get_matching_kinds(event) == [ObjectKind.S3_BUCKET]
         assert await processor.validate_payload(payload) is True
-        await processor.handle_event(payload, None)  # type: ignore[arg-type]
+        await processor.handle_event(payload, None)
 
     assert mock_parse.call_count == 1
 
@@ -228,7 +237,7 @@ async def test_parse_cloudtrail_event_called_once_per_processor(
 async def test_handle_event_delete_returns_deleted_result(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    result = await processor.handle_event(_delete_event("bucket-to-delete"), None)  # type: ignore[arg-type]
+    result = await processor.handle_event(_delete_event("bucket-to-delete"), None)
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
@@ -251,22 +260,22 @@ async def test_handle_event_create_fetches_and_returns_resource(
         "Properties": {"BucketName": "my-bucket"},
     }
 
-    metadata = _live_event_metadata()
+    fixture = _live_event_metadata()
     with (
         patch(
             f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
         ),
         patch(
             f"{MODULE}.kind_to_export_metadata",
-            {ObjectKind.S3_BUCKET: metadata},
+            {ObjectKind.S3_BUCKET: fixture.metadata},
         ),
     ):
-        mock_exporter = metadata.exporter.return_value
+        mock_exporter = fixture.exporter_cls.return_value
         mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
 
-        result = await processor.handle_event(_create_event(), None)  # type: ignore[arg-type]
+        result = await processor.handle_event(_create_event(), None)
 
-    metadata.exporter.assert_called_once_with("session")
+    fixture.exporter_cls.assert_called_once_with("session")
     assert result.updated_raw_results == [fake_resource]
     assert result.deleted_raw_results == []
 
@@ -276,7 +285,7 @@ async def test_handle_event_create_skips_when_no_session_found(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
     with patch(f"{MODULE}.get_session_for_account", new=AsyncMock(return_value=None)):
-        result = await processor.handle_event(_create_event(), None)  # type: ignore[arg-type]
+        result = await processor.handle_event(_create_event(), None)
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == []
@@ -295,7 +304,7 @@ async def test_handle_event_lambda_delete_returns_deleted_result(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
     result = await processor.handle_event(
-        _lambda_delete_event("function-to-delete"), None  # type: ignore[arg-type]
+        _lambda_delete_event("function-to-delete"), None
     )
 
     assert result.updated_raw_results == []
@@ -321,22 +330,22 @@ async def test_handle_event_lambda_create_fetches_and_returns_resource(
         "Properties": {"FunctionName": "my-function"},
     }
 
-    metadata = _live_event_metadata()
+    fixture = _live_event_metadata()
     with (
         patch(
             f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
         ),
         patch(
             f"{MODULE}.kind_to_export_metadata",
-            {ObjectKind.LAMBDA_FUNCTION: metadata},
+            {ObjectKind.LAMBDA_FUNCTION: fixture.metadata},
         ),
     ):
-        mock_exporter = metadata.exporter.return_value
+        mock_exporter = fixture.exporter_cls.return_value
         mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
 
-        result = await processor.handle_event(_lambda_create_event(), None)  # type: ignore[arg-type]
+        result = await processor.handle_event(_lambda_create_event(), None)
 
-    metadata.exporter.assert_called_once_with("session")
+    fixture.exporter_cls.assert_called_once_with("session")
     assert result.updated_raw_results == [fake_resource]
     assert result.deleted_raw_results == []
 
@@ -348,7 +357,7 @@ async def test_handle_event_create_skips_access_denied(
     class FakeAccessDenied(Exception):
         response = {"Error": {"Code": "AccessDenied"}}
 
-    metadata = _live_event_metadata()
+    fixture = _live_event_metadata()
 
     with (
         patch(
@@ -356,13 +365,13 @@ async def test_handle_event_create_skips_access_denied(
         ),
         patch(
             f"{MODULE}.kind_to_export_metadata",
-            {ObjectKind.S3_BUCKET: metadata},
+            {ObjectKind.S3_BUCKET: fixture.metadata},
         ),
     ):
-        mock_exporter = metadata.exporter.return_value
+        mock_exporter = fixture.exporter_cls.return_value
         mock_exporter.get_resource = AsyncMock(side_effect=FakeAccessDenied())
 
-        result = await processor.handle_event(_create_event("denied-bucket"), None)  # type: ignore[arg-type]
+        result = await processor.handle_event(_create_event("denied-bucket"), None)
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == []
@@ -375,8 +384,12 @@ async def test_handle_event_create_treats_not_found_as_deleted(
     class FakeNotFound(Exception):
         response = {"Error": {"Code": "NoSuchBucket"}}
 
-    metadata = _live_event_metadata()
-    metadata.live_events.deletion_identifier_properties_factory.return_value = {
+    fixture = _live_event_metadata()
+    assert fixture.metadata.live_events is not None
+    cast(
+        MagicMock,
+        fixture.metadata.live_events.deletion_identifier_properties_factory,
+    ).return_value = {
         "Arn": "arn:aws:s3:::missing-bucket",
         "BucketName": "missing-bucket",
     }
@@ -387,13 +400,13 @@ async def test_handle_event_create_treats_not_found_as_deleted(
         ),
         patch(
             f"{MODULE}.kind_to_export_metadata",
-            {ObjectKind.S3_BUCKET: metadata},
+            {ObjectKind.S3_BUCKET: fixture.metadata},
         ),
     ):
-        mock_exporter = metadata.exporter.return_value
+        mock_exporter = fixture.exporter_cls.return_value
         mock_exporter.get_resource = AsyncMock(side_effect=FakeNotFound())
 
-        result = await processor.handle_event(_create_event("missing-bucket"), None)  # type: ignore[arg-type]
+        result = await processor.handle_event(_create_event("missing-bucket"), None)
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [

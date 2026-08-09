@@ -23,7 +23,6 @@ from aws.auth.session_factory import (
     clear_aws_account_sessions,
 )
 
-
 register_cloudtrail_live_events()
 
 

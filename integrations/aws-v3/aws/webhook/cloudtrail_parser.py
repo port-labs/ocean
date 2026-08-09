@@ -73,6 +73,9 @@ def parse_cloudtrail_event(
         return None
 
     event_name = detail.get("eventName")
+    if not event_name:
+        return None
+
     mapping = EVENT_NAME_MAPPINGS.get(event_name)
     if mapping is None:
         return None
