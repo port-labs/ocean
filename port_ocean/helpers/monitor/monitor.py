@@ -240,14 +240,14 @@ class PerformanceMonitor:
             self._current_tracking_kind
             and self._current_tracking_kind in self._kind_tracking
         ):
-            logger.info(
+            logger.debug(
                 f"[Monitor] Recorded response size: {size_bytes} bytes for kind: {self._current_tracking_kind} (monitor_id={id(self)})"
             )
             self._kind_tracking[self._current_tracking_kind]["response_sizes"].append(
                 size_bytes
             )
         else:
-            logger.info(
+            logger.debug(
                 f"[Monitor] Cannot record response size: {size_bytes} bytes - current_kind={self._current_tracking_kind}, tracking_kinds={list(self._kind_tracking.keys())} (monitor_id={id(self)})"
             )
 
