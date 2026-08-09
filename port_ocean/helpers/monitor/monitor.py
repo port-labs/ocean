@@ -241,14 +241,21 @@ class PerformanceMonitor:
             and self._current_tracking_kind in self._kind_tracking
         ):
             logger.debug(
-                f"[Monitor] Recorded response size: {size_bytes} bytes for kind: {self._current_tracking_kind} (monitor_id={id(self)})"
+                "[Monitor] Recorded response size: {} bytes for kind: {} (monitor_id={})",
+                size_bytes,
+                self._current_tracking_kind,
+                id(self),
             )
             self._kind_tracking[self._current_tracking_kind]["response_sizes"].append(
                 size_bytes
             )
         else:
             logger.debug(
-                f"[Monitor] Cannot record response size: {size_bytes} bytes - current_kind={self._current_tracking_kind}, tracking_kinds={list(self._kind_tracking.keys())} (monitor_id={id(self)})"
+                "[Monitor] Cannot record response size: {} bytes - current_kind={}, tracking_kinds={} (monitor_id={})",
+                size_bytes,
+                self._current_tracking_kind,
+                list(self._kind_tracking.keys()),
+                id(self),
             )
 
     def get_kind_stats(self, kind: str) -> ResourceUsageStats:
