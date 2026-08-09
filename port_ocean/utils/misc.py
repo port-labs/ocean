@@ -15,6 +15,8 @@ from uuid import uuid4
 import tomli
 import yaml
 
+from port_ocean.exceptions.spec import SpecFileError
+
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
 
@@ -77,11 +79,30 @@ def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
         spec_path = spec_dir / filename
         if not spec_path.is_file():
             continue
+
+        content = spec_path.read_text(encoding="utf-8")
         if filename.endswith(".json"):
-            result = json.loads(spec_path.read_text())
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as exc:
+                raise SpecFileError(
+                    f"Failed to parse {spec_path}: invalid JSON"
+                ) from exc
         else:
-            result = yaml.safe_load(spec_path.read_text())
-        return result if isinstance(result, dict) else None
+            try:
+                result = yaml.safe_load(content)
+            except yaml.YAMLError as exc:
+                raise SpecFileError(
+                    f"Failed to parse {spec_path}: invalid YAML"
+                ) from exc
+
+        if not isinstance(result, dict):
+            raise SpecFileError(
+                f"Failed to load {spec_path}: spec file must contain a JSON object"
+            )
+
+        return result
+
     return None
 
 
