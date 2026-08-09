@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.11.5 (2026-08-08)
+## 0.11.6 (2026-08-09)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed webhook reconciliation creating unbounded duplicate subscriptions by aborting setup when any subscription lookup fails, preventing partial data from being treated as an authoritative inventory. Previously, transient failures (429, timeout) on the subscription listing endpoint silently returned empty results, causing the reconciliation loop to create duplicates for every affected event type on each cycle.
+- Bumped ocean version to ^0.47.9
+
+
+## 0.11.5 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
 
 
 ## 0.11.4 (2026-08-05)
