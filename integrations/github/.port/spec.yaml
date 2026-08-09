@@ -113,6 +113,7 @@ saas:
       integrationSpec:
         githubHost: "'https://api.github.com'"
         githubAppId: .oauthData.appId
+        authenticationMode: "'Github App'"
 actionsProcessingEnabled: true
 actions:
   - name: dispatch_workflow

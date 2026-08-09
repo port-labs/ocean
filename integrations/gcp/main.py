@@ -9,7 +9,9 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.signal import signal_handler
 
+from gcp_core.cloud_function.resync import resync_cloud_function_resources
 from gcp_core.overrides import (
+    GCPCloudFunctionResourceConfig,
     GCPCloudResourceSelector,
 )
 from gcp_core.search.iterators import iterate_per_available_project
@@ -122,6 +124,16 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         topic_rate_limiter=topic_rate_limiter,
     ):
         yield batch
+
+
+@ocean.on_resync(kind=AssetTypesWithSpecialHandling.CLOUD_FUNCTION)
+async def resync_cloud_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = typing.cast(GCPCloudFunctionResourceConfig, get_current_resource_config())
+    integration_id = getattr(ocean.config.integration, "identifier", "gcp-integration")
+    agent = f"gcp/{integration_id}"
+    secrets = ocean.integration_config.get("cloud_function_secret", {})
+    async for page in resync_cloud_function_resources(config, agent, secrets):
+        yield page
 
 
 @ocean.on_resync()
