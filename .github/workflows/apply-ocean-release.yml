@@ -68,6 +68,7 @@ jobs:
           python3 scripts/ci/apply_ocean_release.py \
             --merge-sha "${{ github.sha }}" \
             --main-ref origin/main \
+            --skip-checkout \
             --skip-commit
 
           if [ -z "$(git status --porcelain)" ]; then
@@ -93,7 +94,6 @@ jobs:
           '
           )
           echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
-          git checkout -B "${BRANCH_NAME}" origin/main
 
       - name: Resolve developer from merge commit
         if: steps.apply.outputs.has_changes == 'true'
