@@ -14,6 +14,7 @@ from aws.core.exporters.organizations.account.exporter import (
 )
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
 from aws.core.helpers.utils import is_access_denied_exception
+from aws.webhook.registry import register_cloudtrail_live_events
 
 from loguru import logger
 from resync import ResyncAWSService
@@ -21,6 +22,8 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
+
+register_cloudtrail_live_events()
 
 
 @ocean.on_resync_start()
