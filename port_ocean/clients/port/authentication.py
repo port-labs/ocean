@@ -13,7 +13,7 @@ from port_ocean.utils.misc import get_time
 
 
 class TokenResponse(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel)
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     access_token: str
     expires_in: int
