@@ -263,6 +263,15 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             fields.get("queuedAt"), stream_key=self._stream_key
         )
         time_until_consumed_ms = self._time_since_queued_ms(queued_time)
+        logger.info(
+            "Redis stream message received",
+            stream_key=self._stream_key,
+            message_id=message_id,
+            webhook_path=fields.get("webhookPath"),
+            queued_at=fields.get("queuedAt"),
+            stream_fields=fields,
+            time_until_consumed_ms=time_until_consumed_ms,
+        )
         try:
             raw_webhook_path = fields.get("webhookPath")
             if not raw_webhook_path:
@@ -275,11 +284,13 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
 
             webhook_path = self._normalize_webhook_path(raw_webhook_path)
             if webhook_path not in self._registered_paths:
+                elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
                 logger.warning(
                     "No processors registered for webhookPath, acknowledging",
                     stream_key=self._stream_key,
                     webhook_path=webhook_path,
                     message_id=message_id,
+                    elapsed_ms=elapsed_ms,
                 )
                 return
 
@@ -302,6 +313,13 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 original_request=original_request,
             )
 
+            logger.info(
+                "Dispatching Redis stream message to handler",
+                stream_key=self._stream_key,
+                message_id=message_id,
+                webhook_path=webhook_path,
+                trace_id=webhook_event.trace_id,
+            )
             await self._on_message(webhook_path, webhook_event)
         except Exception as error:
             logger.exception(
@@ -320,7 +338,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 message_id=message_id,
                 webhook_path=webhook_path,
                 elapsed_ms=elapsed_ms,
-                time_until_consumed_ms=time_until_consumed_ms,
                 time_until_acked_ms=time_until_acked_ms,
             )
 

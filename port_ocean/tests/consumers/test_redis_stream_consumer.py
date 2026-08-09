@@ -790,13 +790,34 @@ class TestRedisStreamConsumer:
                     },
                 )
 
+        stream_fields = {
+            "payload": json.dumps({}),
+            "headers": json.dumps({}),
+            "webhookPath": "integration/webhook",
+            "queuedAt": "1700000000000000000",
+        }
+        mock_logger_info.assert_any_call(
+            "Redis stream message received",
+            stream_key="1111111/live-events/raw/event-stream",
+            message_id="1700000000000-0",
+            webhook_path="integration/webhook",
+            queued_at="1700000000000000000",
+            stream_fields=stream_fields,
+            time_until_consumed_ms=2000.0,
+        )
+        mock_logger_info.assert_any_call(
+            "Dispatching Redis stream message to handler",
+            stream_key="1111111/live-events/raw/event-stream",
+            message_id="1700000000000-0",
+            webhook_path="/webhook",
+            trace_id=on_message.await_args.args[1].trace_id,
+        )
         mock_logger_info.assert_any_call(
             "Redis stream message processed",
             stream_key="1111111/live-events/raw/event-stream",
             message_id="1700000000000-0",
             webhook_path="/webhook",
             elapsed_ms=ANY,
-            time_until_consumed_ms=2000.0,
             time_until_acked_ms=2500.0,
         )
 

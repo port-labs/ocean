@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.47.10 (2026-08-09)
+
+
+### Improvements
+
+- Add Redis stream consumer logs when a message is received and before dispatch, including `stream_fields`, `queued_at`, `trace_id`, and consume latency (`time_until_consumed_ms`).
+
+
+## 0.47.9 (2026-08-09)
+
+
+### Improvements
+
+- Reduce monitor log noise by downgrading response size recording logs to debug level.
+
+
 ## 0.47.8 (2026-08-09)
 
 
