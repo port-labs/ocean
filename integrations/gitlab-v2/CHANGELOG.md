@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.12 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 0.9.11 (2026-08-05)
+
+
+### Bug Fixes
+
+- Fixed GitLab file live events to ignore non-default branch pushes, keeping file-kind webhook behavior consistent with default-branch-only resync discovery.
+- Fixed GitLab webhook matching to ignore non-GitLab webhook requests instead of failing when the `x-gitlab-event` header is missing.
+
+
+## 0.9.10 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 0.9.9 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 0.9.8 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
 ## 0.9.7 (2026-08-03)
 
 

@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.47.8 (2026-08-09)
+
+
+### Improvements
+
+- Add `AWS_V3_LIVE_EVENTS_ENABLED` integration feature flag.
+
+
+## 0.47.7 (2026-08-05)
+
+### Improvements
+
+- Default `processing_mode` to `dsp` and `lakehouse_enabled` to `true`. DSP still only activates when the required org feature flags are present; otherwise Ocean falls back to `ocean-core`.
+
+## 0.47.6 (2026-08-04)
+
+### Improvements
+
+- Reconcile `incrementalSyncEnabled` with Port during integration initialization when the configured value diverges from Port.
+- Add `incrementalSyncEnabled` support to integration create and patch API calls in `IntegrationClientMixin`.
+- Restrict `incremental_sync_interval` to allowed values of 15, 30, or 60 minutes.
+
+## 0.47.5 (2026-08-04)
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
 ## 0.47.4 (2026-08-03)
 
 ### Bug Fixes

@@ -30,6 +30,7 @@ from port_ocean.utils.misc import (
 from port_ocean.utils.time import parse_interval_to_minutes
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+ALLOWED_INCREMENTAL_SYNC_INTERVALS = (15, 30, 60)
 
 
 class SslX509Settings(BaseOceanModel):
@@ -91,7 +92,13 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     def parse_incremental_sync_interval(cls, value: Any) -> int:
         if value is None:
             return 15
-        return parse_interval_to_minutes(value)
+        minutes = parse_interval_to_minutes(value)
+        if minutes not in ALLOWED_INCREMENTAL_SYNC_INTERVALS:
+            raise ValueError(
+                f"incremental_sync_interval must be one of "
+                f"{ALLOWED_INCREMENTAL_SYNC_INTERVALS}, got {minutes}"
+            )
+        return minutes
 
     @root_validator(pre=True)
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -324,11 +331,11 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
-    lakehouse_enabled: bool = False
+    lakehouse_enabled: bool = True
     disable_ip_outbound_blocker: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
-    processing_mode: ProcessingMode = ProcessingMode.ocean_core
+    processing_mode: ProcessingMode = ProcessingMode.dsp
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(

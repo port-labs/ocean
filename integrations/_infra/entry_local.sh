@@ -10,7 +10,7 @@ source /app/integrations/_infra/sync_ca_certs.sh
 if [ ! -d ".venv-docker" ]; then
     /usr/bin/python3 -m venv .venv-docker
     source .venv-docker/bin/activate
-    python -m pip install poetry
+    python -m pip install 'poetry>=2.0.0,<3.0.0'
     python -m poetry install
 fi
 
@@ -19,7 +19,7 @@ cd integrations/$BUILD_CONTEXT
 if [ ! -d ".venv-docker" ]; then
     /usr/bin/python3 -m venv .venv-docker
     source .venv-docker/bin/activate
-    python -m pip install poetry
+    python -m pip install 'poetry>=2.0.0,<3.0.0'
     python -m poetry install
 fi
 source .venv-docker/bin/activate
