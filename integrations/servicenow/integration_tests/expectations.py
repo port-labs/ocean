@@ -91,13 +91,7 @@ def _incident_entities() -> tuple[EntityExpectation, ...]:
 
 
 KIND_EXPECTATIONS: dict[str, KindExpectation] = {
-    "sys_user_group": KindExpectation(
-        count=RECORD_COUNT, entities=_group_entities()
-    ),
-    "sc_catalog": KindExpectation(
-        count=RECORD_COUNT, entities=_catalog_entities()
-    ),
-    "incident": KindExpectation(
-        count=RECORD_COUNT, entities=_incident_entities()
-    ),
+    "sys_user_group": KindExpectation(count=RECORD_COUNT, entities=_group_entities()),
+    "sc_catalog": KindExpectation(count=RECORD_COUNT, entities=_catalog_entities()),
+    "incident": KindExpectation(count=RECORD_COUNT, entities=_incident_entities()),
 }

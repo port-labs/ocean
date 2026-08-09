@@ -75,7 +75,9 @@ class TestServiceNowHappyPath(BaseIntegrationTest):
 
         # --- Groups ---
         groups = by_blueprint.get("servicenowGroup", [])
-        assert len(groups) == RECORD_COUNT, f"Expected {RECORD_COUNT} groups, got {len(groups)}"
+        assert (
+            len(groups) == RECORD_COUNT
+        ), f"Expected {RECORD_COUNT} groups, got {len(groups)}"
         groups_by_id = {e["identifier"]: e for e in groups}
         for i in range(1, RECORD_COUNT + 1):
             record = user_group_response(i)
@@ -88,7 +90,9 @@ class TestServiceNowHappyPath(BaseIntegrationTest):
 
         # --- Catalogs ---
         catalogs = by_blueprint.get("servicenowCatalog", [])
-        assert len(catalogs) == RECORD_COUNT, f"Expected {RECORD_COUNT} catalogs, got {len(catalogs)}"
+        assert (
+            len(catalogs) == RECORD_COUNT
+        ), f"Expected {RECORD_COUNT} catalogs, got {len(catalogs)}"
         catalogs_by_id = {e["identifier"]: e for e in catalogs}
         for i in range(1, RECORD_COUNT + 1):
             record = service_catalog_response(i)
@@ -101,7 +105,9 @@ class TestServiceNowHappyPath(BaseIntegrationTest):
 
         # --- Incidents ---
         incidents = by_blueprint.get("servicenowIncident", [])
-        assert len(incidents) == RECORD_COUNT, f"Expected {RECORD_COUNT} incidents, got {len(incidents)}"
+        assert (
+            len(incidents) == RECORD_COUNT
+        ), f"Expected {RECORD_COUNT} incidents, got {len(incidents)}"
         incidents_by_id = {e["identifier"]: e for e in incidents}
         for i in range(1, RECORD_COUNT + 1):
             record = incident_response(i)
