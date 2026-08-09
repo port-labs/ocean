@@ -8,11 +8,10 @@ from port_ocean.integration_testing import (
     ResyncResult,
 )
 
+from helpers import integration_config, mapping_for_kind
 from mocks.payloads import (
     JIRA_API_URL,
-    JIRA_EMAIL,
     JIRA_HOST,
-    JIRA_TOKEN,
     ISSUE_COUNT,
     PROJECT_KEYS,
     USER_COUNT,
@@ -73,94 +72,10 @@ class TestJiraHappyPath(BaseIntegrationTest):
         return t
 
     def create_mapping_config(self) -> dict[str, Any]:
-        return {
-            "createMissingRelatedEntities": True,
-            "deleteDependentEntities": True,
-            "resources": [
-                {
-                    "kind": "project",
-                    "selector": {"query": "true"},
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "identifier": ".key",
-                                "title": ".name",
-                                "blueprint": '"jiraProject"',
-                                "properties": {
-                                    "url": '(.self | split("/") | .[:3] | join("/")) + "/projects/" + .key',
-                                    "totalIssues": ".insight.totalIssueCount",
-                                },
-                            }
-                        }
-                    },
-                },
-                {
-                    "kind": "issue",
-                    "selector": {
-                        "query": "true",
-                        "jql": "project = PORT",
-                    },
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "identifier": ".key",
-                                "title": ".fields.summary",
-                                "blueprint": '"jiraIssue"',
-                                "properties": {
-                                    "url": '(.self | split("/") | .[:3] | join("/")) + "/browse/" + .key',
-                                    "status": ".fields.status.name",
-                                    "issueType": ".fields.issuetype.name",
-                                    "creator": ".fields.creator.emailAddress",
-                                    "priority": ".fields.priority.name",
-                                    "labels": ".fields.labels",
-                                    "created": ".fields.created",
-                                    "updated": ".fields.updated",
-                                },
-                                "relations": {
-                                    "project": ".fields.project.key",
-                                    "assignee": ".fields.assignee.accountId",
-                                    "reporter": ".fields.reporter.accountId",
-                                },
-                            }
-                        }
-                    },
-                },
-                {
-                    "kind": "user",
-                    "selector": {"query": "true"},
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "identifier": ".accountId",
-                                "title": ".displayName",
-                                "blueprint": '"jiraUser"',
-                                "properties": {
-                                    "emailAddress": ".emailAddress",
-                                    "active": ".active",
-                                    "accountType": ".accountType",
-                                    "timeZone": ".timeZone",
-                                    "locale": ".locale",
-                                    "avatarUrl": '.avatarUrls["48x48"]',
-                                },
-                            }
-                        }
-                    },
-                },
-            ],
-        }
+        return mapping_for_kind("project", "issue", "user")
 
     def create_integration_config(self) -> dict[str, Any]:
-        return {
-            "integration": {
-                "identifier": "test-jira",
-                "type": "jira",
-                "config": {
-                    "jira_host": JIRA_HOST,
-                    "atlassian_user_email": JIRA_EMAIL,
-                    "atlassian_user_token": JIRA_TOKEN,
-                },
-            }
-        }
+        return integration_config()
 
     @pytest.mark.asyncio
     async def test_happy_path(self, resync: ResyncResult) -> None:
