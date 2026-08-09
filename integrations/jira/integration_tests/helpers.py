@@ -85,7 +85,6 @@ def integration_config() -> dict[str, Any]:
                 "jira_host": JIRA_HOST,
                 "atlassian_user_email": JIRA_EMAIL,
                 "atlassian_user_token": JIRA_TOKEN,
-                # No atlassian_organization_id → team resync is skipped by main.py.
             },
         }
     }
