@@ -805,12 +805,14 @@ class TestRedisStreamConsumer:
             stream_fields=stream_fields,
             time_until_consumed_ms=2000.0,
         )
+        assert on_message.await_args is not None
+        trace_id = on_message.await_args.args[1].trace_id
         mock_logger_info.assert_any_call(
             "Dispatching Redis stream message to handler",
             stream_key="1111111/live-events/raw/event-stream",
             message_id="1700000000000-0",
             webhook_path="/webhook",
-            trace_id=on_message.await_args.args[1].trace_id,
+            trace_id=trace_id,
         )
         mock_logger_info.assert_any_call(
             "Redis stream message processed",
