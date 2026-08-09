@@ -11,7 +11,7 @@ def parse_next_page_params(next_url: str) -> tuple[str, dict[str, Any]]:
     for k, v in parsed.params.multi_items():
         grouped[k].append(v)
     query_params: dict[str, Any] = {
-        k: vs[0] if len(vs) == 1 else vs for k, vs in grouped.items()
+        k: vs[0] if len(vs) == 1 else ",".join(vs) for k, vs in grouped.items()
     }
     return url_path, query_params
 

@@ -360,15 +360,40 @@ async def test_global_resync_skips_region_not_enabled() -> None:
             raise _region_not_enabled_error("InvalidClientTokenId")
         yield [{"id": "from-" + region}]
 
-    credentials = MockCredentials(["af-south-1", "eu-west-1"])
+    credentials = MockCredentials(["af-south-1", "ap-east-1"])
     results = []
     async for batch in _handle_global_resource_resync(
-        "AWS::IAM::Role", credentials, resync_func, ["af-south-1", "eu-west-1"]  # type: ignore[arg-type]
+        "AWS::IAM::Role", credentials, resync_func, ["af-south-1", "ap-east-1"]  # type: ignore[arg-type]
     ):
         results.append(batch)
 
-    assert call_log == ["af-south-1", "eu-west-1"]
-    assert results == [[{"id": "from-eu-west-1"}]]
+    assert call_log == ["af-south-1", "ap-east-1"]
+    assert results == [[{"id": "from-ap-east-1"}]]
+
+
+async def test_global_resync_prioritises_standard_over_opt_in_regions() -> None:
+    """Global resync tries standard regions before opt-in ones."""
+    from main import _handle_global_resource_resync
+
+    call_log: list[str] = []
+
+    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        call_log.append(session.region_name)
+        raise _access_denied_error()
+        yield
+
+    credentials = MockCredentials(["af-south-1", "us-east-1", "ap-east-1"])
+    results = []
+    async for batch in _handle_global_resource_resync(
+        "AWS::IAM::Role",
+        credentials,  # type: ignore[arg-type]
+        resync_func,
+        ["af-south-1", "us-east-1", "ap-east-1"],
+    ):
+        results.append(batch)
+
+    assert call_log == ["us-east-1", "af-south-1", "ap-east-1"]
+    assert results == []
 
 
 async def test_safe_iterate_suppresses_unrecognized_client_in_opt_in_region() -> None:

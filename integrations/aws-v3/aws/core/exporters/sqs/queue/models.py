@@ -1,8 +1,14 @@
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field, ConfigDict
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class QueueProperties(BaseModel):
+class QueueProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="forbid")
+
     QueueName: str = Field(default_factory=str)
     QueueUrl: str = Field(default_factory=str)
     QueueArn: str | None = None
@@ -27,10 +33,6 @@ class QueueProperties(BaseModel):
     DeduplicationScope: str | None = None
     FifoThroughputLimit: str | None = None
     Tags: dict[str, str] = Field(default_factory=dict)
-
-    class Config:
-        extra = "forbid"
-        allow_population_by_field_name = True
 
 
 class Queue(ResourceModel[QueueProperties]):

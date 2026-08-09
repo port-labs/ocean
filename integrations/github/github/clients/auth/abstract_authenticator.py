@@ -14,7 +14,6 @@ from loguru import logger
 
 import httpx
 
-
 GITHUB_RETRY_MAX_BACKOFF = 1800
 
 
@@ -46,17 +45,23 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    organization: str | None = None
     _http_client: Optional[httpx.AsyncClient] = None
     _rate_limit_notifier: Optional[
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ] = None
 
+    @property
     @abstractmethod
-    async def get_token(self, **kwargs: Any) -> GitHubToken:
+    def rate_limit_scope(self) -> str:
         pass
 
     @abstractmethod
-    async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
+    async def get_token(self) -> GitHubToken:
+        pass
+
+    @abstractmethod
+    async def get_headers(self) -> GitHubHeaders:
         pass
 
     def set_rate_limit_notifier(
@@ -68,7 +73,10 @@ class AbstractGitHubAuthenticator(ABC):
         return (await self.get_headers()).as_dict()
 
     def _make_client(
-        self, extra_retryable_methods: frozenset[str] = frozenset()
+        self,
+        *,
+        extra_retryable_methods: frozenset[str] = frozenset(),
+        extra_retryable_status: frozenset[int] = frozenset(),
     ) -> httpx.AsyncClient:
         default_methods = frozenset(
             ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
@@ -79,7 +87,8 @@ class AbstractGitHubAuthenticator(ABC):
                 "X-RateLimit-Reset",
             ],
             retryable_methods=default_methods | extra_retryable_methods,
-            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            additional_retry_status_codes={HTTPStatus.INTERNAL_SERVER_ERROR, 499}
+            | extra_retryable_status,
             ignore_retry_after_status_codes=[
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 HTTPStatus.BAD_GATEWAY,

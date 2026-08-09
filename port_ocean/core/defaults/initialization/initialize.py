@@ -60,12 +60,15 @@ async def _verify_integration_configuration(
         or integration.get("version") != ocean.port_client.integration_version
         or integration.get("actionsProcessingEnabled")
         != integration_config.actions_processor.enabled
+        or integration.get("incrementalSyncEnabled")
+        != integration_config.integration.incremental_sync_enabled
         or integration.get("processingMode") != integration_config.processing_mode
     ):
         await ocean.port_client.patch_integration(
             _type=integration_config.integration.type,
             changelog_destination=changelog_destination,
             actions_processing_enabled=integration_config.actions_processor.enabled,
+            incremental_sync_enabled=integration_config.integration.incremental_sync_enabled,
             processing_mode=integration_config.processing_mode,
         )
 
@@ -142,6 +145,7 @@ async def _initialize_defaults(
                 integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=setup_instance._default_mapping,
                 actions_processing_enabled=integration_config.actions_processor.enabled,
+                incremental_sync_enabled=integration_config.integration.incremental_sync_enabled,
                 create_port_resources_origin=origin,
             )
         except httpx.HTTPStatusError as err:

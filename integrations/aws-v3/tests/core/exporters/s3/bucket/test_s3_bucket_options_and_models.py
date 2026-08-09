@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from aws.core.exporters.s3.bucket.models import (
     Bucket,
@@ -218,7 +218,7 @@ class TestS3BucketProperties:
             BucketName="test-bucket", Tags=[{"Key": "Project", "Value": "demo"}]
         )
 
-        result = properties.dict(exclude_none=True)
+        result = properties.model_dump(exclude_none=True)
 
         # Should only include non-None fields
         assert "BucketName" in result
@@ -290,7 +290,7 @@ class TestS3Bucket:
         properties = BucketProperties(BucketName="test-bucket")
         bucket = Bucket(Properties=properties)
 
-        result = bucket.dict(exclude_none=True)
+        result = bucket.model_dump(exclude_none=True)
 
         assert "Type" in result
         assert "Properties" in result
@@ -329,7 +329,7 @@ class TestS3Bucket:
         )
 
         # Serialize to dict
-        bucket_dict = original_bucket.dict()
+        bucket_dict = original_bucket.model_dump()
 
         # Deserialize back to object
         recreated_bucket = Bucket(**bucket_dict)

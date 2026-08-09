@@ -56,7 +56,7 @@ async def enrich_team_with_members(
 
 @ocean.on_resync()
 async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(ResourceKindsWithSpecialHandling):
+    if kind in ResourceKindsWithSpecialHandling:
         logger.info(f"Kind {kind} has a special handling. Skipping...")
         return
 

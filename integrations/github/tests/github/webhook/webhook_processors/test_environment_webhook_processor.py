@@ -15,14 +15,14 @@ from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.environment_webhook_processor import (
     EnvironmentWebhookProcessor,
 )
-from integration import GithubEnvironmentConfig, RepoSearchSelector
+from integration import GithubEnvironmentConfig, GithubEnvironmentSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
     return GithubEnvironmentConfig(
         kind=ObjectKind.ENVIRONMENT,
-        selector=RepoSearchSelector(query="true"),
+        selector=GithubEnvironmentSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -99,7 +99,10 @@ class TestEnvironmentWebhookProcessor:
         # Verify exporter was called with correct options
         mock_exporter.get_resource.assert_called_once_with(
             SingleEnvironmentOptions(
-                organization="test-org", repo_name="test-repo", name="production"
+                organization="test-org",
+                repo_name="test-repo",
+                name="production",
+                include_variables=False,
             )
         )
 

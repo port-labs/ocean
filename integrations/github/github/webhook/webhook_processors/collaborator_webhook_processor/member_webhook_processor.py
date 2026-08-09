@@ -1,6 +1,6 @@
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.options import SingleCollaboratorOptions
 from github.helpers.utils import (
@@ -77,7 +77,7 @@ class CollaboratorMemberWebhookProcessor(
         logger.info(
             f"Creating REST client and exporter for collaborator {username} of organization: {organization}"
         )
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         exporter = RestCollaboratorExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(

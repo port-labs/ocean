@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 from gitlab.webhook.webhook_processors.branch_webhook_processor import (
     BranchWebhookProcessor,
-    DELETED_COMMIT_SHA,
 )
+from gitlab.webhook.webhook_processors.push_constants import DELETED_COMMIT_SHA
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from typing import Any

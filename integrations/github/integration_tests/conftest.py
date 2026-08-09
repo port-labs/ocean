@@ -12,11 +12,16 @@ if INTEGRATION_PATH not in sys.path:
 
 @pytest.fixture(autouse=True)
 def _reset_github_client_cache() -> Iterator[None]:
-    from github.clients.client_factory import GithubClientFactory
+    import github.clients.client_factory as client_factory
+    from github.clients.auth.github_app.installation_registry import (
+        reset_authenticators_by_org,
+    )
     from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
-    GithubClientFactory._instances.clear()
+    client_factory._clients.clear()
+    reset_authenticators_by_org()
     GitHubRateLimiterRegistry.reset_for_fork()
     yield
-    GithubClientFactory._instances.clear()
+    client_factory._clients.clear()
+    reset_authenticators_by_org()
     GitHubRateLimiterRegistry.reset_for_fork()

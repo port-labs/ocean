@@ -1,9 +1,13 @@
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+    BaseAWSPropertiesModel,
+)
 
 
-class DeploymentGroupProperties(BaseModel):
+class DeploymentGroupProperties(BaseAWSPropertiesModel):
     alarmConfiguration: dict[str, Any] | None = Field(
         default=None, alias="AlarmConfiguration"
     )
@@ -56,10 +60,6 @@ class DeploymentGroupProperties(BaseModel):
     triggerConfigurations: list[dict[str, Any]] = Field(
         default_factory=list, alias="TriggerConfigurations"
     )
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class CodeDeployDeploymentGroup(ResourceModel[DeploymentGroupProperties]):

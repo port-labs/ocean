@@ -7,6 +7,250 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.405 (2026-08-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+0.1.404 (2026-08-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+0.1.403 (2026-08-04)
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+0.1.402 (2026-08-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+0.1.401 (2026-08-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+0.1.400 (2026-07-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+0.1.399 (2026-07-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+0.1.398 (2026-07-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+0.1.397 (2026-07-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+0.1.396 (2026-07-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+0.1.395 (2026-07-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+0.1.394 (2026-07-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+0.1.393 (2026-07-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+0.1.392 (2026-07-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+0.1.391 (2026-07-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+0.1.390 (2026-07-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+0.1.389 (2026-07-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+0.1.388 (2026-07-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+0.1.387 (2026-07-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+0.1.386 (2026-07-20)
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+0.1.385 (2026-07-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+0.1.384 (2026-07-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+0.1.383 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+0.1.382 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+0.1.381 (2026-07-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+0.1.380 (2026-07-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+0.1.379 (2026-07-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+0.1.378 (2026-07-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+0.1.377 (2026-07-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+0.1.376 (2026-07-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+0.1.375 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+0.1.374 (2026-07-12)
+
+### Bug Fixes
+
+- CloudEvents OPTIONS validation middleware now uses the ASGI scope path instead of `request.url.path` for route matching
+
+0.1.373 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+0.1.372 (2026-07-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+0.1.371 (2026-07-09)
+
+### Improvements
+
+- Replaced legacy Azure event handlers with AbstractWebhookProcessor-based webhook processing
+
+
 0.1.370 (2026-07-08)
 
 ### Improvements
