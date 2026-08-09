@@ -1,71 +1,16 @@
-import asyncio
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, TypedDict
 
-import httpx
 from loguru import logger
 
+from port_ocean.clients.dsp.lifecycle_http import get_lifecycle_http_client
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.helpers.retry import RetryConfig
 from port_ocean.version import __integration_version__, __version__
 
 
 class LifecycleAttributes(TypedDict):
     ingestUrl: str
-
-
-def _truncate(text: str, max_len: int = 256) -> str:
-    return text if len(text) <= max_len else text[:max_len] + "…"
-
-
-class OceanResyncHttpClient(OceanAsyncClient):
-    """Best-effort authenticated HTTP client. Never raises; logs errors and swallows."""
-
-    def __init__(self, auth: PortAuthentication, timeout: int = 10) -> None:
-        self._lifecycle_auth = auth
-        super().__init__(
-            timeout=timeout,
-            retry_config=RetryConfig(
-                retryable_methods=[
-                    "POST",
-                    "HEAD",
-                    "GET",
-                    "PUT",
-                    "DELETE",
-                    "OPTIONS",
-                    "TRACE",
-                ]
-            ),
-        )
-
-    async def _raw_post(self, url: str, **kwargs: Any) -> httpx.Response:
-        return await super().post(url, **kwargs)
-
-    async def _do_post(self, url: str, json: dict[str, Any] | None = None) -> None:
-        try:
-            headers = await self._lifecycle_auth.headers()
-            response = await self._raw_post(url, headers=headers, json=json)
-
-            if response.is_error:
-                escaped = response.text.replace("{", "{{").replace("}", "}}")
-                logger.warning(
-                    f"API returned an error for POST {url}: {_truncate(escaped)}",
-                    status_code=response.status_code,
-                    response_body=_truncate(response.text),
-                )
-            else:
-                logger.info(
-                    f"API request succeeded for POST {url}",
-                    status_code=response.status_code,
-                    response_body=_truncate(response.text),
-                )
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            logger.error(f"Failed HTTP request: {type(exc).__name__}: {exc}")
 
 
 class GranularityType(Enum):
@@ -75,37 +20,21 @@ class GranularityType(Enum):
     RECONCILIATION = "RECONCILIATION"
 
 
-class LifecycleClient(OceanResyncHttpClient):
+class SyncType(Enum):
+    FULL_SYNC = "full_sync"
+    INCREMENTAL_RESYNC = "incremental_resync"
+
+
+class LifecycleClient:
     """Client for the integration-life-cycle service."""
 
     def __init__(self, auth: PortAuthentication) -> None:
+        self._lifecycle_http_client = get_lifecycle_http_client(auth)
         self._lifecycle_attributes: LifecycleAttributes | None = None
-        super().__init__(auth=auth)
-
-    async def _get_current_integration(self) -> dict[str, Any]:
-        logger.info(
-            f"Fetching integration with id: {self._lifecycle_auth.integration_identifier}"
-        )
-        response = await self._lifecycle_auth.client.get(
-            f"{self._lifecycle_auth.api_url}/integration/{self._lifecycle_auth.integration_identifier}",
-            headers=await self._lifecycle_auth.headers(),
-            params={
-                "oceanCoreVersion": __version__,
-                "isPolling": "false",
-            },
-        )
-        handle_port_status_code(response)
-        return response.json().get("integration", {})
-
-    async def get_lifecycle_attributes(self) -> LifecycleAttributes:
-        if self._lifecycle_attributes is None:
-            response = await self._get_current_integration()
-            self._lifecycle_attributes = response["lifecycleAttributes"]
-        return self._lifecycle_attributes
+        self._lifecycle_auth = auth
 
     async def _lifecycle_base_url(self) -> str:
-        attributes = await self.get_lifecycle_attributes()
-        return attributes["ingestUrl"].rstrip("/")
+        return f"{self._lifecycle_auth.api_url.rstrip('/')}/lifecycle"
 
     def _build_body(self, status: str, **extra: Any) -> dict[str, Any]:
         return {"status": status, **extra}
@@ -115,8 +44,7 @@ class LifecycleClient(OceanResyncHttpClient):
 
     async def _granular_url(self, event_id: str, granularity: GranularityType) -> str:
         return (
-            f"{await self._lifecycle_base_url()}/{event_id}"
-            f"/{granularity.value.lower()}"
+            f"{await self._lifecycle_base_url()}/{event_id}/{granularity.value.lower()}"
         )
 
     # ── Resync-level (2-segment URL) ─────────────────────────────────────────
@@ -126,19 +54,30 @@ class LifecycleClient(OceanResyncHttpClient):
         resync_id: str,
         integration_id: str,
         integration_type: str,
+        sync_type: str,
         started_at: datetime | None = None,
+        mapping: dict[str, Any] | None = None,
+        kind_identifiers: list[str] | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
+        extra = {"mapping": mapping} if mapping else {}
         body = self._build_body(
             "started",
             integration_id=integration_id,
             integration_type=integration_type,
             integration_version=__integration_version__,
+            sync_type=sync_type,
             ocean_version=__version__,
             started_at=started_at.isoformat(),
+            **extra,
         )
+        if kind_identifiers is not None:
+            body["kind_identifiers"] = kind_identifiers
+
         logger.info(f"Notifying lifecycle API resync started, resync_id={resync_id}")
-        await self._do_post(await self._resync_url(resync_id), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
 
     async def notify_resync_finished(
         self, resync_id: str, integration_id: str, integration_type: str
@@ -151,21 +90,39 @@ class LifecycleClient(OceanResyncHttpClient):
             ocean_version=__version__,
         )
         logger.info(f"Notifying lifecycle API resync finished, resync_id={resync_id}")
-        await self._do_post(await self._resync_url(resync_id), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
 
     async def notify_resync_failed(
         self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("failed")
         logger.info(f"Notifying lifecycle API resync failed, resync_id={resync_id}")
-        await self._do_post(await self._resync_url(resync_id), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
 
     async def notify_resync_aborted(
         self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("aborted")
         logger.info(f"Notifying lifecycle API resync aborted, resync_id={resync_id}")
-        await self._do_post(await self._resync_url(resync_id), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
+
+    async def get_resync_status(self, resync_id: str) -> str | None:
+        logger.debug(f"Polling lifecycle API resync status, resync_id={resync_id}")
+        response = await self._lifecycle_http_client.do_get(
+            await self._resync_url(resync_id)
+        )
+        if response is None:
+            return None
+        status = response.get("status")
+        if not isinstance(status, str):
+            return None
+        return status.lower()
 
     # ── Granular (3-segment URL) ──────────────────────────────────────────────
 
@@ -202,7 +159,9 @@ class LifecycleClient(OceanResyncHttpClient):
         logger.info(
             f"Notifying lifecycle API for status=started granularity={granularity.value}"
         )
-        await self._do_post(await self._granular_url(event_id, granularity), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )
 
     async def notify_finished(
         self,
@@ -217,7 +176,9 @@ class LifecycleClient(OceanResyncHttpClient):
         logger.info(
             f"Notifying lifecycle API for status=finished granularity={granularity.value}"
         )
-        await self._do_post(await self._granular_url(event_id, granularity), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )
 
     async def notify_failed(
         self,
@@ -229,7 +190,9 @@ class LifecycleClient(OceanResyncHttpClient):
         logger.info(
             f"Notifying lifecycle API for status=failed granularity={granularity.value}"
         )
-        await self._do_post(await self._granular_url(event_id, granularity), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )
 
     async def notify_aborted(
         self,
@@ -241,4 +204,6 @@ class LifecycleClient(OceanResyncHttpClient):
         logger.info(
             f"Notifying lifecycle API for status=aborted granularity={granularity.value}"
         )
-        await self._do_post(await self._granular_url(event_id, granularity), json=body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )

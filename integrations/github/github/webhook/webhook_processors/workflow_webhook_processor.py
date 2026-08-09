@@ -2,7 +2,7 @@ from loguru import logger
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.options import SingleWorkflowOptions
 from github.helpers.utils import ObjectKind
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -57,7 +57,7 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         commit_diff = await fetch_commit_diff(
             rest_client, organization, repo_name, payload["before"], payload["after"]
         )

@@ -1,6 +1,7 @@
 from typing import Any, Literal
 
 import httpx
+from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.mixins.actions import ActionsClientMixin
 from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMixin
@@ -148,6 +149,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                     "status": WorkflowNodeRunStatus.IN_PROGRESS,
                     "externalRunId": external_id,
                     "output": output,
+                    "links": [link],
                 },
             )
             run.output = output
@@ -164,6 +166,9 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         should_raise: bool = False,
     ) -> None:
         """Report a run as completed with success or failure."""
+        if not success:
+            logger.error("Run completed with failure", run_id=run.id)
+
         if isinstance(run, WorkflowNodeRun):
             result = (
                 WorkflowNodeRunResult.SUCCESS

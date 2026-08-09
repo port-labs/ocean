@@ -1,5 +1,5 @@
 from typing import List, Literal, Optional, Union, Any
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from pydantic.v1 import Field, BaseModel
 
@@ -23,6 +23,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
+from port_ocean.utils.relative_time import days_ago
 
 
 class AzureDevopsSelector(Selector):
@@ -269,7 +270,7 @@ class AzureDevopsPullRequestSelector(Selector):
     @property
     def min_time_datetime(self) -> datetime:
         """Convert the min time in days to a timezone-aware datetime object."""
-        return datetime.now(timezone.utc) - timedelta(days=self.min_time_in_days)
+        return days_ago(self.min_time_in_days)
 
 
 class AzureDevopsPullRequestResourceConfig(ResourceConfig):
@@ -513,17 +514,6 @@ class AzureDevopsBuildConfig(ResourceConfig):
     )
 
 
-class AzureDevopsPipelineStageConfig(ResourceConfig):
-    kind: Literal[Kind.PIPELINE_STAGE] = Field(
-        title="Azure Devops Pipeline Stage",
-        description="Azure Devops pipeline stage resource kind.",
-    )
-    selector: AzureDevopsSelector = Field(
-        title="Pipeline stage selector",
-        description="Selector for the pipeline stage resource.",
-    )
-
-
 class AzureDevopsPipelineRunConfig(ResourceConfig):
     kind: Literal[Kind.PIPELINE_RUN] = Field(
         title="Azure Devops Pipeline Run",
@@ -532,6 +522,17 @@ class AzureDevopsPipelineRunConfig(ResourceConfig):
     selector: AzureDevopsSelector = Field(
         title="Pipeline run selector",
         description="Selector for the pipeline run resource.",
+    )
+
+
+class AzureDevopsPipelineStageConfig(ResourceConfig):
+    kind: Literal[Kind.PIPELINE_STAGE] = Field(
+        title="Azure Devops Pipeline Stage",
+        description="Azure Devops pipeline stage resource kind.",
+    )
+    selector: AzureDevopsSelector = Field(
+        title="Pipeline stage selector",
+        description="Selector for the pipeline stage resource.",
     )
 
 
@@ -718,12 +719,14 @@ class AzureDevopsIntegration(BaseIntegration, AzureDevopsHandlerMixin):
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
         # Replace the Ocean's webhook manager with our custom one
-        self.context.app.webhook_manager = AzureDevopsLiveEventsProcessorManager(
+        processor_manager = AzureDevopsLiveEventsProcessorManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
+        self.context.app.webhook_manager = processor_manager
+        self.context.app.execution_manager._webhook_manager = processor_manager
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitPortAppConfig

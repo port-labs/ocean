@@ -16,7 +16,11 @@ from clients.aikido_client import (
     TEAMS_ENDPOINT,
     CONTAINERS_ENDPOINT,
 )
-from clients.options import ListRepositoriesOptions, ListContainersOptions
+from clients.options import (
+    ListRepositoriesOptions,
+    ListContainersOptions,
+    IssuesOptions,
+)
 from helpers.exceptions import (
     MissingIntegrationCredentialException,
 )
@@ -570,6 +574,73 @@ async def test_get_issues_paginates(aikido_client: AikidoClient) -> None:
     assert captured_kwargs["endpoint"] == ISSUES_ENDPOINT
     assert captured_kwargs["page_size"] == ISSUES_PAGE_SIZE
     assert captured_kwargs["base_params"] == {"format": "json"}
+
+
+@pytest.mark.asyncio
+async def test_get_issues_passes_filter_status(aikido_client: AikidoClient) -> None:
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _mock_paginated(**kwargs: Any) -> Any:
+        captured_kwargs.update(kwargs)
+        yield [{"id": "1"}]
+
+    with patch.object(aikido_client, "get_paginated_resource", new=_mock_paginated):
+        async for _ in aikido_client.get_issues(
+            options=IssuesOptions(filter_status="open")
+        ):
+            pass
+
+    assert captured_kwargs["base_params"] == {"format": "json", "filter_status": "open"}
+
+
+@pytest.mark.asyncio
+async def test_get_issues_passes_multiple_severities(
+    aikido_client: AikidoClient,
+) -> None:
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _mock_paginated(**kwargs: Any) -> Any:
+        captured_kwargs.update(kwargs)
+        yield [{"id": "1"}]
+
+    with patch.object(aikido_client, "get_paginated_resource", new=_mock_paginated):
+        async for _ in aikido_client.get_issues(
+            options=IssuesOptions(filter_severities="critical,high")
+        ):
+            pass
+
+    assert captured_kwargs["base_params"] == {
+        "format": "json",
+        "filter_severities": "critical,high",
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_issues_passes_combined_filters(
+    aikido_client: AikidoClient,
+) -> None:
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _mock_paginated(**kwargs: Any) -> Any:
+        captured_kwargs.update(kwargs)
+        yield [{"id": "1"}]
+
+    with patch.object(aikido_client, "get_paginated_resource", new=_mock_paginated):
+        async for _ in aikido_client.get_issues(
+            options=IssuesOptions(
+                filter_status="open",
+                filter_severities="critical,high",
+                filter_issue_type="sast",
+            )
+        ):
+            pass
+
+    assert captured_kwargs["base_params"] == {
+        "format": "json",
+        "filter_status": "open",
+        "filter_severities": "critical,high",
+        "filter_issue_type": "sast",
+    }
 
 
 @pytest.mark.asyncio

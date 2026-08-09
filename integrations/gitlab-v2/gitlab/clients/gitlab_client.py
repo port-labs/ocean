@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
+from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, Union
 
 import anyio
 import httpx
@@ -12,7 +12,12 @@ from port_ocean.utils.async_iterators import (
 from urllib.parse import quote
 from wcmatch import glob
 
-from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
+from gitlab.helpers.utils import (
+    build_search_query,
+    parse_file_content,
+    SearchQuery,
+    is_bot_member,
+)
 
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
@@ -44,6 +49,52 @@ def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
     return project.get("namespace", {}).get("kind") == "user"
 
 
+def _is_wildcard_path(path: str) -> bool:
+    """Check if a path contains glob wildcard characters."""
+    return any(c in path for c in "*?[]")
+
+
+def _literal_tree_prefix(path: str) -> str:
+    """Return the fixed directory prefix before the first glob segment.
+
+    Examples:
+        ``.cursor/skills/**/SKILL.md`` -> ``.cursor/skills``
+        ``**/SKILL.md`` -> ``""`` (whole repository)
+        ``skills/**/SKILL.md`` -> ``skills``
+    """
+    parts: list[str] = []
+    for part in path.strip("/").split("/"):
+        if _is_wildcard_path(part):
+            break
+        if part:
+            parts.append(part)
+    return "/".join(parts)
+
+
+def _repository_tree_params(path: str) -> tuple[str, bool]:
+    """Map a concrete path or glob to GitLab ``repository/tree`` (path, recursive).
+
+    Wildcard patterns recurse under their literal prefix instead of always walking
+    the whole repository. Concrete paths list that directory non-recursively.
+    """
+    if not _is_wildcard_path(path):
+        return path, False
+    return _literal_tree_prefix(path), True
+
+
+def _minimize_tree_roots(roots: set[str]) -> list[str]:
+    """Drop roots already covered by a parent root (empty root covers everything)."""
+    if "" in roots:
+        return [""]
+    ordered = sorted(roots, key=lambda root: (root.count("/"), len(root), root))
+    kept: list[str] = []
+    for root in ordered:
+        if any(root == parent or root.startswith(f"{parent}/") for parent in kept):
+            continue
+        kept.append(root)
+    return kept
+
+
 class GitLabClient:
     DEFAULT_PARAMS: dict[str, Any] = {
         "all_available": True,  # Fetch all resources accessible to the user
@@ -51,6 +102,9 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+        # Groups where Advanced Search (search_type=advanced) returned 400.
+        # Avoid re-trying that path for every file pattern in the same process.
+        self._groups_without_advanced_search: set[str] = set()
 
     async def get_personal_namespace_projects(
         self,
@@ -72,6 +126,20 @@ class GitLabClient:
     async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/repository/tags/{tag_name}"
+        )
+
+    async def compare_repository(
+        self,
+        project_path: str | int,
+        from_sha: str,
+        to_sha: str,
+    ) -> dict[str, Any]:
+        """Compare two refs and return the GitLab compare payload (including diffs)."""
+        encoded_path = quote(str(project_path), safe="")
+        return await self.rest.send_api_request(
+            "GET",
+            f"projects/{encoded_path}/repository/compare",
+            params={"from": from_sha, "to": to_sha},
         )
 
     async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
@@ -547,19 +615,82 @@ class GitLabClient:
     async def search_files(
         self,
         scope: str,
-        path: str,
+        query: SearchQuery,
+        skip_parsing: bool = False,
+        repositories: list[str] | None = None,
+        params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
+        strategy: str = "groupSearch",
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for files based on the specified strategy.
+
+        Args:
+            query: The parsed search path, built once by the caller and threaded
+                through every strategy so the query string is never rebuilt.
+            strategy: One of "projectSearch", "repositoryTree", or "groupSearch".
+                - projectSearch: Search across all accessible projects
+                - repositoryTree: Search across all accessible projects using tree API
+                - groupSearch: Search across groups (with fallback to projectSearch if no results)
+        """
+        should_use_tree = strategy == "repositoryTree"
+
+        if strategy in ("projectSearch", "repositoryTree"):
+            logger.info(
+                f"Using {'repository tree' if should_use_tree else 'project-level'} file search "
+                f"for path pattern '{query.path}'."
+            )
+            async for batch in self.search_files_in_projects(
+                scope,
+                query,
+                skip_parsing=skip_parsing,
+                repositories=repositories,
+                params=params,
+                should_use_tree=should_use_tree,
+                max_concurrent=max_concurrent,
+            ):
+                yield batch
+        else:
+            logger.info(
+                f"Using group-level file search for path pattern '{query.path}'."
+            )
+            has_group_results = False
+            async for batch in self._search_files_by_groups(
+                scope, query, repositories, skip_parsing, params, max_concurrent
+            ):
+                has_group_results = True
+                yield batch
+
+            if not has_group_results and not repositories:
+                logger.info(
+                    "Group-level file search returned no results. "
+                    "Falling back to project-level file search."
+                )
+                async for batch in self.search_files_in_projects(
+                    scope,
+                    query,
+                    skip_parsing=skip_parsing,
+                    params=params,
+                    should_use_tree=False,
+                    max_concurrent=max_concurrent,
+                ):
+                    yield batch
+
+    async def _search_files_by_groups(
+        self,
+        scope: str,
+        query: SearchQuery,
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        search_query = build_search_query(path)
-        logger.info(f"Starting file search with path pattern: '{path}'")
+        """Search files by groups or repositories (internal helper)."""
+        logger.info(f"Starting file search with path pattern: '{query.path}'")
 
         semaphore = asyncio.BoundedSemaphore(max_concurrent)
         if repositories:
             logger.info(
-                f"Searching for {path} across {len(repositories)} specific repositories"
+                f"Searching for {query.path} across {len(repositories)} specific repositories"
             )
             tasks = [
                 semaphore_async_iterator(
@@ -568,7 +699,7 @@ class GitLabClient:
                         self._search_files_in_repository,
                         repo,
                         scope,
-                        search_query,
+                        query,
                         skip_parsing,
                     ),
                 )
@@ -577,7 +708,7 @@ class GitLabClient:
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
         else:
-            logger.info(f"Searching for {path} across groups")
+            logger.info(f"Searching for {query.path} across groups")
             async for top_level_groups in self.get_parent_groups(
                 params=params,
             ):
@@ -592,7 +723,7 @@ class GitLabClient:
                             self._search_files_in_group,
                             str(group["id"]),
                             scope,
-                            search_query,
+                            query,
                             skip_parsing,
                         ),
                     )
@@ -604,82 +735,99 @@ class GitLabClient:
     async def search_files_in_projects(
         self,
         scope: str,
-        path: str,
+        query: SearchQuery,
+        *,
         skip_parsing: bool = False,
+        repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
+        should_use_tree: bool = False,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for files across all accessible projects.
+        """Search for files across accessible projects or specific repositories.
 
-        This is an alternative to search_files() for cases where the token
-        does not have group-level access. Instead of searching via the
-        Groups API, it iterates over all accessible projects and searches
-        each one individually using the Projects API.
+        Args:
+            repositories: List of specific repository paths to search. If None or empty,
+                         searches across all accessible projects.
+            params: Project filter parameters (only used when repositories is None).
+            should_use_tree: Whether to use the repository tree API for searching.
         """
-        search_query = build_search_query(path)
         logger.info(
-            f"Starting project-level file search with path pattern: '{path}' using params: {params}"
+            f"Starting project-level file search with path pattern: '{query.path}' using params: {params}"
         )
         semaphore = asyncio.BoundedSemaphore(max_concurrent)
-        async for projects_batch in self.get_projects(params=params):
+
+        if repositories:
+            logger.info(
+                f"Searching for {query.path} across {len(repositories)} specific repositories"
+            )
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
                     partial(
                         self._search_files_in_repository,
-                        project["path_with_namespace"],
+                        repo,
                         scope,
-                        search_query,
+                        query,
                         skip_parsing,
+                        should_use_tree=should_use_tree,
                     ),
                 )
-                for project in projects_batch
+                for repo in repositories
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
+        else:
+            logger.info(f"Searching for {query.path} across all accessible projects")
+            async for projects_batch in self.get_projects(params=params):
+                tasks = [
+                    semaphore_async_iterator(
+                        semaphore,
+                        partial(
+                            self._search_files_in_repository,
+                            project["path_with_namespace"],
+                            scope,
+                            query,
+                            skip_parsing,
+                            should_use_tree=should_use_tree,
+                        ),
+                    )
+                    for project in projects_batch
+                ]
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    yield batch
 
     async def get_repository_tree(
         self,
         project: dict[str, Any],
         path: str,
         ref: str = "main",
+        *,
+        recursive: bool | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch repository tree (folders only) for a project."""
+        """Fetch repository tree items for a project.
 
+        ``path`` may be a concrete directory or a glob. When ``recursive`` is
+        omitted, wildcards recurse under the literal prefix before the first
+        glob segment; concrete paths list that directory non-recursively.
+        Pass ``recursive`` explicitly when ``path`` is already a tree API path
+        (including ``""`` for the repository root).
+        """
         project_path = project["path_with_namespace"]
-        is_wildcard = any(c in path for c in "*?[]")
-
-        if is_wildcard:
-            # For wildcard patterns, we need to recursively search and filter using globmatch
-            params = {"ref": ref, "path": "", "recursive": True}
-
-            async for batch in self.rest.get_paginated_project_resource(
-                project_path, "repository/tree", params
-            ):
-                folders_batch = [
-                    item
-                    for item in batch
-                    if item["type"] == "tree"
-                    and glob.globmatch(
-                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                    )
-                ]
-                if folders_batch:
-                    yield [
-                        {"folder": folder, "repo": project, "__branch": ref}
-                        for folder in folders_batch
-                    ]
+        if recursive is None:
+            api_path, recursive = _repository_tree_params(path)
         else:
-            # For exact paths, use non-recursive search
-            params = {"ref": ref, "path": path, "recursive": False}
-            async for batch in self.rest.get_paginated_project_resource(
-                project_path, "repository/tree", params
-            ):
-                if folders_batch := [item for item in batch if item["type"] == "tree"]:
-                    yield [
-                        {"folder": folder, "repo": project, "__branch": ref}
-                        for folder in folders_batch
-                    ]
+            api_path = path
+
+        params = {
+            "ref": ref,
+            "path": api_path,
+            "recursive": recursive,
+        }
+        async for batch in self.rest.get_paginated_project_resource(
+            project_path, "repository/tree", params
+        ):
+            if batch:
+                yield batch
 
     async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
@@ -688,10 +836,23 @@ class GitLabClient:
         project = await self.get_project(repository)
         if project:
             effective_branch = branch or project["default_branch"]
-            async for folders_batch in self.get_repository_tree(
+            is_wildcard = _is_wildcard_path(path)
+            async for items_batch in self.get_repository_tree(
                 project, path, effective_branch
             ):
-                yield folders_batch
+                folders_batch = [
+                    {"folder": item, "repo": project, "__branch": effective_branch}
+                    for item in items_batch
+                    if item["type"] == "tree"
+                    and (
+                        not is_wildcard
+                        or glob.globmatch(
+                            item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                        )
+                    )
+                ]
+                if folders_batch:
+                    yield folders_batch
 
     async def _enrich_batch(
         self,
@@ -897,17 +1058,21 @@ class GitLabClient:
         self,
         repo: str,
         scope: str,
-        query: str,
+        query: SearchQuery,
         skip_parsing: bool = False,
+        should_use_tree: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.debug(
-            f"Starting search in repository '{repo}' for query '{query}' with scope '{scope}'"
+            f"Starting search in repository '{repo}' for query '{query.path}' with scope '{scope}'"
         )
-        params = {"scope": scope, "search": query}
-        encoded_repo = quote(repo, safe="")
-        path = f"projects/{encoded_repo}/search"
 
-        async for file_batch in self.rest.get_paginated_resource(path, params=params):
+        search_handler = (
+            self._match_files_with_repository_tree(repo, query)
+            if should_use_tree
+            else self._match_files_with_project_search(repo, scope, query)
+        )
+
+        async for file_batch in search_handler:
             logger.debug(f"Found {len(file_batch)} files in '{repo}'")
             processed_batch = await self._process_file_batch(
                 file_batch, repo, skip_parsing
@@ -915,11 +1080,179 @@ class GitLabClient:
             if processed_batch:
                 yield processed_batch
 
+    async def _match_files_with_project_search(
+        self, repo: str, scope: str, query: SearchQuery
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        params = {"scope": scope, "search": query.to_query_string()}
+        encoded_repo = quote(repo, safe="")
+        search_path = f"projects/{encoded_repo}/search"
+        async for file_batch in self.rest.get_paginated_resource(
+            search_path, params=params
+        ):
+            yield file_batch
+
+    async def _match_files_with_repository_tree(
+        self, repo: str, query: SearchQuery
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for files in specified repository matching the given path pattern.
+
+        A pathless pattern (no directory component, e.g. ``*.yaml`` or ``readme.md``)
+        matches by filename anywhere in the repository, mirroring the search API's
+        ``filename:`` behavior: it is expanded to ``**/<filename>`` so the whole tree
+        is walked recursively and matches in subdirectories are not missed. A pattern
+        with a directory component is matched against the full path as given.
+        """
+        async for batch in self._match_files_with_repository_tree_patterns(
+            repo, [query.path]
+        ):
+            yield batch
+
+    async def _match_files_with_repository_tree_patterns(
+        self,
+        repo: str | dict[str, Any],
+        path_patterns: list[str],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Match multiple path globs with the minimum set of repository tree walks.
+
+        Patterns that share a fixed prefix (or whose roots nest) share a single
+        recursive tree listing; results are filtered against every pattern in memory.
+
+        ``repo`` may be a project dict (avoids a redundant project GET) or a
+        path_with_namespace / id string.
+        """
+        if not path_patterns:
+            return
+
+        if isinstance(repo, dict):
+            project = repo
+        else:
+            project = await self.get_project(repo)
+            if not project:
+                return
+
+        ref = project["default_branch"]
+        match_patterns: list[str] = []
+        # (api_path, recursive) — exact file paths keep a non-recursive directory list.
+        walks: set[tuple[str, bool]] = set()
+        for path_pattern in path_patterns:
+            query = build_search_query(path_pattern)
+            match_pattern = (
+                f"**/{query.filename}" if query.directory is None else query.path
+            )
+            match_patterns.append(match_pattern)
+            if _is_wildcard_path(match_pattern):
+                walks.add((_literal_tree_prefix(match_pattern), True))
+            else:
+                walks.add((query.directory or "", False))
+
+        if any(path == "" and recursive for path, recursive in walks):
+            walk_list: list[tuple[str, bool]] = [("", True)]
+        else:
+            recursive_roots = _minimize_tree_roots(
+                {path for path, recursive in walks if recursive}
+            )
+            covered = set(recursive_roots)
+            walk_list = [(root, True) for root in recursive_roots]
+            for path, recursive in sorted(walks):
+                if recursive:
+                    continue
+                if any(
+                    path == parent or path.startswith(f"{parent}/")
+                    for parent in covered
+                ):
+                    continue
+                walk_list.append((path, False))
+                covered.add(path)
+
+        seen_paths: set[str] = set()
+        for api_path, recursive in walk_list:
+            async for items_batch in self.get_repository_tree(
+                project, api_path, ref, recursive=recursive
+            ):
+                files_batch = [
+                    {
+                        **item,
+                        "ref": ref,
+                        "project_id": project["id"],
+                    }
+                    for item in items_batch
+                    if item["type"] == "blob"
+                    and item["path"] not in seen_paths
+                    and any(
+                        glob.globmatch(
+                            item["path"],
+                            match_pattern,
+                            flags=glob.GLOBSTAR | glob.DOTGLOB,
+                        )
+                        for match_pattern in match_patterns
+                    )
+                ]
+                for file_item in files_batch:
+                    seen_paths.add(file_item["path"])
+                if files_batch:
+                    yield files_batch
+
+    async def search_files_matching_patterns(
+        self,
+        path_patterns: list[str],
+        *,
+        skip_parsing: bool = False,
+        repositories: Sequence[str | dict[str, Any]] | None = None,
+        params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Discover files matching any path pattern via scoped repository tree walks.
+
+        ``repositories`` entries may be path_with_namespace strings or project
+        dicts. Prefer dicts when the caller already fetched projects to avoid
+        duplicate project GETs.
+        """
+        if not path_patterns:
+            return
+
+        logger.info(
+            f"Using repository tree search for {len(path_patterns)} path pattern(s)"
+        )
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
+
+        async def _search_repo(
+            repo: str | dict[str, Any],
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            context = repo["path_with_namespace"] if isinstance(repo, dict) else repo
+            async for file_batch in self._match_files_with_repository_tree_patterns(
+                repo, path_patterns
+            ):
+                processed_batch = await self._process_file_batch(
+                    file_batch, context, skip_parsing
+                )
+                if processed_batch:
+                    yield processed_batch
+
+        if repositories:
+            tasks = [
+                semaphore_async_iterator(semaphore, partial(_search_repo, repo))
+                for repo in repositories
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            return
+
+        async for projects_batch in self.get_projects(params=params):
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(_search_repo, project),
+                )
+                for project in projects_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+
     async def _search_files_in_group_projects(
         self,
         group_id: str,
         scope: str,
-        query: str,
+        query: SearchQuery,
         skip_parsing: bool = False,
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -947,44 +1280,77 @@ class GitLabClient:
         self,
         group_id: str,
         scope: str,
-        query: str,
+        query: SearchQuery,
         skip_parsing: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.info(
-            f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
+            f"Starting search in group '{group_id}' for query '{query.path}' with scope '{scope}'"
         )
-        params = {"scope": scope, "search": query, "search_type": "advanced"}
+
+        # Advanced Search is unavailable for some groups (common on GitLab.com
+        # free tiers). Cache capability misses so later queries skip advanced search.
+        if scope == "blobs" and group_id in self._groups_without_advanced_search:
+            async for batch in self._search_files_in_group_projects(
+                group_id, scope, query, skip_parsing
+            ):
+                yield batch
+            return
+
+        params = {
+            "scope": scope,
+            "search": query.to_query_string(),
+            "search_type": "advanced",
+        }
         path = f"groups/{quote(group_id, safe='')}/search"
 
         try:
             async for file_batch in self.rest.get_paginated_resource(
                 path, params=params
             ):
-                logger.info(f"Found {len(file_batch)} files in group '{group_id}'")
+                logger.info(f"Found {len(file_batch)} files in group {group_id} search")
                 processed_batch = await self._process_file_batch(
                     file_batch, group_id, skip_parsing
                 )
                 if processed_batch:
                     yield processed_batch
         except httpx.HTTPStatusError as e:
-            if not self._is_blob_search_unavailable(e):
+            if not (scope == "blobs" and self._is_advanced_search_unavailable(e)):
                 raise
+            self._groups_without_advanced_search.add(group_id)
             logger.warning(
-                f"Group search in group {group_id} failed: {e.response.json().get('message')}, "
-                f"falling back to project-level search for group's projects"
+                f"Group advanced search unavailable for group {group_id} "
+                f"(query={query!r}); falling back to project-level search "
+                "for remaining queries"
             )
             async for batch in self._search_files_in_group_projects(
                 group_id, scope, query, skip_parsing
             ):
                 yield batch
 
-    def _is_blob_search_unavailable(self, error: httpx.HTTPStatusError) -> bool:
+    @staticmethod
+    def _is_advanced_search_unavailable(error: httpx.HTTPStatusError) -> bool:
+        """True only for capability 400s, not request-specific validation errors."""
         if error.response.status_code != 400:
             return False
-        message = error.response.json().get("message", "")
-        if isinstance(message, list):
-            message = " ".join(message)
-        return "Scope 'blobs' is not available for this search" in message
+        try:
+            raw = error.response.json().get("message", "")
+        except Exception:
+            return False
+        if isinstance(raw, list):
+            message = " ".join(str(part) for part in raw)
+        else:
+            message = str(raw)
+        error_messages = (
+            "Scope 'blobs' is not available for this search",
+            "Advanced search is not available",
+        )
+        if any(error_message in message for error_message in error_messages):
+            return True
+        # Broader match for GitLab version / plan messaging variants.
+        lowered = message.lower()
+        return (
+            "advanced search" in lowered or "scope 'blobs' is not available" in lowered
+        )
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str
@@ -993,8 +1359,19 @@ class GitLabClient:
         if isinstance(data, dict):
             for key, value in data.items():
                 if isinstance(value, str) and value.startswith("file://"):
-                    file_path = value[7:]
-                    content = await self.get_file_content(project_id, file_path, ref)
+                    if value.startswith("file:///"):
+                        continue
+                    file_path = value[7:].lstrip("/")
+                    try:
+                        content = await self.get_file_content(
+                            project_id, file_path, ref
+                        )
+                    except httpx.HTTPError as e:
+                        logger.warning(
+                            f"Failed to resolve file:// reference '{value}' in project "
+                            f"'{project_id}' (ref '{ref}'): {e}. Leaving reference unresolved."
+                        )
+                        continue
                     data[key] = content
                 elif isinstance(value, (dict, list)):
                     data[key] = await self._resolve_file_references(

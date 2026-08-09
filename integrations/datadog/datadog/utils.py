@@ -5,6 +5,7 @@ from typing import Any
 from datadog.types import RestrictionPolicyResource
 
 ORG_ID_ENRICHMENT_KEY = "__org_id"
+ORG_NAME_ENRICHMENT_KEY = "__org_name"
 
 
 def get_start_of_the_month_in_seconds_x_months_back(months_back: int) -> int:
@@ -59,8 +60,8 @@ def parse_restriction_policy_asset(asset_id: str) -> RestrictionPolicyResource |
 
 
 def enrich_batch(
-    data: list[dict[str, Any]], *, enrichment_key: str, enrichment_data: Any
+    data: list[dict[str, Any]], *, enrichments: dict[str, Any]
 ) -> list[dict[str, Any]]:
     for item in data:
-        item[enrichment_key] = enrichment_data
+        item.update(enrichments)
     return data

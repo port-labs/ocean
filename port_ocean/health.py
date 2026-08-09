@@ -1,7 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from port_ocean.version import __version__
 

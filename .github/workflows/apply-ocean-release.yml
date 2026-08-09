@@ -1,0 +1,74 @@
+name: Apply ocean release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ocean-release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  apply-release:
+    name: Apply declarative release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install towncrier
+        run: pip install "towncrier>=23.6,<24"
+
+      - name: Skip bot commits
+        id: skip
+        run: |
+          if git log -1 --pretty=%B | grep -Fq '[ocean-release]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping: commit was created by the release bot"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect new release files in merge commit
+        if: steps.skip.outputs.skip != 'true'
+        id: detect
+        run: |
+          MERGE_SHA="${{ github.sha }}"
+          FILES=$(git diff --name-only --diff-filter=A "${MERGE_SHA}^" "${MERGE_SHA}" | grep '\.ocean-release/.*\.ya\?ml$' || true)
+          if [ -z "$FILES" ]; then
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+            echo "No new .ocean-release files in ${MERGE_SHA}"
+          else
+            echo "has_release=true" >> "$GITHUB_OUTPUT"
+            echo "Found release files:"
+            echo "$FILES"
+          fi
+
+      - name: Apply release on merge commit
+        if: steps.detect.outputs.has_release == 'true'
+        run: |
+          git config user.name "ocean-release[bot]"
+          git config user.email "ocean-release[bot]@users.noreply.github.com"
+          git fetch origin main
+          python3 scripts/ci/apply_ocean_release.py \
+            --merge-sha "${{ github.sha }}" \
+            --main-ref origin/main
+
+      - name: Rebase onto main and push
+        if: steps.detect.outputs.has_release == 'true'
+        run: |
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
