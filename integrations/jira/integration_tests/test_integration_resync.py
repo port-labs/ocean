@@ -88,22 +88,25 @@ class TestJiraHappyPath(BaseIntegrationTest):
 
         # --- Projects ---
         projects = by_blueprint.get("jiraProject", [])
-        assert len(projects) == len(PROJECT_KEYS), (
-            f"Expected {len(PROJECT_KEYS)} projects, got {len(projects)}"
-        )
+        assert len(projects) == len(
+            PROJECT_KEYS
+        ), f"Expected {len(PROJECT_KEYS)} projects, got {len(projects)}"
         projects_by_id = {e["identifier"]: e for e in projects}
         for i, key in enumerate(PROJECT_KEYS, start=1):
             record = project_response(key, i)
             entity = projects_by_id[key]
             assert entity["title"] == record["name"]
             assert entity["properties"]["url"] == f"{JIRA_HOST}/projects/{key}"
-            assert entity["properties"]["totalIssues"] == record["insight"]["totalIssueCount"]
+            assert (
+                entity["properties"]["totalIssues"]
+                == record["insight"]["totalIssueCount"]
+            )
 
         # --- Issues ---
         issues = by_blueprint.get("jiraIssue", [])
-        assert len(issues) == ISSUE_COUNT, (
-            f"Expected {ISSUE_COUNT} issues, got {len(issues)}"
-        )
+        assert (
+            len(issues) == ISSUE_COUNT
+        ), f"Expected {ISSUE_COUNT} issues, got {len(issues)}"
         issues_by_id = {e["identifier"]: e for e in issues}
         for i in range(1, ISSUE_COUNT + 1):
             record = issue_response(i)
@@ -118,14 +121,20 @@ class TestJiraHappyPath(BaseIntegrationTest):
             assert props["priority"] == record["fields"]["priority"]["name"]
             assert props["labels"] == record["fields"]["labels"]
             assert entity["relations"]["project"] == record["fields"]["project"]["key"]
-            assert entity["relations"]["assignee"] == record["fields"]["assignee"]["accountId"]
-            assert entity["relations"]["reporter"] == record["fields"]["reporter"]["accountId"]
+            assert (
+                entity["relations"]["assignee"]
+                == record["fields"]["assignee"]["accountId"]
+            )
+            assert (
+                entity["relations"]["reporter"]
+                == record["fields"]["reporter"]["accountId"]
+            )
 
         # --- Users ---
         users = by_blueprint.get("jiraUser", [])
-        assert len(users) == USER_COUNT, (
-            f"Expected {USER_COUNT} users, got {len(users)}"
-        )
+        assert (
+            len(users) == USER_COUNT
+        ), f"Expected {USER_COUNT} users, got {len(users)}"
         users_by_id = {e["identifier"]: e for e in users}
         for i in range(1, USER_COUNT + 1):
             record = user_response(i)

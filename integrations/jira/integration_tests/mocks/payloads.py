@@ -17,6 +17,7 @@ USER_COUNT = 2
 # Projects
 # ---------------------------------------------------------------------------
 
+
 def project_response(key: str, idx: int) -> dict[str, Any]:
     return {
         "key": key,
@@ -40,6 +41,7 @@ def projects_page_response() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Issues
 # ---------------------------------------------------------------------------
+
 
 def issue_response(idx: int) -> dict[str, Any]:
     key = f"PORT-{idx}"
@@ -77,6 +79,7 @@ def issues_page_response() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Users
 # ---------------------------------------------------------------------------
+
 
 def user_response(idx: int) -> dict[str, Any]:
     return {
