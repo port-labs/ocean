@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from typing import Any
-
 from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExporter
+from aws.core.exporters.aws_lambda.function.live_events import (
+    LAMBDA_FUNCTION_LIVE_EVENTS,
+)
 from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
 from aws.core.exporters.codebuild import (
     CodeBuildBuildRunExporter,
@@ -53,6 +53,7 @@ from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
 from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
+from aws.core.helpers.metadata.types import ExporterMetadata
 from aws.core.exporters.msk import MskClusterExporter, MskServerlessClusterExporter
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.msk.serverless_cluster.models import (
@@ -63,6 +64,7 @@ from aws.core.exporters.rds.db_cluster.models import PaginatedDbClusterRequest
 from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
 from aws.core.exporters.s3 import PaginatedBucketRequest, S3BucketExporter
+from aws.core.exporters.s3.bucket.live_events import S3_BUCKET_LIVE_EVENTS
 from aws.core.exporters.ses import (
     PaginatedConfigurationSetRequest,
     PaginatedEmailIdentityRequest,
@@ -72,20 +74,13 @@ from aws.core.exporters.ses import (
 from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.helpers.types import ObjectKind
-from aws.core.interfaces.exporter import IResourceExporter
-from aws.core.modeling.resource_models import ResourceRequestModel
-
-
-@dataclass
-class ExporterMetadata:
-    exporter: type[IResourceExporter[Any]]
-    paginated_request_model: type[ResourceRequestModel]
-    regional: bool = True
-
 
 kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
     ObjectKind.S3_BUCKET: ExporterMetadata(
-        S3BucketExporter, PaginatedBucketRequest, regional=False
+        S3BucketExporter,
+        PaginatedBucketRequest,
+        regional=False,
+        live_events=S3_BUCKET_LIVE_EVENTS,
     ),
     ObjectKind.EC2_INSTANCE: ExporterMetadata(
         EC2InstanceExporter, PaginatedEC2InstanceRequest
@@ -103,7 +98,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         RdsDbClusterExporter, PaginatedDbClusterRequest
     ),
     ObjectKind.LAMBDA_FUNCTION: ExporterMetadata(
-        LambdaFunctionExporter, PaginatedLambdaFunctionRequest
+        LambdaFunctionExporter,
+        PaginatedLambdaFunctionRequest,
+        live_events=LAMBDA_FUNCTION_LIVE_EVENTS,
     ),
     ObjectKind.ECS_SERVICE: ExporterMetadata(
         EcsServiceExporter, PaginatedServiceRequest
