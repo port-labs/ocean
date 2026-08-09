@@ -1132,6 +1132,9 @@ examples ahead of each JQ transformation
 -  Fix items_to_parse with yield_items_to_parse enabled item construction
 
 ## 0.30.4 (2025-11-26)
+
+### Improvements
+
 - Updated upsert (load) metrics to be calculated directly from response
 - Updated log on duplicate count
 
