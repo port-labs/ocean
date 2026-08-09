@@ -7,7 +7,6 @@ from mocks.payloads import (
     PROJECT_KEYS,
     USER_COUNT,
     issue_response,
-    project_response,
     user_response,
 )
 
