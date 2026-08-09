@@ -2193,46 +2193,6 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return [sub for batch in results for sub in batch]
 
-    @staticmethod
-    def _find_duplicate_subscriptions(
-        subscriptions: list[WebhookSubscription],
-    ) -> tuple[list[WebhookSubscription], list[WebhookSubscription]]:
-        """Identify duplicate webhook subscriptions, keeping one per unique key.
-
-        Returns (kept, duplicates). Duplicates should be deleted by the caller.
-        """
-        seen: dict[
-            tuple[str, str, Optional[str], Optional[str]], WebhookSubscription
-        ] = {}
-        duplicates: list[WebhookSubscription] = []
-
-        for subscription in subscriptions:
-            key = (
-                subscription.publisherId,
-                subscription.eventType,
-                (
-                    subscription.consumerInputs.get("url")
-                    if subscription.consumerInputs
-                    else None
-                ),
-                (
-                    subscription.publisherInputs.get("projectId")
-                    if subscription.publisherInputs
-                    else None
-                ),
-            )
-            if key in seen:
-                duplicates.append(subscription)
-            else:
-                seen[key] = subscription
-
-        if duplicates:
-            logger.warning(
-                f"Found {len(duplicates)} duplicate webhook subscriptions to clean up"
-            )
-
-        return list(seen.values()), duplicates
-
     async def create_subscription(
         self,
         webhook_subscription: WebhookSubscription,
@@ -2640,11 +2600,6 @@ class AzureDevopsClient(HTTPBaseClient):
 
         subs_to_create = []
         subs_to_delete = []
-
-        if len(existing_subscriptions) > len(AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS):
-            existing_subscriptions, _ = self._find_duplicate_subscriptions(
-                existing_subscriptions
-            )
         # IDs of existing healthy subscriptions we keep as-is — needed for
         # the subscription registry so incoming events can be routed.
         kept_sub_ids: list[str] = []

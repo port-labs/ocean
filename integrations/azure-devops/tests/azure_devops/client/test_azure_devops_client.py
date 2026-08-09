@@ -2894,68 +2894,6 @@ async def test_get_filtered_webhook_subscriptions_aborts_on_failure() -> None:
             await client.get_filtered_webhook_subscriptions()
 
 
-def test_find_duplicate_subscriptions_identifies_extras() -> None:
-    kept = WebhookSubscription(
-        id="sub-1",
-        publisherId="tfs",
-        eventType="git.push",
-        consumerInputs={"url": "https://host/webhook"},
-        publisherInputs={"projectId": "proj-1"},
-    )
-    dup1 = WebhookSubscription(
-        id="sub-2",
-        publisherId="tfs",
-        eventType="git.push",
-        consumerInputs={"url": "https://host/webhook"},
-        publisherInputs={"projectId": "proj-1"},
-    )
-    dup2 = WebhookSubscription(
-        id="sub-3",
-        publisherId="tfs",
-        eventType="git.push",
-        consumerInputs={"url": "https://host/webhook"},
-        publisherInputs={"projectId": "proj-1"},
-    )
-    unique = WebhookSubscription(
-        id="sub-4",
-        publisherId="tfs",
-        eventType="git.pullrequest.created",
-        consumerInputs={"url": "https://host/webhook"},
-        publisherInputs={"projectId": "proj-1"},
-    )
-
-    result, duplicates = AzureDevopsClient._find_duplicate_subscriptions(
-        [kept, dup1, dup2, unique]
-    )
-
-    assert len(result) == 2
-    assert kept in result
-    assert unique in result
-    assert len(duplicates) == 2
-    duplicate_ids = {subscription.id for subscription in duplicates}
-    assert duplicate_ids == {"sub-2", "sub-3"}
-
-
-def test_find_duplicate_subscriptions_no_duplicates() -> None:
-    sub1 = WebhookSubscription(
-        id="sub-1",
-        publisherId="tfs",
-        eventType="git.push",
-        consumerInputs={"url": "https://host/webhook"},
-    )
-    sub2 = WebhookSubscription(
-        id="sub-2",
-        publisherId="tfs",
-        eventType="git.pullrequest.created",
-        consumerInputs={"url": "https://host/webhook"},
-    )
-
-    result, duplicates = AzureDevopsClient._find_duplicate_subscriptions([sub1, sub2])
-
-    assert len(result) == 2
-    assert len(duplicates) == 0
-
-
 @pytest.mark.asyncio
 async def test_create_subscription() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
