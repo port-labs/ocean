@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.87 (2026-08-09)
+
+### Improvements
+
+- Add integration tests for the Jira integration
+
+
 ## 0.7.86 (2026-08-09)
 
 
 ### Improvements
 
-- Add integration tests for the Jira integration
+- Bumped ocean version to ^0.47.9
 
 
 ## 0.7.85 (2026-08-09)
