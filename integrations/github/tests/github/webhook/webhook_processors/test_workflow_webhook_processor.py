@@ -235,7 +235,7 @@ class TestWorkflowWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.workflow_webhook_processor.create_github_client",
+                "github.webhook.webhook_processors.workflow_webhook_processor.create_github_client_for_org",
                 return_value=mock_rest_client,
             ),
             patch(

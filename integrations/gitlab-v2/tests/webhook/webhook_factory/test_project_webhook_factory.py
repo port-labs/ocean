@@ -5,6 +5,8 @@ from typing import Any, cast
 from gitlab.webhook.webhook_factory.project_webhook_factory import ProjectWebHook
 from gitlab.webhook.events import ProjectEvents
 
+STATIC_WEBHOOK_URL = "https://app.example.com/integration/webhook"
+
 
 class AsyncIterator:
     """Helper class to properly mock async iterators in tests"""
@@ -44,14 +46,12 @@ class TestProjectWebHook:
         monkeypatch.setattr(
             project_webhook,
             "create",
-            AsyncMock(
-                return_value={"id": 1, "url": "https://app.example.com/hook/123"}
-            ),
+            AsyncMock(return_value={"id": 1, "url": STATIC_WEBHOOK_URL}),
         )
         result = await project_webhook.create_project_webhook("123")
         assert result is True
         cast(AsyncMock, project_webhook.create).assert_called_once_with(
-            "https://app.example.com/integration/hook/123", "projects/123/hooks"
+            STATIC_WEBHOOK_URL, "projects/123/hooks"
         )
 
     async def test_create_webhooks_for_personal_projects(
@@ -75,14 +75,8 @@ class TestProjectWebHook:
         assert create_mock.call_count == 2
         create_mock.assert_has_calls(
             [
-                call(
-                    "https://app.example.com/integration/hook/101",
-                    "projects/101/hooks",
-                ),
-                call(
-                    "https://app.example.com/integration/hook/102",
-                    "projects/102/hooks",
-                ),
+                call(STATIC_WEBHOOK_URL, "projects/101/hooks"),
+                call(STATIC_WEBHOOK_URL, "projects/102/hooks"),
             ],
             any_order=True,
         )

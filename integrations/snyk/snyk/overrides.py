@@ -12,7 +12,11 @@ from port_ocean.core.integrations.base import BaseIntegration
 class GenerateQueryParamMixin(BaseModel):
     def generate_query_params(self) -> dict[str, Any]:
         params = self.dict(exclude_none=True, exclude_unset=True)
-        return params
+        return {
+            key: ",".join(value) if isinstance(value, list) else value
+            for key, value in params.items()
+            if not isinstance(value, list) or value
+        }
 
     def merge_with(self, other: dict[str, Any]) -> dict[str, Any]:
         query_params = self.generate_query_params()
@@ -64,7 +68,7 @@ class SnykProjectAPIQueryParams(GenerateQueryParamMixin):
     tags: Optional[list[str]] = Field(
         default=None,
         title="Tags",
-        description="Return projects that match all the provided tags (key=value format)",
+        description="Return projects that match all the provided tags (key=value format). Tag values must not contain commas.",
     )
     business_criticality: Optional[
         list[Literal["critical", "high", "medium", "low"]]

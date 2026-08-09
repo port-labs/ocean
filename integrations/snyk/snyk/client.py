@@ -76,18 +76,22 @@ class SnykClient:
         self,
         url: str,
         method: str = "GET",
-        query_params: Optional[dict[str, Any]] = None,
+        query_params_parsed: Optional[dict[str, Any]] = None,
         version: str | None = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        query_params = {
-            **(query_params or {}),
+        raw_query_params = {
+            **(query_params_parsed or {}),
             **({"version": version} if version is not None else {}),
+        }
+        query_params_parsed = {
+            k: ",".join(v) if isinstance(v, list) else v
+            for k, v in raw_query_params.items()
         }
         async with self.rate_limiter, self.semaphore:
             try:
                 response = await self.http_client.request(
-                    method=method, url=url, params=query_params, json=json_data
+                    method=method, url=url, params=query_params_parsed, json=json_data
                 )
                 response.raise_for_status()
                 return response.json()
@@ -101,7 +105,7 @@ class SnykClient:
                     )
                     return {}
                 logger.error(
-                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params_parsed}, "
                     f"version: {version}, json: {json_data}. "
                     f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
                 )
@@ -118,7 +122,7 @@ class SnykClient:
                 data = await self._send_api_request(
                     url=f"{self.rest_api_url}{url_path}",
                     method=method,
-                    query_params={**(query_params or {}), "limit": PAGE_SIZE},
+                    query_params_parsed={**(query_params or {}), "limit": PAGE_SIZE},
                 )
 
                 yield data.get("data", [])
@@ -365,7 +369,7 @@ class SnykClient:
         response = await self._send_api_request(
             url=url,
             method="GET",
-            query_params=query_params,
+            query_params_parsed=query_params,
             version=self.snyk_api_version,
         )
         project = response.get("data", {})

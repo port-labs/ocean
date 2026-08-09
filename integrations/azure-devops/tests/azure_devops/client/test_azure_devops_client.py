@@ -2272,6 +2272,57 @@ async def test_generate_repository_policies() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_single_advanced_security_alert_returns_none_on_400() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    error = HTTPStatusError(
+        "bad request",
+        request=Request("GET", "https://advsec.example/alerts/1"),
+        response=Response(400, text="GHAS not enabled"),
+    )
+
+    with patch.object(client, "send_request", side_effect=error):
+        result = await client.get_single_advanced_security_alert(
+            "proj1", "repo1", "alert1"
+        )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_generate_advanced_security_alerts_skips_on_400() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    repository: dict[str, Any] = {
+        "id": "repo1",
+        "name": "Repo One",
+        "project": {"id": "proj1", "name": "Project One"},
+    }
+    error = HTTPStatusError(
+        "bad request",
+        request=Request("GET", "https://advsec.example/alerts"),
+        response=Response(400, text="GHAS not enabled"),
+    )
+
+    async def failing_pagination(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        raise error
+        yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=failing_pagination,
+    ):
+        alerts = [
+            alert
+            async for batch in client.generate_advanced_security_alerts(repository)
+            for alert in batch
+        ]
+
+    assert alerts == []
+
+
+@pytest.mark.asyncio
 async def test_generate_security_alerts() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
@@ -6145,3 +6196,61 @@ async def test_enrich_teams_with_area_paths() -> None:
     # Successful team gets its field values; a failing team does not break the batch
     assert enriched_teams[0]["__areaPaths"] == MOCK_TEAM_FIELD_VALUES
     assert enriched_teams[1]["__areaPaths"] is None
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_wraps_variables_and_sets_branch() -> None:
+    from azure_devops.client.azure_devops_client import RunPipelineOptions
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    options = RunPipelineOptions(
+        branch="main",
+        template_parameters={"env": "prod"},
+        variables={"ENV": "prod", "ADVANCED": {"value": "x", "isSecret": True}},
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(status_code=200, json={"id": 7})
+
+        result = await client.run_pipeline("proj-guid", "12", options)
+
+    assert result == {"id": 7}
+    sent_body = json.loads(mock_send_request.call_args.kwargs["data"])
+    assert sent_body["variables"] == {
+        "ENV": {"value": "prod"},
+        "ADVANCED": {"value": "x", "isSecret": True},
+    }
+    assert sent_body["templateParameters"] == {"env": "prod"}
+    assert sent_body["resources"] == {
+        "repositories": {"self": {"refName": "refs/heads/main"}}
+    }
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_raises_http_status_error_on_404(
+    mock_event_context: MagicMock,
+) -> None:
+    # A 404 from the Run Pipeline API (e.g. a nonexistent pipelineId) must
+    # surface as an httpx.HTTPStatusError carrying ADO's error detail, not be
+    # swallowed into a generic "Failed to trigger pipeline" RuntimeError.
+    from azure_devops.client.azure_devops_client import RunPipelineOptions
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(
+            status_code=404,
+            json={"message": "The pipeline with id 102 does not exist"},
+            request=Request("POST", "https://google.com"),
+        )
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            with pytest.raises(HTTPStatusError) as exc_info:
+                await client.run_pipeline("proj-guid", "102", RunPipelineOptions())
+
+    assert exc_info.value.response.status_code == 404
+    assert (
+        exc_info.value.response.json()["message"]
+        == "The pipeline with id 102 does not exist"
+    )
