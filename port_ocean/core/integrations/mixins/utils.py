@@ -113,8 +113,9 @@ async def is_dsp_mode_enabled() -> bool:
 
     DSP mode offloads all transform/load/reconciliation to an external service.
     Ocean still extracts raw data and forwards it to the lakehouse, but skips
-    all entity processing.  Requires an explicit opt-in via config AND the right
-    org feature flags.  Errors are swallowed so this never blocks core flows.
+    all entity processing.  Requires processing_mode=dsp (the default), lakehouse
+    enabled, and the right org feature flags.  Errors are swallowed so this never
+    blocks core flows.
 
     Returns:
         bool: True only when all four conditions are met, False otherwise.
