@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CloudTrail live events support for `AWS::S3::Bucket` and `AWS::Lambda::Function` kinds, enabled via the `AWS_V3_LIVE_EVENTS_ENABLED` organization feature flag.
 
 
+## 2.18.7-beta (2026-08-09)
+
+
 ### Improvements
 
 - Bumped ocean version to ^0.47.8
