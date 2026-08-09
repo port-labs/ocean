@@ -450,7 +450,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.42.3 (2026-05-17)
 
-### Bug fixes
+### Bug Fixes
 
 - Fix raw data dispatching with items to parse.
 
@@ -499,19 +499,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.41.5 (2026-04-27)
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed raw examples ingestion for resources using `itemsToParse`: examples are now sent from the original extracted payload before `itemsToParse` expansion/top-level transform, so arrays and parent fields are preserved in Port examples.
 
 ## 0.41.4 (2026-04-23)
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed the `once` event listener on non-SaaS runtimes so that when a resync fails, integration resync state and sync metrics are reported as failed instead of incorrectly completed.
 
 ## 0.41.3 (2026-04-22)
 
-### Bug fixes
+### Bug Fixes
 
 - Add support for path prefix in health routes
 
@@ -524,7 +524,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.41.1 (2026-04-20)
 
-### Fixes
+### Bug Fixes
 
 - Fixed integration tests to run single process as default to avoid issues with multiprocessing.
 
@@ -723,7 +723,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.38.8 (2026-03-09)
 
-### Bug fixes
+### Bug Fixes
 
 - Resolved an infinite pagination loop caused by `handle_items_to_parse` mutating the original batch list via `.pop(0)`. The function now iterates without mutation, so integration generators retain their yielded
   list for pagination decisions.
@@ -734,7 +734,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.38.6 (2026-03-03)
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed race condition between live events and resync reconciliation: entities created or updated by live events during a running resync are no longer incorrectly deleted. Reconciliation now fetches entities from Port with an `updatedAt` filter (not after resync start time) so only entities that existed before the resync are considered for deletion.
 - JQ entity processor sync (`jq_entity_processor_sync`): `_search` now uses `next(iter(it), None)` instead of `.first()` for robust iteration over jq results, and search failures are logged as warnings with structured fields (`pattern`, `error`) instead of full error logs.
@@ -789,13 +789,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.37.2 (2026-02-22)
 
-### Bug fixes
+### Bug Fixes
 
 - Extended read-only filesystem support to work with arbitrary UID and GID combinations.
 
 ## 0.37.1 (2026-02-22)
 
-### Bug fixes
+### Bug Fixes
 
 Fixed advanced config structure in ui schema generation
 
@@ -809,7 +809,7 @@ Fixed advanced config structure in ui schema generation
 
 ## 0.36.1 (2026-02-18)
 
-### Bug fixes
+### Bug Fixes
 
 - Port's Workflows logs endpoints changes
 
@@ -822,7 +822,7 @@ Fixed advanced config structure in ui schema generation
 
 ## 0.35.8 (2026-02-17)
 
-### Bug fixes
+### Bug Fixes
 
 Add `ignore_retry_after_status_codes` to the retry configuration to force exponential backoff for specified status codes.
 
@@ -854,14 +854,14 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.35.5 (2026-02-12)
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed integration mapping not being initialized when integration already exists prior to ocean run
 
 
 ## 0.35.4 (2026-02-02)
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed mask_object mutating original data in place, which caused entity properties to contain [REDACTED] values when examples were sent before entity transformation.
 
@@ -903,7 +903,7 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.33.1 (2026-01-27)
 
-### Bug fixes
+### Bug Fixes
 
 - Start monitoring in each process seperatly.
 
@@ -917,35 +917,35 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.32.17 (2026-01-25)
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
 
 
 ## 0.32.16 (2026-01-21)
 
-### Bug fixes
+### Bug Fixes
 
 - Fix retry sleep calculation for rate-limit reset headers by treating large numeric retry values as UNIX epoch timestamps and using response headers when computing retry delays.
 
 
 ## 0.32.15 (2026-01-21)
 
-### Bug fixes
+### Bug Fixes
 
 - Handle webhook event not supported exception and log it as a warning
 
 
 ## 0.32.14 (2026-01-20)
 
-### Bug fixes
+### Bug Fixes
 
 - Add export of system and request metrics
 
 
 ## 0.32.13 (2026-01-15)
 
-### Bug fixes
+### Bug Fixes
 
 - Revert Add export of system and request metrics
 
@@ -956,7 +956,7 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Fix urllib3 vulnerability
 
-### Bug fixes
+### Bug Fixes
 
 - Format response when logging error
 - Prevent Lakehouse from breaking the regular integration behavior on error from port
@@ -968,14 +968,14 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.32.11 (2026-01-14)
 
-### Bug fixes
+### Bug Fixes
 
 - Added except clause to catch random errors
 
 
 ## 0.32.10 (2026-01-11)
 
-### Bug fixes
+### Bug Fixes
 
 - Unset prometheous dir so db file wont be created.
 
@@ -989,14 +989,14 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.32.8 (2025-12-23)
 
-### Bug fixes
+### Bug Fixes
 
 - Remove setup instruction for .env.example copying from CLI flow
 
 
 ## 0.32.7 (2025-12-22)
 
-### Bug fixes
+### Bug Fixes
 
 - Update the pool to be used as context so its closed propely.
 - Update loop to accumulate batches over multiple objects.
@@ -1005,14 +1005,14 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.32.6 (2025-12-21)
 
-### Bug fixes
+### Bug Fixes
 
 - Fix .env.example coockiecutter generation to conceal Port secrets
 
 
 ## 0.32.5 (2025-12-18)
 
-### Bug fixes
+### Bug Fixes
 
 - Update compare entities with port to use async generator and compare entities incrementaly.
 - Update delete diff to use maps for comparing.
@@ -1021,7 +1021,7 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.32.4 (2025-12-16)
 
-### Bug fixes
+### Bug Fixes
 
 - Update the core to handle jq calculations without a loop, the search functions that need to be executed by the
   overwriten function will execute in the event loop.
@@ -1030,14 +1030,14 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.32.3 (2025-12-15)
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed an issue where starting with POLLING and changing to KAFKA event listener would cause the integration to not receive messages
 
 
 ## 0.32.2 (2025-12-14)
 
-### Bug fixes
+### Bug Fixes
 
 - Increase timeout
 - Clear http context.
@@ -1045,7 +1045,7 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 ## 0.32.1 (2025-12-10)
 
-### Bug fixes
+### Bug Fixes
 
 - handle overwrite of `_search` with process pool
 
@@ -1087,7 +1087,7 @@ examples ahead of each JQ transformation
 
 ## 0.31.3 (2025-12-08)
 
-### Bug fixes
+### Bug Fixes
 
 - fix webhook processor crashing when entity identifier is a dictionary
 
@@ -1163,7 +1163,7 @@ examples ahead of each JQ transformation
 
 ## 0.29.10 (2025-11-20)
 
-### Bug fixes
+### Bug Fixes
 
 - JQ expression classifier would classify mixed single item and all payload context expressions to run on all of the payload
 
@@ -1194,13 +1194,13 @@ examples ahead of each JQ transformation
 
 ## 0.29.5 (2025-11-10)
 
-### Bug fixes
+### Bug Fixes
 
 - Update unprocessed kinds metrics to have 'aborted' status when a resync is aborted
 
 ## 0.29.4 (2025-11-10)
 
-### Bug fixes
+### Bug Fixes
 
 - Fix graceful shutdown handling (SIGTERM handling)
 
@@ -1212,7 +1212,7 @@ examples ahead of each JQ transformation
 
 ## 0.29.2 (2025-11-09)
 
-### Bug fixes
+### Bug Fixes
 
 - Avoid waiting for empty task queues to release queue lock
 
@@ -1230,40 +1230,40 @@ examples ahead of each JQ transformation
 
 ## 0.28.18 (2025-10-27)
 
-### Bug fixes
+### Bug Fixes
 
 - Remove assume length by reading the response for logging
 - Fixed publish core image Github action
 
 ## 0.28.18 (2025-10-27)
 
-### Bug fixes
+### Bug Fixes
 
 - Fix logging exception on process finish
 - Fixed serialization issue caused by Decimal objects returned from ijson.items_coro during jq transformation when yield_items_to_parse is enabled
 
 ## 0.28.17 (2025-10-26)
 
-### Bug fixes
+### Bug Fixes
 
 - Prevent StreamConsumed error when there is no content-length header on response
 
 ## 0.28.16 (2025-10-21)
 
-### Bug fixes
+### Bug Fixes
 
 - Add pagination to search entities API call
 
 ## 0.28.15 (2025-10-20)
 
-### Bug fixes
+### Bug Fixes
 
 - Fix examples construction on items_to_parse (extra nesting removed)
 - Fix onload process from fs in items_to_parse with no yield_items_to_parse branch
 
 ## 0.28.14 (2025-10-15)
 
-### Bug fixes
+### Bug Fixes
 
 - Fix items_to_parse without yield_items_to_parse bug on array data type
 - Fix items_to_parse group_complex_mapping_value bug
@@ -1277,19 +1277,19 @@ examples ahead of each JQ transformation
 
 ## 0.28.12 (2025-09-30)
 
-### Bug fixes
+### Bug Fixes
 
 - Change raw data timestamp from to int with miliseconds
 
 ## 0.28.11 (2025-09-28)
 
-### Bug fixes
+### Bug Fixes
 
 - Change raw data timestamp from sting to int
 
 ## 0.28.10 (2025-09-26)
 
-### Bug fixes
+### Bug Fixes
 
 - Convert Entity dictionary identifiers to consistent json representation
 - Fix buggy check in EntityMapping that always resolves to False
@@ -1473,7 +1473,7 @@ Improved resource cleanup and state management after processing
 
 ## 0.25.3 (2025-07-15)
 
-### Bugfix
+### Bug Fixes
 
 - Fixed dockerfile's ocean user argument position to be under the last FROM
 
@@ -1494,7 +1494,7 @@ Improved resource cleanup and state management after processing
 
 ## 0.25.0 (2025-07-02)
 
-### Improvement
+### Improvements
 
 - Added extraction of the deletion process from the main process if multi processing is enabled
 
