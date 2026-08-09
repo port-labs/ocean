@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.47.9 (2026-08-09)
+
+### Improvements
+
+- Support for either YAML or JSON for spec files.
+
+
 ## 0.47.8 (2026-08-09)
 
 
