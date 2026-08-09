@@ -57,9 +57,7 @@ async def test_kind_resyncs(kind: str) -> None:
 
 def _assert_kind_resync(result: ResyncResult, kind: str) -> None:
     assert result.errors == [], f"Resync had errors for {kind}: {result.errors}"
-    assert (
-        result.reconciliation_success is True
-    ), f"Reconciliation failed for {kind}"
+    assert result.reconciliation_success is True, f"Reconciliation failed for {kind}"
 
     blueprint = KIND_BLUEPRINTS[kind]
     entities = [e for e in result.upserted_entities if e["blueprint"] == blueprint]

@@ -44,9 +44,7 @@ class SnykMockTransportBuilder:
             {"status_code": 200, "json": _paginated([org_response()])},
         )
 
-    def _add_org_table_route(
-        self, table: str, records: list[dict[str, Any]]
-    ) -> None:
+    def _add_org_table_route(self, table: str, records: list[dict[str, Any]]) -> None:
         """Add a per-org table route: ``GET /rest/orgs/{org_id}/{table}``."""
         self._transport.add_route(
             "GET",

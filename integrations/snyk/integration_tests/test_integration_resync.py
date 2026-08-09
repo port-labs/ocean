@@ -58,7 +58,9 @@ class TestSnykHappyPath(BaseIntegrationTest):
             f"/rest/orgs/{ORG_ID}/projects",
             {
                 "status_code": 200,
-                "json": _paginated([project_response(i) for i in range(1, RECORD_COUNT + 1)]),
+                "json": _paginated(
+                    [project_response(i) for i in range(1, RECORD_COUNT + 1)]
+                ),
             },
         )
         t.add_route(
@@ -66,7 +68,9 @@ class TestSnykHappyPath(BaseIntegrationTest):
             f"/rest/orgs/{ORG_ID}/targets",
             {
                 "status_code": 200,
-                "json": _paginated([target_response(i) for i in range(1, RECORD_COUNT + 1)]),
+                "json": _paginated(
+                    [target_response(i) for i in range(1, RECORD_COUNT + 1)]
+                ),
             },
         )
         t.add_route(
@@ -74,7 +78,9 @@ class TestSnykHappyPath(BaseIntegrationTest):
             f"/rest/orgs/{ORG_ID}/issues",
             {
                 "status_code": 200,
-                "json": _paginated([vulnerability_response(i) for i in range(1, RECORD_COUNT + 1)]),
+                "json": _paginated(
+                    [vulnerability_response(i) for i in range(1, RECORD_COUNT + 1)]
+                ),
             },
         )
 
@@ -121,7 +127,9 @@ class TestSnykHappyPath(BaseIntegrationTest):
                                     "tags": ".attributes.tags",
                                     "targetOrigin": ".attributes.origin",
                                 },
-                                "relations": {"snyk_target": ".relationships.target.data.id"},
+                                "relations": {
+                                    "snyk_target": ".relationships.target.data.id"
+                                },
                             }
                         }
                     },
@@ -138,7 +146,9 @@ class TestSnykHappyPath(BaseIntegrationTest):
                                 "properties": {
                                     "origin": ".relationships.integration.data.attributes.integration_type",
                                 },
-                                "relations": {"snyk_organization": ".relationships.organization.data.id"},
+                                "relations": {
+                                    "snyk_organization": ".relationships.organization.data.id"
+                                },
                             }
                         }
                     },
@@ -162,7 +172,9 @@ class TestSnykHappyPath(BaseIntegrationTest):
                                     "status": ".attributes.status",
                                     "type": ".attributes.type",
                                 },
-                                "relations": {"project": ".relationships.scan_item.data.id"},
+                                "relations": {
+                                    "project": ".relationships.scan_item.data.id"
+                                },
                             }
                         }
                     },
@@ -208,7 +220,10 @@ class TestSnykHappyPath(BaseIntegrationTest):
             project = projects_by_id[PROJECT_IDS[i - 1]]
             assert project["title"] == f"Project {i}"
             props = project["properties"]
-            assert props["url"] == f"https://app.snyk.io/org/{ORG_SLUG}/project/{PROJECT_IDS[i - 1]}"
+            assert (
+                props["url"]
+                == f"https://app.snyk.io/org/{ORG_SLUG}/project/{PROJECT_IDS[i - 1]}"
+            )
             assert props["targetOrigin"] == "github"
             assert props["highOpenVulnerabilities"] == i
             assert project["relations"]["snyk_target"] == TARGET_IDS[i - 1]

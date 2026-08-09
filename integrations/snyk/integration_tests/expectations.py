@@ -60,9 +60,15 @@ KIND_EXPECTATIONS: dict[str, KindExpectation] = {
                     "businessCriticality": ["high"],
                     "environment": ["backend"],
                     "lifeCycle": ["production"],
-                    "highOpenVulnerabilities": project_response(i)["meta"]["latest_issue_counts"]["high"],
-                    "mediumOpenVulnerabilities": project_response(i)["meta"]["latest_issue_counts"]["medium"],
-                    "lowOpenVulnerabilities": project_response(i)["meta"]["latest_issue_counts"]["low"],
+                    "highOpenVulnerabilities": project_response(i)["meta"][
+                        "latest_issue_counts"
+                    ]["high"],
+                    "mediumOpenVulnerabilities": project_response(i)["meta"][
+                        "latest_issue_counts"
+                    ]["medium"],
+                    "lowOpenVulnerabilities": project_response(i)["meta"][
+                        "latest_issue_counts"
+                    ]["low"],
                     "criticalOpenVulnerabilities": 0,
                     "tags": [],
                     "targetOrigin": "github",
@@ -91,7 +97,9 @@ KIND_EXPECTATIONS: dict[str, KindExpectation] = {
                 identifier=VULN_IDS[i - 1],
                 title=f"Vulnerability {i}",
                 properties={
-                    "score": vulnerability_response(i)["attributes"]["risk"]["score"]["value"],
+                    "score": vulnerability_response(i)["attributes"]["risk"]["score"][
+                        "value"
+                    ],
                     "packageNames": [PACKAGE_NAMES[i - 1]],
                     "packageVersions": [PACKAGE_VERSIONS[i - 1]],
                     "severity": "high" if i == 1 else "medium",
