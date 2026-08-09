@@ -71,7 +71,9 @@ class TestServiceNowRetryTransport:
         auth_header_refresher.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_before_retry_uses_auth_headers_from_refresher(self) -> None:
+    async def test_before_retry_after_sleep_uses_auth_headers_from_refresher(
+        self,
+    ) -> None:
         auth_header_refresher = AsyncMock(
             return_value={"Authorization": "Bearer fresh-token"}
         )
@@ -87,7 +89,7 @@ class TestServiceNowRetryTransport:
             headers={"Authorization": "Bearer stale-token"},
         )
 
-        retry_request = await transport.before_retry_async(
+        retry_request = await transport.before_retry_after_sleep_async(
             request=request,
             response=httpx.Response(httpx.codes.TOO_MANY_REQUESTS),
             sleep_time=60,
@@ -99,7 +101,9 @@ class TestServiceNowRetryTransport:
         auth_header_refresher.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_before_retry_returns_none_without_refresher(self) -> None:
+    async def test_before_retry_after_sleep_returns_none_without_refresher(
+        self,
+    ) -> None:
         transport = ServiceNowRetryTransport(
             wrapped_transport=httpx.MockTransport(
                 lambda request: httpx.Response(httpx.codes.OK)
@@ -110,7 +114,7 @@ class TestServiceNowRetryTransport:
             "https://test-instance.service-now.com/api/now/table/incident",
         )
 
-        retry_request = await transport.before_retry_async(
+        retry_request = await transport.before_retry_after_sleep_async(
             request=request,
             response=None,
             sleep_time=60,

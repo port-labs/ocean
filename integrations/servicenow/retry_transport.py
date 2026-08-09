@@ -1,10 +1,7 @@
-import asyncio
-import contextlib
 from typing import Any, Callable, Coroutine, Optional, Union
 import typing
 
 import httpx
-import port_ocean.helpers.retry as retry_module
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
 
 
@@ -47,81 +44,7 @@ class ServiceNowRetryTransport(RetryTransport):
         )
         self._auth_header_refresher = auth_header_refresher
 
-    async def _retry_operation_async(
-        self,
-        request: httpx.Request,
-        send_method: Callable[..., Coroutine[Any, Any, httpx.Response]],
-    ) -> httpx.Response:
-        remaining_attempts = self._retry_config.max_attempts
-        attempts_made = 0
-        response: httpx.Response | None = None
-        error: Exception | None = None
-
-        while True:
-            if attempts_made > 0:
-                response_headers = response.headers if response else {}
-                status_code = response.status_code if response else None
-
-                sleep_time = self._calculate_sleep(
-                    attempts_made, response_headers, status_code
-                )
-                self._log_before_retry(request, sleep_time, response, error)
-                await asyncio.sleep(sleep_time)
-
-                updated_request = await self.before_retry_async(
-                    request, response, sleep_time, attempts_made
-                )
-                if updated_request is not None:
-                    request = updated_request
-
-            error = None
-            response = None
-            try:
-                response = await send_method(request)
-                response.request = request
-                await self.after_retry_async(request, response, attempts_made + 1)
-                if remaining_attempts < 1 or not (
-                    await self._should_retry_async(response)
-                ):
-                    if self._should_prefetch_body_for_retry(request, response):
-                        try:
-                            await response.aread()
-                        except httpx.HTTPError:
-                            with contextlib.suppress(Exception):
-                                await response.aclose()
-                            raise
-                    return response
-                await response.aclose()
-            except httpx.ConnectTimeout as e:
-                error = e
-                if remaining_attempts < 1:
-                    self._log_error(request, error)
-                    raise
-            except httpx.ReadTimeout as e:
-                error = e
-                if remaining_attempts < 1:
-                    self._log_error(request, error)
-                    raise
-            except httpx.TimeoutException as e:
-                error = e
-                if remaining_attempts < 1:
-                    self._log_error(request, error)
-                    raise
-            except httpx.HTTPError as e:
-                error = e
-                if remaining_attempts < 1:
-                    self._log_error(request, error)
-                    raise
-            if retry_module._ON_RETRY_CALLBACK:
-                if self._logger:
-                    self._logger.debug(
-                        f"Applying retry auth callback before async retry for {request.method} {request.url}"
-                    )
-                request = retry_module._ON_RETRY_CALLBACK(request)
-            attempts_made += 1
-            remaining_attempts -= 1
-
-    async def before_retry_async(
+    async def before_retry_after_sleep_async(
         self,
         request: httpx.Request,
         response: Optional[httpx.Response],
