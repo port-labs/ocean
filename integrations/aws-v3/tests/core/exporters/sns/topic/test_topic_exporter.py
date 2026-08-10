@@ -62,7 +62,6 @@ class TestSNSTopicExporter:
 
         assert isinstance(result, dict)
         assert result["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:my-topic"
-        assert result["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:my-topic"
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.sns.topic.exporter.AioBaseClientProxy")
