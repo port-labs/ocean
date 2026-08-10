@@ -8,7 +8,6 @@ import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
-from uuid import uuid4
 
 from loguru import logger
 from redis.asyncio.connection import SSLConnection
@@ -259,6 +258,8 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()
         webhook_path: str | None = None
+        redis_event_id = fields["eventId"]
+        trace_id = redis_event_id
         queued_time = self._parse_queued_at(
             fields.get("queuedAt"), stream_key=self._stream_key
         )
@@ -266,10 +267,9 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         logger.info(
             "Redis stream message received",
             stream_key=self._stream_key,
-            message_id=message_id,
+            redis_event_id=redis_event_id,
             webhook_path=fields.get("webhookPath"),
             queued_at=fields.get("queuedAt"),
-            stream_fields=fields,
             time_until_consumed_ms=time_until_consumed_ms,
         )
         try:
@@ -278,7 +278,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 logger.warning(
                     "Redis stream message missing webhookPath, acknowledging",
                     stream_key=self._stream_key,
-                    message_id=message_id,
+                    redis_event_id=redis_event_id,
                 )
                 return
 
@@ -288,8 +288,8 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 logger.warning(
                     "No processors registered for webhookPath, acknowledging",
                     stream_key=self._stream_key,
+                    redis_event_id=redis_event_id,
                     webhook_path=webhook_path,
-                    message_id=message_id,
                     elapsed_ms=elapsed_ms,
                 )
                 return
@@ -307,7 +307,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 )
 
             webhook_event = WebhookEvent(
-                trace_id=str(uuid4()),
+                trace_id=trace_id,
                 payload=payload,
                 headers=headers,
                 original_request=original_request,
@@ -316,16 +316,17 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             logger.info(
                 "Dispatching Redis stream message to handler",
                 stream_key=self._stream_key,
-                message_id=message_id,
+                redis_event_id=redis_event_id,
                 webhook_path=webhook_path,
-                trace_id=webhook_event.trace_id,
+                trace_id=trace_id,
             )
             await self._on_message(webhook_path, webhook_event)
         except Exception as error:
             logger.exception(
                 "Failed to handle Redis stream message",
                 stream_key=self._stream_key,
-                message_id=message_id,
+                redis_event_id=redis_event_id,
+                trace_id=trace_id,
                 error=str(error),
             )
         finally:
@@ -335,8 +336,9 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             logger.info(
                 "Redis stream message processed",
                 stream_key=self._stream_key,
-                message_id=message_id,
+                redis_event_id=redis_event_id,
                 webhook_path=webhook_path,
+                trace_id=trace_id,
                 elapsed_ms=elapsed_ms,
                 time_until_acked_ms=time_until_acked_ms,
             )

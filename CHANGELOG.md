@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Add Redis stream consumer logs when a message is received and before dispatch, including `stream_fields`, `queued_at`, `trace_id`, and consume latency (`time_until_consumed_ms`).
+- Add Redis stream consumer logs when a message is received and before dispatch, including `redis_event_id`, `queued_at`, `trace_id`, and consume latency (`time_until_consumed_ms`). Redis stream `eventId` is used as the webhook `trace_id`.
 
 
 ## 0.47.9 (2026-08-09)
