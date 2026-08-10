@@ -41,7 +41,7 @@ If you've already cloned and developed your changes to an existing integration w
 2. Commit your code changes and the release file to a new branch
 3. Push and open a pull request
 
-On merge, CI applies the version bump and changelog automatically. Manual bumps still work and take priority if you update both `pyproject.toml` and `CHANGELOG.md` in the PR.
+On merge, CI opens a pull request with the version bump and changelog updates. Review and merge that PR to publish. Manual bumps still work and take priority if you update both `pyproject.toml` and `CHANGELOG.md` in the PR.
 
 **Option B — manual release:**
 

@@ -415,7 +415,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             if spec is None:
                 raise ValueError(
                     "Could not determine whether it's safe to run "
-                    "the integration due to not found spec.yaml."
+                    "the integration due to not found spec.json or spec.yaml."
                 )
 
             saas_config = spec.get("saas")

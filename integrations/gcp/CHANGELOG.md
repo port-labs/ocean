@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.1 (2026-08-06)
+## 0.2.4 (2026-08-10)
 
 
 ### Bug Fixes
 
 - Fixed a bug where a single asset lacking versioned resource data (e.g. certain BigQuery Table assets) would abort syncing for its entire kind across all projects. Such assets are now skipped with a warning instead. Additionally, an unexpected error in one project no longer stops other projects from syncing; the error is now surfaced once all projects finish instead of being swallowed or cancelling the others.
+
+
+## 0.2.3 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.2.2 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.2.1 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
 
 
 ## 0.2.0 (2026-08-05)
