@@ -182,41 +182,38 @@ def get_code_analytics_dates(
 # Claude AI (Enterprise) option builders
 
 
-def get_user_activity_dates(
+def _get_analytics_day_dates(
+    *,
     starting_date: str | None,
     time_frame: int | None,
+    data_lag_days: int,
+    default_time_frame: int,
+    resource_label: str,
 ) -> list[str]:
-    """Return the ordered list of YYYY-MM-DD dates for the users endpoint.
-
-    The users endpoint reports a single day at a time. Dates are clamped to the
-    window Anthropic accepts: no earlier than 2026-01-01 (the earliest data
-    exposed) and no newer than ``USER_ACTIVITY_DATA_LAG_DAYS`` days ago (the
-    endpoint rejects more recent dates with a 400).
-    """
+    """Return ordered YYYY-MM-DD dates for per-day Enterprise analytics endpoints."""
     today = _utc_today()
     min_date = ANALYTICS_MIN_DATE.date()
-    latest = today - timedelta(days=USER_ACTIVITY_DATA_LAG_DAYS)
+    latest = today - timedelta(days=data_lag_days)
 
-    # When neither field is provided, fall back to the default look-back window.
     if time_frame is None and starting_date is None:
-        time_frame = DEFAULT_USER_ACTIVITY_TIME_FRAME
+        time_frame = default_time_frame
 
     if time_frame is not None:
         start = latest - timedelta(days=time_frame - 1)
     else:
-        assert starting_date is not None  # guaranteed by the default-fill above
+        assert starting_date is not None
         start = date.fromisoformat(starting_date)
 
     if start < min_date:
         logger.info(
-            f"Clamped user-activity start from '{start.isoformat()}' to "
+            f"Clamped {resource_label} start from '{start.isoformat()}' to "
             f"'{min_date.isoformat()}' (earliest available data)."
         )
         start = min_date
 
     if latest < min_date:
         logger.warning(
-            "No Claude AI user-activity dates available yet "
+            f"No Claude AI {resource_label} dates available yet "
             f"(latest queryable date '{latest.isoformat()}' precedes the "
             f"earliest available data '{min_date.isoformat()}')."
         )
@@ -225,13 +222,27 @@ def get_user_activity_dates(
     num_days = (latest - start).days + 1
     if num_days <= 0:
         logger.warning(
-            f"Computed user-activity start '{start.isoformat()}' is newer than "
+            f"Computed {resource_label} start '{start.isoformat()}' is newer than "
             f"the latest queryable date '{latest.isoformat()}' — no dates to "
-            "fetch. The users endpoint only returns data at least "
-            f"{USER_ACTIVITY_DATA_LAG_DAYS} days old."
+            f"fetch. The endpoint only returns data at least {data_lag_days} "
+            "day(s) old."
         )
         return []
     return [(start + timedelta(days=i)).isoformat() for i in range(num_days)]
+
+
+def get_user_activity_dates(
+    starting_date: str | None,
+    time_frame: int | None,
+) -> list[str]:
+    """Return the ordered list of YYYY-MM-DD dates for the users endpoint."""
+    return _get_analytics_day_dates(
+        starting_date=starting_date,
+        time_frame=time_frame,
+        data_lag_days=USER_ACTIVITY_DATA_LAG_DAYS,
+        default_time_frame=DEFAULT_USER_ACTIVITY_TIME_FRAME,
+        resource_label="user-activity",
+    )
 
 
 def build_user_activity_options(
@@ -248,50 +259,14 @@ def get_skill_usage_dates(
     starting_date: str | None,
     time_frame: int | None,
 ) -> list[str]:
-    """Return the ordered list of YYYY-MM-DD dates for the skills endpoint.
-
-    The skills endpoint reports a single day at a time. Dates are clamped to the
-    window Anthropic accepts: no earlier than 2026-01-01 and no newer than
-    ``SKILL_USAGE_DATA_LAG_DAYS`` days ago.
-    """
-    today = _utc_today()
-    min_date = ANALYTICS_MIN_DATE.date()
-    latest = today - timedelta(days=SKILL_USAGE_DATA_LAG_DAYS)
-
-    if time_frame is None and starting_date is None:
-        time_frame = DEFAULT_SKILL_USAGE_TIME_FRAME
-
-    if time_frame is not None:
-        start = latest - timedelta(days=time_frame - 1)
-    else:
-        assert starting_date is not None
-        start = date.fromisoformat(starting_date)
-
-    if start < min_date:
-        logger.info(
-            f"Clamped skill-usage start from '{start.isoformat()}' to "
-            f"'{min_date.isoformat()}' (earliest available data)."
-        )
-        start = min_date
-
-    if latest < min_date:
-        logger.warning(
-            "No Claude AI skill-usage dates available yet "
-            f"(latest queryable date '{latest.isoformat()}' precedes the "
-            f"earliest available data '{min_date.isoformat()}')."
-        )
-        return []
-
-    num_days = (latest - start).days + 1
-    if num_days <= 0:
-        logger.warning(
-            f"Computed skill-usage start '{start.isoformat()}' is newer than "
-            f"the latest queryable date '{latest.isoformat()}' — no dates to "
-            "fetch. The skills endpoint only returns data at least "
-            f"{SKILL_USAGE_DATA_LAG_DAYS} day old."
-        )
-        return []
-    return [(start + timedelta(days=i)).isoformat() for i in range(num_days)]
+    """Return the ordered list of YYYY-MM-DD dates for the skills endpoint."""
+    return _get_analytics_day_dates(
+        starting_date=starting_date,
+        time_frame=time_frame,
+        data_lag_days=SKILL_USAGE_DATA_LAG_DAYS,
+        default_time_frame=DEFAULT_SKILL_USAGE_TIME_FRAME,
+        resource_label="skill-usage",
+    )
 
 
 def build_skill_usage_options(

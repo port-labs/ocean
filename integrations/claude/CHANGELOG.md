@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.40 (2026-08-10)
+
+
+### Improvements
+
+- Hardened `claude-ai-skill-usage`: renamed blueprint to `claude_ai_skill_usage`, sanitized entity identifiers, preserved null count semantics, added Office Agent metrics, isolated per-day fetch failures, and extended startup API probes to the skills endpoint.
+
+
 ## 0.2.39 (2026-08-10)
 
 
 ### Improvements
 
-- Added `claude-ai-skill-usage` kind for org-level Claude Skills Analytics, syncing per-skill usage into the `ai_skill_usage` blueprint.
+- Added `claude-ai-skill-usage` kind for org-level Claude Skills Analytics, syncing per-skill usage into the `claude_ai_skill_usage` blueprint.
 
 
 ## 0.2.38 (2026-08-10)

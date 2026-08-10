@@ -340,7 +340,7 @@
     "relations": {}
   },
   {
-    "identifier": "ai_skill_usage",
+    "identifier": "claude_ai_skill_usage",
     "description": "Org-level Claude skill usage metrics for a single day",
     "title": "Claude AI Skill Usage",
     "icon": "Claude",
@@ -398,6 +398,22 @@
         "cowork_session_skill_used_count": {
           "type": "number",
           "title": "Cowork Session Skill Uses"
+        },
+        "excel_session_skill_used_count": {
+          "type": "number",
+          "title": "Excel Session Skill Uses"
+        },
+        "powerpoint_session_skill_used_count": {
+          "type": "number",
+          "title": "PowerPoint Session Skill Uses"
+        },
+        "word_session_skill_used_count": {
+          "type": "number",
+          "title": "Word Session Skill Uses"
+        },
+        "outlook_session_skill_used_count": {
+          "type": "number",
+          "title": "Outlook Session Skill Uses"
         }
       },
       "required": [

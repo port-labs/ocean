@@ -102,6 +102,16 @@ def test_skill_usage_selector_rejects_both_fields() -> None:
         )
 
 
+def test_skill_usage_selector_rejects_non_positive_time_frame() -> None:
+    with pytest.raises(ValidationError):
+        ClaudeAISkillUsageSelector(query="true", timeFrame=0)
+
+
+def test_skill_usage_selector_rejects_malformed_starting_date() -> None:
+    with pytest.raises(ValidationError):
+        ClaudeAISkillUsageSelector(query="true", startingDate="not-a-date")
+
+
 # ---------------------------------------------------------------------------
 # Claude AI user report selector (shared by usage and cost)
 # ---------------------------------------------------------------------------
