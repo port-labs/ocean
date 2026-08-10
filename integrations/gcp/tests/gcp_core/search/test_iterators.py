@@ -126,6 +126,92 @@ async def test_empty_projects_returns_nothing() -> None:
 
 
 @pytest.mark.asyncio
+async def test_failing_project_does_not_stop_other_projects() -> None:
+    """
+    If one project's callable raises, the other projects' results must still be
+    yielded, and the error must not be silently swallowed: it should surface once
+    all projects have finished, so the kind's resync is correctly reported as
+    failed (so Ocean skips the delete phase rather than deleting still-existing
+    entities that simply failed to fetch this run).
+    """
+    from gcp_core.search.iterators import iterate_per_available_project
+
+    async def mock_callable(
+        project: dict[str, Any], **kwargs: Any
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        if project["name"] == "project_bad":
+            raise ValueError("boom")
+        yield [project]
+
+    projects = [
+        {"name": "project_good_1"},
+        {"name": "project_bad"},
+        {"name": "project_good_2"},
+    ]
+
+    async def mock_search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield projects
+
+    with patch(
+        "gcp_core.search.iterators.search_all_projects",
+        new=mock_search_all_projects,
+    ):
+        results: list[Any] = []
+        with pytest.raises(ExceptionGroup) as exc_info:  # noqa: F821
+            async for batch in iterate_per_available_project(mock_callable):
+                results.extend(batch)
+
+    # The two healthy projects' results were still yielded before the error surfaced
+    assert {r["name"] for r in results} == {"project_good_1", "project_good_2"}
+    # The error is not swallowed - it's raised once all projects have finished
+    assert len(exc_info.value.exceptions) == 1
+    assert isinstance(exc_info.value.exceptions[0], ValueError)
+
+
+@pytest.mark.asyncio
+async def test_failing_project_in_one_page_does_not_stop_later_pages() -> None:
+    """
+    `search_all_projects` yields projects page by page. A failing project in an
+    earlier page must not prevent later pages from being processed - the error
+    should only surface, combined across all pages, once every page has been
+    streamed.
+    """
+    from gcp_core.search.iterators import iterate_per_available_project
+
+    async def mock_callable(
+        project: dict[str, Any], **kwargs: Any
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        if project["name"] == "page1_bad":
+            raise ValueError("boom")
+        yield [project]
+
+    page_1 = [{"name": "page1_good"}, {"name": "page1_bad"}]
+    page_2 = [{"name": "page2_good_1"}, {"name": "page2_good_2"}]
+
+    async def mock_search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield page_1
+        yield page_2
+
+    with patch(
+        "gcp_core.search.iterators.search_all_projects",
+        new=mock_search_all_projects,
+    ):
+        results: list[Any] = []
+        with pytest.raises(ExceptionGroup) as exc_info:  # noqa: F821
+            async for batch in iterate_per_available_project(mock_callable):
+                results.extend(batch)
+
+    # Every healthy project across both pages was still processed
+    assert {r["name"] for r in results} == {
+        "page1_good",
+        "page2_good_1",
+        "page2_good_2",
+    }
+    assert len(exc_info.value.exceptions) == 1
+    assert isinstance(exc_info.value.exceptions[0], ValueError)
+
+
+@pytest.mark.asyncio
 async def test_kwargs_passed_through_to_callable() -> None:
     from gcp_core.search.iterators import iterate_per_available_project
 
