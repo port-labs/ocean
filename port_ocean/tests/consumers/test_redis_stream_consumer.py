@@ -589,6 +589,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             "webhookPath": "integration/webhook",
             "payload": json.dumps({}),
             "headers": json.dumps({}),
+            "eventId": "pel-requeue-event-1",
         }
 
         mock_redis = AsyncMock()
@@ -787,16 +788,35 @@ class TestRedisStreamConsumer:
                         "headers": json.dumps({}),
                         "webhookPath": "integration/webhook",
                         "queuedAt": "1700000000000000000",
+                        "eventId": "redis-event-123",
                     },
                 )
 
         mock_logger_info.assert_any_call(
+            "Redis stream message received",
+            stream_key="1111111/live-events/raw/event-stream",
+            redis_event_id="redis-event-123",
+            webhook_path="integration/webhook",
+            queued_at="1700000000000000000",
+            time_until_consumed_ms=2000.0,
+        )
+        assert on_message.await_args is not None
+        trace_id = on_message.await_args.args[1].trace_id
+        assert trace_id == "redis-event-123"
+        mock_logger_info.assert_any_call(
+            "Dispatching Redis stream message to handler",
+            stream_key="1111111/live-events/raw/event-stream",
+            redis_event_id="redis-event-123",
+            webhook_path="/webhook",
+            trace_id=trace_id,
+        )
+        mock_logger_info.assert_any_call(
             "Redis stream message processed",
             stream_key="1111111/live-events/raw/event-stream",
-            message_id="1700000000000-0",
+            redis_event_id="redis-event-123",
             webhook_path="/webhook",
+            trace_id=trace_id,
             elapsed_ms=ANY,
-            time_until_consumed_ms=2000.0,
             time_until_acked_ms=2500.0,
         )
 
@@ -832,6 +852,7 @@ class TestRedisStreamConsumer:
                     "headers": json.dumps({}),
                     "webhookPath": "integration/webhook",
                     "queuedAt": "not-a-timestamp",
+                    "eventId": "invalid-queued-at-event",
                 },
             )
 
@@ -867,6 +888,7 @@ class TestRedisStreamConsumer:
                     "payload": json.dumps({"hello": "world"}),
                     "headers": json.dumps({"x-github-event": "push"}),
                     "webhookPath": "integration/webhook",
+                    "eventId": "handler-event-1",
                 },
             )
 
@@ -875,7 +897,7 @@ class TestRedisStreamConsumer:
         assert on_message.await_args.args[0] == path
         assert on_message.await_args.args[1].payload == {"hello": "world"}
         assert on_message.await_args.args[1].headers == {"x-github-event": "push"}
-        assert on_message.await_args.args[1].trace_id
+        assert on_message.await_args.args[1].trace_id == "handler-event-1"
         consumer._ack.assert_awaited_once_with("1700000000000-0")
 
     @pytest.mark.asyncio
@@ -903,6 +925,7 @@ class TestRedisStreamConsumer:
                     "payload": json.dumps({}),
                     "headers": json.dumps({}),
                     "webhookPath": "/unknown",
+                    "eventId": "unknown-path-event",
                 },
             )
 
@@ -933,6 +956,7 @@ class TestRedisStreamConsumer:
                 {
                     "payload": json.dumps({}),
                     "headers": json.dumps({}),
+                    "eventId": "missing-path-event",
                 },
             )
 
@@ -966,6 +990,7 @@ class TestRedisStreamConsumer:
                     "payload": raw_payload,
                     "headers": json.dumps({"x-hub-signature-256": "sha256=abc"}),
                     "webhookPath": "integration/webhook",
+                    "eventId": "original-request-event",
                 },
             )
 
@@ -1001,6 +1026,7 @@ class TestRedisStreamConsumer:
                 {
                     "headers": json.dumps({}),
                     "webhookPath": "integration/webhook",
+                    "eventId": "no-payload-event",
                 },
             )
 

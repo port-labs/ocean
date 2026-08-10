@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.48.2 (2026-08-10)
+
+
+### Bug Fixes
+
+- Load `port_app_config` into the action-run event context (same as live events), so nested or inherited event contexts no longer raise `Port app config is not set`.
+
+
+## 0.48.1 (2026-08-10)
+
+
+### Improvements
+
+- Add Redis stream consumer logs when a message is received and before dispatch, including `redis_event_id`, `queued_at`, `trace_id`, and consume latency (`time_until_consumed_ms`). Redis stream `eventId` is used as the webhook `trace_id`.
+
+
+## 0.48.0 (2026-08-10)
+
+### Improvements
+
+- Added retry lifecycle hooks that run after retry sleep and before retry send, enabling integrations to refresh request state immediately before retrying.
+
 
 ## 0.47.10 (2026-08-09)
 
