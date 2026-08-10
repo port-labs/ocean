@@ -13,7 +13,9 @@ from core.options_builder import (
     build_platform_usage_options,
     build_user_activity_options,
     build_user_report_options,
+    build_skill_usage_options,
     get_code_analytics_dates,
+    get_skill_usage_dates,
     get_user_activity_dates,
 )
 from exporter_factory import (
@@ -22,11 +24,13 @@ from exporter_factory import (
     create_platform_usage_exporter,
     create_user_activity_exporter,
     create_user_cost_exporter,
+    create_skill_usage_exporter,
     create_user_usage_exporter,
 )
 from integration import (
     ClaudeAIUserActivityResourceConfig,
     ClaudeAIUserCostResourceConfig,
+    ClaudeAISkillUsageResourceConfig,
     ClaudeAIUserUsageResourceConfig,
     ClaudePlatformCodeAnalyticsResourceConfig,
     ClaudePlatformCostRecordResourceConfig,
@@ -62,6 +66,34 @@ async def on_resync_user_activity(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for day in dates:
         async for page in exporter.get_paginated_resources(
             build_user_activity_options(date=day)
+        ):
+            if page:
+                yield page
+
+
+@ocean.on_resync(ObjectKind.CLAUDE_AI_SKILL_USAGE)
+async def on_resync_skill_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if not is_deployment_enabled(ClaudeDeployment.ENTERPRISE, kind):
+        return
+
+    selector = cast(ClaudeAISkillUsageResourceConfig, event.resource_config).selector
+    exporter = create_skill_usage_exporter()
+
+    dates = get_skill_usage_dates(
+        starting_date=selector.starting_date,
+        time_frame=selector.time_frame,
+    )
+    if not dates:
+        logger.info("No Claude AI skill usage dates to fetch")
+        return
+    logger.info(
+        f"Fetching Claude AI skill usage for {len(dates)} day(s) "
+        f"from {dates[0]} to {dates[-1]}"
+    )
+
+    for day in dates:
+        async for page in exporter.get_paginated_resources(
+            build_skill_usage_options(date=day)
         ):
             if page:
                 yield page

@@ -8,8 +8,10 @@ from core.options_builder import (
     build_platform_code_analytics_options,
     build_platform_cost_options,
     build_platform_usage_options,
+    build_skill_usage_options,
     build_user_report_options,
     get_code_analytics_dates,
+    get_skill_usage_dates,
     get_user_activity_dates,
     resolve_analytics_range,
 )
@@ -105,6 +107,42 @@ def test_user_activity_dates_defaults_to_30_when_neither_provided(
     dates = get_user_activity_dates(starting_date=None, time_frame=None)
     assert len(dates) == 30
     assert dates[-1] == FIXED_LATEST_ACTIVITY
+
+
+# ---------------------------------------------------------------------------
+# get_skill_usage_dates
+# ---------------------------------------------------------------------------
+
+
+FIXED_LATEST_SKILL_USAGE = "2026-03-14"
+
+
+def test_skill_usage_dates_time_frame(frozen_now: None) -> None:
+    dates = get_skill_usage_dates(starting_date=None, time_frame=7)
+    assert len(dates) == 7
+    assert dates[-1] == FIXED_LATEST_SKILL_USAGE
+    assert dates == sorted(dates)
+
+
+def test_skill_usage_dates_clamped_to_min_date(frozen_now: None) -> None:
+    dates = get_skill_usage_dates(starting_date="2025-12-01", time_frame=None)
+    assert dates[0] == "2026-01-01"
+    assert dates[-1] == FIXED_LATEST_SKILL_USAGE
+
+
+def test_skill_usage_dates_stop_at_one_day_lag(frozen_now: None) -> None:
+    dates = get_skill_usage_dates(starting_date="2026-03-13", time_frame=None)
+    assert dates == ["2026-03-13", "2026-03-14"]
+
+
+def test_skill_usage_dates_too_recent_returns_empty(frozen_now: None) -> None:
+    dates = get_skill_usage_dates(starting_date="2026-03-15", time_frame=None)
+    assert dates == []
+
+
+def test_build_skill_usage_options() -> None:
+    options = build_skill_usage_options(date="2026-03-01")
+    assert options == {"date": "2026-03-01", "limit": 1000}
 
 
 # ---------------------------------------------------------------------------

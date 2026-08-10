@@ -108,3 +108,27 @@ resources:
             amount: ((.amount // "0") | tonumber) / 100
             list_amount: ((.list_amount // "0") | tonumber) / 100
             requests: (.requests // 0)
+  - kind: claude-ai-skill-usage
+    selector:
+      query: 'true'
+      timeFrame: 30
+    port:
+      entity:
+        mappings:
+          identifier: .skill_name + "-" + .__date
+          title: ((.skill_display_name // .skill_name) + " - " + .__date)
+          blueprint: '"ai_skill_usage"'
+          properties:
+            record_date: .__date + "T00:00:00Z"
+            skill_name: .skill_name
+            skill_display_name: .skill_display_name
+            distinct_user_count: (.distinct_user_count // 0)
+            enable_count: (.enable_count // 0)
+            invocation_count: (.invocation_count // 0)
+            share_status: .share_status
+            currency: (.currency // "USD")
+            estimated_overage_spend: (if .estimated_overage_spend then (.estimated_overage_spend | tonumber)  / 100 else null end)
+            attributed_list_price: (if .attributed_list_price then (.attributed_list_price | tonumber)  / 100 else null end)
+            chat_conversation_skill_used_count: (.chat_metrics.distinct_conversation_skill_used_count // 0)
+            code_session_skill_used_count: (.claude_code_metrics.distinct_session_skill_used_count // 0)
+            cowork_session_skill_used_count: (.cowork_metrics.distinct_session_skill_used_count // 0)

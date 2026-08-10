@@ -2,6 +2,7 @@ from typing import Callable
 from unittest.mock import MagicMock, patch
 
 from clients.claude_client import ClaudeClient
+from core.exporters.claude_ai.skill_usage_exporter import ClaudeAISkillUsageExporter
 from core.exporters.claude_ai.user_activity_exporter import (
     ClaudeAIUserActivityExporter,
 )
@@ -16,6 +17,7 @@ from exporter_factory import (
     create_platform_code_analytics_exporter,
     create_platform_cost_exporter,
     create_platform_usage_exporter,
+    create_skill_usage_exporter,
     create_user_activity_exporter,
     create_user_cost_exporter,
     create_user_usage_exporter,
@@ -31,6 +33,7 @@ def test_factories_create_expected_exporters(mock_create_client: MagicMock) -> N
         (create_platform_cost_exporter, ClaudePlatformCostExporter),
         (create_platform_code_analytics_exporter, ClaudePlatformCodeAnalyticsExporter),
         (create_user_activity_exporter, ClaudeAIUserActivityExporter),
+        (create_skill_usage_exporter, ClaudeAISkillUsageExporter),
         (create_user_usage_exporter, ClaudeAIUserUsageExporter),
         (create_user_cost_exporter, ClaudeAIUserCostExporter),
     ]
