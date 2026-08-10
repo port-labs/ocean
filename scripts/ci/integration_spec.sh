@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Shared helpers for locating and reading integration .port/spec files.
+# Shared helpers for locating integration .port/spec files.
 # JSON is preferred over YAML when multiple candidates exist.
 
 resolve_spec_file() {
@@ -26,13 +26,6 @@ find_integration_spec_files() {
       printf '%s\n' "$spec_file"
     fi
   done
-}
-
-read_spec_field() {
-  local file="$1"
-  local field="$2"
-
-  yq -r "$field" "$file"
 }
 
 convert_spec_to_json() {
