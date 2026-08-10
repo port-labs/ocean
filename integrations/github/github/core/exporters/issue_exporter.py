@@ -8,7 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleIssueOptions, ListIssueOptions
-from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+from github.helpers.incremental import resolve_incremental_cursor
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 from github.clients.http.rest_client import GithubRestClient
 
@@ -45,7 +45,7 @@ class RestIssueExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
+        incremental_cursor = resolve_incremental_cursor(options, "since")
         request_params = ISSUE_INCREMENTAL.merge_params(params, incremental_cursor)
 
         async for issues in self.client.send_paginated_request(

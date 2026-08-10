@@ -86,7 +86,8 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
 
         async for repos in self._fetch_repositories(
             cast(ListRepositoryOptions, options_dict),
-            incremental_cursor=active_incremental_cursor(),
+            incremental_cursor=active_incremental_cursor()
+            or options.get("updated_since"),
         ):
             if not included_relations:
                 yield repos

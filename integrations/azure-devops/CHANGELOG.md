@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.9 (2026-08-11)
+
+
+### Improvements
+
+- Added incremental-sync time-window selector fields for full resync on `work-item`, `build`, `release`, `release-deployment`, `test-run`, and `advanced-security-alert` (ignored during incremental sync)
+
+
 ## 0.11.8 (2026-08-10)
 
 
