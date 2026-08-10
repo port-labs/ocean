@@ -10,7 +10,6 @@ from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
-from github.helpers.api_trace_logging import is_api_trace_enabled, log_api_trace
 
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
@@ -122,12 +121,6 @@ class AbstractGithubClient(ABC):
                     follow_redirects=True,
                 )
                 response.raise_for_status()
-
-                if is_api_trace_enabled():
-                    try:
-                        log_api_trace(method, resource, params, response.json())
-                    except ValueError:
-                        log_api_trace(method, resource, params, None)
 
                 logger.debug(f"Successfully fetched {method} {resource}")
                 await self.rate_limiter.on_response(response, resource)

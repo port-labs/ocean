@@ -278,9 +278,7 @@ async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         wiql=config.selector.wiql,
         expand=config.selector.expand,
         incremental_cursor=cursor,
-        changed_after=None
-        if cursor is not None
-        else config.selector.changed_after_datetime,
+        changed_after=config.selector.changed_after_datetime,
     ):
         logger.info(f"Resyncing {len(work_items)} work items")
         yield work_items
@@ -331,7 +329,7 @@ async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for builds in resync.iter_builds(
         enrich_with_first_commit=config.selector.enrich_with_first_commit,
         incremental_cursor=cursor,
-        min_time=None if cursor is not None else config.selector.min_time_datetime,
+        min_time=config.selector.min_time_datetime,
     ):
         logger.info(f"Resyncing {len(builds)} builds")
         yield builds
@@ -357,9 +355,7 @@ async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsReleaseDeploymentConfig, event.resource_config)
     cursor = active_incremental_cursor()
     async for deployments in resync.iter_release_deployments(
-        additional_params=None
-        if cursor is not None
-        else config.selector.to_params(),
+        additional_params=config.selector.to_params(),
         incremental_cursor=cursor,
     ):
         logger.info(f"Fetched {len(deployments)} release deployments")
@@ -461,12 +457,8 @@ async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         selector.include_results,
         selector.code_coverage,
         incremental_cursor=cursor,
-        min_last_updated_date=None
-        if cursor is not None
-        else selector.min_last_updated_date,
-        max_last_updated_date=None
-        if cursor is not None
-        else selector.max_last_updated_date,
+        min_last_updated_date=selector.min_last_updated_date,
+        max_last_updated_date=selector.max_last_updated_date,
     ):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs

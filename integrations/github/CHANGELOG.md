@@ -10,12 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 6.7.18 (2026-08-11)
 
-
-### Bug Fixes
-
-- Fixed crash when GitHub GraphQL API returns none type file data during file resync
-
-
 ### Improvements
 
 - Added incremental-sync time-window selector fields for full resync on `repository`, `issue`, `release`, `deployment`, `dependabot-alert`, and `code-scanning-alert`; existing PR and workflow-run lookback selectors are ignored during incremental sync

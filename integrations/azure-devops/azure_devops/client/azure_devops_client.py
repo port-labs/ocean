@@ -2945,27 +2945,7 @@ class AzureDevopsClient(HTTPBaseClient):
         max_last_updated_date: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        if incremental_cursor is not None:
-            window_start = incremental_cursor
-            now = datetime.now(timezone.utc)
-            while window_start < now:
-                window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
-                params = {
-                    "includeRunDetails": True,
-                    **API_PARAMS,
-                    "minLastUpdatedDate": window_start.isoformat(),
-                    "maxLastUpdatedDate": window_end.isoformat(),
-                }
-                async for runs in self._get_paginated_by_top_and_skip(
-                    url, params=params
-                ):
-                    yield await self._enrich_test_runs(
-                        runs, project_id, include_results, coverage_config
-                    )
-                window_start = window_end
-            return
-
-        if min_last_updated_date or max_last_updated_date:
+        if incremental_cursor is None:
             params: dict[str, Any] = {"includeRunDetails": True, **API_PARAMS}
             if min_last_updated_date:
                 params["minLastUpdatedDate"] = min_last_updated_date
@@ -2977,11 +2957,21 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
             return
 
-        params = {"includeRunDetails": True, **API_PARAMS}
-        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
-            yield await self._enrich_test_runs(
-                runs, project_id, include_results, coverage_config
-            )
+        window_start = incremental_cursor
+        now = datetime.now(timezone.utc)
+        while window_start < now:
+            window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
+            params = {
+                "includeRunDetails": True,
+                **API_PARAMS,
+                "minLastUpdatedDate": window_start.isoformat(),
+                "maxLastUpdatedDate": window_end.isoformat(),
+            }
+            async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+                yield await self._enrich_test_runs(
+                    runs, project_id, include_results, coverage_config
+                )
+            window_start = window_end
 
     async def fetch_test_runs(
         self,
