@@ -632,12 +632,12 @@ every call.
 
 ### 6. No redundant double-fetch in `get_resource`
 
-`get_resource` (single-resource fetch) should seed `inspector.inspect()` with only the minimal
-identifier (e.g. `[{"IdentityName": options.identity_name}]` or a bare string/ARN) and let the
-`defaults` action(s) make the actual AWS call. It must never call the AWS API directly *and* pass
-the result to an inspector whose `defaults` list includes an action that calls the same API
-again. Check every other exporter's `get_resource` (S3, ECR, CodeBuild, MemoryDB) — none of them
-pre-fetch data their default action already fetches.
+`get_resource` (single-resource fetch) must avoid redundant AWS calls. If your default action already
+fetches details, seed `inspector.inspect()` with only the minimal identifier (name/ARN) and let the
+`defaults` action(s) make the AWS call.
+If the defaults are pass-through actions that expect full response items (e.g., ECR repositories,
+MemoryDB users), `get_resource` may perform the single "describe/get" call and pass its result to
+the inspector — but it must not call an API that a default action will call again.
 
 ### 7. Actions run concurrently over the same raw input, not chained
 
