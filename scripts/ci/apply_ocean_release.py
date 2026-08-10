@@ -30,10 +30,16 @@ def main() -> int:
     parser.add_argument(
         "--skip-commit", action="store_true", help="Apply files but do not commit"
     )
+    parser.add_argument(
+        "--skip-checkout",
+        action="store_true",
+        help="Apply on the current branch without detaching to merge-sha",
+    )
     args = parser.parse_args()
 
     git = GitContext(REPO_ROOT)
-    git.checkout_detach(args.merge_sha, fetch_ref=args.main_ref)
+    if not args.skip_checkout:
+        git.checkout_detach(args.merge_sha, fetch_ref=args.main_ref)
 
     applied = apply(git, merge_sha=args.merge_sha, main_ref=args.main_ref)
 

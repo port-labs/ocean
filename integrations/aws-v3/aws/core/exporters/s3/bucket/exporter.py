@@ -23,12 +23,19 @@ class S3BucketExporter(IResourceExporter[list[dict[str, Any]]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-bucket fetch only has a bucket name from CloudTrail.
+            # The inspector would still build a stub resource from that name even if
+            # the bucket is gone. Confirm it exists so a missing bucket raises and
+            # the live-event handler can treat the update as a delete instead.
+            await proxy.client.head_bucket(Bucket=options.bucket_name)  # type: ignore[attr-defined]
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"Name": options.bucket_name}], options.include
+                [{"Name": options.bucket_name}],
+                options.include,
+                extra_context={"AccountId": options.account_id},
             )
 
             return response[0]
