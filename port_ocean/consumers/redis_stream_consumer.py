@@ -259,7 +259,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         start_time = time.monotonic()
         webhook_path: str | None = None
         redis_event_id = fields["eventId"]
-        trace_id = redis_event_id
         queued_time = self._parse_queued_at(
             fields.get("queuedAt"), stream_key=self._stream_key
         )
@@ -307,7 +306,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 )
 
             webhook_event = WebhookEvent(
-                trace_id=trace_id,
+                trace_id=redis_event_id,
                 payload=payload,
                 headers=headers,
                 original_request=original_request,
@@ -318,7 +317,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 stream_key=self._stream_key,
                 redis_event_id=redis_event_id,
                 webhook_path=webhook_path,
-                trace_id=trace_id,
+                trace_id=redis_event_id,
             )
             await self._on_message(webhook_path, webhook_event)
         except Exception as error:
@@ -326,7 +325,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 "Failed to handle Redis stream message",
                 stream_key=self._stream_key,
                 redis_event_id=redis_event_id,
-                trace_id=trace_id,
+                trace_id=redis_event_id,
                 error=str(error),
             )
         finally:
@@ -338,7 +337,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 stream_key=self._stream_key,
                 redis_event_id=redis_event_id,
                 webhook_path=webhook_path,
-                trace_id=trace_id,
+                trace_id=redis_event_id,
                 elapsed_ms=elapsed_ms,
                 time_until_acked_ms=time_until_acked_ms,
             )
