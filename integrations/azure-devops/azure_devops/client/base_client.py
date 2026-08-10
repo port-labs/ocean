@@ -14,6 +14,7 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RETRY_AFTER_HEADER,
 )
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
+from azure_devops.helpers.api_trace_logging import is_api_trace_enabled, log_api_trace
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
@@ -95,6 +96,11 @@ class HTTPBaseClient:
         finally:
             if "response" in locals() and response:
                 await self._rate_limiter.update_from_headers(response.headers)
+        if response and is_api_trace_enabled():
+            try:
+                log_api_trace(method, url, params, response.json())
+            except ValueError:
+                log_api_trace(method, url, params, None)
         return response
 
     async def _get_paginated_by_top_and_continuation_token(

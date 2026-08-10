@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- towncrier release notes start -->
 
 
-## 6.7.17 (2026-08-11)
+## 6.7.18 (2026-08-11)
 
 
 ### Bug Fixes
@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added incremental-sync time-window selector fields for full resync on `repository`, `issue`, `release`, `deployment`, `dependabot-alert`, and `code-scanning-alert`; existing PR and workflow-run lookback selectors are ignored during incremental sync
 
+
+
+## 6.7.17 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
 
 
 ## 6.7.16 (2026-08-09)
