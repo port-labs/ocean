@@ -122,10 +122,10 @@ class TestServicenowWebhookClient:
                 assert mock_create_rule.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_create_webhook_accepts_custom_tables(
+    async def test_create_webhook_skips_unknown_tables(
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
-        """Test that custom tables are accepted with generic fields."""
+        """Test that unknown tables are skipped."""
         with patch(
             "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_if_not_exists",
             AsyncMock(return_value="parent_sys_id"),
@@ -138,10 +138,7 @@ class TestServicenowWebhookClient:
                     "https://example.com", ["incident", "cmdb_ci_server"]
                 )
 
-                assert mock_create_rule.call_count == 2
-                mock_create_rule.assert_any_call(
-                    "cmdb_ci_server", ["sys_id"], order=210
-                )
+                assert mock_create_rule.call_count == 1
 
     @pytest.mark.asyncio
     async def test_create_webhook_no_rest_message(

@@ -4,7 +4,7 @@ from port_ocean.context.ocean import ocean
 from typing import List, Dict, Any, Optional
 import asyncio
 
-from webhook.events import DEFAULT_FIELDS_PER_TABLE, DEFAULT_GENERIC_FIELDS
+from webhook.events import DEFAULT_FIELDS_PER_TABLE
 
 REST_MESSAGE_NAME = "Ocean Port Webhook"
 WEBHOOK_ENDPOINT = "/webhook"
@@ -396,11 +396,14 @@ class ServicenowWebhookClient(ServicenowClient):
         order = 200
 
         for table_name in tables:
-            fields = DEFAULT_FIELDS_PER_TABLE.get(table_name, DEFAULT_GENERIC_FIELDS)
+            if table_name not in DEFAULT_FIELDS_PER_TABLE:
+                logger.warning(f"Skipping unknown table: {table_name}")
+                continue
+
             tasks.append(
                 self._create_business_rule_if_not_exists(
                     table_name,
-                    fields,
+                    DEFAULT_FIELDS_PER_TABLE[table_name],
                     order=order,
                 )
             )

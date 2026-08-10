@@ -1,5 +1,3 @@
-DEFAULT_GENERIC_FIELDS: list[str] = ["sys_id"]
-
 DEFAULT_FIELDS_PER_TABLE: dict[str, list[str]] = {
     "incident": [
         "sys_id",
