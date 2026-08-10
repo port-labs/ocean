@@ -791,6 +791,31 @@ class TestGitLabClient:
 
         assert results == []
 
+    async def test_match_files_with_project_search_skips_repo_on_301(
+        self, client: GitLabClient
+    ) -> None:
+        """A 301 from a renamed/deletion-scheduled repo is skipped like 400."""
+        mock_response = MagicMock()
+        mock_response.status_code = 301
+        mock_response.text = "Moved Permanently"
+        error = httpx.HTTPStatusError(
+            "301 Moved Permanently", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_raising_generator(error),
+        ):
+            results = [
+                batch
+                async for batch in client._match_files_with_project_search(
+                    "group/renamed-repo", "blobs", build_search_query("*.yml")
+                )
+            ]
+
+        assert results == []
+
     async def test_match_files_with_project_search_reraises_non_skippable_status(
         self, client: GitLabClient
     ) -> None:

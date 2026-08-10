@@ -1092,7 +1092,7 @@ class GitLabClient:
             ):
                 yield file_batch
         except httpx.HTTPStatusError as e:
-            if e.response.status_code != 400:
+            if e.response.status_code not in (301, 400):
                 raise
             logger.warning(
                 f"Project blob search failed for repository '{repo}' "
