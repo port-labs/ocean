@@ -263,9 +263,11 @@ async def resync_repositories(
                     type=port_app_config.repository_type,
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
-                    updated_since=None
-                    if sync_cursor is not None
-                    else repo_config.selector.updated_since_datetime,
+                    updated_since=(
+                        None
+                        if sync_cursor is not None
+                        else repo_config.selector.updated_since_datetime
+                    ),
                 )
             )
             for org in organizations
@@ -465,9 +467,11 @@ async def resync_workflow_runs(
                                         workflow_id=workflow["id"],
                                         max_runs=100,
                                         status=status,
-                                        created=None
-                                        if sync_cursor is not None
-                                        else config.selector.created_after,
+                                        created=(
+                                            None
+                                            if sync_cursor is not None
+                                            else config.selector.created_after
+                                        ),
                                     )
                                 )
                                 for workflow in workflows
@@ -481,9 +485,11 @@ async def resync_workflow_runs(
                                         repo_name=repo_name,
                                         workflow_id=workflow["id"],
                                         max_runs=100,
-                                        created=None
-                                        if sync_cursor is not None
-                                        else config.selector.created_after,
+                                        created=(
+                                            None
+                                            if sync_cursor is not None
+                                            else config.selector.created_after
+                                        ),
                                     )
                                 )
                                 for workflow in workflows
@@ -540,12 +546,16 @@ async def resync_pull_requests(
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
                                 max_results=config.selector.effective_max_results,
-                                updated_after=None
-                                if sync_cursor is not None
-                                else config.selector.updated_after,
-                                closed_after=None
-                                if sync_cursor is not None
-                                else config.selector.closed_after,
+                                updated_after=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.updated_after
+                                ),
+                                closed_after=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.closed_after
+                                ),
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
@@ -616,9 +626,11 @@ async def resync_issues(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 labels=config.selector.labels_str,
-                                since=None
-                                if sync_cursor is not None
-                                else config.selector.since_datetime,
+                                since=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.since_datetime
+                                ),
                             )
                         )
                     )
@@ -664,9 +676,11 @@ async def resync_releases(
                             ListReleaseOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
-                                created_since=None
-                                if sync_cursor is not None
-                                else config.selector.created_since_datetime,
+                                created_since=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.created_since_datetime
+                                ),
                             )
                         )
                     )
@@ -858,9 +872,11 @@ async def resync_deployments(
                                 task=config.selector.task,
                                 environment=config.selector.environment,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
-                                created_since=None
-                                if sync_cursor is not None
-                                else config.selector.created_since_datetime,
+                                created_since=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.created_since_datetime
+                                ),
                             )
                         )
                     )
@@ -987,9 +1003,11 @@ async def resync_dependabot_alerts(
                                 state=list(config.selector.states),
                                 severity=config.selector.severity_str,
                                 ecosystem=config.selector.ecosystems_str,
-                                updated_since=None
-                                if sync_cursor is not None
-                                else config.selector.updated_since_datetime,
+                                updated_since=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.updated_since_datetime
+                                ),
                             )
                         )
                     )
@@ -1037,9 +1055,11 @@ async def resync_code_scanning_alerts(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 severity=config.selector.severity,
-                                updated_since=None
-                                if sync_cursor is not None
-                                else config.selector.updated_since_datetime,
+                                updated_since=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.updated_since_datetime
+                                ),
                             )
                         )
                     )
