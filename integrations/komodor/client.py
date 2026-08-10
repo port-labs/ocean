@@ -42,8 +42,6 @@ class KomodorClient:
         while True:
             response = await self._send_request(
                 url=f"{self.api_url}/services/search",
-                # Omitting "kind" lets the API apply its own default set of
-                # service kinds, rather than pinning it on the client side
                 data={"pagination": pagination},
                 method="POST",
             )
