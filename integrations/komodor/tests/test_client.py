@@ -90,13 +90,30 @@ async def test_get_all_services_yields_services_from_every_page(
 
 
 @pytest.mark.asyncio
-async def test_get_all_services_stops_when_token_is_missing(
+async def test_get_all_services_stops_when_token_is_null(
     mock_komodor_client: KomodorClient,
 ) -> None:
     with patch.object(
         mock_komodor_client, "_send_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [service_page("1")]
+
+        await collect_services(mock_komodor_client)
+
+        assert mock_request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_all_services_stops_when_token_key_is_absent(
+    mock_komodor_client: KomodorClient,
+) -> None:
+    last_page = service_page("1")
+    del last_page["meta"]["token"]
+
+    with patch.object(
+        mock_komodor_client, "_send_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [last_page]
 
         await collect_services(mock_komodor_client)
 
@@ -111,12 +128,10 @@ async def collect_services(client: KomodorClient) -> list[dict[str, Any]]:
 
 
 def service_page(service_id: str, next_token: Optional[str] = None) -> dict[str, Any]:
-    meta: dict[str, Any] = {"pageSize": SERVICES_PAGE_SIZE}
-    if next_token is not None:
-        meta["token"] = next_token
+    """The API sends an explicit null token on the last page, rather than dropping the key."""
     return {
         "data": {"services": [{"id": service_id, "type": "deployment"}]},
-        "meta": meta,
+        "meta": {"pageSize": SERVICES_PAGE_SIZE, "token": next_token},
     }
 
 
