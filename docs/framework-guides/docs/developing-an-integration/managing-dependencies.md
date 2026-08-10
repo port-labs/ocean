@@ -222,12 +222,13 @@ poetry update pydantic
 
 
 :::info Version Management
-When releasing a new version of your integration:
+When releasing a new version of your integration or Ocean core changes:
 
-1. Update the version in `pyproject.toml`
-2. Create a changelog entry using `towncrier`
-3. Commit the changes
-4. Create a new release tag
+**Option A — declarative release (recommended):** Add a release intent file (changeset) under
+`integrations/<name>/.ocean-release/` or `.ocean-release/core/`. CI applies the version bump and
+changelog after merge.
+
+**Option B — manual release:** Update the version in `pyproject.toml` and add a changelog entry.
 :::
 
 For more details on Poetry and dependency management, see the [Poetry documentation](https://python-poetry.org/docs/).

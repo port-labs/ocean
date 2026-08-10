@@ -30,13 +30,19 @@ If you've already cloned and developed your changes to an existing integration w
 
 **Option A — declarative release (recommended):**
 
-1. Add a release intent file, e.g. `integrations/jira/.ocean-release/my-change.yaml`:
+1. Add a release intent file (changeset), for example:
+
+   - Integration: `integrations/jira/.ocean-release/my-change.yaml`
+   - Ocean core: `.ocean-release/core/my-change.yaml`
 
    ```yaml
    bump: patch
    changelog-type: bugfix
    changelog: Fixed pagination when Jira returns empty pages
    ```
+
+   `bump` must be one of `patch`, `minor`, or `major`. `changelog-type` must be one of `breaking`,
+   `deprecation`, `feature`, `improvement`, `bugfix`, or `doc`.
 
 2. Commit your code changes and the release file to a new branch
 3. Push and open a pull request
