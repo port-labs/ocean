@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Extended live events to support any table configured in the mapping, not just the 5 hardcoded defaults. Business rules are now auto-created for every kind in the port-app-config, with a generic webhook processor that routes events by table name.
+- Consolidated live event webhook processors into a single generic processor, deriving configured tables from the mapping config instead of a hardcoded list
 
 
 ## 0.4.2 (2026-08-05)

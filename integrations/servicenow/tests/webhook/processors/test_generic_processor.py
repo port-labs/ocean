@@ -45,11 +45,11 @@ class TestGenericWebhookProcessor:
         self, generic_processor: GenericWebhookProcessor
     ) -> None:
         mock_event = MagicMock(spec=WebhookEvent)
-        mock_event.payload = {"__table_name": "cmdb_ci_server", "sys_id": "test123"}
+        mock_event.payload = {"__table_name": "sys_user_group", "sys_id": "test123"}
 
         kinds = await generic_processor.get_matching_kinds(mock_event)
 
-        assert kinds == ["cmdb_ci_server"]
+        assert kinds == ["sys_user_group"]
 
     async def test_get_matching_kinds_with_sys_class_name_fallback(
         self, generic_processor: GenericWebhookProcessor
@@ -89,7 +89,7 @@ class TestGenericWebhookProcessor:
         self, generic_processor: GenericWebhookProcessor
     ) -> None:
         mock_event = MagicMock(spec=WebhookEvent)
-        mock_event.payload = {"__table_name": "cmdb_ci_server", "sys_id": "test123"}
+        mock_event.payload = {"__table_name": "sys_user_group", "sys_id": "test123"}
 
         assert generic_processor._should_process_event(mock_event) is True
 
@@ -161,19 +161,19 @@ class TestGenericWebhookProcessor:
                 "incident", "deleted_id"
             )
 
-    async def test_handle_event_custom_table(
+    async def test_handle_event_table_name_routing(
         self,
         generic_processor: GenericWebhookProcessor,
         resource_config: ResourceConfig,
     ) -> None:
         payload = {
-            "sys_id": "custom123",
-            "__table_name": "cmdb_ci_server",
+            "sys_id": "group123",
+            "__table_name": "sys_user_group",
         }
-        custom_record = {"sys_id": "custom123", "name": "web-server-01"}
+        group_record = {"sys_id": "group123", "name": "Network Team"}
 
         mock_client = MagicMock()
-        mock_client.get_record_by_sys_id = AsyncMock(return_value=custom_record)
+        mock_client.get_record_by_sys_id = AsyncMock(return_value=group_record)
 
         with patch(
             "webhook.processors.generic_processor.initialize_webhook_client",
@@ -181,9 +181,9 @@ class TestGenericWebhookProcessor:
         ):
             result = await generic_processor.handle_event(payload, resource_config)
 
-            assert result.updated_raw_results == [custom_record]
+            assert result.updated_raw_results == [group_record]
             mock_client.get_record_by_sys_id.assert_called_once_with(
-                "cmdb_ci_server", "custom123"
+                "sys_user_group", "group123"
             )
 
     async def test_handle_event_sys_class_name_fallback(

@@ -1,4 +1,6 @@
 from typing import Any, List
+
+from loguru import logger
 from webhook.processors._base_processor import (
     ServicenowAbstractWebhookProcessor,
 )
@@ -29,6 +31,7 @@ class GenericWebhookProcessor(ServicenowAbstractWebhookProcessor):
         sys_id = payload["sys_id"]
         table_name = self._get_table_name(payload)
         if not table_name:
+            logger.warning("No table name found in webhook payload, skipping")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -42,6 +45,9 @@ class GenericWebhookProcessor(ServicenowAbstractWebhookProcessor):
         if record:
             updated_raw_results.append(record)
         else:
+            logger.info(
+                f"Record not found for {table_name}/{sys_id}, treating as delete"
+            )
             deleted_raw_results.append(payload)
 
         return WebhookEventRawResults(
