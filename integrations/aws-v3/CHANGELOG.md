@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.19.3-beta (2026-08-09)
+
+
+### Improvements
+
+- Adjusted the Add AWS-v3 kind instructions to include a self-review checklist before opening a PR.
+
 ## 2.19.2-beta (2026-08-09)
 
 
