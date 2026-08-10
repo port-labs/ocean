@@ -486,6 +486,9 @@ class ExecutionManager:
                 "run_kind": run.run_kind.value,
             },
         ):
+            await ocean.integration.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
             with logger.contextualize(run_id=run.id, action=run.action_type):
                 try:
                     executor = self._actions_executors[run.action_type]
