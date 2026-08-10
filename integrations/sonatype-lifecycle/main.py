@@ -188,12 +188,15 @@ async def on_start() -> None:
     # Sonatype IQ Server has no REST endpoint to create webhooks
     # programmatically; they are configured in the IQ admin UI under
     # System Preferences -> Webhooks. We surface the exact URL to register.
+    # Ocean mounts processors under /integration, so operators must register
+    # ``{base_url}/integration/webhook`` (not just ``{base_url}/webhook``).
     app_host = ocean.app.base_url
     if app_host:
+        webhook_url = f"{app_host.rstrip('/')}/integration{WEBHOOK_PATH}"
         logger.info(
             "To receive real-time updates, add a webhook in Sonatype IQ Server "
             "(System Preferences -> Webhooks) pointing to "
-            f"{app_host}{WEBHOOK_PATH} for the 'Application Evaluation' and "
+            f"{webhook_url} for the 'Application Evaluation' and "
             "'Policy Management' event types."
         )
     else:

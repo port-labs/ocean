@@ -8,8 +8,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 from initialize_client import get_sonatype_client
-from integration import ComponentSelector
 from kinds import ObjectKind
+from utils import read_include_remediation
 from webhook_processors._base import (
     APPLICATION_EVALUATION_EVENT,
     SonatypeAbstractWebhookProcessor,
@@ -44,10 +44,9 @@ class ComponentWebhookProcessor(SonatypeAbstractWebhookProcessor):
         stage = evaluation["stage"]
         report_id = evaluation["reportId"]
 
-        include_remediation = False
-        selector = resource_config.selector
-        if isinstance(selector, ComponentSelector):
-            include_remediation = selector.include_remediation
+        # Read by attribute (not isinstance): Ocean's runtime selector often
+        # fails ComponentSelector checks and would skip remediation otherwise.
+        include_remediation = read_include_remediation(resource_config.selector)
 
         data = await client.get_component_data_for_single_report(
             application, stage, report_id, include_remediation=include_remediation

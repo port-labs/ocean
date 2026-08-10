@@ -8,6 +8,7 @@ from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
 from utils import (
+    SEVERITY_NONE,
     build_component_identifier,
     build_report_identifier,
     build_violation_identifier,
@@ -362,7 +363,8 @@ class SonatypeClient:
     ) -> list[dict[str, Any]]:
         """Flatten a policy report into individual policy-violation entities."""
         stage = report_summary.get("stage", "unknown")
-        report_id = extract_report_id(report_summary) or "unknown"
+        # Key violations on the stable application-stage report identifier
+        # (same as reports/components), not the volatile per-scan reportId.
         report_identifier = build_report_identifier(application["id"], stage)
         report_url = to_absolute_url(self.base_url, report_summary.get("reportHtmlUrl"))
 
@@ -376,7 +378,7 @@ class SonatypeClient:
                     {
                         **violation,
                         "__identifier": build_violation_identifier(
-                            report_id, component_hash, policy_id
+                            report_identifier, component_hash, policy_id
                         ),
                         "__title": f"{violation.get('policyName', 'Policy')} - {display_name}",
                         "__applicationId": application["id"],
@@ -432,9 +434,12 @@ class SonatypeClient:
                 cve_references.append(reference)
                 score = issue.get("severity") or 0.0
                 max_cvss = max(max_cvss, float(score))
-                severity = normalize_severity(
-                    issue.get("threatCategory")
-                ) or severity_from_cvss(score)
+                # normalize_severity always returns a string (including "none"),
+                # so ``or severity_from_cvss`` would never run. Fall back to
+                # CVSS when the threat category is missing/unrecognized.
+                severity = normalize_severity(issue.get("threatCategory"))
+                if severity == SEVERITY_NONE:
+                    severity = severity_from_cvss(score)
                 # Global CVE entity (last write wins across occurrences).
                 vulnerabilities[reference] = {
                     "__identifier": reference,

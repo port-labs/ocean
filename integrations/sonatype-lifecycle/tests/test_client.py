@@ -87,7 +87,7 @@ def test_build_violation_entities(client) -> None:  # type: ignore[no-untyped-de
 
     assert len(violations) == 3
     first = violations[0]
-    assert first["__identifier"] == "rid1-hashA-p1"
+    assert first["__identifier"] == "app-internal-1-release-hashA-p1"
     assert first["__applicationId"] == "app-internal-1"
     assert first["__reportIdentifier"] == "app-internal-1-release"
     assert first["__severity"] == "critical"
@@ -166,6 +166,32 @@ async def test_build_component_and_vulnerability_entities(client) -> None:  # ty
     assert cve["__identifier"] == "CVE-2021-44228"
     assert cve["severity"] == "critical"
     assert cve["cvssScore"] == 10.0
+
+
+async def test_vulnerability_severity_falls_back_to_cvss(client) -> None:  # type: ignore[no-untyped-def]
+    """Unrecognized threatCategory must not block CVSS-based severity."""
+    raw_report = {
+        "components": [
+            {
+                "hash": "hashA",
+                "packageUrl": "pkg:maven/g/a@1.0",
+                "securityData": {
+                    "securityIssues": [
+                        {
+                            "source": "cve",
+                            "reference": "CVE-2099-0001",
+                            "severity": 9.1,
+                            "threatCategory": "unknown-category",
+                        }
+                    ]
+                },
+            }
+        ]
+    }
+    data = await client._build_component_and_vulnerability_entities(
+        APPLICATION, REPORT_SUMMARY, raw_report, include_remediation=False
+    )
+    assert data["vulnerabilities"][0]["severity"] == "critical"
 
 
 async def test_build_components_with_remediation(client) -> None:  # type: ignore[no-untyped-def]

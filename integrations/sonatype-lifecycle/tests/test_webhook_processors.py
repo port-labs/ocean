@@ -80,6 +80,35 @@ async def test_org_processor_only_handles_organization_owner() -> None:
     assert await processor.should_process_event(app_event) is False
 
 
+async def test_component_processor_reads_remediation_without_isinstance() -> None:
+    from webhook_processors.component_webhook_processor import ComponentWebhookProcessor
+
+    event = _event(APP_EVAL_PAYLOAD, "iq:applicationEvaluation")
+    processor = ComponentWebhookProcessor(event)
+
+    # Plain object with the attribute — not a ComponentSelector instance.
+    resource_config = MagicMock()
+    resource_config.selector = MagicMock(include_remediation=True)
+
+    fake_client = MagicMock()
+    fake_client.get_component_data_for_single_report = AsyncMock(
+        return_value={"components": [{"__identifier": "c1"}]}
+    )
+    with patch(
+        "webhook_processors.component_webhook_processor.get_sonatype_client",
+        return_value=fake_client,
+    ):
+        result = await processor.handle_event(APP_EVAL_PAYLOAD, resource_config)
+
+    assert result.updated_raw_results == [{"__identifier": "c1"}]
+    fake_client.get_component_data_for_single_report.assert_awaited_once_with(
+        APP_EVAL_PAYLOAD["applicationEvaluation"]["application"],
+        "release",
+        "rid1",
+        include_remediation=True,
+    )
+
+
 @pytest.mark.parametrize("has_secret", [False])
 async def test_authenticate_without_secret_accepts_valid_header(
     has_secret: bool,

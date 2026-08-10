@@ -46,15 +46,17 @@ def build_report_identifier(application_id: str, stage: str) -> str:
 
 
 def build_violation_identifier(
-    report_id: str, component_hash: str, policy_id: str
+    report_identifier: str, component_hash: str, policy_id: str
 ) -> str:
     """A deterministic identifier for a single policy violation.
 
-    Using the (report, component, policy) triple means a re-scan updates
-    existing violations in place, and violations that are fixed/waived simply
-    stop appearing and are pruned by Ocean at the end of the resync.
+    Using the stable ``<applicationId>-<stage>`` report identifier (not the
+    volatile per-scan ``reportId``) with the (component, policy) pair means a
+    re-scan updates existing violations in place, and violations that are
+    fixed/waived simply stop appearing and are pruned by Ocean at the end of
+    the resync.
     """
-    return f"{report_id}-{component_hash}-{policy_id}"
+    return f"{report_identifier}-{component_hash}-{policy_id}"
 
 
 def component_display_name(component: dict[str, Any]) -> str:

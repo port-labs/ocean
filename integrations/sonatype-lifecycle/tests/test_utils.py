@@ -39,7 +39,10 @@ def test_build_report_identifier() -> None:
 
 
 def test_build_violation_identifier() -> None:
-    assert build_violation_identifier("rep1", "hashA", "polX") == "rep1-hashA-polX"
+    assert (
+        build_violation_identifier("app123-release", "hashA", "polX")
+        == "app123-release-hashA-polX"
+    )
 
 
 def test_component_display_name_prefers_package_url() -> None:
