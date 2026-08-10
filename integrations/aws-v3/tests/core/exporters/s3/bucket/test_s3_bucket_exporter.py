@@ -77,10 +77,13 @@ class TestS3BucketExporter:
         # Verify
         assert result == expected_bucket.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")
+        mock_client.head_bucket.assert_awaited_once_with(Bucket="test-bucket")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"Name": "test-bucket"}], ["GetBucketTaggingAction"]
+            [{"Name": "test-bucket"}],
+            ["GetBucketTaggingAction"],
+            extra_context={"AccountId": "123456789012"},
         )
 
     @pytest.mark.asyncio
@@ -132,6 +135,7 @@ class TestS3BucketExporter:
         mock_inspector.inspect.assert_called_once_with(
             [{"Name": "prod-bucket"}],
             ["GetBucketEncryptionAction", "GetBucketPublicAccessBlockAction"],
+            extra_context={"AccountId": "123456789012"},
         )
 
     @pytest.mark.asyncio
@@ -276,6 +280,40 @@ class TestS3BucketExporter:
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
+    async def test_get_resource_head_bucket_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: S3BucketExporter,
+    ) -> None:
+        """Missing buckets must raise from head_bucket before stub resources are built."""
+        from botocore.exceptions import ClientError
+
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.head_bucket.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchBucket", "Message": "gone"}},
+            "HeadBucket",
+        )
+
+        options = SingleBucketRequest(
+            region="us-west-2",
+            account_id="123456789012",
+            bucket_name="nonexistent-bucket",
+            include=["GetBucketTaggingAction"],
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
+
+        assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
+        mock_inspector_class.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -346,7 +384,11 @@ class TestS3BucketExporter:
         assert result["Properties"]["BucketName"] == "test-bucket"
 
         # Verify the inspector was called correctly
-        mock_inspector.inspect.assert_called_once_with([{"Name": "test-bucket"}], [])
+        mock_inspector.inspect.assert_called_once_with(
+            [{"Name": "test-bucket"}],
+            [],
+            extra_context={"AccountId": "123456789012"},
+        )
 
         # Verify the context manager was used correctly (__aenter__ and __aexit__ were called)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")
