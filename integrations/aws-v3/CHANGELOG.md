@@ -7,12 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.19.0-beta (2026-08-04)
+## 2.19.2-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 2.19.1-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 2.19.0-beta (2026-08-09)
 
 
 ### Features
 
-- Added AWS::SNS::Topic kind with topic attributes, delivery feedback, and optional tags support
+- Added CloudTrail live events support for `AWS::S3::Bucket` and `AWS::Lambda::Function` kinds, enabled via the `AWS_V3_LIVE_EVENTS_ENABLED` organization feature flag.
+
+
+## 2.18.7-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 2.18.6-beta (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 2.18.5-beta (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 2.18.4-beta (2026-08-04)
 
 
 ### Improvements

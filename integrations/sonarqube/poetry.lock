@@ -419,7 +419,7 @@ description = "Cross-platform colored terminal text."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 groups = ["main", "dev"]
-markers = "sys_platform == \"win32\" or platform_system == \"Windows\""
+markers = "platform_system == \"Windows\" or sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
@@ -1648,14 +1648,14 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.47.4"
+version = "0.47.10"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "port_ocean-0.47.4-py3-none-any.whl", hash = "sha256:d99a04bae86e0a14ad1aeba6f6249ec595d1ef116d065c6d57166fb31c3cf3e8"},
-    {file = "port_ocean-0.47.4.tar.gz", hash = "sha256:eae70d8e4a5099c8c0ec8ff6104fa7b847b6cbb557c7db804be6a0d396eba093"},
+    {file = "port_ocean-0.47.10-py3-none-any.whl", hash = "sha256:f5d124443e0a26c568fbe67baf225b04d38b989168c4036b922daf9450375e57"},
+    {file = "port_ocean-0.47.10.tar.gz", hash = "sha256:7c7305ceb9834f4749772815e4973b26bcca762f10b55abedf280b0b08ee0cbb"},
 ]
 
 [package.dependencies]
@@ -2682,4 +2682,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "ruff", "sph
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "9659f788ad61fcd3c1dc117bff82d47b9eb0cb2ae983f82f0d1838775caf4e38"
+content-hash = "94bb1fc4416309e015ace189bd1df1062feececbe7d0a4e8b961b43640484681"
