@@ -1,14 +1,15 @@
 from typing import Any
 
 from loguru import logger
-from datadog.client import DatadogClient
-from initialize_client import init_client
+from client_manager import get_client_manager
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 
+from datadog.client import DatadogClient
+from datadog.utils import ORG_ID_ENRICHMENT_KEY, ORG_NAME_ENRICHMENT_KEY, enrich_batch
 from datadog.webhook.webhook_client import PORT_AUTH_HEADER_NAME
 
 
@@ -16,7 +17,19 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
 
     def __init__(self, event: WebhookEvent) -> None:
         super().__init__(event)
-        self.client: DatadogClient = init_client()
+        self._client_manager = get_client_manager()
+
+    def _enrich_with_org_identity(
+        self, items: list[dict[str, Any]], client: DatadogClient
+    ) -> None:
+        if self._client_manager.is_multi_org:
+            enrich_batch(
+                items,
+                enrichments={
+                    ORG_ID_ENRICHMENT_KEY: client.org_id,
+                    ORG_NAME_ENRICHMENT_KEY: client.org_name,
+                },
+            )
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]

@@ -3,7 +3,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 from typing import ClassVar, List, Literal
 
 

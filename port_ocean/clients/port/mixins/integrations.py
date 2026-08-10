@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
@@ -8,12 +10,15 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.context.event import event as current_event
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     LakehouseDataEntryBatch,
     LakehouseEventType,
     ProcessingMode,
 )
+from port_ocean.core.utils.json_compat import make_json_compatible
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.version import __version__ as ocean_core_version
@@ -23,6 +28,28 @@ if TYPE_CHECKING:
 
 INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.55
+
+RESYNC_STALE_ERROR_CODE = "resync_stale"
+
+
+def _is_resync_stale_lakehouse_response(response: httpx.Response) -> bool:
+    if response.status_code != 409:
+        return False
+    try:
+        payload = response.json()
+    except Exception:
+        return False
+    if not isinstance(payload, dict):
+        return False
+    error = payload.get("error")
+    code: str | None = None
+    if isinstance(error, dict):
+        code = error.get("code") or error.get("name")
+    else:
+        code = payload.get("code")
+    return code == RESYNC_STALE_ERROR_CODE
+
+
 INTEGRATION_POLLING_RETRY_LIMIT = 30
 CREATE_RESOURCES_PARAM_NAME = "integration_modes"
 CREATE_RESOURCES_PARAM_VALUE = ["create_resources"]
@@ -171,6 +198,7 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
         create_port_resources_origin: CreatePortResourcesOrigin = CreatePortResourcesOrigin.Ocean,
         actions_processing_enabled: Optional[bool] = False,
+        incremental_sync_enabled: Optional[bool] = False,
     ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -181,6 +209,7 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
             "config": {},
             "actionsProcessingEnabled": actions_processing_enabled,
+            "incrementalSyncEnabled": incremental_sync_enabled,
             "createPortResourcesOrigin": create_port_resources_origin.value,
         }
 
@@ -211,6 +240,7 @@ class IntegrationClientMixin:
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
         actions_processing_enabled: Optional[bool] = None,
+        incremental_sync_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
         processing_mode: ProcessingMode | None = None,
     ) -> dict:
@@ -225,6 +255,8 @@ class IntegrationClientMixin:
             json["arePortResourcesInitialized"] = are_port_resources_initialized
         if actions_processing_enabled is not None:
             json["actionsProcessingEnabled"] = actions_processing_enabled
+        if incremental_sync_enabled is not None:
+            json["incrementalSyncEnabled"] = incremental_sync_enabled
         if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
         if processing_mode is not None:
@@ -236,6 +268,26 @@ class IntegrationClientMixin:
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
             headers=headers,
             json=json,
+        )
+        handle_port_status_code(response)
+        return response.json()["integration"]
+
+    async def patch_integration_config(
+        self,
+        port_app_config: PortAppConfig | None,
+        skip_resync: bool = False,
+    ) -> dict:
+        logger.info(
+            f"Updating config of integration with id: {self.integration_identifier}"
+        )
+        headers = await self.auth.headers()
+        if skip_resync:
+            headers["x-skip-resync"] = "true"
+
+        response = await self.client.patch(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/config",
+            headers=headers,
+            json={"config": port_app_config.to_request()},
         )
         handle_port_status_code(response)
         return response.json()["integration"]
@@ -380,9 +432,9 @@ class IntegrationClientMixin:
         data = []
         for entry in event["data"]:
             entry_data: dict[str, Any] = {
-                "request": entry["request"],
-                "response": entry["response"],
-                "items": entry["items"],
+                "request": make_json_compatible(entry["request"]),
+                "response": make_json_compatible(entry["response"]),
+                "items": make_json_compatible(entry["items"]),
                 "metadata": {
                     "operation": entry["metadata"]["operation"].value,
                     "extractionTimestamp": entry["metadata"]["extraction_timestamp"],
@@ -391,7 +443,7 @@ class IntegrationClientMixin:
                 },
             }
             if environment_data := entry.get("environment_data"):
-                entry_data["environment_data"] = environment_data
+                entry_data["environment_data"] = make_json_compatible(environment_data)
             data.append(entry_data)
 
         body: dict[str, Any] = {
@@ -414,6 +466,65 @@ class IntegrationClientMixin:
             f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
             json=body,
+            extensions={"retryable": True},
         )
-        handle_port_status_code(response, should_raise=False, should_log=True)
+        if _is_resync_stale_lakehouse_response(response):
+            logger.warning(
+                "Lakehouse reported resync is stale, aborting current resync"
+            )
+            try:
+                current_event.abort(external_abort=True)
+            except EventContextNotFoundError:
+                logger.warning(
+                    "Lakehouse stale response received without active event context"
+                )
+            return
+        handle_port_status_code(response, should_raise=True, should_log=True)
         logger.debug("Finished POST raw data batch request")
+
+    async def get_integration_cursor(self, kind: str, index: int) -> Optional[datetime]:
+        """Return the stored cursor for a (kind, index) pair, or None if not yet created."""
+        logger.debug("Fetching incremental cursor", kind=kind, index=index)
+        response = await self.client.get(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
+            headers=await self.auth.headers(),
+            params={"kind": kind, "index": index},
+        )
+        handle_port_status_code(response)
+        cursor = response.json().get("cursor")
+        if not cursor:
+            return None
+        raw = cursor.get("primary")
+        return datetime.fromisoformat(raw) if raw else None
+
+    async def upsert_integration_cursor(
+        self, kind: str, index: int, value: datetime
+    ) -> None:
+        """Create or update the cursor for a (kind, index) pair."""
+        logger.debug(
+            "Upserting incremental cursor",
+            kind=kind,
+            index=index,
+            value=value.isoformat(),
+        )
+        body = {"primary": value.isoformat()}
+        params = {"kind": kind, "index": index}
+        headers = await self.auth.headers()
+
+        put_response = await self.client.put(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
+            headers=headers,
+            params=params,
+            json=body,
+        )
+        if put_response.status_code != 404:
+            handle_port_status_code(put_response)
+            return
+
+        post_response = await self.client.post(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
+            headers=headers,
+            params=params,
+            json=body,
+        )
+        handle_port_status_code(post_response)

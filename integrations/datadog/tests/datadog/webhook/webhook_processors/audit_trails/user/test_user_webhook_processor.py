@@ -9,7 +9,6 @@ from datadog.webhook.webhook_processors.audit_trails.user.user_webhook_processor
     UserWebhookProcessor,
 )
 
-
 _USER_HTTP = {
     "method": "PATCH",
     "status_code": 200,
@@ -28,6 +27,7 @@ def _event(
         "evt": {"name": evt_name},
         "action": action,
         "asset": {"type": asset_type, "id": asset_id},
+        "org": {"name": "DPN | Port", "uuid": "uuid-1"},
     }
     if include_http:
         attrs["http"] = _USER_HTTP

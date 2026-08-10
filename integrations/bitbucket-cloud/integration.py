@@ -10,7 +10,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
 from typing import Any, Literal, Type, Optional
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -18,7 +18,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.utils.signal import signal_handler
 from loguru import logger
-
 
 FILE_PROPERTY_PREFIX = "file://"
 

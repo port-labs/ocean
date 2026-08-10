@@ -8,7 +8,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
-from pydantic import BaseModel, PrivateAttr
+from pydantic.v1 import BaseModel, PrivateAttr
 
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
 

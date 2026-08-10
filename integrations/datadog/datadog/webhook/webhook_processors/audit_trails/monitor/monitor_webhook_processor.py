@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 if TYPE_CHECKING:
     from datadog.overrides import MonitorResourceConfig
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import MonitorExporter
 from datadog.core.exporters.monitor_exporter import GetMonitorOptions
 from datadog.webhook.consts import (
@@ -33,9 +34,12 @@ class AuditMonitorWebhookProcessor(BaseAuditTrailProcessor):
         )
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
-        return await MonitorExporter(self.client).get_resource(
+        return await MonitorExporter(client).get_resource(
             GetMonitorOptions.from_resource_config(
                 cast("MonitorResourceConfig", resource_config),
                 resource_id=event.attributes.asset.id,

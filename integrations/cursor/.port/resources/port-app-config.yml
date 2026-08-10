@@ -1,0 +1,95 @@
+resources:
+  - kind: cursor-daily-usage
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      entity:
+        mappings:
+          identifier: (.userId + "-" + .day)
+          title: (.email + " " + .day)
+          blueprint: '"cursorDailyUsage"'
+          properties:
+            day: (if .day then (.day + "T00:00:00Z") else null end)
+            user_id: .userId
+            email: .email
+            is_active: .isActive
+            total_lines_added: .totalLinesAdded
+            total_lines_deleted: .totalLinesDeleted
+            accepted_lines_added: .acceptedLinesAdded
+            accepted_lines_deleted: .acceptedLinesDeleted
+            total_applies: .totalApplies
+            total_accepts: .totalAccepts
+            total_rejects: .totalRejects
+            total_tabs_shown: .totalTabsShown
+            total_tabs_accepted: .totalTabsAccepted
+            composer_requests: .composerRequests
+            chat_requests: .chatRequests
+            agent_requests: .agentRequests
+            most_used_model: .mostUsedModel
+            subscription_included_reqs: .subscriptionIncludedReqs
+            api_key_reqs: .apiKeyReqs
+            usage_based_reqs: .usageBasedReqs
+            bugbot_usages: .bugbotUsages
+  - kind: cursor-usage-event
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      entity:
+        mappings:
+          identifier: ((.timestamp + "-" + .userEmail + "-" + .model + "-" + .kind) | gsub("[^A-Za-z0-9@_.+:\\\\/='-]"; "_"))
+          title: (.userEmail + " " + .model + " " + .kind)
+          blueprint: '"cursorUsageEvent"'
+          properties:
+            timestamp: (.timestamp | tonumber / 1000 | todate)
+            model: .model
+            kind: .kind
+            max_mode: .maxMode
+            requests_costs: .requestsCosts
+            is_token_based_call: .isTokenBasedCall
+            input_tokens: (if .tokenUsage then .tokenUsage.inputTokens else null end)
+            output_tokens: (if .tokenUsage then .tokenUsage.outputTokens else null end)
+            cache_read_tokens: (if .tokenUsage then .tokenUsage.cacheReadTokens else null end)
+            cache_write_tokens: (if .tokenUsage then .tokenUsage.cacheWriteTokens else null end)
+            token_cost: (if .tokenUsage.totalCents then (.tokenUsage.totalCents / 100) else null end)
+            user_email: .userEmail
+            cursor_token_fee: .cursorTokenFee
+            is_headless: .isHeadless
+            charged_amount: (if .chargedCents then (.chargedCents / 100) else null end)
+  - kind: cursor-team-model-usage
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      itemsToParse: (.model_breakdown // {} | to_entries)
+      entity:
+        mappings:
+          identifier: (.date + "-" + .item.key)
+          title: (.date + " " + .item.key)
+          blueprint: '"cursorTeamModelUsage"'
+          properties:
+            date: (if .date then (.date + "T00:00:00Z") else null end)
+            model: .item.key
+            messages: .item.value.messages
+            users: .item.value.users
+  - kind: cursor-user-model-usage
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      itemsToParse: (.model_breakdown // {} | to_entries)
+      entity:
+        mappings:
+          identifier: (.userEmail + "-" + .date + "-" + .item.key)
+          title: (.userEmail + " " + .item.key)
+          blueprint: '"cursorUserModelUsage"'
+          properties:
+            date: (if .date then (.date + "T00:00:00Z") else null end)
+            user_email: .userEmail
+            model: .item.key
+            messages: .item.value.messages

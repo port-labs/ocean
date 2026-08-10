@@ -1,0 +1,24 @@
+resources:
+  - kind: AWS::CodePipeline::PipelineExecution
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.PipelineExecutionId
+          title: .Properties.PipelineName + "/" + .Properties.PipelineExecutionId
+          blueprint: '"codePipelinePipelineExecution"'
+          properties:
+            pipelineName: .Properties.PipelineName
+            pipelineVersion: .Properties.PipelineVersion
+            pipelineExecutionId: .Properties.PipelineExecutionId
+            status: .Properties.Status
+            statusSummary: .Properties.StatusSummary
+            executionMode: .Properties.ExecutionMode
+            trigger: .Properties.Trigger
+            artifactRevisions: .Properties.ArtifactRevisions
+            variables: .Properties.Variables
+            startTime: .Properties.StartTime
+            lastUpdateTime: .Properties.LastUpdateTime
+          relations:
+            account: .__ExtraContext.AccountId

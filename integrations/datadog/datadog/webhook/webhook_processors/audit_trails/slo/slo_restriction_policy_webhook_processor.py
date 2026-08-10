@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import SloExporter
 from datadog.core.exporters.slo_exporter import GetSloOptions
 from datadog.utils import parse_restriction_policy_asset
@@ -46,12 +47,15 @@ class SloRestrictionPolicyWebhookProcessor(BaseAuditTrailProcessor):
         return None  # restriction deleted ≠ SLO deleted; re-fetch instead
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
         asset = parse_restriction_policy_asset(event.attributes.asset.id)
         if not asset:
             return None
-        return await SloExporter(self.client).get_resource(
+        return await SloExporter(client).get_resource(
             GetSloOptions.from_resource_config(
                 cast("SLOResourceConfig", resource_config),
                 resource_id=asset.id,

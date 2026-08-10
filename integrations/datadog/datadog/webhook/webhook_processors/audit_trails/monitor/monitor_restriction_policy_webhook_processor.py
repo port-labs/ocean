@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 if TYPE_CHECKING:
     from datadog.overrides import MonitorResourceConfig
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import MonitorExporter
 from datadog.core.exporters.monitor_exporter import GetMonitorOptions
 from datadog.utils import parse_restriction_policy_asset
@@ -46,12 +47,15 @@ class MonitorRestrictionPolicyWebhookProcessor(BaseAuditTrailProcessor):
         return None  # restriction deleted ≠ monitor deleted; re-fetch instead
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
         asset = parse_restriction_policy_asset(event.attributes.asset.id)
         if not asset:
             return None
-        return await MonitorExporter(self.client).get_resource(
+        return await MonitorExporter(client).get_resource(
             GetMonitorOptions.from_resource_config(
                 cast("MonitorResourceConfig", resource_config),
                 resource_id=asset.id,

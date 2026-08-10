@@ -1,0 +1,259 @@
+[
+  {
+    "identifier": "cursorDailyUsage",
+    "description": "Daily team usage metrics from Cursor Admin API",
+    "title": "Cursor Daily Usage",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "day": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Day"
+        },
+        "user_id": {
+          "type": "string",
+          "title": "User ID"
+        },
+        "email": {
+          "type": "string",
+          "title": "User Email",
+          "format": "email"
+        },
+        "is_active": {
+          "type": "boolean",
+          "title": "Active"
+        },
+        "total_lines_added": {
+          "type": "number",
+          "title": "Total Lines Added"
+        },
+        "total_lines_deleted": {
+          "type": "number",
+          "title": "Total Lines Deleted"
+        },
+        "accepted_lines_added": {
+          "type": "number",
+          "title": "Accepted Lines Added"
+        },
+        "accepted_lines_deleted": {
+          "type": "number",
+          "title": "Accepted Lines Deleted"
+        },
+        "total_applies": {
+          "type": "number",
+          "title": "Total Applies"
+        },
+        "total_accepts": {
+          "type": "number",
+          "title": "Total Accepts"
+        },
+        "total_rejects": {
+          "type": "number",
+          "title": "Total Rejects"
+        },
+        "composer_requests": {
+          "type": "number",
+          "title": "Composer Requests"
+        },
+        "chat_requests": {
+          "type": "number",
+          "title": "Chat Requests"
+        },
+        "agent_requests": {
+          "type": "number",
+          "title": "Agent Requests"
+        },
+        "most_used_model": {
+          "type": "string",
+          "title": "Most Used Model"
+        },
+        "total_tabs_shown": {
+          "type": "number",
+          "title": "Total Tabs Shown"
+        },
+        "total_tabs_accepted": {
+          "type": "number",
+          "title": "Total Tabs Accepted"
+        },
+        "subscription_included_reqs": {
+          "type": "number",
+          "title": "Subscription Included Requests"
+        },
+        "api_key_reqs": {
+          "type": "number",
+          "title": "API Key Requests"
+        },
+        "usage_based_reqs": {
+          "type": "number",
+          "title": "Usage-based Requests"
+        },
+        "bugbot_usages": {
+          "type": "number",
+          "title": "Bugbot Usages"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "acceptance_rate": {
+        "title": "Acceptance Rate",
+        "description": "Accepted AI suggestions as a percentage of accepted + rejected suggestions",
+        "calculation": "if (.properties.total_accepts + .properties.total_rejects) > 0 then (.properties.total_accepts / (.properties.total_accepts + .properties.total_rejects)) * 100 else 0 end",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "cursorUsageEvent",
+    "description": "Detailed Cursor usage events with model and cost metadata",
+    "title": "Cursor Usage Event",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "title": "Timestamp",
+          "format": "date-time"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "kind": {
+          "type": "string",
+          "title": "Kind"
+        },
+        "max_mode": {
+          "type": "boolean",
+          "title": "Max Mode"
+        },
+        "requests_costs": {
+          "type": "number",
+          "title": "Request Cost"
+        },
+        "is_token_based_call": {
+          "type": "boolean",
+          "title": "Token Based Call"
+        },
+        "input_tokens": {
+          "type": "number",
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "type": "number",
+          "title": "Output Tokens"
+        },
+        "cache_read_tokens": {
+          "type": "number",
+          "title": "Cache Read Tokens"
+        },
+        "cache_write_tokens": {
+          "type": "number",
+          "title": "Cache Write Tokens"
+        },
+        "token_cost": {
+          "type": "number",
+          "title": "Token Cost (USD)"
+        },
+        "user_email": {
+          "type": "string",
+          "title": "User Email",
+          "format": "email"
+        },
+        "cursor_token_fee": {
+          "type": "number",
+          "title": "Cursor Token Fee"
+        },
+        "is_headless": {
+          "type": "boolean",
+          "title": "Headless"
+        },
+        "charged_amount": {
+          "type": "number",
+          "title": "Charged Amount (USD)"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_tokens": {
+        "title": "Total Tokens",
+        "description": "Sum of input, output, cache-read and cache-write tokens",
+        "calculation": "(.properties.input_tokens // 0) + (.properties.output_tokens // 0) + (.properties.cache_read_tokens // 0) + (.properties.cache_write_tokens // 0)",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "cursorTeamModelUsage",
+    "description": "Daily team-level model usage from the Cursor Analytics API",
+    "title": "Cursor Team Model Usage",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Date"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "messages": {
+          "type": "number",
+          "title": "Messages"
+        },
+        "users": {
+          "type": "number",
+          "title": "Users"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "cursorUserModelUsage",
+    "description": "Daily per-user model usage from the Cursor Analytics API",
+    "title": "Cursor User Model Usage",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Date"
+        },
+        "user_email": {
+          "type": "string",
+          "format": "email",
+          "title": "User Email"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "messages": {
+          "type": "number",
+          "title": "Messages"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]

@@ -4,6 +4,7 @@ from typing import Any
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import UserExporter
 from datadog.webhook.consts import (
     AuditTrailAction,
@@ -55,9 +56,12 @@ class RoleMembershipWebhookProcessor(BaseAuditTrailProcessor):
         return _extract_target_user_email(event.message) is not None
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
         email = _extract_target_user_email(event.message)
         if not email:
             return None
-        return await UserExporter(self.client).get_resource_by_email(email)
+        return await UserExporter(client).get_resource_by_email(email)

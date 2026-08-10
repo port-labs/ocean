@@ -25,6 +25,7 @@ class ListTagsAction(Action[list[dict[str, Any]]]):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, tag_result in enumerate(tag_results):
             if isinstance(tag_result, Exception):
                 function_name = functions[idx].get("FunctionName", "unknown")
@@ -32,6 +33,7 @@ class ListTagsAction(Action[list[dict[str, Any]]]):
                     logger.warning(
                         f"Skipping tags for Lambda function '{function_name}': {tag_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(
@@ -39,7 +41,8 @@ class ListTagsAction(Action[list[dict[str, Any]]]):
                     )
                     raise tag_result
             results.extend(cast(list[dict[str, Any]], tag_result))
-        logger.info(f"Successfully fetched tags for {len(results)} Lambda functions")
+            success_count += 1
+        logger.info(f"Successfully fetched tags for {success_count} Lambda functions")
         return results
 
     async def _fetch_tags(self, function: dict[str, Any]) -> list[dict[str, Any]]:

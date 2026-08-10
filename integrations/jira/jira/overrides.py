@@ -1,6 +1,6 @@
 from enum import StrEnum
 from typing import Literal
-from pydantic import Field, validator, BaseModel
+from pydantic.v1 import Field, validator, BaseModel
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,

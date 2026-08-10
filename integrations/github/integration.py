@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field, root_validator
+from pydantic.v1 import BaseModel, Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -14,6 +14,7 @@ from port_ocean.core.handlers.queue import GroupQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
+from port_ocean.utils.relative_time import days_ago, to_rfc3339
 from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
     WebhookEvent,
@@ -32,6 +33,11 @@ from typing import Any, Dict, List, Optional, Type, Literal
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
+from github.core.exporters.skill_exporter.utils import DEFAULT_SKILL_PATHS
+from github.core.exporters.plugin_exporter.utils import (
+    DEFAULT_PLUGIN_PROVIDERS,
+    PluginProvider,
+)
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
@@ -281,6 +287,77 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class GithubSkillPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubSkillSelector(Selector):
+    paths: list[GithubSkillPattern] = Field(
+        title="Paths",
+        default=[GithubSkillPattern(path=path) for path in DEFAULT_SKILL_PATHS],
+        description=(
+            "Glob patterns for SKILL.md discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtration."
+        ),
+    )
+
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(exclude_none=True) for path in default_paths
+            ]
+
+
+class GithubSkillResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.SKILL] = Field(
+        title="Github Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GithubSkillSelector = Field(
+        title="Skill selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GithubPluginSelector(Selector):
+    providers: list[PluginProvider] = Field(
+        title="Providers",
+        default=list(DEFAULT_PLUGIN_PROVIDERS),
+        description=(
+            "Agent plugin providers to detect. A repository is treated as a "
+            "plugin when any matching manifest/dir exists."
+        ),
+    )
+    paths: list[RepositorySourceModel] = Field(
+        title="Paths",
+        default=[RepositorySourceModel()],
+        description=(
+            "Org/repo scopes to scan. Each entry can set organization and repos. "
+            "Multiple entries enable multi-org filtration."
+        ),
+    )
+
+
+class GithubPluginResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PLUGIN] = Field(
+        title="Github Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GithubPluginSelector = Field(
+        title="Plugin selector",
+        description="Selector for discovering agent plugin repositories.",
+    )
+
+
 class IncludeSAMLEmailSelector(Selector):
     include_saml_email: bool = Field(
         title="Include SAML email",
@@ -326,18 +403,24 @@ class GithubPullRequestSelector(RepoSearchSelector):
         default=["open"],
         description="Filter pull requests by states (e.g. ['open']).",
     )
-    max_results: int = Field(
+    max_results: Optional[int] = Field(
         title="Max merged pull requests",
         alias="maxResults",
-        default=100,
+        default=None,
         ge=1,
-        description="Max number of merged pull requests. Note: large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
+        description="Max number of merged pull requests. Defaults to 100 for the days lookback; with closedSinceDate set, leave empty to fetch all closed PRs back to the cutoff. Large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
     since: int = Field(
         title="Closed PRs Lookback Days",
         default=60,
         ge=1,
         description="Numbers of days back for closed pull requests.",
+    )
+    closed_since_date: Optional[str] = Field(
+        title="Closed PRs Since Date",
+        alias="closedSinceDate",
+        default=None,
+        description="Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set.",
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
@@ -367,9 +450,25 @@ class GithubPullRequestSelector(RepoSearchSelector):
     )
 
     @property
-    def updated_after(self) -> datetime:
-        """Convert the since days to a timezone-aware datetime object."""
-        return datetime.now(timezone.utc) - timedelta(days=self.since)
+    def updated_after(self) -> Optional[datetime]:
+        if self.closed_since_date is not None:
+            return None
+        return days_ago(self.since)
+
+    @property
+    def closed_after(self) -> Optional[datetime]:
+        if self.closed_since_date is None:
+            return None
+        parsed = datetime.fromisoformat(self.closed_since_date)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+    @property
+    def effective_max_results(self) -> Optional[int]:
+        if self.max_results is not None:
+            return self.max_results
+        if self.closed_since_date is not None:
+            return None
+        return 100
 
 
 class GithubPullRequestConfig(ResourceConfig):
@@ -417,6 +516,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
         title="Include Members",
         default=True,
         description="Include team members in the exported data.",
+    )
+    include_external_group: bool = Field(
+        title="Include External IdP Group",
+        default=False,
+        description="Include the external IdP group linked to each team via GET /orgs/{org}/teams/{slug}/external-groups. Only available for organizations using GitHub Enterprise with managed user accounts and external SCIM.",
     )
 
 
@@ -520,6 +624,16 @@ class GithubDeploymentSelector(RepoSearchSelector):
         title="Environment name",
         description="Filter deployments by environment name (e.g. staging, production).",
         default=None,
+    )
+    enrich_with_first_commit: bool = Field(
+        title="Enrich with first commit",
+        alias="enrichWithFirstCommit",
+        default=False,
+        description=(
+            "When enabled, each deployment is enriched with the earliest commit shipped since the previous "
+            "deployment to the same environment: __firstCommit (__sha, __timestamp in UTC) plus a "
+            "deployment-level __commitCount. Defaults to false."
+        ),
     )
 
 
@@ -648,6 +762,15 @@ class GithubWorkflowConfig(ResourceConfig):
     )
 
 
+class GithubEnvironmentSelector(RepoSearchSelector):
+    include_variables: bool = Field(
+        title="Include Variables",
+        alias="includeVariables",
+        default=False,
+        description="Include environment variables (fetched via the variables REST API) as __variables on each environment.",
+    )
+
+
 class GithubWorkflowRunSelector(RepoSearchSelector):
     statuses: Optional[
         list[
@@ -688,8 +811,7 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
     @property
     def created_after(self) -> Optional[str]:
         if self.since is not None:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
-            return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            return f">={to_rfc3339(days_ago(self.since))}"
         if self.since_date is not None:
             return f">={self.since_date}"
         return None
@@ -733,7 +855,7 @@ class GithubEnvironmentConfig(ResourceConfig):
         title="Github Environment",
         description="Github environment resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubEnvironmentSelector = Field(
         title="Environment selector",
         description="Selector for the environment resource.",
     )
@@ -764,7 +886,7 @@ class GithubPortAppConfig(PortAppConfig):
         title="Include Authenticated User",
         default=False,
         alias="includeAuthenticatedUser",
-        description="Include the authenticated user's personal account.",
+        description="Include the personal account of the authenticated user when using Classic PAT authentication.",
     )
     repository_type: str = Field(
         title="Repository Type",
@@ -784,6 +906,8 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubSkillResourceConfig
+        | GithubPluginResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig

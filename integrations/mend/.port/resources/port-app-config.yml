@@ -1,0 +1,60 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+entityDeletionThreshold: 0
+resources:
+  - kind: mend-project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .uuid
+          title: .name
+          blueprint: '"mendProject"'
+          properties:
+            applicationName: .path
+            applicationUuid: .applicationUuid
+            createdAt: .creationDate
+            languages: '(.statistics.LIBRARY_TYPE_HISTOGRAM // {} | keys)'
+            lastScanned: 'if (.statistics.LAST_SCAN.lastScanTime // 0) > 0 then (.statistics.LAST_SCAN.lastScanTime / 1000 | todate) else null end'
+            totalCritical: '((.statistics.ALERTS.criticalSeverityVulnerabilities // 0) + (.statistics.IMG_SECURITY.imgCriticalVulnerabilities // 0))'
+            totalHigh: '((.statistics.ALERTS.highSeverityVulnerabilities // 0) + (.statistics.IMG_SECURITY.imgHighVulnerabilities // 0) + (.statistics.SAST_VULNERABILITIES_BY_SEVERITY.sastHighVulnerabilities // 0))'
+            totalMedium: '((.statistics.ALERTS.mediumSeverityVulnerabilities // 0) + (.statistics.IMG_SECURITY.imgMediumVulnerabilities // 0) + (.statistics.SAST_VULNERABILITIES_BY_SEVERITY.sastMediumVulnerabilities // 0))'
+            totalLow: '((.statistics.ALERTS.lowSeverityVulnerabilities // 0) + (.statistics.IMG_SECURITY.imgLowVulnerabilities // 0) + (.statistics.SAST_VULNERABILITIES_BY_SEVERITY.sastLowVulnerabilities // 0))'
+            dependencyFindingStats: .statistics.ALERTS
+            codeFindingStats: .statistics.SAST_VULNERABILITIES_BY_SEVERITY
+            containerFindingStats: .statistics.IMG_SECURITY
+
+  - kind: sca-finding
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .uuid
+          title: .name
+          blueprint: '"mendSCA"'
+          properties:
+            status: .findingInfo.findingStatus
+            severity: .vulnerability.severity
+            violations: if (.violations // 0) > 0 then true else false end
+            reachability: .reachability
+            malicious: if has("malicious") then .malicious else false end
+            description: .vulnerability.description
+            componentType: .component.componentType
+            componentName: .component.name
+            publishDate: .vulnerability.publishDate
+            detectedAt: .findingInfo.detectedAt
+            modifiedAt: .findingInfo.modifiedAt
+            cvssType: .vulnerability.type
+            cvssScore: .vulnerability.score
+            exploitMaturity: .threatAssessment.exploitCodeMaturity
+            epssScore: .threatAssessment.epssPercentage
+            cveLink: 'if .name then "https://cve.mitre.org/cgi-bin/cvename.cgi?name=" + .name else null end'
+            mendLink: 'if .name then "https://www.mend.io/vulnerability-database/" + .name else null end'
+            topFix: .topFix
+            type: .component.dependencyType
+            suppressionReason: 'if .findingInfo.findingStatus == "SUPPRESSED" then .findingInfo.comment.comment else "" end'
+            suppressionDate: 'if .findingInfo.findingStatus == "SUPPRESSED" then .findingInfo.comment.date else null end'
+          relations:
+            project: .project.uuid

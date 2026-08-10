@@ -20,6 +20,7 @@ def _restriction_policy_event(action: str, resource_id: str) -> dict[str, Any]:
             "evt": {"name": "Access Management"},
             "action": action,
             "asset": {"type": "restriction_policy", "id": f"monitor:{resource_id}"},
+            "org": {"name": "DPN | Port", "uuid": "uuid-1"},
         }
     }
 
@@ -61,6 +62,7 @@ async def test_should_process_event_restriction_policy_non_monitor_skipped(
             "evt": {"name": "Access Management"},
             "action": "modified",
             "asset": {"type": "restriction_policy", "id": "dashboard:d-1"},
+            "org": {"name": "DPN | Port", "uuid": "uuid-1"},
         }
     }
     assert (

@@ -14,9 +14,11 @@ class RunAlreadyAcknowledgedError(Exception):
     pass
 
 
-class PartitionKeyNotFoundError(Exception):
+class ActionExecutionError(Exception):
     """
-    Raised when attempting to extract a partition key that is not found in the invocation payload.
+    Raised by integration executors for expected action failures such as invalid
+    input or upstream API rejections. The execution manager logs these without a
+    stack trace and reports the message directly to Port.
     """
 
     pass

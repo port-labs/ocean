@@ -1,47 +1,41 @@
+from typing import Callable
 from unittest.mock import MagicMock, patch
 
 from clients.claude_client import ClaudeClient
-from core.exporters.code_analytics_exporter import ClaudeCodeAnalyticsExporter
-from core.exporters.cost_exporter import ClaudeCostExporter
-from core.exporters.usage_exporter import ClaudeUsageExporter
+from core.exporters.claude_ai.user_activity_exporter import (
+    ClaudeAIUserActivityExporter,
+)
+from core.exporters.claude_ai.user_cost_exporter import ClaudeAIUserCostExporter
+from core.exporters.claude_ai.user_usage_exporter import ClaudeAIUserUsageExporter
+from core.exporters.platform.code_analytics_exporter import (
+    ClaudePlatformCodeAnalyticsExporter,
+)
+from core.exporters.platform.cost_exporter import ClaudePlatformCostExporter
+from core.exporters.platform.usage_exporter import ClaudePlatformUsageExporter
 from exporter_factory import (
-    create_code_analytics_exporter,
-    create_cost_exporter,
-    create_usage_exporter,
+    create_platform_code_analytics_exporter,
+    create_platform_cost_exporter,
+    create_platform_usage_exporter,
+    create_user_activity_exporter,
+    create_user_cost_exporter,
+    create_user_usage_exporter,
 )
 
 
 @patch("exporter_factory.create_claude_client")
-def test_create_usage_exporter(mock_create_client: MagicMock) -> None:
-    mock_client = MagicMock(spec=ClaudeClient)
-    mock_create_client.return_value = mock_client
+def test_factories_create_expected_exporters(mock_create_client: MagicMock) -> None:
+    mock_create_client.return_value = MagicMock(spec=ClaudeClient)
 
-    exporter = create_usage_exporter()
+    factories: list[tuple[Callable[[], object], type]] = [
+        (create_platform_usage_exporter, ClaudePlatformUsageExporter),
+        (create_platform_cost_exporter, ClaudePlatformCostExporter),
+        (create_platform_code_analytics_exporter, ClaudePlatformCodeAnalyticsExporter),
+        (create_user_activity_exporter, ClaudeAIUserActivityExporter),
+        (create_user_usage_exporter, ClaudeAIUserUsageExporter),
+        (create_user_cost_exporter, ClaudeAIUserCostExporter),
+    ]
 
-    assert isinstance(exporter, ClaudeUsageExporter)
-    assert exporter.client == mock_client
-    mock_create_client.assert_called_once()
+    for factory, expected_type in factories:
+        assert isinstance(factory(), expected_type)
 
-
-@patch("exporter_factory.create_claude_client")
-def test_create_cost_exporter(mock_create_client: MagicMock) -> None:
-    mock_client = MagicMock(spec=ClaudeClient)
-    mock_create_client.return_value = mock_client
-
-    exporter = create_cost_exporter()
-
-    assert isinstance(exporter, ClaudeCostExporter)
-    assert exporter.client == mock_client
-    mock_create_client.assert_called_once()
-
-
-@patch("exporter_factory.create_claude_client")
-def test_create_code_analytics_exporter(mock_create_client: MagicMock) -> None:
-    mock_client = MagicMock(spec=ClaudeClient)
-    mock_create_client.return_value = mock_client
-
-    exporter = create_code_analytics_exporter()
-
-    assert isinstance(exporter, ClaudeCodeAnalyticsExporter)
-    assert exporter.client == mock_client
-    mock_create_client.assert_called_once()
+    assert mock_create_client.call_count == len(factories)

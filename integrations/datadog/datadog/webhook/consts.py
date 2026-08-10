@@ -13,6 +13,7 @@ class AuditTrailEventName(StrEnum):
     TEAMS_MANAGEMENT = "Teams Management"
     SLO = "SLO"
     MONITOR = "Monitor"
+    ORGANIZATION_MANAGEMENT = "Organization Management"
 
 
 class AuditTrailAssetType(StrEnum):
@@ -21,6 +22,7 @@ class AuditTrailAssetType(StrEnum):
     ROLE = "role"
     MONITOR = "monitor"
     RESTRICTION_POLICY = "restriction_policy"
+    ORGANIZATION = "organization"
 
 
 SERVICE_RELATED_EVENTS = frozenset(
@@ -79,5 +81,14 @@ RESTRICTION_POLICY_ACTIONS = frozenset(
     [
         AuditTrailAction.MODIFIED,
         AuditTrailAction.DELETED,
+    ]
+)
+
+ORG_ACTIONS = frozenset(
+    [
+        # Datadog's audit trail only emits "created" for the "organization"
+        # asset type (child-org creation). Org setting changes surface under
+        # other asset types, so we intentionally track creation only.
+        AuditTrailAction.CREATED,
     ]
 )

@@ -1,5 +1,5 @@
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 from jira.overrides import (
     JiraPortAppConfig,
     JiraBoardResourceConfig,
@@ -15,7 +15,6 @@ from jira.overrides import (
     JiraComponentResourceConfig,
     JiraComponentSelector,
 )
-
 
 BOARD_MAPPING = {
     "entity": {

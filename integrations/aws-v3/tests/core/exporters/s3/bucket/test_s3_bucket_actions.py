@@ -7,6 +7,7 @@ from aws.core.exporters.s3.bucket.actions import (
     GetPublicAccessBlockAction,
     GetBucketOwnershipControlsAction,
     GetBucketEncryptionAction,
+    GetBucketLocationAction,
     GetBucketTaggingAction,
 )
 from aws.core.interfaces.action import Action
@@ -71,6 +72,36 @@ class TestGetPublicAccessBlockAction:
         mock_logger.info.assert_called_once_with(
             "Successfully fetched bucket public access block for bucket test-bucket"
         )
+
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, action: GetPublicAccessBlockAction
+    ) -> None:
+        """Middle bucket fails; PAB results keep aligned positions for the batch."""
+
+        def mock_get_public_access_block(Bucket: str, **kwargs: Any) -> dict[str, Any]:
+            if Bucket == "bucket-2":
+                raise Exception("NoSuchPublicAccessBlockConfiguration")
+            return {
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": Bucket == "bucket-1"
+                }
+            }
+
+        action.client.get_public_access_block.side_effect = mock_get_public_access_block
+
+        buckets = [{"Name": "bucket-1"}, {"Name": "bucket-2"}, {"Name": "bucket-3"}]
+
+        result = await action.execute(buckets)
+
+        assert len(result) == 3
+        assert result[0] == {
+            "PublicAccessBlockConfiguration": {"BlockPublicAcls": True}
+        }
+        assert result[1] == {}
+        assert result[2] == {
+            "PublicAccessBlockConfiguration": {"BlockPublicAcls": False}
+        }
 
     @pytest.mark.asyncio
     async def test_execute_different_bucket(
@@ -143,6 +174,34 @@ class TestGetBucketOwnershipControlsAction:
             "Successfully fetched bucket ownership controls for bucket test-bucket"
         )
 
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, action: GetBucketOwnershipControlsAction
+    ) -> None:
+        """Middle bucket fails; ownership controls results keep aligned positions."""
+
+        def mock_get_ownership(Bucket: str, **kwargs: Any) -> dict[str, Any]:
+            if Bucket == "bucket-2":
+                raise Exception("OwnershipControlsNotFoundError")
+            return {
+                "OwnershipControls": {"Rules": [{"ObjectOwnership": f"Owner-{Bucket}"}]}
+            }
+
+        action.client.get_bucket_ownership_controls.side_effect = mock_get_ownership
+
+        buckets = [{"Name": "bucket-1"}, {"Name": "bucket-2"}, {"Name": "bucket-3"}]
+
+        result = await action.execute(buckets)
+
+        assert len(result) == 3
+        assert result[0] == {
+            "OwnershipControls": {"Rules": [{"ObjectOwnership": "Owner-bucket-1"}]}
+        }
+        assert result[1] == {}
+        assert result[2] == {
+            "OwnershipControls": {"Rules": [{"ObjectOwnership": "Owner-bucket-3"}]}
+        }
+
 
 class TestGetBucketEncryptionAction:
 
@@ -197,6 +256,36 @@ class TestGetBucketEncryptionAction:
         )
 
     @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, action: GetBucketEncryptionAction
+    ) -> None:
+        """Middle bucket fails; encryption results keep aligned positions for the batch."""
+
+        def mock_get_encryption(Bucket: str, **kwargs: Any) -> dict[str, Any]:
+            if Bucket == "bucket-2":
+                raise Exception("ServerSideEncryptionConfigurationNotFoundError")
+            return {
+                "ServerSideEncryptionConfiguration": {
+                    "Rules": [{"BucketKeyEnabled": Bucket == "bucket-1"}]
+                }
+            }
+
+        action.client.get_bucket_encryption.side_effect = mock_get_encryption
+
+        buckets = [{"Name": "bucket-1"}, {"Name": "bucket-2"}, {"Name": "bucket-3"}]
+
+        result = await action.execute(buckets)
+
+        assert len(result) == 3
+        assert result[0] == {
+            "BucketEncryption": {"Rules": [{"BucketKeyEnabled": True}]}
+        }
+        assert result[1] == {}
+        assert result[2] == {
+            "BucketEncryption": {"Rules": [{"BucketKeyEnabled": False}]}
+        }
+
+    @pytest.mark.asyncio
     async def test_execute_no_encryption(
         self, action: GetBucketEncryptionAction
     ) -> None:
@@ -212,6 +301,55 @@ class TestGetBucketEncryptionAction:
         action.client.get_bucket_encryption.assert_called_once_with(
             Bucket="unencrypted-bucket"
         )
+
+
+class TestGetBucketLocationAction:
+
+    @pytest.fixture
+    def mock_client(self) -> AsyncMock:
+        mock_client = AsyncMock()
+        mock_client.get_bucket_location = AsyncMock()
+        return mock_client
+
+    @pytest.fixture
+    def action(self, mock_client: AsyncMock) -> GetBucketLocationAction:
+        return GetBucketLocationAction(mock_client)
+
+    def test_inheritance(self, action: GetBucketLocationAction) -> None:
+        assert isinstance(action, Action)
+
+    @pytest.mark.asyncio
+    async def test_execute_success(self, action: GetBucketLocationAction) -> None:
+        action.client.get_bucket_location.return_value = {
+            "LocationConstraint": "us-west-2"
+        }
+
+        result = await action.execute([{"Name": "test-bucket"}])
+
+        assert result == [{"LocationConstraint": "us-west-2"}]
+        action.client.get_bucket_location.assert_called_once_with(Bucket="test-bucket")
+
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, action: GetBucketLocationAction
+    ) -> None:
+        """Middle bucket fails; location results keep aligned positions for the batch."""
+
+        def mock_get_location(Bucket: str, **kwargs: Any) -> dict[str, Any]:
+            if Bucket == "bucket-2":
+                raise Exception("AccessDenied")
+            return {"LocationConstraint": f"region-for-{Bucket}"}
+
+        action.client.get_bucket_location.side_effect = mock_get_location
+
+        buckets = [{"Name": "bucket-1"}, {"Name": "bucket-2"}, {"Name": "bucket-3"}]
+
+        result = await action.execute(buckets)
+
+        assert len(result) == 3
+        assert result[0] == {"LocationConstraint": "region-for-bucket-1"}
+        assert result[1] == {}
+        assert result[2] == {"LocationConstraint": "region-for-bucket-3"}
 
 
 class TestGetBucketTaggingAction:
@@ -328,9 +466,10 @@ class TestGetBucketTaggingAction:
         client_error = ClientError(error_response, "GetBucketTagging")  # type: ignore
         action.client.get_bucket_tagging.side_effect = client_error
 
-        # Should not raise; returns empty result list when error captured by gather
+        # Errors captured by gather are swallowed but must still produce an
+        # entry so index alignment with sibling actions is preserved.
         result = await action.execute([{"Name": "access-denied-bucket"}])
-        assert result == []
+        assert result == [{}]
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="access-denied-bucket"
         )
@@ -342,12 +481,35 @@ class TestGetBucketTaggingAction:
         """Test execution when a non-ClientError exception occurs."""
         action.client.get_bucket_tagging.side_effect = Exception("Network error")
 
-        # Should not raise; returns empty result list when error captured by gather
+        # Errors captured by gather are swallowed but must still produce an
+        # entry so index alignment with sibling actions is preserved.
         result = await action.execute([{"Name": "network-error-bucket"}])
-        assert result == []
+        assert result == [{}]
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="network-error-bucket"
         )
+
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, action: GetBucketTaggingAction
+    ) -> None:
+        """Middle bucket fails; tag results keep aligned positions for the batch."""
+
+        def mock_get_bucket_tagging(Bucket: str, **kwargs: Any) -> dict[str, Any]:
+            if Bucket == "bucket-2":
+                raise Exception("Network error")
+            return {"TagSet": [{"Key": "Name", "Value": Bucket}]}
+
+        action.client.get_bucket_tagging.side_effect = mock_get_bucket_tagging
+
+        buckets = [{"Name": "bucket-1"}, {"Name": "bucket-2"}, {"Name": "bucket-3"}]
+
+        result = await action.execute(buckets)
+
+        assert len(result) == 3
+        assert result[0] == {"Tags": [{"Key": "Name", "Value": "bucket-1"}]}
+        assert result[1] == {}
+        assert result[2] == {"Tags": [{"Key": "Name", "Value": "bucket-3"}]}
 
 
 class TestAllActionsIntegration:
@@ -463,6 +625,7 @@ class TestAllActionsIntegration:
 
         # Verify results
         assert "PublicAccessBlockConfiguration" in public_access_result[0]
-        assert ownership_result == []
+        # Recoverable error returns a placeholder to keep index alignment.
+        assert ownership_result == [{}]
         assert "BucketEncryption" in encryption_result[0]
         assert tagging_result == [{"Tags": []}]  # NoSuchTagSet handled gracefully

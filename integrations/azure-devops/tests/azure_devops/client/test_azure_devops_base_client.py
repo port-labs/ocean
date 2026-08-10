@@ -1,19 +1,37 @@
 import pytest
 from typing import Any
-from unittest.mock import AsyncMock, patch
-from httpx import Response, ReadTimeout
+from unittest.mock import AsyncMock, MagicMock, patch
+from httpx import ReadError, Response, ReadTimeout
 from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.base_client import (
     HTTPBaseClient,
     CONTINUATION_TOKEN_HEADER,
     PAGE_SIZE,
 )
+from azure_devops.client.rate_limiter import (
+    ADO_RATE_LIMIT_WINDOW_SECONDS,
+)
+from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 from port_ocean.context.ocean import PortOceanContext
 
 
 @pytest.fixture
 def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
-    return HTTPBaseClient(auth_provider=PatAuthProvider("test_token"))
+    mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
+    return HTTPBaseClient(
+        auth_provider=PatAuthProvider("test_token"),
+    )
+
+
+def test_base_client_uses_azure_devops_retry_transport(
+    mock_client: HTTPBaseClient,
+) -> None:
+    transport = mock_client._client._transport
+
+    assert isinstance(transport, AzureDevOpsRetryTransport)
+    assert transport._rate_limiter is mock_client._rate_limiter
+    assert transport._retry_config.max_attempts == 10
+    assert transport._retry_config.max_backoff_wait == ADO_RATE_LIMIT_WINDOW_SECONDS
 
 
 @pytest.mark.asyncio
@@ -372,3 +390,59 @@ async def test_get_paginated_by_top_and_skip_exhausts_retries(
             _ = [item async for page in generator for item in page]
 
         assert mock_send.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_send_request_signals_throttle_on_read_error(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """ReadError during body read (ADO closing connection instead of 429) triggers throttle."""
+    with (
+        patch.object(
+            mock_client._client,
+            "request",
+            side_effect=ReadError("connection closed"),
+        ),
+        patch.object(
+            mock_client._rate_limiter,
+            "signal_throttle",
+            new_callable=AsyncMock,
+        ) as mock_throttle,
+    ):
+        with pytest.raises(ReadError):
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
+
+        mock_throttle.assert_awaited_once_with(
+            ADO_RATE_LIMIT_WINDOW_SECONDS,
+            reason="ReadError",
+        )
+
+
+@pytest.mark.asyncio
+async def test_send_request_signals_throttle_on_read_timeout(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """ReadTimeout triggers throttle — existing behaviour, kept for parity."""
+    with (
+        patch.object(
+            mock_client._client,
+            "request",
+            side_effect=ReadTimeout("timed out"),
+        ),
+        patch.object(
+            mock_client._rate_limiter,
+            "signal_throttle",
+            new_callable=AsyncMock,
+        ) as mock_throttle,
+    ):
+        with pytest.raises(ReadTimeout):
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
+
+        mock_throttle.assert_awaited_once_with(
+            ADO_RATE_LIMIT_WINDOW_SECONDS,
+            reason="ReadTimeout",
+        )

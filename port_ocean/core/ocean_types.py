@@ -17,6 +17,7 @@ RESYNC_RESULT = list[RAW_ITEM | ASYNC_GENERATOR_RESYNC_TYPE]
 
 LISTENER_RESULT = Awaitable[RAW_RESULT] | ASYNC_GENERATOR_RESYNC_TYPE
 RESYNC_EVENT_LISTENER = Callable[[str], LISTENER_RESULT]
+INCREMENTAL_EVENT_LISTENER = Callable[[str], LISTENER_RESULT]
 START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
 BEFORE_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
@@ -57,3 +58,4 @@ class IntegrationEventsCallbacks(TypedDict):
     resync: dict[str | None, list[RESYNC_EVENT_LISTENER]]
     resync_start: list[BEFORE_RESYNC_EVENT_LISTENER]
     resync_complete: list[AFTER_RESYNC_EVENT_LISTENER]
+    incremental: dict[str | None, list[INCREMENTAL_EVENT_LISTENER]]

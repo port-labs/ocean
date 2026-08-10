@@ -36,6 +36,7 @@ def _role_membership_event(
         "evt": {"name": "Access Management"},
         "action": action,
         "asset": {"type": "user", "id": target_email},
+        "org": {"name": "DPN | Port", "uuid": "uuid-1"},
     }
     if include_http:
         attrs["http"] = {

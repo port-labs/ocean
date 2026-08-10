@@ -249,7 +249,7 @@ class TestDbCluster:
                 Status="available",
             )
         )
-        data = cluster.dict(exclude_none=True)
+        data = cluster.model_dump(exclude_none=True)
         assert data["Type"] == "AWS::RDS::DBCluster"
         assert data["Properties"]["DBClusterIdentifier"] == "c-3"
         assert data["Properties"]["Engine"] == "aurora-mysql"

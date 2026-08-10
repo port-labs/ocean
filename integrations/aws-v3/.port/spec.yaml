@@ -20,6 +20,19 @@ features:
       - kind: AWS::EC2::Volume
       - kind: AWS::CodeBuild::Project
       - kind: AWS::CodeBuild::BuildRun
+      - kind: AWS::CodeDeploy::Application
+      - kind: AWS::CodeDeploy::DeploymentGroup
+      - kind: AWS::CodeDeploy::Deployment
+      - kind: AWS::CodeDeploy::DeploymentTarget
+      - kind: AWS::CodePipeline::Pipeline
+      - kind: AWS::CodePipeline::Stage
+      - kind: AWS::CodePipeline::Action
+      - kind: AWS::CodePipeline::PipelineExecution
+      - kind: AWS::CodePipeline::ActionExecution
+      - kind: AWS::SES::EmailIdentity
+      - kind: AWS::DynamoDB::Table
+      - kind: AWS::SES::ConfigurationSet
+      - kind: AWS::SNS::Topic
 configurations:
   - name: credentialProviderPriority
     required: false
@@ -62,6 +75,19 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: aws_partition
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Partition, defaults to "aws" which is the standard global one (optional).
+    enum: ["aws", "aws-us-gov", "aws-cn"]
+  - name: liveEventsApiKey
+    required: false
+    type: string
+    sensitive: true
+    description: >-
+      Shared secret expected on the `x-port-aws-ocean-api-key` header of incoming
+      live event webhook requests (e.g. from an EventBridge API Destination).
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:

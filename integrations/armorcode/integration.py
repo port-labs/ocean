@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic.v1 import Field
 
 from armorcode.helpers.utils import ObjectKind
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig

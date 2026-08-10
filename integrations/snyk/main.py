@@ -120,6 +120,7 @@ async def on_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             api_params=selector.api_query_params,
             project_params=selector.project_query_params,
             attach_project=selector.enrich_with_project,
+            attach_ignore=selector.attach_ignore_data,
         )
         for org in all_organizations
     )

@@ -5,6 +5,8 @@ from loguru import logger
 
 import asyncio
 
+from aws.utils import RegionHelper
+
 
 class GetPublicAccessBlockAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -20,6 +22,7 @@ class GetPublicAccessBlockAction(Action[list[dict[str, Any]]]):
                 logger.error(
                     f"Error fetching bucket public access block for bucket '{bucket_name}': {pab_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], pab_result))
         return results
@@ -51,6 +54,7 @@ class GetBucketOwnershipControlsAction(Action[list[dict[str, Any]]]):
                 logger.error(
                     f"Error fetching bucket ownership controls for bucket '{bucket_name}': {ownership_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], ownership_result))
         return results
@@ -79,6 +83,7 @@ class GetBucketEncryptionAction(Action[list[dict[str, Any]]]):
                 logger.error(
                     f"Error fetching bucket encryption for bucket '{bucket_name}': {encryption_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], encryption_result))
         return results
@@ -106,6 +111,7 @@ class GetBucketLocationAction(Action[list[dict[str, Any]]]):
                 logger.error(
                     f"Error fetching bucket location for bucket '{bucket_name}': {location_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], location_result))
         return results
@@ -119,14 +125,15 @@ class GetBucketLocationAction(Action[list[dict[str, Any]]]):
 class ListBucketsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
+        partition = RegionHelper.get_partition()
         for bucket in buckets:
-            data = {
-                "CreationDate": bucket[
-                    "CreationDate"
-                ],  # ensure that every detail of the datetime string is preserved no rounding up or down
+            data: dict[str, Any] = {
                 "BucketName": bucket["Name"],
-                "Arn": f"arn:aws:s3:::{bucket['Name']}",
+                "Arn": f"arn:{partition}:s3:::{bucket['Name']}",
             }
+            if creation_date := bucket.get("CreationDate"):
+                # Preserve full datetime precision when listing buckets.
+                data["CreationDate"] = creation_date
             results.append(data)
         return results
 
@@ -143,6 +150,7 @@ class GetBucketTaggingAction(Action[list[dict[str, Any]]]):
                 logger.error(
                     f"Error fetching bucket tagging for bucket '{bucket_name}': {tagging_result}"
                 )
+                results.append({})
                 continue
             else:
                 results.append(cast(Dict[str, Any], tagging_result))

@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig, Selector
 
