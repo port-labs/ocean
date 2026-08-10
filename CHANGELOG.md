@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.47.10 (2026-08-09)
+
+### Improvements
+
+- Support for either YAML or JSON for spec files.
+
+
+## 0.47.9 (2026-08-09)
+
+
+### Improvements
+
+- Reduce monitor log noise by downgrading response size recording logs to debug level.
+
+
+## 0.47.8 (2026-08-09)
+
+
+### Improvements
+
+- Add `AWS_V3_LIVE_EVENTS_ENABLED` integration feature flag.
+
+
 ## 0.47.7 (2026-08-05)
 
 ### Improvements
