@@ -2,7 +2,7 @@ import pytest
 from typing import Any, Optional
 from unittest.mock import AsyncMock, call, patch, MagicMock
 
-from client import KomodorClient, SERVICE_KINDS, SERVICES_PAGE_SIZE
+from client import KomodorClient, SERVICES_PAGE_SIZE
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
@@ -123,6 +123,6 @@ def service_page(service_id: str, next_token: Optional[str] = None) -> dict[str,
 def search_call(pagination: dict[str, Any]) -> Any:
     return call(
         url=f"{API_URL}/services/search",
-        data={"kind": SERVICE_KINDS, "pagination": pagination},
+        data={"pagination": pagination},
         method="POST",
     )

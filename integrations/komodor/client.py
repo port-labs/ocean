@@ -8,8 +8,6 @@ DEFAULT_PAGE_SIZE = 100
 SERVICES_PAGE_SIZE = 25  # The service page size is smaller due to the potential extra data in labels and annotations
 RISKS_PAGE_SIZE = 50  # The risks page size is smaller due to the potential extra data in the supportingData field
 
-SERVICE_KINDS = ["Deployment", "StatefulSet", "DaemonSet", "Rollout"]
-
 
 class KomodorClient:
     def __init__(
@@ -44,7 +42,9 @@ class KomodorClient:
         while True:
             response = await self._send_request(
                 url=f"{self.api_url}/services/search",
-                data={"kind": SERVICE_KINDS, "pagination": pagination},
+                # Omitting "kind" lets the API apply its own default set of
+                # service kinds, rather than pinning it on the client side
+                data={"pagination": pagination},
                 method="POST",
             )
             yield response.get("data", {}).get("services", [])
