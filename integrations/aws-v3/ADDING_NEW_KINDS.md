@@ -683,11 +683,11 @@ If a `*Properties`/`*Request` model has no custom validators — just `Field(...
 don't write tests asserting default values or required-field errors. That tests Pydantic, not
 this codebase.
 
-### 12. Import from the package, not the submodule
+### 12. Prefer importing from the service package when it re-exports symbols
 
-If `aws/core/exporters/{service}/__init__.py` re-exports an exporter/model, import from
-`aws.core.exporters.{service}` everywhere else (`main.py` included) — don't reach past it into
-`aws.core.exporters.{service}.{resource}.models` directly.
+If `aws/core/exporters/{service}/__init__.py` re-exports an exporter/model, prefer importing from
+`aws.core.exporters.{service}` in central wiring modules (`exporter_metadata.py`, `main.py`) to
+avoid deep import paths; otherwise import from the defining submodule.
 
 ### 13. Optional list/dict fields default to `None`, not `Field(default_factory=list/dict)`
 
