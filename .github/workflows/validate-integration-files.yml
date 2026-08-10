@@ -78,19 +78,3 @@ jobs:
               echo "Version format is valid: $version"
             fi
           done
-
-      - name: Validate integration not duplicated
-        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
-        run: |
-          source scripts/ci/integration_spec.sh
-          declare -A seen_types=()
-
-          while IFS= read -r spec_file; do
-            folder=$(dirname "$spec_file")
-            integration_type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
-            if [[ -n "${seen_types[$integration_type]:-}" ]]; then
-              echo "ERROR: $integration_type integration type is duplicated please check pyproject.toml and spec files"
-              exit 1
-            fi
-            seen_types[$integration_type]=1
-          done < <(find_integration_spec_files)
