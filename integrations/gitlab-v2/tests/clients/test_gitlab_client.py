@@ -766,6 +766,65 @@ class TestGitLabClient:
                     "group/project", "blobs", query, False
                 )
 
+    @pytest.mark.parametrize(
+        "status_code,response_text",
+        [
+            (400, "Bad Request"),
+            (404, "Not Found"),
+        ],
+    )
+    async def test_match_files_with_project_search_skips_repo_on_skippable_status(
+        self,
+        client: GitLabClient,
+        status_code: int,
+        response_text: str,
+    ) -> None:
+        """Skippable statuses from project blob search skip that repo instead of aborting."""
+        mock_response = MagicMock()
+        mock_response.status_code = status_code
+        mock_response.text = response_text
+        error = httpx.HTTPStatusError(
+            f"{status_code} {response_text}",
+            request=MagicMock(),
+            response=mock_response,
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_raising_generator(error),
+        ):
+            results = [
+                batch
+                async for batch in client._match_files_with_project_search(
+                    "group/bad-repo", "blobs", build_search_query("compose.y_")
+                )
+            ]
+
+        assert results == []
+
+    async def test_match_files_with_project_search_reraises_non_skippable_status(
+        self, client: GitLabClient
+    ) -> None:
+        """Non-skippable HTTP errors from project blob search still propagate."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        error = httpx.HTTPStatusError(
+            "500 Internal Server Error", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_raising_generator(error),
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client._match_files_with_project_search(
+                    "group/project", "blobs", build_search_query("*.yml")
+                ):
+                    pass
+
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
         """Test file search across all groups — search_files calls get_parent_groups (which calls get_groups) and params are forwarded"""
         mock_groups = [{"id": "1", "name": "Group1"}]
