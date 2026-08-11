@@ -1,3 +1,4 @@
+import json
 from typing import Any, Generator
 from port_ocean.context import event
 from port_ocean.core.models import Entity
@@ -44,8 +45,17 @@ class EntityTopologicalSorter:
             yield entity
 
     @staticmethod
+    def _identifier_key(identifier: Any) -> str:
+        if isinstance(identifier, dict):
+            return json.dumps(identifier, sort_keys=True)
+        return str(identifier)
+
+    @staticmethod
     def node(entity: Entity) -> Node:
-        return entity.identifier, entity.blueprint
+        return (
+            EntityTopologicalSorter._identifier_key(entity.identifier),
+            entity.blueprint,
+        )
 
     @staticmethod
     def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
@@ -56,24 +66,27 @@ class EntityTopologicalSorter:
             entities_map[EntityTopologicalSorter.node(entity)] = entity
 
         for entity in entities:
-            relation_target_ids: list[str] = sum(
-                [
-                    identifiers if isinstance(identifiers, list) else [identifiers]
-                    for identifiers in entity.relations.values()
-                    if identifiers is not None
-                ],
-                [],
-            )
+            relation_target_ids = {
+                EntityTopologicalSorter._identifier_key(identifier)
+                for identifier in sum(
+                    [
+                        identifiers if isinstance(identifiers, list) else [identifiers]
+                        for identifiers in entity.relations.values()
+                        if identifiers is not None
+                    ],
+                    [],
+                )
+            }
             related_entities = [
                 related
                 for related in entities
-                if related.identifier in relation_target_ids
+                if EntityTopologicalSorter._identifier_key(related.identifier)
+                in relation_target_ids
             ]
 
             for related_entity in related_entities:
-                if (
-                    entity.blueprint is not related_entity.blueprint
-                    or entity.identifier is not related_entity.identifier
+                if EntityTopologicalSorter.node(entity) != EntityTopologicalSorter.node(
+                    related_entity
                 ):
                     nodes[EntityTopologicalSorter.node(entity)].add(
                         EntityTopologicalSorter.node(related_entity)

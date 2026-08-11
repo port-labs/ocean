@@ -1,3 +1,5 @@
+from typing import Any
+
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from unittest.mock import MagicMock
@@ -7,7 +9,7 @@ from port_ocean.exceptions.core import (
 
 
 def create_entity(
-    identifier: str, buleprint: str, dependencies: dict[str, str] = {}
+    identifier: Any, buleprint: str, dependencies: dict[str, Any] = {}
 ) -> Entity:
     entity = MagicMock()
     entity.identifier = identifier
@@ -74,6 +76,44 @@ def test_handle_failed_with_self_dependencies() -> None:
         "entity_b-buleprint_a",
         "entity_c-buleprint_b",
     ], f"Processed order: {processed_order}"
+
+
+def test_handle_failed_with_search_identifier() -> None:
+    search_identifier = {
+        "combinator": "and",
+        "rules": [
+            {"operator": "=", "property": "$identifier", "value": "entity_a"}
+        ],
+    }
+    entity_a = create_entity(
+        search_identifier,
+        "buleprint_a",
+        {"dep_name_1": "missing_entity"},
+    )
+
+    entity_topological_sort = EntityTopologicalSorter()
+    entity_topological_sort.register_entity(entity_a)
+
+    assert list(entity_topological_sort.get_entities()) == [entity_a]
+
+
+def test_handle_failed_with_search_identifier_dependencies() -> None:
+    search_identifier = {
+        "combinator": "and",
+        "rules": [
+            {"operator": "=", "property": "$identifier", "value": "entity_a"}
+        ],
+    }
+    entity_a = create_entity(search_identifier, "buleprint_a")
+    entity_b = create_entity(
+        "entity_b", "buleprint_b", {"dep_name_1": search_identifier}
+    )
+
+    entity_topological_sort = EntityTopologicalSorter()
+    entity_topological_sort.register_entity(entity_b)
+    entity_topological_sort.register_entity(entity_a)
+
+    assert list(entity_topological_sort.get_entities()) == [entity_a, entity_b]
 
 
 def test_handle_failed_with_circular_dependencies() -> None:
