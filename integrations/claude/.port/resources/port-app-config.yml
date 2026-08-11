@@ -122,7 +122,7 @@ resources:
           blueprint: '"claude_ai_skill_usage"'
           properties:
             record_date: .__date + "T00:00:00Z"
-            skill_name: .skill_name
+            skill_name: (.skill_name // "unknown")
             skill_display_name: .skill_display_name
             distinct_user_count: .distinct_user_count
             enable_count: .enable_count

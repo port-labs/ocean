@@ -1,6 +1,7 @@
 from typing import cast
 
 from loguru import logger
+from asyncio import CancelledError
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -99,6 +100,9 @@ async def on_resync_skill_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 if page:
                     yield page
+        except CancelledError:
+            logger.warning("Skill usage resync cancelled")
+            raise
         except Exception as error:
             logger.warning(
                 f"Failed to fetch Claude AI skill usage for {day}: {error}. "
