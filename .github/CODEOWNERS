@@ -13,9 +13,11 @@
 /port_ocean/tests/clients/port/mixins/test_integrations_lakehouse.py @port-labs/lighthouse-team
 /port_ocean/tests/helpers/lakehouse_batch.py @port-labs/lighthouse-team
 
-# sync_raw co-owned (both teams required as reviewers)
+# Shared ownership
 /port_ocean/core/integrations/mixins/sync_raw.py @port-labs/connect-team @port-labs/lighthouse-team
 /port_ocean/tests/core/handlers/mixins/test_sync_raw.py @port-labs/connect-team @port-labs/lighthouse-team
+/port_ocean/core/integrations/mixins/live_events.py @port-labs/connect-team @port-labs/lighthouse-team
+/port_ocean/tests/core/handlers/mixins/test_live_events.py @port-labs/connect-team @port-labs/lighthouse-team
 
 # Integrations: connect owns all, custom is lighthouse
 /integrations/** @port-labs/connect-team
