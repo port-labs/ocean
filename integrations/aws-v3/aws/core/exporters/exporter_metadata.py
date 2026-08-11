@@ -71,6 +71,7 @@ from aws.core.exporters.ses import (
     SesConfigurationSetExporter,
     SesEmailIdentityExporter,
 )
+from aws.core.exporters.sns import SNSTopicExporter, PaginatedTopicRequest
 from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.helpers.types import ObjectKind
@@ -169,4 +170,5 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
     ObjectKind.SES_CONFIGURATION_SET: ExporterMetadata(
         SesConfigurationSetExporter, PaginatedConfigurationSetRequest
     ),
+    ObjectKind.SNS_TOPIC: ExporterMetadata(SNSTopicExporter, PaginatedTopicRequest),
 }

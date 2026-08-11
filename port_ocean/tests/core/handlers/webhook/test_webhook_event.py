@@ -1,5 +1,11 @@
 import pytest
+from logging import LogRecord
+from logging.handlers import QueueHandler
+from queue import Queue
+
 from fastapi import Request
+from loguru import logger
+
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
@@ -7,6 +13,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookRequestAdapter,
 )
+from port_ocean.log.handlers import _serialize_record
 
 
 @pytest.fixture
@@ -105,6 +112,41 @@ def test_setTimestamp_setsTimestampCorrectly(
 
     event.set_timestamp(LiveEventTimestamp.FinishedProcessingSuccessfully)
     assert event._timestamp == LiveEventTimestamp.FinishedProcessingSuccessfully
+
+
+def test_setTimestamp_logsTraceIdAtTopLevelExtra(
+    sample_payload: EventPayload, sample_headers: EventHeaders
+) -> None:
+    """Timestamp logs should bind trace_id at the top level of extra, not nested under extra.extra."""
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=sample_payload,
+        headers=sample_headers,
+        original_request=None,
+    )
+
+    queue: Queue[LogRecord] = Queue()
+    queue_handler = QueueHandler(queue)
+    logger_id = logger.add(
+        queue_handler,
+        level="DEBUG",
+        format="{message}",
+        diagnose=False,
+        enqueue=True,
+    )
+    try:
+        event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+        logger.complete()
+        record = queue.get()
+    finally:
+        logger.remove(logger_id)
+
+    serialized = _serialize_record(record)
+    extra = serialized["extra"]
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["timestamp_type"] == "Added To Queue"
+    assert extra.get("extra") is None
 
 
 class TestWebhookRequestAdapter:
