@@ -69,16 +69,17 @@ class AccountStrategyFactory:
     @staticmethod
     def _provider_is_applicable(provider_name: str, config: dict[str, Any]) -> bool:
         """Determine if a provider is applicable given the current environment and config."""
+        has_role_arn = bool(
+            config.get("account_role_arn") or config.get("account_role_arns")
+        )
         if provider_name == "AssumeRoleWithWebIdentity":
-            return bool(os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"))
+            return bool(os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")) and has_role_arn
         if provider_name == "StaticCredential":
             return bool(
                 config.get("aws_access_key_id") and config.get("aws_secret_access_key")
             )
         if provider_name == "AssumeRole":
-            return bool(
-                config.get("account_role_arn") or config.get("account_role_arns")
-            )
+            return has_role_arn
         return False
 
     @classmethod

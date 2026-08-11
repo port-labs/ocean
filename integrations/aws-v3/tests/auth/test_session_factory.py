@@ -176,6 +176,33 @@ class TestAccountStrategyFactory:
             assert isinstance(strategy.provider, StaticCredentialProvider)
 
     @pytest.mark.asyncio
+    async def test_web_identity_not_applicable_without_role_arn(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When AWS_WEB_IDENTITY_TOKEN_FILE is set but no role ARN exists in config,
+        AssumeRoleWithWebIdentity should NOT be selected — it should fall through
+        to the fallback provider instead of crashing."""
+        config: dict[str, object] = {
+            "aws_access_key_id": None,
+            "aws_secret_access_key": None,
+            "aws_session_token": None,
+            "region": None,
+            "account_role_arn": None,
+            "account_role_arns": [],
+            "external_id": None,
+        }
+        monkeypatch.setenv("AWS_WEB_IDENTITY_TOKEN_FILE", "/var/run/secrets/token")
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = config
+
+            with patch.object(
+                SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
+            ):
+                strategy = await AccountStrategyFactory.create()
+                assert isinstance(strategy.provider, AssumeRoleProvider)
+
+    @pytest.mark.asyncio
     async def test_provider_priority_unknown_and_not_applicable_fallbacks_to_assume_role(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
