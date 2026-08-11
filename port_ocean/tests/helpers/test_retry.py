@@ -30,6 +30,7 @@ class TestRetryConfig:
         assert config.retry_status_codes == frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
@@ -63,6 +64,7 @@ class TestRetryConfig:
         expected_codes = frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
@@ -91,6 +93,7 @@ class TestRetryConfig:
         expected_codes = frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
@@ -119,6 +122,7 @@ class TestRetryConfig:
         assert config.retry_status_codes == frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
