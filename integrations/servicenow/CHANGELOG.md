@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.0 (2026-08-11)
+
+
+### Features
+
+- Consolidated live event webhook processors into a single generic processor, deriving configured tables from the mapping config instead of a hardcoded list
+
+
+## 0.4.10 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
 ## 0.4.9 (2026-08-10)
 
 

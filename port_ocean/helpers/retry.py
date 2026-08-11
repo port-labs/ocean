@@ -98,6 +98,7 @@ class RetryConfig:
         default_status_codes = frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
@@ -153,7 +154,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retryable_methods (Iterable[str], optional): The HTTP methods that can be retried. Defaults to
             ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"].
         retry_status_codes (Iterable[int], optional): The HTTP status codes that can be retried. Defaults to
-            [429, 502, 503, 504].
+            [408, 429, 401, 502, 503, 504].
         retry_config (RetryConfig, optional): Configuration for retry behavior. If not provided, uses defaults.
         logger (Any, optional): The logger to use for logging retries.
 

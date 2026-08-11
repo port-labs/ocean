@@ -2872,18 +2872,16 @@ async def test_get_filtered_webhook_subscriptions_bounded_concurrency() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
+async def test_get_filtered_webhook_subscriptions_aborts_on_failure() -> None:
     from azure_devops.webhooks.events import PushEvents
 
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-
-    good_sub = WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)
 
     async def mock_fetch(
         publisher_id: str, event_type: str
     ) -> List[WebhookSubscription]:
         if event_type == PushEvents.PUSH:
-            return [good_sub]
+            return [WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)]
         raise Exception("429 rate limited")
 
     with patch.object(
@@ -2892,9 +2890,8 @@ async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
         new_callable=AsyncMock,
         side_effect=mock_fetch,
     ):
-        result = await client.get_filtered_webhook_subscriptions()
-
-    assert good_sub in result
+        with pytest.raises(Exception, match="429 rate limited"):
+            await client.get_filtered_webhook_subscriptions()
 
 
 @pytest.mark.asyncio
