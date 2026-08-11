@@ -19,7 +19,10 @@ from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
-from port_ocean.consumers.redis_stream_utils import is_missing_stream_or_group_error
+from port_ocean.consumers.redis_stream_utils import (
+    is_missing_stream_or_group_error,
+    is_redis_connection_error,
+)
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -249,11 +252,19 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                         error=str(error),
                     )
             except Exception as error:
-                logger.exception(
-                    "Unexpected error in Redis stream read loop",
-                    stream_key=self._stream_key,
-                    error=str(error),
-                )
+                if is_redis_connection_error(error):
+                    logger.exception(
+                        "Lost connection to Redis, retrying",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
+                    await asyncio.sleep(self._settings.connection_error_backoff_seconds)
+                else:
+                    logger.exception(
+                        "Unexpected error in Redis stream read loop",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()

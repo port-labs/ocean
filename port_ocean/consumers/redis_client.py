@@ -21,8 +21,12 @@ async def create_redis_client(url: str, **kwargs: Any) -> RedisClient:
             await client.aclose()
             logger.info("Detected Redis cluster mode, using RedisCluster client")
             return RedisCluster.from_url(url, **kwargs)
-    except Exception:
+    except Exception as error:
         await client.aclose()
+        logger.exception(
+            "Failed to connect to Redis",
+            error=str(error),
+        )
         raise
 
     logger.info("Using standalone Redis client")

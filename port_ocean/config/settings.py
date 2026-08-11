@@ -239,6 +239,14 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
             "after an unexpected error."
         ),
     )
+    connection_error_backoff_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        description=(
+            "Seconds to wait before retrying the Redis stream read loop "
+            "after a connection error."
+        ),
+    )
 
     @property
     def stuck_timeout_ms(self) -> int:

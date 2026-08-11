@@ -1,7 +1,14 @@
-import pytest
-from redis.exceptions import ResponseError
+import asyncio
 
-from port_ocean.consumers.redis_stream_utils import is_missing_stream_or_group_error
+import pytest
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import ResponseError
+from redis.exceptions import TimeoutError as RedisTimeoutError
+
+from port_ocean.consumers.redis_stream_utils import (
+    is_missing_stream_or_group_error,
+    is_redis_connection_error,
+)
 
 
 class TestIsMissingStreamOrGroupError:
@@ -23,3 +30,22 @@ class TestIsMissingStreamOrGroupError:
 
     def test_returns_false_for_non_response_errors(self) -> None:
         assert is_missing_stream_or_group_error(RuntimeError("boom")) is False
+
+
+class TestIsRedisConnectionError:
+    @pytest.mark.parametrize(
+        "error",
+        [
+            RedisConnectionError("connection refused"),
+            RedisTimeoutError("timed out"),
+            asyncio.TimeoutError(),
+            ConnectionError("broken pipe"),
+            OSError("network unreachable"),
+        ],
+    )
+    def test_returns_true_for_connection_errors(self, error: BaseException) -> None:
+        assert is_redis_connection_error(error) is True
+
+    def test_returns_false_for_other_errors(self) -> None:
+        assert is_redis_connection_error(ResponseError("NOGROUP")) is False
+        assert is_redis_connection_error(RuntimeError("boom")) is False

@@ -11,7 +11,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Live event timestamp logs (`Event Added To Queue`, `Event Started Processing`, etc.) now bind `trace_id` at the top level of log `extra` instead of nesting it under `extra.extra`.
+- Log explicit Redis connection failures at startup and add backoff before retrying the stream read loop after a connection error.
+
 
 ## 0.48.2 (2026-08-10)
 
