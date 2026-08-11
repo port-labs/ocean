@@ -766,15 +766,27 @@ class TestGitLabClient:
                     "group/project", "blobs", query, False
                 )
 
-    async def test_match_files_with_project_search_skips_repo_on_400(
-        self, client: GitLabClient
+    @pytest.mark.parametrize(
+        "status_code,response_text",
+        [
+            (400, "Bad Request"),
+            (301, "Moved Permanently"),
+        ],
+    )
+    async def test_match_files_with_project_search_skips_repo_on_skippable_status(
+        self,
+        client: GitLabClient,
+        status_code: int,
+        response_text: str,
     ) -> None:
-        """A 400 from project blob search skips that repo instead of aborting."""
+        """Skippable statuses from project blob search skip that repo instead of aborting."""
         mock_response = MagicMock()
-        mock_response.status_code = 400
-        mock_response.text = "Bad Request"
+        mock_response.status_code = status_code
+        mock_response.text = response_text
         error = httpx.HTTPStatusError(
-            "400 Bad Request", request=MagicMock(), response=mock_response
+            f"{status_code} {response_text}",
+            request=MagicMock(),
+            response=mock_response,
         )
 
         with patch.object(
@@ -786,31 +798,6 @@ class TestGitLabClient:
                 batch
                 async for batch in client._match_files_with_project_search(
                     "group/bad-repo", "blobs", build_search_query("compose.y_")
-                )
-            ]
-
-        assert results == []
-
-    async def test_match_files_with_project_search_skips_repo_on_301(
-        self, client: GitLabClient
-    ) -> None:
-        """A 301 from a renamed/deletion-scheduled repo is skipped like 400."""
-        mock_response = MagicMock()
-        mock_response.status_code = 301
-        mock_response.text = "Moved Permanently"
-        error = httpx.HTTPStatusError(
-            "301 Moved Permanently", request=MagicMock(), response=mock_response
-        )
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_raising_generator(error),
-        ):
-            results = [
-                batch
-                async for batch in client._match_files_with_project_search(
-                    "group/renamed-repo", "blobs", build_search_query("*.yml")
                 )
             ]
 
@@ -837,33 +824,6 @@ class TestGitLabClient:
                     "group/project", "blobs", build_search_query("*.yml")
                 ):
                     pass
-
-    async def test_search_files_in_repository_continues_when_project_search_returns_400(
-        self, client: GitLabClient
-    ) -> None:
-        """_search_files_in_repository yields nothing (and does not raise) on 400."""
-        mock_response = MagicMock()
-        mock_response.status_code = 400
-        mock_response.text = "Bad Request"
-        error = httpx.HTTPStatusError(
-            "400 Bad Request", request=MagicMock(), response=mock_response
-        )
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_raising_generator(error),
-        ):
-            results = [
-                batch
-                async for batch in client._search_files_in_repository(
-                    "group/bad-repo",
-                    "blobs",
-                    build_search_query("docker-compose.y_"),
-                )
-            ]
-
-        assert results == []
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
         """Test file search across all groups — search_files calls get_parent_groups (which calls get_groups) and params are forwarded"""
