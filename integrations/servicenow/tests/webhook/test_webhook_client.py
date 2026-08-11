@@ -135,7 +135,7 @@ class TestServicenowWebhookClient:
                 AsyncMock(),
             ) as mock_create_rule:
                 await webhook_client.create_webhook(
-                    "https://example.com", ["incident", "unknown_table"]
+                    "https://example.com", ["incident", "cmdb_ci_server"]
                 )
 
                 assert mock_create_rule.call_count == 1
@@ -467,10 +467,11 @@ class TestBusinessRule:
     ) -> None:
         """Test generating a business rule script with basic fields."""
         fields = ["sys_id", "number", "state"]
-        script = webhook_client._generate_business_rule_script(fields)
+        script = webhook_client._generate_business_rule_script("incident", fields)
 
         assert "RESTMessageV2" in script
         assert REST_MESSAGE_NAME in script
+        assert '"__table_name": "incident",' in script
         assert '"sys_id": current.sys_id + "",' in script
         assert '"number": current.number + "",' in script
         assert '"state": current.state + ""' in script
@@ -480,8 +481,9 @@ class TestBusinessRule:
     ) -> None:
         """Test generating a business rule script with fields containing dots."""
         fields = ["caller_id.name", "assignment_group.name"]
-        script = webhook_client._generate_business_rule_script(fields)
+        script = webhook_client._generate_business_rule_script("incident", fields)
 
+        assert '"__table_name": "incident",' in script
         assert '"caller_id_name": current.caller_id.name + "",' in script
         assert '"assignment_group_name": current.assignment_group.name + ""' in script
 
@@ -491,9 +493,10 @@ class TestBusinessRule:
         """Test generating a business rule script for delete events."""
         fields = ["sys_id", "number"]
         script = webhook_client._generate_business_rule_script(
-            fields, delete_event=True
+            "incident", fields, delete_event=True
         )
 
+        assert '"__table_name": "incident",' in script
         assert "previous.sys_id" in script
         assert "previous.number" in script
         assert "current." not in script
