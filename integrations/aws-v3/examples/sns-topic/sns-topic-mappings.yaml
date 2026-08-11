@@ -1,0 +1,21 @@
+resources:
+  - kind: AWS::SNS::Topic
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.TopicArn
+          title: .Properties.TopicArn | split(":") | last
+          blueprint: '"snsTopic"'
+          properties:
+            topicArn: .Properties.TopicArn
+            displayName: .Properties.DisplayName
+            fifoTopic: .Properties.FifoTopic
+            subscriptionsConfirmed: .Properties.SubscriptionsConfirmed
+            subscriptionsPending: .Properties.SubscriptionsPending
+            kmsMasterKeyId: .Properties.KmsMasterKeyId
+            tracingConfig: .Properties.TracingConfig
+            region: .__ExtraContext.Region
+          relations:
+            account: .__ExtraContext.AccountId

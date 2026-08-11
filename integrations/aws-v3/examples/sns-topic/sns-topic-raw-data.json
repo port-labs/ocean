@@ -1,0 +1,21 @@
+{
+  "Type": "AWS::SNS::Topic",
+  "Properties": {
+    "TopicArn": "arn:aws:sns:us-east-1:123456789012:my-notifications",
+    "Owner": "123456789012",
+    "DisplayName": "My Notifications",
+    "Policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"*\"},\"Action\":\"SNS:Publish\",\"Resource\":\"arn:aws:sns:us-east-1:123456789012:my-notifications\"}]}",
+    "SubscriptionsConfirmed": 3,
+    "SubscriptionsDeleted": 0,
+    "SubscriptionsPending": 1,
+    "SignatureVersion": "1",
+    "TracingConfig": "PassThrough",
+    "EffectiveDeliveryPolicy": "{\"http\":{\"defaultHealthyRetryPolicy\":{\"numRetries\":3}}}"
+  },
+  "__Region": "us-east-1",
+  "__AccountId": "123456789012",
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}
