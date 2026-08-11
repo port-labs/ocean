@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.20.2-beta (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 2.20.1-beta (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 2.20.0-beta (2026-08-10)
+
+
+### Features
+
+- Added AWS::SNS::Topic kind with topic attributes, delivery feedback, and optional tags support
+
+
 ## 2.19.3-beta (2026-08-10)
 
 

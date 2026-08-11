@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.48.3 (2026-08-11)
+
+
+### Improvements
+
+- Live event timestamp logs (`Event Added To Queue`, `Event Started Processing`, etc.) now bind `trace_id` at the top level of log `extra` instead of nesting it under `extra.extra`.
+
+## 0.48.2 (2026-08-10)
+
+
+### Bug Fixes
+
+- Load `port_app_config` into the action-run event context (same as live events), so nested or inherited event contexts no longer raise `Port app config is not set`.
+
+
 ## 0.48.1 (2026-08-10)
 
 
