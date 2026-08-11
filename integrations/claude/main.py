@@ -1,13 +1,14 @@
+from asyncio import CancelledError
 from typing import cast
 
 from loguru import logger
-from asyncio import CancelledError
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.claude_client import ClaudeClient, ClaudeDeployment
 from clients.client_factory import create_claude_client, is_deployment_enabled
+from core.exceptions import ClaudeSkillUsageResyncError
 from core.options_builder import (
     build_platform_code_analytics_options,
     build_platform_cost_options,
@@ -111,7 +112,7 @@ async def on_resync_skill_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             failed_dates.append(day)
 
     if failed_dates:
-        logger.error(
+        raise ClaudeSkillUsageResyncError(
             f"Claude AI skill usage resync completed with "
             f"{len(failed_dates)} failed day(s): {failed_dates}"
         )
