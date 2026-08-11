@@ -1086,10 +1086,19 @@ class GitLabClient:
         params = {"scope": scope, "search": query.to_query_string()}
         encoded_repo = quote(repo, safe="")
         search_path = f"projects/{encoded_repo}/search"
-        async for file_batch in self.rest.get_paginated_resource(
-            search_path, params=params
-        ):
-            yield file_batch
+        try:
+            async for file_batch in self.rest.get_paginated_resource(
+                search_path, params=params
+            ):
+                yield file_batch
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code not in (400, 404):
+                raise
+            logger.warning(
+                f"Project blob search failed for repository '{repo}' "
+                f"(status {e.response.status_code}): {e.response.text}. "
+                "Skipping repository and continuing with remaining repositories."
+            )
 
     async def _match_files_with_repository_tree(
         self, repo: str, query: SearchQuery
