@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Treat `HTTP 408 Request Timeout` as a default retryable status code in `RetryConfig`.
