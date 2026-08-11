@@ -1,3 +1,4 @@
+from asyncio import BoundedSemaphore
 from typing import Any, Generator
 from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
@@ -331,3 +332,90 @@ async def test_preserve_case_style_combined(
 
     # Assert for preserve_case_style = False
     assert actual_subscription_false == expected_subscription_false
+
+
+@pytest.mark.asyncio
+async def test_search_all_resources_in_project_skips_malformed_asset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    A single asset missing `versioned_resources`/`versionedResources` (e.g. a BigQuery
+    Table asset from the Cloud Asset API) should be skipped with a warning, not abort
+    the whole page/project.
+    """
+    from gcp_core.search import resource_searches
+
+    valid_asset = {
+        "name": "//bigquery.googleapis.com/projects/p/datasets/d/tables/good",
+        "versioned_resources": [{"version": 1, "resource": {"foo": "bar"}}],
+    }
+    malformed_asset = {
+        "name": "//bigquery.googleapis.com/projects/p/datasets/d/tables/bad",
+    }
+
+    # Bypass protobuf conversion since we're supplying plain dicts directly.
+    monkeypatch.setattr(
+        resource_searches, "parse_protobuf_messages", lambda results: results
+    )
+
+    async def fake_paginated_query(
+        client: Any,
+        method: str,
+        request: dict[str, Any],
+        parse_fn: Any,
+        rate_limiter: Any = None,
+        timeout: Any = None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        response = MagicMock()
+        response.results = [valid_asset, malformed_asset]
+        yield parse_fn(response)
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    project = {"name": "projects/123"}
+    semaphore = BoundedSemaphore(1)
+
+    # Act
+    results: list[Any] = []
+    async for batch in resource_searches.search_all_resources_in_project(
+        project, "bigquery.googleapis.com/Table", semaphore
+    ):
+        results.extend(batch)
+
+    # Assert: only the valid asset is returned, the malformed one is skipped
+    assert len(results) == 1
+    assert results[0]["foo"] == "bar"
+    assert results[0]["__project"] == project
+
+
+@pytest.mark.asyncio
+async def test_search_all_resources_in_project_reraises_unexpected_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    An unexpected error while searching a single project (beyond PermissionDenied/NotFound)
+    must NOT be silently swallowed: it should propagate out of
+    `search_all_resources_in_project` so the kind's resync is correctly reported as
+    failed (Ocean then skips the delete phase, avoiding deletion of entities that
+    still exist but simply failed to be fetched this run). Isolating this from
+    sibling projects is handled one level up, in `iterate_per_available_project`.
+    """
+    from gcp_core.search import resource_searches
+
+    async def fake_paginated_query(
+        *args: Any, **kwargs: Any
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise ValueError("boom")
+        yield  # pragma: no cover - unreachable, keeps this an async generator
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    project = {"name": "projects/456"}
+    semaphore = BoundedSemaphore(1)
+
+    # Act / Assert
+    with pytest.raises(ValueError, match="boom"):
+        async for _ in resource_searches.search_all_resources_in_project(
+            project, "bigquery.googleapis.com/Table", semaphore
+        ):
+            pass

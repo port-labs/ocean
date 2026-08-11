@@ -56,13 +56,21 @@ async def search_all_resources_in_project(
 
     def parse_asset_response(response: Any) -> list[dict[Any, Any]]:
         assets = typing.cast(list[AssetData], parse_protobuf_messages(response.results))
-        latest_resources = [
-            {
-                **parse_latest_resource_from_asset(asset),
-                EXTRA_PROJECT_FIELD: project,
-            }
-            for asset in assets
-        ]
+        latest_resources = []
+        for asset in assets:
+            try:
+                latest_resources.append(
+                    {
+                        **parse_latest_resource_from_asset(asset),
+                        EXTRA_PROJECT_FIELD: project,
+                    }
+                )
+            except ResourceNotFoundError as e:
+                logger.warning(
+                    f"Skipping unparsable {asset_type} asset "
+                    f"{asset.get('name') or asset.get('asset_type')!r} "
+                    f"in project {project_name}: {e}"
+                )
         return latest_resources
 
     async with semaphore:
@@ -96,6 +104,11 @@ async def search_all_resources_in_project(
             logger.info(
                 f"Couldn't perform search_all_resources on project {project_name} since it's deleted. Error: {str(e)}"
             )
+        except Exception:
+            logger.exception(
+                f"Unexpected error while searching for {asset_type}'s in project {project_name}"
+            )
+            raise
         else:
             logger.info(
                 f"Successfully searched all resources within project {project_name}"
