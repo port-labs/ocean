@@ -62,10 +62,10 @@ class LiveEvent(ABC):
             params: Additional parameters to log with the event
         """
         log_params = params or {}
-        logger.info(
-            f"Event {timestamp.value}",
-            extra=log_params | {"timestamp_type": timestamp.value},
-        )
+        logger.bind(
+            **log_params,
+            timestamp_type=timestamp.value,
+        ).info(f"Event {timestamp.value}")
         self._timestamp = timestamp
 
 
