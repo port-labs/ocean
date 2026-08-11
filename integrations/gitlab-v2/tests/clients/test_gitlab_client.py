@@ -770,7 +770,7 @@ class TestGitLabClient:
         "status_code,response_text",
         [
             (400, "Bad Request"),
-            (301, "Moved Permanently"),
+            (404, "Not Found"),
         ],
     )
     async def test_match_files_with_project_search_skips_repo_on_skippable_status(
