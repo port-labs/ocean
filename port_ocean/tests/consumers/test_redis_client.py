@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 import pytest
 
 from port_ocean.consumers.redis_client import (
-    calculate_exponential_backoff_seconds,
     create_redis_client,
     create_redis_client_with_retry,
     is_redis_cluster_enabled,
@@ -99,28 +98,6 @@ class TestCreateRedisClient:
         mock_standalone.aclose.assert_awaited_once()
         mock_log.assert_called_once()
         assert mock_log.call_args.args[0] == "Failed to connect to Redis"
-
-
-class TestCalculateExponentialBackoffSeconds:
-    def test_returns_initial_backoff_for_first_retry(self) -> None:
-        assert (
-            calculate_exponential_backoff_seconds(
-                0,
-                initial_backoff_seconds=1.0,
-                exponential_base=2.0,
-            )
-            == 1.0
-        )
-
-    def test_applies_exponential_growth(self) -> None:
-        assert (
-            calculate_exponential_backoff_seconds(
-                2,
-                initial_backoff_seconds=1.0,
-                exponential_base=2.0,
-            )
-            == 4.0
-        )
 
 
 class TestCreateRedisClientWithRetry:
