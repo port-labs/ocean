@@ -547,7 +547,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.create_redis_client",
+                "port_ocean.consumers.redis_stream_consumer.create_redis_client_with_retry",
                 new=AsyncMock(return_value=mock_redis),
             ),
             patch(
@@ -589,7 +589,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.create_redis_client",
+                "port_ocean.consumers.redis_stream_consumer.create_redis_client_with_retry",
                 new=AsyncMock(return_value=mock_redis),
             ),
             patch(

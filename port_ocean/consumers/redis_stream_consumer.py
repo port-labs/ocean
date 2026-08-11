@@ -14,7 +14,10 @@ from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
-from port_ocean.consumers.redis_client import RedisClient, create_redis_client
+from port_ocean.consumers.redis_client import (
+    RedisClient,
+    create_redis_client_with_retry,
+)
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
@@ -118,8 +121,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         return kwargs
 
     async def start(self) -> None:
-        self._redis = await create_redis_client(
-            self._settings.url, **self._redis_client_kwargs()
+        self._redis = await create_redis_client_with_retry(
+            self._settings.url,
+            max_retries=self._settings.connection_startup_max_retries,
+            initial_backoff_seconds=self._settings.connection_startup_initial_backoff_seconds,
+            exponential_base=self._settings.connection_startup_exponential_base,
+            **self._redis_client_kwargs(),
         )
         await self._ensure_consumer_group()
         self._is_running = True

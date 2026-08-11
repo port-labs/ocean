@@ -6,12 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.48.4 (2026-08-11)
+
+
+### Improvements
+
+- Log explicit Redis connection failures at startup and retry the initial connection with exponential backoff (`connection_startup_max_retries`, `connection_startup_initial_backoff_seconds`, `connection_startup_exponential_base`). Add backoff before retrying the stream read loop after a runtime connection error (`connection_error_backoff_seconds`).
+
+
 ## 0.48.3 (2026-08-11)
 
 
 ### Improvements
 
-- Log explicit Redis connection failures at startup and add backoff before retrying the stream read loop after a connection error.
+- Live event timestamp logs (`Event Added To Queue`, `Event Started Processing`, etc.) now bind `trace_id` at the top level of log `extra` instead of nesting it under `extra.extra`.
 
 
 ## 0.48.2 (2026-08-10)
