@@ -199,8 +199,9 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         default=3600,
         ge=1,
         description=(
-            "TTL in seconds for the Redis stream when the consumer creates it "
-            "via MKSTREAM. Set to null to disable stream expiry."
+            "TTL in seconds for the Redis stream. Set when the consumer creates "
+            "the stream via MKSTREAM and refreshed after each message ack. "
+            "Set to null to disable stream expiry."
         ),
     )
     # PEL requeue worker settings

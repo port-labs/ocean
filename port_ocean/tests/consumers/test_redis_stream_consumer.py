@@ -483,6 +483,118 @@ class TestRedisStreamConsumerGroupCreation:
         mock_redis.expire.assert_not_awaited()
 
 
+class TestRedisStreamConsumerAck:
+    @staticmethod
+    def _mock_redis_with_ack_pipeline(
+        *,
+        execute_side_effect: Exception | None = None,
+    ) -> AsyncMock:
+        mock_redis = AsyncMock()
+        mock_redis.xack = AsyncMock(return_value=1)
+        mock_redis.xdel = AsyncMock(return_value=1)
+        mock_redis.expire = AsyncMock(return_value=True)
+
+        @asynccontextmanager
+        async def fake_pipeline(
+            *_args: object, **_kwargs: object
+        ) -> AsyncIterator[AsyncMock]:
+            pipe = AsyncMock()
+            pipe.xack = mock_redis.xack
+            pipe.xdel = mock_redis.xdel
+            pipe.expire = mock_redis.expire
+            if execute_side_effect is not None:
+                pipe.execute = AsyncMock(side_effect=execute_side_effect)
+            else:
+                pipe.execute = AsyncMock(return_value=[1, 1, True])
+            yield pipe
+
+        mock_redis.pipeline = fake_pipeline
+        return mock_redis
+
+    @pytest.mark.asyncio
+    async def test_ack_deletes_entry_and_refreshes_stream_ttl(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            stream_ttl_seconds=3600,
+        )
+        mock_redis = self._mock_redis_with_ack_pipeline()
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            await consumer._ack("1700000000000-0")
+
+        mock_redis.xack.assert_awaited_once_with(
+            "stream", "test.integration", "1700000000000-0"
+        )
+        mock_redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
+        mock_redis.expire.assert_awaited_once_with("stream", 3600)
+
+    @pytest.mark.asyncio
+    async def test_ack_skips_finalize_when_ttl_disabled(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            stream_ttl_seconds=None,
+        )
+        mock_redis = self._mock_redis_with_ack_pipeline()
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            await consumer._ack("1700000000000-0")
+
+        mock_redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
+        mock_redis.expire.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_ack_skips_finalize_when_stream_missing_during_ack(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            stream_ttl_seconds=3600,
+        )
+        mock_redis = self._mock_redis_with_ack_pipeline(
+            execute_side_effect=ResponseError(
+                "NOGROUP No such key 'stream' or consumer group"
+            )
+        )
+        mock_redis.xgroup_create = AsyncMock()
+        mock_redis.exists = AsyncMock(return_value=1)
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            await consumer._ack("1700000000000-0")
+
+        mock_redis.xgroup_create.assert_awaited_once()
+
+
 class TestRedisStreamConsumerPelWorkerLifecycle:
     @pytest.mark.asyncio
     async def test_start_starts_pel_worker_when_enabled(

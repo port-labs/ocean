@@ -21,6 +21,7 @@ from loguru import logger
 from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.redis_client import RedisClient
 from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
+from port_ocean.consumers.redis_stream_utils import ack_and_finalize_stream_entry
 
 
 class PELRequeueWorker:
@@ -116,8 +117,12 @@ class PELRequeueWorker:
                         message_id=message_id,
                         stream_key=self._stream_key,
                     )
-                    await self._redis.xack(
-                        self._stream_key, self._consumer_group, message_id
+                    await ack_and_finalize_stream_entry(
+                        self._redis,
+                        stream_key=self._stream_key,
+                        consumer_group=self._consumer_group,
+                        message_id=message_id,
+                        stream_ttl_seconds=self._redis_settings.stream_ttl_seconds,
                     )
                     continue
 
@@ -158,7 +163,13 @@ class PELRequeueWorker:
                 max_requeue_count=max_requeue_count,
                 stream_key=self._stream_key,
             )
-            await self._redis.xack(self._stream_key, self._consumer_group, message_id)
+            await ack_and_finalize_stream_entry(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                message_id=message_id,
+                stream_ttl_seconds=self._redis_settings.stream_ttl_seconds,
+            )
             return
 
         new_fields = dict(fields)
@@ -167,6 +178,11 @@ class PELRequeueWorker:
         async with self._redis.pipeline(transaction=True) as pipe:
             await pipe.xadd(self._stream_key, cast(Any, new_fields))
             await pipe.xack(self._stream_key, self._consumer_group, message_id)
+            await pipe.xdel(self._stream_key, message_id)
+            if self._redis_settings.stream_ttl_seconds is not None:
+                await pipe.expire(
+                    self._stream_key, self._redis_settings.stream_ttl_seconds
+                )
             await pipe.execute()
 
         logger.info(

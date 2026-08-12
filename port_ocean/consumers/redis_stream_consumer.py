@@ -19,7 +19,10 @@ from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
-from port_ocean.consumers.redis_stream_utils import is_missing_stream_or_group_error
+from port_ocean.consumers.redis_stream_utils import (
+    ack_and_finalize_stream_entry,
+    is_missing_stream_or_group_error,
+)
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -157,7 +160,13 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         if self._redis is None:
             return
         try:
-            await self._redis.xack(self._stream_key, self._consumer_group, message_id)
+            await ack_and_finalize_stream_entry(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                message_id=message_id,
+                stream_ttl_seconds=self._settings.stream_ttl_seconds,
+            )
         except ResponseError as error:
             if not is_missing_stream_or_group_error(error):
                 raise

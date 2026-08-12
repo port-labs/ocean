@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.48.6 (2026-08-12)
+
+
+### Improvements
+
+- Redis stream consumer now deletes entries after acking and refreshes stream TTL in the same transactional pipeline (`XACK`, `XDEL`, `EXPIRE`). The PEL requeue worker uses the same ack-finalize flow for discard and tombstoned messages.
+
+
 ## 0.48.4 (2026-08-11)
 
 
