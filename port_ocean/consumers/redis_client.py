@@ -71,5 +71,3 @@ async def create_redis_client_with_retry(
                 error=str(error),
             )
             await asyncio.sleep(delay_seconds)
-
-    raise RuntimeError("Unreachable: Redis startup retry loop exited unexpectedly")
