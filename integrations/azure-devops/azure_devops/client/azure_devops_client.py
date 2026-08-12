@@ -2189,18 +2189,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
         results = await asyncio.gather(
             *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
-            return_exceptions=True,
         )
 
-        subscriptions: list[WebhookSubscription] = []
-        for result in results:
-            if isinstance(result, asyncio.CancelledError):
-                raise result
-            if isinstance(result, BaseException):
-                logger.warning(f"Failed to fetch webhook subscriptions: {result}")
-                continue
-            subscriptions.extend(result)
-        return subscriptions
+        return [sub for batch in results for sub in batch]
 
     async def create_subscription(
         self,
@@ -2625,7 +2616,6 @@ class AzureDevopsClient(HTTPBaseClient):
             existing_sub = sub.get_event_by_subscription(existing_subscriptions)
 
             if existing_sub and not existing_sub.is_enabled():
-                # Disabled subscription — recreate it.
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
             elif existing_sub and existing_sub.id:

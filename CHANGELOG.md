@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Log explicit Redis connection failures at startup and retry the initial connection with exponential backoff (`connection_startup_max_retries`, `connection_startup_initial_backoff_seconds`, `connection_startup_exponential_base`). Add backoff before retrying the stream read loop after a runtime connection error (`connection_error_backoff_seconds`).
+- Treat `HTTP 408 Request Timeout` as a default retryable status code in `RetryConfig`.
 
 
 ## 0.48.3 (2026-08-11)
