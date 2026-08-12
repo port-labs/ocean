@@ -21,6 +21,8 @@ jobs:
             echo "[Core] Upgrade FastAPI version to improve performance and compatibility"
             echo "[Docs] Correct documentation on Ocean's denial-of-service vulnerability in http-proxy-middleware"
             echo "[Integration] Enable region-specific resource querying support"
+            echo "[CoreBump] Apply version and changelog for ocean-core"
+            echo "[IntegrationBump] Apply version and changelog for github"
             exit 1
           else
             echo "PR title matches the required convention."
