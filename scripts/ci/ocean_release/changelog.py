@@ -37,6 +37,8 @@ def apply_towncrier_changelog(
             "towncrier",
             "build",
             "--yes",
+            "--name",
+            target.label,
             "--version",
             new_version,
         ],
