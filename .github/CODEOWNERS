@@ -22,3 +22,11 @@
 # Integrations: connect owns all, custom is lighthouse
 /integrations/** @port-labs/connect-team
 /integrations/custom/** @port-labs/lighthouse-team
+
+# Release metadata (core + integrations): either connect or lighthouse approval is enough
+/pyproject.toml @port-labs/connect-team @port-labs/lighthouse-team
+/CHANGELOG.md @port-labs/connect-team @port-labs/lighthouse-team
+/poetry.lock @port-labs/connect-team @port-labs/lighthouse-team
+/integrations/*/pyproject.toml @port-labs/connect-team @port-labs/lighthouse-team
+/integrations/*/CHANGELOG.md @port-labs/connect-team @port-labs/lighthouse-team
+/integrations/*/poetry.lock @port-labs/connect-team @port-labs/lighthouse-team

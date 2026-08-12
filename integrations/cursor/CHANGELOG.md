@@ -5,12 +5,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.49 (2026-08-11)
+## 0.1.50 (2026-08-12)
 
 
 ### Improvements
 
 - Added `cursor-team-skill-usage` kind for team-level Skills adoption analytics from the Cursor Analytics API.
+
+
+## 0.1.49 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
 
 
 ## 0.1.48 (2026-08-11)
