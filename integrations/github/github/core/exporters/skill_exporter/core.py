@@ -40,6 +40,7 @@ class SkillExporter(RestFileExporter):
                         branch=file_obj["branch"],
                         organization=file_obj.get("organization"),
                         path_globs=path_globs,
+                        sha=file_obj.get("metadata", {}).get("sha"),
                     )
                 )
             if skills:

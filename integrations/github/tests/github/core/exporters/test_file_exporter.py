@@ -1000,6 +1000,76 @@ class TestRestFileExporterRepoNotFound:
         assert len(results) == 1
         assert results[0]["name"] == "readme.txt"
 
+    async def test_process_graphql_files_passes_oid_as_metadata_sha(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """The GraphQL Blob's `oid` (git blob SHA) must be threaded through to
+        the metadata passed to `file_processor.process_file`, so downstream
+        exporters (e.g. the skill kind) can surface it."""
+        exporter = RestFileExporter(rest_client)
+
+        fake_gql_response = {
+            "data": {
+                "repository": {
+                    "file_0": {
+                        "text": "hello",
+                        "byteSize": 5,
+                        "oid": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+                    }
+                }
+            }
+        }
+
+        async def mock_batches(
+            matched_file_entries: Any, batch_size: int = 7
+        ) -> AsyncGenerator[Dict[str, Any], None]:
+            yield {
+                "organization": "test-org",
+                "repo": "live-repo",
+                "branch": "main",
+                "file_data": fake_gql_response["data"],
+                "batch_files": [
+                    {
+                        "organization": "test-org",
+                        "repo_name": "live-repo",
+                        "file_path": "readme.txt",
+                        "skip_parsing": True,
+                        "branch": "main",
+                    }
+                ],
+            }
+
+        process_file_mock = AsyncMock(
+            return_value={"name": "readme.txt", "content": "hello"}
+        )
+
+        with (
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
+            ),
+            patch.object(
+                exporter, "process_files_in_batches", side_effect=mock_batches
+            ),
+            patch.object(exporter.file_processor, "process_file", process_file_mock),
+        ):
+            async for _ in exporter.process_graphql_files(
+                [
+                    {
+                        "organization": "test-org",
+                        "repo_name": "live-repo",
+                        "file_path": "readme.txt",
+                        "skip_parsing": True,
+                        "branch": "main",
+                    }
+                ]
+            ):
+                pass
+
+        process_file_mock.assert_awaited_once()
+        metadata = process_file_mock.await_args.kwargs["metadata"]
+        assert metadata["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
 
 class TestFileExporterUtils:
     @pytest.mark.asyncio
@@ -1236,6 +1306,20 @@ class TestFileExporterUtils:
             == "https://api.github.com/repos/test-org/repo1/contents/src/test.txt?ref=main"
         )
         assert metadata["size"] == 100
+        assert metadata["sha"] is None
+
+    def test_get_graphql_file_metadata_with_sha(self) -> None:
+        metadata = get_graphql_file_metadata(
+            "https://api.github.com",
+            "test-org",
+            "repo1",
+            "main",
+            "src/test.txt",
+            100,
+            sha="e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        )
+
+        assert metadata["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
     def test_build_batch_file_query(self) -> None:
         query = build_batch_file_query(
@@ -1249,6 +1333,7 @@ class TestFileExporterUtils:
         assert 'repository(owner: "test-org", name: "repo1")' in query["query"]
         assert 'file_0: object(expression: "main:test1.txt")' in query["query"]
         assert 'file_1: object(expression: "main:test2.txt")' in query["query"]
+        assert "oid" in query["query"]
 
     def test_build_batch_file_query_empty_list(self) -> None:
         query = build_batch_file_query(

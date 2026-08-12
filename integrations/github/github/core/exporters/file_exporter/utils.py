@@ -225,7 +225,13 @@ def filter_github_tree_entries_by_pattern(
 
 
 def get_graphql_file_metadata(
-    host: str, organization: str, repo_name: str, branch: str, file_path: str, size: int
+    host: str,
+    organization: str,
+    repo_name: str,
+    branch: str,
+    file_path: str,
+    size: int,
+    sha: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Get metadata for a file from the GraphQL API.
@@ -236,6 +242,7 @@ def get_graphql_file_metadata(
         "url": url,
         "path": file_path,
         "size": size,
+        "sha": sha,
     }
 
 
@@ -250,6 +257,7 @@ def build_batch_file_query(
             ... on Blob {{
                 text
                 byteSize
+                oid
             }}
         }}
         """ for file_index, path in enumerate(file_paths))

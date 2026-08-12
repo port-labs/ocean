@@ -39,7 +39,9 @@ def _skill_search_options(*paths: str) -> List[ListFileSearchOptions]:
     ]
 
 
-def _file_object(path: str, content: str) -> Dict[str, Any]:
+def _file_object(
+    path: str, content: str, metadata: Dict[str, Any] | None = None
+) -> Dict[str, Any]:
     return {
         "organization": "test-org",
         "content": content,
@@ -47,7 +49,7 @@ def _file_object(path: str, content: str) -> Dict[str, Any]:
         "branch": "main",
         "path": path,
         "name": "SKILL.md",
-        "metadata": {},
+        "metadata": metadata if metadata is not None else {},
     }
 
 
@@ -75,6 +77,54 @@ class TestSkillExporter:
         assert skill["root"] == ".cursor/skills"
         assert skill["skillMdPath"] == ".cursor/skills/hello/SKILL.md"
         assert batches[0][0]["__organization"] == "test-org"
+
+    async def test_maps_metadata_sha_to_skill_sha(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """The skill's `sha` is plumbed through from the file's metadata,
+        which already carries the git blob SHA returned by the GitHub API."""
+
+        async def fake_files(
+            _self: RestFileExporter, _options: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [
+                _file_object(
+                    "skills/hello/SKILL.md",
+                    SKILL_MD,
+                    metadata={"sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"},
+                )
+            ]
+
+        exporter = SkillExporter(rest_client)
+        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+            batches = [
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    _skill_search_options("skills/**/SKILL.md")
+                )
+            ]
+
+        skill = batches[0][0]["skill"]
+        assert skill["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
+    async def test_missing_metadata_sha_defaults_to_none(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        async def fake_files(
+            _self: RestFileExporter, _options: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [_file_object("skills/hello/SKILL.md", SKILL_MD)]
+
+        exporter = SkillExporter(rest_client)
+        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+            batches = [
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    _skill_search_options("skills/**/SKILL.md")
+                )
+            ]
+
+        assert batches[0][0]["skill"]["sha"] is None
 
     async def test_skips_files_without_string_content(
         self, rest_client: GithubRestClient

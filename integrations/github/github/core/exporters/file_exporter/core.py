@@ -358,6 +358,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     branch,
                     file_path,
                     size,
+                    sha=file_data.get("oid"),
                 ),
             )
 

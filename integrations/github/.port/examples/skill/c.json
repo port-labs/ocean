@@ -6,7 +6,8 @@
     "frontmatter": {},
     "path": "packages/agent-kit/skills/release-notes",
     "skillMdPath": "packages/agent-kit/skills/release-notes/SKILL.md",
-    "root": "packages/agent-kit/skills"
+    "root": "packages/agent-kit/skills",
+    "sha": "356a192b7913b04c54574d18c28d46e6395428ab"
   },
   "__repository": {
     "name": "agent-monorepo",
