@@ -85,12 +85,16 @@ jobs:
             git diff --name-only | python3 -c '
           import sys
           labels = []
+          has_core = False
           for path in sys.stdin.read().splitlines():
               if path == "pyproject.toml":
+                  has_core = True
                   labels.append("ocean-core")
               elif path.startswith("integrations/") and path.endswith("/pyproject.toml"):
                   labels.append(path.split("/")[1])
-          print("[ocean-release] Apply version and changelog for " + ", ".join(labels))
+
+          prefix = "[CoreBump]" if has_core else "[IntegrationBump]"
+          print(f"{prefix} Apply version and changelog for {', '.join(labels)}")
           '
           )
           echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
