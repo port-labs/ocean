@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab"
-version = "0.2.294-post1"
+version = "0.2.313-post1"
 description = "Gitlab integration for Port using Port-Ocean Framework"
 authors = ["Yair Siman-Tov <yair@getport.io>"]
 
@@ -10,7 +10,7 @@ aiolimiter = "^1.1.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
-port_ocean = {version = "^0.46.2", extras = ["cli"]}
+port_ocean = {version = "^0.48.4", extras = ["cli"]}
 glob2 = "^0.7"
 braceexpand = "^0.1.7"
 
@@ -70,7 +70,7 @@ title_format = "{version} ({project_date})"
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

@@ -70,7 +70,9 @@ class HTTPBaseClient:
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            if response.status_code == 404 and not raise_on_404:
+            if response.status_code == 404:
+                if raise_on_404:
+                    raise
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
                 return None
             else:

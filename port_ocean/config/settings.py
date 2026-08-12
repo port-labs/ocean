@@ -1,7 +1,9 @@
-import platform
 from typing import Any, Literal, Optional, Type
 from urllib.parse import urlparse
 
+import os
+
+from loguru import logger
 from pydantic.v1 import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
 from pydantic.v1.class_validators import root_validator, validator
 from pydantic.v1.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
@@ -17,7 +19,6 @@ from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     EventListenerType,
     LiveEventsConsumerType,
-    ProcessExecutionMode,
     ProcessingMode,
     Runtime,
 )
@@ -29,6 +30,7 @@ from port_ocean.utils.misc import (
 from port_ocean.utils.time import parse_interval_to_minutes
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+ALLOWED_INCREMENTAL_SYNC_INTERVALS = (15, 30, 60)
 
 
 class SslX509Settings(BaseOceanModel):
@@ -90,7 +92,13 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     def parse_incremental_sync_interval(cls, value: Any) -> int:
         if value is None:
             return 15
-        return parse_interval_to_minutes(value)
+        minutes = parse_interval_to_minutes(value)
+        if minutes not in ALLOWED_INCREMENTAL_SYNC_INTERVALS:
+            raise ValueError(
+                f"incremental_sync_interval must be one of "
+                f"{ALLOWED_INCREMENTAL_SYNC_INTERVALS}, got {minutes}"
+            )
+        return minutes
 
     @root_validator(pre=True)
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -320,17 +328,14 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     caching_storage_mode: Optional[CachingStorageMode] = Field(
         default=CachingStorageMode.disk
     )
-    process_execution_mode: Optional[ProcessExecutionMode] = Field(
-        default=ProcessExecutionMode.multi_process
-    )
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
-    lakehouse_enabled: bool = False
+    lakehouse_enabled: bool = True
     disable_ip_outbound_blocker: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
-    processing_mode: ProcessingMode = ProcessingMode.ocean_core
+    processing_mode: ProcessingMode = ProcessingMode.dsp
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(
@@ -346,18 +351,18 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     ssl: SslSettings = Field(default_factory=SslSettings)
 
-    @validator("process_execution_mode")
-    def validate_process_execution_mode(
-        cls,
-        process_execution_mode: ProcessExecutionMode,
-        values: dict[str, Any],
-    ) -> ProcessExecutionMode:
-        # Check if the system is macos, if so, set the process execution mode to single process since multiprocessing behavior is different on macos and some asyncio error pop up
-        is_macos = platform.system() == "Darwin"
-        runtime = values.get("runtime", Runtime.OnPrem)
-        if is_macos or runtime == Runtime.Saas:
-            return ProcessExecutionMode.single_process
-        return process_execution_mode
+    @root_validator(pre=True)
+    def warn_removed_process_execution_mode_env(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        process_execution_mode = os.environ.get("OCEAN__PROCESS_EXECUTION_MODE")
+        if process_execution_mode:
+            logger.warning(
+                "OCEAN__PROCESS_EXECUTION_MODE is no longer supported and will be ignored. "
+                "Ocean always runs in single_process mode.",
+                process_execution_mode=process_execution_mode,
+            )
+        return values
 
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
@@ -410,7 +415,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             if spec is None:
                 raise ValueError(
                     "Could not determine whether it's safe to run "
-                    "the integration due to not found spec.yaml."
+                    "the integration due to not found spec.json or spec.yaml."
                 )
 
             saas_config = spec.get("saas")

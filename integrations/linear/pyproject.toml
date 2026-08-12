@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "linear"
-version = "0.3.71"
+version = "0.3.90"
 description = "Integration to bring information from Linear into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.46.2", extras = ["cli"]}
+port_ocean = {version = "^0.48.4", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
@@ -59,7 +59,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

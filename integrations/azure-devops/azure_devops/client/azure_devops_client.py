@@ -3,9 +3,8 @@ import asyncio
 import functools
 import json
 import re
-import httpx
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
@@ -30,6 +29,17 @@ from azure_devops.webhooks.events import (
 )
 
 from azure_devops.client.auth import AuthProvider, build_auth_provider
+from azure_devops.incremental import (
+    ANALYTICS_PIPELINE_RUNS_ODATA_PATH,
+    ANALYTICS_PIPELINE_RUNS_PAGE_SIZE,
+    BUILD_INCREMENTAL,
+    RELEASE_DEPLOYMENT_INCREMENTAL,
+    RELEASE_INCREMENTAL,
+    build_pipeline_runs_analytics_filter,
+    ADVANCED_SECURITY_INCREMENTAL,
+    flatten_advanced_security_params,
+    wiql_changed_after_clause,
+)
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
@@ -63,6 +73,7 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 GRAPH_USERS_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
+ANALYTICS_PUBLISHER_ID = "analytics"
 PIPELINES_PUBLISHER_ID = "pipelines"
 RELEASE_PUBLISHER_ID = "rm"
 API_PARAMS = {"api-version": "7.1"}
@@ -85,6 +96,7 @@ MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
 MAX_CONCURRENT_USER_MEMBERSHIPS = 10
+TEST_RUN_QUERY_MAX_WINDOW = timedelta(days=7)
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -374,36 +386,46 @@ class AzureDevopsClient(HTTPBaseClient):
         alert_id: str,
     ) -> dict[str, Any] | None:
         security_alert_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts/{alert_id}"
-        response = await self.send_request("GET", security_alert_url)
+        try:
+            response = await self.send_request("GET", security_alert_url)
+        except HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.warning(
+                    f"Skipping Advanced Security alerts for {security_alert_url}: "
+                    "GHAS not enabled or repository not onboarded (HTTP 400)"
+                )
+                return None
+            raise
         if not response:
             return None
-        security_alert = response.json()
-        return security_alert
+        return response.json()
 
     async def generate_advanced_security_alerts(
         self,
         repository: dict[str, Any],
         params: Optional[dict[str, Any]] = None,
+        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate security alerts from GitHub Advanced Security (GHAS) in Azure DevOps.
         This method fetches alerts for all repositories across all projects using the Advanced Security API.
         read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/advancedsecurity/alerts/list?view=azure-devops-rest-7.2
         """
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
+        additional_params = ADVANCED_SECURITY_INCREMENTAL.merge_params(
+            flatten_advanced_security_params(
+                {**ADVANCED_SECURITY_API_PARAMS, **(params or {})}
+            ),
+            incremental_cursor,
+        )
         try:
-            project_id = repository["project"]["id"]
-            repository_id = repository["id"]
-            security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
-            additional_params = {
-                **ADVANCED_SECURITY_API_PARAMS,
-            }
-
-            if params:
-                additional_params.update(params)
             async for (
                 security_alerts
             ) in self._get_paginated_by_top_and_continuation_token(
-                security_alerts_url, additional_params=additional_params
+                security_alerts_url,
+                additional_params=additional_params,
             ):
                 enriched_alerts = [
                     self._enrich_security_alert(
@@ -412,11 +434,13 @@ class AzureDevopsClient(HTTPBaseClient):
                     for security_alert in security_alerts
                 ]
                 yield enriched_alerts
-        except httpx.HTTPStatusError as e:
+        except HTTPStatusError as e:
             if e.response.status_code == 400:
-                logger.error(
-                    f"Advanced Security not enabled for repository {repository['name']} in project {project_id}"
+                logger.warning(
+                    f"Skipping Advanced Security alerts for {security_alerts_url}: "
+                    "GHAS not enabled or repository not onboarded (HTTP 400)"
                 )
+                return
             raise
 
     def _enrich_security_alert(
@@ -949,7 +973,11 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_releases(
         self,
         additional_params: dict[str, str] | None = None,
+        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params = dict(additional_params or {})
+        if incremental_cursor is not None:
+            params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
@@ -957,7 +985,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
                 async for releases in self._get_paginated_by_top_and_continuation_token(
-                    releases_url, additional_params=additional_params or {}
+                    releases_url, additional_params=params
                 ):
                     yield releases
 
@@ -1000,6 +1028,118 @@ class AzureDevopsClient(HTTPBaseClient):
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
+
+    async def generate_pipeline_runs_incremental(
+        self,
+        incremental_cursor: Optional[datetime] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Discover completed pipeline runs via Analytics OData, enrich via Runs Get."""
+        if incremental_cursor is None:
+            return
+        analytics_filter = build_pipeline_runs_analytics_filter(incremental_cursor)
+        async for projects in self.generate_projects():
+            for project in projects:
+                async for (
+                    discoveries
+                ) in self._discover_pipeline_runs_from_analytics_for_project(
+                    project["id"], analytics_filter
+                ):
+                    enriched = await self._enrich_analytics_pipeline_run_discoveries(
+                        project, discoveries
+                    )
+                    if enriched:
+                        yield enriched
+
+    async def _discover_pipeline_runs_from_analytics_for_project(
+        self,
+        project_id: str,
+        analytics_filter: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Discover completed pipeline runs for a project via Analytics OData."""
+        url = (
+            f"{self._format_service_url(ANALYTICS_PUBLISHER_ID)}/{project_id}"
+            f"{ANALYTICS_PIPELINE_RUNS_ODATA_PATH}"
+        )
+        params: dict[str, Any] = {
+            "$select": "PipelineRunId,CompletedDate",
+            "$expand": "Pipeline($select=PipelineId,PipelineName)",
+            "$filter": analytics_filter,
+            "$orderby": "CompletedDate desc",
+            "$top": ANALYTICS_PIPELINE_RUNS_PAGE_SIZE,
+        }
+        next_url: str | None = url
+        next_params: dict[str, Any] | None = params
+        while next_url:
+            try:
+                response = await self.send_request(
+                    "GET",
+                    next_url,
+                    params=next_params,
+                    raise_on_404=True,
+                )
+            except HTTPStatusError as e:
+                if e.response.status_code in (403, 404):
+                    logger.warning(
+                        f"Skipping Analytics OData request for {next_url}: "
+                        "Analytics is not enabled, the project is not onboarded, or access "
+                        f"is denied (HTTP {e.response.status_code})"
+                    )
+                    return
+                raise
+            if not response:
+                return
+            payload = response.json()
+            rows = payload.get("value") or []
+            if rows:
+                yield rows
+            next_url = payload.get("@odata.nextLink")
+            next_params = None
+
+    async def _enrich_analytics_pipeline_run_discoveries(
+        self,
+        project: dict[str, Any],
+        discoveries: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        pipeline_cache: dict[int, dict[str, Any]] = {}
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
+
+        async def enrich_one(discovery: dict[str, Any]) -> dict[str, Any] | None:
+            pipeline_ref = discovery.get("Pipeline") or {}
+            pipeline_id = pipeline_ref.get("PipelineId")
+            run_id = discovery.get("PipelineRunId")
+            if pipeline_id is None or run_id is None:
+                return None
+            async with semaphore:
+                pipeline_run = await self.get_pipeline_run(
+                    project["id"], str(pipeline_id), str(run_id)
+                )
+                if not pipeline_run:
+                    return None
+                if pipeline_id not in pipeline_cache:
+                    pipeline = await self.get_pipeline(project["id"], str(pipeline_id))
+                    if not pipeline:
+                        return None
+                    pipeline_cache[pipeline_id] = pipeline
+                self.annotate_runs(
+                    [pipeline_run],
+                    project=project,
+                    pipeline=pipeline_cache[pipeline_id],
+                )
+                return pipeline_run
+
+        results = await asyncio.gather(
+            *[enrich_one(row) for row in discoveries], return_exceptions=True
+        )
+        enriched: list[dict[str, Any]] = []
+        for result in results:
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to enrich pipeline run from analytics: {result}"
+                )
+                continue
+            if result:
+                enriched.append(result)
+        return enriched
 
     async def _runs_for_project(
         self, project: dict[str, Any]
@@ -1108,12 +1248,16 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _generate_builds_for_project(
         self,
         project: dict[str, Any],
+        min_time: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield paginated builds for a single project, enriched with project data."""
         builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
+        additional_params: dict[str, Any] = {"queryOrder": "queueTimeDescending"}
+        if min_time is not None:
+            additional_params.update(BUILD_INCREMENTAL.build_params(min_time))
         async for builds in self._get_paginated_by_top_and_continuation_token(
             builds_url,
-            additional_params={"queryOrder": "queueTimeDescending"},
+            additional_params=additional_params,
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 
@@ -1176,7 +1320,9 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
     async def generate_builds(
-        self, enrich_with_first_commit: bool = False
+        self,
+        enrich_with_first_commit: bool = False,
+        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
@@ -1184,7 +1330,10 @@ class AzureDevopsClient(HTTPBaseClient):
         https://learn.microsoft.com/en-us/rest/api/azure/devops/build/builds/list?view=azure-devops-rest-7.1
         """
         async for projects in self.generate_projects():
-            tasks = [self._generate_builds_for_project(project) for project in projects]
+            tasks = [
+                self._generate_builds_for_project(project, min_time=incremental_cursor)
+                for project in projects
+            ]
             async for batch in stream_async_iterators_tasks(*tasks):
                 if enrich_with_first_commit and batch:
                     batch = await self._enrich_builds_with_first_commit(
@@ -1374,7 +1523,13 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_release_deployments(
         self,
+        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        additional_params: dict[str, Any] = {}
+        if incremental_cursor is not None:
+            additional_params = RELEASE_DEPLOYMENT_INCREMENTAL.build_params(
+                incremental_cursor
+            )
         async for projects in self.generate_projects():
             for project in projects:
                 deployments_url = (
@@ -1383,7 +1538,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 async for (
                     deployments
-                ) in self._get_paginated_by_top_and_continuation_token(deployments_url):
+                ) in self._get_paginated_by_top_and_continuation_token(
+                    deployments_url, additional_params=additional_params
+                ):
                     yield deployments
 
     async def generate_pipeline_deployments(
@@ -1439,8 +1596,15 @@ class AzureDevopsClient(HTTPBaseClient):
         project: dict[str, Any],
         wiql: Optional[str],
         expand: str,
+        changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for work_item_ids in self._fetch_work_item_id_batches(project, wiql):
+        async for work_item_ids in self._fetch_work_item_id_batches(
+            project,
+            wiql,
+            changed_after=changed_after,
+            wiql_time_precision=wiql_time_precision,
+        ):
             if not work_item_ids:
                 logger.debug(
                     f"No work item IDs returned for project {project['name']}, skipping"
@@ -1463,6 +1627,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         wiql: Optional[str],
         expand: str,
+        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -1470,13 +1635,19 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
         of 20,000 results per query.
         """
+        wiql_time_precision = incremental_cursor is not None
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
                     functools.partial(
-                        self._fetch_work_items_for_project, project, wiql, expand
+                        self._fetch_work_items_for_project,
+                        project,
+                        wiql,
+                        expand,
+                        incremental_cursor,
+                        wiql_time_precision=wiql_time_precision,
                     ),
                 )
                 for project in projects
@@ -1512,8 +1683,26 @@ class AzureDevopsClient(HTTPBaseClient):
         order_part = wiql_stripped[order_by_idx + len(order_by_marker) :].strip()
         return filter_part or None, order_part or None
 
+    def _wiql_request_params(
+        self,
+        *,
+        changed_after: Optional[datetime],
+        wiql_time_precision: bool,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "api-version": "7.1-preview.2",
+            "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+        }
+        if changed_after is not None and wiql_time_precision:
+            params["timePrecision"] = "true"
+        return params
+
     async def _fetch_work_item_id_batches(
-        self, project: dict[str, Any], wiql: Optional[str]
+        self,
+        project: dict[str, Any],
+        wiql: Optional[str],
+        changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[int], None]:
         """
         Executes WIQL queries to fetch work item IDs for a project.
@@ -1526,6 +1715,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
         :param project: The project dict containing id and name.
         :param wiql: Optional user-provided WIQL filter to append to the WHERE clause.
+        :param changed_after: When set (incremental sync), only work items changed on or
+            after the cursor. With ``wiql_time_precision``, uses full timestamp + ADO
+            ``timePrecision=true``; otherwise uses UTC calendar date only.
         :yield: Batches of work item IDs (each batch up to MAX_WORK_ITEMS_RESULTS_PER_PROJECT).
         """
         filter_part, user_order_part = self._parse_wiql_with_order_by(wiql)
@@ -1534,6 +1726,13 @@ class AzureDevopsClient(HTTPBaseClient):
         if filter_part:
             wiql_base += f" AND ({filter_part})"
             logger.info(f"Using WIQL filter: {filter_part}")
+        if changed_after is not None:
+            wiql_base += f" AND {wiql_changed_after_clause(changed_after, time_precision=wiql_time_precision)}"
+
+        wiql_params = self._wiql_request_params(
+            changed_after=changed_after,
+            wiql_time_precision=wiql_time_precision,
+        )
 
         if user_order_part:
             logger.warning(
@@ -1546,10 +1745,7 @@ class AzureDevopsClient(HTTPBaseClient):
             wiql_response = await self.send_request(
                 "POST",
                 wiql_url,
-                params={
-                    "api-version": "7.1-preview.2",
-                    "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
-                },
+                params=wiql_params,
                 data=json.dumps({"query": wiql_query}),
                 headers={"Content-Type": "application/json"},
             )
@@ -1578,10 +1774,7 @@ class AzureDevopsClient(HTTPBaseClient):
             wiql_response = await self.send_request(
                 "POST",
                 wiql_url,
-                params={
-                    "api-version": "7.1-preview.2",
-                    "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
-                },
+                params=wiql_params,
                 data=json.dumps({"query": wiql_query}),
                 headers={"Content-Type": "application/json"},
             )
@@ -1996,18 +2189,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
         results = await asyncio.gather(
             *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
-            return_exceptions=True,
         )
 
-        subscriptions: list[WebhookSubscription] = []
-        for result in results:
-            if isinstance(result, asyncio.CancelledError):
-                raise result
-            if isinstance(result, BaseException):
-                logger.warning(f"Failed to fetch webhook subscriptions: {result}")
-                continue
-            subscriptions.extend(result)
-        return subscriptions
+        return [sub for batch in results for sub in batch]
 
     async def create_subscription(
         self,
@@ -2432,7 +2616,6 @@ class AzureDevopsClient(HTTPBaseClient):
             existing_sub = sub.get_event_by_subscription(existing_subscriptions)
 
             if existing_sub and not existing_sub.is_enabled():
-                # Disabled subscription — recreate it.
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
             elif existing_sub and existing_sub.id:
@@ -2733,18 +2916,38 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"],
+        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        params = {"includeRunDetails": True, **API_PARAMS}
-        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
-            yield await self._enrich_test_runs(
-                runs, project_id, include_results, coverage_config
-            )
+        if incremental_cursor is None:
+            params = {"includeRunDetails": True, **API_PARAMS}
+            async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+                yield await self._enrich_test_runs(
+                    runs, project_id, include_results, coverage_config
+                )
+            return
+
+        window_start = incremental_cursor
+        now = datetime.now(timezone.utc)
+        while window_start < now:
+            window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
+            params = {
+                "includeRunDetails": True,
+                **API_PARAMS,
+                "minLastUpdatedDate": window_start.isoformat(),
+                "maxLastUpdatedDate": window_end.isoformat(),
+            }
+            async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+                yield await self._enrich_test_runs(
+                    runs, project_id, include_results, coverage_config
+                )
+            window_start = window_end
 
     async def fetch_test_runs(
         self,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"] = None,
+        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
@@ -2760,6 +2963,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         project["id"],
                         include_results,
                         coverage_config,
+                        incremental_cursor,
                     ),
                 )
                 for project in projects

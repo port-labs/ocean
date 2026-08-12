@@ -1,0 +1,19 @@
+{
+  "identifier": "arn:aws:dynamodb:us-east-1:123456789012:table/port-test",
+  "title": "port-test",
+  "blueprint": "dynamodbTable",
+  "properties": {
+    "tableArn": "arn:aws:dynamodb:us-east-1:123456789012:table/port-test",
+    "tableStatus": "ACTIVE",
+    "billingMode": "PROVISIONED",
+    "itemCount": 25,
+    "tableSizeBytes": 2048,
+    "creationDateTime": "2025-01-15T10:30:00.000000+00:00",
+    "deletionProtectionEnabled": true,
+    "encryptionType": "KMS",
+    "region": "us-east-1"
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

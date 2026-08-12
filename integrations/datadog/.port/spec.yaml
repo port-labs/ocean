@@ -50,6 +50,11 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: skipWebhookCreation
+    type: boolean
+    required: false
+    default: false
+    description: When enabled, the integration will not create webhook subscriptions in Datadog.
   - name: monitorNotificationRuleScope
     description: "Scope of the Datadog monitor notification rule (optional). Only monitors matching this scope will trigger webhook events. Defaults to \"service:*\" to capture all service monitors. Example: \"service:my-service AND env:prod\"."
     type: string

@@ -51,6 +51,8 @@ class ObjectKind(StrEnum):
     RELEASE = "release"
     BRANCH = "branch"
     DEPLOYMENT = "deployment"
+    SKILL = "skill"
+    PLUGIN = "plugin"
 
 
 def parse_file_content(
@@ -139,13 +141,19 @@ def build_search_query(search_path: str) -> SearchQuery:
         ``src/config/app.json``  -> keyword='app', filename='app.json', directory='src/config'
         ``home/directory/*.txt`` -> keyword='.txt', filename='*.txt', directory='home/directory'
         ``home/*/*.txt``         -> keyword='.txt', filename='*.txt', directory='home/*'
+        ``.opencode/plugins/*``  -> keyword='plugins', filename='*', directory='.opencode/plugins'
     """
     if "/" not in search_path:
         keyword = search_path.replace("*", "")
+        if not keyword:
+            keyword = search_path
         return SearchQuery(path=search_path, keyword=keyword, filename=search_path)
 
     directory, filename = search_path.rsplit("/", 1)
     keyword = filename.replace("*", "")
+    if not keyword:
+        # Directory wildcards like `.opencode/plugins/*` need a non-empty keyword.
+        keyword = directory.rsplit("/", 1)[-1].replace("*", "") or directory
     return SearchQuery(
         path=search_path, keyword=keyword, filename=filename, directory=directory
     )

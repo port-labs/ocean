@@ -766,6 +766,65 @@ class TestGitLabClient:
                     "group/project", "blobs", query, False
                 )
 
+    @pytest.mark.parametrize(
+        "status_code,response_text",
+        [
+            (400, "Bad Request"),
+            (404, "Not Found"),
+        ],
+    )
+    async def test_match_files_with_project_search_skips_repo_on_skippable_status(
+        self,
+        client: GitLabClient,
+        status_code: int,
+        response_text: str,
+    ) -> None:
+        """Skippable statuses from project blob search skip that repo instead of aborting."""
+        mock_response = MagicMock()
+        mock_response.status_code = status_code
+        mock_response.text = response_text
+        error = httpx.HTTPStatusError(
+            f"{status_code} {response_text}",
+            request=MagicMock(),
+            response=mock_response,
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_raising_generator(error),
+        ):
+            results = [
+                batch
+                async for batch in client._match_files_with_project_search(
+                    "group/bad-repo", "blobs", build_search_query("compose.y_")
+                )
+            ]
+
+        assert results == []
+
+    async def test_match_files_with_project_search_reraises_non_skippable_status(
+        self, client: GitLabClient
+    ) -> None:
+        """Non-skippable HTTP errors from project blob search still propagate."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        error = httpx.HTTPStatusError(
+            "500 Internal Server Error", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_raising_generator(error),
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client._match_files_with_project_search(
+                    "group/project", "blobs", build_search_query("*.yml")
+                ):
+                    pass
+
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
         """Test file search across all groups — search_files calls get_parent_groups (which calls get_groups) and params are forwarded"""
         mock_groups = [{"id": "1", "name": "Group1"}]
@@ -811,11 +870,51 @@ class TestGitLabClient:
     async def test_search_files_in_group_blobs_scope_unavailable(
         self, client: GitLabClient
     ) -> None:
-        """Test that _search_files_in_group falls back to _search_files_in_group_projects when blobs scope is unavailable (400 error)"""
+        """400 on group blob search falls back to project search and caches the group."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
-            "message": "400 Bad request - Scope 'blobs' is not available for this search"
+            "message": "400 Bad request - Advanced search is not available"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ) as mock_group_search:
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+                return_value=async_mock_generator([]),
+            ) as mock_fallback:
+                results = []
+                async for batch in client._search_files_in_group(
+                    "my-group", "blobs", build_search_query("test.json")
+                ):
+                    results.extend(batch)
+
+                # Second call should skip advanced search entirely.
+                async for batch in client._search_files_in_group(
+                    "my-group", "blobs", build_search_query("other.json")
+                ):
+                    results.extend(batch)
+
+        assert results == []
+        assert mock_group_search.call_count == 1
+        assert mock_fallback.call_count == 2
+        assert "my-group" in client._groups_without_advanced_search
+
+    async def test_search_files_in_group_blobs_scope_legacy_message(
+        self, client: GitLabClient
+    ) -> None:
+        """Legacy GitLab message still triggers Advanced Search fallback."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "Scope 'blobs' is not available for this search"
         }
         error = httpx.HTTPStatusError(
             "400 Bad Request", request=MagicMock(), response=mock_response
@@ -830,19 +929,21 @@ class TestGitLabClient:
                 client,
                 "_search_files_in_group_projects",
                 return_value=async_mock_generator([]),
-            ):
+            ) as mock_fallback:
                 results = []
                 async for batch in client._search_files_in_group(
-                    "my-group", "blobs", build_search_query("test.json")
+                    "legacy-group", "blobs", build_search_query("test.json")
                 ):
                     results.extend(batch)
 
         assert results == []
+        assert mock_fallback.call_count == 1
+        assert "legacy-group" in client._groups_without_advanced_search
 
-    async def test_search_files_in_group_other_400_raises(
+    async def test_search_files_in_group_blob_validation_400_raises(
         self, client: GitLabClient
     ) -> None:
-        """Test that _search_files_in_group re-raises 400 errors with unrecognized messages"""
+        """Request-specific / unrecognized blob 400s are not treated as capability misses."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
@@ -867,6 +968,32 @@ class TestGitLabClient:
                     ):
                         pass
                 mock_fallback.assert_not_called()
+
+        assert "my-group" not in client._groups_without_advanced_search
+
+    async def test_search_files_in_group_non_blob_400_raises(
+        self, client: GitLabClient
+    ) -> None:
+        """Non-blob group search 400s are not treated as Advanced Search fallback."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "400 Bad request - Advanced search is not available"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client._search_files_in_group(
+                    "my-group", "issues", build_search_query("test.json")
+                ):
+                    pass
 
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""
@@ -1047,6 +1174,105 @@ class TestGitLabClient:
                     {"ref": "main", "path": "src/config", "recursive": False},
                 )
 
+    async def test_match_files_with_repository_tree_scopes_wildcard_prefix(
+        self, client: GitLabClient
+    ) -> None:
+        """Wildcard patterns recurse under their literal prefix, not the whole repo."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {
+                "type": "blob",
+                "name": "SKILL.md",
+                "path": ".cursor/skills/hello/SKILL.md",
+            },
+            {
+                "type": "blob",
+                "name": "readme.md",
+                "path": ".cursor/skills/hello/readme.md",
+            },
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project",
+                    build_search_query(".cursor/skills/**/SKILL.md"),
+                ):
+                    results.extend(batch)
+
+                assert [f["path"] for f in results] == [".cursor/skills/hello/SKILL.md"]
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {
+                        "ref": "main",
+                        "path": ".cursor/skills",
+                        "recursive": True,
+                    },
+                )
+
+    async def test_match_files_with_repository_tree_patterns_one_walk(
+        self, client: GitLabClient
+    ) -> None:
+        """Multiple globs under one prefix share a single recursive tree walk."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {
+                "type": "blob",
+                "name": "plugin.json",
+                "path": ".claude-plugin/plugin.json",
+            },
+            {
+                "type": "blob",
+                "name": "marketplace.json",
+                "path": ".claude-plugin/marketplace.json",
+            },
+            {"type": "blob", "name": "other.txt", "path": ".claude-plugin/other.txt"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree_patterns(
+                    "group/project",
+                    [
+                        ".claude-plugin/plugin.json",
+                        ".claude-plugin/marketplace.json",
+                    ],
+                ):
+                    results.extend(batch)
+
+                assert sorted(f["path"] for f in results) == [
+                    ".claude-plugin/marketplace.json",
+                    ".claude-plugin/plugin.json",
+                ]
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {
+                        "ref": "main",
+                        "path": ".claude-plugin",
+                        "recursive": False,
+                    },
+                )
+
     async def test_match_files_with_repository_tree_pathless_is_recursive(
         self, client: GitLabClient
     ) -> None:
@@ -1157,6 +1383,119 @@ class TestGitLabClient:
             mock_get_file_content.assert_called_once_with(
                 "123", "other_file.txt", "main"
             )
+
+    async def test_resolve_file_references_relative_reference(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a relative file:// reference resolves normally."""
+        data = {"ref": "file://other_file.txt"}
+
+        with patch.object(
+            client,
+            "get_file_content",
+            AsyncMock(return_value="Referenced content"),
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "Referenced content"}
+        mock_get_file_content.assert_called_once_with("123", "other_file.txt", "main")
+
+    async def test_resolve_file_references_skips_absolute_triple_slash(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that file:/// (absolute-path URI) references are left untouched and never fetched."""
+        data = {"dest": "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7"}
+
+        with patch.object(
+            client, "get_file_content", AsyncMock()
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"dest": "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7"}
+        mock_get_file_content.assert_not_called()
+
+    async def test_resolve_file_references_leaves_any_leading_slash_variant_unresolved(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that any file:// value with a leading slash after the prefix (i.e. file:///...,
+        which is the only way a leading slash can appear there) is skipped rather than fetched
+        with a sanitized path -- matching the deprecation note that file:// was never meant to
+        carry an absolute path."""
+        data = {"ref": "file:////double/leading/slash.txt"}
+
+        with patch.object(
+            client, "get_file_content", AsyncMock()
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file:////double/leading/slash.txt"}
+        mock_get_file_content.assert_not_called()
+
+    async def test_resolve_file_references_best_effort_on_http_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a failed reference fetch (e.g. 400) is logged and left unresolved, not raised."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "400 Bad Request"}
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+        data = {"ref": "file://missing_file.txt"}
+
+        with patch.object(client, "get_file_content", AsyncMock(side_effect=error)):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file://missing_file.txt"}
+
+    async def test_resolve_file_references_best_effort_on_transport_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a transport-level failure (timeout/connection error, not an HTTP status
+        error) is also caught and left unresolved rather than aborting the resync."""
+        error = httpx.ConnectTimeout("Connection timed out")
+        data = {"ref": "file://missing_file.txt"}
+
+        with patch.object(client, "get_file_content", AsyncMock(side_effect=error)):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file://missing_file.txt"}
+
+    async def test_resolve_file_references_nested_structures(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that resolution recurses through nested dicts/lists with mixed reference outcomes."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "400 Bad Request"}
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+        data = {
+            "nested": {
+                "resolved": "file://ok.txt",
+                "absolute": "file:///abs/path.txt",
+            },
+            "items": ["file://failing.txt", "plain string"],
+        }
+
+        async def side_effect(project_id: str, file_path: str, ref: str) -> str:
+            if file_path == "ok.txt":
+                return "ok content"
+            raise error
+
+        with patch.object(
+            client, "get_file_content", AsyncMock(side_effect=side_effect)
+        ):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {
+            "nested": {
+                "resolved": "ok content",
+                "absolute": "file:///abs/path.txt",
+            },
+            "items": ["file://failing.txt", "plain string"],
+        }
 
     async def test_get_pipeline_jobs(self, client: GitLabClient) -> None:
         """Test fetching jobs through pipelines"""

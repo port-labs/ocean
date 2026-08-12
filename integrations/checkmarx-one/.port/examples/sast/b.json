@@ -1,0 +1,36 @@
+{
+  "compliances": [
+    "OWASP Top 10 2021",
+    "OWASP Top 10 API 2023",
+    "PCI DSS v4.0",
+    "ASA Premium",
+    "OWASP ASVS"
+  ],
+  "confidenceLevel": 0,
+  "cweID": 346,
+  "firstFoundAt": "2025-09-02T21:57:56Z",
+  "firstScanID": "d7f73679-0b80-4478-abd8-69dad4de54a1",
+  "group": "Python_Medium_Threat",
+  "languageName": "python",
+  "nodes": [
+    {
+      "column": 1,
+      "fileName": "/api_security_risks.py",
+      "fullName": "app",
+      "length": 3,
+      "line": 6,
+      "methodLine": 6,
+      "name": "app",
+      "nodeID": 1158
+    }
+  ],
+  "pathSystemID": "lvUresfO9wS8jJy9dQ2vLHpkscQ=",
+  "queryID": 7929843929890809000,
+  "queryName": "Missing_HSTS_Header",
+  "resultHash": "lvUresfO9wS8jJy9dQ2vLHpkscQ=",
+  "scanID": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "severity": "MEDIUM",
+  "similarityID": -575871631,
+  "state": "TO_VERIFY",
+  "status": "RECURRENT"
+}

@@ -1,12 +1,14 @@
 import pytest
+from typing import Literal
 from pydantic.v1 import ValidationError
-from snyk.overrides import SnykTargetAPIQueryParams, TargetSelector
-
 from snyk.overrides import (
     SnykPolicyAPIQueryParams,
     SnykProjectAPIQueryParams,
+    SnykTargetAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
+    TargetSelector,
 )
+from snyk.utils import parse_next_page_params
 
 
 def test_generate_query_params_excludes_unset_fields() -> None:
@@ -17,16 +19,6 @@ def test_generate_query_params_excludes_unset_fields() -> None:
 def test_generate_query_params_excludes_none_fields() -> None:
     params = SnykProjectAPIQueryParams(ids=None)
     assert "ids" not in params.generate_query_params()
-
-
-def test_generate_query_params_preserves_list_values() -> None:
-    params = SnykProjectAPIQueryParams(
-        lifecycle=["production", "development"],
-        environment=["frontend", "backend"],
-    )
-    result = params.generate_query_params()
-    assert result["lifecycle"] == ["production", "development"]
-    assert result["environment"] == ["frontend", "backend"]
 
 
 def test_generate_query_params_preserves_scalar_values() -> None:
@@ -41,7 +33,7 @@ def test_generate_query_params_preserves_scalar_values() -> None:
 def test_merge_with_combines_params_and_extras() -> None:
     params = SnykVulnerabilityAPIQueryParams(status=["open"])
     result = params.merge_with({"version": "2024-06-21", "scan_item.id": "abc"})
-    assert result["status"] == ["open"]
+    assert result["status"] == "open"
     assert result["version"] == "2024-06-21"
     assert result["scan_item.id"] == "abc"
 
@@ -76,7 +68,7 @@ def test_vulnerability_date_filter_rejects_invalid_formats(value: str) -> None:
 def test_merge_with_params_take_precedence_over_extra_values() -> None:
     params = SnykVulnerabilityAPIQueryParams(status=["open"])
     result = params.merge_with({"status": "resolved"})
-    assert result["status"] == ["open"]
+    assert result["status"] == "open"
 
 
 def test_policy_generate_query_params_excludes_unset_fields() -> None:
@@ -92,11 +84,6 @@ def test_policy_generate_query_params_excludes_none_fields() -> None:
 def test_policy_generate_query_params_preserves_scalar_search() -> None:
     params = SnykPolicyAPIQueryParams(search="wont-fix")
     assert params.generate_query_params()["search"] == "wont-fix"
-
-
-def test_policy_generate_query_params_preserves_list_review() -> None:
-    params = SnykPolicyAPIQueryParams(review=["pending", "approved"])
-    assert params.generate_query_params()["review"] == ["pending", "approved"]
 
 
 def test_policy_generate_query_params_preserves_bool_expires_never() -> None:
@@ -162,7 +149,7 @@ def test_policy_merge_with_combines_params_and_extras() -> None:
     params = SnykPolicyAPIQueryParams(search="alice@example.com", review=["pending"])
     result = params.merge_with({"version": "2024-01-01"})
     assert result["search"] == "alice@example.com"
-    assert result["review"] == ["pending"]
+    assert result["review"] == "pending"
     assert result["version"] == "2024-01-01"
 
 
@@ -289,3 +276,62 @@ def test_target_selector_api_query_params_combined_filters() -> None:
     assert result["exclude_empty"] is False
     assert result["is_private"] is False
     assert result["display_name"] == "snyk-fixtures"
+
+
+@pytest.mark.parametrize(
+    "status, effective_severity_level, expected_key, expected_value",
+    [
+        (["open", "resolved"], None, "status", "open,resolved"),
+        (
+            None,
+            ["critical", "high", "medium"],
+            "effective_severity_level",
+            "critical,high,medium",
+        ),
+        (["open"], None, "status", "open"),
+    ],
+)
+def test_generate_query_params_joins_vulnerability_list_values_with_commas(
+    status: list[Literal["open", "resolved"]] | None,
+    effective_severity_level: (
+        list[Literal["info", "low", "medium", "high", "critical"]] | None
+    ),
+    expected_key: str,
+    expected_value: str,
+) -> None:
+    params = SnykVulnerabilityAPIQueryParams(
+        status=status,
+        effective_severity_level=effective_severity_level,
+    )
+    assert params.generate_query_params()[expected_key] == expected_value
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_generate_query_params_preserves_boolean_values_not_stringified(
+    value: bool,
+) -> None:
+    """str(True) produces 'True' not 'true', booleans must stay as booleans."""
+    result = SnykTargetAPIQueryParams(exclude_empty=value).generate_query_params()
+    assert result["exclude_empty"] is value
+    assert isinstance(result["exclude_empty"], bool)
+
+
+def test_generate_query_params_excludes_empty_lists() -> None:
+    params = SnykVulnerabilityAPIQueryParams(status=[], effective_severity_level=[])
+    result = params.generate_query_params()
+    assert "status" not in result
+    assert "effective_severity_level" not in result
+
+
+def test_parse_next_page_params_joins_repeated_keys_with_commas() -> None:
+    next_url = "https://api.snyk.io/rest/orgs/abc/issues?version=2024-06-21&status=open&status=resolved&limit=100"
+    _, params = parse_next_page_params(next_url)
+    assert params["status"] == "open,resolved"
+    assert params["version"] == "2024-06-21"
+    assert params["limit"] == "100"
+
+
+def test_parse_next_page_params_single_value_stays_scalar() -> None:
+    next_url = "https://api.snyk.io/rest/orgs/abc/issues?version=2024-06-21&status=open"
+    _, params = parse_next_page_params(next_url)
+    assert params["status"] == "open"

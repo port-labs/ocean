@@ -6,6 +6,134 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.48.4 (2026-08-11)
+
+
+### Improvements
+
+- Treat `HTTP 408 Request Timeout` as a default retryable status code in `RetryConfig`.
+
+
+## 0.48.3 (2026-08-11)
+
+
+### Improvements
+
+- Live event timestamp logs (`Event Added To Queue`, `Event Started Processing`, etc.) now bind `trace_id` at the top level of log `extra` instead of nesting it under `extra.extra`.
+
+## 0.48.2 (2026-08-10)
+
+
+### Bug Fixes
+
+- Load `port_app_config` into the action-run event context (same as live events), so nested or inherited event contexts no longer raise `Port app config is not set`.
+
+
+## 0.48.1 (2026-08-10)
+
+
+### Improvements
+
+- Add Redis stream consumer logs when a message is received and before dispatch, including `redis_event_id`, `queued_at`, `trace_id`, and consume latency (`time_until_consumed_ms`). Redis stream `eventId` is used as the webhook `trace_id`.
+
+
+## 0.48.0 (2026-08-10)
+
+### Improvements
+
+- Added retry lifecycle hooks that run after retry sleep and before retry send, enabling integrations to refresh request state immediately before retrying.
+
+
+## 0.47.10 (2026-08-09)
+
+### Improvements
+
+- Support for either YAML or JSON for spec files.
+
+
+## 0.47.9 (2026-08-09)
+
+
+### Improvements
+
+- Reduce monitor log noise by downgrading response size recording logs to debug level.
+
+
+## 0.47.8 (2026-08-09)
+
+
+### Improvements
+
+- Add `AWS_V3_LIVE_EVENTS_ENABLED` integration feature flag.
+
+
+## 0.47.7 (2026-08-05)
+
+### Improvements
+
+- Default `processing_mode` to `dsp` and `lakehouse_enabled` to `true`. DSP still only activates when the required org feature flags are present; otherwise Ocean falls back to `ocean-core`.
+
+## 0.47.6 (2026-08-04)
+
+### Improvements
+
+- Reconcile `incrementalSyncEnabled` with Port during integration initialization when the configured value diverges from Port.
+- Add `incrementalSyncEnabled` support to integration create and patch API calls in `IntegrationClientMixin`.
+- Restrict `incremental_sync_interval` to allowed values of 15, 30, or 60 minutes.
+
+## 0.47.5 (2026-08-04)
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+## 0.47.4 (2026-08-03)
+
+### Bug Fixes
+
+- Do not abort DSP resyncs when Lakehouse returns `count: 0` on an idempotent raw-data write retry; abort only when Lakehouse reports an explicit `resync_stale` error (HTTP 409).
+
+## 0.47.3 (2026-08-03)
+
+### Improvements
+
+- Installed pydantic settings in order to enable progress in pydantic v2 migration.
+
+## 0.47.2 (2026-07-30)
+
+### Improvements
+
+- Upgraded `redis` to `^6.1.0` and auto-detect Redis Cluster connections for live events stream consumption.
+
+## 0.47.1 (2026-07-29)
+
+### Bug Fixes
+
+- Propagate webhook client disconnects instead of silently acknowledging events that were never queued.
+
+## 0.47.0 (2026-07-29)
+
+### Deprecations
+
+- Removed `OCEAN__PROCESS_EXECUTION_MODE` configuration. Ocean always runs in single_process mode. Setting the env var logs a warning and is ignored. Removed subprocess-based resync execution and Prometheus multiprocess metrics collection.
+
+## 0.46.6 (2026-07-29)
+
+### Bug Fixes
+
+- Moved `clear_sync_context` from `sync_raw_all` finalizer into `update_after_resync` so the runtime terminal metric is sent with the correct `eventId` before it is cleared. Previously the `eventId` was wiped before `update_after_resync` ran, causing integ-service's stale-heartbeat abort consumer to miss the terminal runtime metric and incorrectly abort completed syncs.
+
+## 0.46.5 (2026-07-28)
+
+### Bug Fixes
+
+- Call patch config rather than full patch integration route when setting up a default origin integration in order to avoid double resync.
+
+## 0.46.4 (2026-07-27)
+
+### Bug Fixes
+
+- Updated external abort handling so lifecycle/lakehouse aborts cancel only the current resync work.
 
 ## 0.46.3 (2026-07-27)
 

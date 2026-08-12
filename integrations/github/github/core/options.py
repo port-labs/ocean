@@ -247,6 +247,19 @@ class ListFileSearchOptions(SingleOrganizationOptions):
     files: Required[List[FileSearchOptions]]
 
 
+class PluginRepositoryOptions(SingleOrganizationOptions):
+    """Options for detecting an agent plugin in a single repository."""
+
+    repository: Required[dict[str, Any]]
+    branch: Required[str]
+
+
+class ListPluginOptions(SingleOrganizationOptions):
+    """Options for detecting agent plugins across an organization's repositories."""
+
+    repositories: Required[List[PluginRepositoryOptions]]
+
+
 class SingleFolderOptions(TypedDict):
     repo: str
     path: str

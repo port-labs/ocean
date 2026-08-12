@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "gitlab-v2"
-version = "0.8.14"
+version = "0.9.20"
 description = "Gitlab"
 authors = ["Shariff <mohammed.s@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.46.2", extras = ["cli"]}
+port_ocean = {version = "^0.48.4", extras = ["cli"]}
 pyyaml = "^6.0.2"
 aiolimiter = "^1.2.1"
 types-aiofiles = "^24.1.0.20250822"
@@ -65,7 +65,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

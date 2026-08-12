@@ -17,7 +17,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.helpers.utils import ObjectKind
-from integration import GithubFilePattern, GithubFileResourceConfig
+from integration import (
+    GithubFilePattern,
+    GithubFileResourceConfig,
+    RepositorySourceModel,
+)
 from loguru import logger
 from github.helpers.port_app_config import ORG_CONFIG_REPO
 from github.enrichments.included_files import (
@@ -131,7 +135,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     def _is_pattern_applicable_to_branch(
         self,
-        pattern: GithubFilePattern,
+        pattern: RepositorySourceModel,
         repo_name: str,
         current_branch: str,
         default_branch: str,

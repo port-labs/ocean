@@ -1,0 +1,40 @@
+{
+  "plugin": {
+    "name": "port-widgets",
+    "displayName": "Port Widgets",
+    "description": "Custom dashboard widgets for Port",
+    "version": "1.2.0",
+    "supports": {
+      "claude": false,
+      "cursor": true,
+      "codex": false,
+      "agents": false,
+      "kimi": false,
+      "opencode": false,
+      "pi": false,
+      "antigravity": false
+    },
+    "claude": {},
+    "cursor": {
+      "name": "port-widgets",
+      "displayName": "Port Widgets",
+      "description": "Custom dashboard widgets for Port",
+      "version": "1.2.0",
+      "skills": "./skills/"
+    },
+    "codex": {},
+    "agents": {},
+    "kimi": {},
+    "opencode": {},
+    "pi": {},
+    "antigravity": {}
+  },
+  "__repository": {
+    "name": "port-custom-widgets",
+    "full_name": "acme/port-custom-widgets",
+    "html_url": "https://github.com/acme/port-custom-widgets",
+    "default_branch": "main"
+  },
+  "__branch": "main",
+  "__organization": "acme"
+}

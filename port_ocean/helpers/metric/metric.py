@@ -1,5 +1,6 @@
-import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+import os
 
 import prometheus_client
 import prometheus_client.openmetrics
@@ -9,7 +10,7 @@ from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
 from httpx import AsyncClient
 from loguru import logger
-from prometheus_client import Gauge, multiprocess
+from prometheus_client import Gauge
 
 from port_ocean.context import metric_resource, resource
 from port_ocean.exceptions.context import ResourceContextNotFoundError
@@ -17,6 +18,28 @@ from port_ocean.exceptions.context import ResourceContextNotFoundError
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
     from port_ocean.config.settings import IntegrationSettings, MetricsSettings
+
+_prometheus_multiproc_dir_warning_issued = False
+
+
+def _warn_legacy_prometheus_multiproc_dir(is_self_hosted: bool) -> None:
+    global _prometheus_multiproc_dir_warning_issued
+    if _prometheus_multiproc_dir_warning_issued or not is_self_hosted:
+        return
+
+    multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+    if not multiproc_dir:
+        return
+
+    _prometheus_multiproc_dir_warning_issued = True
+    logger.warning(
+        "PROMETHEUS_MULTIPROC_DIR is set but Ocean no longer uses Prometheus multiprocess "
+        "collection. Metrics are exposed from a single-process registry only; leftover "
+        "multiprocess .db files in that directory may accumulate and are not cleaned up "
+        "automatically. Consider removing PROMETHEUS_MULTIPROC_DIR from your deployment "
+        "configuration.",
+        prometheus_multiproc_dir=multiproc_dir,
+    )
 
 
 class MetricPhase:
@@ -198,15 +221,13 @@ class Metrics:
         metrics_settings: "MetricsSettings",
         integration_configuration: "IntegrationSettings",
         port_client: "PortClient",
-        multiprocessing_enabled: bool = False,
+        is_self_hosted: bool = False,
     ) -> None:
+        _warn_legacy_prometheus_multiproc_dir(is_self_hosted)
         self.metrics_settings = metrics_settings
         self.integration_configuration = integration_configuration
         self.port_client = port_client
         self.registry = prometheus_client.CollectorRegistry()
-        if multiprocessing_enabled:
-            multiprocess.MultiProcessCollector(self.registry)
-        self.multiprocessing_enabled = multiprocessing_enabled
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
         self._integration_version: Optional[str] = None
@@ -304,22 +325,7 @@ class Metrics:
         """
         self.get_metric(name, labels).set(value)
 
-    @staticmethod
-    def cleanup_prometheus_metrics(pid: int | None = None) -> None:
-        try:
-            prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-            for file in os.listdir(prometheus_multiproc_dir):
-                if pid:
-                    if file.endswith(".db") and file[0:-3].split("_")[-1] == str(pid):
-                        os.remove(f"{prometheus_multiproc_dir}/{file}")
-                else:
-                    os.remove(f"{prometheus_multiproc_dir}/{file}")
-        except Exception as e:
-            logger.error(f"Failed to cleanup prometheus metrics: {e}")
-
     def initialize_metrics(self, kind_blockes: list[str]) -> None:
-        if self.multiprocessing_enabled:
-            self.cleanup_prometheus_metrics()
         for kind in kind_blockes:
             self.set_metric(MetricType.SUCCESS_NAME, [kind, MetricPhase.RESYNC], 0)
             self.set_metric(MetricType.DURATION_NAME, [kind, MetricPhase.RESYNC], 0)

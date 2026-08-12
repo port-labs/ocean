@@ -7,6 +7,222 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.20.4-beta (2026-08-12)
+
+
+### Bug Fixes
+
+- Remove liveEventsApiKey from spec.yaml so it is not shown in the UI while live events are behind a feature flag
+
+
+## 2.20.3-beta (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 2.20.2-beta (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 2.20.1-beta (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 2.20.0-beta (2026-08-10)
+
+
+### Features
+
+- Added AWS::SNS::Topic kind with topic attributes, delivery feedback, and optional tags support
+
+
+## 2.19.3-beta (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 2.19.2-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 2.19.1-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 2.19.0-beta (2026-08-09)
+
+
+### Features
+
+- Added CloudTrail live events support for `AWS::S3::Bucket` and `AWS::Lambda::Function` kinds, enabled via the `AWS_V3_LIVE_EVENTS_ENABLED` organization feature flag.
+
+
+## 2.18.7-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 2.18.6-beta (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 2.18.5-beta (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 2.18.4-beta (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 2.18.3-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 2.18.2-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 2.18.1-beta (2026-08-02)
+
+
+### Improvements
+
+- Added dict from kind to exporter metadata instead of needing to have an on_resync for each kind
+
+
+## 2.18.0-beta (2026-07-31)
+
+
+### Features
+
+- Add support for AWS::SES::ConfigurationSet kind
+
+
+## 2.17.0-beta (2026-07-30)
+
+
+### Features
+
+- Added DynamoDB Table support by fetching table metadata and tags concurrently per region, enabling customers to track table status, billing mode, item count, size, encryption type, and deletion protection directly in Port. Backup and PITR status is available as an optional action (`GetTableBackupStatusAction`).
+
+
+## 2.16.12-beta (2026-07-30)
+
+
+### Improvements
+
+- Added support for AWS::SES::EmailIdentity kind resource
+
+
+## 2.16.11-beta (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 2.16.10-beta (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 2.16.9-beta (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 2.16.8-beta (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 2.16.7-beta (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 2.16.6-beta (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 2.16.5-beta (2026-07-27)
+
+
+### Improvements
+
+- Improve "ADDING NEW KINDS" instructions
+
+
+## 2.16.4-beta (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
 ## 2.16.3-beta (2026-07-26)
 
 

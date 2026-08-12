@@ -88,6 +88,11 @@ class AbstractGithubClient(ABC):
 
         for ignored_error in all_ignored_errors:
             if str(status_code) == str(ignored_error.status):
+                if (
+                    ignored_error.body_contains
+                    and ignored_error.body_contains not in error.response.text
+                ):
+                    continue
                 logger.warning(
                     f"Failed to {method} resources at {resource} due to {ignored_error.message} with status code {status_code}"
                 )

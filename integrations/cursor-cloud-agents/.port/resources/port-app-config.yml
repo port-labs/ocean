@@ -1,0 +1,43 @@
+resources:
+  - kind: agent
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"cursor_agent"'
+          properties:
+            status: .status
+            url: .url
+            repoUrls: |
+              [.repos[]?.url // empty]
+              | map(select(. != null and . != ""))
+              | map(if startswith("http") then . else "https://" + . end)
+              | map(select(test("^https?://.+")))
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+  - kind: run
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .id
+          blueprint: '"cursor_run"'
+          properties:
+            status: .status
+            durationMs: .durationMs
+            branches: '[.git.branches[]?.branch | select(. != null and . != "")] // []'
+            prUrls: '[.git.branches[]?.prUrl? | select(. != null)] // []'
+            inputTokens: .usage.inputTokens
+            outputTokens: .usage.outputTokens
+            cacheReadTokens: .usage.cacheReadTokens
+            cacheWriteTokens: .usage.cacheWriteTokens
+            totalTokens: .usage.totalTokens
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            agent: .agentId

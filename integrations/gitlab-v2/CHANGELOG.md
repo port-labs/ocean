@@ -7,6 +7,199 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.20 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.9.19 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.9.18 (2026-08-11)
+
+
+### Bug Fixes
+
+- Fixed file kind resync aborting when a single repository returns 400 or 404 on project blob search; that repo is now skipped so remaining repositories continue syncing
+
+
+## 0.9.17 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.9.16 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.9.15 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.9.14 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.9.13 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.9.12 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 0.9.11 (2026-08-05)
+
+
+### Bug Fixes
+
+- Fixed GitLab file live events to ignore non-default branch pushes, keeping file-kind webhook behavior consistent with default-branch-only resync discovery.
+- Fixed GitLab webhook matching to ignore non-GitLab webhook requests instead of failing when the `x-gitlab-event` header is missing.
+
+
+## 0.9.10 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 0.9.9 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 0.9.8 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.9.7 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.9.6 (2026-07-30)
+
+
+### Bug Fixes
+
+- Fixed the `file` kind's `file://` reference resolution so an absolute-path URI (`file:///...`) is left unresolved instead of being requested with a leading slash, and made resolution of a `file://` reference best-effort: a failed fetch (e.g. HTTP 400 or transport error) is now logged and the reference is left unresolved instead of aborting the entire `file` kind resync.
+
+
+## 0.9.5 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.9.4 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.9.3 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.9.2 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.9.1 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.9.0 (2026-07-26)
+
+
+### Features
+
+- Added `skill` and `plugin` kinds (Agent Skills / agent plugin packages)
+
+
+### Improvements
+
+- Skill/plugin push webhooks only process the project default branch, and ignore branch deletes
+- File/skill/plugin push webhooks resolve changed paths from the repository compare API, falling back to the (capped) payload commits list
+- Skill and plugin discovery always walks the repository tree with the configured glob patterns
+- Repository tree discovery scopes walks to each pattern's fixed path prefix and matches multiple globs per repository in a single minimized set of walks
+
+
+## 0.8.16 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.8.15 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
 ## 0.8.14 (2026-07-26)
 
 

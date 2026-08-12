@@ -10,7 +10,7 @@ from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.core.defaults.common import Defaults, get_port_integration_defaults
 from port_ocean.core.defaults.initialization.base_setup import BaseSetup
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.core.models import Blueprint
+from port_ocean.core.models import Blueprint, Runtime
 from port_ocean.core.utils.utils import gather_and_split_errors_from_results
 from port_ocean.exceptions.port_defaults import AbortDefaultCreationError
 
@@ -49,8 +49,9 @@ class DefaultOriginSetup(BaseSetup):
         try:
             logger.info("Found default resources, starting creation process")
             if not current_config:
-                await self.port_client.patch_integration(
+                await self.port_client.patch_integration_config(
                     port_app_config=self._default_mapping,
+                    skip_resync=self.integration_config.runtime == Runtime.Saas,
                 )
             await self._create_resources(self._defaults)
             has_initialized = True

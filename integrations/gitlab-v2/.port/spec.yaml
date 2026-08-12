@@ -13,6 +13,10 @@ features:
       - kind: releases
       - kind: tags
       - kind: branch
+      - kind: file
+      - kind: folder
+      - kind: skill
+      - kind: plugin
 configurations:
   - name: gitlabToken
     required: true

@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install poetry
-        run: pipx install 'poetry>=1.0.0,<2.0.0'
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v7
@@ -86,8 +86,6 @@ jobs:
         env:
           PYTEST_ADDOPTS: --junitxml=junit/integration-test-results-${{ matrix.folder }}.xml
         run: |
-          mkdir -p /tmp/ocean/prometheus/metrics
-          export PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
           make test/integration
 
       - name: Publish Test Report

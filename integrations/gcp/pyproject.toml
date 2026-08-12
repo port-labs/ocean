@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "gcp"
-version = "0.1.368"
+version = "0.2.8"
 description = "A GCP ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.46.2", extras = ["cli"]}
+port_ocean = {version = "^0.48.4", extras = ["cli"]}
 google-cloud-asset = "^3.25.1"
 google-cloud-pubsub = "^2.21.1"
 google-cloud-resource-manager = "^1.12.3"
@@ -65,7 +65,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

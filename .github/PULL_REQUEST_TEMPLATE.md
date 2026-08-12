@@ -6,6 +6,19 @@ Why -
 
 How -
 
+## Release (integrations / ocean core)
+
+If this PR changes an integration or `port_ocean/`, add a release intent file **or** manually bump `pyproject.toml` and `CHANGELOG.md` (manual takes priority):
+
+- Integration: `integrations/<name>/.ocean-release/<unique-name>.yaml`
+- Core: `.ocean-release/core/<unique-name>.yaml`
+
+```yaml
+bump: patch
+changelog-type: bugfix
+changelog: Describe the change
+```
+
 ## Type of change
 
 Please leave one option from the following and delete the rest:

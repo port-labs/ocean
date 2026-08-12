@@ -5,7 +5,7 @@
 ### Prerequisites
 
 - Python 3.12+
-- Poetry (`pip install 'poetry>=1.0.0,<2.0.0'`)
+- Poetry (`pip install 'poetry>=2.0.0,<3.0.0'`)
 - A Mend.io account with an **Activation Key** (Mend → User Profile → User Keys → Activation Key)
 - Port credentials (`clientId`, `clientSecret`) — Port → Builder → Credentials
 

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "azure-devops"
-version = "0.10.36"
+version = "0.11.13"
 description = "An Azure Devops Ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.46.2", extras = ["cli"]}
+port_ocean = {version = "^0.48.4", extras = ["cli"]}
 braceexpand = "^0.1.7"
 wcmatch = "^10.1"
 azure-core = "^1.32.0"
@@ -65,7 +65,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

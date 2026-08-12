@@ -294,6 +294,34 @@ class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSSESEmailIdentityResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SES::EmailIdentity"] = Field(
+        title="AWS SES Email Identity",
+        description="AWS SES Email Identity resource kind.",
+    )
+
+
+class AWSDynamoDBTableResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::DynamoDB::Table"] = Field(
+        title="AWS DynamoDB Table",
+        description="AWS DynamoDB Table resource kind.",
+    )
+
+
+class AWSSESConfigurationSetResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SES::ConfigurationSet"] = Field(
+        title="AWS SES Configuration Set",
+        description="AWS SES Configuration Set resource kind.",
+    )
+
+
+class AWSSNSTopicResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SNS::Topic"] = Field(
+        title="AWS SNS Topic",
+        description="AWS SNS Topic resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -325,6 +353,10 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodePipelineActionResourceConfig
         | AWSCodePipelinePipelineExecutionResourceConfig
         | AWSCodePipelineActionExecutionResourceConfig
+        | AWSSESEmailIdentityResourceConfig
+        | AWSDynamoDBTableResourceConfig
+        | AWSSESConfigurationSetResourceConfig
+        | AWSSNSTopicResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

@@ -1,5 +1,6 @@
 from typing import cast
 
+from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
@@ -7,73 +8,13 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
-from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.helpers.types import ObjectKind
-from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
-from aws.core.exporters.ec2.instance import PaginatedEC2InstanceRequest
-from aws.core.exporters.ec2.instance import EC2InstanceExporter
-from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
-from aws.core.exporters.ecs.cluster.models import PaginatedClusterRequest
-from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
-from aws.core.exporters.eks.cluster.models import PaginatedEksClusterRequest
-from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
-from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
-from aws.core.exporters.rds.db_cluster.exporter import RdsDbClusterExporter
-from aws.core.exporters.rds.db_cluster.models import PaginatedDbClusterRequest
-from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
-from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
-from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
-from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitionRequest
 from aws.core.exporters.organizations.account.exporter import (
     OrganizationsAccountExporter,
 )
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
-from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExporter
-from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
-from aws.core.exporters.sqs import SqsQueueExporter
-from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
-from aws.core.exporters.ecr import EcrRepositoryExporter
-from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
-from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
-from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
-from aws.core.exporters.msk import MskServerlessClusterExporter, MskClusterExporter
-from aws.core.exporters.msk.serverless_cluster.models import (
-    PaginatedMskServerlessClusterRequest,
-)
-from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
-from aws.core.exporters.elasticache import ElastiCacheClusterExporter
-from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
-from aws.core.exporters.ec2.volume import EbsVolumeExporter
-from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
-from aws.core.exporters.codebuild import (
-    CodeBuildProjectExporter,
-    PaginatedCodeBuildProjectRequest,
-    CodeBuildBuildRunExporter,
-    PaginatedBuildRunRequest,
-)
-from aws.core.exporters.codedeploy import (
-    CodeDeployApplicationExporter,
-    PaginatedCodeDeployApplicationRequest,
-    CodeDeployDeploymentGroupExporter,
-    PaginatedCodeDeployDeploymentGroupRequest,
-    CodeDeployDeploymentExporter,
-    PaginatedCodeDeployDeploymentRequest,
-    CodeDeployDeploymentTargetExporter,
-    PaginatedCodeDeployDeploymentTargetRequest,
-)
-from aws.core.exporters.codepipeline import (
-    PipelineExporter,
-    PaginatedPipelineRequest,
-    CodePipelineStageExporter,
-    PaginatedCodePipelineStageRequest,
-    CodePipelineActionExporter,
-    PaginatedCodePipelineActionRequest,
-    CodePipelinePipelineExecutionExporter,
-    PaginatedPipelineExecutionRequest,
-    CodePipelineActionExecutionExporter,
-    PaginatedCodePipelineActionExecutionRequest,
-)
 from aws.core.helpers.utils import is_access_denied_exception
+from aws.webhook.registry import register_cloudtrail_live_events
 
 from loguru import logger
 from resync import ResyncAWSService
@@ -81,6 +22,8 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
+
+register_cloudtrail_live_events()
 
 
 @ocean.on_resync_start()
@@ -93,87 +36,6 @@ async def initialize_aws_sessions() -> None:
 async def cleanup_aws_sessions() -> None:
     """Clear AWS sessions from memory after resync completes."""
     await clear_aws_account_sessions()
-
-
-@ocean.on_resync(ObjectKind.S3_BUCKET)
-async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, S3BucketExporter, PaginatedBucketRequest, regional=False
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.EC2_INSTANCE)
-async def resync_ec2_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, EC2InstanceExporter, PaginatedEC2InstanceRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.ECS_CLUSTER)
-async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, EcsClusterExporter, PaginatedClusterRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.EKS_CLUSTER)
-async def resync_eks_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, EksClusterExporter, PaginatedEksClusterRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.RDS_DB_INSTANCE)
-async def resync_rds_db_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, RdsDbInstanceExporter, PaginatedDbInstanceRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.RDS_DB_CLUSTER)
-async def resync_rds_db_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, RdsDbClusterExporter, PaginatedDbClusterRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.LAMBDA_FUNCTION)
-async def resync_lambda_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, LambdaFunctionExporter, PaginatedLambdaFunctionRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.ECS_SERVICE)
-async def resync_ecs_service(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, EcsServiceExporter, PaginatedServiceRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.ECS_TASK_DEFINITION)
-async def resync_ecs_task_definition(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, EcsTaskDefinitionExporter, PaginatedTaskDefinitionRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
 
 
 @ocean.on_resync(ObjectKind.AccountInfo)
@@ -198,7 +60,6 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     aws_resource_config = cast(AWSResourceConfig, event.resource_config)
 
     async for account, session in get_all_account_sessions():
-
         logger.info(
             f"Attempting to fetch organizations accounts from account {account['Id']}"
         )
@@ -231,197 +92,16 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         break
 
 
-@ocean.on_resync(ObjectKind.SQS_QUEUE)
-async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, SqsQueueExporter, PaginatedQueueRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
+@ocean.on_resync()
+async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind not in kind_to_export_metadata:
+        return
 
-
-@ocean.on_resync(ObjectKind.ECR_REPOSITORY)
-async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.MSK_SERVERLESS_CLUSTER)
-async def resync_msk_serverless_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        MskServerlessClusterExporter,
-        PaginatedMskServerlessClusterRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.MEMORYDB_USER)
-async def resync_memorydb_user(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, MemoryDbUserExporter, PaginatedMemoryDbUserRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.MSK_CLUSTER)
-async def resync_msk_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, MskClusterExporter, PaginatedMskClusterRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.ELASTICACHE_CLUSTER)
-async def resync_elasticache_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, ElastiCacheClusterExporter, PaginatedCacheClusterRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.EC2_VOLUME)
-async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, EbsVolumeExporter, PaginatedEbsVolumeRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEBUILD_PROJECT)
-async def resync_codebuild_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, CodeBuildProjectExporter, PaginatedCodeBuildProjectRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEBUILD_BUILD_RUN)
-async def resync_codebuild_project_build_run(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodeBuildBuildRunExporter,
-        PaginatedBuildRunRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEDEPLOY_APPLICATION)
-async def resync_codedeploy_application(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodeDeployApplicationExporter,
-        PaginatedCodeDeployApplicationRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEDEPLOY_DEPLOYMENT_GROUP)
-async def resync_codedeploy_deployment_group(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodeDeployDeploymentGroupExporter,
-        PaginatedCodeDeployDeploymentGroupRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEDEPLOY_DEPLOYMENT)
-async def resync_codedeploy_deployment(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodeDeployDeploymentExporter,
-        PaginatedCodeDeployDeploymentRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEDEPLOY_DEPLOYMENT_TARGET)
-async def resync_codedeploy_deployment_target(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodeDeployDeploymentTargetExporter,
-        PaginatedCodeDeployDeploymentTargetRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEPIPELINE_PIPELINE)
-async def resync_codepipeline_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, PipelineExporter, PaginatedPipelineRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEPIPELINE_STAGE)
-async def resync_codepipeline_stage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodePipelineStageExporter,
-        PaginatedCodePipelineStageRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEPIPELINE_ACTION)
-async def resync_codepipeline_action(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodePipelineActionExporter,
-        PaginatedCodePipelineActionRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEPIPELINE_PIPELINE_EXECUTION)
-async def resync_codepipeline_pipeline_execution(
-    kind: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodePipelinePipelineExecutionExporter,
-        PaginatedPipelineExecutionRequest,
-        regional=True,
-    )
-    async for batch in service:
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEPIPELINE_ACTION_EXECUTION)
-async def resync_codepipeline_action_execution(
-    kind: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind,
-        CodePipelineActionExecutionExporter,
-        PaginatedCodePipelineActionExecutionRequest,
-        regional=True,
-    )
-    async for batch in service:
+    metadata = kind_to_export_metadata[ObjectKind(kind)]
+    async for batch in ResyncAWSService(
+        kind=kind,
+        exporter_cls=metadata.exporter,
+        request_cls=metadata.paginated_request_model,
+        regional=metadata.regional,
+    ):
         yield batch

@@ -127,13 +127,13 @@ class ListBucketsAction(Action[list[dict[str, Any]]]):
         results: List[Dict[str, Any]] = []
         partition = RegionHelper.get_partition()
         for bucket in buckets:
-            data = {
-                "CreationDate": bucket[
-                    "CreationDate"
-                ],  # ensure that every detail of the datetime string is preserved no rounding up or down
+            data: dict[str, Any] = {
                 "BucketName": bucket["Name"],
                 "Arn": f"arn:{partition}:s3:::{bucket['Name']}",
             }
+            if creation_date := bucket.get("CreationDate"):
+                # Preserve full datetime precision when listing buckets.
+                data["CreationDate"] = creation_date
             results.append(data)
         return results
 

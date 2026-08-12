@@ -283,11 +283,11 @@ class GitHubRetryTransport(RetryTransport):
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return await super()._should_retry_async(
-            response
-        ) or is_rest_rate_limit_response(response)
+        is_rate_limit = is_rest_rate_limit_response(response)
+        return await super()._should_retry_async(response) or is_rate_limit
 
     def _should_retry(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
             return False
-        return super()._should_retry(response) or is_rest_rate_limit_response(response)
+        is_rate_limit = is_rest_rate_limit_response(response)
+        return super()._should_retry(response) or is_rate_limit

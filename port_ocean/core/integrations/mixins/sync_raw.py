@@ -1,12 +1,9 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-import sys
-import uuid
 from graphlib import CycleError
 import inspect
 import typing
 from typing import AsyncGenerator, Callable, Awaitable, Any
-import multiprocessing
 import httpx
 import json
 from loguru import logger
@@ -21,9 +18,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.lakehouse_buffer import LakehouseBuffer
 from port_ocean.core.integrations.mixins.utils import (
-    ProcessWrapper,
     build_lakehouse_data_entry,
-    clear_http_client_context,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
     is_resource_supported,
@@ -34,7 +29,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
+from port_ocean.core.models import Entity, LakehouseDataEntryMetadata, LakehouseEventType, LakehouseOperation
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -52,7 +47,6 @@ from port_ocean.core.utils.utils import (
 from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from port_ocean.core.incremental.cursor_store import CursorStore
 from port_ocean.exceptions.core import (
-    IntegrationSubProcessFailedException,
     OceanAbortException,
 )
 from port_ocean.helpers.metric.metric import (
@@ -63,9 +57,9 @@ from port_ocean.helpers.metric.metric import (
 )
 from port_ocean.helpers.metric.utils import TimeMetric, TimeMetricWithResourceKind
 from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
-from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
+LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 10
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
@@ -805,32 +799,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         should_raise=False,
                     )
 
-    def process_resource_in_subprocess(
-        self,
-        file_ipc_map: dict[str, FileIPC],
-        resource: ResourceConfig,
-        index: int,
-        user_agent_type: UserAgentType,
-        resync_id: str,
-    ) -> None:
-        logger.info(
-            f"process started successfully for {resource.kind} with index {index}"
-        )
-
-        clear_http_client_context()
-        ocean.metrics.event_id = resync_id
-
-        async def process_resource_task() -> None:
-
-            result = await self._process_resource(resource, index, user_agent_type)
-            file_ipc_map["process_resource"].save(result)
-            file_ipc_map["topological_entities"].save(
-                event.entity_topological_sorter.entities
-            )
-
-        asyncio.run(process_resource_task())
-        logger.info(f"Process finished for {resource.kind} with index {index}")
-
     async def _process_resource(
         self,
         resource: ResourceConfig,
@@ -878,6 +846,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 if ocean.metrics.sync_state != SyncState.FAILED:
                     ocean.metrics.sync_state = SyncState.COMPLETED
             except asyncio.CancelledError:
+                if event.external_abort:
+                    raise
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
                 if dsp_enabled and resync_id:
@@ -923,32 +893,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             return kind_results
 
-    def resync_reconciliation_in_subprocess(
-        self,
-        file_ipc_map: dict[str, FileIPC],
-        creation_results: list[tuple[list[Entity], list[Exception]]],
-        did_fetched_current_state: bool,
-        user_agent_type: UserAgentType,
-        app_config: Any,
-        silent: bool = True,
-    ) -> None:
-        logger.info("Resync reconciliation subprocess started successfully")
-
-        clear_http_client_context()
-
-        async def resync_reconciliation_task() -> None:
-            result = await self._resync_reconciliation(
-                creation_results,
-                did_fetched_current_state,
-                user_agent_type,
-                app_config,
-                silent,
-            )
-            file_ipc_map["resync_reconciliation"].save(result)
-
-        asyncio.run(resync_reconciliation_task())
-        logger.info("Resync reconciliation subprocess finished")
-
     async def process_resource(
         self,
         resource: ResourceConfig,
@@ -956,46 +900,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
     ) -> tuple[list[Entity], list[Exception]]:
         with logger.contextualize(resource_kind=resource.kind, index=index):
-            if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
-                id = uuid.uuid4()
-                logger.info(f"Starting subprocess with id {id}")
-                file_ipc_map = {
-                    "process_resource": FileIPC(
-                        str(id),
-                        "process_resource",
-                        (
-                            [],
-                            [
-                                IntegrationSubProcessFailedException(
-                                    f"Subprocess failed for {resource.kind} with index {index}"
-                                )
-                            ],
-                        ),
-                    ),
-                    "topological_entities": FileIPC(
-                        str(id), "topological_entities", []
-                    ),
-                }
-                process = ProcessWrapper(
-                    target=self.process_resource_in_subprocess,
-                    args=(
-                        file_ipc_map,
-                        resource,
-                        index,
-                        user_agent_type,
-                        ocean.metrics.event_id,
-                    ),
-                )
-                process.start()
-                await process.join_async()
-
-                event.entity_topological_sorter.entities.extend(
-                    file_ipc_map["topological_entities"].load()
-                )
-                return file_ipc_map["process_resource"].load()
-
-            else:
-                return await self._process_resource(resource, index, user_agent_type)
+            return await self._process_resource(resource, index, user_agent_type)
 
     @TimeMetricWithResourceKind(MetricPhase.RESYNC)
     async def _resync_reconciliation(
@@ -1116,39 +1021,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         app_config: Any,
         silent: bool = True,
     ) -> bool:
-        if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
-            id = uuid.uuid4()
-            logger.info(f"Starting resync reconciliation in subprocess with id {id}")
-
-            file_ipc_map = {
-                "resync_reconciliation": FileIPC(
-                    str(id), "resync_reconciliation", False
-                ),
-            }
-
-            process = ProcessWrapper(
-                target=self.resync_reconciliation_in_subprocess,
-                args=(
-                    file_ipc_map,
-                    creation_results,
-                    did_fetched_current_state,
-                    user_agent_type,
-                    app_config,
-                    silent,
-                ),
-            )
-            process.start()
-            await process.join_async()
-
-            return file_ipc_map["resync_reconciliation"].load()
-        else:
-            return await self._resync_reconciliation(
-                creation_results,
-                did_fetched_current_state,
-                user_agent_type,
-                app_config,
-                silent,
-            )
+        return await self._resync_reconciliation(
+            creation_results,
+            did_fetched_current_state,
+            user_agent_type,
+            app_config,
+            silent,
+        )
 
     async def _handle_resync_abortion(
         self,
@@ -1194,6 +1073,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             await ocean.metrics.report_sync_metrics(
                 kinds=[MetricResourceKind.RECONCILIATION], dsp_enabled=dsp_enabled
             )
+
+    async def _poll_for_lifecycle_abort(self, resync_id: str) -> None:
+        while not event.aborted:
+            await asyncio.sleep(LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS)
+            status = await ocean.app.lifecycle_client.get_resync_status(resync_id)
+            if status != "aborted":
+                continue
+            logger.warning(
+                "Lifecycle API reported aborted status; cancelling Ocean resync",
+                resync_id=resync_id,
+            )
+            event.abort(external_abort=True)
+            return
 
     async def _sync_incremental_kind(
         self,
@@ -1397,6 +1289,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
 
             dsp_enabled = await is_dsp_mode_enabled()
+            lifecycle_poll_task: asyncio.Task[None] | None = None
             if dsp_enabled:
                 logger.bind(local_only=True).info(
                     "DSP mode active: ocean-core will skip transform, load and reconciliation"
@@ -1443,6 +1336,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     mapping=app_config.to_dsp_lifecycle_mapping(),
                     sync_type=SyncType.FULL_SYNC.value,
                 )
+                lifecycle_poll_task = asyncio.create_task(
+                    self._poll_for_lifecycle_abort(event.id)
+                )
 
             try:
                 # Execute resync_start hooks
@@ -1462,11 +1358,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
-            if sys.platform.startswith("win"):
-                # fork is not supported on windows
-                multiprocessing.set_start_method("spawn", True)
-            else:
-                multiprocessing.set_start_method("fork", True)
             try:
                 for index, resource in enumerate(app_config.resources):
                     logger.bind(resource_kind=resource.kind).info(
@@ -1477,6 +1368,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
 
             except asyncio.CancelledError as e:
+                if event.external_abort:
+                    return
+
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
@@ -1590,11 +1484,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                 return success
             finally:
-                ocean.metrics.clear_sync_context()
+                if lifecycle_poll_task is not None:
+                    lifecycle_poll_task.cancel()
+                    try:
+                        await lifecycle_poll_task
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception as e:
+                        logger.warning(
+                            "Lifecycle abort poll task failed during cleanup",
+                            error=str(e),
+                        )
                 await ocean.app.cache_provider.clear()
                 ocean.port_client.clear_blueprint_cache()
-                if (
-                    ocean.app.process_execution_mode
-                    == ProcessExecutionMode.multi_process
-                ):
-                    ocean.metrics.cleanup_prometheus_metrics()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 from enum import Enum
 from importlib.util import module_from_spec, spec_from_file_location
 import multiprocessing
@@ -13,6 +14,8 @@ from uuid import uuid4
 
 import tomli
 import yaml
+
+from port_ocean.exceptions.spec import SpecFileError
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
@@ -67,11 +70,40 @@ def get_integration_name() -> str:
     return ""
 
 
+SPEC_FILE_CANDIDATES = ("spec.json", "spec.yaml", "spec.yml")
+
+
 def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
-    try:
-        return yaml.safe_load((path / ".port/spec.yaml").read_text())
-    except FileNotFoundError:
-        return None
+    spec_dir = path / ".port"
+    for filename in SPEC_FILE_CANDIDATES:
+        spec_path = spec_dir / filename
+        if not spec_path.is_file():
+            continue
+
+        content = spec_path.read_text(encoding="utf-8")
+        if filename.endswith(".json"):
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as exc:
+                raise SpecFileError(
+                    f"Failed to parse {spec_path}: invalid JSON"
+                ) from exc
+        else:
+            try:
+                result = yaml.safe_load(content)
+            except yaml.YAMLError as exc:
+                raise SpecFileError(
+                    f"Failed to parse {spec_path}: invalid YAML"
+                ) from exc
+
+        if not isinstance(result, dict):
+            raise SpecFileError(
+                f"Failed to load {spec_path}: spec file must contain a JSON object"
+            )
+
+        return result
+
+    return None
 
 
 def load_module(file_path: str) -> ModuleType:

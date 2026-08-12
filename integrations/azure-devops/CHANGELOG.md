@@ -7,12 +7,186 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.10.36 (2026-07-27)
+## 0.11.13 (2026-08-12)
 
 
 ### Bug Fixes
 
 - Default `includeRepo` to `true` for pipelines so the out-of-the-box mapping can relate Pipeline → Repository (Project → Repository → Pipeline → Pipeline Run) without requiring a manual mapping extension
+
+
+## 0.11.12 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.11.11 (2026-08-11)
+
+
+### Bug Fixes
+
+- Fixed webhook reconciliation creating unbounded duplicate subscriptions by aborting setup when any subscription lookup fails, preventing partial data from being treated as an authoritative inventory. Previously, transient failures (429, timeout) on the subscription listing endpoint silently returned empty results, causing the reconciliation loop to create duplicates for every affected event type on each cycle.
+
+
+## 0.11.10 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.11.9 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.11.8 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.11.7 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.11.6 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.11.5 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.11.4 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 0.11.3 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 0.11.2 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 0.11.1 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.11.0 (2026-08-03)
+
+
+### Features
+
+- Added incremental sync support for resources `work-item`, `build`, `release`, `release-deployment`, `pipeline-run`, `test-run`, and `advanced-security-alert`.
+
+
+### Improvements
+
+- Pipeline-run incremental sync skips projects gracefully when the Analytics OData endpoint is unavailable (HTTP 403/404) instead of failing the kind.
+- Return warning when advanced security alert is not enabled in the account, instead of error which fails the resync.
+
+
+## 0.10.43 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.10.42 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.10.41 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.10.40 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.10.39 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.10.38 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.10.37 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.10.36 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
 
 
 ## 0.10.35 (2026-07-26)

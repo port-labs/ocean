@@ -2,12 +2,17 @@ from typing import Any, AsyncGenerator, Optional, Dict
 
 import httpx
 from loguru import logger
-from port_ocean.utils import http_async_client
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
-from rate_limiter import ServiceNowRateLimiter
+from rate_limiter import LIMIT_RESET_HEADER, RETRY_AFTER_HEADER, ServiceNowRateLimiter
+from retry_transport import ServiceNowRetryTransport
 
 PAGE_SIZE = 100
+SERVICE_NOW_RETRY_MAX_BACKOFF_SECONDS = 1800
+SERVICE_NOW_RETRY_BASE_DELAY_SECONDS = 60
 
 
 class ServicenowClient:
@@ -19,7 +24,16 @@ class ServicenowClient:
         self.servicenow_url = servicenow_url
         self.table_base_url = f"{self.servicenow_url}/api/now/table"
         self.authenticator = authenticator
-        self.http_client = http_async_client
+        self.http_client = OceanAsyncClient(
+            transport_class=ServiceNowRetryTransport,
+            transport_kwargs={"auth_header_refresher": self.authenticator.get_headers},
+            retry_config=RetryConfig(
+                retry_after_headers=[RETRY_AFTER_HEADER, LIMIT_RESET_HEADER],
+                max_backoff_wait=SERVICE_NOW_RETRY_MAX_BACKOFF_SECONDS,
+                base_delay=SERVICE_NOW_RETRY_BASE_DELAY_SECONDS,
+            ),
+            timeout=ocean.config.client_timeout,
+        )
         self._rate_limiter = ServiceNowRateLimiter()
 
     async def _ensure_auth_headers(self) -> None:
@@ -61,7 +75,7 @@ class ServicenowClient:
             raise
         finally:
             if response is not None:
-                await self._rate_limiter.update_from_headers(response.headers)
+                await self._rate_limiter.update_from_response(response)
 
     async def get_record_by_sys_id(
         self, table_name: str, sys_id: str

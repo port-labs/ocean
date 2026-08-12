@@ -21,7 +21,7 @@ def test_repeated_params_are_lists() -> None:
     _, params = parse_next_page_params(
         f"{BASE}/orgs/abc/projects?target_id=aaa&target_id=bbb&target_id=ccc"
     )
-    assert params["target_id"] == ["aaa", "bbb", "ccc"]
+    assert params["target_id"] == "aaa,bbb,ccc"
 
 
 def test_mixed_single_and_repeated_params() -> None:
@@ -30,7 +30,7 @@ def test_mixed_single_and_repeated_params() -> None:
     )
     assert params["version"] == "2024-01-01"
     assert params["limit"] == "100"
-    assert params["status"] == ["open", "resolved"]
+    assert params["status"] == "open,resolved"
 
 
 def test_no_params() -> None:
@@ -50,4 +50,4 @@ def test_duplicate_key_does_not_drop_values() -> None:
     _, params = parse_next_page_params(
         f"{BASE}/orgs/abc/projects?type=npm&type=pip&type=docker"
     )
-    assert sorted(params["type"]) == ["docker", "npm", "pip"]
+    assert sorted(params["type"].split(",")) == ["docker", "npm", "pip"]

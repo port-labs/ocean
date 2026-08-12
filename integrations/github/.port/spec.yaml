@@ -25,6 +25,8 @@ features:
       - kind: dependabot-alert
       - kind: code-scanning-alerts
       - kind: file
+      - kind: skill
+      - kind: plugin
       - kind: collaborator
 configurations:
   - name: githubHost
@@ -32,21 +34,46 @@ configurations:
     default: https://api.github.com
     type: url
     description: For Github Enterprise users, if Github url is not passed, the default Github API "api.github.com" will be used.
+  - name: authenticationMode
+    description: A GitHub App (recommended) acts as its own identity with scoped permissions, while a PAT acts as a specific user.
+    required: false
+    type: string
+    enum: ["Github App", "Personal Access Token"]
+    format: "tabSwitcher"
+    default: "Github App"
   - name: githubToken
     required: false
     type: string
     sensitive: true
     description: GitHub personal access token with necessary permissions. This is only necessary if the integration is not functioning as an app.
+    dependencies:
+      - on: authenticationMode
+        when:
+          equals: "Personal Access Token"
+        then:
+          required: true
   - name: githubAppId
     type: string
     required: false
     sensitive: false
     description: App id if you want the integration to interact with Github as an app. This is mandatory if githubToken is not passed in.
+    dependencies:
+      - on: authenticationMode
+        when:
+          equals: "Github App"
+        then:
+          required: true
   - name: githubAppPrivateKey
     required: false
     type: string
     sensitive: true
     description: If App ID is passed, then app private key is required.
+    dependencies:
+      - on: authenticationMode
+        when:
+          equals: "Github App"
+        then:
+          required: true
   - name: githubOrganization
     required: false
     type: string
@@ -86,6 +113,7 @@ saas:
       integrationSpec:
         githubHost: "'https://api.github.com'"
         githubAppId: .oauthData.appId
+        authenticationMode: "'Github App'"
 actionsProcessingEnabled: true
 actions:
   - name: dispatch_workflow

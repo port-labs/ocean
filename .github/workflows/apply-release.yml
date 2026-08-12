@@ -26,9 +26,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.8.3
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
 
       - name: Get package version
         id: version

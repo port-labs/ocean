@@ -27,11 +27,6 @@ class CreatePortResourcesOrigin(StrEnum):
     Port = "Port"
 
 
-class ProcessExecutionMode(StrEnum):
-    multi_process = "multi_process"
-    single_process = "single_process"
-
-
 class CachingStorageMode(StrEnum):
     disk = "disk"
     memory = "memory"
@@ -147,6 +142,7 @@ class IntegrationFeatureFlag(StrEnum):
     )
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
     LIVE_EVENTS_REDIS_STREAM_ENABLED = "LIVE_EVENTS_REDIS_STREAM_ENABLED"
+    AWS_V3_LIVE_EVENTS_ENABLED = "AWS_V3_LIVE_EVENTS_ENABLED"
 
 
 class ProcessingMode(StrEnum):

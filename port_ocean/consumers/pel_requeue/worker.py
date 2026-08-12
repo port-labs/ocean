@@ -18,9 +18,8 @@ import asyncio
 from typing import Any, cast
 
 from loguru import logger
-from redis.asyncio import Redis
-
 from port_ocean.config.settings import LiveEventsRedisSettings
+from port_ocean.consumers.redis_client import RedisClient
 from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
 
 
@@ -34,7 +33,7 @@ class PELRequeueWorker:
 
     def __init__(
         self,
-        redis: Redis,
+        redis: RedisClient,
         redis_settings: LiveEventsRedisSettings,
         stream_key: str,
         consumer_group: str,

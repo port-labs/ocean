@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "terraform-cloud"
-version = "0.4.73"
+version = "0.4.92"
 description = "Terraform Cloud Integration for Port"
 authors = ["Michael Armah <michaelarmah@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.46.2", extras = ["cli"]}
+port_ocean = {version = "^0.48.4", extras = ["cli"]}
 aiolimiter = "^1.1.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -60,7 +60,7 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]

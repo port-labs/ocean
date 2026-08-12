@@ -7,6 +7,208 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.7.20 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 6.7.19 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 6.7.18 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 6.7.17 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 6.7.16 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 6.7.15 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 6.7.14 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 6.7.13 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 6.7.12 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 6.7.11 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 6.7.10 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 6.7.9 (2026-08-03)
+
+
+### Improvements
+
+- Add a default value override for authentication mode
+
+
+## 6.7.8 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 6.7.7 (2026-07-30)
+
+
+### Improvements
+
+- Github form displays either PAT or App fields and marks them as required
+
+
+## 6.7.6 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 6.7.5 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 6.7.4 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 6.7.3 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 6.7.2 (2026-07-28)
+
+
+### Improvements
+
+- Omit unset repository filters from default Skill path schema entries.
+
+
+## 6.7.1 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 6.7.0 (2026-07-27)
+
+
+### Features
+
+- Added `skill` kind to discover Agent Skills (`SKILL.md`) via glob paths
+  (defaults: `.agents/skills/**/SKILL.md`, `.agent/skills/**/SKILL.md`,
+  `.cursor/skills/**/SKILL.md`, `.claude/skills/**/SKILL.md`,
+  `.codex/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`,
+  `.opencode/skills/**/SKILL.md`, `skills/**/SKILL.md`) with multi-org
+  path selectors (same shape as the file kind)
+- Added `plugin` kind to detect agent plugin packages (aligned with
+  [obra/superpowers](https://github.com/obra/superpowers)): `.claude-plugin/`,
+  `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
+  `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`, with
+  multi-org path selectors
+
+
+## 6.6.3 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 6.6.2 (2026-07-27)
+
+
+### Features
+
+- Expanded team payload by fetching the external IdP group linked to each team via the GitHub EMU external groups API, enabling customers to relate `githubTeam` entities to Entra ID groups ingested from the Entra ID Ocean integration. Controlled by the new `include_external_group` selector field (default: `false`).
+
+
+## 6.6.1 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
 ## 6.6.0 (2026-07-26)
 
 
