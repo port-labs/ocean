@@ -93,7 +93,7 @@ jobs:
               elif path.startswith("integrations/") and path.endswith("/pyproject.toml"):
                   labels.append(path.split("/")[1])
 
-          prefix = "[Core]" if has_core else "[Integration]"
+          prefix = "[CoreBump]" if has_core else "[IntegrationBump]"
           print(f"{prefix} Apply version and changelog for {', '.join(labels)}")
           '
           )
