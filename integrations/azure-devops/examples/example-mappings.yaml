@@ -247,7 +247,7 @@ resources:
           identifier: >-
             .__project.id + "-" + (.__pipeline.id | tostring) + "-" + (.id |
             tostring) | gsub(" "; "")
-          title: .name // .runNumber // (.id | tostring)
+          title: .name
           blueprint: '"pipeline-run"'
           properties:
             state: .state
