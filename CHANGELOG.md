@@ -12,13 +12,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed failed-entity topological sorting when entities use search identifiers or search relations.
 
+
 ## 0.48.4 (2026-08-11)
+
 
 ### Improvements
 
 - Treat `HTTP 408 Request Timeout` as a default retryable status code in `RetryConfig`.
 
+
 ## 0.48.3 (2026-08-11)
+
 
 ### Improvements
 
