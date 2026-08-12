@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Remove liveEventsApiKey from spec.yaml so it is not shown in the UI while live events are behind a feature flag
