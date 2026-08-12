@@ -10,7 +10,6 @@ from typing import Any, cast
 import hmac
 
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -41,6 +40,7 @@ from aws.webhook.cloudtrail_parser import (
     is_supported_cloudtrail_event,
     parse_cloudtrail_event,
 )
+from aws.config.live_events import get_live_events_api_key
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
 from aws.utils.feature_flags import is_aws_v3_live_events_enabled
 
@@ -68,7 +68,7 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
             logger.debug("AWS-v3 live events are disabled by organization feature flag")
             return False
 
-        expected_api_key = ocean.integration_config.get("live_events_api_key")
+        expected_api_key = get_live_events_api_key()
         if not expected_api_key:
             logger.warning(
                 "live_events_api_key is not configured, rejecting all live events"
