@@ -14,9 +14,7 @@ def test_get_live_events_api_key_from_integration_config() -> None:
 def test_get_live_events_api_key_from_env_when_missing_from_config() -> None:
     with patch("aws.config.live_events.ocean") as mock_ocean:
         mock_ocean.integration_config = {}
-        with patch.dict(
-            os.environ, {LIVE_EVENTS_API_KEY_ENV: "from-env"}, clear=True
-        ):
+        with patch.dict(os.environ, {LIVE_EVENTS_API_KEY_ENV: "from-env"}, clear=True):
             assert get_live_events_api_key() == "from-env"
 
 
