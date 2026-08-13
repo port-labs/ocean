@@ -110,6 +110,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
                 branch=current_branch,
                 organization=organization,
                 path_globs=path_globs,
+                blob_sha=file_info.get("sha"),
             )
             for file_info in deleted_files
         ]

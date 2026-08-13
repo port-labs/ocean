@@ -127,13 +127,15 @@ class TestSkillWebhookProcessor:
             )
         )
 
-    async def test_handle_event_deleted_skill_has_no_blob_sha(
+    async def test_handle_event_deleted_skill_includes_blob_sha_from_compare_api(
         self,
         skill_webhook_processor: SkillWebhookProcessor,
         resource_config: GithubSkillResourceConfig,
         payload: EventPayload,
     ) -> None:
-        """Delete stubs never fetch content, so `blob_sha` stays `None`."""
+        """Delete stubs never fetch content, but GitHub's compare API already
+        includes `sha` for removed files, so `blob_sha` should still be
+        populated from that diff entry with no extra fetch."""
 
         mock_exporter = AsyncMock()
         mock_exporter.fetch_commit_diff.return_value = {
@@ -141,6 +143,7 @@ class TestSkillWebhookProcessor:
                 {
                     "filename": "skills/hello/SKILL.md",
                     "status": "removed",
+                    "sha": "d670460b4b4aece5915caf5c68d12f560a9fe3e",
                 }
             ]
         }
@@ -162,5 +165,8 @@ class TestSkillWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         assert result.updated_raw_results == []
         assert len(result.deleted_raw_results) == 1
-        assert result.deleted_raw_results[0]["skill"]["blob_sha"] is None
+        assert (
+            result.deleted_raw_results[0]["skill"]["blob_sha"]
+            == "d670460b4b4aece5915caf5c68d12f560a9fe3e"
+        )
         mock_exporter.get_resource.assert_not_called()
