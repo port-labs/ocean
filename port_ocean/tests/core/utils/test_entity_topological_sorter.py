@@ -22,9 +22,7 @@ def create_entity(
 def create_search_identifier(identifier: str) -> dict[str, Any]:
     return {
         "combinator": "and",
-        "rules": [
-            {"operator": "=", "property": "$identifier", "value": identifier}
-        ],
+        "rules": [{"operator": "=", "property": "$identifier", "value": identifier}],
     }
 
 
