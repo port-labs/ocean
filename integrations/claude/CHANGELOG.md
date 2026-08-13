@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.44 (2026-08-13)
+
+
+### Improvements
+
+- Added `claude-ai-skill-usage` kind for org-level Claude Skills Analytics, syncing per-skill usage into the `claude_ai_skill_usage` blueprint.
+
+
+## 0.2.43 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+- Added `claude-ai-skill-usage` kind for org-level Claude Skills Analytics, syncing per-skill usage into the `claude_ai_skill_usage` blueprint.
+
+
+## 0.2.42 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.2.41 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
 ## 0.2.40 (2026-08-12)
 
 

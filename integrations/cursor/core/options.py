@@ -6,6 +6,10 @@ class ListCursorAnalyticsOptions(TypedDict):
     endDate: str
 
 
+class ListCursorTeamSkillUsageOptions(ListCursorAnalyticsOptions, total=False):
+    users: str
+
+
 class ListCursorAdminOptions(TypedDict):
     startDate: int
     endDate: int
