@@ -239,6 +239,38 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
             "after an unexpected error."
         ),
     )
+    connection_error_backoff_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        description=(
+            "Seconds to wait before retrying the Redis stream read loop "
+            "after a connection error."
+        ),
+    )
+    connection_startup_max_retries: int = Field(
+        default=5,
+        ge=0,
+        description=(
+            "Maximum number of connection retries when establishing the "
+            "initial Redis client at startup."
+        ),
+    )
+    connection_startup_initial_backoff_seconds: float = Field(
+        default=1.0,
+        gt=0,
+        description=(
+            "Initial delay in seconds before the first Redis startup "
+            "connection retry."
+        ),
+    )
+    connection_startup_exponential_base: float = Field(
+        default=2.0,
+        gt=0,
+        description=(
+            "Exponential base used to calculate Redis startup connection "
+            "retry delays."
+        ),
+    )
 
     @property
     def stuck_timeout_ms(self) -> int:

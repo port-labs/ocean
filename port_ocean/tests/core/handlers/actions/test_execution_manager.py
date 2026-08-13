@@ -113,6 +113,8 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
     ocean_mock.port_client = mock_port_client
     ocean_mock.integration_router = APIRouter()
     ocean_mock.fast_api_app = FastAPI()
+    ocean_mock.integration = MagicMock()
+    ocean_mock.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     return ocean_mock
 
 
