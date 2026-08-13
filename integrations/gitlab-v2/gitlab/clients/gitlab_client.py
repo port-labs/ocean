@@ -877,9 +877,6 @@ class GitLabClient:
         self,
         file: dict[str, Any],
     ) -> dict[str, Any]:
-        prefetched_repo = file.get("__repo")
-        if prefetched_repo is not None:
-            return {"file": file, "repo": prefetched_repo}
         repo = await self.get_project(file["project_id"])
         return {"file": file, "repo": repo}
 
@@ -1021,6 +1018,29 @@ class GitLabClient:
         project["__members"] = members
         return project
 
+    async def _get_file_content_with_ref_heal(
+        self, project_id: str, file_path: str, ref: str
+    ) -> tuple[dict[str, Any], str]:
+        """Fetch file content, retrying with default_branch if the ref is stale."""
+        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+
+        if not file_data:
+            project = await self.get_project(project_id)
+            if project:
+                default_branch = project.get("default_branch")
+                if default_branch and default_branch != ref:
+                    logger.info(
+                        f"Retrying file fetch for '{file_path}' in project "
+                        f"'{project_id}' with default_branch '{default_branch}' "
+                        f"(original ref '{ref}' returned empty)"
+                    )
+                    ref = default_branch
+                    file_data = await self.rest.get_file_data(
+                        project_id, file_path, ref
+                    )
+
+        return file_data or {}, ref
+
     async def _process_file(
         self, file: dict[str, Any], context: str, skip_parsing: bool = False
     ) -> dict[str, Any]:
@@ -1028,11 +1048,11 @@ class GitLabClient:
         project_id = str(file["project_id"])
         ref = file.get("ref") or "main"
 
-        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+        file_data, ref = await self._get_file_content_with_ref_heal(
+            project_id, file_path, ref
+        )
         file_data["project_id"] = project_id
         file_data["path"] = file_path
-        if repo := file.get("__repo"):
-            file_data["__repo"] = repo
 
         if (
             not skip_parsing
@@ -1048,16 +1068,6 @@ class GitLabClient:
             file_data["content"] = parsed_content
 
         return file_data
-
-    async def _resolve_refs_from_projects(self, batch: list[dict[str, Any]]) -> None:
-        pids = list({str(f["project_id"]) for f in batch})
-        fetched = await asyncio.gather(*(self.get_project(pid) for pid in pids))
-        projects = {pid: proj for pid, proj in zip(pids, fetched) if proj}
-
-        for file in batch:
-            if project := projects.get(str(file["project_id"])):
-                file["ref"] = project.get("default_branch") or file.get("ref") or "main"
-                file["__repo"] = project
 
     async def _process_file_batch(
         self,
@@ -1089,8 +1099,6 @@ class GitLabClient:
 
         async for file_batch in search_handler:
             logger.debug(f"Found {len(file_batch)} files in '{repo}'")
-            if not should_use_tree:
-                await self._resolve_refs_from_projects(file_batch)
             processed_batch = await self._process_file_batch(
                 file_batch, repo, skip_parsing
             )
@@ -1334,7 +1342,6 @@ class GitLabClient:
                 path, params=params
             ):
                 logger.info(f"Found {len(file_batch)} files in group {group_id} search")
-                await self._resolve_refs_from_projects(file_batch)
                 processed_batch = await self._process_file_batch(
                     file_batch, group_id, skip_parsing
                 )
