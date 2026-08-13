@@ -93,7 +93,7 @@ class YourResourceProperties(BaseModel):
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
 
     class Config:
-        extra = "forbid"  # Prevent unexpected fields
+        extra = "ignore"  # Drop unexpected fields instead of failing resync
         populate_by_name = True  # Allow field aliases
 
 
@@ -649,12 +649,12 @@ data.
 
 ### 8. Extra-field handling on the model must match what's actually returned
 
-- If keeping `extra="forbid"` on `*Properties` (recommended — it fails loudly instead of
-  silently dropping fields when AWS changes a response): every field that appears in any raw
-  response used to build Properties must be declared on the model.
-- If an action does a true raw passthrough (recommended default — don't filter/rename in
-  Python, see #4), the model's declared fields must be the full union of fields from every raw
-  response that feeds it.
+- Use `extra="ignore"` on `*Properties` (not `extra="forbid"`). AWS responses can gain fields
+  over time; ignoring unknowns keeps resync resilient instead of failing the whole sync.
+- Still declare every field you care about and that appears in the raw responses used to build
+  Properties. If an action does a true raw passthrough (recommended default — don't
+  filter/rename in Python, see #4), declare the full union of fields from every raw response
+  that feeds the model so those values are kept rather than silently dropped.
 
 ### 9. Keep mapping/blueprint/examples in sync with the model
 
