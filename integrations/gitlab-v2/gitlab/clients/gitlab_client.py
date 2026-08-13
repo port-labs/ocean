@@ -1052,11 +1052,6 @@ class GitLabClient:
     async def _resolve_refs_from_projects(
         self, batch: list[dict[str, Any]]
     ) -> None:
-        """Replace stale search-index refs with each project's default_branch.
-
-        Mutates *batch* in-place.  Also stamps ``__repo`` so the downstream
-        ``_enrich_file_with_repo`` can skip a duplicate ``get_project`` call.
-        """
         pids = list({str(f["project_id"]) for f in batch})
         fetched = await asyncio.gather(*(self.get_project(pid) for pid in pids))
         projects = {pid: proj for pid, proj in zip(pids, fetched) if proj}
