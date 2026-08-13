@@ -14,6 +14,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Redis stream consumer now deletes entries after acking in a transactional pipeline (`XACK`, `XDEL`). Default stream TTL is now one month and is applied only when the consumer creates the stream via MKSTREAM.
 
+
 ## 0.48.6 (2026-08-13)
 
 
@@ -21,12 +22,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Updated the internal auth file to use Pydantic v2 for its models.
 
+
 ## 0.48.5 (2026-08-11)
 
 
 ### Improvements
 
 - Log explicit Redis connection failures at startup and retry the initial connection with exponential backoff.
+
 
 ## 0.48.4 (2026-08-11)
 
@@ -61,6 +64,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.48.0 (2026-08-10)
+
 
 ### Improvements
 
