@@ -2,8 +2,8 @@ from typing import Any, Generator
 from port_ocean.context import event
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.entity_identifier import (
-    identifier_to_dict,
     normalize_identifier,
+    relation_target_identifier_keys,
 )
 
 from loguru import logger
@@ -48,27 +48,6 @@ class EntityTopologicalSorter:
             yield entity
 
     @staticmethod
-    def _relation_target_ids(identifier: Any) -> set[str]:
-        target_ids = {normalize_identifier(identifier)}
-        search_query = identifier_to_dict(identifier)
-        if search_query is None:
-            return target_ids
-
-        for rule in search_query.get("rules", []):
-            rule_dict = identifier_to_dict(rule)
-            if rule_dict is None:
-                continue
-            if rule_dict.get("rules"):
-                target_ids.update(EntityTopologicalSorter._relation_target_ids(rule))
-            if (
-                rule_dict.get("property") == "$identifier"
-                and rule_dict.get("operator") == "="
-                and "value" in rule_dict
-            ):
-                target_ids.add(normalize_identifier(rule_dict["value"]))
-        return target_ids
-
-    @staticmethod
     def node(entity: Entity) -> Node:
         return (
             normalize_identifier(entity.identifier),
@@ -91,9 +70,7 @@ class EntityTopologicalSorter:
                 for identifier in (
                     identifiers if isinstance(identifiers, list) else [identifiers]
                 ):
-                    relation_target_ids.update(
-                        EntityTopologicalSorter._relation_target_ids(identifier)
-                    )
+                    relation_target_ids.update(relation_target_identifier_keys(identifier))
 
             related_entities = [
                 related
