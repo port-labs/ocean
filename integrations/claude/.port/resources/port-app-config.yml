@@ -108,3 +108,33 @@ resources:
             amount: ((.amount // "0") | tonumber) / 100
             list_amount: ((.list_amount // "0") | tonumber) / 100
             requests: (.requests // 0)
+  - kind: claude-ai-skill-usage
+    selector:
+      query: 'true'
+      timeFrame: 30
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            ((.skill_name // "unknown") + "-" + .__date
+            | gsub("[^A-Za-z0-9@_.+:\\\\/='-]"; "_"))
+          title: ((.skill_display_name // .skill_name // "unknown") + " - " + .__date)
+          blueprint: '"claude_ai_skill_usage"'
+          properties:
+            record_date: .__date + "T00:00:00Z"
+            skill_name: (.skill_name // "unknown")
+            skill_display_name: .skill_display_name
+            distinct_user_count: .distinct_user_count
+            enable_count: .enable_count
+            invocation_count: .invocation_count
+            share_status: .share_status
+            currency: (.currency // "USD")
+            estimated_overage_spend: (if .estimated_overage_spend then (.estimated_overage_spend | tonumber)  / 100 else null end)
+            attributed_list_price: (if .attributed_list_price then (.attributed_list_price | tonumber)  / 100 else null end)
+            chat_conversation_skill_used_count: .chat_metrics.distinct_conversation_skill_used_count
+            code_session_skill_used_count: .claude_code_metrics.distinct_session_skill_used_count
+            cowork_session_skill_used_count: .cowork_metrics.distinct_session_skill_used_count
+            excel_session_skill_used_count: .office_metrics.excel.distinct_session_skill_used_count
+            powerpoint_session_skill_used_count: .office_metrics.powerpoint.distinct_session_skill_used_count
+            word_session_skill_used_count: .office_metrics.word.distinct_session_skill_used_count
+            outlook_session_skill_used_count: .office_metrics.outlook.distinct_session_skill_used_count
