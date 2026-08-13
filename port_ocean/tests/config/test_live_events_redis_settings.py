@@ -10,7 +10,7 @@ class TestLiveEventsRedisSettingsValidation:
 
         assert settings.enable_tls is False
         assert settings.pel_requeue_worker_enabled is True
-        assert settings.stream_ttl_seconds == 3600
+        assert settings.stream_ttl_seconds == 2_592_000
 
     def test_is_redis_stream_consumer_enabled_from_env(
         self, monkeypatch: pytest.MonkeyPatch

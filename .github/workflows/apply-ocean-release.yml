@@ -94,7 +94,8 @@ jobs:
                   labels.append(path.split("/")[1])
 
           prefix = "[CoreBump]" if has_core else "[IntegrationBump]"
-          print(f"{prefix} Apply version and changelog for {', '.join(labels)}")
+          labels_text = ", ".join(labels)
+          print(f"{prefix} Apply version and changelog for {labels_text}")
           '
           )
           echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
