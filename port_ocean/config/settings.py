@@ -196,7 +196,7 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
     stream_ttl_seconds: int | None = Field(
-        default=2_592_000,
+        default=2_592_000,  # 30 days
         ge=1,
         description=(
             "TTL in seconds for the Redis stream. Set when the consumer creates "

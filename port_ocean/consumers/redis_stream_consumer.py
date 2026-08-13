@@ -24,6 +24,7 @@ from port_ocean.consumers.abstract_live_events_consumer import (
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.redis_stream_utils import (
     ack_and_finalize_stream_entry,
+    ensure_consumer_group,
     is_missing_stream_or_group_error,
     is_redis_connection_error,
 )
@@ -167,23 +168,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
     async def _ack(self, message_id: str) -> None:
         if self._redis is None:
             return
-        try:
-            await ack_and_finalize_stream_entry(
-                self._redis,
-                stream_key=self._stream_key,
-                consumer_group=self._consumer_group,
-                message_id=message_id,
-            )
-        except ResponseError as error:
-            if not is_missing_stream_or_group_error(error):
-                raise
-            logger.warning(
-                "Redis stream or consumer group missing during ack, recreating",
-                stream_key=self._stream_key,
-                message_id=message_id,
-                error=str(error),
-            )
-            await self._ensure_consumer_group()
+        await ack_and_finalize_stream_entry(
+            self._redis,
+            stream_key=self._stream_key,
+            consumer_group=self._consumer_group,
+            message_id=message_id,
+        )
 
     def _require_redis(self) -> RedisClient:
         if self._redis is None:
@@ -193,32 +183,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         return self._redis
 
     async def _ensure_consumer_group(self) -> None:
-        redis = self._require_redis()
-        stream_existed = bool(await redis.exists(self._stream_key))
-        consumer_group_created = False
-        try:
-            await redis.xgroup_create(
-                self._stream_key,
-                self._consumer_group,
-                id="$",
-                mkstream=True,
-            )
-            consumer_group_created = True
-        except ResponseError as error:
-            if "BUSYGROUP" not in str(error):
-                raise
-
-        if (
-            consumer_group_created
-            and not stream_existed
-            and self._settings.stream_ttl_seconds is not None
-        ):
-            await redis.expire(self._stream_key, self._settings.stream_ttl_seconds)
-            logger.info(
-                "Set TTL on newly created Redis stream",
-                stream_key=self._stream_key,
-                stream_ttl_seconds=self._settings.stream_ttl_seconds,
-            )
+        await ensure_consumer_group(
+            self._require_redis(),
+            stream_key=self._stream_key,
+            consumer_group=self._consumer_group,
+            stream_ttl_seconds=self._settings.stream_ttl_seconds,
+        )
 
     async def _recover_missing_stream(self) -> None:
         logger.warning(

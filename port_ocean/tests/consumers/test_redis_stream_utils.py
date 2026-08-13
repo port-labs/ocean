@@ -10,6 +10,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from port_ocean.consumers.redis_stream_utils import (
     ack_and_finalize_stream_entry,
+    ensure_consumer_group,
     is_missing_stream_or_group_error,
     is_redis_connection_error,
 )
@@ -73,7 +74,7 @@ class TestAckAndFinalizeStreamEntry:
         redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
 
     @pytest.mark.asyncio
-    async def test_raises_missing_stream_error_from_transaction(self) -> None:
+    async def test_swallows_missing_stream_error_from_transaction(self) -> None:
         redis = _make_redis_with_pipeline()
 
         @asynccontextmanager
@@ -92,15 +93,66 @@ class TestAckAndFinalizeStreamEntry:
 
         redis.pipeline = failing_pipeline
 
-        with pytest.raises(ResponseError, match="NOGROUP"):
-            await ack_and_finalize_stream_entry(
-                redis,
-                stream_key="stream",
-                consumer_group="test.integration",
-                message_id="1700000000000-0",
-            )
+        await ack_and_finalize_stream_entry(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            message_id="1700000000000-0",
+        )
 
         redis.xack.assert_awaited_once()
+
+
+class TestEnsureConsumerGroup:
+    @pytest.mark.asyncio
+    async def test_sets_ttl_when_stream_is_created(self) -> None:
+        redis = AsyncMock()
+        redis.exists = AsyncMock(return_value=0)
+        redis.xgroup_create = AsyncMock()
+        redis.expire = AsyncMock()
+
+        await ensure_consumer_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            stream_ttl_seconds=3600,
+        )
+
+        redis.expire.assert_awaited_once_with("stream", 3600)
+
+    @pytest.mark.asyncio
+    async def test_skips_ttl_when_stream_already_exists(self) -> None:
+        redis = AsyncMock()
+        redis.exists = AsyncMock(return_value=1)
+        redis.xgroup_create = AsyncMock()
+        redis.expire = AsyncMock()
+
+        await ensure_consumer_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            stream_ttl_seconds=3600,
+        )
+
+        redis.expire.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_ignores_busygroup(self) -> None:
+        redis = AsyncMock()
+        redis.exists = AsyncMock(return_value=1)
+        redis.xgroup_create = AsyncMock(
+            side_effect=ResponseError("BUSYGROUP Consumer Group name already exists")
+        )
+        redis.expire = AsyncMock()
+
+        await ensure_consumer_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            stream_ttl_seconds=3600,
+        )
+
+        redis.expire.assert_not_awaited()
 
 
 class TestIsRedisConnectionError:

@@ -610,7 +610,7 @@ class TestRedisStreamConsumerAck:
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_ack_skips_finalize_when_stream_missing_during_ack(
+    async def test_ack_swallows_nogroup_when_stream_missing_during_ack(
         self,
         mock_ocean_config: MagicMock,
     ) -> None:
@@ -637,7 +637,7 @@ class TestRedisStreamConsumerAck:
             consumer._redis = mock_redis
             await consumer._ack("1700000000000-0")
 
-        mock_redis.xgroup_create.assert_awaited_once()
+        mock_redis.xgroup_create.assert_not_awaited()
 
 
 class TestRedisStreamConsumerPelWorkerLifecycle:

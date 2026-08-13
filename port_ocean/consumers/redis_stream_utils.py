@@ -29,6 +29,37 @@ def is_missing_stream_or_group_error(error: Exception) -> bool:
     return "NOGROUP" in str(error).upper()
 
 
+async def ensure_consumer_group(
+    redis: RedisClient,
+    *,
+    stream_key: str,
+    consumer_group: str,
+    stream_ttl_seconds: int | None = None,
+) -> None:
+    """Create the stream and consumer group if they do not exist."""
+    stream_existed = bool(await redis.exists(stream_key))
+    consumer_group_created = False
+    try:
+        await redis.xgroup_create(
+            stream_key,
+            consumer_group,
+            id="$",
+            mkstream=True,
+        )
+        consumer_group_created = True
+    except ResponseError as error:
+        if "BUSYGROUP" not in str(error):
+            raise
+
+    if consumer_group_created and not stream_existed and stream_ttl_seconds is not None:
+        await redis.expire(stream_key, stream_ttl_seconds)
+        logger.info(
+            "Set TTL on newly created Redis stream",
+            stream_key=stream_key,
+            stream_ttl_seconds=stream_ttl_seconds,
+        )
+
+
 async def ack_and_finalize_stream_entry(
     redis: RedisClient,
     *,
@@ -51,4 +82,5 @@ async def ack_and_finalize_stream_entry(
                 message_id=message_id,
                 error=str(error),
             )
+            return
         raise
