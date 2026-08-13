@@ -877,6 +877,9 @@ class GitLabClient:
         self,
         file: dict[str, Any],
     ) -> dict[str, Any]:
+        prefetched_repo = file.get("__repo")
+        if prefetched_repo is not None:
+            return {"file": file, "repo": prefetched_repo}
         repo = await self.get_project(file["project_id"])
         return {"file": file, "repo": repo}
 
@@ -1023,7 +1026,7 @@ class GitLabClient:
     ) -> dict[str, Any]:
         file_path = file.get("path", "")
         project_id = str(file["project_id"])
-        ref = file.get("ref", "main")
+        ref = file.get("ref") or "main"
 
         file_data = await self.rest.get_file_data(project_id, file_path, ref)
         file_data["project_id"] = project_id
@@ -1043,6 +1046,23 @@ class GitLabClient:
             file_data["content"] = parsed_content
 
         return file_data
+
+    async def _resolve_refs_from_projects(
+        self, batch: list[dict[str, Any]]
+    ) -> None:
+        """Replace stale search-index refs with each project's default_branch.
+
+        Mutates *batch* in-place.  Also stamps ``__repo`` so the downstream
+        ``_enrich_file_with_repo`` can skip a duplicate ``get_project`` call.
+        """
+        pids = list({str(f["project_id"]) for f in batch})
+        fetched = await asyncio.gather(*(self.get_project(pid) for pid in pids))
+        projects = {pid: proj for pid, proj in zip(pids, fetched) if proj}
+
+        for file in batch:
+            if project := projects.get(str(file["project_id"])):
+                file["ref"] = project.get("default_branch") or file.get("ref") or "main"
+                file["__repo"] = project
 
     async def _process_file_batch(
         self,
@@ -1074,6 +1094,8 @@ class GitLabClient:
 
         async for file_batch in search_handler:
             logger.debug(f"Found {len(file_batch)} files in '{repo}'")
+            if not should_use_tree:
+                await self._resolve_refs_from_projects(file_batch)
             processed_batch = await self._process_file_batch(
                 file_batch, repo, skip_parsing
             )
@@ -1317,6 +1339,7 @@ class GitLabClient:
                 path, params=params
             ):
                 logger.info(f"Found {len(file_batch)} files in group {group_id} search")
+                await self._resolve_refs_from_projects(file_batch)
                 processed_batch = await self._process_file_batch(
                     file_batch, group_id, skip_parsing
                 )
