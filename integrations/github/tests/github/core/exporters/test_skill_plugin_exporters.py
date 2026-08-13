@@ -78,10 +78,10 @@ class TestSkillExporter:
         assert skill["skillMdPath"] == ".cursor/skills/hello/SKILL.md"
         assert batches[0][0]["__organization"] == "test-org"
 
-    async def test_maps_metadata_sha_to_skill_sha(
+    async def test_maps_metadata_sha_to_skill_blob_sha(
         self, rest_client: GithubRestClient
     ) -> None:
-        """The skill's `sha` is plumbed through from the file's metadata,
+        """The skill's `blob_sha` is plumbed through from the file's metadata,
         which already carries the git blob SHA returned by the GitHub API."""
 
         async def fake_files(
@@ -105,7 +105,7 @@ class TestSkillExporter:
             ]
 
         skill = batches[0][0]["skill"]
-        assert skill["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+        assert skill["blob_sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
     async def test_missing_metadata_sha_defaults_to_none(
         self, rest_client: GithubRestClient
@@ -124,7 +124,7 @@ class TestSkillExporter:
                 )
             ]
 
-        assert batches[0][0]["skill"]["sha"] is None
+        assert batches[0][0]["skill"]["blob_sha"] is None
 
     async def test_skips_files_without_string_content(
         self, rest_client: GithubRestClient

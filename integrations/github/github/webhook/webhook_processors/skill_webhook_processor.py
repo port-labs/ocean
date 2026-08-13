@@ -98,7 +98,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
                     branch=current_branch,
                     organization=organization,
                     path_globs=path_globs,
-                    sha=file_data.get("sha"),
+                    blob_sha=file_data.get("sha"),
                 )
             )
 

@@ -72,7 +72,7 @@ description: A minimal example
             branch="main",
             organization="acme",
             path_globs=["skills/**/SKILL.md"],
-            sha="e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+            blob_sha="e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
         )
         skill = item["skill"]
         assert skill["name"] == "hello-skill"
@@ -81,12 +81,12 @@ description: A minimal example
         assert skill["path"] == "skills/hello-skill"
         assert skill["skillMdPath"] == "skills/hello-skill/SKILL.md"
         assert skill["root"] == "skills"
-        assert skill["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+        assert skill["blob_sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
         assert item["__repository"] == REPOSITORY
         assert item["__branch"] == "main"
         assert item["__organization"] == "acme"
 
-    def test_build_skill_raw_item_sha_defaults_to_none(self) -> None:
+    def test_build_skill_raw_item_blob_sha_defaults_to_none(self) -> None:
         item = build_skill_raw_item(
             skill_md_path="skills/hello-skill/SKILL.md",
             content="# No sha provided",
@@ -95,7 +95,7 @@ description: A minimal example
             organization="acme",
             path_globs=["skills/**/SKILL.md"],
         )
-        assert item["skill"]["sha"] is None
+        assert item["skill"]["blob_sha"] is None
 
     def test_build_skill_raw_item_name_fallback(self) -> None:
         item = build_skill_raw_item(
@@ -120,7 +120,7 @@ description: A minimal example
         }
         upserted = build_skill_raw_item(
             content="---\nname: hello\n---\n# Hi",
-            sha="a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+            blob_sha="a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
             **kwargs,  # type: ignore[arg-type]
         )
         deleted = build_skill_raw_item(content="", **kwargs)  # type: ignore[arg-type]
@@ -129,8 +129,8 @@ description: A minimal example
         assert deleted["skill"]["root"] == upserted["skill"]["root"]
         assert deleted["skill"]["skillMdPath"] == upserted["skill"]["skillMdPath"]
         assert deleted["skill"]["name"] == "hello"
-        assert deleted["skill"]["sha"] is None
-        assert upserted["skill"]["sha"] == "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
+        assert deleted["skill"]["blob_sha"] is None
+        assert upserted["skill"]["blob_sha"] == "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
 
 
 class TestPluginUtils:
