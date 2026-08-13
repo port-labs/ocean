@@ -14,12 +14,18 @@ from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
-from port_ocean.consumers.redis_client import RedisClient, create_redis_client
+from port_ocean.consumers.redis_client import (
+    RedisClient,
+    create_redis_client_with_retry,
+)
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
-from port_ocean.consumers.redis_stream_utils import is_missing_stream_or_group_error
+from port_ocean.consumers.redis_stream_utils import (
+    is_missing_stream_or_group_error,
+    is_redis_connection_error,
+)
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -115,8 +121,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         return kwargs
 
     async def start(self) -> None:
-        self._redis = await create_redis_client(
-            self._settings.url, **self._redis_client_kwargs()
+        self._redis = await create_redis_client_with_retry(
+            self._settings.url,
+            max_retries=self._settings.connection_startup_max_retries,
+            initial_backoff_seconds=self._settings.connection_startup_initial_backoff_seconds,
+            exponential_base=self._settings.connection_startup_exponential_base,
+            **self._redis_client_kwargs(),
         )
         await self._ensure_consumer_group()
         self._is_running = True
@@ -249,11 +259,19 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                         error=str(error),
                     )
             except Exception as error:
-                logger.exception(
-                    "Unexpected error in Redis stream read loop",
-                    stream_key=self._stream_key,
-                    error=str(error),
-                )
+                if is_redis_connection_error(error):
+                    logger.exception(
+                        "Lost connection to Redis, retrying",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
+                    await asyncio.sleep(self._settings.connection_error_backoff_seconds)
+                else:
+                    logger.exception(
+                        "Unexpected error in Redis stream read loop",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()
