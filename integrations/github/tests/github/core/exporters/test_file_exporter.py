@@ -1000,12 +1000,13 @@ class TestRestFileExporterRepoNotFound:
         assert len(results) == 1
         assert results[0]["name"] == "readme.txt"
 
-    async def test_process_graphql_files_passes_oid_as_metadata_sha(
+    async def test_process_graphql_files_passes_tree_sha_as_metadata_sha(
         self, rest_client: GithubRestClient
     ) -> None:
-        """The GraphQL Blob's `oid` (git blob SHA) must be threaded through to
-        the metadata passed to `file_processor.process_file`, so downstream
-        exporters (e.g. the skill kind) can surface it."""
+        """The git tree's blob `sha` (collected during tree traversal) must be
+        threaded through to the metadata passed to `file_processor.process_file`,
+        so downstream exporters (e.g. the skill kind) can surface it without
+        extending the GraphQL query."""
         exporter = RestFileExporter(rest_client)
 
         fake_gql_response = {
@@ -1014,7 +1015,6 @@ class TestRestFileExporterRepoNotFound:
                     "file_0": {
                         "text": "hello",
                         "byteSize": 5,
-                        "oid": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
                     }
                 }
             }
@@ -1035,6 +1035,7 @@ class TestRestFileExporterRepoNotFound:
                         "file_path": "readme.txt",
                         "skip_parsing": True,
                         "branch": "main",
+                        "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
                     }
                 ],
             }
@@ -1061,6 +1062,7 @@ class TestRestFileExporterRepoNotFound:
                         "file_path": "readme.txt",
                         "skip_parsing": True,
                         "branch": "main",
+                        "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
                     }
                 ]
             ):
@@ -1273,6 +1275,7 @@ class TestFileExporterUtils:
         assert len(matched) == 1
         assert matched[0]["path"] == "test.txt"
         assert matched[0]["fetch_method"] == GithubClientType.GRAPHQL
+        assert matched[0]["sha"] == "abc123"
 
     def test_filter_github_tree_entries_by_pattern_no_matches(self) -> None:
         matched = filter_github_tree_entries_by_pattern(TEST_TREE_ENTRIES, "*.py")
@@ -1333,7 +1336,6 @@ class TestFileExporterUtils:
         assert 'repository(owner: "test-org", name: "repo1")' in query["query"]
         assert 'file_0: object(expression: "main:test1.txt")' in query["query"]
         assert 'file_1: object(expression: "main:test2.txt")' in query["query"]
-        assert "oid" in query["query"]
 
     def test_build_batch_file_query_empty_list(self) -> None:
         query = build_batch_file_query(

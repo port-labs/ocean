@@ -218,6 +218,7 @@ def filter_github_tree_entries_by_pattern(
                 {
                     "path": path,
                     "fetch_method": fetch_method,
+                    "sha": entry.get("sha"),
                 }
             )
 
@@ -257,7 +258,6 @@ def build_batch_file_query(
             ... on Blob {{
                 text
                 byteSize
-                oid
             }}
         }}
         """ for file_index, path in enumerate(file_paths))
@@ -300,16 +300,18 @@ def extract_file_index(field_name: str) -> Optional[int]:
 
 def extract_file_paths_and_metadata(
     files: List[Dict[str, Any]],
-) -> tuple[list[str], dict[str, bool]]:
+) -> tuple[list[str], dict[str, bool], dict[str, Optional[str]]]:
     file_paths = []
     file_metadata = {}
+    file_shas: dict[str, Optional[str]] = {}
 
     for file in files:
         file_path = file["file_path"]
         file_paths.append(file_path)
         file_metadata[file_path] = file["skip_parsing"]
+        file_shas[file_path] = file.get("sha")
 
-    return file_paths, file_metadata
+    return file_paths, file_metadata, file_shas
 
 
 def deep_dict(d: Union[DefaultDict[str, Any], Dict[str, Any], list[Any], Any]) -> Any:
