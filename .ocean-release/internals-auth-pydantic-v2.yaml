@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Updated the internal auth file to use Pydantic v2 for its models.
