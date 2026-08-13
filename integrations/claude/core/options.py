@@ -68,6 +68,13 @@ class ListUserActivityOptions(TypedDict):
     limit: Required[int]
 
 
+class ListSkillUsageOptions(TypedDict):
+    """Query options for the per-day skills analytics endpoint (org scope)."""
+
+    date: Required[str]
+    limit: Required[int]
+
+
 class ListUserReportOptions(TypedDict):
     """Shared query options for the user usage and cost report endpoints."""
 
