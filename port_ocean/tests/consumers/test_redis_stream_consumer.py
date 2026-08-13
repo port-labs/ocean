@@ -557,7 +557,7 @@ class TestRedisStreamConsumerAck:
         return mock_redis
 
     @pytest.mark.asyncio
-    async def test_ack_deletes_entry_and_refreshes_stream_ttl(
+    async def test_ack_deletes_entry_without_refreshing_stream_ttl(
         self,
         mock_ocean_config: MagicMock,
     ) -> None:
@@ -582,7 +582,7 @@ class TestRedisStreamConsumerAck:
             "stream", "test.integration", "1700000000000-0"
         )
         mock_redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
-        mock_redis.expire.assert_awaited_once_with("stream", 3600)
+        mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_ack_skips_finalize_when_ttl_disabled(

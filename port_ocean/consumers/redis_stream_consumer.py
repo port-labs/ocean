@@ -173,7 +173,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 stream_key=self._stream_key,
                 consumer_group=self._consumer_group,
                 message_id=message_id,
-                stream_ttl_seconds=self._settings.stream_ttl_seconds,
             )
         except ResponseError as error:
             if not is_missing_stream_or_group_error(error):

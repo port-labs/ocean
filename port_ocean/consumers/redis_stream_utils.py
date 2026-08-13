@@ -35,15 +35,12 @@ async def ack_and_finalize_stream_entry(
     stream_key: str,
     consumer_group: str,
     message_id: str,
-    stream_ttl_seconds: int | None,
 ) -> None:
-    """Ack a stream entry, delete it, and refresh stream TTL in one transaction."""
+    """Ack a stream entry and delete it in one transaction."""
     try:
         async with redis.pipeline(transaction=True) as pipe:
             await pipe.xack(stream_key, consumer_group, message_id)
             await pipe.xdel(stream_key, message_id)
-            if stream_ttl_seconds is not None:
-                await pipe.expire(stream_key, stream_ttl_seconds)
             await pipe.execute()
     except ResponseError as error:
         if is_missing_stream_or_group_error(error):

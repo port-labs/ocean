@@ -122,7 +122,6 @@ class PELRequeueWorker:
                         stream_key=self._stream_key,
                         consumer_group=self._consumer_group,
                         message_id=message_id,
-                        stream_ttl_seconds=self._redis_settings.stream_ttl_seconds,
                     )
                     continue
 
@@ -168,7 +167,6 @@ class PELRequeueWorker:
                 stream_key=self._stream_key,
                 consumer_group=self._consumer_group,
                 message_id=message_id,
-                stream_ttl_seconds=self._redis_settings.stream_ttl_seconds,
             )
             return
 
@@ -179,10 +177,6 @@ class PELRequeueWorker:
             await pipe.xadd(self._stream_key, cast(Any, new_fields))
             await pipe.xack(self._stream_key, self._consumer_group, message_id)
             await pipe.xdel(self._stream_key, message_id)
-            if self._redis_settings.stream_ttl_seconds is not None:
-                await pipe.expire(
-                    self._stream_key, self._redis_settings.stream_ttl_seconds
-                )
             await pipe.execute()
 
         logger.info(

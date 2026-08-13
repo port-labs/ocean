@@ -196,12 +196,11 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
     stream_ttl_seconds: int | None = Field(
-        default=3600,
+        default=2_592_000,
         ge=1,
         description=(
             "TTL in seconds for the Redis stream. Set when the consumer creates "
-            "the stream via MKSTREAM and refreshed after each message ack. "
-            "Set to null to disable stream expiry."
+            "the stream via MKSTREAM. Set to null to disable stream expiry."
         ),
     )
     # PEL requeue worker settings

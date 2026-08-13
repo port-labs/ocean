@@ -19,7 +19,6 @@ def _make_redis_with_pipeline() -> AsyncMock:
     redis = AsyncMock()
     redis.xack = AsyncMock(return_value=1)
     redis.xdel = AsyncMock(return_value=1)
-    redis.expire = AsyncMock(return_value=True)
 
     @asynccontextmanager
     async def fake_pipeline(
@@ -28,8 +27,7 @@ def _make_redis_with_pipeline() -> AsyncMock:
         pipe = AsyncMock()
         pipe.xack = redis.xack
         pipe.xdel = redis.xdel
-        pipe.expire = redis.expire
-        pipe.execute = AsyncMock(return_value=[1, 1, True])
+        pipe.execute = AsyncMock(return_value=[1, 1])
         yield pipe
 
     redis.pipeline = fake_pipeline
@@ -59,7 +57,7 @@ class TestIsMissingStreamOrGroupError:
 
 class TestAckAndFinalizeStreamEntry:
     @pytest.mark.asyncio
-    async def test_acks_deletes_entry_and_refreshes_ttl_transactionally(self) -> None:
+    async def test_acks_and_deletes_entry_transactionally(self) -> None:
         redis = _make_redis_with_pipeline()
 
         await ack_and_finalize_stream_entry(
@@ -67,30 +65,12 @@ class TestAckAndFinalizeStreamEntry:
             stream_key="stream",
             consumer_group="test.integration",
             message_id="1700000000000-0",
-            stream_ttl_seconds=3600,
         )
 
         redis.xack.assert_awaited_once_with(
             "stream", "test.integration", "1700000000000-0"
         )
         redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
-        redis.expire.assert_awaited_once_with("stream", 3600)
-
-    @pytest.mark.asyncio
-    async def test_skips_expire_when_ttl_disabled(self) -> None:
-        redis = _make_redis_with_pipeline()
-
-        await ack_and_finalize_stream_entry(
-            redis,
-            stream_key="stream",
-            consumer_group="test.integration",
-            message_id="1700000000000-0",
-            stream_ttl_seconds=None,
-        )
-
-        redis.xack.assert_awaited_once()
-        redis.xdel.assert_awaited_once()
-        redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_raises_missing_stream_error_from_transaction(self) -> None:
@@ -103,7 +83,6 @@ class TestAckAndFinalizeStreamEntry:
             pipe = AsyncMock()
             pipe.xack = redis.xack
             pipe.xdel = redis.xdel
-            pipe.expire = redis.expire
             pipe.execute = AsyncMock(
                 side_effect=ResponseError(
                     "NOGROUP No such key 'stream' or consumer group"
@@ -119,7 +98,6 @@ class TestAckAndFinalizeStreamEntry:
                 stream_key="stream",
                 consumer_group="test.integration",
                 message_id="1700000000000-0",
-                stream_ttl_seconds=3600,
             )
 
         redis.xack.assert_awaited_once()
