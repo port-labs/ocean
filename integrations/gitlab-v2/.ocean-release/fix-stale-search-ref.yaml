@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fetch file content from each project's default branch instead of stale refs returned by GitLab search, and reuse prefetched project data during repo enrichment to avoid duplicate API calls.
