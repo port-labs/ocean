@@ -1023,9 +1023,10 @@ class GitLabClient:
     ) -> tuple[dict[str, Any], str]:
         """Fetch file content, retrying with default_branch when the ref fails.
 
-        Stale refs from GitLab blob search are a group-search issue; project
-        search and repository tree already use the default branch. Webhooks
-        use live commit SHAs from push events, not search-index refs.
+        Stale refs from GitLab blob search are mainly a group-search issue; project
+        search omits ref so GitLab searches the default branch, and repository tree
+        uses it explicitly. Webhooks use live commit SHAs from push events, not
+        search-index refs.
         """
         file_data = await self.rest.get_file_data(project_id, file_path, ref)
 
