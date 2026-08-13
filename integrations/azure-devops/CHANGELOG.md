@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.11.14 (2026-08-13)
 
 
-### Features
+### Improvements
 
-- Added `wiki` kind to ingest Azure DevOps wiki pages, supporting per-type filtering (projectWiki/codeWiki) and optional markdown content enrichment
+- Bumped ocean version to ^0.48.6
 
 
 ## 0.11.13 (2026-08-13)
