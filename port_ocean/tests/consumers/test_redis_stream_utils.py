@@ -1,6 +1,4 @@
 import asyncio
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 
 import pytest
@@ -16,22 +14,10 @@ from port_ocean.consumers.redis_stream_utils import (
 )
 
 
-def _make_redis_with_pipeline() -> AsyncMock:
+def _make_redis_for_ack_finalize() -> AsyncMock:
     redis = AsyncMock()
     redis.xack = AsyncMock(return_value=1)
     redis.xdel = AsyncMock(return_value=1)
-
-    @asynccontextmanager
-    async def fake_pipeline(
-        *_args: object, **_kwargs: object
-    ) -> AsyncIterator[AsyncMock]:
-        pipe = AsyncMock()
-        pipe.xack = redis.xack
-        pipe.xdel = redis.xdel
-        pipe.execute = AsyncMock(return_value=[1, 1])
-        yield pipe
-
-    redis.pipeline = fake_pipeline
     return redis
 
 
@@ -58,8 +44,8 @@ class TestIsMissingStreamOrGroupError:
 
 class TestAckAndFinalizeStreamEntry:
     @pytest.mark.asyncio
-    async def test_acks_and_deletes_entry_transactionally(self) -> None:
-        redis = _make_redis_with_pipeline()
+    async def test_acks_and_deletes_entry(self) -> None:
+        redis = _make_redis_for_ack_finalize()
 
         await ack_and_finalize_stream_entry(
             redis,
@@ -74,24 +60,11 @@ class TestAckAndFinalizeStreamEntry:
         redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
 
     @pytest.mark.asyncio
-    async def test_swallows_missing_stream_error_from_transaction(self) -> None:
-        redis = _make_redis_with_pipeline()
-
-        @asynccontextmanager
-        async def failing_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xack = redis.xack
-            pipe.xdel = redis.xdel
-            pipe.execute = AsyncMock(
-                side_effect=ResponseError(
-                    "NOGROUP No such key 'stream' or consumer group"
-                )
-            )
-            yield pipe
-
-        redis.pipeline = failing_pipeline
+    async def test_swallows_missing_stream_error_from_xack(self) -> None:
+        redis = _make_redis_for_ack_finalize()
+        redis.xack = AsyncMock(
+            side_effect=ResponseError("NOGROUP No such key 'stream' or consumer group")
+        )
 
         await ack_and_finalize_stream_entry(
             redis,
@@ -101,6 +74,7 @@ class TestAckAndFinalizeStreamEntry:
         )
 
         redis.xack.assert_awaited_once()
+        redis.xdel.assert_not_awaited()
 
 
 class TestEnsureConsumerGroup:

@@ -2,8 +2,6 @@ import asyncio
 import base64
 import json
 import os
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -561,30 +559,17 @@ class TestRedisStreamConsumerGroupCreation:
 
 class TestRedisStreamConsumerAck:
     @staticmethod
-    def _mock_redis_with_ack_pipeline(
+    def _mock_redis_for_ack(
         *,
-        execute_side_effect: Exception | None = None,
+        xack_side_effect: Exception | None = None,
     ) -> AsyncMock:
         mock_redis = AsyncMock()
-        mock_redis.xack = AsyncMock(return_value=1)
+        if xack_side_effect is not None:
+            mock_redis.xack = AsyncMock(side_effect=xack_side_effect)
+        else:
+            mock_redis.xack = AsyncMock(return_value=1)
         mock_redis.xdel = AsyncMock(return_value=1)
         mock_redis.expire = AsyncMock(return_value=True)
-
-        @asynccontextmanager
-        async def fake_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xack = mock_redis.xack
-            pipe.xdel = mock_redis.xdel
-            pipe.expire = mock_redis.expire
-            if execute_side_effect is not None:
-                pipe.execute = AsyncMock(side_effect=execute_side_effect)
-            else:
-                pipe.execute = AsyncMock(return_value=[1, 1, True])
-            yield pipe
-
-        mock_redis.pipeline = fake_pipeline
         return mock_redis
 
     @pytest.mark.asyncio
@@ -596,7 +581,7 @@ class TestRedisStreamConsumerAck:
             url="redis://localhost:6379",
             stream_ttl_seconds=3600,
         )
-        mock_redis = self._mock_redis_with_ack_pipeline()
+        mock_redis = self._mock_redis_for_ack()
 
         with patch(
             "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
@@ -624,7 +609,7 @@ class TestRedisStreamConsumerAck:
             url="redis://localhost:6379",
             stream_ttl_seconds=None,
         )
-        mock_redis = self._mock_redis_with_ack_pipeline()
+        mock_redis = self._mock_redis_for_ack()
 
         with patch(
             "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
@@ -649,8 +634,8 @@ class TestRedisStreamConsumerAck:
             url="redis://localhost:6379",
             stream_ttl_seconds=3600,
         )
-        mock_redis = self._mock_redis_with_ack_pipeline(
-            execute_side_effect=ResponseError(
+        mock_redis = self._mock_redis_for_ack(
+            xack_side_effect=ResponseError(
                 "NOGROUP No such key 'stream' or consumer group"
             )
         )
@@ -783,18 +768,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
         mock_redis = AsyncMock()
         mock_redis.xadd = AsyncMock(return_value="1700000000001-0")
         mock_redis.xack = AsyncMock(return_value=1)
-
-        @asynccontextmanager
-        async def fake_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xadd = mock_redis.xadd
-            pipe.xack = mock_redis.xack
-            pipe.execute = AsyncMock(return_value=["1700000000001-0", 1])
-            yield pipe
-
-        mock_redis.pipeline = fake_pipeline
+        mock_redis.xdel = AsyncMock(return_value=1)
         mock_redis.xautoclaim = AsyncMock(
             return_value=("0-0", [(message_id, fields)], [])
         )

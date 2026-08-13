@@ -218,11 +218,9 @@ class PELRequeueWorker:
         new_fields["requeue_count"] = str(requeue_count + 1)
 
         try:
-            async with self._redis.pipeline(transaction=True) as pipe:
-                await pipe.xadd(self._stream_key, cast(Any, new_fields))
-                await pipe.xack(self._stream_key, self._consumer_group, message_id)
-                await pipe.xdel(self._stream_key, message_id)
-                await pipe.execute()
+            await self._redis.xadd(self._stream_key, cast(Any, new_fields))
+            await self._redis.xack(self._stream_key, self._consumer_group, message_id)
+            await self._redis.xdel(self._stream_key, message_id)
         except ResponseError as error:
             if is_missing_stream_or_group_error(error):
                 await self._recover_missing_stream()

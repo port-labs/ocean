@@ -67,12 +67,10 @@ async def ack_and_finalize_stream_entry(
     consumer_group: str,
     message_id: str,
 ) -> None:
-    """Ack a stream entry and delete it in one transaction."""
+    """Ack a stream entry and delete it."""
     try:
-        async with redis.pipeline(transaction=True) as pipe:
-            await pipe.xack(stream_key, consumer_group, message_id)
-            await pipe.xdel(stream_key, message_id)
-            await pipe.execute()
+        await redis.xack(stream_key, consumer_group, message_id)
+        await redis.xdel(stream_key, message_id)
     except ResponseError as error:
         if not is_missing_stream_or_group_error(error):
             raise

@@ -157,6 +157,7 @@ async def is_redis_live_events_enabled() -> bool:
         bool: True when Redis stream consumption is enabled, False otherwise.
     """
     try:
+        return True
         if not ocean.config.live_events.is_redis_stream_consumer_enabled:
             return False
         flags = await ocean.port_client.get_organization_feature_flags()

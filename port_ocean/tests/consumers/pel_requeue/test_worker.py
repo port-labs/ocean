@@ -1,8 +1,6 @@
 """Tests for PELRequeueWorker."""
 
 import asyncio
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -37,20 +35,6 @@ def _make_redis() -> AsyncMock:
     redis.xack = AsyncMock(return_value=1)
     redis.xdel = AsyncMock(return_value=1)
     redis.expire = AsyncMock(return_value=True)
-
-    @asynccontextmanager
-    async def fake_pipeline(
-        *_args: object, **_kwargs: object
-    ) -> AsyncIterator[AsyncMock]:
-        pipe = AsyncMock()
-        pipe.xadd = redis.xadd
-        pipe.xack = redis.xack
-        pipe.xdel = redis.xdel
-        pipe.expire = redis.expire
-        pipe.execute = AsyncMock(return_value=["1700000000001-0", 1, 1, True])
-        yield pipe
-
-    redis.pipeline = fake_pipeline
     return redis
 
 
@@ -100,31 +84,13 @@ class TestPELHandleStuckMessage:
         redis.xdel.assert_awaited_once_with(worker._stream_key, "1700000000000-0")
 
     @pytest.mark.asyncio
-    async def test_requeue_uses_transactional_pipeline(self) -> None:
+    async def test_requeue_calls_xadd_xack_and_xdel(self) -> None:
         redis = _make_redis()
         worker = _make_worker(redis, pel_max_requeue_count=3)
-
-        pipeline_calls: list[dict[str, Any]] = []
-
-        @asynccontextmanager
-        async def tracking_pipeline(
-            *_args: object, **kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipeline_calls.append(kwargs)
-            pipe = AsyncMock()
-            pipe.xadd = redis.xadd
-            pipe.xack = redis.xack
-            pipe.xdel = redis.xdel
-            pipe.expire = redis.expire
-            pipe.execute = AsyncMock(return_value=["1700000000001-0", 1, 1, True])
-            yield pipe
-
-        redis.pipeline = tracking_pipeline
 
         fields = {"webhookPath": "/webhook", "payload": "{}", "headers": "{}"}
         await worker._handle_stuck_message("1700000000000-0", fields)
 
-        assert pipeline_calls == [{"transaction": True}]
         redis.xadd.assert_awaited_once()
         redis.xack.assert_awaited_once()
         redis.xdel.assert_awaited_once_with(worker._stream_key, "1700000000000-0")
@@ -479,28 +445,14 @@ class TestPELRecoverMissingStream:
         redis.xadd.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_requeue_recovers_when_pipeline_raises_nogroup(self) -> None:
+    async def test_requeue_recovers_when_xadd_raises_nogroup(self) -> None:
         redis = _make_redis()
         redis.exists = AsyncMock(return_value=0)
         redis.xgroup_create = AsyncMock()
         redis.expire = AsyncMock()
-
-        @asynccontextmanager
-        async def failing_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xadd = redis.xadd
-            pipe.xack = redis.xack
-            pipe.xdel = redis.xdel
-            pipe.execute = AsyncMock(
-                side_effect=ResponseError(
-                    "NOGROUP No such key 'stream' or consumer group"
-                )
-            )
-            yield pipe
-
-        redis.pipeline = failing_pipeline
+        redis.xadd = AsyncMock(
+            side_effect=ResponseError("NOGROUP No such key 'stream' or consumer group")
+        )
 
         worker = _make_worker(redis, pel_max_requeue_count=3)
         fields = {"webhookPath": "/webhook", "payload": "{}", "headers": "{}"}
@@ -508,3 +460,5 @@ class TestPELRecoverMissingStream:
 
         redis.xgroup_create.assert_awaited_once()
         redis.xadd.assert_awaited_once()
+        redis.xack.assert_not_awaited()
+        redis.xdel.assert_not_awaited()
