@@ -11,6 +11,7 @@ features:
       - kind: claude-ai-user-activity
       - kind: claude-ai-user-usage
       - kind: claude-ai-user-cost
+      - kind: claude-ai-skill-usage
       - kind: claude-platform-usage-record
       - kind: claude-platform-cost-record
       - kind: claude-platform-code-analytics
