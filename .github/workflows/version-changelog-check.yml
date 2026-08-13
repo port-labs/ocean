@@ -37,7 +37,8 @@ jobs:
       - name: Validate changelog formatting
         run: |
           mapfile -t CHANGED < <(
-            git diff --name-only "origin/${{ steps.base-branch.outputs.base }}...HEAD" || true
+            git diff --name-only "origin/${{ steps.base-branch.outputs.base }}...HEAD" \
+              | grep -E '(^|/)CHANGELOG\.md$' || true
           )
           if [ "${#CHANGED[@]}" -eq 0 ]; then
             echo "No changelogs to validate; skipping"
