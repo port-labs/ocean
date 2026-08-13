@@ -3235,7 +3235,10 @@ class AzureDevopsClient(HTTPBaseClient):
         async def _fetch(page: dict[str, Any]) -> dict[str, Any]:
             async with semaphore:
                 full_page = await self._get_wiki_page_by_id(
-                    project_id, wiki["id"], wiki_name, page["id"],
+                    project_id,
+                    wiki["id"],
+                    wiki_name,
+                    page["id"],
                     include_content=True,
                 )
                 result = full_page if full_page else page
