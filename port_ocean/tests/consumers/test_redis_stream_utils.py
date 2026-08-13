@@ -7,6 +7,7 @@ from redis.exceptions import ResponseError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from port_ocean.consumers.redis_stream_utils import (
+    ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
     ack_and_finalize_stream_entry,
     ensure_consumer_group,
     is_missing_stream_or_group_error,
@@ -16,8 +17,7 @@ from port_ocean.consumers.redis_stream_utils import (
 
 def _make_redis_for_ack_finalize() -> AsyncMock:
     redis = AsyncMock()
-    redis.xack = AsyncMock(return_value=1)
-    redis.xdel = AsyncMock(return_value=1)
+    redis.eval = AsyncMock(return_value=1)
     return redis
 
 
@@ -54,15 +54,18 @@ class TestAckAndFinalizeStreamEntry:
             message_id="1700000000000-0",
         )
 
-        redis.xack.assert_awaited_once_with(
-            "stream", "test.integration", "1700000000000-0"
+        redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
         )
-        redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
 
     @pytest.mark.asyncio
-    async def test_swallows_missing_stream_error_from_xack(self) -> None:
+    async def test_swallows_missing_stream_error_from_eval(self) -> None:
         redis = _make_redis_for_ack_finalize()
-        redis.xack = AsyncMock(
+        redis.eval = AsyncMock(
             side_effect=ResponseError("NOGROUP No such key 'stream' or consumer group")
         )
 
@@ -73,8 +76,7 @@ class TestAckAndFinalizeStreamEntry:
             message_id="1700000000000-0",
         )
 
-        redis.xack.assert_awaited_once()
-        redis.xdel.assert_not_awaited()
+        redis.eval.assert_awaited_once()
 
 
 class TestEnsureConsumerGroup:

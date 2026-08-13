@@ -60,6 +60,12 @@ async def ensure_consumer_group(
         )
 
 
+ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT = """
+redis.call('XACK', KEYS[1], ARGV[1], ARGV[2])
+return redis.call('XDEL', KEYS[1], ARGV[2])
+"""
+
+
 async def ack_and_finalize_stream_entry(
     redis: RedisClient,
     *,
@@ -67,10 +73,15 @@ async def ack_and_finalize_stream_entry(
     consumer_group: str,
     message_id: str,
 ) -> None:
-    """Ack a stream entry and delete it."""
+    """Atomically ack a stream entry and delete it using a Lua script."""
     try:
-        await redis.xack(stream_key, consumer_group, message_id)
-        await redis.xdel(stream_key, message_id)
+        await redis.eval(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            stream_key,
+            consumer_group,
+            message_id,
+        )
     except ResponseError as error:
         if not is_missing_stream_or_group_error(error):
             raise

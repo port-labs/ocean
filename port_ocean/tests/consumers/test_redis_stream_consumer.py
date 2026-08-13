@@ -20,7 +20,10 @@ from port_ocean.exceptions.live_events import (
 )
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
-from port_ocean.consumers.redis_stream_utils import ensure_consumer_group
+from port_ocean.consumers.redis_stream_utils import (
+    ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+    ensure_consumer_group,
+)
 from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
 
 
@@ -561,14 +564,13 @@ class TestRedisStreamConsumerAck:
     @staticmethod
     def _mock_redis_for_ack(
         *,
-        xack_side_effect: Exception | None = None,
+        eval_side_effect: Exception | None = None,
     ) -> AsyncMock:
         mock_redis = AsyncMock()
-        if xack_side_effect is not None:
-            mock_redis.xack = AsyncMock(side_effect=xack_side_effect)
+        if eval_side_effect is not None:
+            mock_redis.eval = AsyncMock(side_effect=eval_side_effect)
         else:
-            mock_redis.xack = AsyncMock(return_value=1)
-        mock_redis.xdel = AsyncMock(return_value=1)
+            mock_redis.eval = AsyncMock(return_value=1)
         mock_redis.expire = AsyncMock(return_value=True)
         return mock_redis
 
@@ -594,10 +596,13 @@ class TestRedisStreamConsumerAck:
             consumer._redis = mock_redis
             await consumer._ack("1700000000000-0")
 
-        mock_redis.xack.assert_awaited_once_with(
-            "stream", "test.integration", "1700000000000-0"
+        mock_redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
         )
-        mock_redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -622,7 +627,13 @@ class TestRedisStreamConsumerAck:
             consumer._redis = mock_redis
             await consumer._ack("1700000000000-0")
 
-        mock_redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
+        mock_redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
+        )
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -635,7 +646,7 @@ class TestRedisStreamConsumerAck:
             stream_ttl_seconds=3600,
         )
         mock_redis = self._mock_redis_for_ack(
-            xack_side_effect=ResponseError(
+            eval_side_effect=ResponseError(
                 "NOGROUP No such key 'stream' or consumer group"
             )
         )

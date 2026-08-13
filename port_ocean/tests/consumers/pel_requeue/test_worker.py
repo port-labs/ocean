@@ -10,6 +10,9 @@ from redis.exceptions import ResponseError
 from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
+from port_ocean.consumers.redis_stream_utils import (
+    ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -34,6 +37,7 @@ def _make_redis() -> AsyncMock:
     redis.xadd = AsyncMock(return_value="1700000000001-0")
     redis.xack = AsyncMock(return_value=1)
     redis.xdel = AsyncMock(return_value=1)
+    redis.eval = AsyncMock(return_value=1)
     redis.expire = AsyncMock(return_value=True)
     return redis
 
@@ -121,10 +125,15 @@ class TestPELHandleStuckMessage:
         await worker._handle_stuck_message("1700000000000-0", fields)
 
         redis.xadd.assert_not_awaited()
-        redis.xack.assert_awaited_once_with(
-            worker._stream_key, worker._consumer_group, "1700000000000-0"
+        redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            worker._stream_key,
+            worker._consumer_group,
+            "1700000000000-0",
         )
-        redis.xdel.assert_awaited_once_with(worker._stream_key, "1700000000000-0")
+        redis.xack.assert_not_awaited()
+        redis.xdel.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_discards_message_above_threshold(self) -> None:
@@ -135,8 +144,9 @@ class TestPELHandleStuckMessage:
         await worker._handle_stuck_message("1700000000000-0", fields)
 
         redis.xadd.assert_not_awaited()
-        redis.xack.assert_awaited_once()
-        redis.xdel.assert_awaited_once()
+        redis.eval.assert_awaited_once()
+        redis.xack.assert_not_awaited()
+        redis.xdel.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
@@ -317,14 +327,10 @@ class TestPELScanAndRequeue:
         worker = _make_worker(redis)
         await worker._scan_and_requeue()
 
+        redis.eval.assert_awaited_once()
         redis.xadd.assert_awaited_once()
-        assert redis.xack.await_count == 2
-        assert redis.xdel.await_count == 2
-        assert (
-            worker._stream_key,
-            worker._consumer_group,
-            "1700000000999-0",
-        ) in [call.args for call in redis.xack.await_args_list]
+        redis.xack.assert_awaited_once()
+        redis.xdel.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_continues_scan_when_one_message_fails(self) -> None:
