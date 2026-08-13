@@ -340,5 +340,63 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "azureDevopsWiki",
+    "title": "Wiki Page",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string",
+          "description": "The path of the wiki page."
+        },
+        "wikiName": {
+          "title": "Wiki Name",
+          "type": "string",
+          "description": "The name of the wiki this page belongs to."
+        },
+        "wikiType": {
+          "title": "Wiki Type",
+          "type": "string",
+          "description": "Whether this is a project wiki or code wiki.",
+          "enum": ["projectWiki", "codeWiki"]
+        },
+        "order": {
+          "title": "Order",
+          "type": "number",
+          "description": "The display order of the page relative to siblings."
+        },
+        "gitItemPath": {
+          "title": "Git Item Path",
+          "type": "string",
+          "description": "Path to the markdown file in the backing git repository."
+        },
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url",
+          "description": "Web URL to view the wiki page."
+        },
+        "content": {
+          "title": "Content",
+          "type": "string",
+          "description": "Markdown content of the wiki page. Only populated when includeContent is enabled in the selector."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "target": "azureDevopsProject",
+        "title": "Project",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

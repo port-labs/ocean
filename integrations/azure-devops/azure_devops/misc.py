@@ -37,6 +37,7 @@ class Kind(StrEnum):
     ADVANCED_SECURITY_ALERT = "advanced-security-alert"
     GROUP = "group"
     GROUP_MEMBER = "group-member"
+    WIKI = "wiki"
 
 
 ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {

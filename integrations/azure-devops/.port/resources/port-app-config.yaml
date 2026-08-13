@@ -127,3 +127,23 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: wiki
+    selector:
+      query: 'true'
+      wikiType: projectWiki
+    port:
+      entity:
+        mappings:
+          identifier: .__wiki.id + "/" + (.id | tostring)
+          title: .path | split("/") | last
+          blueprint: '"azureDevopsWiki"'
+          properties:
+            path: .path
+            wikiName: .__wiki.name
+            wikiType: .__wiki.type
+            order: .order
+            gitItemPath: .gitItemPath
+            content: .content
+            url: .remoteUrl
+          relations:
+            project: .__project.id | gsub(" "; "")

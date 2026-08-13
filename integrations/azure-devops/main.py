@@ -81,6 +81,7 @@ from integration import (
     AzureDevopsRepositoryResourceConfig,
     AzureDevopsUserConfig,
     AzureDevopsAreaPathResourceConfig,
+    AzureDevopsWikiResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -486,6 +487,17 @@ async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_T
     ):
         logger.info(f"Resyncing {len(security_alerts)} security alerts")
         yield security_alerts
+
+
+@ocean.on_resync(Kind.WIKI)
+async def resync_wiki_pages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(AzureDevopsWikiResourceConfig, event.resource_config).selector
+    async for wiki_pages in resync.iter_wiki_pages(
+        wiki_type=selector.wiki_type,
+        include_content=selector.include_content,
+    ):
+        logger.info(f"Resyncing batch of {len(wiki_pages)} wiki pages")
+        yield wiki_pages
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)

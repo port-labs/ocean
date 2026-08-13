@@ -656,6 +656,32 @@ class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
     )
 
 
+class AzureDevopsWikiSelector(Selector):
+    wiki_type: Optional[Literal["projectWiki", "codeWiki"]] = Field(
+        alias="wikiType",
+        default=None,
+        title="Wiki Type",
+        description="Filter wikis by type. If not provided, both project wikis and code wikis are ingested.",
+    )
+    include_content: bool = Field(
+        alias="includeContent",
+        default=False,
+        title="Include Content",
+        description="Whether to fetch the markdown content of each wiki page. Defaults to false to reduce API calls and payload size.",
+    )
+
+
+class AzureDevopsWikiResourceConfig(ResourceConfig):
+    kind: Literal[Kind.WIKI] = Field(
+        title="Azure Devops Wiki",
+        description="Azure Devops wiki page resource kind.",
+    )
+    selector: AzureDevopsWikiSelector = Field(
+        title="Wiki selector",
+        description="Selector for the wiki resource.",
+    )
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -698,6 +724,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsAreaPathResourceConfig
         | AzureDevopsGroupResourceConfig
         | AzureDevopsGroupMemberResourceConfig
+        | AzureDevopsWikiResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
