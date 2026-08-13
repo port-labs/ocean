@@ -6,6 +6,466 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.48.7 (2026-08-13)
+
+
+### Improvements
+
+- Redis stream consumer now deletes entries after acking in a transactional pipeline (`XACK`, `XDEL`). Default stream TTL is now one month and is applied only when the consumer creates the stream via MKSTREAM.
+
+## 0.48.6 (2026-08-13)
+
+
+### Improvements
+
+- Updated the internal auth file to use Pydantic v2 for its models.
+
+## 0.48.5 (2026-08-11)
+
+
+### Improvements
+
+- Log explicit Redis connection failures at startup and retry the initial connection with exponential backoff.
+
+## 0.48.4 (2026-08-11)
+
+
+### Improvements
+
+- Treat `HTTP 408 Request Timeout` as a default retryable status code in `RetryConfig`.
+
+
+## 0.48.3 (2026-08-11)
+
+
+### Improvements
+
+- Live event timestamp logs (`Event Added To Queue`, `Event Started Processing`, etc.) now bind `trace_id` at the top level of log `extra` instead of nesting it under `extra.extra`.
+
+
+## 0.48.2 (2026-08-10)
+
+
+### Bug Fixes
+
+- Load `port_app_config` into the action-run event context (same as live events), so nested or inherited event contexts no longer raise `Port app config is not set`.
+
+
+## 0.48.1 (2026-08-10)
+
+
+### Improvements
+
+- Add Redis stream consumer logs when a message is received and before dispatch, including `redis_event_id`, `queued_at`, `trace_id`, and consume latency (`time_until_consumed_ms`). Redis stream `eventId` is used as the webhook `trace_id`.
+
+
+## 0.48.0 (2026-08-10)
+
+### Improvements
+
+- Added retry lifecycle hooks that run after retry sleep and before retry send, enabling integrations to refresh request state immediately before retrying.
+
+
+## 0.47.10 (2026-08-09)
+
+### Improvements
+
+- Support for either YAML or JSON for spec files.
+
+
+## 0.47.9 (2026-08-09)
+
+
+### Improvements
+
+- Reduce monitor log noise by downgrading response size recording logs to debug level.
+
+
+## 0.47.8 (2026-08-09)
+
+
+### Improvements
+
+- Add `AWS_V3_LIVE_EVENTS_ENABLED` integration feature flag.
+
+
+## 0.47.7 (2026-08-05)
+
+### Improvements
+
+- Default `processing_mode` to `dsp` and `lakehouse_enabled` to `true`. DSP still only activates when the required org feature flags are present; otherwise Ocean falls back to `ocean-core`.
+
+## 0.47.6 (2026-08-04)
+
+### Improvements
+
+- Reconcile `incrementalSyncEnabled` with Port during integration initialization when the configured value diverges from Port.
+- Add `incrementalSyncEnabled` support to integration create and patch API calls in `IntegrationClientMixin`.
+- Restrict `incremental_sync_interval` to allowed values of 15, 30, or 60 minutes.
+
+## 0.47.5 (2026-08-04)
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+## 0.47.4 (2026-08-03)
+
+### Bug Fixes
+
+- Do not abort DSP resyncs when Lakehouse returns `count: 0` on an idempotent raw-data write retry; abort only when Lakehouse reports an explicit `resync_stale` error (HTTP 409).
+
+## 0.47.3 (2026-08-03)
+
+### Improvements
+
+- Installed pydantic settings in order to enable progress in pydantic v2 migration.
+
+## 0.47.2 (2026-07-30)
+
+### Improvements
+
+- Upgraded `redis` to `^6.1.0` and auto-detect Redis Cluster connections for live events stream consumption.
+
+## 0.47.1 (2026-07-29)
+
+### Bug Fixes
+
+- Propagate webhook client disconnects instead of silently acknowledging events that were never queued.
+
+## 0.47.0 (2026-07-29)
+
+### Deprecations
+
+- Removed `OCEAN__PROCESS_EXECUTION_MODE` configuration. Ocean always runs in single_process mode. Setting the env var logs a warning and is ignored. Removed subprocess-based resync execution and Prometheus multiprocess metrics collection.
+
+## 0.46.6 (2026-07-29)
+
+### Bug Fixes
+
+- Moved `clear_sync_context` from `sync_raw_all` finalizer into `update_after_resync` so the runtime terminal metric is sent with the correct `eventId` before it is cleared. Previously the `eventId` was wiped before `update_after_resync` ran, causing integ-service's stale-heartbeat abort consumer to miss the terminal runtime metric and incorrectly abort completed syncs.
+
+## 0.46.5 (2026-07-28)
+
+### Bug Fixes
+
+- Call patch config rather than full patch integration route when setting up a default origin integration in order to avoid double resync.
+
+## 0.46.4 (2026-07-27)
+
+### Bug Fixes
+
+- Updated external abort handling so lifecycle/lakehouse aborts cancel only the current resync work.
+
+## 0.46.3 (2026-07-27)
+
+### Bug Fixes
+
+- Remove `HTTP 400 Bad Request` from the default retry status codes. These are rather non-transient client errors and should fail immediately. Integrations that need 400 retries can opt in via `additional_retry_status_codes` in their `RetryConfig`.
+
+## 0.46.2 (2026-07-26)
+
+### Features
+
+- Wire DSP lifecycle events and sync metrics for incremental resyncs: set the metrics event ID, emit kind-level started/finished/failed notifications, pass `sync_type` and `kind_identifiers` on resync started, and clear metrics sync context when the run completes.
+
+## 0.46.1 (2026-07-23)
+
+### Bug Fixes
+
+- Wrap `get_raw_result_on_integration_sync_resource_config` in an event context (default `RESYNC`, optional `event_type` for `INCREMENTAL_RESYNC`) so integration sync tests work after incremental sync started reading `event.event_type` in `_get_resource_raw_results`.
+
+## 0.46.0 (2026-07-23)
+
+### Features
+
+- Added incremental sync infrastructure: cursor store, server-side and client-side strategies, `on_incremental_resync` handlers, and `incremental_sync_enabled` / `incremental_sync_interval` settings so integrations can sync only changes since the last cursor.
+
+## 0.45.10 (2026-07-22)
+
+### Bug Fixes
+
+- Removed misleading `Event Added To Queue` log from the Redis stream consumer; queue latency is already reported via `time_until_consumed_ms` in the Redis stream processed log.
+
+## 0.45.9 (2026-07-22)
+
+### Features
+
+- Added `port_ocean.utils.relative_time` helpers (`days_ago`, `months_ago`, `to_rfc3339`) for integration lookback selectors.
+
+## 0.45.8 (2026-07-21)
+
+### Improvements
+
+- Pass integration-run context to action-executor rate-limit checks.
+
+## 0.45.7 (2026-07-21)
+
+### Improvements
+
+- Report integration mapping on DSP resync started lifecycle notifications so DSP can use the config Ocean loaded without fetching from port-api.
+
+## 0.45.6 (2026-07-21)
+
+### Improvements
+
+- Added `disable_ip_outbound_blocker` integration setting to disable outbound HTTP IP blocking. Defaults to false on SaaS runtimes and true on on-prem, preserving existing behavior.
+
+## 0.45.5 (2026-07-20)
+
+### Improvements
+
+- Log an error when `report_run_completed` is called with `success=False`, including the run ID for easier failure debugging.
+
+## 0.45.4 (2026-07-19)
+
+### Vulnerabilities
+
+- Fixed alot of vulnerabilities in the ocean-core dependencies.
+
+## 0.45.3 (2026-07-16)
+
+### Bug Fixes
+
+- Added in memory temporary caching for fetching blueprints. Cached blueprints are cleared when a resync is triggered/finished, and the cache has a default TTL of two minutes.
+
+## 0.45.2 (2026-07-16)
+
+### Improvements
+
+- Reduced datasource-entities reconciliation page size to 5,000 to lower per-request payload and memory usage
+
+
+## 0.45.1 (2026-07-16)
+
+### Bug Fixes
+
+- Fixed missing DSP KIND lifecycle notifications in multi-process mode by passing the parent resync id into kind subprocesses
+
+
+## 0.45.0 (2026-07-15)
+
+### Improvements
+
+- Updated entity reconciliation to use bulk delete API
+
+
+## 0.44.14 (2026-07-15)
+
+### Improvements
+
+- Added `OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED` (default `false`) as an integration-level opt-in for Redis live-events stream consumption, in addition to the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag.
+
+## 0.44.13 (2026-07-13)
+
+### Improvements
+
+- Added structured context (`status_code`, `method`, `url`, `reason`, `trace_id`) to Port API error logs to make failed requests easier to debug.
+
+## 0.44.12 (2026-07-14)
+
+### Improvements
+
+- Fail unregistered Ocean integration runs immediately by acknowledging and reporting them as failed instead of skipping them until the claim visibility timeout expires.
+
+## 0.44.11 (2026-07-13)
+
+### Bug Fixes
+
+- Fixed missing `links` field in `WorkflowNodeRun` patch on run start, so the GitHub Actions run URL now appears as a clickable link on workflow node runs in the Port UI.
+
+## 0.44.10 (2026-07-12)
+
+### Improvements
+
+- Refactored `LifecycleClient` to delegate lifecycle API POST requests to a dedicated `lifecycle_http_client` instead of inheriting HTTP transport behavior, improving separation of concerns and testability.
+
+### Bug Fixes
+
+- Fixed lifecycle HTTP client proxy resolution to return a context-bound client per access, preventing stale proxy reuse across different event loops.
+- Extended HTTP client context cleanup to include DSP lifecycle clients and aligned related tests, fixing flaky lifecycle/sync-raw test behavior.
+
+## 0.44.9 (2026-07-09)
+
+### Bug Fixes
+
+- Fixed lakehouse raw-data batch serialization when buffered items contain datetime values by applying `make_json_compatible` in `post_integration_raw_data_batch()` before HTTP JSON encoding.
+
+## 0.44.7 (2026-07-08)
+
+### Improvements
+
+- Renamed the `entityDeletionThreshold` port-app-config field title and description to "Allow entity deletion" so the Advanced Config mapping UI can present it as an on/off toggle.
+
+## 0.44.6 (2026-07-08)
+
+### Improvements
+
+- Improved action processor fairness: each claim-pending poll now considers both action runs and workflow node runs in the same cycle (instead of alternating), preventing one run type from waiting up to twice the poll interval while the other is claimed.
+- Added per-action-type buffer limits in the execution manager. When a run type fills its share of the queue, it is temporarily excluded from claim-pending so high-volume actions cannot starve other action types.
+- Added descriptions and validation bounds to `ActionsProcessorSettings` (`runs_buffer_high_watermark`, `visibility_timeout_ms`, `poll_check_interval_seconds`, `workers_count`).
+
+### Bug Fixes
+
+- Fixed `task_done() called too many times` when a worker timed out on an empty queue by only calling `commit()` after a run was successfully dequeued.
+
+
+## 0.44.5 (2026-06-30)
+
+### Improvements
+
+- Added Redis stream consumer observability: logs now include `stream_key`, `time_until_consumed_ms` (queue-to-consume latency from `queuedAt`), and `time_until_acked_ms` (queue-to-ack latency) for each message.
+
+
+## 0.44.4 (2026-06-28)
+
+### Improvements
+
+- Added a Redis PEL requeue worker (enabled by default, disable with `OCEAN__LIVE_EVENTS__REDIS__PEL_REQUEUE_WORKER_ENABLED=false`) that reclaims stuck pending stream messages and re-enqueues them for reprocessing. All pods scan concurrently, `XAUTOCLAIM` ensures only one pod claims each message.
+
+## 0.44.3 (2026-06-28)
+
+### Improvements
+
+- Added Redis stream consumption for live events when the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag is enabled. Integrations can consume webhook events directly from a Redis stream instead of the local HTTP queue.
+- Introduced `AbstractLiveEventsConsumer` and `LiveEventsConsumerType` so live-events transport backends are selected via typed configuration, following the same pattern as event listeners.
+- Added `OCEAN__LIVE_EVENTS__REDIS__*` settings for Redis connection, TLS, and stream read tuning (`block_ms`, `read_count`).
+
+## 0.44.2 (2026-06-25)
+
+### Improvements
+
+- Skip action webhook results (no mapped resource) during live-events catalog sync and lakehouse export, so integrations no longer need custom `sync_raw_results` filtering.
+- Added `ActionExecutionError` so integration executors can fail expected action runs with a clean user-facing message, logged without a stack trace.
+
+### Bug Fixes
+
+- Preserve workflow node run `output` when reporting completion or failure, so Port no longer overwrites integration-set values (e.g. `workflowRunUrl`) with `{}`.
+
+
+## 0.44.1 (2026-06-25)
+
+### Improvements
+
+- Polling event listener now triggers resyncs only on startup (when `resync_on_start` is enabled) and explicit integration resync requests, instead of on any integration document `updatedAt` change.
+
+## 0.44.0 (2026-06-25)
+
+### Bug Fixes
+
+- Update pydantic to v2
+
+
+## 0.43.19 (2026-06-22)
+
+### Bug Fixes
+
+- Fix integration test harness import integration file multiple times by caching the integration class.
+
+## 0.43.18 (2026-06-15)
+
+### Improvements
+
+- Added `selectorHash` to lakehouse raw-data metadata payloads. The value is computed from each resource selector query using trimmed-query SHA-256 (`selector.query.trim()`), and omitted when the selector query is empty.
+
+## 0.43.17 (2026-06-11)
+
+### Improvements
+
+- Allow `cache_coroutine_result` to accept additional cache only keys in order to enrich the hashed cache key without injecting extra data into the function call
+
+## 0.43.16 (2026-06-09)
+
+### Bug Fixes
+
+- Fixed action execution error logs failing to ship to Port when the execution manager passed raw `Exception` objects in log extra fields (not JSON serializable). All execution manager error handlers now use `logger.exception(..., error=str(e))` so failed run errors and tracebacks appear in the integration event log.
+
+## 0.43.15 (2026-06-03)
+
+### Bug Fixes
+
+- `LakehouseBuffer.flush()` is now best-effort in ocean-core (non-DSP) mode: transport errors such as `ConnectError` are logged as warnings and the buffer is discarded, allowing the resync to continue and entities to be upserted via the standard ocean-core path. In DSP mode (where the lake write is the only data-delivery path) flush failures remain fatal. This fixes an issue where a self-hosted integration that cannot reach the lakehouse ingest endpoint would crash its processing subprocess and leave the affected kind stuck at `syncing` indefinitely.
+- `_process_resource` now catches unexpected exceptions from `_register_in_batches` and reports the kind as `failed` via `report_kind_sync_metrics` before the subprocess exits. Previously any unhandled exception would crash the subprocess silently and leave the kind status stuck at `syncing` until the server-side stale-heartbeat timeout (~10 min).
+
+## 0.43.14 (2026-06-03)
+
+### Improvements
+
+- Added a count-based flush condition to the lakehouse buffer: the buffer now flushes automatically when the number of buffered items reaches `lakehouse_buffer_max_count` (default: 50). The threshold is configurable via the `OCEAN__LAKEHOUSE_BUFFER_MAX_COUNT` environment variable.
+
+## 0.43.13 (2026-06-03)
+
+### Improvements
+
+- Polling event listener: always poll the integration resync-request endpoint when the integration document's `updatedAt` is unchanged (removed organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED`).
+
+## 0.43.12 (2026-06-02)
+
+### Bug Fixes
+
+- Mark DSP mode active logs with `local_only` so they are not shipped to the integration event log.
+
+## 0.43.11 (2026-06-01)
+
+### Bug Fixes
+
+- Added `local_only` log routing: logs marked with `logger.bind(local_only=True)` are written to stdout only and never shipped to the integration Event log ingest.
+
+## 0.43.10 (2026-06-01)
+
+### Improvements
+
+- Skip reporting integration sync metrics to Port when DSP mode is enabled, since transform/load/reconciliation is handled externally.
+
+## 0.43.9 (2026-05-31)
+
+### Improvements
+
+- Patch processing mode integration on initialize
+
+## 0.43.8 (2026-05-31)
+
+### Improvements
+
+- Added `exportEnvVariables` to port-app-config selectors so integrations can include explicitly requested environment variable values as `environment_data` on each lakehouse bulk payload for DSP processing.
+
+## 0.43.7 (2026-05-31)
+
+### Bug Fixes
+
+- Remove ingest_url from the configuration
+
+## 0.43.6 (2026-05-31)
+
+### Bug Fixes
+
+- Fixed Port API 401 handling during resync: refresh the access token and apply it to the retried request when Port rejects an expired JWT before the local cache marks it expired.
+
+## 0.43.5 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host Port API.
+
+## 0.43.4 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host from `OCEAN__PORT__BASE_URL` (EU/US static map) at construction time. Removes the runtime Port API fetch introduced in 0.43.3 and the resulting 404 on `/v1/lifecycle` paths.
+
+## 0.43.3 (2026-05-27)
+
+### Improvements
+
+- Dynamically infer the ingest_url
+
+## 0.43.2 (2026-05-27)
+
+### Bug Fixes
+
+- Fixed resync reconciliation to fetch datasource entities before the resync start time using the datasource pagination endpoint.
+
 ## 0.43.1 (2026-05-26)
 
 ### Improvements

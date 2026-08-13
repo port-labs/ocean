@@ -30,11 +30,11 @@ class TestRetryConfig:
         assert config.retry_status_codes == frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
                 HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
             ]
         )
         assert config.retry_after_headers == ["Retry-After", "x-ratelimit-reset"]
@@ -64,11 +64,11 @@ class TestRetryConfig:
         expected_codes = frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
                 HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
                 418,
                 420,
             ]
@@ -93,11 +93,11 @@ class TestRetryConfig:
         expected_codes = frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
                 HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
                 418,
                 420,
             ]
@@ -122,11 +122,11 @@ class TestRetryConfig:
         assert config.retry_status_codes == frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
                 HTTPStatus.UNAUTHORIZED,
-                HTTPStatus.BAD_REQUEST,
             ]
         )
 
@@ -517,6 +517,80 @@ class TestRetryTransport:
         assert len(transport.sent_requests) == 2
         assert transport.sent_requests[0] is original_request
         assert transport.sent_requests[1] is refreshed_request
+
+    @pytest.mark.asyncio
+    async def test_before_retry_after_sleep_async_refreshes_request(self) -> None:
+        """before_retry_after_sleep_async can refresh a request after the retry sleep."""
+
+        class TestRetryTransport(RetryTransport):
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                super().__init__(*args, **kwargs)
+                self.events: list[str] = []
+
+            async def before_retry_async(
+                self,
+                request: httpx.Request,
+                response: httpx.Response | None,
+                sleep_time: float,
+                attempt: int,
+            ) -> httpx.Request | None:
+                self.events.append("before_retry_async")
+                return httpx.Request(
+                    request.method, request.url, headers={"X-Hook": "before-sleep"}
+                )
+
+            async def before_retry_after_sleep_async(
+                self,
+                request: httpx.Request,
+                response: httpx.Response | None,
+                sleep_time: float,
+                attempt: int,
+            ) -> httpx.Request | None:
+                self.events.append("before_retry_after_sleep_async")
+                assert request.headers["X-Hook"] == "before-sleep"
+                return httpx.Request(
+                    request.method, request.url, headers={"X-Hook": "after-sleep"}
+                )
+
+        mock_transport = Mock()
+        original_request = httpx.Request("GET", "https://example.com")
+        sent_hook_headers: list[str | None] = []
+        transport = TestRetryTransport(
+            wrapped_transport=mock_transport,
+            retry_config=RetryConfig(max_attempts=2, base_delay=0, jitter_ratio=0),
+        )
+
+        response1 = Mock()
+        response1.status_code = HTTPStatus.TOO_MANY_REQUESTS
+        response1.headers = {}
+        response1.aclose = AsyncMock()
+
+        response2 = Mock()
+        response2.status_code = HTTPStatus.OK
+        response2.headers = {}
+
+        async def send_method(req: httpx.Request) -> httpx.Response:
+            sent_hook_headers.append(req.headers.get("X-Hook"))
+            return response1 if len(sent_hook_headers) == 1 else response2
+
+        async def sleep(_: float) -> None:
+            transport.events.append("sleep")
+
+        with patch(
+            "port_ocean.helpers.retry.asyncio.sleep",
+            new=AsyncMock(side_effect=sleep),
+        ):
+            result = await transport._retry_operation_async(
+                original_request, send_method
+            )
+
+        assert result.status_code == HTTPStatus.OK
+        assert transport.events == [
+            "before_retry_async",
+            "sleep",
+            "before_retry_after_sleep_async",
+        ]
+        assert sent_hook_headers == [None, "after-sleep"]
 
     @pytest.mark.asyncio
     async def test_after_retry_called_on_response(self) -> None:

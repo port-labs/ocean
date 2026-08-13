@@ -32,7 +32,7 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
     towncrier create --content "Bumped ocean version to ${VERSION}" +random.improvement.md
 
     echo "Run towncrier build"
-    CURRENT_VERSION=$(poetry version --short)
+    CURRENT_VERSION=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
 
     echo "Current version: ${CURRENT_VERSION}, updating patch version"
     IFS='.' read -ra VERSION_COMPONENTS <<< "${CURRENT_VERSION}"
@@ -73,7 +73,8 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
     fi
 
 
-    poetry version "${NEW_VERSION}"
+    sed -i.bak "s/^version = \".*\"/version = \"${NEW_VERSION}\"/" pyproject.toml
+    rm -f pyproject.toml.bak
     echo "New version: ${NEW_VERSION}"
 
     echo "Run towncrier build to increment the patch version"

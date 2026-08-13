@@ -1,7 +1,7 @@
 """Tests for SearchQuery model and ProjectSelector.search_queries field."""
 
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from integration import SearchQuery, ProjectSelector
 

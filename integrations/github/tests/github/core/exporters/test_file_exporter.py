@@ -28,7 +28,6 @@ from typing import AsyncGenerator, List, Dict, Any
 
 from integration import GithubFilePattern, RepositoryBranchMapping
 
-
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
 
@@ -381,7 +380,7 @@ class TestRestFileExporter:
             patch.object(
                 exporter,
                 "get_tree_recursive",
-                AsyncMock(return_value=TEST_TREE_ENTRIES),
+                AsyncMock(return_value=(TEST_TREE_ENTRIES, False)),
             ),
             patch(
                 "github.core.exporters.file_exporter.core.get_repository_metadata",
@@ -447,7 +446,7 @@ class TestRestFileExporter:
             patch.object(
                 exporter,
                 "get_tree_recursive",
-                AsyncMock(return_value=tree_entries_with_sizes),
+                AsyncMock(return_value=(tree_entries_with_sizes, False)),
             ),
             patch(
                 "github.core.exporters.file_exporter.core.get_repository_metadata",
@@ -486,7 +485,7 @@ class TestRestFileExporter:
             patch.object(
                 exporter,
                 "get_tree_recursive",
-                AsyncMock(return_value=TEST_TREE_ENTRIES),
+                AsyncMock(return_value=(TEST_TREE_ENTRIES, False)),
             ),
             patch(
                 "github.core.exporters.file_exporter.core.get_repository_metadata",
@@ -577,9 +576,12 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=tree_response)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive("test-org", "repo1", "main")
+            tree, truncated = await exporter.get_tree_recursive(
+                "test-org", "repo1", "main"
+            )
 
             assert tree == TEST_TREE_ENTRIES
+            assert truncated is False
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
@@ -594,9 +596,12 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=None)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive(organization, "repo1", "main")
+            tree, truncated = await exporter.get_tree_recursive(
+                organization, "repo1", "main"
+            )
 
             assert tree == []
+            assert truncated is False
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{organization}/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
@@ -708,7 +713,7 @@ class TestRestFileExporterRepoNotFound:
             patch.object(
                 exporter,
                 "get_tree_recursive",
-                AsyncMock(return_value=TEST_TREE_ENTRIES),
+                AsyncMock(return_value=(TEST_TREE_ENTRIES, False)),
             ),
         ):
             graphql_files, rest_files = await exporter.collect_matched_files(
@@ -944,8 +949,8 @@ class TestRestFileExporterRepoNotFound:
 
         async def tree_side_effect(
             org: str, repo: str, branch: str
-        ) -> List[Dict[str, Any]]:
-            return [] if repo == "gone-repo" else live_tree
+        ) -> tuple[List[Dict[str, Any]], bool]:
+            return ([], False) if repo == "gone-repo" else (live_tree, False)
 
         # Stub the GraphQL network call only (process_files_in_batches internals)
         fake_gql_response = {
@@ -1035,7 +1040,7 @@ class TestFileExporterUtils:
         # Act
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
         async with event_context("test_event") as event:
-            # Minimal config used by OrganizationLoginAndTypeGenerator
+            # Minimal port app config for organization listing options
             event.port_app_config = MagicMock(include_authenticated_user=False)
             result = await builder.build(files)
 

@@ -13,7 +13,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-
 ZERO_OBJECT_ID = "0000000000000000000000000000000000000000"
 
 

@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 from dataclasses import dataclass
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 @dataclass

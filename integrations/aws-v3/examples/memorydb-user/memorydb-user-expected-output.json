@@ -1,0 +1,21 @@
+{
+  "identifier": "arn:aws:memorydb:eu-west-1:123456789012:user/default",
+  "title": "default",
+  "blueprint": "memoryDbUser",
+  "properties": {
+    "arn": "arn:aws:memorydb:eu-west-1:123456789012:user/default",
+    "status": "active",
+    "accessString": "on ~* &* +@all",
+    "aclNames": [
+      "open-access"
+    ],
+    "minimumEngineVersion": "6.0",
+    "authentication": {
+      "Type": "no-password"
+    },
+    "tags": []
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

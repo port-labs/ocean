@@ -479,6 +479,38 @@ async def test_get_single_project_is_called_with_correct_params(
     mock_get_branches.assert_any_call(PURE_PROJECTS[0]["key"])
 
 
+async def test_get_single_project_handles_ignored_errors_return_no_branches(
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+        metrics=["coverage", "bugs"],
+    )
+    sonarqube_client.http_client = MockHttpxClient(
+        [
+            {
+                "status_code": 403,
+                "json": {"errors": [{"msg": "Insufficient privileges"}]},
+            },
+            {
+                "status_code": 403,
+                "json": {"errors": [{"msg": "Insufficient privileges"}]},
+            },
+        ]
+    )  # type: ignore
+
+    result = await sonarqube_client.get_single_project({"key": "GWAM_gwamda-Honeywell"})
+
+    assert result["key"] == "GWAM_gwamda-Honeywell"
+    assert result["__measures"] == []
+    assert result["__branches"] == []
+    assert result["__branch"] == {}
+
+
 async def test_projects_will_return_correct_data(
     mock_event_context: Any, mock_ocean_context: Any, monkeypatch: Any
 ) -> None:

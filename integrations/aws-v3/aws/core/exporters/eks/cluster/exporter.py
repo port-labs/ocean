@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EksClusterExporter(IResourceExporter):
+class EksClusterExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "eks"
     _model_cls: Type[EksCluster] = EksCluster
     _actions_map: Type[EksClusterActionsMap] = EksClusterActionsMap

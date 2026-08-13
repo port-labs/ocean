@@ -59,7 +59,9 @@ class TestS3BucketExporter:
                 Tags=[{"Key": "Environment", "Value": "test"}],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_bucket.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_bucket.model_dump(exclude_none=True)
+        ]
 
         # Create options
         options = SingleBucketRequest(
@@ -73,12 +75,15 @@ class TestS3BucketExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_bucket.dict(exclude_none=True)
+        assert result == expected_bucket.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")
+        mock_client.head_bucket.assert_awaited_once_with(Bucket="test-bucket")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"Name": "test-bucket"}], ["GetBucketTaggingAction"]
+            [{"Name": "test-bucket"}],
+            ["GetBucketTaggingAction"],
+            extra_context={"AccountId": "123456789012"},
         )
 
     @pytest.mark.asyncio
@@ -107,7 +112,9 @@ class TestS3BucketExporter:
                 PublicAccessBlockConfiguration={"BlockPublicAcls": True},
             ),
         )
-        mock_inspector.inspect.return_value = [expected_bucket.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_bucket.model_dump(exclude_none=True)
+        ]
 
         # Create options with multiple includes
         options = SingleBucketRequest(
@@ -121,13 +128,14 @@ class TestS3BucketExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_bucket.dict(exclude_none=True)
+        assert result == expected_bucket.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "eu-west-1", "s3")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
             [{"Name": "prod-bucket"}],
             ["GetBucketEncryptionAction", "GetBucketPublicAccessBlockAction"],
+            extra_context={"AccountId": "123456789012"},
         )
 
     @pytest.mark.asyncio
@@ -171,8 +179,11 @@ class TestS3BucketExporter:
 
         # Set up side effects for inspector.inspect calls per page
         mock_inspector.inspect.side_effect = [
-            [bucket1.dict(exclude_none=True), bucket2.dict(exclude_none=True)],
-            [bucket3.dict(exclude_none=True)],
+            [
+                bucket1.model_dump(exclude_none=True),
+                bucket2.model_dump(exclude_none=True),
+            ],
+            [bucket3.model_dump(exclude_none=True)],
         ]
 
         # Create options
@@ -189,9 +200,9 @@ class TestS3BucketExporter:
 
         # Verify
         assert len(results) == 3
-        assert results[0] == bucket1.dict(exclude_none=True)
-        assert results[1] == bucket2.dict(exclude_none=True)
-        assert results[2] == bucket3.dict(exclude_none=True)
+        assert results[0] == bucket1.model_dump(exclude_none=True)
+        assert results[1] == bucket2.model_dump(exclude_none=True)
+        assert results[2] == bucket3.model_dump(exclude_none=True)
 
         # Verify mock calls
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "s3")
@@ -269,6 +280,40 @@ class TestS3BucketExporter:
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
+    async def test_get_resource_head_bucket_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: S3BucketExporter,
+    ) -> None:
+        """Missing buckets must raise from head_bucket before stub resources are built."""
+        from botocore.exceptions import ClientError
+
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.head_bucket.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchBucket", "Message": "gone"}},
+            "HeadBucket",
+        )
+
+        options = SingleBucketRequest(
+            region="us-west-2",
+            account_id="123456789012",
+            bucket_name="nonexistent-bucket",
+            include=["GetBucketTaggingAction"],
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
+
+        assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
+        mock_inspector_class.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -318,7 +363,9 @@ class TestS3BucketExporter:
         mock_bucket = Bucket(
             Properties=BucketProperties(BucketName="test-bucket"),
         )
-        mock_inspector.inspect.return_value = [mock_bucket.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            mock_bucket.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleBucketRequest(
@@ -337,7 +384,11 @@ class TestS3BucketExporter:
         assert result["Properties"]["BucketName"] == "test-bucket"
 
         # Verify the inspector was called correctly
-        mock_inspector.inspect.assert_called_once_with([{"Name": "test-bucket"}], [])
+        mock_inspector.inspect.assert_called_once_with(
+            [{"Name": "test-bucket"}],
+            [],
+            extra_context={"AccountId": "123456789012"},
+        )
 
         # Verify the context manager was used correctly (__aenter__ and __aexit__ were called)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")

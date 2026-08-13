@@ -4,7 +4,8 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic.alias_generators import to_camel
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import handle_port_status_code
@@ -12,9 +13,11 @@ from port_ocean.utils.misc import get_time
 
 
 class TokenResponse(BaseModel):
-    access_token: str = Field(alias="accessToken")
-    expires_in: int = Field(alias="expiresIn")
-    token_type: str = Field(alias="tokenType")
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    access_token: str
+    expires_in: int
+    token_type: str
     _retrieved_time: int = PrivateAttr(default_factory=lambda: int(get_time()))
 
     @property
@@ -36,7 +39,6 @@ class PortAuthentication:
         integration_identifier: str,
         integration_type: str,
         integration_version: str,
-        ingest_url: str,
     ):
         self.client = client
         self.api_url = api_url
@@ -45,7 +47,6 @@ class PortAuthentication:
         self.integration_identifier = integration_identifier
         self.integration_type = integration_type
         self.integration_version = integration_version
-        self.ingest_url = ingest_url
         self.last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
@@ -63,7 +64,7 @@ class PortAuthentication:
             extensions={"retryable": True},
         )
         handle_port_status_code(response)
-        return TokenResponse(**response.json())
+        return TokenResponse.model_validate(response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
         user_agent = f"port-ocean/{self.integration_type}/{self.integration_version}/{self.integration_identifier}"
@@ -91,6 +92,11 @@ class PortAuthentication:
                 self.client_id, self.client_secret
             )
         return self.last_token_object.full_token
+
+    async def refresh_token(self) -> str:
+        """Fetch a new access token, even if the cached token is not yet expired locally."""
+        self.last_token_object = None
+        return await self.token
 
     async def is_machine_user(self) -> bool:
         # Ensure self.last_token_object is populated

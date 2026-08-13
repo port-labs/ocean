@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 from webhook_processors.webhook_client import SentryWebhookClient
 
-
 pytestmark = pytest.mark.asyncio
 
 

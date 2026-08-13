@@ -9,17 +9,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.8.3
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
 
       - name: Upgrade integrations
         run: |
@@ -30,7 +28,7 @@ jobs:
 
 
       - name: Open pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           title: ${{ steps.version.outputs.pr_name }}

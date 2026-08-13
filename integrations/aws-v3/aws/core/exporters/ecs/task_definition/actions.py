@@ -4,12 +4,12 @@ from aws.core.interfaces.action import Action, ActionMap
 from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
-class ListTaskDefinitionsAction(Action):
+class ListTaskDefinitionsAction(Action[list[str]]):
     async def _execute(self, task_definition_arns: List[str]) -> List[Dict[str, Any]]:
         return [{"TaskDefinitionArn": arn} for arn in task_definition_arns]
 
 
-class DescribeTaskDefinitionsAction(Action):
+class DescribeTaskDefinitionsAction(Action[list[str]]):
     """Describes task definitions concurrently (API accepts one ARN per call)."""
 
     async def _execute(self, task_definition_arns: List[str]) -> List[Dict[str, Any]]:
@@ -29,9 +29,9 @@ class DescribeTaskDefinitionsAction(Action):
         return task_definition
 
 
-class EcsTaskDefinitionActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class EcsTaskDefinitionActionsMap(ActionMap[list[str]]):
+    defaults: List[Type[Action[list[str]]]] = [
         ListTaskDefinitionsAction,
         DescribeTaskDefinitionsAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[list[str]]]] = []

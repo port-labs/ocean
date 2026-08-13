@@ -114,7 +114,7 @@ OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=100
 OCEAN__INTEGRATION__CONFIG__OFFSET_PARAM=offset    # Default: "offset"
 OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
 
-# Optional: Custom parameter names for page pagination  
+# Optional: Custom parameter names for page pagination
 OCEAN__INTEGRATION__CONFIG__PAGE_PARAM=page        # Default: "page"
 OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=size        # Default: "size"
 OCEAN__INTEGRATION__CONFIG__START_PAGE=1           # Default: 1
@@ -122,6 +122,24 @@ OCEAN__INTEGRATION__CONFIG__START_PAGE=1           # Default: 1
 # Optional: Custom parameter names for cursor pagination
 OCEAN__INTEGRATION__CONFIG__CURSOR_PARAM=cursor    # Default: "cursor"
 OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
+
+# Optional: Pagination stop signals
+OCEAN__INTEGRATION__CONFIG__HAS_MORE_PATH=meta.has_more    # Truthy = more pages (default semantics)
+OCEAN__INTEGRATION__CONFIG__LAST_PAGE_PATH=data.last       # Truthy = STOP (inverted, for Spring/Harness APIs)
+```
+
+#### Spring Data REST / Harness example
+
+For APIs returning `{ "data": { "content": [...], "last": false, "number": 0 } }`:
+
+```bash
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=page
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PARAM=page
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=size
+OCEAN__INTEGRATION__CONFIG__START_PAGE=0          # Spring is 0-based
+OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=10
+OCEAN__INTEGRATION__CONFIG__LAST_PAGE_PATH=data.last
+# In port-app-config per resource: data_path: .data.content
 ```
 
 ### Optional Configuration
@@ -302,7 +320,7 @@ GET /api/v1/users?offset=50&limit=50
 # ... continues until no more data
 ```
 
-### Page/Size Pagination  
+### Page/Size Pagination
 ```yaml
 # Integration config:
 OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=page
@@ -311,7 +329,7 @@ OCEAN__INTEGRATION__CONFIG__START_PAGE=1
 
 # Requests made:
 GET /api/v1/users?page=1&size=25
-GET /api/v1/users?page=2&size=25  
+GET /api/v1/users?page=2&size=25
 # ... continues until no more data
 ```
 
@@ -455,7 +473,7 @@ resources:
 
 ### Custom Project Management Tool
 ```yaml
-# Integration config  
+# Integration config
 OCEAN__INTEGRATION__CONFIG__BASE_URL=https://projects.internal.com
 OCEAN__INTEGRATION__CONFIG__AUTH_TYPE=api_key
 OCEAN__INTEGRATION__CONFIG__API_KEY=proj-key-456
@@ -490,7 +508,7 @@ OCEAN__INTEGRATION__CONFIG__USERNAME=api_user
 OCEAN__INTEGRATION__CONFIG__PASSWORD=api_pass
 OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=none
 
-# Resource mapping  
+# Resource mapping
 resources:
   - kind: api_resource
     selector:
@@ -558,7 +576,7 @@ poetry run python debug.py
 ### Adding New Features
 The integration follows standard Ocean patterns:
 - Authentication logic in `http_server/client.py`
-- Configuration models in `integration.py` 
+- Configuration models in `integration.py`
 - Resync handlers in `main.py`
 - Client factory in `initialize_client.py`
 
@@ -603,12 +621,6 @@ This will show:
 
 For issues or questions:
 1. Check the [Ocean Integration Documentation](https://ocean.getport.io/)
-2. Review API logs for detailed error information  
+2. Review API logs for detailed error information
 3. Test endpoints manually to verify API behavior
 4. Contact Port support with integration logs
-
-
-
-
-
-

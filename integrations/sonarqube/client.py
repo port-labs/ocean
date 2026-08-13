@@ -306,7 +306,11 @@ class SonarQubeClient:
         branches = await self.get_branches(project_key)
         project["__branches"] = branches
         main_branch = [branch for branch in branches if branch.get("isMain")]
-        project["__branch"] = main_branch[0]
+        if not main_branch:
+            logger.warning(
+                f"No main branch data was returned from SonarQube for project {project_key}"
+            )
+        project["__branch"] = main_branch[0] if main_branch else {}
 
         if self.is_onpremise:
             project["__link"] = f"{self.base_url}/dashboard?id={project_key}"

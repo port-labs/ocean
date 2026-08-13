@@ -1,0 +1,32 @@
+{
+  "identifier": "arn:aws:kafka:us-east-1:123456789012:cluster/my-serverless-cluster/abcd1234-ab12-cd34-ef56-abcdef012345-1",
+  "title": "my-serverless-cluster",
+  "blueprint": "mskServerlessCluster",
+  "properties": {
+    "arn": "arn:aws:kafka:us-east-1:123456789012:cluster/my-serverless-cluster/abcd1234-ab12-cd34-ef56-abcdef012345-1",
+    "clusterName": "my-serverless-cluster",
+    "state": "ACTIVE",
+    "creationTime": "2024-03-15T10:30:00+00:00",
+    "currentVersion": "K3AEGXETSR30VB",
+    "vpcConfigs": [
+      {
+        "subnetIds": ["subnet-0a1b2c3d4e5f67890", "subnet-0f9e8d7c6b5a43210"],
+        "securityGroupIds": ["sg-0123456789abcdef0"]
+      }
+    ],
+    "clientAuthentication": {
+      "sasl": {
+        "iam": {
+          "enabled": true
+        }
+      }
+    },
+    "tags": {
+      "Environment": "production",
+      "Team": "platform"
+    }
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

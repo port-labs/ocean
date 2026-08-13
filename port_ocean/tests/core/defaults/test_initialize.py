@@ -16,6 +16,8 @@ from port_ocean.core.models import (
     Blueprint,
     CreatePortResourcesOrigin,
     IntegrationFeatureFlag,
+    ProcessingMode,
+    Runtime,
 )
 from port_ocean.ocean import Ocean
 
@@ -76,6 +78,8 @@ def mock_integration_config() -> IntegrationConfiguration:
     config.event_listener.get_changelog_destination_details = MagicMock(return_value={})
     config.actions_processor = MagicMock()
     config.actions_processor.enabled = False
+    config.integration.incremental_sync_enabled = False
+    config.processing_mode = ProcessingMode.ocean_core
     return config
 
 
@@ -209,6 +213,7 @@ async def test_port_origin_setup(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {"config": {"resources": []}}
@@ -235,6 +240,7 @@ async def test_none_origin_with_provision_enabled(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {"config": {"resources": []}}
@@ -415,7 +421,9 @@ async def test_empty_setup_integration_exists(
         "version": "1.0.0",
         "portCreateResourcesOrigin": CreatePortResourcesOrigin.Empty.value,
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
         "changelogDestination": {},
+        "processingMode": ProcessingMode.ocean_core,
     }
 
     await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
@@ -437,6 +445,7 @@ async def test_default_setup_integration_not_exists(
         CreatePortResourcesOrigin.Default
     )
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
     mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
     # First call returns empty (integration doesn't exist), subsequent calls return created integration
@@ -533,6 +542,7 @@ async def test_default_setup_integration_exists(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
 
     # Mock get_blueprint to always raise exception (blueprints don't exist)
@@ -612,6 +622,7 @@ async def test_port_setup_integration_exists_config_falsy(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {
@@ -642,6 +653,7 @@ async def test_port_setup_integration_exists_config_not_empty(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     # Poll should return immediately when config is not empty
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
@@ -705,6 +717,7 @@ async def test_none_origin_provision_enabled_integration_exists(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {
@@ -729,6 +742,7 @@ async def test_none_origin_provision_disabled_integration_not_exists(
     """Test None origin with provision disabled when integration doesn't exist - should use Ocean and create it."""
     mock_integration_config.create_port_resources_origin = None
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
 
     # Mock provision disabled
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
@@ -835,6 +849,7 @@ async def test_none_origin_provision_disabled_integration_exists(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
 
     # Mock get_blueprint to always raise exception (blueprints don't exist)
@@ -863,3 +878,36 @@ async def test_none_origin_provision_disabled_integration_exists(
     mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
     mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
     mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_not_called()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_verify_patches_incremental_sync_enabled_when_diverged(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Empty
+    )
+    mock_integration_config.integration.incremental_sync_enabled = True
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {"resources": []},
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "portCreateResourcesOrigin": CreatePortResourcesOrigin.Empty.value,
+        "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
+        "changelogDestination": {},
+        "processingMode": ProcessingMode.ocean_core,
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    verify_calls = [
+        call
+        for call in mock_port_client.patch_integration.call_args_list  # type: ignore[attr-defined]
+        if call.kwargs.get("incremental_sync_enabled") is not None
+    ]
+    assert len(verify_calls) == 1
+    assert verify_calls[0].kwargs["incremental_sync_enabled"] is True

@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Any
 
 from loguru import logger
 
@@ -9,6 +8,7 @@ from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
+    INCREMENTAL_EVENT_LISTENER,
 )
 
 
@@ -28,11 +28,16 @@ class EventsMixin:
             "resync": defaultdict(list),
             "resync_start": [],
             "resync_complete": [],
+            "incremental": defaultdict(list),
         }
 
     @property
     def available_resync_kinds(self) -> list[str]:
         return list(self.event_strategy["resync"].keys())
+
+    @property
+    def available_incremental_kinds(self) -> list[str]:
+        return list(self.event_strategy["incremental"].keys())
 
     def on_start(self, function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
         """Register a function as a listener for the "start" event."""
@@ -68,4 +73,18 @@ class EventsMixin:
         if function is not None:
             logger.debug(f"Registering {function} as a resync_complete event listener")
             self.event_strategy["resync_complete"].append(function)
+        return function
+
+    def on_incremental_resync(
+        self, function: INCREMENTAL_EVENT_LISTENER | None, kind: str | None = None
+    ) -> INCREMENTAL_EVENT_LISTENER | None:
+        """Register a function as a listener for incremental resync events.
+
+        The registered function receives the resource kind and may retrieve
+        the cursor timestamp from ``active_incremental_cursor()`` (see
+        ``port_ocean.core.incremental.cursor_context``).
+        """
+        if function is not None:
+            logger.info(f"Registering incremental resync listener for kind {kind}")
+            self.event_strategy["incremental"][kind].append(function)
         return function

@@ -35,6 +35,6 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
         updated_project = await sonar_client.get_single_project(project)
 
         return WebhookEventRawResults(
-            updated_raw_results=[updated_project],
+            updated_raw_results=[updated_project] if updated_project else [],
             deleted_raw_results=[],
         )

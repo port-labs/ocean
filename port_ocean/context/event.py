@@ -3,35 +3,35 @@ import traceback
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import (
-    AsyncIterator,
-    Literal,
-    Any,
     TYPE_CHECKING,
-    Optional,
-    Callable,
+    Any,
+    AsyncIterator,
     Awaitable,
+    Callable,
+    Literal,
+    Optional,
     Union,
 )
 from uuid import uuid4
 
 from loguru import logger
-from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
-from werkzeug.local import LocalStack, LocalProxy
+from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.context.resource import resource
+from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from port_ocean.exceptions.api import EmptyPortAppConfigError
-from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
 from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
 )
+from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
 from port_ocean.utils.misc import get_time
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
-        ResourceConfig,
         PortAppConfig,
+        ResourceConfig,
     )
 
 TriggerType = Literal["manual", "machine", "request"]
@@ -42,6 +42,8 @@ class EventType:
     START = "start"
     RESYNC = "resync"
     HTTP_REQUEST = "http_request"
+    ACTION_RUN = "action_run"
+    INCREMENTAL_RESYNC = "incremental_resync"
 
 
 @dataclass
@@ -50,6 +52,7 @@ class EventContext:
     trigger_type: TriggerType = "machine"
     attributes: dict[str, Any] = field(default_factory=dict)
     _aborted: bool = False
+    _external_abort: bool = False
     _port_app_config: Optional["PortAppConfig"] = None
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
@@ -61,7 +64,7 @@ class EventContext:
     def on_abort(self, func: AbortCallbackFunction) -> None:
         self._on_abort_callbacks.append(func)
 
-    def abort(self) -> None:
+    def abort(self, external_abort: bool = False) -> None:
         for func in self._on_abort_callbacks:
             try:
                 if asyncio.iscoroutinefunction(func):
@@ -73,10 +76,15 @@ class EventContext:
                     f"Failed to call one of the abort callbacks {ex}", exc_info=True
                 )
         self._aborted = True
+        self._external_abort = external_abort
 
     @property
     def aborted(self) -> bool:
         return self._aborted
+
+    @property
+    def external_abort(self) -> bool:
+        return self._external_abort
 
     @property
     def resource_config(self) -> Optional["ResourceConfig"]:

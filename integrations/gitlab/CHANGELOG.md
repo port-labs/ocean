@@ -7,6 +7,558 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.316-post1 (2026-08-13)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+0.2.315-post1 (2026-08-13)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+0.2.314-post1 (2026-08-13)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+0.2.313-post1 (2026-08-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+0.2.312-post1 (2026-08-11)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+0.2.311-post1 (2026-08-10)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+0.2.310-post1 (2026-08-10)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+0.2.309-post1 (2026-08-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+0.2.308-post1 (2026-08-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+0.2.307-post1 (2026-08-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+0.2.306-post1 (2026-08-05)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+0.2.305-post1 (2026-08-04)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+0.2.304-post1 (2026-08-04)
+==========================
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+0.2.303-post1 (2026-08-03)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+0.2.302-post1 (2026-08-03)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+0.2.301-post1 (2026-07-30)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+0.2.300-post1 (2026-07-29)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+0.2.299-post1 (2026-07-29)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+0.2.298-post1 (2026-07-29)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+0.2.297-post1 (2026-07-28)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+0.2.296-post1 (2026-07-27)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+0.2.295-post1 (2026-07-27)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+0.2.294-post1 (2026-07-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+0.2.293-post1 (2026-07-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+0.2.292-post1 (2026-07-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+0.2.291-post1 (2026-07-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+0.2.290-post1 (2026-07-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+0.2.289-post1 (2026-07-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+0.2.288-post1 (2026-07-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+0.2.287-post1 (2026-07-20)
+==========================
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+0.2.286-post1 (2026-07-20)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+0.2.285-post1 (2026-07-19)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+0.2.284-post1 (2026-07-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+0.2.283-post1 (2026-07-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+0.2.282-post1 (2026-07-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+0.2.281-post1 (2026-07-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+0.2.280-post1 (2026-07-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+0.2.279-post1 (2026-07-14)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+0.2.278-post1 (2026-07-14)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+0.2.277-post1 (2026-07-13)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+0.2.276-post1 (2026-07-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+0.2.275-post1 (2026-07-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+0.2.274-post1 (2026-07-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+0.2.273-post1 (2026-07-08)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+0.2.272-post1 (2026-07-08)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+0.2.271-post1 (2026-07-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+0.2.270-post1 (2026-06-30)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+0.2.269-post1 (2026-06-28)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+0.2.268-post1 (2026-06-28)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+0.2.267-post1 (2026-06-25)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+0.2.266-post1 (2026-06-25)
+==========================
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+0.2.265-post1 (2026-06-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+0.2.264-post1 (2026-06-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+0.2.263-post1 (2026-06-11)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+0.2.262-post1 (2026-06-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+0.2.261-post1 (2026-06-07)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+0.2.260-post1 (2026-06-03)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+0.2.259-post1 (2026-06-03)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+0.2.258-post1 (2026-06-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+0.2.257-post1 (2026-06-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+0.2.256-post1 (2026-06-01)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+0.2.255-post1 (2026-05-31)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+0.2.254-post1 (2026-05-31)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+0.2.253-post1 (2026-05-31)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+0.2.252-post1 (2026-05-31)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+0.2.251-post1 (2026-05-29)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+0.2.250-post1 (2026-05-28)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+0.2.249-post1 (2026-05-28)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+0.2.248-post1 (2026-05-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
 0.2.247-post1 (2026-05-25)
 ==========================
 

@@ -1,0 +1,10 @@
+resources:
+  - kind: AWS::Account::Info
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsAccount"'

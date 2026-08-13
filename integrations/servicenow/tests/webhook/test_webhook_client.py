@@ -109,7 +109,7 @@ class TestServicenowWebhookClient:
         """Test successful webhook creation for valid tables."""
         with patch(
             "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_if_not_exists",
-            AsyncMock(return_value=True),
+            AsyncMock(return_value="parent_sys_id"),
         ):
             with patch(
                 "webhook.webhook_client.ServicenowWebhookClient._create_business_rule_if_not_exists",
@@ -128,14 +128,14 @@ class TestServicenowWebhookClient:
         """Test that unknown tables are skipped."""
         with patch(
             "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_if_not_exists",
-            AsyncMock(return_value=True),
+            AsyncMock(return_value="parent_sys_id"),
         ):
             with patch(
                 "webhook.webhook_client.ServicenowWebhookClient._create_business_rule_if_not_exists",
                 AsyncMock(),
             ) as mock_create_rule:
                 await webhook_client.create_webhook(
-                    "https://example.com", ["incident", "unknown_table"]
+                    "https://example.com", ["incident", "cmdb_ci_server"]
                 )
 
                 assert mock_create_rule.call_count == 1
@@ -147,7 +147,7 @@ class TestServicenowWebhookClient:
         """Test handling when REST message creation fails."""
         with patch(
             "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_if_not_exists",
-            AsyncMock(return_value=False),
+            AsyncMock(return_value=None),
         ):
             with patch(
                 "webhook.webhook_client.ServicenowWebhookClient._create_business_rule_if_not_exists",
@@ -281,20 +281,23 @@ class TestOutboundMessage:
     async def test_create_rest_message_if_not_exists_existing(
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
-        """Test using an existing REST message."""
+        """Test using an existing REST message with verified function."""
         mock_request = AsyncMock(
-            return_value=httpx.Response(
-                status_code=200, json={"result": [{"sys_id": "existing_id"}]}
-            )
+            side_effect=[
+                httpx.Response(
+                    status_code=200, json={"result": [{"sys_id": "existing_id"}]}
+                ),
+                httpx.Response(status_code=200, json={"result": [{"sys_id": "fn_id"}]}),
+            ]
         )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_if_not_exists(
-                f"https://example.com/integration/{WEBHOOK_ENDPOINT}",
+                f"https://example.com/integration{WEBHOOK_ENDPOINT}",
             )
 
-            assert mock_request.call_count == 1
-            assert result
+            assert result == "existing_id"
+            assert mock_request.call_count == 2
 
     @pytest.mark.asyncio
     async def test_create_rest_message_if_not_exists_create_new(
@@ -315,10 +318,10 @@ class TestOutboundMessage:
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_if_not_exists(
-                f"https://example.com/integration/{WEBHOOK_ENDPOINT}",
+                f"https://example.com/integration{WEBHOOK_ENDPOINT}",
             )
 
-            assert result
+            assert result == "new_parent_id"
             assert mock_request.call_count == 3
 
     @pytest.mark.asyncio
@@ -335,10 +338,125 @@ class TestOutboundMessage:
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_if_not_exists(
-                f"https://example.com/integration/{WEBHOOK_ENDPOINT}",
+                f"https://example.com/integration{WEBHOOK_ENDPOINT}",
             )
 
-            assert not result
+            assert result is None
+
+
+class TestWebhookAuthHeader:
+    """Test suite for webhook auth header provisioning."""
+
+    @pytest.mark.asyncio
+    async def test_find_rest_message_function_found(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": [{"sys_id": "fn_123"}]}
+            )
+        )
+        with patch.object(webhook_client, "make_request", mock_request):
+            result = await webhook_client._find_rest_message_function("parent_123")
+            assert result == "fn_123"
+
+    @pytest.mark.asyncio
+    async def test_find_rest_message_function_not_found(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        mock_request = AsyncMock(
+            return_value=httpx.Response(status_code=200, json={"result": []})
+        )
+        with patch.object(webhook_client, "make_request", mock_request):
+            result = await webhook_client._find_rest_message_function("parent_123")
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_existing_auth_header_found(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": [{"sys_id": "header_123"}]}
+            )
+        )
+        with patch.object(webhook_client, "make_request", mock_request):
+            result = await webhook_client._get_existing_auth_header("fn_123")
+            assert result == "header_123"
+
+    @pytest.mark.asyncio
+    async def test_get_existing_auth_header_not_found(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        mock_request = AsyncMock(
+            return_value=httpx.Response(status_code=200, json={"result": []})
+        )
+        with patch.object(webhook_client, "make_request", mock_request):
+            result = await webhook_client._get_existing_auth_header("fn_123")
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_upsert_auth_header_creates_when_no_existing(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        mock_request = AsyncMock(
+            side_effect=[
+                httpx.Response(
+                    status_code=200, json={"result": [{"sys_id": "fn_123"}]}
+                ),
+                httpx.Response(status_code=200, json={"result": []}),
+                httpx.Response(
+                    status_code=200, json={"result": {"sys_id": "new_header"}}
+                ),
+            ]
+        )
+        with patch.object(webhook_client, "make_request", mock_request):
+            result = await webhook_client._upsert_webhook_auth_header(
+                "parent_123", "my-secret"
+            )
+            assert result is True
+            assert mock_request.call_count == 3
+            create_call = mock_request.call_args_list[2]
+            assert create_call.kwargs["method"] == "POST"
+
+    @pytest.mark.asyncio
+    async def test_upsert_auth_header_updates_when_existing(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        mock_request = AsyncMock(
+            side_effect=[
+                httpx.Response(
+                    status_code=200, json={"result": [{"sys_id": "fn_123"}]}
+                ),
+                httpx.Response(
+                    status_code=200, json={"result": [{"sys_id": "header_123"}]}
+                ),
+                httpx.Response(
+                    status_code=200, json={"result": {"sys_id": "header_123"}}
+                ),
+            ]
+        )
+        with patch.object(webhook_client, "make_request", mock_request):
+            result = await webhook_client._upsert_webhook_auth_header(
+                "parent_123", "my-secret"
+            )
+            assert result is True
+            assert mock_request.call_count == 3
+            update_call = mock_request.call_args_list[2]
+            assert update_call.kwargs["method"] == "PATCH"
+
+    @pytest.mark.asyncio
+    async def test_upsert_auth_header_fails_when_function_not_found(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        mock_request = AsyncMock(
+            return_value=httpx.Response(status_code=200, json={"result": []})
+        )
+        with patch.object(webhook_client, "make_request", mock_request):
+            result = await webhook_client._upsert_webhook_auth_header(
+                "parent_123", "my-secret"
+            )
+            assert result is False
 
 
 class TestBusinessRule:
@@ -349,10 +467,11 @@ class TestBusinessRule:
     ) -> None:
         """Test generating a business rule script with basic fields."""
         fields = ["sys_id", "number", "state"]
-        script = webhook_client._generate_business_rule_script(fields)
+        script = webhook_client._generate_business_rule_script("incident", fields)
 
         assert "RESTMessageV2" in script
         assert REST_MESSAGE_NAME in script
+        assert '"__table_name": "incident",' in script
         assert '"sys_id": current.sys_id + "",' in script
         assert '"number": current.number + "",' in script
         assert '"state": current.state + ""' in script
@@ -362,8 +481,9 @@ class TestBusinessRule:
     ) -> None:
         """Test generating a business rule script with fields containing dots."""
         fields = ["caller_id.name", "assignment_group.name"]
-        script = webhook_client._generate_business_rule_script(fields)
+        script = webhook_client._generate_business_rule_script("incident", fields)
 
+        assert '"__table_name": "incident",' in script
         assert '"caller_id_name": current.caller_id.name + "",' in script
         assert '"assignment_group_name": current.assignment_group.name + ""' in script
 
@@ -373,9 +493,10 @@ class TestBusinessRule:
         """Test generating a business rule script for delete events."""
         fields = ["sys_id", "number"]
         script = webhook_client._generate_business_rule_script(
-            fields, delete_event=True
+            "incident", fields, delete_event=True
         )
 
+        assert '"__table_name": "incident",' in script
         assert "previous.sys_id" in script
         assert "previous.number" in script
         assert "current." not in script

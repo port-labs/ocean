@@ -6,11 +6,11 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload
 import hashlib
 import hmac
-from fastapi import Request
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
+    WebhookOriginalRequest,
 )
 
 
@@ -21,7 +21,7 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def _verify_webhook_signature(
-        self, identifier: str, request: Request
+        self, identifier: str, request: WebhookOriginalRequest
     ) -> bool:
         """Verify that the payload was sent from GitHub by validating SHA256."""
 

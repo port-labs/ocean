@@ -12,7 +12,6 @@ from azure_devops.client.file_processing import PathDescriptor, RecursionLevel
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.helpers.retry import RetryTransport
 
-
 MOCK_ORG_URL = "https://dev.azure.com/test_org"
 MOCK_PROJECT_ID = "proj-id"
 MOCK_REPOSITORY_ID = "repo-id"

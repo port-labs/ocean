@@ -22,7 +22,6 @@ from github.core.options import SingleTeamOptions
 from typing import Any, AsyncGenerator
 from port_ocean.context.event import event_context
 
-
 VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "action": "added",
     "repository": {"name": "test-repo"},
@@ -192,7 +191,7 @@ class TestCollaboratorMembershipWebhookProcessor:
         ]
 
         with patch(
-            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client"
+            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client_for_org"
         ) as mock_create_client:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
@@ -256,7 +255,7 @@ class TestCollaboratorMembershipWebhookProcessor:
         resource_config.selector.affiliation = "outside"
 
         with patch(
-            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client"
+            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client_for_org"
         ) as mock_create_client:
             async with event_context("test_event") as event_context_obj:
                 event_context_obj.port_app_config = mock_port_app_config

@@ -11,7 +11,7 @@ from port_ocean.context.event import event
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-from clients.utils import get_date_range_for_last_n_months
+from port_ocean.utils.relative_time import days_ago, to_rfc3339
 from clients.rate_limiter import (
     PagerDutyDailyRateLimitExceededError,
     PagerDutyRateLimiter,
@@ -278,13 +278,11 @@ class PagerDutyClient(OAuthClient):
         logger.info(
             f"Fetching analytics for {len(service_ids)} services: {service_ids}"
         )
-        date_ranges = get_date_range_for_last_n_months(months_period)
-
         body = {
             "filters": {
                 "service_ids": service_ids,
-                "created_at_start": date_ranges[0],
-                "created_at_end": date_ranges[1],
+                "created_at_start": to_rfc3339(days_ago(30 * months_period)),
+                "created_at_end": to_rfc3339(days_ago(0)),
             }
         }
 

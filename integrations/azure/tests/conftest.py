@@ -1,5 +1,6 @@
 from typing import Any, Dict
 from unittest.mock import AsyncMock
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 import pytest
 
 
@@ -242,3 +243,12 @@ def mock_service_bus_subscription() -> Dict[str, Any]:
             "status": "Active",
         },
     }
+
+
+@pytest.fixture
+def mock_webhook_event() -> WebhookEvent:
+    return WebhookEvent(
+        trace_id="test-trace-id",
+        headers={},
+        payload={},
+    )

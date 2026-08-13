@@ -10,7 +10,6 @@ from port_ocean.utils import http_async_client
 
 from okta.helpers.utils import IgnoredError
 
-
 _DEFAULT_IGNORED_ERRORS = [
     IgnoredError(
         status=403,

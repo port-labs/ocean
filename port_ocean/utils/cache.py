@@ -131,7 +131,9 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     return decorator
 
 
-def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
+def cache_coroutine_result(
+    cache_keys: list[str] | None = None,
+) -> Callable[[AsyncCallable], AsyncCallable]:
     """Coroutine version of `cache_iterator_result` from port_ocean.utils.cache
 
     Decorator that caches the result of a coroutine function.
@@ -150,12 +152,30 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     async def my_coroutine_function():
         # Your code here
     ```
+
+    :param cache_keys: If defined, a list of cache keys that must be present as an object in the kwargs under the key
+        "cache_keys" in order to use the cache. This allows us to inject extra context that is relevant to the caching
+        mechanism, but not to the actual function call.
     """
 
     def decorator(func: AsyncCallable) -> AsyncCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            cache_key = hash_func(func, *args, **kwargs)
+            received_cached_keys = kwargs.pop("cache_keys", {})
+            if cache_keys:
+                if any(key not in received_cached_keys for key in cache_keys):
+                    logger.warning(
+                        "Missing cache keys, cache will be skipped",
+                        extra={
+                            "expected_cache_keys": cache_keys,
+                            "received_cached_keys": received_cached_keys,
+                            "function_name": func.__name__,
+                        },
+                    )
+                    return await func(*args, **kwargs)
+
+            cache_key = hash_func(func, *args, **received_cached_keys, **kwargs)
+
             try:
                 if cache := await ocean.app.cache_provider.get(cache_key):
                     return cache

@@ -22,11 +22,13 @@ class CacheKeys(StrEnum):
     INCIDENT = "incident"
 
 
+WEBHOOK_INTEGRATION_PATH = "integration/webhook"
+
+
 class FirehydrantClient:
-    def __init__(self, base_url: str, api_key: str, app_host: str):
+    def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url
         self.api_key = api_key
-        self.app_host = app_host
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
 
@@ -155,21 +157,29 @@ class FirehydrantClient:
 
         return services
 
-    async def create_webhooks_if_not_exists(self) -> None:
+    @staticmethod
+    def _build_webhook_target_url(base_url: str) -> str:
+        return f"{base_url.rstrip('/')}/{WEBHOOK_INTEGRATION_PATH}"
+
+    @staticmethod
+    def _normalize_webhook_url(url: str) -> str:
+        return url.rstrip("/")
+
+    async def create_webhooks_if_not_exists(self, base_url: str) -> None:
         webhook_endpoint = "webhooks"
         all_subscriptions = []
 
         async for item in self.get_paginated_resource(webhook_endpoint):
             all_subscriptions.extend(item)
 
-        app_host_webhook_url = f"{self.app_host}/integration/webhook"
+        target_url = self._build_webhook_target_url(base_url)
 
         for webhook in all_subscriptions:
-            if webhook["url"] == app_host_webhook_url:
+            if self._normalize_webhook_url(webhook["url"]) == target_url:
                 return
 
         body = {
-            "url": app_host_webhook_url,
+            "url": target_url,
             "state": "active",
             "subscriptions": ["incidents", "change_events"],
         }

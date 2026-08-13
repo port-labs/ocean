@@ -13,8 +13,26 @@ features:
       - kind: AWS::ECS::Cluster
       - kind: AWS::ECS::TaskDefinition
       - kind: AWS::ECR::Repository
+      - kind: AWS::MSK::ServerlessCluster
+      - kind: AWS::MemoryDB::User
+      - kind: AWS::RDS::DBCluster
       - kind: AWS::MSK::Cluster
       - kind: AWS::EC2::Volume
+      - kind: AWS::CodeBuild::Project
+      - kind: AWS::CodeBuild::BuildRun
+      - kind: AWS::CodeDeploy::Application
+      - kind: AWS::CodeDeploy::DeploymentGroup
+      - kind: AWS::CodeDeploy::Deployment
+      - kind: AWS::CodeDeploy::DeploymentTarget
+      - kind: AWS::CodePipeline::Pipeline
+      - kind: AWS::CodePipeline::Stage
+      - kind: AWS::CodePipeline::Action
+      - kind: AWS::CodePipeline::PipelineExecution
+      - kind: AWS::CodePipeline::ActionExecution
+      - kind: AWS::SES::EmailIdentity
+      - kind: AWS::DynamoDB::Table
+      - kind: AWS::SES::ConfigurationSet
+      - kind: AWS::SNS::Topic
 configurations:
   - name: credentialProviderPriority
     required: false
@@ -26,7 +44,7 @@ configurations:
     required: false
     type: string
     sensitive: false
-    description: AWS Organization Unit (OU) ID to discover active accounts from. When provided, the integration will only attempt to use discover active accounts from the specified OU.
+    description: AWS Organizational Unit (OU) ID(s) to discover active accounts from. Provide a single OU ID or multiple comma-separated OU IDs. When provided, the integration discovers active accounts from the specified OUs and their child OUs.
   - name: accountRoleArn
     required: false
     type: string
@@ -57,6 +75,12 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: aws_partition
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Partition, defaults to "aws" which is the standard global one (optional).
+    enum: ["aws", "aws-us-gov", "aws-cn"]
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:

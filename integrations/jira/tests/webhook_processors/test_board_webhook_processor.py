@@ -12,7 +12,6 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from jira.overrides import JiraBoardSelector
 from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
-
 MOCK_BOARD: dict[str, Any] = {
     "id": 1,
     "name": "PORT board",

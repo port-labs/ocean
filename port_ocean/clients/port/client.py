@@ -37,8 +37,8 @@ class PortClient(
         integration_identifier: str,
         integration_type: str,
         integration_version: str,
-        ingest_url: str,
         feature_flags_cache_ttl_seconds: float = 300.0,
+        blueprint_cache_ttl_seconds: float = 120.0,
     ):
         self.api_url = f"{base_url}/v1"
         self.client = get_internal_http_client(self)
@@ -50,13 +50,17 @@ class PortClient(
             integration_identifier,
             integration_type,
             integration_version,
-            ingest_url,
         )
         EntityClientMixin.__init__(self, self.auth, self.client)
         IntegrationClientMixin.__init__(
             self, integration_identifier, integration_version, self.auth, self.client
         )
-        BlueprintClientMixin.__init__(self, self.auth, self.client)
+        BlueprintClientMixin.__init__(
+            self,
+            self.auth,
+            self.client,
+            blueprint_cache_ttl_seconds,
+        )
         MigrationClientMixin.__init__(self, self.auth, self.client)
         OrganizationClientMixin.__init__(
             self, self.auth, self.client, feature_flags_cache_ttl_seconds

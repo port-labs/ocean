@@ -1,7 +1,7 @@
 from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
@@ -40,9 +40,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         super().__init__(*args, **kwargs)
         self.file_processor = FileProcessor(self)
 
-    async def get_resource[
-        ExporterOptionsT: FileContentOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: FileContentOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
         """
         Fetch the content of a file from a repository using the Contents API.
         """
@@ -80,9 +80,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return {**response, "content": content}
 
-    async def get_paginated_resources[
-        ExporterOptionsT: List[ListFileSearchOptions]
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Search for files across repositories and fetch their content."""
 
         graphql_files = []
@@ -134,7 +134,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            tree = await self.get_tree_recursive(organization, repo_name, branch)
+            tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
 
             matched = filter_github_tree_entries_by_pattern(tree, pattern)
 
@@ -266,14 +266,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         # Each file blob can be up to 100KB; 7 files keeps payloads safely under ~700KB,
         # reducing risk of GraphQL timeouts while improving efficiency over smaller batches.
 
-        client = create_github_client(client_type=GithubClientType.GRAPHQL)
-
         grouped: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = defaultdict(list)
         for entry in matched_file_entries:
             key = (entry["organization"], entry["repo_name"], entry["branch"])
             grouped[key].append(entry)
 
         for (organization, repo_name, branch), entries in grouped.items():
+            client = await create_github_client_for_org(
+                organization, GithubClientType.GRAPHQL
+            )
             for i in range(0, len(entries), batch_size):
                 batch_files = entries[i : i + batch_size]
                 logger.debug(
@@ -388,8 +389,8 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     @cache_coroutine_result()
     async def get_tree_recursive(
         self, organization: str, repo: str, branch: str
-    ) -> List[Dict[str, Any]]:
-        """Retrieve the full recursive tree for a given branch."""
+    ) -> tuple[List[Dict[str, Any]], bool]:
+        """Retrieve the recursive tree and whether GitHub truncated the response."""
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
         response = await self.client.send_api_request(
             tree_url, ignored_errors=self._IGNORED_ERRORS
@@ -398,11 +399,16 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"Did not retrieve tree from {repo}@{branch} from {organization}"
             )
-            return []
+            return [], False
+
+        truncated = bool(response.get("truncated"))
+        if truncated:
+            logger.warning(
+                "Git tree was truncated by GitHub; file/plugin detection may be incomplete"
+            )
 
         tree_items = response["tree"]
         logger.info(
             f"Retrieved tree for {repo}@{branch}: {len(tree_items)} items from {organization}"
         )
-
-        return tree_items
+        return tree_items, truncated

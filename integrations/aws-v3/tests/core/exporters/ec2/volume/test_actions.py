@@ -89,7 +89,39 @@ class TestDescribeVolumeAttributeAction:
 
         result = await action.execute(volumes)
 
-        assert result == []
+        # Recoverable error must still produce an entry to preserve index
+        # alignment with sibling actions' results.
+        assert result == [{}]
+
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, mock_logger: MagicMock, action: DescribeVolumeAttributeAction
+    ) -> None:
+        """Middle volume fails recoverably; attribute results keep aligned positions."""
+        volumes = [{"VolumeId": "vol-1"}, {"VolumeId": "vol-2"}, {"VolumeId": "vol-3"}]
+
+        def mock_describe_volume_attribute(
+            VolumeId: str, Attribute: str, **kwargs: Any
+        ) -> Dict[str, Any]:
+            if VolumeId == "vol-2":
+                raise ClientError(
+                    error_response={
+                        "Error": {"Code": "AccessDenied", "Message": "Denied"}
+                    },
+                    operation_name="DescribeVolumeAttribute",
+                )
+            return {"AutoEnableIO": {"Value": VolumeId == "vol-1"}}
+
+        action.client.describe_volume_attribute.side_effect = (
+            mock_describe_volume_attribute
+        )
+
+        result = await action.execute(volumes)
+
+        assert len(result) == 3
+        assert result[0] == {"AutoEnableIO": True}
+        assert result[1] == {}
+        assert result[2] == {"AutoEnableIO": False}
 
     @pytest.mark.asyncio
     async def test_execute_non_recoverable_exception_raises(

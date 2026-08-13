@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic.v1 import Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -20,7 +20,6 @@ from port_ocean.utils.signal import signal_handler
 from port_ocean.context.ocean import PortOceanContext
 from fastapi import Request
 from loguru import logger
-
 
 DEFAULT_USER_FIELDS = (
     "id,status,created,activated,lastLogin,lastUpdated,"

@@ -14,7 +14,6 @@ from http_server.overrides import (
     CustomAuthRequestTemplateConfig,
 )
 
-
 # ============================================================================
 # AuthFlowManager Core Tests
 # ============================================================================

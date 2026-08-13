@@ -7,7 +7,13 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.core.integrations.mixins.utils import handle_items_to_parse, is_dsp_mode_enabled, is_lakehouse_data_enabled
+from port_ocean.core.integrations.mixins.utils import (
+    build_lakehouse_data_entry,
+    handle_items_to_parse,
+    is_dsp_mode_enabled,
+    is_lakehouse_data_enabled,
+    selector_hash_from_resource,
+)
 from port_ocean.core.models import Entity, LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseDataEntryMetadata, LakehouseOperation, LakehouseEventType
 from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.context.ocean import ocean
@@ -26,7 +32,9 @@ class LiveEventsMixin(HandlerMixin):
             await self._send_webhook_raw_data_to_lakehouse(webhook_events_raw_result)
 
         if await is_dsp_mode_enabled():
-            logger.info("DSP mode active: skipping transform and load for live events")
+            logger.bind(local_only=True).info(
+                "DSP mode active: skipping transform and load for live events"
+            )
             return
 
         entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
@@ -62,6 +70,8 @@ class LiveEventsMixin(HandlerMixin):
         entities_not_passed: list[Entity] = []
         entities_to_delete: list[Entity] = []
         for webhook_event_raw_result in webhook_events_raw_result:
+            if not webhook_event_raw_result.has_resource:
+                continue
             resource = webhook_event_raw_result.resource
             for raw_item in webhook_event_raw_result.updated_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
@@ -110,6 +120,8 @@ class LiveEventsMixin(HandlerMixin):
         try:
             data_entries: list[LakehouseDataEntry] = []
             for webhook_event_raw_result in webhook_events_raw_result:
+                if not webhook_event_raw_result.has_resource:
+                    continue
                 event_id = webhook_event_raw_result._webhook_trace_id
                 if not event_id:
                     logger.warning("Skipping lakehouse send - no trace_id available")
@@ -124,28 +136,32 @@ class LiveEventsMixin(HandlerMixin):
 
                 if webhook_event_raw_result.updated_raw_results:
                     data_entries.append(
-                        LakehouseDataEntry(
-                            request={},
-                            response={},
+                        build_lakehouse_data_entry(
                             items=webhook_event_raw_result.updated_raw_results,
                             metadata=LakehouseDataEntryMetadata(
                                 operation=LakehouseOperation.UPSERT,
                                 resource_index=resource_index,
                                 extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                                selector_hash=selector_hash_from_resource(
+                                    webhook_event_raw_result.resource
+                                ),
                             ),
+                            export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
                         )
                     )
                 if webhook_event_raw_result.deleted_raw_results:
                     data_entries.append(
-                        LakehouseDataEntry(
-                            request={},
-                            response={},
+                        build_lakehouse_data_entry(
                             items=webhook_event_raw_result.deleted_raw_results,
                             metadata=LakehouseDataEntryMetadata(
                                 operation=LakehouseOperation.DELETE,
                                 resource_index=resource_index,
                                 extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                                selector_hash=selector_hash_from_resource(
+                                    webhook_event_raw_result.resource
+                                ),
                             ),
+                            export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
                         )
                     )
 

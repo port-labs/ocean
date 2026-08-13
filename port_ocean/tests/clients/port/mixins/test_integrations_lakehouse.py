@@ -1,20 +1,43 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock, patch, AsyncMock
 
+import httpx
 import pytest
 
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
+from port_ocean.clients.port.retry_transport import TokenRetryTransport
 from port_ocean.core.models import (
     LakehouseDataEntryBatch,
     LakehouseEventType,
     LakehouseOperation,
 )
+from port_ocean.context.event import EventType, event_context
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse_batch
 
 TEST_INTEGRATION_IDENTIFIER = "test-integration"
 TEST_INTEGRATION_VERSION = "1.0.0"
 TEST_INGEST_URL = "https://api.example.com"
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> Generator[MagicMock, None, None]:
+    with patch("port_ocean.helpers.async_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=False)
+        yield mock_ocean
+
+
+def _inner_http_transport(http_client: OceanAsyncClient) -> httpx.AsyncHTTPTransport:
+    transport = http_client._transport
+    if hasattr(transport, "_wrapped"):
+        transport = transport._wrapped
+    assert isinstance(transport, TokenRetryTransport)
+    inner = transport._wrapped_transport
+    assert isinstance(inner, httpx.AsyncHTTPTransport)
+    return inner
 
 
 @pytest.fixture
@@ -23,7 +46,6 @@ def lakehouse_integration_client(monkeypatch: Any) -> IntegrationClientMixin:
     auth = MagicMock()
     auth.headers = AsyncMock()
     auth.headers.return_value = {"Authorization": "Bearer test-token"}
-    auth.ingest_url = TEST_INGEST_URL
     auth.integration_type = "github"
 
     client = MagicMock()
@@ -37,6 +59,11 @@ def lakehouse_integration_client(monkeypatch: Any) -> IntegrationClientMixin:
         integration_version=TEST_INTEGRATION_VERSION,
         auth=auth,
         client=client,
+    )
+    monkeypatch.setattr(
+        integration_client,
+        "get_ingest_attributes",
+        AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
     )
 
     return integration_client
@@ -61,6 +88,7 @@ async def test_post_integration_raw_data_default_operation(
 
         expected_url = f"{TEST_INGEST_URL}/lake/write/integration-type/github/integration/{TEST_INTEGRATION_IDENTIFIER}/sync/{sync_id}/kind/{kind}"
         assert call_args[0][0] == expected_url
+        assert call_args[1]["extensions"] == {"retryable": True}
 
         body = call_args[1]["json"]
         assert body["kind"] == kind
@@ -73,6 +101,7 @@ async def test_post_integration_raw_data_default_operation(
         assert entry["response"] == {}
         assert entry["metadata"]["operation"] == "upsert"
         assert entry["metadata"]["resourceIndex"] == 0
+        assert entry["metadata"]["selectorHash"] is None
         assert "extractionTimestamp" in entry["metadata"]
         assert "resyncStartTime" not in body
         assert "eventId" not in body
@@ -471,3 +500,278 @@ async def test_post_integration_raw_data_batch_two_entries(
     delete_entry = body["data"][1]
     assert delete_entry["items"] == delete_items
     assert delete_entry["metadata"]["operation"] == "delete"
+
+
+async def test_post_integration_raw_data_batch_includes_environment_data(
+    lakehouse_integration_client: IntegrationClientMixin,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test post_integration_raw_data_batch includes environment_data on each entry."""
+    monkeypatch.setenv("FOO", "bar")
+    monkeypatch.delenv("MISSING", raising=False)
+
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-env-vars"
+    kind = "repository"
+
+    event = make_single_entry_lakehouse_batch(
+        raw_data,
+        kind=kind,
+        index=0,
+        export_env_variables=["FOO", "MISSING"],
+    )
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+    lakehouse_integration_client.client.post.assert_called_once()
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+
+    assert body["data"][0]["environment_data"] == {"FOO": "bar", "MISSING": None}
+
+
+async def test_post_integration_raw_data_batch_includes_selector_hash(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-selector-hash"
+    kind = "repository"
+
+    event = make_single_entry_lakehouse_batch(
+        raw_data,
+        kind=kind,
+        index=0,
+        selector_hash="abc123",
+    )
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+    lakehouse_integration_client.client.post.assert_called_once()
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    assert body["data"][0]["metadata"]["selectorHash"] == "abc123"
+
+
+async def test_post_integration_raw_data_batch_serializes_datetime_values(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Datetime values in items/request/response are ISO-formatted in the POST body."""
+    created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    raw_data = [{"id": "1", "created_at": created_at}]
+    sync_id = "test-sync-123"
+    kind = "file"
+
+    event = make_single_entry_lakehouse_batch(raw_data, kind=kind, index=0)
+    event["data"][0]["request"] = {"fetched_at": created_at}
+    event["data"][0]["response"] = {"received_at": created_at}
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+    lakehouse_integration_client.client.post.assert_called_once()
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    entry = body["data"][0]
+    assert entry["items"][0]["created_at"] == created_at.isoformat()
+    assert entry["request"]["fetched_at"] == created_at.isoformat()
+    assert entry["response"]["received_at"] == created_at.isoformat()
+
+
+async def test_post_integration_raw_data_batch_does_not_abort_on_zero_pending_count(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-abort"
+    kind = "repository"
+
+    response = MagicMock()
+    response.status_code = 200
+    response.is_error = False
+    response.json.return_value = {"ok": True, "count": 0}
+    lakehouse_integration_client.client.post.return_value = response
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={},
+        ) as current_event:
+            assert not current_event.aborted
+            batch_event = make_single_entry_lakehouse_batch(
+                raw_data, kind=kind, index=0
+            )
+            await lakehouse_integration_client.post_integration_raw_data_batch(
+                sync_id,
+                batch_event,
+            )
+            assert not current_event.aborted
+
+
+async def test_post_integration_raw_data_batch_aborts_resync_on_resync_stale(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-stale"
+    kind = "repository"
+
+    response = MagicMock()
+    response.status_code = 409
+    response.is_error = True
+    response.json.return_value = {
+        "ok": False,
+        "error": {"code": "resync_stale", "message": "resync is not active"},
+    }
+    lakehouse_integration_client.client.post.return_value = response
+
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={},
+    ) as current_event:
+        assert not current_event.aborted
+        batch_event = make_single_entry_lakehouse_batch(raw_data, kind=kind, index=0)
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id,
+            batch_event,
+        )
+        assert current_event.aborted
+        assert current_event.external_abort
+
+
+async def test_post_integration_raw_data_batch_raises_on_other_409(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-conflict"
+    kind = "repository"
+
+    response = MagicMock()
+    response.status_code = 409
+    response.is_error = True
+    response.text = '{"ok": false, "error": {"code": "conflict"}}'
+    response.json.return_value = {
+        "ok": False,
+        "error": {"code": "conflict", "message": "resource conflict"},
+    }
+    response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "409 Conflict",
+        request=MagicMock(),
+        response=response,
+    )
+    lakehouse_integration_client.client.post.return_value = response
+
+    with patch(
+        "port_ocean.clients.port.mixins.integrations.handle_port_status_code",
+        side_effect=httpx.HTTPStatusError(
+            "409 Conflict",
+            request=MagicMock(),
+            response=response,
+        ),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={},
+        ) as current_event:
+            batch_event = make_single_entry_lakehouse_batch(
+                raw_data, kind=kind, index=0
+            )
+            with pytest.raises(httpx.HTTPStatusError):
+                await lakehouse_integration_client.post_integration_raw_data_batch(
+                    sync_id,
+                    batch_event,
+                )
+            assert not current_event.aborted
+
+
+@pytest.mark.asyncio
+async def test_post_integration_raw_data_batch_retries_503() -> None:
+    auth = MagicMock()
+    auth.headers = AsyncMock(return_value={"Authorization": "Bearer test-token"})
+    auth.integration_type = "github"
+    auth.last_token_object = MagicMock()
+
+    port_client = IntegrationClientMixin(
+        integration_identifier=TEST_INTEGRATION_IDENTIFIER,
+        integration_version=TEST_INTEGRATION_VERSION,
+        auth=auth,
+        client=MagicMock(),
+    )
+    port_client.get_ingest_attributes = AsyncMock(
+        return_value={"ingestUrl": TEST_INGEST_URL}
+    )
+
+    http_client = OceanAsyncClient(
+        transport_class=TokenRetryTransport,
+        transport_kwargs={"port_client": port_client},
+        retry_config=RetryConfig(max_attempts=3, base_delay=0.0),
+        verify=True,
+    )
+    port_client.client = http_client
+
+    inner = _inner_http_transport(http_client)
+    request = httpx.Request("POST", f"{TEST_INGEST_URL}/lake/write")
+    responses = [
+        httpx.Response(503, request=request),
+        httpx.Response(200, request=request),
+    ]
+
+    mock_handle_async_request = AsyncMock(side_effect=responses)
+
+    with (
+        patch.object(inner, "handle_async_request", mock_handle_async_request),
+        patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+    ):
+        event = make_single_entry_lakehouse_batch([{"id": "1"}], kind="repo", index=0)
+        await port_client.post_integration_raw_data_batch("sync-1", event)
+
+    assert mock_handle_async_request.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_post_integration_raw_data_batch_retries_connect_error() -> None:
+    auth = MagicMock()
+    auth.headers = AsyncMock(return_value={"Authorization": "Bearer test-token"})
+    auth.integration_type = "github"
+    auth.last_token_object = MagicMock()
+
+    port_client = IntegrationClientMixin(
+        integration_identifier=TEST_INTEGRATION_IDENTIFIER,
+        integration_version=TEST_INTEGRATION_VERSION,
+        auth=auth,
+        client=MagicMock(),
+    )
+    port_client.get_ingest_attributes = AsyncMock(
+        return_value={"ingestUrl": TEST_INGEST_URL}
+    )
+
+    http_client = OceanAsyncClient(
+        transport_class=TokenRetryTransport,
+        transport_kwargs={"port_client": port_client},
+        retry_config=RetryConfig(max_attempts=3, base_delay=0.0),
+        verify=True,
+    )
+    port_client.client = http_client
+
+    inner = _inner_http_transport(http_client)
+    request = httpx.Request("POST", f"{TEST_INGEST_URL}/lake/write")
+    responses = [
+        httpx.ConnectError("connection refused", request=request),
+        httpx.Response(200, request=request),
+    ]
+
+    mock_handle_async_request = AsyncMock(side_effect=responses)
+
+    with (
+        patch.object(inner, "handle_async_request", mock_handle_async_request),
+        patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+    ):
+        event = make_single_entry_lakehouse_batch([{"id": "1"}], kind="repo", index=0)
+        await port_client.post_integration_raw_data_batch("sync-1", event)
+
+    assert mock_handle_async_request.await_count == 2

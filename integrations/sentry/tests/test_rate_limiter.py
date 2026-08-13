@@ -6,7 +6,6 @@ import httpx
 import pytest
 from clients.rate_limiter import SentryRateLimiter
 
-
 pytestmark = pytest.mark.asyncio
 
 

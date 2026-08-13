@@ -99,35 +99,3 @@ class StatusPageClient:
                 for update in incident.get("incident_updates", [])
             ]
             yield updates
-
-    async def create_webhook_if_not_exists(self, page_id: str, app_host: str) -> None:
-        app_host_webhook_url = f"{app_host}/integration/webhook"
-        async for webhooks in self._get_paginated_resources(
-            f"{self.pages_base_endpoint}/{page_id}/subscribers"
-        ):
-            if any(webhook["endpoint"] == app_host_webhook_url for webhook in webhooks):
-                logger.info(f"Webhook already exists for page: {page_id}")
-                return
-
-        logger.info(
-            f"Creating webhook subscription for page: {page_id} with endpoint: {app_host_webhook_url}"
-        )
-        result = await self.client.post(
-            f"{self.pages_base_endpoint}/{page_id}/subscribers",
-            json={"subscriber": {"endpoint": app_host_webhook_url}},
-        )
-
-        if result.status_code == 201:
-            logger.info(f"Webhook created successfully for page: {page_id}")
-        else:
-            logger.error(
-                f"Result from creating webhook for page {page_id}: ({result.status_code}) {result.text}"
-            )
-        return
-
-    async def create_webhooks_for_all_pages(self, app_host: str) -> None:
-        pages = self.statuspage_ids or [page["id"] for page in await self.get_pages()]
-        logger.info(f"Creating webhooks for pages: {pages}")
-        for page_id in pages:
-            await self.create_webhook_if_not_exists(page_id, app_host)
-        return

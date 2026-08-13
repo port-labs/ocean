@@ -14,6 +14,15 @@ from .conftest import (
 class TestServicenowClient:
     """Test suite for ServiceNow client."""
 
+    def test_servicenow_client_retries_unauthorized(
+        self, servicenow_client: ServicenowClient
+    ) -> None:
+        retry_config = servicenow_client.http_client._retry_config
+
+        assert retry_config is not None
+        assert httpx.codes.UNAUTHORIZED in retry_config.retry_status_codes
+        assert httpx.codes.TOO_MANY_REQUESTS in retry_config.retry_status_codes
+
     @pytest.mark.asyncio
     async def test_get_paginated_resource_single_page(
         self, servicenow_client: ServicenowClient

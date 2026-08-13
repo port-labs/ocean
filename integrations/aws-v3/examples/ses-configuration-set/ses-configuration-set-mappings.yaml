@@ -1,0 +1,19 @@
+resources:
+  - kind: AWS::SES::ConfigurationSet
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ConfigurationSetName
+          title: .Properties.ConfigurationSetName
+          blueprint: '"sesConfigurationSet"'
+          properties:
+            sendingEnabled: .Properties.SendingOptions.SendingEnabled
+            reputationMetricsEnabled: .Properties.ReputationOptions.ReputationMetricsEnabled
+            tlsPolicy: .Properties.DeliveryOptions.TlsPolicy
+            trackingDomain: .Properties.TrackingOptions.CustomRedirectDomain
+            suppressionList: .Properties.SuppressionOptions.SuppressedReasons
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

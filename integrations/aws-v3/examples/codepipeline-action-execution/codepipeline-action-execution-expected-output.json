@@ -1,0 +1,55 @@
+{
+  "identifier": "a1b2c3d4-5678-90ab-cdef-EXAMPLE11111",
+  "title": "my-pipeline/Source/GitHub_Source",
+  "properties": {
+    "actionExecutionId": "a1b2c3d4-5678-90ab-cdef-EXAMPLE11111",
+    "actionName": "GitHub_Source",
+    "stageName": "Source",
+    "pipelineName": "my-pipeline",
+    "pipelineExecutionId": "a1b2c3d4-5678-90ab-cdef-EXAMPLE22222",
+    "pipelineVersion": 2,
+    "status": "Succeeded",
+    "startTime": "2024-01-15T10:00:00Z",
+    "lastUpdateTime": "2024-01-15T10:01:30Z",
+    "input": {
+      "ActionTypeId": {
+        "Category": "Source",
+        "Owner": "AWS",
+        "Provider": "CodeStarSourceConnection",
+        "Version": "1"
+      },
+      "Configuration": {
+        "BranchName": "main",
+        "ConnectionArn": "arn:aws:codeconnections:eu-west-1:123456789012:connection/1fb197f2-18g8-47f5-9d79-35fed26b2133",
+        "FullRepositoryId": "Organization/Repo",
+        "OutputArtifactFormat": "CODEBUILD_CLONE_REF"
+      },
+      "RoleArn": "arn:aws:iam::123456789012:role/codepipeline-role",
+      "Region": "eu-west-1",
+      "InputArtifacts": [],
+      "Namespace": "SourceVariables"
+    },
+    "output": {
+      "OutputArtifacts": [
+        {
+          "name": "SourceArtifact",
+          "s3location": {
+            "bucket": "my-pipeline-artifacts",
+            "key": "my-pipeline/SourceArtif/abc123"
+          }
+        }
+      ],
+      "ExecutionResult": {
+        "ExternalExecutionId": "a1b2c3d4-5678-90ab-cdef-EXAMPLE33333",
+        "ExternalExecutionSummary": "Checkout of branch main for repository Organization/Repo",
+        "ExternalExecutionUrl": "https://eu-west-1.console.aws.amazon.com/codesuite/codeconnections/connections"
+      },
+      "OutputVariables": {}
+    },
+    "region": "eu-west-1"
+  },
+  "relations": {
+    "account": "123456789012"
+  },
+  "icon": "AWS"
+}

@@ -266,3 +266,23 @@ async def test_project_handle_event(
 
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == {"project": "data"}
+
+
+@pytest.mark.asyncio
+async def test_project_handle_event_skips_empty_project(
+    project_processor: ProjectWebhookProcessor,
+    project_resource_config: SonarQubeProjectResourceConfig,
+) -> None:
+    with patch(
+        "webhook_processors.project_webhook_processor.init_sonar_client"
+    ) as mock_init:
+        mock_client = AsyncMock()
+        mock_client.get_single_component.return_value = {"key": "test"}
+        mock_client.get_single_project.return_value = {}
+        mock_init.return_value = mock_client
+
+        result = await project_processor.handle_event(
+            {"project": {"key": "test"}}, project_resource_config
+        )
+
+        assert result.updated_raw_results == []

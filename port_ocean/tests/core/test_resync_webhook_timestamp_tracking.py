@@ -11,6 +11,8 @@ from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.core.models import LakehouseEventType, LakehouseOperation
 from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse_batch
 
+TEST_INGEST_URL = "https://test.example.com"
+
 
 class TestLakehouseEventTypeEnum:
     """Test suite for LakehouseEventType enum"""
@@ -101,7 +103,6 @@ class TestPostIntegrationRawDataInputValidation:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "test"
 
         mixin = IntegrationClientMixin(
@@ -122,8 +123,15 @@ class TestPostIntegrationRawDataInputValidation:
             event_type=LakehouseEventType.RESYNC,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
@@ -158,7 +166,6 @@ class TestPostIntegrationRawDataInputValidation:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "test"
 
         mixin = IntegrationClientMixin(
@@ -181,8 +188,15 @@ class TestPostIntegrationRawDataInputValidation:
             event_type=LakehouseEventType.RESYNC,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
@@ -197,7 +211,6 @@ class TestPostIntegrationRawDataRequestBody:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "github"
 
         mixin = IntegrationClientMixin(
@@ -221,8 +234,15 @@ class TestPostIntegrationRawDataRequestBody:
             extraction_timestamp=fixed_ts,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("resync-abc-123", event)
 
@@ -251,7 +271,6 @@ class TestPostIntegrationRawDataRequestBody:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "github"
 
         mixin = IntegrationClientMixin(
@@ -275,8 +294,15 @@ class TestPostIntegrationRawDataRequestBody:
             extraction_timestamp=fixed_ts,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("webhook-xyz-789", event)
 
@@ -304,7 +330,6 @@ class TestPostIntegrationRawDataRequestBody:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "github"
 
         mixin = IntegrationClientMixin(
@@ -322,8 +347,15 @@ class TestPostIntegrationRawDataRequestBody:
             index=0,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
@@ -489,7 +521,6 @@ class TestBackwardCompatibility:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "test"
 
         mixin = IntegrationClientMixin(
@@ -506,8 +537,15 @@ class TestBackwardCompatibility:
             operation=LakehouseOperation.UPSERT,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("sync-123", event)
 

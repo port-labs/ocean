@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from github.core.options import PullRequestGraphQLOptions
 
 PAGE_INFO_FRAGMENT = """
@@ -184,16 +186,10 @@ commits(first: 1) {
 """
 
 
-def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
-    required_fields = [
-        ("url", "url"),
-        ("id", "id"),
-        ("fullDatabaseId", "fullDatabaseId"),
-        ("number", "number"),
-        ("title", "title"),
-    ]
-
-    optional_fields = [
+def _pr_optional_field_defs(
+    options: PullRequestGraphQLOptions,
+) -> list[tuple[str, str]]:
+    return [
         ("state", "state"),
         ("locked", "locked"),
         ("body", "body"),
@@ -318,6 +314,27 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
         ("comments", "comments { totalCount }"),
         ("reviewThreads", "reviewThreads { totalCount }"),
         (
+            "reviews",
+            """
+            reviews (first: 10) {
+              nodes {
+                state
+                body
+                createdAt
+                author {
+                  login
+                  avatarUrl
+                  url
+                  __typename
+
+                }
+
+              }
+            }
+        """,
+        ),
+        ("statusCheckRollup", "statusCheckRollup { state }"),
+        (
             "commits",
             (
                 PR_COMMITS_WITH_FIRST
@@ -336,20 +353,87 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
         ),
     ]
 
-    excluded = set(options.exclude_graphql_fields)
+
+ALL_OPTIONAL_PR_FIELD_NAMES = [
+    name for name, _ in _pr_optional_field_defs(PullRequestGraphQLOptions())
+]
+
+_PR_RELATION_FIELDS = [
+    "reviewRequests",
+    "reviews",
+    "reviewThreads",
+    "assignees",
+    "statusCheckRollup",
+    "labels",
+]
+_PR_COMMIT_FIELDS = [
+    "commits",
+    "mergeCommit",
+    "potentialMergeCommit",
+    "headRef",
+    "baseRef",
+    "headRefOid",
+    "additions",
+    "deletions",
+    "changedFiles",
+]
+
+# Ordered tiers of PullRequest fields to shed when a query keeps exceeding
+# GitHub's GraphQL execution budget. Stripping is gradual: each successive retry
+# drops the next tier *in addition to* every earlier one, cheapest-to-lose first,
+# so we only give up the more valuable fields once the lighter ones haven't
+# helped. The final tier is everything else, leaving only the required fields.
+EXPENSIVE_PR_GRAPHQL_FIELD_TIERS: list[list[str]] = [
+    _PR_RELATION_FIELDS,
+    _PR_COMMIT_FIELDS,
+    [
+        name
+        for name in ALL_OPTIONAL_PR_FIELD_NAMES
+        if name not in {*_PR_RELATION_FIELDS, *_PR_COMMIT_FIELDS}
+    ],
+]
+
+
+def resolve_excluded_pr_fields(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> set[str]:
+    return set(options.exclude_graphql_fields) | set(extra_excluded_fields or [])
+
+
+def generate_pr_fields(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+    include_required_fields: bool = True,
+) -> str:
+    required_fields = [
+        "url",
+        "id",
+        "fullDatabaseId",
+        "number",
+        "title",
+    ]
+
+    optional_fields = _pr_optional_field_defs(options)
+
+    excluded = resolve_excluded_pr_fields(options, extra_excluded_fields)
     filtered_optional_fields = [
         body for name, body in optional_fields if name not in excluded
     ]
 
     return "\n".join(
         [
-            *(body for _, body in required_fields),
+            *(required_fields if include_required_fields else []),
             *filtered_optional_fields,
         ]
     )
 
 
-def generate_list_pull_requests_gql(options: PullRequestGraphQLOptions) -> str:
+def generate_list_pull_requests_gql(
+    options: PullRequestGraphQLOptions,
+    order_by_field: str = "CREATED_AT",
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> str:
     return f"""
 {PAGE_INFO_FRAGMENT}
 query ListPullRequests(
@@ -364,10 +448,10 @@ query ListPullRequests(
       first: $first,
       after: $after,
       states: $states,
-      orderBy: {{ field: CREATED_AT, direction: DESC }}
+      orderBy: {{ field: {order_by_field}, direction: DESC }}
     ) {{
       nodes {{
-{generate_pr_fields(options)}
+{generate_pr_fields(options, extra_excluded_fields)}
       }}
       pageInfo {{
         ...PageInfoFields
@@ -378,7 +462,11 @@ query ListPullRequests(
 """
 
 
-def generate_pull_request_details_gql(options: PullRequestGraphQLOptions) -> str:
+def generate_pull_request_details_gql(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+    include_required_fields: bool = True,
+) -> str:
     return f"""
 query PullRequestDetails(
   $organization: String!,
@@ -387,7 +475,7 @@ query PullRequestDetails(
 ) {{
   repository(owner: $organization, name: $repo) {{
     pullRequest(number: $prNumber) {{
-{generate_pr_fields(options)}
+{generate_pr_fields(options, extra_excluded_fields, include_required_fields)}
     }}
   }}
 }}

@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class LambdaFunctionExporter(IResourceExporter):
+class LambdaFunctionExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "lambda"
     _model_cls: Type[LambdaFunction] = LambdaFunction
     _actions_map: Type[LambdaFunctionActionsMap] = LambdaFunctionActionsMap

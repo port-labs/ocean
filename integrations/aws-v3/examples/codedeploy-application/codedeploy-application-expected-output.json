@@ -1,0 +1,16 @@
+{
+  "identifier": "f14523ba6-66e4-4849-bd12-42e0ea4d43c0",
+  "title": "example-application",
+  "properties": {
+    "applicationName": "example-application",
+    "applicationId": "f14523ba6-66e4-4849-bd12-42e0ea4d43c0",
+    "createTime": "2026-05-31T16:55:54.851000+03:00",
+    "linkedToGitHub": false,
+    "computePlatform": "Server",
+    "tags": []
+  },
+  "relations": {
+    "account": "1234567890"
+  },
+  "icon": "AWS"
+}
