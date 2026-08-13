@@ -16,12 +16,12 @@ from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
     RunAlreadyAcknowledgedError,
 )
+from port_ocean.exceptions.identity_propagation import UserAuthRequiredError
 from port_ocean.utils.signal import SignalHandler
 
 RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
 QUEUE_GET_TIMEOUT_SECONDS = 1
 GLOBAL_SOURCE = "__global__"
-
 
 class ExecutionManager:
     """
@@ -535,6 +535,12 @@ class ExecutionManager:
                         "Run executed successfully",
                         elapsed_ms=(time.monotonic() - start_time) * 1000,
                     )
+                except UserAuthRequiredError:
+                    logger.info("Run is waiting for the user to authenticate")
+                    await ocean.port_client.patch_run(
+                        run, {"reauthRequired": True}, should_raise=False
+                    )
+                    return
                 except ActionExecutionError as e:
                     logger.warning("Action run failed: {}", str(e))
                     error_summary = str(e)

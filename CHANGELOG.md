@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.48.0 (2026-08-05)
+
+### Features
+
+- Added an OAuth broker at `/v1/oauth/authorize` and `/v1/oauth/callback`, letting a user authorize Ocean to act on their behalf on GitHub, GitLab, or Azure DevOps. Registered only when `OCEAN__IDENTITY_PROPAGATION__ENABLED` is set.
+- Added a `VaultClient` interface for reading and writing per-user downstream tokens in a customer-operated vault, with an AWS Secrets Manager adapter behind the new `aws-vault` extra (`pip install port-ocean[aws-vault]`). Integrations backing identity propagation with another vault register their own implementation and do not need the extra.
+- Added `resolve_user_token(run)`, which exchanges a verified identity token for the triggering user's downstream token, including silent refresh of expired tokens.
+- Added `AwaitingUserAuthError`, which the execution manager turns into a `WAITING_FOR_AUTH` node run rather than a failure, so a run pauses for re-authentication instead of ending.
+
 ## 0.47.6 (2026-08-04)
 
 ### Improvements

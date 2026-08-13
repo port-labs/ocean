@@ -290,6 +290,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
     config: WorkflowIntegrationActionConfig | None = None
     node: WorkflowNode | None = None
     output: dict[str, Any] = Field(default_factory=dict)
+    identity_token: str | None = Field(default=None, alias="identityToken")
 
     @root_validator(skip_on_failure=True)
     def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:

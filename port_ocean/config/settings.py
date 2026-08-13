@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Literal, Optional, Type
 from urllib.parse import urlparse
 
@@ -9,6 +10,7 @@ from pydantic.v1.class_validators import root_validator, validator
 from pydantic.v1.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
 from pydantic.v1.main import BaseModel
 
+from port_ocean.identity_propagation.vault.base import DEFAULT_SECRET_PREFIX
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import (
     EventListenerSettingsType,
@@ -47,6 +49,57 @@ class SslClientSettings(BaseOceanModel):
 class SslSettings(BaseOceanModel):
     port: SslClientSettings = Field(default_factory=SslClientSettings)
     third_party: SslClientSettings = Field(default_factory=SslClientSettings)
+
+
+class OAuthProviderSettings(BaseOceanModel, extra=Extra.allow):
+    client_id: str = Field(..., sensitive=True)
+    client_secret: str = Field(..., sensitive=True)
+    scopes: str | None = None
+    authorize_url: str | None = None
+    token_url: str | None = None
+
+
+class GitHubOAuthSettings(OAuthProviderSettings):
+    pass
+
+
+class GitLabOAuthSettings(OAuthProviderSettings):
+    host: str | None = None
+
+
+class AzureDevOpsOAuthSettings(OAuthProviderSettings):
+    tenant_id: str
+
+
+class IdentityPropagationOAuthSettings(BaseOceanModel, extra=Extra.allow):
+    github: GitHubOAuthSettings | None = None
+    gitlab: GitLabOAuthSettings | None = None
+    azure_devops: AzureDevOpsOAuthSettings | None = None
+    state_signing_secret: str | None = Field(default=None, sensitive=True)
+
+
+class VaultType(str, Enum):
+    aws_secrets_manager = "aws_secrets_manager"
+    custom = "custom"
+
+
+class VaultSettings(BaseOceanModel, extra=Extra.allow):
+    type: VaultType = VaultType.aws_secrets_manager
+    secret_prefix: str = DEFAULT_SECRET_PREFIX
+
+
+class AWSSecretsManagerVaultSettings(VaultSettings):
+    aws_region: str | None = None
+
+
+class IdentityPropagationSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = False
+    vault: VaultSettings = Field(
+        default_factory=AWSSecretsManagerVaultSettings
+    )
+    oauth: IdentityPropagationOAuthSettings = Field(
+        default_factory=IdentityPropagationOAuthSettings
+    )
 
 
 class ApplicationSettings(BaseSettings):
@@ -350,6 +403,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default_factory=lambda: RedisLiveEventsSettings()
     )
     ssl: SslSettings = Field(default_factory=SslSettings)
+    identity_propagation: IdentityPropagationSettings = Field(
+        default_factory=IdentityPropagationSettings
+    )
 
     @root_validator(pre=True)
     def warn_removed_process_execution_mode_env(
