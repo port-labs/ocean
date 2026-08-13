@@ -265,6 +265,8 @@ def main() -> int:
 
     if not all_errors:
         print(f"Changelog validation passed for {len(paths)} file(s)")
+        for path in paths:
+            print(f"  {path}")
         return 0
 
     print(
