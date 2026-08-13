@@ -1000,7 +1000,7 @@ class TestRestFileExporterRepoNotFound:
         assert len(results) == 1
         assert results[0]["name"] == "readme.txt"
 
-    async def test_process_graphql_files_passes_tree_sha_as_metadata_sha(
+    async def test_process_retrieved_graphql_files_passes_tree_sha_as_metadata_sha(
         self, rest_client: GithubRestClient
     ) -> None:
         """The git tree's blob `sha` (collected during tree traversal) must be
@@ -1009,66 +1009,23 @@ class TestRestFileExporterRepoNotFound:
         extending the GraphQL query."""
         exporter = RestFileExporter(rest_client)
 
-        fake_gql_response = {
-            "data": {
-                "repository": {
-                    "file_0": {
-                        "text": "hello",
-                        "byteSize": 5,
-                    }
-                }
-            }
-        }
-
-        async def mock_batches(
-            matched_file_entries: Any, batch_size: int = 7
-        ) -> AsyncGenerator[Dict[str, Any], None]:
-            yield {
-                "organization": "test-org",
-                "repo": "live-repo",
-                "branch": "main",
-                "file_data": fake_gql_response["data"],
-                "batch_files": [
-                    {
-                        "organization": "test-org",
-                        "repo_name": "live-repo",
-                        "file_path": "readme.txt",
-                        "skip_parsing": True,
-                        "branch": "main",
-                        "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
-                    }
-                ],
-            }
-
         process_file_mock = AsyncMock(
             return_value={"name": "readme.txt", "content": "hello"}
         )
-
-        with (
-            patch(
-                "github.core.exporters.file_exporter.core.get_repository_metadata",
-                AsyncMock(return_value=TEST_REPO_METADATA),
-            ),
-            patch.object(
-                exporter, "process_files_in_batches", side_effect=mock_batches
-            ),
-            patch.object(exporter.file_processor, "process_file", process_file_mock),
-        ):
-            async for _ in exporter.process_graphql_files(
-                [
-                    {
-                        "organization": "test-org",
-                        "repo_name": "live-repo",
-                        "file_path": "readme.txt",
-                        "skip_parsing": True,
-                        "branch": "main",
-                        "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
-                    }
-                ]
-            ):
-                pass
+        with patch.object(exporter.file_processor, "process_file", process_file_mock):
+            await exporter._process_retrieved_graphql_files(
+                organization="test-org",
+                retrieved_files={"file_0": {"text": "hello", "byteSize": 5}},
+                file_paths=["readme.txt"],
+                file_metadata={"readme.txt": True},
+                file_shas={"readme.txt": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"},
+                repository_metadata=TEST_REPO_METADATA,
+                repo_name="live-repo",
+                branch="main",
+            )
 
         process_file_mock.assert_awaited_once()
+        assert process_file_mock.await_args is not None
         metadata = process_file_mock.await_args.kwargs["metadata"]
         assert metadata["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
