@@ -9,16 +9,19 @@ from clients.client_factory import create_cursor_client
 from core.options_builder import (
     build_admin_options,
     build_analytics_options,
+    build_team_skill_usage_options,
 )
 from exporter_factory import (
     create_daily_usage_exporter,
     create_team_model_usage_exporter,
+    create_team_skill_usage_exporter,
     create_usage_events_exporter,
     create_user_model_usage_exporter,
 )
 from integration import (
     CursorDailyUsageResourceConfig,
     CursorTeamModelUsageResourceConfig,
+    CursorTeamSkillUsageResourceConfig,
     CursorUsageEventResourceConfig,
     CursorUserModelUsageResourceConfig,
     ObjectKind,
@@ -33,6 +36,22 @@ async def on_resync_team_model_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for page in exporter.get_paginated_resources(
         build_analytics_options(
             start_date=selector.start_date, end_date=selector.end_date
+        )
+    ):
+        if page:
+            yield page
+
+
+@ocean.on_resync(ObjectKind.CURSOR_TEAM_SKILL_USAGE)
+async def on_resync_team_skill_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    exporter = create_team_skill_usage_exporter()
+    selector = cast(CursorTeamSkillUsageResourceConfig, event.resource_config).selector
+
+    async for page in exporter.get_paginated_resources(
+        build_team_skill_usage_options(
+            start_date=selector.start_date,
+            end_date=selector.end_date,
+            users=selector.users,
         )
     ):
         if page:
@@ -80,6 +99,7 @@ async def on_resync_usage_events(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 _ANALYTICS_KINDS = {
     ObjectKind.CURSOR_TEAM_MODEL_USAGE,
     ObjectKind.CURSOR_USER_MODEL_USAGE,
+    ObjectKind.CURSOR_TEAM_SKILL_USAGE,
 }
 _ADMIN_KINDS = {
     ObjectKind.CURSOR_DAILY_USAGE,
