@@ -1387,12 +1387,10 @@ class TestGitLabClient:
     async def test_resolve_refs_replaces_stale_ref_with_default_branch(
         self, client: GitLabClient
     ) -> None:
-        """_resolve_refs_from_projects fetches each unique project once,
-        stamps default_branch as ref, and attaches __repo for later reuse."""
         batch = [
-            {"path": "port-service.yml", "project_id": "111", "ref": "deadbeef"},
-            {"path": "other.yml", "project_id": "111", "ref": "deadbeef"},
-            {"path": "port-service.yml", "project_id": "222", "ref": "old-branch"},
+            {"path": "a.yml", "project_id": "111", "ref": "deadbeef"},
+            {"path": "b.yml", "project_id": "111", "ref": "deadbeef"},
+            {"path": "a.yml", "project_id": "222", "ref": "old-branch"},
         ]
         projects = {
             "111": {"id": 111, "default_branch": "main"},
@@ -1402,51 +1400,40 @@ class TestGitLabClient:
         with patch.object(
             client,
             "get_project",
-            AsyncMock(side_effect=lambda pid: projects.get(str(pid))),
+            AsyncMock(side_effect=lambda pid: projects[str(pid)]),
         ) as mock_get_project:
             await client._resolve_refs_from_projects(batch)
 
         assert mock_get_project.call_count == 2
         assert batch[0]["ref"] == "main"
-        assert batch[1]["ref"] == "main"
         assert batch[2]["ref"] == "develop"
         assert batch[0]["__repo"] == projects["111"]
-        assert batch[2]["__repo"] == projects["222"]
 
-    async def test_process_file_carries_prefetched_repo(
+    async def test_search_batch_resolves_ref_and_reuses_project(
         self, client: GitLabClient
     ) -> None:
-        prefetched = {"id": 123, "default_branch": "main"}
-        file = {
-            "path": "config.yaml",
-            "project_id": "123",
-            "ref": "main",
-            "__repo": prefetched,
-        }
+        batch = [{"path": "a.yml", "project_id": "111", "ref": "deadbeef"}]
+        project = {"id": 111, "default_branch": "main"}
 
-        with patch.object(
-            client.rest,
-            "get_file_data",
-            AsyncMock(return_value={"content": "key: value", "path": "config.yaml"}),
+        with (
+            patch.object(
+                client, "get_project", AsyncMock(return_value=project)
+            ) as mock_get_project,
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(return_value={"content": "x", "path": "a.yml"}),
+            ) as mock_get_file_data,
         ):
-            result = await client._process_file(
-                file, context="test", skip_parsing=True
+            await client._resolve_refs_from_projects(batch)
+            processed = await client._process_file_batch(
+                batch, "g-1", skip_parsing=True
             )
+            enriched = await client._enrich_files_with_repos(processed)
 
-        assert result["__repo"] == prefetched
-
-    async def test_enrich_file_with_repo_reuses_prefetched_repo(
-        self, client: GitLabClient
-    ) -> None:
-        """When _resolve_refs stamps __repo, enrich skips the duplicate GET."""
-        prefetched = {"id": 123, "default_branch": "main"}
-        file = {"path": "x.yaml", "project_id": "123", "__repo": prefetched}
-
-        with patch.object(client, "get_project", AsyncMock()) as mock:
-            result = await client._enrich_file_with_repo(file)
-
-        assert result == {"file": file, "repo": prefetched}
-        mock.assert_not_called()
+        mock_get_project.assert_called_once_with("111")
+        mock_get_file_data.assert_called_once_with("111", "a.yml", "main")
+        assert enriched[0]["repo"] == project
 
     async def test_resolve_file_references_relative_reference(
         self, client: GitLabClient
