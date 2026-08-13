@@ -1,6 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
-from core.options import ListCursorAdminOptions, ListCursorAnalyticsOptions
+from typing import cast
+
+from core.options import (
+    ListCursorAdminOptions,
+    ListCursorAnalyticsOptions,
+    ListCursorTeamSkillUsageOptions,
+)
 
 
 def _parse_relative_days(relative_date: str) -> int:
@@ -18,6 +24,20 @@ def build_analytics_options(
         "startDate": f"{start_days}d",
         "endDate": f"{end_days}d",
     }
+
+
+def build_team_skill_usage_options(
+    start_date: str,
+    end_date: str,
+    users: str | None = None,
+) -> ListCursorTeamSkillUsageOptions:
+    options = cast(
+        ListCursorTeamSkillUsageOptions,
+        build_analytics_options(start_date, end_date),
+    )
+    if users:
+        options["users"] = users
+    return options
 
 
 def build_admin_options(

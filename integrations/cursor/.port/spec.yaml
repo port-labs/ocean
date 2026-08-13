@@ -9,6 +9,7 @@ features:
     resources:
       - kind: cursor-team-model-usage
       - kind: cursor-user-model-usage
+      - kind: cursor-team-skill-usage
       - kind: cursor-daily-usage
       - kind: cursor-usage-event
 saas:

@@ -1,4 +1,5 @@
 from clients.client_factory import create_claude_client
+from core.exporters.claude_ai.skill_usage_exporter import ClaudeAISkillUsageExporter
 from core.exporters.claude_ai.user_activity_exporter import ClaudeAIUserActivityExporter
 from core.exporters.claude_ai.user_cost_exporter import ClaudeAIUserCostExporter
 from core.exporters.claude_ai.user_usage_exporter import ClaudeAIUserUsageExporter
@@ -31,3 +32,7 @@ def create_user_usage_exporter() -> ClaudeAIUserUsageExporter:
 
 def create_user_cost_exporter() -> ClaudeAIUserCostExporter:
     return ClaudeAIUserCostExporter(create_claude_client())
+
+
+def create_skill_usage_exporter() -> ClaudeAISkillUsageExporter:
+    return ClaudeAISkillUsageExporter(create_claude_client())
