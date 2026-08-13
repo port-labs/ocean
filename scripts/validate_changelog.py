@@ -21,6 +21,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Changelogs eligible for validation. Expand as integrations are standardized.
+# Once all are standardized, this bit of the logic should be removed.
 ALLOWED_CHANGELOG_PATHS = frozenset({"CHANGELOG.md"})
 
 STANDARD_SECTIONS = frozenset(
