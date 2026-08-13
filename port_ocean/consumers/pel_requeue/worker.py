@@ -68,17 +68,25 @@ class PELRequeueWorker:
             self._lifecycle_task = None
 
     async def _recover_missing_stream(self) -> None:
-        logger.warning(
-            "Redis stream or consumer group missing in PEL requeue worker, recreating",
-            stream_key=self._stream_key,
-            consumer_group=self._consumer_group,
-        )
-        await ensure_consumer_group(
-            self._redis,
-            stream_key=self._stream_key,
-            consumer_group=self._consumer_group,
-            stream_ttl_seconds=self._redis_settings.stream_ttl_seconds,
-        )
+        try:
+            logger.warning(
+                "Redis stream or consumer group missing in PEL requeue worker, recreating",
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+            )
+            await ensure_consumer_group(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                stream_ttl_seconds=self._redis_settings.stream_ttl_seconds,
+            )
+        except Exception as recovery_error:
+            logger.exception(
+                "Failed to recreate Redis stream consumer group "
+                "from PEL requeue worker",
+                stream_key=self._stream_key,
+                error=str(recovery_error),
+            )
 
     async def _worker_loop(self) -> None:
         while self._is_running:
@@ -89,15 +97,7 @@ class PELRequeueWorker:
                 break
             except ResponseError as error:
                 if is_missing_stream_or_group_error(error):
-                    try:
-                        await self._recover_missing_stream()
-                    except Exception as recovery_error:
-                        logger.exception(
-                            "Failed to recreate Redis stream consumer group "
-                            "from PEL requeue worker",
-                            stream_key=self._stream_key,
-                            error=str(recovery_error),
-                        )
+                    await self._recover_missing_stream()
                 else:
                     logger.exception(
                         "Unexpected Redis error in PEL requeue worker loop",

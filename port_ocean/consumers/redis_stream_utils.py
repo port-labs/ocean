@@ -74,13 +74,12 @@ async def ack_and_finalize_stream_entry(
             await pipe.xdel(stream_key, message_id)
             await pipe.execute()
     except ResponseError as error:
-        if is_missing_stream_or_group_error(error):
-            logger.warning(
-                "Redis stream or consumer group missing during ack finalize",
-                stream_key=stream_key,
-                consumer_group=consumer_group,
-                message_id=message_id,
-                error=str(error),
-            )
-            return
-        raise
+        if not is_missing_stream_or_group_error(error):
+            raise
+        logger.warning(
+            "Redis stream or consumer group missing during ack finalize",
+            stream_key=stream_key,
+            consumer_group=consumer_group,
+            message_id=message_id,
+            error=str(error),
+        )

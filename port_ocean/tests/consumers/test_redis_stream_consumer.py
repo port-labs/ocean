@@ -22,6 +22,7 @@ from port_ocean.exceptions.live_events import (
 )
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
+from port_ocean.consumers.redis_stream_utils import ensure_consumer_group
 from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
 
 
@@ -311,11 +312,11 @@ class TestRedisStreamConsumerConnection:
             )
             consumer._redis = mock_redis
             consumer._is_running = True
-            consumer._ensure_consumer_group = AsyncMock()  # type: ignore[method-assign]
+            consumer._recover_missing_stream = AsyncMock()  # type: ignore[method-assign]
 
             await consumer._read_loop()
 
-        consumer._ensure_consumer_group.assert_awaited_once()
+        consumer._recover_missing_stream.assert_awaited_once()
         assert mock_redis.xreadgroup.await_count == 2
 
     @pytest.mark.asyncio
@@ -388,7 +389,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_awaited_once_with("stream", 3600)
 
@@ -415,7 +421,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_not_awaited()
 
@@ -442,7 +453,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_not_awaited()
 
@@ -466,7 +482,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         assert mock_redis.xgroup_create.await_args is not None
         assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
@@ -492,7 +513,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         assert mock_redis.xgroup_create.await_args is not None
         assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
@@ -523,7 +549,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_not_awaited()
 

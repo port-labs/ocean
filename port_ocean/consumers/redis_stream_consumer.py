@@ -130,7 +130,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             exponential_base=self._settings.connection_startup_exponential_base,
             **self._redis_client_kwargs(),
         )
-        await self._ensure_consumer_group()
+        await ensure_consumer_group(
+            self._require_redis(),
+            stream_key=self._stream_key,
+            consumer_group=self._consumer_group,
+            stream_ttl_seconds=self._settings.stream_ttl_seconds,
+        )
         self._is_running = True
         self._read_task = asyncio.create_task(self._read_loop())
 
@@ -182,21 +187,25 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             )
         return self._redis
 
-    async def _ensure_consumer_group(self) -> None:
-        await ensure_consumer_group(
-            self._require_redis(),
-            stream_key=self._stream_key,
-            consumer_group=self._consumer_group,
-            stream_ttl_seconds=self._settings.stream_ttl_seconds,
-        )
-
     async def _recover_missing_stream(self) -> None:
-        logger.warning(
-            "Redis stream or consumer group missing, recreating",
-            stream_key=self._stream_key,
-            consumer_group=self._consumer_group,
-        )
-        await self._ensure_consumer_group()
+        try:
+            logger.warning(
+                "Redis stream or consumer group missing, recreating",
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+            )
+            await ensure_consumer_group(
+                self._require_redis(),
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                stream_ttl_seconds=self._settings.stream_ttl_seconds,
+            )
+        except Exception as recovery_error:
+            logger.exception(
+                "Failed to recreate Redis stream consumer group",
+                stream_key=self._stream_key,
+                error=str(recovery_error),
+            )
 
     async def _read_loop(self) -> None:
         redis = self._require_redis()
@@ -220,14 +229,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 break
             except ResponseError as error:
                 if is_missing_stream_or_group_error(error):
-                    try:
-                        await self._recover_missing_stream()
-                    except Exception as recovery_error:
-                        logger.exception(
-                            "Failed to recreate Redis stream consumer group",
-                            stream_key=self._stream_key,
-                            error=str(recovery_error),
-                        )
+                    await self._recover_missing_stream()
                 else:
                     logger.exception(
                         "Unexpected Redis error in stream read loop",
