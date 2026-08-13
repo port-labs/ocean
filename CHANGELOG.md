@@ -14,6 +14,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Redis stream consumer now deletes entries after acking and refreshes stream TTL in the same transactional pipeline (`XACK`, `XDEL`, `EXPIRE`). The PEL requeue worker uses the same ack-finalize flow for discard and tombstoned messages.
 
 
+## 0.48.5 (2026-08-11)
+
+
+### Improvements
+
+- Log explicit Redis connection failures at startup and retry the initial connection with exponential backoff.
+
 ## 0.48.4 (2026-08-11)
 
 
@@ -28,6 +35,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Live event timestamp logs (`Event Added To Queue`, `Event Started Processing`, etc.) now bind `trace_id` at the top level of log `extra` instead of nesting it under `extra.extra`.
+
 
 ## 0.48.2 (2026-08-10)
 

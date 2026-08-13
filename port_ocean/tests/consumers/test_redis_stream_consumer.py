@@ -318,6 +318,51 @@ class TestRedisStreamConsumerConnection:
         consumer._ensure_consumer_group.assert_awaited_once()
         assert mock_redis.xreadgroup.await_count == 2
 
+    @pytest.mark.asyncio
+    async def test_read_loop_backoffs_on_connection_error(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            block_ms=100,
+            connection_error_backoff_seconds=2.5,
+        )
+        mock_redis = AsyncMock()
+        read_calls = 0
+
+        async def read_side_effect(**_kwargs: object) -> list[object]:
+            nonlocal read_calls
+            read_calls += 1
+            if read_calls == 1:
+                raise ConnectionError("connection lost")
+            consumer._is_running = False
+            return []
+
+        mock_redis.xreadgroup = AsyncMock(side_effect=read_side_effect)
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.asyncio.sleep",
+                new_callable=AsyncMock,
+            ) as mock_sleep,
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            consumer._is_running = True
+
+            await consumer._read_loop()
+
+        mock_sleep.assert_awaited_once_with(2.5)
+        assert mock_redis.xreadgroup.await_count == 2
+
 
 class TestRedisStreamConsumerGroupCreation:
     @pytest.mark.asyncio
@@ -614,7 +659,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.create_redis_client",
+                "port_ocean.consumers.redis_stream_consumer.create_redis_client_with_retry",
                 new=AsyncMock(return_value=mock_redis),
             ),
             patch(
@@ -656,7 +701,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.create_redis_client",
+                "port_ocean.consumers.redis_stream_consumer.create_redis_client_with_retry",
                 new=AsyncMock(return_value=mock_redis),
             ),
             patch(
