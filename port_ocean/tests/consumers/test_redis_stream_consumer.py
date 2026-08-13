@@ -496,7 +496,7 @@ class TestRedisStreamConsumerGroupCreation:
 
         assert mock_redis.xgroup_create.await_args is not None
         assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
-        mock_redis.expire.assert_awaited_once_with("stream", 3600)
+        mock_redis.expire.assert_awaited_once_with("stream", 2_592_000)
 
     @pytest.mark.asyncio
     async def test_skips_ttl_when_consumer_group_already_exists(
