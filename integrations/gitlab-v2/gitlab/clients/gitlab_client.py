@@ -1049,9 +1049,7 @@ class GitLabClient:
 
         return file_data
 
-    async def _resolve_refs_from_projects(
-        self, batch: list[dict[str, Any]]
-    ) -> None:
+    async def _resolve_refs_from_projects(self, batch: list[dict[str, Any]]) -> None:
         pids = list({str(f["project_id"]) for f in batch})
         fetched = await asyncio.gather(*(self.get_project(pid) for pid in pids))
         projects = {pid: proj for pid, proj in zip(pids, fetched) if proj}
