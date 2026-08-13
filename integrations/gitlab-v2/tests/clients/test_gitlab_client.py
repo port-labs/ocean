@@ -1413,6 +1413,28 @@ class TestGitLabClient:
         assert batch[0]["__repo"] == projects["111"]
         assert batch[2]["__repo"] == projects["222"]
 
+    async def test_process_file_carries_prefetched_repo(
+        self, client: GitLabClient
+    ) -> None:
+        prefetched = {"id": 123, "default_branch": "main"}
+        file = {
+            "path": "config.yaml",
+            "project_id": "123",
+            "ref": "main",
+            "__repo": prefetched,
+        }
+
+        with patch.object(
+            client.rest,
+            "get_file_data",
+            AsyncMock(return_value={"content": "key: value", "path": "config.yaml"}),
+        ):
+            result = await client._process_file(
+                file, context="test", skip_parsing=True
+            )
+
+        assert result["__repo"] == prefetched
+
     async def test_enrich_file_with_repo_reuses_prefetched_repo(
         self, client: GitLabClient
     ) -> None:

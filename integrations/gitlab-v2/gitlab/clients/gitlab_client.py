@@ -1031,6 +1031,8 @@ class GitLabClient:
         file_data = await self.rest.get_file_data(project_id, file_path, ref)
         file_data["project_id"] = project_id
         file_data["path"] = file_path
+        if repo := file.get("__repo"):
+            file_data["__repo"] = repo
 
         if (
             not skip_parsing
