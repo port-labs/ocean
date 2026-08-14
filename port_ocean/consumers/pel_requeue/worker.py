@@ -15,7 +15,6 @@ actual processing.  When a message has been stuck in the PEL longer than
 """
 
 import asyncio
-from typing import Any, cast
 
 from loguru import logger
 from redis.exceptions import ResponseError
@@ -26,6 +25,7 @@ from port_ocean.consumers.redis_stream_utils import (
     ack_and_finalize_stream_entry,
     ensure_consumer_group,
     is_missing_stream_or_group_error,
+    requeue_stream_entry,
 )
 
 
@@ -218,9 +218,13 @@ class PELRequeueWorker:
         new_fields["requeue_count"] = str(requeue_count + 1)
 
         try:
-            await self._redis.xadd(self._stream_key, cast(Any, new_fields))
-            await self._redis.xack(self._stream_key, self._consumer_group, message_id)
-            await self._redis.xdel(self._stream_key, message_id)
+            await requeue_stream_entry(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                message_id=message_id,
+                fields=new_fields,
+            )
         except ResponseError as error:
             if is_missing_stream_or_group_error(error):
                 await self._recover_missing_stream()

@@ -22,6 +22,7 @@ from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
 from port_ocean.consumers.redis_stream_utils import (
     ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+    REQUEUE_STREAM_ENTRY_SCRIPT,
     ensure_consumer_group,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
@@ -777,9 +778,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
         }
 
         mock_redis = AsyncMock()
-        mock_redis.xadd = AsyncMock(return_value="1700000000001-0")
-        mock_redis.xack = AsyncMock(return_value=1)
-        mock_redis.xdel = AsyncMock(return_value=1)
+        mock_redis.eval = AsyncMock(return_value="1700000000001-0")
         mock_redis.xautoclaim = AsyncMock(
             return_value=("0-0", [(message_id, fields)], [])
         )
@@ -808,15 +807,19 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             )
             await pel_worker._scan_and_requeue()
 
-            mock_redis.xadd.assert_awaited_once()
-            assert mock_redis.xadd.await_args is not None
-            requeued_fields: dict[str, str] = mock_redis.xadd.await_args.args[1]
+            mock_redis.eval.assert_awaited_once()
+            assert mock_redis.eval.await_args is not None
+            assert mock_redis.eval.await_args.args[0] == REQUEUE_STREAM_ENTRY_SCRIPT
+            field_pairs = mock_redis.eval.await_args.args[5:]
+            requeued_fields = dict(
+                zip(field_pairs[0::2], field_pairs[1::2], strict=True)
+            )
             assert requeued_fields["requeue_count"] == "1"
 
             release_handler.set()
             await handle_task
 
-            assert mock_redis.xack.await_count >= 1
+            assert mock_redis.eval.await_count >= 1
 
 
 class TestRedisStreamConsumer:

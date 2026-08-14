@@ -65,6 +65,12 @@ redis.call('XACK', KEYS[1], ARGV[1], ARGV[2])
 return redis.call('XDEL', KEYS[1], ARGV[2])
 """
 
+REQUEUE_STREAM_ENTRY_SCRIPT = """
+redis.call('XADD', KEYS[1], '*', unpack(ARGV, 3))
+redis.call('XACK', KEYS[1], ARGV[1], ARGV[2])
+return redis.call('XDEL', KEYS[1], ARGV[2])
+"""
+
 
 async def ack_and_finalize_stream_entry(
     redis: RedisClient,
@@ -92,3 +98,26 @@ async def ack_and_finalize_stream_entry(
             message_id=message_id,
             error=str(error),
         )
+
+
+async def requeue_stream_entry(
+    redis: RedisClient,
+    *,
+    stream_key: str,
+    consumer_group: str,
+    message_id: str,
+    fields: dict[str, str],
+) -> None:
+    """Atomically re-enqueue a stream entry and finalize the original via Lua."""
+    field_items: list[str] = []
+    for key, value in fields.items():
+        field_items.extend((key, value))
+
+    await redis.eval(
+        REQUEUE_STREAM_ENTRY_SCRIPT,
+        1,
+        stream_key,
+        consumer_group,
+        message_id,
+        *field_items,
+    )
