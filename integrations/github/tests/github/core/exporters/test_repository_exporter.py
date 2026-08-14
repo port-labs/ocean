@@ -32,6 +32,21 @@ TEST_REPOS = [
     },
 ]
 
+TEST_REPOS_WITH_ARCHIVED = [
+    {
+        "id": 1,
+        "name": "active-repo",
+        "full_name": "test-org/active-repo",
+        "archived": False,
+    },
+    {
+        "id": 2,
+        "name": "archived-repo",
+        "full_name": "test-org/archived-repo",
+        "archived": True,
+    },
+]
+
 TEST_COLLABORATORS = [
     {
         "id": 101,
@@ -307,6 +322,95 @@ class TestRestRepositoryExporter:
                     f"{rest_client.base_url}/search/repositories",
                     {"q": "org:test-org code in:name"},
                 )
+
+    async def test_get_paginated_resources_excludes_archived_repositories_list_strategy(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_REPOS_WITH_ARCHIVED
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    exclude_archived=True,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == ["active-repo"]
+
+    async def test_get_paginated_resources_excludes_archived_repositories_search_strategy(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            if "search" in url:
+                yield {"items": TEST_REPOS_WITH_ARCHIVED}
+            else:
+                yield TEST_REPOS_WITH_ARCHIVED
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                    exclude_archived=True,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == ["active-repo"]
+
+    async def test_get_paginated_resources_keeps_archived_repositories_by_default(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """`exclude_archived` defaults to False, so archived repos are still returned."""
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_REPOS_WITH_ARCHIVED
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == [
+                    "active-repo",
+                    "archived-repo",
+                ]
 
     async def test_search_strategy_applies_incremental_cursor(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig

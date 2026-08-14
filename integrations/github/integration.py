@@ -47,7 +47,21 @@ from github.helpers.port_app_config import (
 FILE_PROPERTY_PREFIX = "file://"
 
 
-class RepoSearchSelector(Selector):
+class ExcludeArchivedSelector(BaseModel):
+    exclude_archived: bool = Field(
+        title="Exclude Archived Repositories",
+        alias="excludeArchived",
+        default=False,
+        description=(
+            "When enabled, archived repositories are excluded during repository "
+            "discovery for this kind, before any per-repository data is fetched. "
+            "Does not affect explicitly listed `repos` entries, which are always "
+            "included regardless of archived status."
+        ),
+    )
+
+
+class RepoSearchSelector(Selector, ExcludeArchivedSelector):
     repo_search: Optional[RepoSearchParams] = Field(
         title="Repositories",
         alias="repoSearch",
@@ -206,7 +220,7 @@ class RepositoryBranchMapping(BaseModel):
         extra = "forbid"
 
 
-class RepositorySourceModel(BaseModel):
+class RepositorySourceModel(ExcludeArchivedSelector):
     organization: Optional[str] = Field(
         title="Organization",
         default=None,

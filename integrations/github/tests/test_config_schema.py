@@ -5,4 +5,6 @@ from integration import GithubSkillSelector
 def test_skill_path_defaults_omit_unset_repository_filters() -> None:
     defaults = GithubSkillSelector.schema()["properties"]["paths"]["default"]
 
-    assert defaults == [{"path": path} for path in DEFAULT_SKILL_PATHS]
+    assert defaults == [
+        {"path": path, "exclude_archived": False} for path in DEFAULT_SKILL_PATHS
+    ]

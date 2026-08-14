@@ -24,6 +24,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
+    exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
