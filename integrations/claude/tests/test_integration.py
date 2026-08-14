@@ -4,6 +4,7 @@ from pydantic.v1 import ValidationError
 from integration import (
     ClaudeAIUserActivitySelector,
     ClaudeAIUserReportSelector,
+    ClaudeAISkillUsageSelector,
     ClaudePlatformCodeAnalyticsResourceConfig,
     ClaudePlatformCodeAnalyticsSelector,
     ClaudePlatformCostRecordResourceConfig,
@@ -73,6 +74,42 @@ def test_user_activity_selector_rejects_non_positive_time_frame() -> None:
 def test_user_activity_selector_rejects_malformed_starting_date() -> None:
     with pytest.raises(ValidationError):
         ClaudeAIUserActivitySelector(query="true", startingDate="not-a-date")
+
+
+# ---------------------------------------------------------------------------
+# Claude AI skill usage selector
+# ---------------------------------------------------------------------------
+
+
+def test_skill_usage_selector_allows_neither_field() -> None:
+    sel = ClaudeAISkillUsageSelector(query="true")
+    assert sel.time_frame is None
+    assert sel.starting_date is None
+
+
+def test_skill_usage_selector_accepts_time_frame_only() -> None:
+    sel = ClaudeAISkillUsageSelector(query="true", timeFrame=14)
+    assert sel.time_frame == 14
+    assert sel.starting_date is None
+
+
+def test_skill_usage_selector_rejects_both_fields() -> None:
+    with pytest.raises(
+        ValidationError, match="'startingDate' and 'timeFrame' are mutually exclusive"
+    ):
+        ClaudeAISkillUsageSelector(
+            query="true", startingDate="2026-01-01", timeFrame=30
+        )
+
+
+def test_skill_usage_selector_rejects_non_positive_time_frame() -> None:
+    with pytest.raises(ValidationError):
+        ClaudeAISkillUsageSelector(query="true", timeFrame=0)
+
+
+def test_skill_usage_selector_rejects_malformed_starting_date() -> None:
+    with pytest.raises(ValidationError):
+        ClaudeAISkillUsageSelector(query="true", startingDate="not-a-date")
 
 
 # ---------------------------------------------------------------------------
