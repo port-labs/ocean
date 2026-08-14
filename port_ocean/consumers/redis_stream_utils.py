@@ -1,4 +1,6 @@
 import asyncio
+from collections.abc import Awaitable
+from typing import Any, cast
 
 from loguru import logger
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -72,6 +74,15 @@ return redis.call('XDEL', KEYS[1], ARGV[2])
 """
 
 
+async def _eval_lua_script(
+    redis: RedisClient,
+    script: str,
+    numkeys: int,
+    *keys_and_args: str,
+) -> Any:
+    return await cast(Awaitable[Any], redis.eval(script, numkeys, *keys_and_args))
+
+
 async def ack_and_finalize_stream_entry(
     redis: RedisClient,
     *,
@@ -81,7 +92,8 @@ async def ack_and_finalize_stream_entry(
 ) -> None:
     """Atomically ack a stream entry and delete it using a Lua script."""
     try:
-        await redis.eval(
+        await _eval_lua_script(
+            redis,
             ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
             1,
             stream_key,
@@ -113,7 +125,8 @@ async def requeue_stream_entry(
     for key, value in fields.items():
         field_items.extend((key, value))
 
-    await redis.eval(
+    await _eval_lua_script(
+        redis,
         REQUEUE_STREAM_ENTRY_SCRIPT,
         1,
         stream_key,
