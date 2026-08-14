@@ -70,7 +70,9 @@ class EntityTopologicalSorter:
                 for identifier in (
                     identifiers if isinstance(identifiers, list) else [identifiers]
                 ):
-                    relation_target_ids.update(relation_target_identifier_keys(identifier))
+                    relation_target_ids.update(
+                        relation_target_identifier_keys(identifier)
+                    )
 
             related_entities = [
                 related
