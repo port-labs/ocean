@@ -169,9 +169,25 @@ class GitlabMemberSelector(Selector):
     )
 
 
-class GitlabObjectWithMembersResourceConfig(ResourceConfig):
-    kind: Literal["project-with-members", "group-with-members"]
+class GitlabGroupWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["group-with-members"] = Field(
+        title="GitLab Group With Members",
+        description="GitLab group resource kind including group members.",
+    )
     selector: GitlabMemberSelector
+
+
+class GitlabProjectWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["project-with-members"] = Field(
+        title="GitLab Project With Members",
+        description="GitLab project resource kind including project members.",
+    )
+    selector: GitlabMemberSelector
+
+
+GitlabObjectWithMembersResourceConfig = (
+    GitlabGroupWithMembersResourceConfig | GitlabProjectWithMembersResourceConfig
+)
 
 
 class FilesSelector(BaseModel):
@@ -231,7 +247,7 @@ class GitlabPortAppConfig(PortAppConfig):
         title="Project Visibility Filter",
         description="Optional GitLab visibility filter for projects (e.g. public, internal, private).",
     )
-    resources: list[GitlabObjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitLabProjectResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitlabGroupWithMembersResourceConfig | GitlabProjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitLabProjectResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
