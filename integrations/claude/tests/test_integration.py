@@ -4,11 +4,14 @@ from pydantic.v1 import ValidationError
 from integration import (
     ClaudeAIUserActivitySelector,
     ClaudeAIUserReportSelector,
+    ClaudeCodeAnalyticsResourceConfig,
+    ClaudeCostRecordResourceConfig,
     ClaudeAISkillUsageSelector,
     ClaudePlatformCodeAnalyticsResourceConfig,
     ClaudePlatformCodeAnalyticsSelector,
     ClaudePlatformCostRecordResourceConfig,
     ClaudePlatformUsageRecordResourceConfig,
+    ClaudeUsageRecordResourceConfig,
 )
 
 _MINIMAL_PORT = {"entity": {"mappings": {"identifier": ".id", "blueprint": '"bp"'}}}
@@ -140,31 +143,42 @@ def test_user_report_selector_rejects_malformed_starting_at() -> None:
 
 
 @pytest.mark.parametrize(
-    "config_cls,new_kind,legacy_kind,selector",
+    "config_cls,kind,selector",
     [
         (
             ClaudePlatformUsageRecordResourceConfig,
             "claude-platform-usage-record",
+            {"query": "true"},
+        ),
+        (
+            ClaudeUsageRecordResourceConfig,
             "claude-usage-record",
             {"query": "true"},
         ),
         (
             ClaudePlatformCostRecordResourceConfig,
             "claude-platform-cost-record",
+            {"query": "true"},
+        ),
+        (
+            ClaudeCostRecordResourceConfig,
             "claude-cost-record",
             {"query": "true"},
         ),
         (
             ClaudePlatformCodeAnalyticsResourceConfig,
             "claude-platform-code-analytics",
+            {"query": "true", "timeFrame": 30},
+        ),
+        (
+            ClaudeCodeAnalyticsResourceConfig,
             "claude-code-analytics",
             {"query": "true", "timeFrame": 30},
         ),
     ],
 )
 def test_platform_config_accepts_new_and_legacy_kinds(
-    config_cls: type, new_kind: str, legacy_kind: str, selector: dict[str, object]
+    config_cls: type, kind: str, selector: dict[str, object]
 ) -> None:
-    for kind in (new_kind, legacy_kind):
-        config = config_cls(kind=kind, selector=selector, port=_MINIMAL_PORT)
-        assert config.kind == kind
+    config = config_cls(kind=kind, selector=selector, port=_MINIMAL_PORT)
+    assert config.kind == kind

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.26 (2026-08-16)
+
+
+### Improvements
+
+- Add title and description metadata to the GitLab v2 file selector.
+
+
+## 0.9.25 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.9.24 (2026-08-16)
 
 

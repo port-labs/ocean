@@ -1,6 +1,4 @@
 import asyncio
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 
 import pytest
@@ -9,6 +7,7 @@ from redis.exceptions import ResponseError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from port_ocean.consumers.redis_stream_utils import (
+    ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
     ack_and_finalize_stream_entry,
     ensure_consumer_group,
     is_missing_stream_or_group_error,
@@ -16,22 +15,9 @@ from port_ocean.consumers.redis_stream_utils import (
 )
 
 
-def _make_redis_with_pipeline() -> AsyncMock:
+def _make_redis_for_ack_finalize() -> AsyncMock:
     redis = AsyncMock()
-    redis.xack = AsyncMock(return_value=1)
-    redis.xdel = AsyncMock(return_value=1)
-
-    @asynccontextmanager
-    async def fake_pipeline(
-        *_args: object, **_kwargs: object
-    ) -> AsyncIterator[AsyncMock]:
-        pipe = AsyncMock()
-        pipe.xack = redis.xack
-        pipe.xdel = redis.xdel
-        pipe.execute = AsyncMock(return_value=[1, 1])
-        yield pipe
-
-    redis.pipeline = fake_pipeline
+    redis.eval = AsyncMock(return_value=1)
     return redis
 
 
@@ -58,8 +44,8 @@ class TestIsMissingStreamOrGroupError:
 
 class TestAckAndFinalizeStreamEntry:
     @pytest.mark.asyncio
-    async def test_acks_and_deletes_entry_transactionally(self) -> None:
-        redis = _make_redis_with_pipeline()
+    async def test_acks_and_deletes_entry(self) -> None:
+        redis = _make_redis_for_ack_finalize()
 
         await ack_and_finalize_stream_entry(
             redis,
@@ -68,30 +54,20 @@ class TestAckAndFinalizeStreamEntry:
             message_id="1700000000000-0",
         )
 
-        redis.xack.assert_awaited_once_with(
-            "stream", "test.integration", "1700000000000-0"
+        redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
         )
-        redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
 
     @pytest.mark.asyncio
-    async def test_swallows_missing_stream_error_from_transaction(self) -> None:
-        redis = _make_redis_with_pipeline()
-
-        @asynccontextmanager
-        async def failing_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xack = redis.xack
-            pipe.xdel = redis.xdel
-            pipe.execute = AsyncMock(
-                side_effect=ResponseError(
-                    "NOGROUP No such key 'stream' or consumer group"
-                )
-            )
-            yield pipe
-
-        redis.pipeline = failing_pipeline
+    async def test_swallows_missing_stream_error_from_eval(self) -> None:
+        redis = _make_redis_for_ack_finalize()
+        redis.eval = AsyncMock(
+            side_effect=ResponseError("NOGROUP No such key 'stream' or consumer group")
+        )
 
         await ack_and_finalize_stream_entry(
             redis,
@@ -100,7 +76,7 @@ class TestAckAndFinalizeStreamEntry:
             message_id="1700000000000-0",
         )
 
-        redis.xack.assert_awaited_once()
+        redis.eval.assert_awaited_once()
 
 
 class TestEnsureConsumerGroup:

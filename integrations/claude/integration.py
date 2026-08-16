@@ -282,31 +282,49 @@ class ClaudeAIUserReportSelector(Selector):
 
 
 class ClaudePlatformUsageRecordResourceConfig(ResourceConfig):
-    # "claude-usage-record" is the deprecated alias kept for backwards
-    # compatibility with existing installations.
-    kind: Literal["claude-platform-usage-record", "claude-usage-record"] = Field(
+    kind: Literal["claude-platform-usage-record"] = Field(
         description="Claude Platform usage record resource kind",
         title="Claude Platform Usage Record",
     )
     selector: ClaudePlatformUsageSelector
 
 
+class ClaudeUsageRecordResourceConfig(ResourceConfig):
+    kind: Literal["claude-usage-record"] = Field(
+        description="Deprecated alias for Claude Platform usage record.",
+        title="Claude Usage Record",
+    )
+    selector: ClaudePlatformUsageSelector
+
+
 class ClaudePlatformCostRecordResourceConfig(ResourceConfig):
-    # "claude-cost-record" is the deprecated alias kept for backwards
-    # compatibility with existing installations.
-    kind: Literal["claude-platform-cost-record", "claude-cost-record"] = Field(
+    kind: Literal["claude-platform-cost-record"] = Field(
         description="Claude Platform cost record resource kind",
         title="Claude Platform Cost Record",
     )
     selector: ClaudePlatformCostSelector
 
 
+class ClaudeCostRecordResourceConfig(ResourceConfig):
+    kind: Literal["claude-cost-record"] = Field(
+        description="Deprecated alias for Claude Platform cost record.",
+        title="Claude Cost Record",
+    )
+    selector: ClaudePlatformCostSelector
+
+
 class ClaudePlatformCodeAnalyticsResourceConfig(ResourceConfig):
-    # "claude-code-analytics" is the deprecated alias kept for backwards
-    # compatibility with existing installations.
-    kind: Literal["claude-platform-code-analytics", "claude-code-analytics"] = Field(
+    kind: Literal["claude-platform-code-analytics"] = Field(
         description="Claude Platform code analytics resource kind",
         title="Claude Platform Code Analytics",
+    )
+    selector: ClaudePlatformCodeAnalyticsSelector
+
+
+class ClaudeCodeAnalyticsResourceConfig(ResourceConfig):
+    kind: Literal["claude-code-analytics"] = Field(
+        description="Deprecated alias for Claude Platform code analytics.",
+        title="Claude Code Analytics",
     )
     selector: ClaudePlatformCodeAnalyticsSelector
 
@@ -350,8 +368,11 @@ class ClaudePortAppConfig(PortAppConfig):
         | ClaudeAIUserCostResourceConfig
         | ClaudeAISkillUsageResourceConfig
         | ClaudePlatformUsageRecordResourceConfig
+        | ClaudeUsageRecordResourceConfig
         | ClaudePlatformCostRecordResourceConfig
+        | ClaudeCostRecordResourceConfig
         | ClaudePlatformCodeAnalyticsResourceConfig
+        | ClaudeCodeAnalyticsResourceConfig
     ] = Field(
         description="Resources for claude",
         title="Resources",
