@@ -42,23 +42,13 @@ def _enforce_field_metadata(config_class: Type[PortAppConfig]) -> None:
             return
         seen.add(cls)
 
-        parents: dict[str, Any] = {}
-        for base in reversed(cls.__mro__[1:]):
-            parents.update(getattr(base, "__fields__", {}))
-
         for name, field in cls.__fields__.items():
-            parent = parents.get(name)
             info = field.field_info
-            parent_info = parent.field_info if parent is not None else None
-            if info.title is None and (
-                parent_info is None or parent_info.title is None
-            ):
+            if info.title is None:
                 raise TypeError(
                     f"Field '{name}' in '{cls.__name__}' must have a 'title'"
                 )
-            if info.description is None and (
-                parent_info is None or parent_info.description is None
-            ):
+            if info.description is None:
                 raise TypeError(
                     f"Field '{name}' in '{cls.__name__}' must have a 'description'"
                 )
