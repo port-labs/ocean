@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Add a PortAppConfig class so ocean port-app-config schema can load fake-integration.
