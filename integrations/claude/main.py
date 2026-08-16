@@ -1,3 +1,4 @@
+from asyncio import CancelledError
 from typing import cast
 
 from loguru import logger
@@ -7,13 +8,16 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.claude_client import ClaudeClient, ClaudeDeployment
 from clients.client_factory import create_claude_client, is_deployment_enabled
+from core.exceptions import ClaudeSkillUsageResyncError
 from core.options_builder import (
     build_platform_code_analytics_options,
     build_platform_cost_options,
     build_platform_usage_options,
     build_user_activity_options,
     build_user_report_options,
+    build_skill_usage_options,
     get_code_analytics_dates,
+    get_skill_usage_dates,
     get_user_activity_dates,
 )
 from exporter_factory import (
@@ -22,11 +26,13 @@ from exporter_factory import (
     create_platform_usage_exporter,
     create_user_activity_exporter,
     create_user_cost_exporter,
+    create_skill_usage_exporter,
     create_user_usage_exporter,
 )
 from integration import (
     ClaudeAIUserActivityResourceConfig,
     ClaudeAIUserCostResourceConfig,
+    ClaudeAISkillUsageResourceConfig,
     ClaudeAIUserUsageResourceConfig,
     ClaudePlatformCodeAnalyticsResourceConfig,
     ClaudePlatformCostRecordResourceConfig,
@@ -65,6 +71,51 @@ async def on_resync_user_activity(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ):
             if page:
                 yield page
+
+
+@ocean.on_resync(ObjectKind.CLAUDE_AI_SKILL_USAGE)
+async def on_resync_skill_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if not is_deployment_enabled(ClaudeDeployment.ENTERPRISE, kind):
+        return
+
+    selector = cast(ClaudeAISkillUsageResourceConfig, event.resource_config).selector
+    exporter = create_skill_usage_exporter()
+
+    dates = get_skill_usage_dates(
+        starting_date=selector.starting_date,
+        time_frame=selector.time_frame,
+    )
+    if not dates:
+        logger.info("No Claude AI skill usage dates to fetch")
+        return
+    logger.info(
+        f"Fetching Claude AI skill usage for {len(dates)} day(s) "
+        f"from {dates[0]} to {dates[-1]}"
+    )
+
+    failed_dates: list[str] = []
+    for day in dates:
+        try:
+            async for page in exporter.get_paginated_resources(
+                build_skill_usage_options(date=day)
+            ):
+                if page:
+                    yield page
+        except CancelledError:
+            logger.warning("Skill usage resync cancelled")
+            raise
+        except Exception as error:
+            logger.warning(
+                f"Failed to fetch Claude AI skill usage for {day}: {error}. "
+                "Continuing with remaining dates."
+            )
+            failed_dates.append(day)
+
+    if failed_dates:
+        raise ClaudeSkillUsageResyncError(
+            f"Claude AI skill usage resync completed with "
+            f"{len(failed_dates)} failed day(s): {failed_dates}"
+        )
 
 
 @ocean.on_resync(ObjectKind.CLAUDE_AI_USER_USAGE)
@@ -197,39 +248,72 @@ async def _verify_api_access(client: ClaudeClient) -> None:
     a misconfiguration is visible without crash-looping the integration.
     """
     if client.deployment == ClaudeDeployment.ENTERPRISE:
-        dates = get_user_activity_dates(starting_date=None, time_frame=1)
-        if not dates:
-            return
-        endpoint = "/v1/organizations/analytics/users"
-        params = {"date": dates[-1], "limit": 1}
         scope = "read:analytics"
+        probes: list[tuple[str, dict[str, str | int]]] = []
+
+        user_dates = get_user_activity_dates(starting_date=None, time_frame=1)
+        if user_dates:
+            probes.append(
+                (
+                    "/v1/organizations/analytics/users",
+                    {"date": user_dates[-1], "limit": 1},
+                )
+            )
+
+        skill_dates = get_skill_usage_dates(starting_date=None, time_frame=1)
+        if skill_dates:
+            probes.append(
+                (
+                    "/v1/organizations/analytics/skills",
+                    {"date": skill_dates[-1], "limit": 1},
+                )
+            )
+
+        if not probes:
+            return
     else:
-        endpoint = "/v1/organizations/usage_report/messages"
-        params = {
-            "starting_at": "2026-01-01T00:00:00Z",
-            "limit": 1,
-            "bucket_width": "1d",
-        }
         scope = "api:admin"
+        probes = [
+            (
+                "/v1/organizations/usage_report/messages",
+                {
+                    "starting_at": "2026-01-01T00:00:00Z",
+                    "limit": 1,
+                    "bucket_width": "1d",
+                },
+            )
+        ]
 
-    try:
-        payload = await client.send_api_request(
-            endpoint, params, soft_fail_statuses={401, 403}
-        )
-    except Exception as error:
-        logger.warning(f"Could not verify Anthropic API access at startup: {error}")
-        return
+    verified_any = False
+    for endpoint, params in probes:
+        try:
+            payload = await client.send_api_request(
+                endpoint, params, soft_fail_statuses={401, 403}
+            )
+        except Exception as error:
+            logger.warning(
+                f"Could not verify Anthropic API access for {endpoint} at startup: "
+                f"{error}"
+            )
+            continue
 
-    if payload is None:
-        logger.error(
-            f"Anthropic API access check failed for the "
-            f"'{client.deployment.value}' deployment. Verify the admin API key is "
-            f"valid and carries the '{scope}' scope."
-        )
-    else:
+        if payload is None:
+            logger.error(
+                f"Anthropic API access check failed for {endpoint} on the "
+                f"'{client.deployment.value}' deployment. Verify the admin API key "
+                f"is valid and carries the '{scope}' scope."
+            )
+        else:
+            verified_any = True
+            logger.info(
+                f"Verified Anthropic API access for {endpoint} on the "
+                f"'{client.deployment.value}' deployment."
+            )
+
+    if verified_any:
         logger.info(
-            f"Verified Anthropic API access for the '{client.deployment.value}' "
-            "deployment."
+            f"Anthropic API startup checks completed for the "
+            f"'{client.deployment.value}' deployment."
         )
 
 

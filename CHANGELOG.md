@@ -7,6 +7,66 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.48.7 (2026-08-13)
+
+
+### Improvements
+
+- Redis stream consumer now deletes entries after acking in a transactional pipeline (`XACK`, `XDEL`). Default stream TTL is now one month and is applied only when the consumer creates the stream via MKSTREAM.
+
+## 0.48.6 (2026-08-13)
+
+
+### Improvements
+
+- Updated the internal auth file to use Pydantic v2 for its models.
+
+## 0.48.5 (2026-08-11)
+
+
+### Improvements
+
+- Log explicit Redis connection failures at startup and retry the initial connection with exponential backoff.
+
+## 0.48.4 (2026-08-11)
+
+
+### Improvements
+
+- Treat `HTTP 408 Request Timeout` as a default retryable status code in `RetryConfig`.
+
+
+## 0.48.3 (2026-08-11)
+
+
+### Improvements
+
+- Live event timestamp logs (`Event Added To Queue`, `Event Started Processing`, etc.) now bind `trace_id` at the top level of log `extra` instead of nesting it under `extra.extra`.
+
+
+## 0.48.2 (2026-08-10)
+
+
+### Bug Fixes
+
+- Load `port_app_config` into the action-run event context (same as live events), so nested or inherited event contexts no longer raise `Port app config is not set`.
+
+
+## 0.48.1 (2026-08-10)
+
+
+### Improvements
+
+- Add Redis stream consumer logs when a message is received and before dispatch, including `redis_event_id`, `queued_at`, `trace_id`, and consume latency (`time_until_consumed_ms`). Redis stream `eventId` is used as the webhook `trace_id`.
+
+
+## 0.48.0 (2026-08-10)
+
+### Improvements
+
+- Added retry lifecycle hooks that run after retry sleep and before retry send, enabling integrations to refresh request state immediately before retrying.
+
+
 ## 0.47.10 (2026-08-09)
 
 ### Improvements

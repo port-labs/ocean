@@ -1,6 +1,7 @@
 from clients.client_factory import create_cursor_client
 from core.exporters.daily_usage_exporter import CursorDailyUsageExporter
 from core.exporters.team_model_usage_exporter import CursorTeamModelUsageExporter
+from core.exporters.team_skill_usage_exporter import CursorTeamSkillUsageExporter
 from core.exporters.usage_events_exporter import CursorUsageEventsExporter
 from core.exporters.user_model_usage_exporter import CursorUserModelUsageExporter
 
@@ -8,6 +9,11 @@ from core.exporters.user_model_usage_exporter import CursorUserModelUsageExporte
 def create_team_model_usage_exporter() -> CursorTeamModelUsageExporter:
     client = create_cursor_client()
     return CursorTeamModelUsageExporter(client)
+
+
+def create_team_skill_usage_exporter() -> CursorTeamSkillUsageExporter:
+    client = create_cursor_client()
+    return CursorTeamSkillUsageExporter(client)
 
 
 def create_user_model_usage_exporter() -> CursorUserModelUsageExporter:

@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.23 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.9.22 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.9.21 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.9.20 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.9.19 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.9.18 (2026-08-11)
+
+
+### Bug Fixes
+
+- Fixed file kind resync aborting when a single repository returns 400 or 404 on project blob search; that repo is now skipped so remaining repositories continue syncing
+
+
+## 0.9.17 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.9.16 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
 ## 0.9.15 (2026-08-09)
 
 

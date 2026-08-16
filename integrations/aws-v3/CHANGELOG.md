@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.20.7-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 2.20.6-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 2.20.5-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 2.20.4-beta (2026-08-12)
+
+
+### Bug Fixes
+
+- Remove liveEventsApiKey from spec.yaml so it is not shown in the UI while live events are behind a feature flag
+
+
+## 2.20.3-beta (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 2.20.2-beta (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 2.20.1-beta (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 2.20.0-beta (2026-08-10)
+
+
+### Features
+
+- Added AWS::SNS::Topic kind with topic attributes, delivery feedback, and optional tags support
+
+
+## 2.19.3-beta (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
 ## 2.19.2-beta (2026-08-09)
 
 
