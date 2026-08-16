@@ -92,3 +92,23 @@ jobs:
           . .venv/bin/activate
           ocean port-app-config schema -o /tmp/port-app-config-schema.json
           ocean port-app-config schema -f ui -o /tmp/port-app-config-ui-schema.json
+
+  # Stable check name for branch protection. Matrix jobs are named
+  # "schema / <integration>" and cannot be required individually.
+  required:
+    name: Port App Config Schema
+    needs: [detect-changes, prepare-matrix, schema]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require schema jobs to pass when they ran
+        run: |
+          detect="${{ needs.detect-changes.result }}"
+          prepare="${{ needs.prepare-matrix.result }}"
+          schema="${{ needs.schema.result }}"
+          echo "detect-changes=$detect prepare-matrix=$prepare schema=$schema"
+          for result in "$detect" "$prepare" "$schema"; do
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              exit 1
+            fi
+          done
