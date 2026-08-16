@@ -56,10 +56,10 @@ class RedisStreamMaintenanceWorker:
         self._redis_settings = redis_settings
         self._stream_key = stream_key
         self._consumer_group = consumer_group
-        self._protected_consumer_names = frozenset(
-            name
-            for name in (STREAM_MAINTENANCE_CONSUMER_NAME, stream_consumer_name)
-            if name
+        self._protected_consumer_names = (
+            frozenset({STREAM_MAINTENANCE_CONSUMER_NAME, stream_consumer_name})
+            if stream_consumer_name
+            else frozenset({STREAM_MAINTENANCE_CONSUMER_NAME})
         )
         self._is_running = False
         self._lifecycle_task: asyncio.Task[None] | None = None
@@ -219,10 +219,9 @@ class RedisStreamMaintenanceWorker:
                 protected_consumer_names=self._protected_consumer_names,
             )
         except ResponseError as error:
-            if is_missing_stream_or_group_error(error):
-                await self._recover_missing_stream()
-            else:
+            if not is_missing_stream_or_group_error(error):
                 raise
+            await self._recover_missing_stream()
 
     async def _handle_stuck_message(
         self, message_id: str, fields: dict[str, str]

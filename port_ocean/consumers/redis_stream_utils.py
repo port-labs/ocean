@@ -97,21 +97,11 @@ async def cleanup_idle_consumers_from_group(
         if idle < idle_threshold_ms:
             continue
 
-        pending_before_delete = await redis.xgroup_delconsumer(
+        await redis.xgroup_delconsumer(
             stream_key,
             consumer_group,
             name,
         )
-        if pending_before_delete:
-            logger.warning(
-                "Redis consumer not removed because it still has pending messages",
-                stream_key=stream_key,
-                consumer_group=consumer_group,
-                consumer_name=name,
-                pending_count=pending_before_delete,
-            )
-            continue
-
         removed_count += 1
         logger.info(
             "Removed idle Redis stream consumer from group",
