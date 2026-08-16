@@ -90,11 +90,7 @@ async def cleanup_idle_consumers_from_group(
         pending = int(consumer["pending"])
         idle = int(consumer["idle"])
 
-        if name in protected_consumer_names:
-            continue
-        if pending > 0:
-            continue
-        if idle < idle_threshold_ms:
+        if name in protected_consumer_names or pending > 0 or idle < idle_threshold_ms:
             continue
 
         await redis.xgroup_delconsumer(
