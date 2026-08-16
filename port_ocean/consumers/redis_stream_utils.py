@@ -80,6 +80,12 @@ async def _eval_lua_script(
     numkeys: int,
     *keys_and_args: str,
 ) -> Any:
+    """Run a Lua script on Redis so multiple commands execute atomically.
+
+    Stream ack/finalize and requeue paths issue several commands (e.g. XACK + XDEL).
+    Redis runs each EVAL script as a single atomic unit, so partial updates cannot
+    leave entries half-processed if another client or failure interleaves.
+    """
     return await cast(Awaitable[Any], redis.eval(script, numkeys, *keys_and_args))
 
 
