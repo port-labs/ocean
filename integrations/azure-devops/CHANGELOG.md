@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.17 (2026-08-16)
+
+
+### Improvements
+
+- Add title and description metadata to the Azure DevOps specPath config field.
+
+
 ## 0.11.16 (2026-08-16)
 
 
