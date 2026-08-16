@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add title and description metadata to OpenCost allocation and cloud-cost selector fields.

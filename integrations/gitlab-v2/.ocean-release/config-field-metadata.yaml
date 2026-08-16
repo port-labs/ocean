@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add title and description metadata to the GitLab v2 file selector.
