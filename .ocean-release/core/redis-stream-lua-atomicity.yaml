@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Use Lua scripts for atomic Redis stream ack and PEL requeue operations so they work correctly with Redis Cluster, where redis-py transactional pipelines are not supported.
