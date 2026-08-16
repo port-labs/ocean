@@ -474,6 +474,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.0 (2026-06-15)
 
+
 ### Improvements
 
 - Removed beta suffix from version number
@@ -1042,6 +1043,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.101-beta (2026-03-04)
 
+
 ### Improvements
 
 - Added additional kinds to the Aikido integration: `container`, `issue_group`, and `team`
@@ -1050,6 +1052,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.100-beta (2026-03-03)
+
 
 ### Improvements
 
@@ -1559,6 +1562,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.36-beta (2025-11-09)
 
 
@@ -1820,7 +1824,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Bumped ocean version to ^0.27.0
 
 
@@ -1849,6 +1852,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.0-beta (2025-07-24)
+
 
 ### Features
 
