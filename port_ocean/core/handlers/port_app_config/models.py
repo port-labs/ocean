@@ -10,20 +10,28 @@ CUSTOM_KIND = "__custom__"
 
 
 class _FieldMetadataEnforcer(BaseModel):
-    pass
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        parent_fields: dict[str, Any] = {}
+        for base in reversed(cls.__mro__[1:]):
+            parent_fields.update(getattr(base, "__fields__", {}))
 
-    # TODO: Uncomment this when we completed assigning all the titles and descriptions
-    # def __init_subclass__(cls, **kwargs: Any) -> None:
-    #     super().__init_subclass__(**kwargs)
-    #     for field_name, field in cls.__fields__.items():
-    #         if field.field_info.title is None:
-    #             raise TypeError(
-    #                 f"Field '{field_name}' in '{cls.__name__}' must have a 'title'"
-    #             )
-    #         if field.field_info.description is None:
-    #             raise TypeError(
-    #                 f"Field '{field_name}' in '{cls.__name__}' must have a 'description'"
-    #             )
+        for field_name, field in cls.__fields__.items():
+            parent = parent_fields.get(field_name)
+            if field.field_info.title is None:
+                if parent is not None and parent.field_info.title is not None:
+                    field.field_info.title = parent.field_info.title
+                else:
+                    raise TypeError(
+                        f"Field '{field_name}' in '{cls.__name__}' must have a 'title'"
+                    )
+            if field.field_info.description is None:
+                if parent is not None and parent.field_info.description is not None:
+                    field.field_info.description = parent.field_info.description
+                else:
+                    raise TypeError(
+                        f"Field '{field_name}' in '{cls.__name__}' must have a 'description'"
+                    )
 
 
 class Rule(_FieldMetadataEnforcer):
@@ -203,12 +211,11 @@ class PortAppConfig(_FieldMetadataEnforcer):
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
 
-        # TODO: Uncomment this when we completed sweeping on integration classes
-        # from port_ocean.core.handlers.port_app_config.validators import (
-        #     validate_and_get_config_schema,
-        # )
+        from port_ocean.core.handlers.port_app_config.validators import (
+            _validate_kind_discriminator,
+        )
 
-        # validate_and_get_resource_kinds(cls)
+        _validate_kind_discriminator(cls)
 
     class Config:
         allow_population_by_field_name = True

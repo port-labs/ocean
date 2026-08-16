@@ -50,31 +50,32 @@ def _validate_kind_discriminator(config_class: Type[PortAppConfig]) -> None:
             raise TypeError(f"{model.__name__} is missing the required 'kind' field")
 
         try:
-            kind_value = _resolve_kind_value(
+            kind_values = _resolve_kind_values(
                 kind_field, model.__name__, allow_custom_kinds=True
             )
         except ValueError as e:
             raise TypeError(str(e)) from e
 
-        if kind_value == CUSTOM_KIND:
-            if custom_kind_model is not None:
-                raise TypeError(
-                    f"Multiple custom kind definitions detected: both "
-                    f"{custom_kind_model} and {model.__name__} define "
-                    f"'kind: str'. Only one ResourceConfig with "
-                    f"'kind: str' is allowed"
-                )
-            custom_kind_model = model.__name__
-        else:
-            if kind_value in seen_literal_kinds:
-                raise TypeError(
-                    f"Duplicate kind '{kind_value}': both "
-                    f"{seen_literal_kinds[kind_value]} and {model.__name__} "
-                    f"define the same kind value. "
-                    f"'kind' must be a unique discriminator across the "
-                    f"resources union"
-                )
-            seen_literal_kinds[kind_value] = model.__name__
+        for kind_value in kind_values:
+            if kind_value == CUSTOM_KIND:
+                if custom_kind_model is not None:
+                    raise TypeError(
+                        f"Multiple custom kind definitions detected: both "
+                        f"{custom_kind_model} and {model.__name__} define "
+                        f"'kind: str'. Only one ResourceConfig with "
+                        f"'kind: str' is allowed"
+                    )
+                custom_kind_model = model.__name__
+            else:
+                if kind_value in seen_literal_kinds:
+                    raise TypeError(
+                        f"Duplicate kind '{kind_value}': both "
+                        f"{seen_literal_kinds[kind_value]} and {model.__name__} "
+                        f"define the same kind value. "
+                        f"'kind' must be a unique discriminator across the "
+                        f"resources union"
+                    )
+                seen_literal_kinds[kind_value] = model.__name__
 
 
 def _get_resource_config_models(
@@ -141,13 +142,11 @@ def _build_kinds_mapping(
         if kind_field is None:
             raise ValueError(f"{model.__name__} is missing the required 'kind' field")
 
-        kind_value = _resolve_kind_value(kind_field, model.__name__, allow_custom_kinds)
-        if kind_value is None:
+        kind_values = _resolve_kind_values(
+            kind_field, model.__name__, allow_custom_kinds
+        )
+        if not kind_values:
             raise ValueError(f"{model.__name__}: could not resolve kind value")
-        if kind_value != CUSTOM_KIND and kind_value in kinds:
-            raise ValueError(
-                f"Duplicate kind '{kind_value}' found in resource config models"
-            )
 
         kind_entry = _field_info_to_dict(kind_field.field_info)
 
@@ -157,7 +156,12 @@ def _build_kinds_mapping(
                 selector_field.outer_type_, model
             )
 
-        kinds[kind_value] = kind_entry
+        for kind_value in kind_values:
+            if kind_value != CUSTOM_KIND and kind_value in kinds:
+                raise ValueError(
+                    f"Duplicate kind '{kind_value}' found in resource config models"
+                )
+            kinds[kind_value] = kind_entry
 
     return kinds
 
@@ -188,15 +192,16 @@ def _is_json_safe(json_mod: Any, value: Any) -> bool:
         return False
 
 
-def _resolve_kind_value(
+def _resolve_kind_values(
     kind_field: Any,
     model_name: str,
     allow_custom_kinds: bool,
-) -> str:
-    """Return the normalised kind string for a single model.
+) -> list[str]:
+    """Return the normalised kind strings for a single model.
 
-    * ``Literal["x"]`` → ``"x"``
-    * ``str`` (when allowed) → ``"__custom__"``
+    * ``Literal["x"]`` / ``Literal["x", "y"]`` → ``["x"]`` / ``["x", "y"]``
+      (multiple values are aliases for the same resource config)
+    * ``str`` (when allowed) → ``["__custom__"]``
     * ``str`` (when not allowed) → raises ``ValueError``
     * anything else → raises ``ValueError``
     """
@@ -205,19 +210,18 @@ def _resolve_kind_value(
 
     if kind_origin is Literal:
         values = get_args(kind_type)
-        if len(values) != 1:
+        if not values:
             raise ValueError(
-                f"{model_name}: kind Literal must contain exactly one string value, "
-                f"got {len(values)}: {values}"
+                f"{model_name}: kind Literal must contain at least one string value"
             )
-        return str(values[0])
+        return [str(value) for value in values]
 
     if kind_type is str:
         if not allow_custom_kinds:
             raise ValueError(
                 f"{model_name}: custom kinds are not allowed when allow_custom_kinds is False"
             )
-        return CUSTOM_KIND
+        return [CUSTOM_KIND]
 
     raise ValueError(
         f"{model_name}: kind must be Literal['value'] or str "
