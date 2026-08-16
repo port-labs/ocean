@@ -297,7 +297,9 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabJobResourceConfig
         | GitlabMergeRequestResourceConfig
         | GitlabPipelineResourceConfig
-    ] = Field(default_factory=list)  # type: ignore
+    ] = Field(
+        default_factory=list
+    )  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
