@@ -45,7 +45,7 @@ jobs:
           for integration_name in $(echo "$integration_names" | jq -r '.[]'); do
             port_dir="integrations/${integration_name}/.port"
             if ! file=$(resolve_spec_file "$port_dir"); then
-              echo "Skipping ${integration_name}: no spec.json or spec.yaml"
+              echo "Skipping ${integration_name}: no spec.json, spec.yaml, or spec.yml found"
               continue
             fi
 
