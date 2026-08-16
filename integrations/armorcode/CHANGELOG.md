@@ -433,6 +433,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.0 (2026-06-15)
 
+
 ### Improvements
 
 - Removed beta suffix from version number
@@ -1478,6 +1479,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.10-beta (2025-11-09)
 
 
@@ -1560,12 +1562,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.0-dev (2025-10-06)
 
+
 ### Features
 
 - Created Armorcode Ocean integration with support for Product, Sub Product and Findings
 
 
 ## 0.1.0-beta (2025-10-09)
+
 
 ### Features
 
