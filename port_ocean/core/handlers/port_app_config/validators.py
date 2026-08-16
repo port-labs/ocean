@@ -28,8 +28,32 @@ def validate_and_get_config_schema(
     return {"kinds": kinds, "advancedConfig": advanced_config}
 
 
+def _is_model(annotation: Any, model: type) -> bool:
+    try:
+        return isinstance(annotation, type) and issubclass(annotation, model)
+    except TypeError:
+        return False
+
+
+def _is_resources_or_selector_type(annotation: Any) -> bool:
+    if _is_model(annotation, Selector):
+        return True
+    if get_origin(annotation) is not list:
+        return False
+    args = get_args(annotation)
+    if not args:
+        return False
+    members = _unwrap_union(args[0])
+    return bool(members) and all(_is_model(m, ResourceConfig) for m in members)
+
+
 def _enforce_field_metadata(config_class: Type[PortAppConfig]) -> None:
-    """Require title/description on every field in the PortAppConfig model tree."""
+    """Require title/description on every field in the PortAppConfig tree.
+
+    ``Selector`` and ``list[ResourceConfig]`` may omit Field metadata so
+    integrations can narrow those types. Nested fields with the same names
+    are still checked.
+    """
     seen: set[type] = set()
 
     def check(cls: type) -> None:
@@ -44,15 +68,16 @@ def _enforce_field_metadata(config_class: Type[PortAppConfig]) -> None:
 
         for name, field in cls.__fields__.items():
             info = field.field_info
-            if info.title is None:
-                raise TypeError(
-                    f"Field '{name}' in '{cls.__name__}' must have a 'title'"
-                )
-            if info.description is None:
-                raise TypeError(
-                    f"Field '{name}' in '{cls.__name__}' must have a 'description'"
-                )
             annotation = field.outer_type_
+            if not _is_resources_or_selector_type(annotation):
+                if info.title is None:
+                    raise TypeError(
+                        f"Field '{name}' in '{cls.__name__}' must have a 'title'"
+                    )
+                if info.description is None:
+                    raise TypeError(
+                        f"Field '{name}' in '{cls.__name__}' must have a 'description'"
+                    )
             if get_origin(annotation) is list:
                 annotation = (
                     get_args(annotation)[0] if get_args(annotation) else annotation

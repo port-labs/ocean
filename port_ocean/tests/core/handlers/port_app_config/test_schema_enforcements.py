@@ -98,15 +98,47 @@ def test_redeclared_field_without_metadata_fails() -> None:
         validate_and_get_config_schema(Config)
 
 
-def test_redeclared_resources_without_metadata_fails() -> None:
+def test_redeclared_parent_field_without_metadata_fails() -> None:
     class KindA(ResourceConfig):
         kind: Literal["a"] = Field(title="A", description="Kind A.")
+
+    class Config(PortAppConfig):
+        enable_merge_entity: bool = True
+        resources: list[KindA] = Field(default_factory=list)  # type: ignore[assignment]
+
+    with pytest.raises(
+        TypeError, match="Field 'enable_merge_entity' in 'Config' must have a 'title'"
+    ):
+        validate_and_get_config_schema(Config)
+
+
+def test_redeclared_resources_and_selector_without_metadata_are_allowed() -> None:
+    class KindA(ResourceConfig):
+        kind: Literal["a"] = Field(title="A", description="Kind A.")
+        selector: Selector
+
+    class Config(PortAppConfig):
+        resources: list[KindA] = Field(default_factory=list)  # type: ignore[assignment]
+
+    validate_and_get_config_schema(Config)
+
+
+def test_nested_field_named_selector_still_requires_metadata() -> None:
+    class Inner(BaseModel):
+        selector: str
+
+    class KindSelector(Selector):
+        nested: Inner = Field(title="Nested", description="N.")
+
+    class KindA(ResourceConfig):
+        kind: Literal["a"] = Field(title="A", description="Kind A.")
+        selector: KindSelector
 
     class Config(PortAppConfig):
         resources: list[KindA] = Field(default_factory=list)  # type: ignore[assignment]
 
     with pytest.raises(
-        TypeError, match="Field 'resources' in 'Config' must have a 'title'"
+        TypeError, match="Field 'selector' in 'Inner' must have a 'title'"
     ):
         validate_and_get_config_schema(Config)
 
