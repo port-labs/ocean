@@ -77,8 +77,8 @@ return redis.call('XDEL', KEYS[1], ARGV[2])
 async def _eval_lua_script(
     redis: RedisClient,
     script: str,
-    numkeys: int,
-    *keys_and_args: str,
+    keys: list[str],
+    args: list[str],
 ) -> Any:
     """Run a Lua script on Redis so multiple commands execute atomically.
 
@@ -86,7 +86,10 @@ async def _eval_lua_script(
     Redis runs each EVAL script as a single atomic unit, so partial updates cannot
     leave entries half-processed if another client or failure interleaves.
     """
-    return await cast(Awaitable[Any], redis.eval(script, numkeys, *keys_and_args))
+    return await cast(
+        Awaitable[Any],
+        redis.eval(script, len(keys), *keys, *args),
+    )
 
 
 async def ack_and_finalize_stream_entry(
@@ -101,10 +104,8 @@ async def ack_and_finalize_stream_entry(
         await _eval_lua_script(
             redis,
             ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
-            1,
-            stream_key,
-            consumer_group,
-            message_id,
+            [stream_key],
+            [consumer_group, message_id],
         )
     except ResponseError as error:
         if not is_missing_stream_or_group_error(error):
@@ -134,9 +135,6 @@ async def requeue_stream_entry(
     await _eval_lua_script(
         redis,
         REQUEUE_STREAM_ENTRY_SCRIPT,
-        1,
-        stream_key,
-        consumer_group,
-        message_id,
-        *field_items,
+        [stream_key],
+        [consumer_group, message_id, *field_items],
     )
