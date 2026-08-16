@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.48.8 (2026-08-16)
+
+
+### Bug Fixes
+
+- Use Lua scripts for atomic Redis stream ack and PEL requeue operations so they work correctly with Redis Cluster, where redis-py transactional pipelines are not supported.
+
+
 ## 0.48.7 (2026-08-13)
 
 
