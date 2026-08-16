@@ -2,8 +2,6 @@ import asyncio
 import base64
 import json
 import os
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -22,7 +20,11 @@ from port_ocean.exceptions.live_events import (
 )
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
-from port_ocean.consumers.redis_stream_utils import ensure_consumer_group
+from port_ocean.consumers.redis_stream_utils import (
+    ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+    REQUEUE_STREAM_ENTRY_SCRIPT,
+    ensure_consumer_group,
+)
 from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
 
 
@@ -561,30 +563,16 @@ class TestRedisStreamConsumerGroupCreation:
 
 class TestRedisStreamConsumerAck:
     @staticmethod
-    def _mock_redis_with_ack_pipeline(
+    def _mock_redis_for_ack(
         *,
-        execute_side_effect: Exception | None = None,
+        eval_side_effect: Exception | None = None,
     ) -> AsyncMock:
         mock_redis = AsyncMock()
-        mock_redis.xack = AsyncMock(return_value=1)
-        mock_redis.xdel = AsyncMock(return_value=1)
+        if eval_side_effect is not None:
+            mock_redis.eval = AsyncMock(side_effect=eval_side_effect)
+        else:
+            mock_redis.eval = AsyncMock(return_value=1)
         mock_redis.expire = AsyncMock(return_value=True)
-
-        @asynccontextmanager
-        async def fake_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xack = mock_redis.xack
-            pipe.xdel = mock_redis.xdel
-            pipe.expire = mock_redis.expire
-            if execute_side_effect is not None:
-                pipe.execute = AsyncMock(side_effect=execute_side_effect)
-            else:
-                pipe.execute = AsyncMock(return_value=[1, 1, True])
-            yield pipe
-
-        mock_redis.pipeline = fake_pipeline
         return mock_redis
 
     @pytest.mark.asyncio
@@ -596,7 +584,7 @@ class TestRedisStreamConsumerAck:
             url="redis://localhost:6379",
             stream_ttl_seconds=3600,
         )
-        mock_redis = self._mock_redis_with_ack_pipeline()
+        mock_redis = self._mock_redis_for_ack()
 
         with patch(
             "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
@@ -609,10 +597,13 @@ class TestRedisStreamConsumerAck:
             consumer._redis = mock_redis
             await consumer._ack("1700000000000-0")
 
-        mock_redis.xack.assert_awaited_once_with(
-            "stream", "test.integration", "1700000000000-0"
+        mock_redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
         )
-        mock_redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -624,7 +615,7 @@ class TestRedisStreamConsumerAck:
             url="redis://localhost:6379",
             stream_ttl_seconds=None,
         )
-        mock_redis = self._mock_redis_with_ack_pipeline()
+        mock_redis = self._mock_redis_for_ack()
 
         with patch(
             "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
@@ -637,7 +628,13 @@ class TestRedisStreamConsumerAck:
             consumer._redis = mock_redis
             await consumer._ack("1700000000000-0")
 
-        mock_redis.xdel.assert_awaited_once_with("stream", "1700000000000-0")
+        mock_redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
+        )
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -649,8 +646,8 @@ class TestRedisStreamConsumerAck:
             url="redis://localhost:6379",
             stream_ttl_seconds=3600,
         )
-        mock_redis = self._mock_redis_with_ack_pipeline(
-            execute_side_effect=ResponseError(
+        mock_redis = self._mock_redis_for_ack(
+            eval_side_effect=ResponseError(
                 "NOGROUP No such key 'stream' or consumer group"
             )
         )
@@ -781,20 +778,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
         }
 
         mock_redis = AsyncMock()
-        mock_redis.xadd = AsyncMock(return_value="1700000000001-0")
-        mock_redis.xack = AsyncMock(return_value=1)
-
-        @asynccontextmanager
-        async def fake_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xadd = mock_redis.xadd
-            pipe.xack = mock_redis.xack
-            pipe.execute = AsyncMock(return_value=["1700000000001-0", 1])
-            yield pipe
-
-        mock_redis.pipeline = fake_pipeline
+        mock_redis.eval = AsyncMock(return_value="1700000000001-0")
         mock_redis.xautoclaim = AsyncMock(
             return_value=("0-0", [(message_id, fields)], [])
         )
@@ -823,15 +807,19 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             )
             await pel_worker._scan_and_requeue()
 
-            mock_redis.xadd.assert_awaited_once()
-            assert mock_redis.xadd.await_args is not None
-            requeued_fields: dict[str, str] = mock_redis.xadd.await_args.args[1]
+            mock_redis.eval.assert_awaited_once()
+            assert mock_redis.eval.await_args is not None
+            assert mock_redis.eval.await_args.args[0] == REQUEUE_STREAM_ENTRY_SCRIPT
+            field_pairs = mock_redis.eval.await_args.args[5:]
+            requeued_fields = dict(
+                zip(field_pairs[0::2], field_pairs[1::2], strict=True)
+            )
             assert requeued_fields["requeue_count"] == "1"
 
             release_handler.set()
             await handle_task
 
-            assert mock_redis.xack.await_count >= 1
+            assert mock_redis.eval.await_count >= 1
 
 
 class TestRedisStreamConsumer:
