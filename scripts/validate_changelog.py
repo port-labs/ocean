@@ -22,7 +22,20 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Changelogs eligible for validation. Expand as integrations are standardized.
 # Once all are standardized, this bit of the logic should be removed.
-ALLOWED_CHANGELOG_PATHS = frozenset({"CHANGELOG.md"})
+ALLOWED_CHANGELOG_PATHS = frozenset(
+    {
+        "CHANGELOG.md",
+        "integrations/aikido/CHANGELOG.md",
+        "integrations/amplication/CHANGELOG.md",
+        "integrations/argocd/CHANGELOG.md",
+        "integrations/armorcode/CHANGELOG.md",
+        "integrations/aws/CHANGELOG.md",
+        "integrations/aws-v3/CHANGELOG.md",
+        "integrations/azure/CHANGELOG.md",
+        "integrations/azure-devops/CHANGELOG.md",
+        "integrations/azure-resource-graph/CHANGELOG.md",
+    }
+)
 
 STANDARD_SECTIONS = frozenset(
     {
