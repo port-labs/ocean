@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Retry file content fetch with the project's default branch when a stale ref from GitLab search returns empty, fixing 404 errors on renamed or deleted branches.
