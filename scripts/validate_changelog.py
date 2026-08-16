@@ -43,6 +43,9 @@ ALLOWED_CHANGELOG_PATHS = frozenset(
         "integrations/cursor/CHANGELOG.md",
         "integrations/cursor-cloud-agents/CHANGELOG.md",
         "integrations/custom/CHANGELOG.md",
+        "integrations/sentry/CHANGELOG.md",
+        "integrations/servicenow/CHANGELOG.md",
+        "integrations/sonarqube/CHANGELOG.md",
         "integrations/terraform-cloud/CHANGELOG.md",
     }
 )
