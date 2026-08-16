@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Add title and description metadata to GitLab PortAppConfig fields, and split member kinds onto one Literal each.

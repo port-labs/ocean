@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.318-post1 (2026-08-16)
+==========================
+
+### Improvements
+
+- Add title and description metadata to GitLab PortAppConfig fields, and split member kinds onto one Literal each.
+
+
 0.2.317-post1 (2026-08-16)
 ==========================
 
