@@ -96,9 +96,6 @@ MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
 MAX_CONCURRENT_USER_MEMBERSHIPS = 10
-# Wiki content enrichment fetches individual pages (N+1). 10 matches
-# MAX_CONCURRENT_USER_MEMBERSHIPS which does the same per-item pattern
-# against the shared TSTU budget.
 MAX_CONCURRENT_WIKI_PAGES = 10
 TEST_RUN_QUERY_MAX_WINDOW = timedelta(days=7)
 
@@ -3123,7 +3120,7 @@ class AzureDevopsClient(HTTPBaseClient):
         return all_runs
 
     async def _get_wikis_for_project(
-        self, project: dict[str, Any]
+        self, project: dict[str, Any], api_version: str = "7.1"
     ) -> list[dict[str, Any]]:
         """List all wikis for a project.
 
@@ -3133,7 +3130,9 @@ class AzureDevopsClient(HTTPBaseClient):
             f"{self._organization_base_url}/{project['id']}"
             f"/{API_URL_PREFIX}/wiki/wikis"
         )
-        response = await self.send_request("GET", url, params={"api-version": "7.1"})
+        response = await self.send_request(
+            "GET", url, params={"api-version": api_version}
+        )
         if not response:
             logger.warning(
                 f"No response when fetching wikis for project {project['name']}"
@@ -3149,6 +3148,7 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         wiki_id: str,
         wiki_name: str,
+        api_version: str = "7.1",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Paginate through all pages in a wiki using the pages batch endpoint.
 
@@ -3170,7 +3170,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 url,
                 data=json.dumps(body),
                 headers={"Content-Type": "application/json"},
-                params={"api-version": "7.1"},
+                params={"api-version": api_version},
             )
             if not response:
                 logger.warning(
@@ -3201,6 +3201,7 @@ class AzureDevopsClient(HTTPBaseClient):
         wiki_name: str,
         page_id: int,
         include_content: bool = False,
+        api_version: str = "7.1",
     ) -> dict[str, Any] | None:
         """Fetch a single wiki page by its permanent ID.
 
@@ -3210,7 +3211,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"{self._organization_base_url}/{project_id}"
             f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}/pages/{page_id}"
         )
-        params: dict[str, Any] = {"api-version": "7.1"}
+        params: dict[str, Any] = {"api-version": api_version}
         if include_content:
             params["includeContent"] = "true"
 
@@ -3228,11 +3229,14 @@ class AzureDevopsClient(HTTPBaseClient):
         wiki: dict[str, Any],
         pages: list[dict[str, Any]],
         semaphore: asyncio.BoundedSemaphore,
+        api_version: str = "7.1",
     ) -> list[dict[str, Any]]:
         project = wiki["__project"]
         wiki_name = wiki["name"]
 
-        async def _fetch(page: dict[str, Any]) -> dict[str, Any]:
+        async def fetch_page_with_semaphore(
+            page: dict[str, Any],
+        ) -> dict[str, Any]:
             async with semaphore:
                 full_page = await self._get_wiki_page_by_id(
                     project_id,
@@ -3240,14 +3244,16 @@ class AzureDevopsClient(HTTPBaseClient):
                     wiki_name,
                     page["id"],
                     include_content=True,
+                    api_version=api_version,
                 )
-                result = full_page if full_page else page
-                result["__wiki"] = wiki
-                result["__project"] = project
-                return result
+                enriched_page = full_page if full_page else page
+                enriched_page["__wiki"] = wiki
+                enriched_page["__project"] = project
+                return enriched_page
 
         results = await asyncio.gather(
-            *[_fetch(page) for page in pages], return_exceptions=True
+            *[fetch_page_with_semaphore(page) for page in pages],
+            return_exceptions=True,
         )
 
         enriched: list[dict[str, Any]] = []
@@ -3266,13 +3272,16 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         wiki_type: str | None = None,
         include_content: bool = False,
+        api_version: str = "7.1",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate wiki pages for all projects in the organization."""
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_WIKI_PAGES)
 
         async for projects in self.generate_projects():
             for project in projects:
-                wikis = await self._get_wikis_for_project(project)
+                wikis = await self._get_wikis_for_project(
+                    project, api_version=api_version
+                )
 
                 for wiki in wikis:
                     if wiki_type and wiki["type"] != wiki_type:
@@ -3282,7 +3291,10 @@ class AzureDevopsClient(HTTPBaseClient):
                         continue
 
                     async for page_batch in self._get_wiki_pages_batch(
-                        project["id"], wiki["id"], wiki["name"]
+                        project["id"],
+                        wiki["id"],
+                        wiki["name"],
+                        api_version=api_version,
                     ):
                         if include_content:
                             enriched = await self._enrich_pages_with_content(
@@ -3290,6 +3302,7 @@ class AzureDevopsClient(HTTPBaseClient):
                                 wiki,
                                 page_batch,
                                 semaphore,
+                                api_version=api_version,
                             )
                         else:
                             enriched = [

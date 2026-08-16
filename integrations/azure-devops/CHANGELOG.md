@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.0 (2026-08-13)
+
+
+### Features
+
+- Added `wiki` kind to ingest Azure DevOps wiki pages, supporting per-type filtering (projectWiki/codeWiki) and optional markdown content enrichment
+
+
 ## 0.11.15 (2026-08-13)
 
 

@@ -495,6 +495,7 @@ async def resync_wiki_pages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for wiki_pages in resync.iter_wiki_pages(
         wiki_type=selector.wiki_type,
         include_content=selector.include_content,
+        api_version=selector.api_version,
     ):
         logger.info(f"Resyncing batch of {len(wiki_pages)} wiki pages")
         yield wiki_pages

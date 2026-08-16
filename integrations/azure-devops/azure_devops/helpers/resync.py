@@ -279,11 +279,15 @@ async def iter_advanced_security_alerts(
 async def iter_wiki_pages(
     wiki_type: Optional[str],
     include_content: bool,
+    api_version: Optional[str] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    kwargs: dict[str, Any] = {
+        "wiki_type": wiki_type,
+        "include_content": include_content,
+    }
+    if api_version:
+        kwargs["api_version"] = api_version
     async for batch in iterate_per_organization(
-        lambda client: client.generate_wiki_pages(
-            wiki_type=wiki_type,
-            include_content=include_content,
-        )
+        lambda client: client.generate_wiki_pages(**kwargs)
     ):
         yield batch

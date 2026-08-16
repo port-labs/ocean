@@ -669,6 +669,12 @@ class AzureDevopsWikiSelector(Selector):
         title="Include Content",
         description="Whether to fetch the markdown content of each wiki page. Defaults to false to reduce API calls and payload size.",
     )
+    api_version: Optional[str] = Field(
+        default=None,
+        alias="apiVersion",
+        title="API Version",
+        description="API version for the Wiki endpoints. Override if your organization requires a specific version. Will use the default version if not provided.",
+    )
 
 
 class AzureDevopsWikiResourceConfig(ResourceConfig):
