@@ -196,11 +196,11 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
     stream_ttl_seconds: int | None = Field(
-        default=3600,
+        default=2_592_000,  # 30 days
         ge=1,
         description=(
-            "TTL in seconds for the Redis stream when the consumer creates it "
-            "via MKSTREAM. Set to null to disable stream expiry."
+            "TTL in seconds for the Redis stream. Set when the consumer creates "
+            "the stream via MKSTREAM. Set to null to disable stream expiry."
         ),
     )
     # PEL requeue worker settings
@@ -237,6 +237,38 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         description=(
             "Seconds to wait before retrying the PEL worker lifecycle loop "
             "after an unexpected error."
+        ),
+    )
+    connection_error_backoff_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        description=(
+            "Seconds to wait before retrying the Redis stream read loop "
+            "after a connection error."
+        ),
+    )
+    connection_startup_max_retries: int = Field(
+        default=5,
+        ge=0,
+        description=(
+            "Maximum number of connection retries when establishing the "
+            "initial Redis client at startup."
+        ),
+    )
+    connection_startup_initial_backoff_seconds: float = Field(
+        default=1.0,
+        gt=0,
+        description=(
+            "Initial delay in seconds before the first Redis startup "
+            "connection retry."
+        ),
+    )
+    connection_startup_exponential_base: float = Field(
+        default=2.0,
+        gt=0,
+        description=(
+            "Exponential base used to calculate Redis startup connection "
+            "retry delays."
         ),
     )
 
