@@ -24,6 +24,7 @@ class ObjectKind(StrEnum):
     CLAUDE_AI_USER_ACTIVITY = "claude-ai-user-activity"
     CLAUDE_AI_USER_USAGE = "claude-ai-user-usage"
     CLAUDE_AI_USER_COST = "claude-ai-user-cost"
+    CLAUDE_AI_SKILL_USAGE = "claude-ai-skill-usage"
     # Deprecated legacy kinds, kept for backwards compatibility. They are
     # aliases of the equivalent claude-platform-* kinds above.
     CLAUDE_USAGE_RECORD = "claude-usage-record"
@@ -164,6 +165,41 @@ class ClaudeAIUserActivitySelector(Selector):
         return values
 
 
+class ClaudeAISkillUsageSelector(Selector):
+    starting_date: str | None = Field(
+        alias="startingDate",
+        default=None,
+        title="Starting Date",
+        description=(
+            "Start date in YYYY-MM-DD format. The integration calls the skills API "
+            "once per day from this date up to ~1 day ago (the endpoint only "
+            "returns data at least 1 day old), clamped to 2026-01-01, the "
+            "earliest available data. Mutually exclusive with timeFrame."
+        ),
+        regex=r"^\d{4}-\d{2}-\d{2}$",
+    )
+    time_frame: int | None = Field(
+        alias="timeFrame",
+        default=None,
+        title="Time Frame (days)",
+        description=(
+            "Number of days to look back, ending ~1 day ago (the endpoint only "
+            "returns data at least 1 day old). Mutually exclusive with "
+            "startingDate. Defaults to 30 days when neither field is set."
+        ),
+        gt=0,
+    )
+
+    @root_validator
+    @classmethod
+    def validate_date_config(cls, values: dict[str, object]) -> dict[str, object]:
+        has_starting_date = values.get("starting_date") is not None
+        has_time_frame = values.get("time_frame") is not None
+        if has_starting_date and has_time_frame:
+            raise ValueError("'startingDate' and 'timeFrame' are mutually exclusive")
+        return values
+
+
 class ClaudeAIUserReportSelector(Selector):
     """Shared selector for the user usage and cost report kinds."""
 
@@ -246,31 +282,49 @@ class ClaudeAIUserReportSelector(Selector):
 
 
 class ClaudePlatformUsageRecordResourceConfig(ResourceConfig):
-    # "claude-usage-record" is the deprecated alias kept for backwards
-    # compatibility with existing installations.
-    kind: Literal["claude-platform-usage-record", "claude-usage-record"] = Field(
+    kind: Literal["claude-platform-usage-record"] = Field(
         description="Claude Platform usage record resource kind",
         title="Claude Platform Usage Record",
     )
     selector: ClaudePlatformUsageSelector
 
 
+class ClaudeUsageRecordResourceConfig(ResourceConfig):
+    kind: Literal["claude-usage-record"] = Field(
+        description="Deprecated alias for Claude Platform usage record.",
+        title="Claude Usage Record",
+    )
+    selector: ClaudePlatformUsageSelector
+
+
 class ClaudePlatformCostRecordResourceConfig(ResourceConfig):
-    # "claude-cost-record" is the deprecated alias kept for backwards
-    # compatibility with existing installations.
-    kind: Literal["claude-platform-cost-record", "claude-cost-record"] = Field(
+    kind: Literal["claude-platform-cost-record"] = Field(
         description="Claude Platform cost record resource kind",
         title="Claude Platform Cost Record",
     )
     selector: ClaudePlatformCostSelector
 
 
+class ClaudeCostRecordResourceConfig(ResourceConfig):
+    kind: Literal["claude-cost-record"] = Field(
+        description="Deprecated alias for Claude Platform cost record.",
+        title="Claude Cost Record",
+    )
+    selector: ClaudePlatformCostSelector
+
+
 class ClaudePlatformCodeAnalyticsResourceConfig(ResourceConfig):
-    # "claude-code-analytics" is the deprecated alias kept for backwards
-    # compatibility with existing installations.
-    kind: Literal["claude-platform-code-analytics", "claude-code-analytics"] = Field(
+    kind: Literal["claude-platform-code-analytics"] = Field(
         description="Claude Platform code analytics resource kind",
         title="Claude Platform Code Analytics",
+    )
+    selector: ClaudePlatformCodeAnalyticsSelector
+
+
+class ClaudeCodeAnalyticsResourceConfig(ResourceConfig):
+    kind: Literal["claude-code-analytics"] = Field(
+        description="Deprecated alias for Claude Platform code analytics.",
+        title="Claude Code Analytics",
     )
     selector: ClaudePlatformCodeAnalyticsSelector
 
@@ -299,14 +353,26 @@ class ClaudeAIUserCostResourceConfig(ResourceConfig):
     selector: ClaudeAIUserReportSelector
 
 
+class ClaudeAISkillUsageResourceConfig(ResourceConfig):
+    kind: Literal["claude-ai-skill-usage"] = Field(
+        description="Claude AI org-level skill usage resource kind",
+        title="Claude AI Skill Usage",
+    )
+    selector: ClaudeAISkillUsageSelector
+
+
 class ClaudePortAppConfig(PortAppConfig):
     resources: list[
         ClaudeAIUserActivityResourceConfig
         | ClaudeAIUserUsageResourceConfig
         | ClaudeAIUserCostResourceConfig
+        | ClaudeAISkillUsageResourceConfig
         | ClaudePlatformUsageRecordResourceConfig
+        | ClaudeUsageRecordResourceConfig
         | ClaudePlatformCostRecordResourceConfig
+        | ClaudeCostRecordResourceConfig
         | ClaudePlatformCodeAnalyticsResourceConfig
+        | ClaudeCodeAnalyticsResourceConfig
     ] = Field(
         description="Resources for claude",
         title="Resources",

@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Split GitLab catch-all resource kinds onto one Literal each so schema generation can enumerate kinds.

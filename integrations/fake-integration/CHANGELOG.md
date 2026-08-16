@@ -5,6 +5,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.330-dev (2026-08-16)
+
+
+### Improvements
+
+- Add a PortAppConfig class so ocean port-app-config schema can load fake-integration.
+
+
+## 0.1.329-dev (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.1.328-dev (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
 ## 0.1.327-dev (2026-08-13)
 
 

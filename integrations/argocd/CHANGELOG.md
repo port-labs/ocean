@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.95 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.4.94 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
 ## 0.4.93 (2026-08-13)
 
 
@@ -1468,6 +1484,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Supports streaming for argocd data
 
+
 ## 0.1.246 (2025-11-25)
 
 
@@ -1563,6 +1580,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.234 (2025-11-09)
 
 
@@ -1644,6 +1662,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.224 (2025-10-14)
+
 
 ### Improvements
 
@@ -1793,6 +1812,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fixed the description in the spec.yaml
 
+
 ## 0.1.205 (2025-08-11)
 
 
@@ -1804,7 +1824,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.204 (2025-08-11)
 
 
-### Fix
+### Bug Fixes
 
 - Optimized resource aggregation and deployment history ingestion to avoid OOMs by replacing nested loops with efficient extend() usage
 
@@ -1843,10 +1863,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.199 (2025-08-03)
 
+
 ### Improvements
 
 - Added explicit query params for tabs selection on intallationDocs
-
 
 
 ## 0.1.198 (2025-08-03)
@@ -1858,13 +1878,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.197 (2025-08-03)
+
+
+### Improvements
+
 - Aligned installationDocs param with convensions
 
 
 ## 0.1.196 (2025-07-31)
 
 
-## Fix
+### Bug Fixes
 
 - Iteration over null values breaking resyncs
 
@@ -1872,7 +1896,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.195 (2025-07-27)
 
 
-### Fix
+### Bug Fixes
 
 - Restructured changed specs installationDocs param
 
@@ -1887,6 +1911,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.194 (2025-07-28)
 
+
+### Bug Fixes
 
 - Added null checks for resources yielded from `managed_resources` and `get_deployment_history`
 
@@ -2170,6 +2196,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed deprecated `config.yaml`
 
+
 ## 0.1.158 (2025-05-19)
 
 
@@ -2203,6 +2230,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.154 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2693,7 +2721,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.12.4
 
 
-# 0.1.93 (2024-10-10)
+## 0.1.93 (2024-10-10)
 
 
 ### Bug Fixes
@@ -2903,12 +2931,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.67 (2024-07-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
 
 
 ## 0.1.66 (2024-07-10)
+
 
 ### Improvements
 
@@ -2917,12 +2947,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.65 (2024-07-10)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.4 (#1)
 
 
 ## 0.1.64 (2024-07-09)
+
 
 ### Improvements
 
@@ -2931,12 +2963,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.63 (2024-07-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
 
 ## 0.1.62 (2024-06-23)
+
 
 ### Improvements
 
@@ -2945,12 +2979,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.61 (2024-06-19)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.0 (#1)
 
 
 ## 0.1.60 (2024-06-16)
+
 
 ### Improvements
 
@@ -2959,12 +2995,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.59 (2024-06-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
 
 
 ## 0.1.58 (2024-06-13)
+
 
 ### Improvements
 
@@ -2973,12 +3011,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.57 (2024-06-13)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
 
 ## 0.1.56 (2024-06-10)
+
 
 ### Improvements
 
@@ -2987,12 +3027,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.55 (2024-06-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
 
 ## 0.1.54 (2024-06-03)
+
 
 ### Improvements
 
@@ -3001,12 +3043,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.53 (2024-06-02)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
 
 ## 0.1.52 (2024-05-30)
+
 
 ### Improvements
 
@@ -3016,6 +3060,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.51 (2024-05-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
@@ -3023,12 +3068,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.50 (2024-05-26)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.21 (#1)
 
 
 ## 0.1.49 (2024-05-26)
+
 
 ### Improvements
 
@@ -3038,12 +3085,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.48 (2024-05-16)
 
+
 ### Improvements
 
 - Updated the icon on the image blueprint from AWS to Docker
 
 
 ## 0.1.47 (2024-05-16)
+
 
 ### Improvements
 
@@ -3052,12 +3101,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.46 (2024-05-12)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.18 (#1)
 
 
 ## 0.1.45 (2024-05-06)
+
 
 ### Improvements
 
@@ -3067,12 +3118,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.44 (2024-05-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.17 (#1)
 
 
 ## 0.1.43 (2024-05-01)
+
 
 ### Improvements
 
@@ -3081,6 +3134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.42 (2024-04-30)
 
+
 ### Improvements
 
 - Updated the default mapping to ingest all images used by deployments and establish a relationship between them
@@ -3088,12 +3142,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.41 (2024-04-30)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.15 (#1)
 
 
 ## 0.1.40 (2024-04-25)
+
 
 ### Bug Fixes
 
@@ -3106,12 +3162,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.39 (2024-04-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.14 (#1)
 
 
 ## 0.1.38 (2024-04-17)
+
 
 ### Improvements
 
@@ -3120,7 +3178,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.37 (2024-04-11)
 
+
 ### Deprecations
+
 - Added deprecation warnings to the deployment-history and kubernetes-resource kind, urging users to utilize the itemsToParse functionality instead
 
 ### Improvements
@@ -3131,12 +3191,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.36 (2024-04-11)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.11 (#1)
 
 
 ## 0.1.35 (2024-04-10)
+
 
 ### Improvements
 
@@ -3145,12 +3207,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.34 (2024-04-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.9 (#1)
 
 
 ## 0.1.33 (2024-03-28)
+
 
 ### Improvements
 
@@ -3159,12 +3223,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.32 (2024-03-21)
 
+
 ### Improvements
 
 - Added support for ArgoCD kubernetes resources (PORT-6911)
 
 
 ## 0.1.31 (2024-03-20)
+
 
 ### Improvements
 
@@ -3173,6 +3239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.30 (2024-03-18)
 
+
 ### Improvements
 
 - Added support for Application managed resources kind
@@ -3180,13 +3247,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.29 (2024-03-18)
 
+
 ### Improvements
 
 - Enhanced the application blueprint by adding relation to the cluster and two revision properties (actual and target) (PORT-6528)
 - Updated the deployment history revision property from string to url, linking the user the specific revision (PORT-6854)
 - Added namespace blueprint and created relevant relations(PORT-7187)
 
+
 ## 0.1.28 (2024-03-17)
+
 
 ### Improvements
 
@@ -3195,12 +3265,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.27 (2024-03-06)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.5 (#1)
 
 
 ## 0.1.26 (2024-03-03)
+
 
 ### Improvements
 
@@ -3209,12 +3281,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.25 (2024-03-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.3 (#1)
 
 
 ## 0.1.24 (2024-02-21)
+
 
 ### Improvements
 
@@ -3223,12 +3297,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.23 (2024-02-20)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.1 (#1)
 
 
 ## 0.1.22 (2024-02-18)
+
 
 ### Improvements
 
@@ -3237,12 +3313,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.21 (2024-01-25)
 
+
 ### Bug Fixes
 
 - Fixed a bug in the pages templates where the page weren't inside a list, causing the parsing of the integration to fail (#1)
 
 
 ## 0.1.20 (2024-01-23)
+
 
 ### Improvements
 
@@ -3251,12 +3329,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.19 (2024-01-21)
 
+
 ### Improvements
 
 - Added default page for ArgoCD (PORT-5959)
 
 
 ## 0.1.18 (2024-01-12)
+
 
 ### Features
 
@@ -3265,12 +3345,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.17 (2024-01-11)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.16 (#1)
 
 
 ## 0.1.16 (2024-01-07)
+
 
 ### Improvements
 
@@ -3279,12 +3361,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.15 (2024-01-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.14 (#1)
 
 
 ## 0.1.14 (2024-01-01)
+
 
 ### Improvements
 
@@ -3293,12 +3377,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.13 (2023-12-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.12 (#1)
 
 
 ## 0.1.12 (2023-12-21)
+
 
 ### Improvements
 
@@ -3307,12 +3393,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.11 (2023-12-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.10 (#1)
 
 
 ## 0.1.10 (2023-12-14)
+
 
 ### Improvements
 
@@ -3321,12 +3409,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.9 (2023-12-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.7 (#1)
 
 
 ## 0.1.8 (2023-12-04)
+
 
 ### Bug Fixes
 
@@ -3335,6 +3425,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.7 (2023-12-04)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.6 (#1)
@@ -3342,12 +3433,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6 (2023-11-30)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.5 (#1)
 
 
 ## 0.1.5 (2023-11-29)
+
 
 ### Improvements
 
@@ -3357,12 +3450,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.4 (2023-11-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.3 (#1)
 
 
 ## 0.1.3 (2023-11-08)
+
 
 ### Improvements
 
@@ -3371,6 +3466,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.2 (2023-11-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.1 (#1)
@@ -3378,12 +3474,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1 (2023-11-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.0 (#1)
 
 
 ## 0.1.0 (2023-08-21)
+
 
 ### Features
 

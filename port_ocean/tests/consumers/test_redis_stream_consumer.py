@@ -2,8 +2,6 @@ import asyncio
 import base64
 import json
 import os
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -22,6 +20,11 @@ from port_ocean.exceptions.live_events import (
 )
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
+from port_ocean.consumers.redis_stream_utils import (
+    ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+    REQUEUE_STREAM_ENTRY_SCRIPT,
+    ensure_consumer_group,
+)
 from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
 
 
@@ -311,11 +314,11 @@ class TestRedisStreamConsumerConnection:
             )
             consumer._redis = mock_redis
             consumer._is_running = True
-            consumer._ensure_consumer_group = AsyncMock()  # type: ignore[method-assign]
+            consumer._recover_missing_stream = AsyncMock()  # type: ignore[method-assign]
 
             await consumer._read_loop()
 
-        consumer._ensure_consumer_group.assert_awaited_once()
+        consumer._recover_missing_stream.assert_awaited_once()
         assert mock_redis.xreadgroup.await_count == 2
 
     @pytest.mark.asyncio
@@ -388,7 +391,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_awaited_once_with("stream", 3600)
 
@@ -415,7 +423,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_not_awaited()
 
@@ -442,7 +455,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_not_awaited()
 
@@ -466,7 +484,12 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         assert mock_redis.xgroup_create.await_args is not None
         assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
@@ -492,11 +515,16 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         assert mock_redis.xgroup_create.await_args is not None
         assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
-        mock_redis.expire.assert_awaited_once_with("stream", 3600)
+        mock_redis.expire.assert_awaited_once_with("stream", 2_592_000)
 
     @pytest.mark.asyncio
     async def test_skips_ttl_when_consumer_group_already_exists(
@@ -523,9 +551,121 @@ class TestRedisStreamConsumerGroupCreation:
                 on_message=AsyncMock(),
             )
             consumer._redis = mock_redis
-            await consumer._ensure_consumer_group()
+            await ensure_consumer_group(
+                mock_redis,
+                stream_key=consumer._stream_key,
+                consumer_group=consumer._consumer_group,
+                stream_ttl_seconds=settings.stream_ttl_seconds,
+            )
 
         mock_redis.expire.assert_not_awaited()
+
+
+class TestRedisStreamConsumerAck:
+    @staticmethod
+    def _mock_redis_for_ack(
+        *,
+        eval_side_effect: Exception | None = None,
+    ) -> AsyncMock:
+        mock_redis = AsyncMock()
+        if eval_side_effect is not None:
+            mock_redis.eval = AsyncMock(side_effect=eval_side_effect)
+        else:
+            mock_redis.eval = AsyncMock(return_value=1)
+        mock_redis.expire = AsyncMock(return_value=True)
+        return mock_redis
+
+    @pytest.mark.asyncio
+    async def test_ack_deletes_entry_without_refreshing_stream_ttl(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            stream_ttl_seconds=3600,
+        )
+        mock_redis = self._mock_redis_for_ack()
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            await consumer._ack("1700000000000-0")
+
+        mock_redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
+        )
+        mock_redis.expire.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_ack_skips_finalize_when_ttl_disabled(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            stream_ttl_seconds=None,
+        )
+        mock_redis = self._mock_redis_for_ack()
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            await consumer._ack("1700000000000-0")
+
+        mock_redis.eval.assert_awaited_once_with(
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            1,
+            "stream",
+            "test.integration",
+            "1700000000000-0",
+        )
+        mock_redis.expire.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_ack_swallows_nogroup_when_stream_missing_during_ack(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            stream_ttl_seconds=3600,
+        )
+        mock_redis = self._mock_redis_for_ack(
+            eval_side_effect=ResponseError(
+                "NOGROUP No such key 'stream' or consumer group"
+            )
+        )
+        mock_redis.xgroup_create = AsyncMock()
+        mock_redis.exists = AsyncMock(return_value=1)
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            await consumer._ack("1700000000000-0")
+
+        mock_redis.xgroup_create.assert_not_awaited()
 
 
 class TestRedisStreamConsumerPelWorkerLifecycle:
@@ -638,20 +778,7 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
         }
 
         mock_redis = AsyncMock()
-        mock_redis.xadd = AsyncMock(return_value="1700000000001-0")
-        mock_redis.xack = AsyncMock(return_value=1)
-
-        @asynccontextmanager
-        async def fake_pipeline(
-            *_args: object, **_kwargs: object
-        ) -> AsyncIterator[AsyncMock]:
-            pipe = AsyncMock()
-            pipe.xadd = mock_redis.xadd
-            pipe.xack = mock_redis.xack
-            pipe.execute = AsyncMock(return_value=["1700000000001-0", 1])
-            yield pipe
-
-        mock_redis.pipeline = fake_pipeline
+        mock_redis.eval = AsyncMock(return_value="1700000000001-0")
         mock_redis.xautoclaim = AsyncMock(
             return_value=("0-0", [(message_id, fields)], [])
         )
@@ -680,15 +807,19 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             )
             await pel_worker._scan_and_requeue()
 
-            mock_redis.xadd.assert_awaited_once()
-            assert mock_redis.xadd.await_args is not None
-            requeued_fields: dict[str, str] = mock_redis.xadd.await_args.args[1]
+            mock_redis.eval.assert_awaited_once()
+            assert mock_redis.eval.await_args is not None
+            assert mock_redis.eval.await_args.args[0] == REQUEUE_STREAM_ENTRY_SCRIPT
+            field_pairs = mock_redis.eval.await_args.args[5:]
+            requeued_fields = dict(
+                zip(field_pairs[0::2], field_pairs[1::2], strict=True)
+            )
             assert requeued_fields["requeue_count"] == "1"
 
             release_handler.set()
             await handle_task
 
-            assert mock_redis.xack.await_count >= 1
+            assert mock_redis.eval.await_count >= 1
 
 
 class TestRedisStreamConsumer:
