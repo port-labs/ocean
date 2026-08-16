@@ -141,7 +141,7 @@ class GitlabSelector(Selector):
     )
 
 
-class GitlabResourceConfig(ResourceConfig):
+class GitlabFolderResourceConfig(ResourceConfig):
     kind: Literal["folder"] = Field(
         title="GitLab Folder",
         description="GitLab folder resource kind for monorepo-style folder export.",
@@ -291,7 +291,7 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabProjectWithMembersResourceConfig
         | GitLabFilesResourceConfig
         | GitLabProjectResourceConfig
-        | GitlabResourceConfig
+        | GitlabFolderResourceConfig
         | GitlabGroupResourceConfig
         | GitlabIssueResourceConfig
         | GitlabJobResourceConfig
