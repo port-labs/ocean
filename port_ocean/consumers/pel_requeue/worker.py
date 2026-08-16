@@ -15,12 +15,18 @@ actual processing.  When a message has been stuck in the PEL longer than
 """
 
 import asyncio
-from typing import Any, cast
 
 from loguru import logger
+from redis.exceptions import ResponseError
 from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.redis_client import RedisClient
 from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
+from port_ocean.consumers.redis_stream_utils import (
+    ack_and_finalize_stream_entry,
+    ensure_consumer_group,
+    is_missing_stream_or_group_error,
+    requeue_stream_entry,
+)
 
 
 class PELRequeueWorker:
@@ -61,6 +67,27 @@ class PELRequeueWorker:
             await asyncio.gather(self._lifecycle_task, return_exceptions=True)
             self._lifecycle_task = None
 
+    async def _recover_missing_stream(self) -> None:
+        try:
+            logger.warning(
+                "Redis stream or consumer group missing in PEL requeue worker, recreating",
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+            )
+            await ensure_consumer_group(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                stream_ttl_seconds=self._redis_settings.stream_ttl_seconds,
+            )
+        except Exception as recovery_error:
+            logger.exception(
+                "Failed to recreate Redis stream consumer group "
+                "from PEL requeue worker",
+                stream_key=self._stream_key,
+                error=str(recovery_error),
+            )
+
     async def _worker_loop(self) -> None:
         while self._is_running:
             try:
@@ -68,6 +95,18 @@ class PELRequeueWorker:
                 await asyncio.sleep(self._redis_settings.pel_scan_interval_seconds)
             except asyncio.CancelledError:
                 break
+            except ResponseError as error:
+                if is_missing_stream_or_group_error(error):
+                    await self._recover_missing_stream()
+                else:
+                    logger.exception(
+                        "Unexpected Redis error in PEL requeue worker loop",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
+                await asyncio.sleep(
+                    self._redis_settings.pel_lifecycle_error_backoff_seconds
+                )
             except Exception as error:
                 logger.exception(
                     "Unexpected error in PEL requeue worker loop",
@@ -83,14 +122,20 @@ class PELRequeueWorker:
         total_processed = 0
 
         while True:
-            result = await self._redis.xautoclaim(
-                self._stream_key,
-                self._consumer_group,
-                PEL_CONSUMER_NAME,
-                self._redis_settings.stuck_timeout_ms,
-                cursor,
-                count=self._redis_settings.pel_xautoclaim_count,
-            )
+            try:
+                result = await self._redis.xautoclaim(
+                    self._stream_key,
+                    self._consumer_group,
+                    PEL_CONSUMER_NAME,
+                    self._redis_settings.stuck_timeout_ms,
+                    cursor,
+                    count=self._redis_settings.pel_xautoclaim_count,
+                )
+            except ResponseError as error:
+                if is_missing_stream_or_group_error(error):
+                    await self._recover_missing_stream()
+                    return
+                raise
 
             if not result:
                 break
@@ -116,8 +161,11 @@ class PELRequeueWorker:
                         message_id=message_id,
                         stream_key=self._stream_key,
                     )
-                    await self._redis.xack(
-                        self._stream_key, self._consumer_group, message_id
+                    await ack_and_finalize_stream_entry(
+                        self._redis,
+                        stream_key=self._stream_key,
+                        consumer_group=self._consumer_group,
+                        message_id=message_id,
                     )
                     continue
 
@@ -158,16 +206,30 @@ class PELRequeueWorker:
                 max_requeue_count=max_requeue_count,
                 stream_key=self._stream_key,
             )
-            await self._redis.xack(self._stream_key, self._consumer_group, message_id)
+            await ack_and_finalize_stream_entry(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                message_id=message_id,
+            )
             return
 
         new_fields = dict(fields)
         new_fields["requeue_count"] = str(requeue_count + 1)
 
-        async with self._redis.pipeline(transaction=True) as pipe:
-            await pipe.xadd(self._stream_key, cast(Any, new_fields))
-            await pipe.xack(self._stream_key, self._consumer_group, message_id)
-            await pipe.execute()
+        try:
+            await requeue_stream_entry(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                message_id=message_id,
+                fields=new_fields,
+            )
+        except ResponseError as error:
+            if is_missing_stream_or_group_error(error):
+                await self._recover_missing_stream()
+                return
+            raise
 
         logger.info(
             "Requeued stuck PEL message",

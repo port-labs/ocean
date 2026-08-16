@@ -1018,14 +1018,45 @@ class GitLabClient:
         project["__members"] = members
         return project
 
+    async def _get_file_content_with_ref_heal(
+        self, project_id: str, file_path: str, ref: str
+    ) -> tuple[dict[str, Any], str]:
+        """Fetch file content, retrying with default_branch when the ref fails.
+
+        Stale refs from GitLab blob search are mainly a group-search issue; project
+        search omits ref so GitLab searches the default branch, and repository tree
+        uses it explicitly. Webhooks use live commit SHAs from push events, not
+        search-index refs.
+        """
+        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+
+        if not file_data:
+            project = await self.get_project(project_id)
+            if project:
+                default_branch = project.get("default_branch")
+                if default_branch and default_branch != ref:
+                    logger.info(
+                        f"Retrying file fetch for '{file_path}' in project "
+                        f"'{project_id}' with default_branch '{default_branch}' "
+                        f"(original ref '{ref}' returned empty)"
+                    )
+                    ref = default_branch
+                    file_data = await self.rest.get_file_data(
+                        project_id, file_path, ref
+                    )
+
+        return file_data or {}, ref
+
     async def _process_file(
         self, file: dict[str, Any], context: str, skip_parsing: bool = False
     ) -> dict[str, Any]:
         file_path = file.get("path", "")
         project_id = str(file["project_id"])
-        ref = file.get("ref", "main")
+        ref = file.get("ref") or "main"
 
-        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+        file_data, ref = await self._get_file_content_with_ref_heal(
+            project_id, file_path, ref
+        )
         file_data["project_id"] = project_id
         file_data["path"] = file_path
 

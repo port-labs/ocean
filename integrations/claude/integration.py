@@ -24,6 +24,7 @@ class ObjectKind(StrEnum):
     CLAUDE_AI_USER_ACTIVITY = "claude-ai-user-activity"
     CLAUDE_AI_USER_USAGE = "claude-ai-user-usage"
     CLAUDE_AI_USER_COST = "claude-ai-user-cost"
+    CLAUDE_AI_SKILL_USAGE = "claude-ai-skill-usage"
     # Deprecated legacy kinds, kept for backwards compatibility. They are
     # aliases of the equivalent claude-platform-* kinds above.
     CLAUDE_USAGE_RECORD = "claude-usage-record"
@@ -157,6 +158,41 @@ class ClaudeAIUserActivitySelector(Selector):
     def validate_date_config(cls, values: dict[str, object]) -> dict[str, object]:
         # Neither field is allowed (a 30-day default is applied downstream); only
         # supplying both is invalid.
+        has_starting_date = values.get("starting_date") is not None
+        has_time_frame = values.get("time_frame") is not None
+        if has_starting_date and has_time_frame:
+            raise ValueError("'startingDate' and 'timeFrame' are mutually exclusive")
+        return values
+
+
+class ClaudeAISkillUsageSelector(Selector):
+    starting_date: str | None = Field(
+        alias="startingDate",
+        default=None,
+        title="Starting Date",
+        description=(
+            "Start date in YYYY-MM-DD format. The integration calls the skills API "
+            "once per day from this date up to ~1 day ago (the endpoint only "
+            "returns data at least 1 day old), clamped to 2026-01-01, the "
+            "earliest available data. Mutually exclusive with timeFrame."
+        ),
+        regex=r"^\d{4}-\d{2}-\d{2}$",
+    )
+    time_frame: int | None = Field(
+        alias="timeFrame",
+        default=None,
+        title="Time Frame (days)",
+        description=(
+            "Number of days to look back, ending ~1 day ago (the endpoint only "
+            "returns data at least 1 day old). Mutually exclusive with "
+            "startingDate. Defaults to 30 days when neither field is set."
+        ),
+        gt=0,
+    )
+
+    @root_validator
+    @classmethod
+    def validate_date_config(cls, values: dict[str, object]) -> dict[str, object]:
         has_starting_date = values.get("starting_date") is not None
         has_time_frame = values.get("time_frame") is not None
         if has_starting_date and has_time_frame:
@@ -317,11 +353,20 @@ class ClaudeAIUserCostResourceConfig(ResourceConfig):
     selector: ClaudeAIUserReportSelector
 
 
+class ClaudeAISkillUsageResourceConfig(ResourceConfig):
+    kind: Literal["claude-ai-skill-usage"] = Field(
+        description="Claude AI org-level skill usage resource kind",
+        title="Claude AI Skill Usage",
+    )
+    selector: ClaudeAISkillUsageSelector
+
+
 class ClaudePortAppConfig(PortAppConfig):
     resources: list[
         ClaudeAIUserActivityResourceConfig
         | ClaudeAIUserUsageResourceConfig
         | ClaudeAIUserCostResourceConfig
+        | ClaudeAISkillUsageResourceConfig
         | ClaudePlatformUsageRecordResourceConfig
         | ClaudeUsageRecordResourceConfig
         | ClaudePlatformCostRecordResourceConfig
