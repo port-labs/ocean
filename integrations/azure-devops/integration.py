@@ -657,7 +657,12 @@ class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
 
 
 class GitPortAppConfig(PortAppConfig):
-    spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
+    spec_path: List[str] | str = Field(
+        alias="specPath",
+        default="port.yml",
+        title="Spec Path",
+        description="Path to Port spec files in the repository. Default is 'port.yml'.",
+    )
     use_default_branch: bool | None = Field(
         default=None,
         alias="useDefaultBranch",
