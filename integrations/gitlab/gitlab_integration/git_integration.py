@@ -142,7 +142,46 @@ class GitlabSelector(Selector):
 
 
 class GitlabResourceConfig(ResourceConfig):
+    kind: Literal["folder"] = Field(
+        title="GitLab Folder",
+        description="GitLab folder resource kind for monorepo-style folder export.",
+    )
     selector: GitlabSelector
+
+
+class GitlabGroupResourceConfig(ResourceConfig):
+    kind: Literal["group"] = Field(
+        title="GitLab Group",
+        description="GitLab group resource kind.",
+    )
+
+
+class GitlabIssueResourceConfig(ResourceConfig):
+    kind: Literal["issue"] = Field(
+        title="GitLab Issue",
+        description="GitLab issue resource kind.",
+    )
+
+
+class GitlabJobResourceConfig(ResourceConfig):
+    kind: Literal["job"] = Field(
+        title="GitLab Job",
+        description="GitLab job resource kind.",
+    )
+
+
+class GitlabMergeRequestResourceConfig(ResourceConfig):
+    kind: Literal["merge-request"] = Field(
+        title="GitLab Merge Request",
+        description="GitLab merge request resource kind.",
+    )
+
+
+class GitlabPipelineResourceConfig(ResourceConfig):
+    kind: Literal["pipeline"] = Field(
+        title="GitLab Pipeline",
+        description="GitLab pipeline resource kind.",
+    )
 
 
 class GitlabMemberSelector(Selector):
@@ -247,7 +286,18 @@ class GitlabPortAppConfig(PortAppConfig):
         title="Project Visibility Filter",
         description="Optional GitLab visibility filter for projects (e.g. public, internal, private).",
     )
-    resources: list[GitlabGroupWithMembersResourceConfig | GitlabProjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitLabProjectResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[
+        GitlabGroupWithMembersResourceConfig
+        | GitlabProjectWithMembersResourceConfig
+        | GitLabFilesResourceConfig
+        | GitLabProjectResourceConfig
+        | GitlabResourceConfig
+        | GitlabGroupResourceConfig
+        | GitlabIssueResourceConfig
+        | GitlabJobResourceConfig
+        | GitlabMergeRequestResourceConfig
+        | GitlabPipelineResourceConfig
+    ] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
