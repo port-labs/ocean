@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Enable PortAppConfig field metadata and kind-discriminator checks at class definition time.

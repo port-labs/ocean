@@ -4,6 +4,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
