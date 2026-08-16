@@ -9,6 +9,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from port_ocean.consumers.redis_stream_utils import (
     ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
     ack_and_finalize_stream_entry,
+    cleanup_idle_consumers_from_group,
     ensure_consumer_group,
     is_missing_stream_or_group_error,
     is_redis_connection_error,
@@ -129,6 +130,137 @@ class TestEnsureConsumerGroup:
         )
 
         redis.expire.assert_not_awaited()
+
+
+class TestCleanupIdleConsumersFromGroup:
+    @pytest.mark.asyncio
+    async def test_removes_idle_consumer_with_no_pending_messages(self) -> None:
+        redis = AsyncMock()
+        redis.xinfo_consumers = AsyncMock(
+            return_value=[
+                {
+                    "name": "integration-dead-pod",
+                    "pending": 0,
+                    "idle": 5_000_000,
+                }
+            ]
+        )
+        redis.xgroup_delconsumer = AsyncMock(return_value=0)
+
+        removed = await cleanup_idle_consumers_from_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            idle_threshold_ms=3600_000,
+            protected_consumer_names=frozenset(),
+        )
+
+        assert removed == 1
+        redis.xgroup_delconsumer.assert_awaited_once_with(
+            "stream",
+            "test.integration",
+            "integration-dead-pod",
+        )
+
+    @pytest.mark.asyncio
+    async def test_skips_protected_consumer_names(self) -> None:
+        redis = AsyncMock()
+        redis.xinfo_consumers = AsyncMock(
+            return_value=[
+                {
+                    "name": "stream-maintenance-worker",
+                    "pending": 0,
+                    "idle": 5_000_000,
+                },
+                {
+                    "name": "integration-live-pod",
+                    "pending": 0,
+                    "idle": 5_000_000,
+                },
+            ]
+        )
+        redis.xgroup_delconsumer = AsyncMock(return_value=0)
+
+        removed = await cleanup_idle_consumers_from_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            idle_threshold_ms=3600_000,
+            protected_consumer_names=frozenset(
+                {"stream-maintenance-worker", "integration-live-pod"}
+            ),
+        )
+
+        assert removed == 0
+        redis.xgroup_delconsumer.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_skips_consumers_with_pending_messages(self) -> None:
+        redis = AsyncMock()
+        redis.xinfo_consumers = AsyncMock(
+            return_value=[
+                {
+                    "name": "integration-dead-pod",
+                    "pending": 2,
+                    "idle": 5_000_000,
+                }
+            ]
+        )
+        redis.xgroup_delconsumer = AsyncMock(return_value=0)
+
+        removed = await cleanup_idle_consumers_from_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            idle_threshold_ms=3600_000,
+            protected_consumer_names=frozenset(),
+        )
+
+        assert removed == 0
+        redis.xgroup_delconsumer.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_skips_consumers_below_idle_threshold(self) -> None:
+        redis = AsyncMock()
+        redis.xinfo_consumers = AsyncMock(
+            return_value=[
+                {
+                    "name": "integration-recent-pod",
+                    "pending": 0,
+                    "idle": 1000,
+                }
+            ]
+        )
+        redis.xgroup_delconsumer = AsyncMock(return_value=0)
+
+        removed = await cleanup_idle_consumers_from_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            idle_threshold_ms=3600_000,
+            protected_consumer_names=frozenset(),
+        )
+
+        assert removed == 0
+        redis.xgroup_delconsumer.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_swallows_missing_stream_error(self) -> None:
+        redis = AsyncMock()
+        redis.xinfo_consumers = AsyncMock(
+            side_effect=ResponseError("NOGROUP No such key 'stream' or consumer group")
+        )
+
+        removed = await cleanup_idle_consumers_from_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            idle_threshold_ms=3600_000,
+            protected_consumer_names=frozenset(),
+        )
+
+        assert removed == 0
+        redis.xgroup_delconsumer.assert_not_awaited()
 
 
 class TestIsRedisConnectionError:

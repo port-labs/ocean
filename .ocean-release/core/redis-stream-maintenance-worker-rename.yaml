@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Rename the Redis PEL requeue worker to Redis stream maintenance worker to reflect PEL reclaim and idle consumer cleanup.
