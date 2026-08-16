@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.24 (2026-08-16)
+
+
+### Bug Fixes
+
+- Retry file content fetch with the project's default branch when a stale ref from GitLab search returns empty, fixing 404 errors on renamed or deleted branches.
+
+
 ## 0.9.23 (2026-08-13)
 
 
