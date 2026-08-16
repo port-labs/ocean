@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.319-post1 (2026-08-16)
+==========================
+
+### Improvements
+
+- Split GitLab catch-all resource kinds onto one Literal each so schema generation can enumerate kinds.
+
+
 0.2.318-post1 (2026-08-16)
 ==========================
 
