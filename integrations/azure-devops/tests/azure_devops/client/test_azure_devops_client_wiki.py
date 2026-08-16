@@ -466,6 +466,7 @@ async def test_enrich_pages_handles_partial_failure() -> None:
         wiki_name: str,
         page_id: int,
         include_content: bool = False,
+        api_version: str = "7.1",
     ) -> Dict[str, Any] | None:
         if page_id == 2:
             raise ConnectionError("network failure")
