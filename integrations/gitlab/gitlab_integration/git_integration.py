@@ -134,7 +134,11 @@ class FoldersSelector(BaseModel):
 
 
 class GitlabSelector(Selector):
-    folders: List[FoldersSelector] = Field(default_factory=list)
+    folders: List[FoldersSelector] = Field(
+        default_factory=list,
+        title="Folders",
+        description="Folders to export as monorepo-style resources.",
+    )
 
 
 class GitlabResourceConfig(ResourceConfig):
@@ -145,16 +149,19 @@ class GitlabMemberSelector(Selector):
     include_inherited_members: bool = Field(
         alias="includeInheritedMembers",
         default=False,
+        title="Include Inherited Members",
         description="If set to true, the integration will include inherited members in the group members list. Default value is false",
     )
     include_bot_members: bool = Field(
         alias="includeBotMembers",
         default=False,
+        title="Include Bot Members",
         description="If set to false, bots will be filtered out from the members list. Default value is true",
     )
     include_verbose_member_object: bool = Field(
         alias="includeVerboseMemberObject",
         default=False,
+        title="Include Verbose Member Object",
         description=(
             "If set to true, the integration will include the verbose/entire member object in the members list. Default value is false, "
             "this will reduce the memory footprint of the integration"
@@ -177,13 +184,17 @@ class FilesSelector(BaseModel):
 class GitLabProjectSelector(Selector):
     include_labels: bool = Field(
         alias="includeLabels",
+        title="Include Labels",
         description="Whether to enrich projects with labels",
         default=False,
     )
 
 
 class GitLabFilesSelector(Selector):
-    files: FilesSelector
+    files: FilesSelector = Field(
+        title="Files",
+        description="File matching configuration for GitLab file resources.",
+    )
 
 
 class GitLabFilesResourceConfig(ResourceConfig):
@@ -197,13 +208,28 @@ class GitLabProjectResourceConfig(ResourceConfig):
 
 
 class GitlabPortAppConfig(PortAppConfig):
-    spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
-    branch: str | None
+    spec_path: str | List[str] = Field(
+        alias="specPath",
+        default="**/port.yml",
+        title="Spec Path",
+        description="Path glob for Port spec files to sync from GitLab repositories.",
+    )
+    branch: str | None = Field(
+        default=None,
+        title="Branch",
+        description="Git branch to use when syncing spec files. Defaults to the repository default branch.",
+    )
     filter_owned_projects: bool | None = Field(
-        alias="filterOwnedProjects", default=True
+        alias="filterOwnedProjects",
+        default=True,
+        title="Filter Owned Projects",
+        description="If true, only projects owned by the authenticated user or group are synced.",
     )
     project_visibility_filter: str | None = Field(
-        alias="projectVisibilityFilter", default=None
+        alias="projectVisibilityFilter",
+        default=None,
+        title="Project Visibility Filter",
+        description="Optional GitLab visibility filter for projects (e.g. public, internal, private).",
     )
     resources: list[GitlabObjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitLabProjectResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
