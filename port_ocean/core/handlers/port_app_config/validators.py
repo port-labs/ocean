@@ -5,6 +5,8 @@ import json
 import types as _types
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
+from pydantic.v1 import BaseModel
+
 from port_ocean.core.handlers.port_app_config.models import (
     CUSTOM_KIND,
     PortAppConfig,
@@ -18,6 +20,7 @@ def validate_and_get_config_schema(
     config_class: Type[PortAppConfig],
 ) -> dict[str, Any]:
     """Validate config definitions and return UI schema (kinds + advancedConfig)."""
+    _enforce_field_metadata(config_class)
     models = _get_resource_config_models(config_class)
     _validate_kind_discriminator(config_class)
     kinds = _build_kinds_mapping(models, config_class.allow_custom_kinds)
@@ -25,12 +28,56 @@ def validate_and_get_config_schema(
     return {"kinds": kinds, "advancedConfig": advanced_config}
 
 
+def _enforce_field_metadata(config_class: Type[PortAppConfig]) -> None:
+    """Require title/description on every field in the PortAppConfig model tree."""
+    seen: set[type] = set()
+
+    def check(cls: type) -> None:
+        if cls in seen:
+            return
+        try:
+            if not issubclass(cls, BaseModel):
+                return
+        except TypeError:
+            return
+        seen.add(cls)
+
+        parents: dict[str, Any] = {}
+        for base in reversed(cls.__mro__[1:]):
+            parents.update(getattr(base, "__fields__", {}))
+
+        for name, field in cls.__fields__.items():
+            parent = parents.get(name)
+            info = field.field_info
+            parent_info = parent.field_info if parent is not None else None
+            if info.title is None and (
+                parent_info is None or parent_info.title is None
+            ):
+                raise TypeError(
+                    f"Field '{name}' in '{cls.__name__}' must have a 'title'"
+                )
+            if info.description is None and (
+                parent_info is None or parent_info.description is None
+            ):
+                raise TypeError(
+                    f"Field '{name}' in '{cls.__name__}' must have a 'description'"
+                )
+            annotation = field.outer_type_
+            if get_origin(annotation) is list:
+                annotation = (
+                    get_args(annotation)[0] if get_args(annotation) else annotation
+                )
+            for nested in _unwrap_union(annotation):
+                if isinstance(nested, type):
+                    check(nested)
+
+    check(config_class)
+
+
 def _validate_kind_discriminator(config_class: Type[PortAppConfig]) -> None:
     """Validate that ``kind`` is a unique discriminator across the resources union.
 
-    Intended to be called at **class-definition time** (via
-    ``PortAppConfig.__init_subclass__``) so that invalid definitions are
-    caught at import time rather than at runtime.
+    Called from ``validate_and_get_config_schema`` (schema CLI / CI).
 
     Raises :class:`TypeError` on:
     * duplicate ``Literal`` kind values across union members

@@ -9,32 +9,7 @@ from port_ocean.clients.port.types import RequestOptions
 CUSTOM_KIND = "__custom__"
 
 
-class _FieldMetadataEnforcer(BaseModel):
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-        parent_fields: dict[str, Any] = {}
-        for base in reversed(cls.__mro__[1:]):
-            parent_fields.update(getattr(base, "__fields__", {}))
-
-        for field_name, field in cls.__fields__.items():
-            parent = parent_fields.get(field_name)
-            if field.field_info.title is None:
-                if parent is not None and parent.field_info.title is not None:
-                    field.field_info.title = parent.field_info.title
-                else:
-                    raise TypeError(
-                        f"Field '{field_name}' in '{cls.__name__}' must have a 'title'"
-                    )
-            if field.field_info.description is None:
-                if parent is not None and parent.field_info.description is not None:
-                    field.field_info.description = parent.field_info.description
-                else:
-                    raise TypeError(
-                        f"Field '{field_name}' in '{cls.__name__}' must have a 'description'"
-                    )
-
-
-class Rule(_FieldMetadataEnforcer):
+class Rule(BaseModel):
     property: str = Field(title="Property", description="The property to search on.")
     operator: str = Field(
         title="Operator", description="The operator to use for the search."
@@ -42,7 +17,7 @@ class Rule(_FieldMetadataEnforcer):
     value: str = Field(title="Value", description="The value to search for.")
 
 
-class IngestSearchQuery(_FieldMetadataEnforcer):
+class IngestSearchQuery(BaseModel):
     combinator: str = Field(
         title="Combinator",
         description="The combinator to use for the search, avaliable: 'and', 'or'.",
@@ -52,7 +27,7 @@ class IngestSearchQuery(_FieldMetadataEnforcer):
     )
 
 
-class EntityMapping(_FieldMetadataEnforcer):
+class EntityMapping(BaseModel):
     identifier: str | IngestSearchQuery = Field(
         title="Identifier", description="The identifier to use for the entity."
     )
@@ -86,13 +61,13 @@ class EntityMapping(_FieldMetadataEnforcer):
         )
 
 
-class MappingsConfig(_FieldMetadataEnforcer):
+class MappingsConfig(BaseModel):
     mappings: EntityMapping = Field(
         title="Mappings", description="The mappings to use for the entity."
     )
 
 
-class PortResourceConfig(_FieldMetadataEnforcer):
+class PortResourceConfig(BaseModel):
     entity: MappingsConfig = Field(
         title="Entity", description="The entity to use for the resource."
     )
@@ -115,7 +90,7 @@ class PortResourceConfig(_FieldMetadataEnforcer):
     )
 
 
-class Selector(_FieldMetadataEnforcer):
+class Selector(BaseModel):
     query: str = Field(
         title="Query",
         description="JQ expression that will filter which objects of the specified kind will be ingested into Port.",
@@ -128,7 +103,7 @@ class Selector(_FieldMetadataEnforcer):
     )
 
 
-class ResourceConfig(_FieldMetadataEnforcer):
+class ResourceConfig(BaseModel):
     kind: str = Field(
         title="Kind",
         description="key is a specifier for the object you wish to map from the tool's API.",
@@ -143,7 +118,7 @@ class ResourceConfig(_FieldMetadataEnforcer):
     )
 
 
-class PortAppConfig(_FieldMetadataEnforcer):
+class PortAppConfig(BaseModel):
     allow_custom_kinds: ClassVar[bool] = False
 
     enable_merge_entity: bool = Field(
@@ -207,15 +182,6 @@ class PortAppConfig(_FieldMetadataEnforcer):
             if mappings is not None and not isinstance(mappings, list):
                 entity["mappings"] = [mappings]
         return mapping
-
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-
-        from port_ocean.core.handlers.port_app_config.validators import (
-            _validate_kind_discriminator,
-        )
-
-        _validate_kind_discriminator(cls)
 
     class Config:
         allow_population_by_field_name = True

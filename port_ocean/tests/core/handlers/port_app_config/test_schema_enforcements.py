@@ -1,12 +1,15 @@
 from typing import Literal
 
 import pytest
-from pydantic.v1 import Field
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
+)
+from port_ocean.core.handlers.port_app_config.validators import (
+    validate_and_get_config_schema,
 )
 
 
@@ -17,49 +20,100 @@ def test_inherited_resources_field_keeps_parent_metadata() -> None:
     class Config(PortAppConfig):
         resources: list[KindA] = Field(default_factory=list)  # type: ignore[assignment]
 
-    resources_field = Config.__fields__["resources"]
-    assert resources_field.field_info.title == "Resources"
-    assert resources_field.field_info.description is not None
+    validate_and_get_config_schema(Config)
 
 
 def test_new_selector_field_requires_title_and_description() -> None:
+    class BadSelector(Selector):
+        extra: str = Field(default="x", description="Missing title.")
+
+    class BadResource(ResourceConfig):
+        kind: Literal["bad"] = Field(title="Bad", description="B.")
+        selector: BadSelector
+
+    class Config(PortAppConfig):
+        resources: list[BadResource] = Field(default_factory=list)  # type: ignore[assignment]
+
     with pytest.raises(TypeError, match="must have a 'title'"):
-
-        class BadSelector(Selector):
-            extra: str = Field(default="x", description="Missing title.")
+        validate_and_get_config_schema(Config)
 
 
-def test_duplicate_literal_kinds_raise_at_class_definition() -> None:
+def test_port_app_config_root_field_requires_title() -> None:
+    class KindA(ResourceConfig):
+        kind: Literal["a"] = Field(title="A", description="Kind A.")
+
+    class Config(PortAppConfig):
+        extra_root: str = Field(default="x", description="Missing title.")
+        resources: list[KindA] = Field(default_factory=list)  # type: ignore[assignment]
+
+    with pytest.raises(
+        TypeError, match="Field 'extra_root' in 'Config' must have a 'title'"
+    ):
+        validate_and_get_config_schema(Config)
+
+
+def test_nested_selector_model_fields_require_title_and_description() -> None:
+    class Folder(BaseModel):
+        path: str
+
+    class FolderSelector(Selector):
+        folders: list[Folder] = Field(title="Folders", description="Folders to export.")
+
+    class FolderResource(ResourceConfig):
+        kind: Literal["folder"] = Field(title="Folder", description="Folder kind.")
+        selector: FolderSelector
+
+    class Config(PortAppConfig):
+        resources: list[FolderResource] = Field(default_factory=list)  # type: ignore[assignment]
+
+    with pytest.raises(TypeError, match="Field 'path' in 'Folder' must have a 'title'"):
+        validate_and_get_config_schema(Config)
+
+
+def test_duplicate_literal_kinds_raise_during_schema_validation() -> None:
     class KindA(ResourceConfig):
         kind: Literal["same"] = Field(title="A", description="A.")
 
     class KindB(ResourceConfig):
         kind: Literal["same"] = Field(title="B", description="B.")
 
+    class Config(PortAppConfig):
+        resources: list[KindA | KindB] = Field(default_factory=list)  # type: ignore[assignment]
+
     with pytest.raises(TypeError, match="Duplicate kind"):
-
-        class Config(PortAppConfig):
-            resources: list[KindA | KindB] = Field(default_factory=list)  # type: ignore[assignment]
+        validate_and_get_config_schema(Config)
 
 
-def test_multi_value_kind_literal_raises_at_class_definition() -> None:
+def test_multi_value_kind_literal_raises_during_schema_validation() -> None:
     class Aliased(ResourceConfig):
         kind: Literal["current", "legacy"] = Field(title="Aliased", description="A.")
 
+    class Config(PortAppConfig):
+        resources: list[Aliased] = Field(default_factory=list)  # type: ignore[assignment]
+
     with pytest.raises(TypeError, match="exactly one string value"):
-
-        class Config(PortAppConfig):
-            resources: list[Aliased] = Field(default_factory=list)  # type: ignore[assignment]
+        validate_and_get_config_schema(Config)
 
 
-def test_multiple_custom_kind_slots_raise_at_class_definition() -> None:
+def test_redeclared_kind_without_field_keeps_parent_metadata() -> None:
+    class KindA(ResourceConfig):
+        kind: Literal["a"]
+
+    class Config(PortAppConfig):
+        resources: list[KindA] = Field(default_factory=list)  # type: ignore[assignment]
+
+    validate_and_get_config_schema(Config)
+
+
+def test_multiple_custom_kind_slots_raise_during_schema_validation() -> None:
     class CustomA(ResourceConfig):
         kind: str = Field(title="Custom A", description="A.")
 
     class CustomB(ResourceConfig):
         kind: str = Field(title="Custom B", description="B.")
 
-    with pytest.raises(TypeError, match="Multiple custom kind"):
+    class Config(PortAppConfig):
+        resources: list[CustomA | CustomB] = Field(default_factory=list)  # type: ignore[assignment]
 
-        class Config(PortAppConfig):
-            resources: list[CustomA | CustomB] = Field(default_factory=list)  # type: ignore[assignment]
+    with pytest.raises(TypeError, match="Multiple custom kind"):
+        validate_and_get_config_schema(Config)
