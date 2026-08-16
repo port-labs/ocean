@@ -42,20 +42,14 @@ def test_duplicate_literal_kinds_raise_at_class_definition() -> None:
             resources: list[KindA | KindB] = Field(default_factory=list)  # type: ignore[assignment]
 
 
-def test_literal_kind_aliases_are_allowed_on_one_model() -> None:
+def test_multi_value_kind_literal_raises_at_class_definition() -> None:
     class Aliased(ResourceConfig):
         kind: Literal["current", "legacy"] = Field(title="Aliased", description="A.")
 
-    class Config(PortAppConfig):
-        resources: list[Aliased] = Field(default_factory=list)  # type: ignore[assignment]
+    with pytest.raises(TypeError, match="exactly one string value"):
 
-    from port_ocean.core.handlers.port_app_config.validators import (
-        validate_and_get_config_schema,
-    )
-
-    kinds = validate_and_get_config_schema(Config)["kinds"]
-    assert "current" in kinds
-    assert "legacy" in kinds
+        class Config(PortAppConfig):
+            resources: list[Aliased] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 def test_multiple_custom_kind_slots_raise_at_class_definition() -> None:
