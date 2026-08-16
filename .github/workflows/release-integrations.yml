@@ -20,10 +20,11 @@ jobs:
       - name: Prepare matrix
         id: prepare-matrix
         run: |
+          source scripts/ci/integration_spec.sh
           integrations_to_release=()
           # Get the list of integrations
-          files=$(find integrations/*/.port -name "spec.yaml")
-          for file in $files; do
+          mapfile -t files < <(find_integration_spec_files)
+          for file in "${files[@]}"; do
             folder=$(dirname "$file")
             type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
@@ -245,6 +246,8 @@ jobs:
 
       - name: Upload specifications to s3
         run: |
+          source scripts/ci/integration_spec.sh
+
           # Temporary file
           temp_file="temp.yaml"
 
@@ -263,8 +266,8 @@ jobs:
               echo "[]" >"$index_file"
           fi
 
-          # Find all ocean-spec.yaml files under the specified directory
-          find integrations/*/.port -type f -name "spec.yaml" >file_list.txt
+          # Find all integration spec files under the specified directory
+          find_integration_spec_files >file_list.txt
 
           while IFS= read -r file; do
               integration_dir=$(dirname "$file")
@@ -293,8 +296,8 @@ jobs:
 
               static_examples_folder_dest="$integration_folder/examples/"
 
-              # Convert YAML to JSON
-              yq -o json "$file" >"$temp_file"
+              # Convert spec file to JSON
+              convert_spec_to_json "$file" "$temp_file"
 
               # Add version attribute
               jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" > "$integration_spec"
