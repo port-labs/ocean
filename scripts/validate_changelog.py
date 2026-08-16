@@ -34,6 +34,16 @@ ALLOWED_CHANGELOG_PATHS = frozenset(
         "integrations/azure/CHANGELOG.md",
         "integrations/azure-devops/CHANGELOG.md",
         "integrations/azure-resource-graph/CHANGELOG.md",
+        "integrations/backstage/CHANGELOG.md",
+        "integrations/bitbucket-cloud/CHANGELOG.md",
+        "integrations/bitbucket-server/CHANGELOG.md",
+        "integrations/checkmarx-one/CHANGELOG.md",
+        "integrations/claude/CHANGELOG.md",
+        "integrations/claude-managed-agents/CHANGELOG.md",
+        "integrations/cursor/CHANGELOG.md",
+        "integrations/cursor-cloud-agents/CHANGELOG.md",
+        "integrations/custom/CHANGELOG.md",
+        "integrations/terraform-cloud/CHANGELOG.md",
     }
 )
 
