@@ -1641,6 +1641,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.5.22 (2025-11-09)
 
 
@@ -1676,10 +1677,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.5.18 (2025-11-03)
 
 
-### Bug Fix
+### Bug Fixes
 
 - Fix bug Jira cannot ingest issues when the jql selector empty
-
 
 
 ## 0.5.17 (2025-11-02)
@@ -1765,7 +1765,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.5.7 (2025-09-25)
 
 
-### Bug Fix
+### Bug Fixes
 
 - Fix bug Jira cannot ingest issues when the jql selector is empty
 
@@ -1820,9 +1820,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.5.0 (2025-08-27)
 
-## Improvements
+
+### Improvements
 
 - Added new optional `expand` selector flag for enriching Issues
+
 
 ## 0.4.61 (2025-08-25)
 
@@ -1922,10 +1924,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.4.49 (2025-08-03)
 
+
 ### Improvements
 
 - Added explicit query params for tabs selection on intallationDocs
-
 
 
 ## 0.4.48 (2025-08-03)
@@ -1937,6 +1939,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.4.47 (2025-08-03)
+
+
 ### Improvements
 
 - Aligned installationDocs param with convensions
@@ -1944,7 +1948,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.4.46 (2025-07-27)
 
-### Fix
+
+### Bug Fixes
 
 - Restructured changed specs installationDocs param
 
@@ -1995,6 +2000,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 -  Fix `JIRA_HOST` from str type to url
+
+
 ## 0.4.39 (2025-07-02)
 
 
@@ -2089,6 +2096,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - If webhook destination already exsits added warning message and suggestion to contact support if customer needs to change the destination.
+
 
 ## 0.4.28 (2025-06-22)
 
@@ -2332,11 +2340,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.18 (2025-04-27)
 
+
 ### Bug Fixes
 
 - Removed httpx dependency to resolve h11 vulnerability
 
+
 ## 0.3.17 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2649,7 +2660,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added rate limit support to avoid failures due to 429 errors
 
 
-
 ## 0.2.21 (2025-01-15)
 
 
@@ -2815,6 +2825,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Added support to sync Jira users to Port and created relevant relations to jira issues assignee and reporter
+
 
 ## 0.2.0 (2024-12-04)
 
@@ -3259,6 +3270,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated the JQL filter used in the default configuration mapping to not ingest Jira issues of the `done` statusCategory
 - Updated the default mapping for the `issue` kind
 
+
 ## 0.1.51 (2024-05-30)
 
 
@@ -3343,12 +3355,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.41 (2024-04-17)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.12 (#1)
 
 
 ## 0.1.40 (2024-04-11)
+
 
 ### Improvements
 
@@ -3357,12 +3371,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.39 (2024-04-10)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.10 (#1)
 
 
 ## 0.1.38 (2024-04-01)
+
 
 ### Improvements
 
@@ -3371,12 +3387,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.37 (2024-03-28)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.8 (#1)
 
 
 ## 0.1.36 (2024-03-25)
+
 
 ### Improvements
 
@@ -3385,12 +3403,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.35 (2024-03-20)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.7 (#1)
 
 
 ## 0.1.34 (2024-03-17)
+
 
 ### Improvements
 
@@ -3399,12 +3419,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.33 (2024-03-06)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.5 (#1)
 
 
 ## 0.1.32 (2024-03-03)
+
 
 ### Improvements
 
@@ -3413,12 +3435,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.31 (2024-03-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.3 (#1)
 
 
 ## 0.1.30 (2024-02-21)
+
 
 ### Improvements
 
@@ -3427,12 +3451,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.29 (2024-02-20)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.1 (#1)
 
 
 ## 0.1.28 (2024-02-18)
+
 
 ### Improvements
 
@@ -3441,12 +3467,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.27 (2024-01-23)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.17 (#1)
 
 
 ## 0.1.26 (2024-01-11)
+
 
 ### Improvements
 
@@ -3455,12 +3483,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.25 (2024-01-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.15 (#1)
 
 
 ## 0.1.24 (2024-01-07)
+
 
 ### Improvements
 
@@ -3469,6 +3499,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.23 (2024-01-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.13 (#1)
@@ -3476,12 +3507,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.22 (2023-12-25)
 
+
 ### Improvements
 
 - Fix stale relation identifiers in default blueprints (port-5799)
 
 
 ## 0.1.21 (2023-12-24)
+
 
 ### Improvements
 
@@ -3491,6 +3524,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.20 (2023-12-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.11 (#1)
@@ -3498,12 +3532,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.19 (2023-12-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.10 (#1)
 
 
-v## 0.1.18 (2023-12-20)
+## 0.1.18 (2023-12-20)
+
 
 ### Improvements
 
@@ -3513,12 +3549,14 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.17 (2023-12-18)
 
+
 ### Improvements
 
 - Updated the Jira issue blueprint by adding entity properties including created datetime, updated datetime and priority (#17)
 
 
 ## 0.1.16 (2023-12-14)
+
 
 ### Improvements
 
@@ -3527,6 +3565,7 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.15 (2023-12-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.7 (#1)
@@ -3534,12 +3573,14 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.14 (2023-12-04)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.6 (#1)
 
 
 ## 0.1.13 (2023-11-30)
+
 
 ### Improvements
 
@@ -3549,6 +3590,7 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.12 (2023-11-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.4 (#1)
@@ -3557,12 +3599,14 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.11 (2023-11-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.3 (#1)
 
 
 ## 0.1.10 (2023-11-08)
+
 
 ### Improvements
 
@@ -3571,12 +3615,14 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.9 (2023-11-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.1 (#1)
 
 
 ## 0.1.8 (2023-11-01)
+
 
 ### Improvements
 
@@ -3585,12 +3631,14 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.7 (2023-10-30)
 
+
 ### Improvements
 
 - Fixed the default mapping to exclude issues with status `Done` (#1)
 
 
 ## 0.1.6 (2023-10-29)
+
 
 ### Improvements
 
@@ -3599,36 +3647,47 @@ v## 0.1.18 (2023-12-20)
 
 ## 0.1.5 (2023-09-27)
 
+
 ### Improvements
 
 - Bumped ocean to version 0.3.1 (#1)
 
+
 ## 0.1.4 (2023-09-13)
+
 
 ### Improvements
 
 - Bumped ocean to 0.3.0 (#1)
 
+
 ## 0.1.3 (2023-08-29)
+
 
 ### Improvements
 
 - Changed the app_host to not be required for the installation (PORT-4527)
 - Bumped Ocean to 0.2.3 (#1)
 
+
 ## 0.1.2 (2023-08-11)
+
 
 ### Improvements
 
 - Optimized dockerfile to produce smaller images (PORT-4485)
 
+
 ## 0.1.1 (2023-08-11)
+
 
 ### Improvements
 
 - Upgraded ocean to version 0.2.2
 
-v## 0.1.0 (2023-08-10)
+
+## 0.1.0 (2023-08-10)
+
 
 ### Features
 

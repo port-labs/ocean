@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Changelogs eligible for validation. Expand as integrations are standardized.
 # Once all are standardized, this bit of the logic should be removed.
+# Please note all have now been added, I'll fully remove this logic in a dedicated PR
 ALLOWED_CHANGELOG_PATHS = frozenset(
     {
         "CHANGELOG.md",
@@ -43,10 +44,37 @@ ALLOWED_CHANGELOG_PATHS = frozenset(
         "integrations/cursor/CHANGELOG.md",
         "integrations/cursor-cloud-agents/CHANGELOG.md",
         "integrations/custom/CHANGELOG.md",
+        "integrations/datadog/CHANGELOG.md",
+        "integrations/dynatrace/CHANGELOG.md",
+        "integrations/fake-integration/CHANGELOG.md",
+        "integrations/firehydrant/CHANGELOG.md",
+        "integrations/gcp/CHANGELOG.md",
+        "integrations/github/CHANGELOG.md",
+        "integrations/github-copilot/CHANGELOG.md",
+        "integrations/gitlab/CHANGELOG.md",
+        "integrations/gitlab-v2/CHANGELOG.md",
+        "integrations/jenkins/CHANGELOG.md",
+        "integrations/jira/CHANGELOG.md",
+        "integrations/jira-server/CHANGELOG.md",
+        "integrations/kafka/CHANGELOG.md",
+        "integrations/komodor/CHANGELOG.md",
+        "integrations/kubecost/CHANGELOG.md",
+        "integrations/launchdarkly/CHANGELOG.md",
+        "integrations/linear/CHANGELOG.md",
+        "integrations/mend/CHANGELOG.md",
+        "integrations/newrelic/CHANGELOG.md",
+        "integrations/octopus/CHANGELOG.md",
+        "integrations/okta/CHANGELOG.md",
+        "integrations/opencost/CHANGELOG.md",
+        "integrations/opsgenie/CHANGELOG.md",
+        "integrations/pagerduty/CHANGELOG.md",
         "integrations/sentry/CHANGELOG.md",
         "integrations/servicenow/CHANGELOG.md",
+        "integrations/snyk/CHANGELOG.md",
         "integrations/sonarqube/CHANGELOG.md",
+        "integrations/statuspage/CHANGELOG.md",
         "integrations/terraform-cloud/CHANGELOG.md",
+        "integrations/wiz/CHANGELOG.md",
     }
 )
 

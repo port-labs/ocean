@@ -1521,6 +1521,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.71-beta (2025-11-09)
 
 
@@ -1743,6 +1744,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - fixed docs link in the spec.yaml
+
 
 ## 0.1.43-beta (2025-08-11)
 

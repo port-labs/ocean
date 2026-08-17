@@ -164,6 +164,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Manual change test
 
+
 ## 0.1.311-dev (2026-07-30)
 
 
@@ -955,6 +956,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added integration tests to the fake integration resync process
 
+
 ## 0.1.212-dev (2026-03-15)
 
 
@@ -1513,6 +1515,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.1.140-dev (2025-11-09)
 
@@ -2091,6 +2094,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.69-dev (2025-04-27)
+
 
 ### Bug Fixes
 
