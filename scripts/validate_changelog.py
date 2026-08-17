@@ -238,6 +238,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = args.paths
 
+    print("Received paths:", paths, sep=", ")
     if not paths:
         print("No changelogs to validate; skipping")
         return 0
