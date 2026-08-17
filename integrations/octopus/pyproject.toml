@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "octopus"
-version = "0.2.163"
+version = "0.2.164"
 description = "This integration ingest data from octopus deploy"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>"]
 
@@ -25,7 +25,8 @@ yamllint = "^1.37.1"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

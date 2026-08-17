@@ -172,9 +172,10 @@ class ClaudeAISkillUsageSelector(Selector):
         title="Starting Date",
         description=(
             "Start date in YYYY-MM-DD format. The integration calls the skills API "
-            "once per day from this date up to ~1 day ago (the endpoint only "
-            "returns data at least 1 day old), clamped to 2026-01-01, the "
-            "earliest available data. Mutually exclusive with timeFrame."
+            "once per day from this date up to ~2 days ago (the endpoint only "
+            "returns data once it is available, typically with a 1–2 day lag), "
+            "clamped to 2026-01-01, the earliest available data. Mutually "
+            "exclusive with timeFrame."
         ),
         regex=r"^\d{4}-\d{2}-\d{2}$",
     )
@@ -183,9 +184,10 @@ class ClaudeAISkillUsageSelector(Selector):
         default=None,
         title="Time Frame (days)",
         description=(
-            "Number of days to look back, ending ~1 day ago (the endpoint only "
-            "returns data at least 1 day old). Mutually exclusive with "
-            "startingDate. Defaults to 30 days when neither field is set."
+            "Number of days to look back, ending ~2 days ago (the endpoint only "
+            "returns data once it is available, typically with a 1–2 day lag). "
+            "Mutually exclusive with startingDate. Defaults to 30 days when "
+            "neither field is set."
         ),
         gt=0,
     )
