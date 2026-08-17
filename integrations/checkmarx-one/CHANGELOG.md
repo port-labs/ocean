@@ -1654,7 +1654,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.0 (2025-09-30)
 
 
-### Release
+### Features
 
 - Bumped integration version from dev to GA
 
@@ -1829,24 +1829,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated blueprint icons to Checkmarx
 
 
-
 ## 0.1.2-dev (2025-08-24)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.10
 
 
-
 ## 0.1.1-dev (2025-08-20)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.9
 
 
-
 ## 0.1.0-dev (2025-08-18)
+
 
 ### Features
 
