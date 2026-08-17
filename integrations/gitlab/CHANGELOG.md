@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.2.322-post1 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
 ## 0.2.321-post1 (2026-08-17)
 
 
