@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "azure"
-version = "0.1.417"
+version = "0.1.418"
 description = "Azure integration"
 authors = ["Tom Tankilevitch <tom@getport.io>"]
 
@@ -33,6 +33,8 @@ yamllint = "^1.37.1"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"
