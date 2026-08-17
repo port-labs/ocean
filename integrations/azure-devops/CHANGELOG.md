@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.2 (2026-08-18)
+
+
+### Bug Fixes
+
+- Fixed Azure DevOps org-level `git.push` webhook subscriptions to request full payload details and avoid duplicate subscription creation during reconciliation.
+
+
 ## 0.12.1 (2026-08-17)
 
 

@@ -2619,6 +2619,9 @@ class AzureDevopsClient(HTTPBaseClient):
             if existing_sub and not existing_sub.is_enabled():
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
+            elif existing_sub and not existing_sub.has_required_payload_details():
+                subs_to_delete.append(existing_sub)
+                subs_to_create.append(sub)
             elif existing_sub and existing_sub.id:
                 kept_sub_ids.append(existing_sub.id)
             elif not existing_sub:
