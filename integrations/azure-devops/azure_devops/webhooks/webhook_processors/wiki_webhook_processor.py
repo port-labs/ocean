@@ -78,6 +78,4 @@ class WikiWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             f"in project {project_id}"
         )
 
-        return WebhookEventRawResults(
-            updated_raw_results=pages, deleted_raw_results=[]
-        )
+        return WebhookEventRawResults(updated_raw_results=pages, deleted_raw_results=[])

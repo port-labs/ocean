@@ -3134,9 +3134,7 @@ class AzureDevopsClient(HTTPBaseClient):
             "GET", url, params={"api-version": api_version}
         )
         if not response:
-            logger.warning(
-                f"Wiki {wiki_id} not found in project {project_id}"
-            )
+            logger.warning(f"Wiki {wiki_id} not found in project {project_id}")
             return None
         return response.json()
 

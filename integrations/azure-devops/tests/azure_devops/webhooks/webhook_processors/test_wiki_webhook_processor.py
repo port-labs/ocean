@@ -90,9 +90,7 @@ async def test_should_process_wiki_push(
     event: WebhookEvent, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     processor, _ = _make_processor(event, monkeypatch)
-    wiki_event = WebhookEvent(
-        trace_id="t1", payload=MOCK_WIKI_PUSH_PAYLOAD, headers={}
-    )
+    wiki_event = WebhookEvent(trace_id="t1", payload=MOCK_WIKI_PUSH_PAYLOAD, headers={})
     assert await processor.should_process_event(wiki_event) is True
 
 
@@ -101,9 +99,7 @@ async def test_should_not_process_regular_push(
     event: WebhookEvent, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     processor, _ = _make_processor(event, monkeypatch)
-    code_event = WebhookEvent(
-        trace_id="t1", payload=MOCK_CODE_PUSH_PAYLOAD, headers={}
-    )
+    code_event = WebhookEvent(trace_id="t1", payload=MOCK_CODE_PUSH_PAYLOAD, headers={})
     assert await processor.should_process_event(code_event) is False
 
 
