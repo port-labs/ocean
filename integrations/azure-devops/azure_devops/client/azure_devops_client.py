@@ -3119,6 +3119,27 @@ class AzureDevopsClient(HTTPBaseClient):
             )
         return all_runs
 
+    async def get_wiki(
+        self, project_id: str, wiki_id: str, api_version: str = "7.1"
+    ) -> dict[str, Any] | None:
+        """Fetch a single wiki by ID.
+
+        API: GET {org}/{project}/_apis/wiki/wikis/{wikiId}?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}"
+        )
+        response = await self.send_request(
+            "GET", url, params={"api-version": api_version}
+        )
+        if not response:
+            logger.warning(
+                f"Wiki {wiki_id} not found in project {project_id}"
+            )
+            return None
+        return response.json()
+
     async def _get_wikis_for_project(
         self, project: dict[str, Any], api_version: str = "7.1"
     ) -> list[dict[str, Any]]:
@@ -3143,7 +3164,7 @@ class AzureDevopsClient(HTTPBaseClient):
             wiki["__project"] = project
         return wikis
 
-    async def _get_wiki_pages_batch(
+    async def get_wiki_pages_batch(
         self,
         project_id: str,
         wiki_id: str,
@@ -3290,7 +3311,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         )
                         continue
 
-                    async for page_batch in self._get_wiki_pages_batch(
+                    async for page_batch in self.get_wiki_pages_batch(
                         project["id"],
                         wiki["id"],
                         wiki["name"],

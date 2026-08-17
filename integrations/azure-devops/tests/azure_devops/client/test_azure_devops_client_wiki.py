@@ -111,11 +111,11 @@ async def test_get_wikis_for_project_returns_empty_on_404() -> None:
         assert wikis == []
 
 
-# ── _get_wiki_pages_batch ──────────────────────────────────────────────
+# ── get_wiki_pages_batch ──────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_get_wiki_pages_batch_single_page() -> None:
+async def testget_wiki_pages_batch_single_page() -> None:
     client = _make_client()
 
     with patch.object(client, "send_request") as mock_send:
@@ -125,7 +125,7 @@ async def test_get_wiki_pages_batch_single_page() -> None:
         )
 
         batches: List[List[Dict[str, Any]]] = []
-        async for batch in client._get_wiki_pages_batch(
+        async for batch in client.get_wiki_pages_batch(
             "proj-1", "wiki-uuid-1", "MyProject.wiki"
         ):
             batches.append(batch)
@@ -135,7 +135,7 @@ async def test_get_wiki_pages_batch_single_page() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_wiki_pages_batch_pagination() -> None:
+async def testget_wiki_pages_batch_pagination() -> None:
     client = _make_client()
 
     page1 = [{"id": 1, "path": "/Page1"}, {"id": 2, "path": "/Page2"}]
@@ -155,7 +155,7 @@ async def test_get_wiki_pages_batch_pagination() -> None:
 
     with patch.object(client, "send_request", side_effect=responses):
         all_pages: List[Dict[str, Any]] = []
-        async for batch in client._get_wiki_pages_batch(
+        async for batch in client.get_wiki_pages_batch(
             "proj-1", "wiki-uuid-1", "MyProject.wiki"
         ):
             all_pages.extend(batch)
@@ -165,7 +165,7 @@ async def test_get_wiki_pages_batch_pagination() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_wiki_pages_batch_empty_wiki() -> None:
+async def testget_wiki_pages_batch_empty_wiki() -> None:
     client = _make_client()
 
     with patch.object(client, "send_request") as mock_send:
@@ -175,7 +175,7 @@ async def test_get_wiki_pages_batch_empty_wiki() -> None:
         )
 
         batches: List[List[Dict[str, Any]]] = []
-        async for batch in client._get_wiki_pages_batch(
+        async for batch in client.get_wiki_pages_batch(
             "proj-1", "wiki-uuid-1", "MyProject.wiki"
         ):
             batches.append(batch)
@@ -184,12 +184,12 @@ async def test_get_wiki_pages_batch_empty_wiki() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_wiki_pages_batch_no_response() -> None:
+async def testget_wiki_pages_batch_no_response() -> None:
     client = _make_client()
 
     with patch.object(client, "send_request", return_value=None):
         batches: List[List[Dict[str, Any]]] = []
-        async for batch in client._get_wiki_pages_batch(
+        async for batch in client.get_wiki_pages_batch(
             "proj-1", "wiki-uuid-1", "MyProject.wiki"
         ):
             batches.append(batch)
@@ -285,7 +285,7 @@ async def test_generate_wiki_pages_filters_by_type(
             "_get_wikis_for_project",
             return_value=[wiki_project, wiki_code],
         ),
-        patch.object(client, "_get_wiki_pages_batch") as mock_batch,
+        patch.object(client, "get_wiki_pages_batch") as mock_batch,
     ):
 
         async def mock_pages(
@@ -301,7 +301,7 @@ async def test_generate_wiki_pages_filters_by_type(
 
         assert len(all_pages) == 1
         assert all_pages[0]["__wiki"] == wiki_project
-        # _get_wiki_pages_batch called only once (codeWiki skipped)
+        # get_wiki_pages_batch called only once (codeWiki skipped)
         mock_batch.assert_called_once()
 
 
@@ -341,7 +341,7 @@ async def test_generate_wiki_pages_no_filter(
         ),
         patch.object(
             client,
-            "_get_wiki_pages_batch",
+            "get_wiki_pages_batch",
             side_effect=mock_pages,
         ),
     ):
@@ -384,7 +384,7 @@ async def test_generate_wiki_pages_with_content_enrichment(
         ),
         patch.object(
             client,
-            "_get_wiki_pages_batch",
+            "get_wiki_pages_batch",
             side_effect=mock_pages,
         ),
         patch.object(
@@ -434,7 +434,7 @@ async def test_generate_wiki_pages_without_content_skips_enrichment(
         ),
         patch.object(
             client,
-            "_get_wiki_pages_batch",
+            "get_wiki_pages_batch",
             side_effect=mock_pages,
         ),
         patch.object(client, "_get_wiki_page_by_id") as mock_get_page,

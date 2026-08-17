@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Added `wiki` kind to ingest Azure DevOps wiki pages, supporting per-type filtering (projectWiki/codeWiki) and optional markdown content enrichment
+- Added live events support for project wikis by listening to git.push events on wiki-backing repositories, enabling real-time wiki page updates without waiting for scheduled resync
 
 
 ## 0.11.15 (2026-08-13)

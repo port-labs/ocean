@@ -6372,7 +6372,7 @@ async def test_get_wiki_pages_batch() -> None:
 
     with patch.object(client, "send_request", return_value=mock_response):
         batches: list[list[dict[str, Any]]] = []
-        async for batch in client._get_wiki_pages_batch(
+        async for batch in client.get_wiki_pages_batch(
             "proj1", "wiki-guid-1", "Project One.wiki"
         ):
             batches.append(batch)
@@ -6398,7 +6398,7 @@ async def test_get_wiki_pages_batch_pagination() -> None:
         client, "send_request", side_effect=[page1_response, page2_response]
     ):
         batches: list[list[dict[str, Any]]] = []
-        async for batch in client._get_wiki_pages_batch(
+        async for batch in client.get_wiki_pages_batch(
             "proj1", "wiki-guid-1", "Project One.wiki"
         ):
             batches.append(batch)
@@ -6414,7 +6414,7 @@ async def test_get_wiki_pages_batch_no_response() -> None:
 
     with patch.object(client, "send_request", return_value=None):
         batches: list[list[dict[str, Any]]] = []
-        async for batch in client._get_wiki_pages_batch(
+        async for batch in client.get_wiki_pages_batch(
             "proj1", "wiki-guid-1", "Project One.wiki"
         ):
             batches.append(batch)
