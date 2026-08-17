@@ -12,6 +12,15 @@
         },
         {
           "kind": "fake-person"
+        },
+        {
+          "kind": "fake-office"
+        },
+        {
+          "kind": "fake-team"
+        },
+        {
+          "kind": "fake-project"
         }
       ]
     }
