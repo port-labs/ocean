@@ -236,7 +236,7 @@ def main() -> int:
         help="Changelog paths to validate (only allowlisted paths are checked)",
     )
     args = parser.parse_args()
-    paths = args.paths
+    paths = [resolve_changelog_path(path) for path in args.paths]
 
     print("Received paths:", paths, sep=", ")
     if not paths:
