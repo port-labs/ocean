@@ -124,7 +124,6 @@ class GCPCloudFunctionSelector(Selector):
 
 class GCPCloudFunctionResourceConfig(ResourceConfig):
     kind: Literal["gcpCloudFunction"] = Field(
-        "gcpCloudFunction",
         title="GCP Cloud Function",
         description="GCP cloud-function sync protocol resource kind.",
     )
