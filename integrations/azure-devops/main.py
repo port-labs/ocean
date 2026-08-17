@@ -65,6 +65,9 @@ from azure_devops.webhooks.webhook_processors.test_run_webhook_processor import 
 from azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor import (
     ReleaseDeploymentWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.wiki_webhook_processor import (
+    WikiWebhookProcessor,
+)
 from azure_devops.actions.registry import register_actions_executors
 from integration import (
     AzureDevopsBuildConfig,
@@ -81,6 +84,7 @@ from integration import (
     AzureDevopsRepositoryResourceConfig,
     AzureDevopsUserConfig,
     AzureDevopsAreaPathResourceConfig,
+    AzureDevopsWikiResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -488,6 +492,18 @@ async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_T
         yield security_alerts
 
 
+@ocean.on_resync(Kind.WIKI)
+async def resync_wiki_pages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(AzureDevopsWikiResourceConfig, event.resource_config).selector
+    async for wiki_pages in resync.iter_wiki_pages(
+        wiki_type=selector.wiki_type,
+        include_content=selector.include_content,
+        api_version=selector.api_version,
+    ):
+        logger.info(f"Resyncing batch of {len(wiki_pages)} wiki pages")
+        yield wiki_pages
+
+
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
@@ -503,5 +519,6 @@ ocean.add_webhook_processor("/webhook", ReleaseWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseDefinitionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseDeploymentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", TestRunWebhookProcessor)
+ocean.add_webhook_processor("/webhook", WikiWebhookProcessor)
 
 register_actions_executors()

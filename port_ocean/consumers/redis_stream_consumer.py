@@ -21,7 +21,7 @@ from port_ocean.consumers.redis_client import (
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
-from port_ocean.consumers.pel_requeue import PELRequeueWorker
+from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
 from port_ocean.consumers.redis_stream_utils import (
     ack_and_finalize_stream_entry,
     ensure_consumer_group,
@@ -65,7 +65,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._consumer_name = (
             f"{ocean.config.integration.identifier}-{socket.gethostname()}"
         )
-        self._pel_worker: PELRequeueWorker | None = None
+        self._stream_maintenance_worker: RedisStreamMaintenanceWorker | None = None
 
     def _resolve_consumer_group(self) -> str:
         integration = ocean.config.integration
@@ -139,15 +139,16 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._is_running = True
         self._read_task = asyncio.create_task(self._read_loop())
 
-        if self._settings.pel_requeue_worker_enabled:
+        if self._settings.stream_maintenance_worker_enabled:
             assert self._redis is not None
-            self._pel_worker = PELRequeueWorker(
+            self._stream_maintenance_worker = RedisStreamMaintenanceWorker(
                 redis=self._redis,
                 redis_settings=self._settings,
                 stream_key=self._stream_key,
                 consumer_group=self._consumer_group,
+                stream_consumer_name=self._consumer_name,
             )
-            await self._pel_worker.start()
+            await self._stream_maintenance_worker.start()
 
         logger.info(
             "Started Redis stream consumer",
@@ -162,9 +163,9 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             self._read_task.cancel()
             await asyncio.gather(self._read_task, return_exceptions=True)
             self._read_task = None
-        if self._pel_worker is not None:
-            await self._pel_worker.stop()
-            self._pel_worker = None
+        if self._stream_maintenance_worker is not None:
+            await self._stream_maintenance_worker.stop()
+            self._stream_maintenance_worker = None
         if self._redis is not None:
             await self._redis.aclose()
             self._redis = None
