@@ -260,11 +260,12 @@ jobs:
       - name: Prepare matrix of integrations
         id: prepare-matrix
         run: |
+          source scripts/ci/integration_spec.sh
           FILTER="${{ inputs.integration_filter }}"
           integrations=()
 
           # Get the list of all integrations
-          files=$(find integrations/*/.port -name "spec.yaml")
+          mapfile -t files < <(find_integration_spec_files)
 
           # Parse filter into array if provided
           if [[ -n "$FILTER" ]]; then
@@ -276,7 +277,7 @@ jobs:
             echo "Filtering integrations: ${FILTER_ARRAY[*]}"
           fi
 
-          for file in $files; do
+          for file in "${files[@]}"; do
             folder=$(dirname "$file")
             # Skip fake-integration (test integration)
             if [[ "$folder" == *"fake-integration"* ]]; then
@@ -468,6 +469,7 @@ jobs:
           PUBLISH_CORE_RESULT: ${{ needs.publish-core-rc.result }}
           BUILD_INTEGRATIONS_RESULT: ${{ needs.build-rc-integrations.result }}
         run: |
+          source scripts/ci/integration_spec.sh
           write_docker_image_tags() {
             local filter="$INTEGRATION_FILTER"
             local filter_array=()
@@ -479,9 +481,10 @@ jobs:
               done
             fi
 
-            for file in integrations/*/.port/spec.yaml; do
-              [[ -e "$file" ]] || continue
-              folder=$(dirname "$file")
+            for port_dir in integrations/*/.port; do
+              [[ -d "$port_dir" ]] || continue
+              file=$(resolve_spec_file "$port_dir") || continue
+              folder="$port_dir"
               if [[ "$folder" == *"fake-integration"* ]]; then
                 continue
               fi

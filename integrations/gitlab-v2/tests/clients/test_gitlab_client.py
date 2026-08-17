@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -1383,6 +1383,84 @@ class TestGitLabClient:
             mock_get_file_content.assert_called_once_with(
                 "123", "other_file.txt", "main"
             )
+
+    async def test_process_file_retries_with_default_branch_on_empty_response(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 111, "default_branch": "main"}
+
+        with (
+            patch.object(
+                client,
+                "get_project",
+                AsyncMock(return_value=project),
+            ) as mock_get_project,
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(
+                    side_effect=[
+                        {},
+                        {"content": "hello", "path": "a.yml"},
+                    ]
+                ),
+            ) as mock_get_file_data,
+        ):
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "deadbeef"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert result["content"] == "hello"
+        mock_get_project.assert_called_once_with("111")
+        assert mock_get_file_data.call_args_list == [
+            call("111", "a.yml", "deadbeef"),
+            call("111", "a.yml", "main"),
+        ]
+
+    async def test_process_file_no_retry_when_ref_matches_default_branch(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 111, "default_branch": "main"}
+
+        with (
+            patch.object(
+                client,
+                "get_project",
+                AsyncMock(return_value=project),
+            ),
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(return_value={}),
+            ) as mock_get_file_data,
+        ):
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "main"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert "content" not in result
+        mock_get_file_data.assert_called_once_with("111", "a.yml", "main")
+
+    async def test_process_file_no_retry_when_first_fetch_succeeds(
+        self, client: GitLabClient
+    ) -> None:
+        with patch.object(
+            client.rest,
+            "get_file_data",
+            AsyncMock(return_value={"content": "ok", "path": "a.yml"}),
+        ) as mock_get_file_data:
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "deadbeef"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert result["content"] == "ok"
+        mock_get_file_data.assert_called_once_with("111", "a.yml", "deadbeef")
 
     async def test_resolve_file_references_relative_reference(
         self, client: GitLabClient
