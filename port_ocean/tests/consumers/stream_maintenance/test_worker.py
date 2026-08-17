@@ -1,4 +1,4 @@
-"""Tests for PELRequeueWorker."""
+"""Tests for RedisStreamMaintenanceWorker."""
 
 import asyncio
 from typing import Any
@@ -8,8 +8,10 @@ import pytest
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
-from port_ocean.consumers.pel_requeue import PELRequeueWorker
-from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
+from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
+from port_ocean.consumers.stream_maintenance.settings import (
+    STREAM_MAINTENANCE_CONSUMER_NAME,
+)
 from port_ocean.consumers.redis_stream_utils import (
     ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
     REQUEUE_STREAM_ENTRY_SCRIPT,
@@ -26,15 +28,16 @@ _DEFAULT_REDIS_SETTINGS = LiveEventsRedisSettings(
     url="redis://localhost:6379",
     pel_stuck_timeout_seconds=60,
     pel_max_requeue_count=3,
-    pel_scan_interval_seconds=30.0,
+    stream_maintenance_scan_interval_seconds=30.0,
     pel_xautoclaim_count=100,
-    pel_lifecycle_error_backoff_seconds=5.0,
+    stream_maintenance_error_backoff_seconds=5.0,
 )
 
 
 def _make_redis() -> AsyncMock:
     redis = AsyncMock()
     redis.xautoclaim = AsyncMock(return_value=("0-0", [], []))
+    redis.xinfo_consumers = AsyncMock(return_value=[])
     redis.eval = AsyncMock(return_value="1700000000001-0")
     redis.expire = AsyncMock(return_value=True)
     return redis
@@ -49,19 +52,21 @@ def _make_worker(
     redis: AsyncMock,
     stream_key: str = _STREAM_KEY,
     consumer_group: str = _CONSUMER_GROUP,
+    stream_consumer_name: str | None = None,
     **settings_overrides: Any,
-) -> PELRequeueWorker:
+) -> RedisStreamMaintenanceWorker:
     redis_settings = _DEFAULT_REDIS_SETTINGS.copy(update=settings_overrides)
-    return PELRequeueWorker(
+    return RedisStreamMaintenanceWorker(
         redis,
         redis_settings=redis_settings,
         stream_key=stream_key,
         consumer_group=consumer_group,
+        stream_consumer_name=stream_consumer_name,
     )
 
 
 # ---------------------------------------------------------------------------
-# PELRequeueWorker — _handle_stuck_message
+# RedisStreamMaintenanceWorker — _handle_stuck_message
 # ---------------------------------------------------------------------------
 
 
@@ -157,7 +162,7 @@ class TestPELHandleStuckMessage:
 
 
 # ---------------------------------------------------------------------------
-# PELRequeueWorker — _scan_and_requeue
+# RedisStreamMaintenanceWorker — _scan_and_requeue
 # ---------------------------------------------------------------------------
 
 
@@ -175,7 +180,7 @@ class TestPELScanAndRequeue:
         redis.xautoclaim.assert_awaited_once_with(
             worker._stream_key,
             worker._consumer_group,
-            PEL_CONSUMER_NAME,
+            STREAM_MAINTENANCE_CONSUMER_NAME,
             60_000,
             "0-0",
             count=100,
@@ -368,11 +373,11 @@ class TestPELScanAndRequeue:
 
 
 # ---------------------------------------------------------------------------
-# PELRequeueWorker — worker loop
+# RedisStreamMaintenanceWorker — worker loop
 # ---------------------------------------------------------------------------
 
 
-class TestPELWorkerLoop:
+class TestStreamMaintenanceWorkerLoop:
     @pytest.mark.asyncio
     async def test_worker_stops_cleanly(self) -> None:
         redis = _make_redis()
@@ -381,7 +386,7 @@ class TestPELWorkerLoop:
         async def fake_scan() -> None:
             scan_calls.append(1)
 
-        worker = _make_worker(redis, pel_scan_interval_seconds=0.05)
+        worker = _make_worker(redis, stream_maintenance_scan_interval_seconds=0.05)
         worker._scan_and_requeue = fake_scan  # type: ignore[method-assign]
         await worker.start()
         await asyncio.sleep(0.25)
@@ -397,8 +402,8 @@ class TestPELWorkerLoop:
         redis = _make_redis()
         scan_counts: dict[str, int] = {"a": 0, "b": 0}
 
-        worker_a = _make_worker(redis, pel_scan_interval_seconds=0.05)
-        worker_b = _make_worker(redis, pel_scan_interval_seconds=0.05)
+        worker_a = _make_worker(redis, stream_maintenance_scan_interval_seconds=0.05)
+        worker_b = _make_worker(redis, stream_maintenance_scan_interval_seconds=0.05)
 
         async def fake_scan_a() -> None:
             scan_counts["a"] += 1
@@ -429,8 +434,8 @@ class TestPELWorkerLoop:
 
         worker = _make_worker(
             redis,
-            pel_scan_interval_seconds=0.01,
-            pel_lifecycle_error_backoff_seconds=0.05,
+            stream_maintenance_scan_interval_seconds=0.01,
+            stream_maintenance_error_backoff_seconds=0.05,
         )
         worker._scan_and_requeue = failing_scan  # type: ignore[method-assign]
         await worker.start()
@@ -441,7 +446,89 @@ class TestPELWorkerLoop:
         assert len(scan_calls) >= 2, "Expected retries after error backoff"
 
 
-class TestPELRecoverMissingStream:
+class TestStreamMaintenanceIdleConsumerCleanup:
+    @pytest.mark.asyncio
+    async def test_cleanup_removes_idle_consumers_after_scan(self) -> None:
+        redis = _make_redis()
+        redis.xinfo_consumers = AsyncMock(
+            return_value=[
+                {
+                    "name": "integration-dead-pod",
+                    "pending": 0,
+                    "idle": 5_000_000,
+                }
+            ]
+        )
+        redis.xgroup_delconsumer = AsyncMock(return_value=0)
+
+        worker = _make_worker(
+            redis,
+            stream_consumer_name="integration-live-pod",
+            stream_maintenance_consumer_cleanup_idle_seconds=60,
+        )
+        await worker._cleanup_idle_consumers()
+
+        redis.xgroup_delconsumer.assert_awaited_once_with(
+            _STREAM_KEY,
+            _CONSUMER_GROUP,
+            "integration-dead-pod",
+        )
+
+    @pytest.mark.asyncio
+    async def test_cleanup_skips_protected_stream_consumer_name(self) -> None:
+        redis = _make_redis()
+        redis.xinfo_consumers = AsyncMock(
+            return_value=[
+                {
+                    "name": "integration-live-pod",
+                    "pending": 0,
+                    "idle": 5_000_000,
+                },
+                {
+                    "name": STREAM_MAINTENANCE_CONSUMER_NAME,
+                    "pending": 0,
+                    "idle": 5_000_000,
+                },
+            ]
+        )
+        redis.xgroup_delconsumer = AsyncMock(return_value=0)
+
+        worker = _make_worker(
+            redis,
+            stream_consumer_name="integration-live-pod",
+            stream_maintenance_consumer_cleanup_idle_seconds=60,
+        )
+        await worker._cleanup_idle_consumers()
+
+        redis.xgroup_delconsumer.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_worker_loop_skips_cleanup_when_disabled(self) -> None:
+        redis = _make_redis()
+        cleanup_calls: list[int] = []
+
+        async def fake_scan() -> None:
+            return None
+
+        async def fake_cleanup() -> None:
+            cleanup_calls.append(1)
+
+        worker = _make_worker(
+            redis,
+            stream_maintenance_scan_interval_seconds=0.05,
+            stream_maintenance_consumer_cleanup_enabled=False,
+        )
+        worker._scan_and_requeue = fake_scan  # type: ignore[method-assign]
+        worker._cleanup_idle_consumers = fake_cleanup  # type: ignore[method-assign]
+
+        await worker.start()
+        await asyncio.sleep(0.15)
+        await worker.stop()
+
+        assert cleanup_calls == []
+
+
+class TestStreamMaintenanceRecoverMissingStream:
     @pytest.mark.asyncio
     async def test_scan_recovers_when_xautoclaim_raises_nogroup(self) -> None:
         redis = _make_redis()
