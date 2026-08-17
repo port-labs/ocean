@@ -7,13 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.12.0 (2026-08-13)
+## 0.11.19 (2026-08-17)
 
 
-### Features
+### Improvements
 
-- Added `wiki` kind to ingest Azure DevOps wiki pages, supporting per-type filtering (projectWiki/codeWiki) and optional markdown content enrichment
-- Added live events support for project wikis by listening to git.push events on wiki-backing repositories, enabling real-time wiki page updates without waiting for scheduled resync
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
 
 
 ## 0.11.18 (2026-08-17)
