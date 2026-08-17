@@ -620,6 +620,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added integration tests for all kinds of resources
 
+
 ## 6.0.14 (2026-06-28)
 
 
@@ -1364,9 +1365,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 5.2.13 (2026-04-06)
 
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed spacing for file kind's descriptions
+
 
 ## 5.2.12 (2026-04-06)
 
@@ -1386,6 +1388,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 5.2.10 (2026-04-05)
 
+
 ### Improvements
 
 - Make github CI and gitlab CI docs more specific
@@ -1393,7 +1396,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 5.2.9 (2026-04-05)
 
-### Bug fixes
+
+### Bug Fixes
 
 - Fixed installation docs
 
@@ -1437,6 +1441,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated description for attached files
 
+
 ## 5.2.3 (2026-03-25)
 
 
@@ -1455,6 +1460,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 5.2.1 (2026-03-24)
 
+
 ### Improvements
 
 - Renamed the pull request `since` selector label from "Since (Days)" to "Closed PRs Lookback Days" and updated its description to clarify it applies to the lookback window for closed pull requests.
@@ -1466,6 +1472,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Renamed `included files` to `Additional files`
+
 
 ## 5.1.36 (2026-03-24)
 
@@ -1773,6 +1780,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Restored REST API page size to 100.
+
 
 ## 5.0.47 (2026-02-25)
 
@@ -2549,6 +2557,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Adapt to the new ocean core itemstoparse logic
 
+
 ## 4.1.0-beta (2025-11-19)
 
 
@@ -2677,6 +2686,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 3.2.3-beta (2025-11-09)
 
 
@@ -2701,7 +2711,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.29.1
 
 
-# 3.2.0-beta (2025-11-04)
+## 3.2.0-beta (2025-11-04)
 
 
 ### Improvements
@@ -2843,6 +2853,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.5.6-beta (2025-09-17)
 
+
 ### Improvements
 
 - Fix token decoder from oauth-flow
@@ -2925,6 +2936,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.4.0-beta (2025-08-27)
 
+
+### Features
 
 - Enhanced repository selector to support multiple relationship types simultaneously
 - Changed `included_property` to `included_relationships` to allow specifying both "collaborators" and "teams" in a single configuration
@@ -3149,7 +3162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 1.0.5-beta (2025-07-09)
 
 
-### Bugfix
+### Bug Fixes
 
 - Fix default resources not getting created due to blueprint config error
 
@@ -3189,7 +3202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 1.0.0-beta (2025-07-04)
 
 
-### Release
+### Features
 
 - Bumped integration from dev to beta release
 
@@ -3397,6 +3410,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.13-dev (2025-06-11)
 
 
+### Features
+
 - Added support for Pull Request resources with state-based filtering (open, closed, all)
 - Implemented pull request webhook processor for real-time updates
 
@@ -3451,6 +3466,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6-dev (2025-06-04)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.24.2
@@ -3474,6 +3490,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.3-dev (2025-06-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.23.5
@@ -3486,6 +3503,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix timezone inconsistency issue while checking for expired Github App token (PORT-14913)
 
+
 ### Improvements
 
 - Removed `Optional` from `AbstractGithubExporter` options to enforce stricter type adherence for concrete exporters.
@@ -3493,12 +3511,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1-dev (2025-05-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.23.4
 
 
 ## 0.1.0-dev (2025-05-28)
+
 
 ### Features
 
