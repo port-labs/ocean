@@ -361,7 +361,10 @@ class FilesSelector(BaseModel):
 
 
 class GitLabFilesSelector(GroupSelector):
-    files: FilesSelector
+    files: FilesSelector = Field(
+        title="Files",
+        description="File matching configuration for GitLab file resources.",
+    )
     included_files: list[str] = Field(
         alias="includedFiles",
         title="Included Files",

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.131 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.3.130 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.3.129 (2026-08-13)
 
 
@@ -1291,7 +1307,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.228 (2025-12-25)
 
 
-## Bug Fixes
+### Bug Fixes
 
 - Fixed spec.yaml conventions
 
@@ -1330,10 +1346,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.223 (2025-12-08)
 
+
 ### Bug Fixes
 
 - Move account discovery to resync start. AWS account list is now refreshed before each resync cycle, fixing an issue where changes in AWS Organizations (e.g., added/removed accounts) weren't detected unless the integration was restarted. (Fixes PORT-16916)
-
 
 
 ## 0.2.222 (2025-12-16)
@@ -1560,6 +1576,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped starlette version to 0.49.3
 - Bumped aiohttp version to 3.13.2
 
+
 ## 0.2.194 (2025-11-09)
 
 
@@ -1598,6 +1615,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Renaming from on-premise to self hosted
+
 
 ## 0.2.189 (2025-11-02)
 
@@ -1641,6 +1659,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.184-post (2025-10-21)
 
+
 ### Improvements
 
 - Deprecate aws v2 integration
@@ -1655,6 +1674,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.2.183 (2025-10-16)
+
 
 ### Improvements
 
@@ -2937,13 +2957,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.9.12 (#1)
 
 
-# Port_Ocean 0.2.25 (2024-08-05)
+## 0.2.25 (2024-08-05)
+
 
 ### Improvements
 
 - Add live events error handling
 
-# Port_Ocean 0.2.24 (2024-08-05)
+
+## 0.2.24 (2024-08-05)
+
 
 ### Improvements
 
@@ -3031,6 +3054,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add access denied exception support (#1)
 
+
 ## 0.2.13 (2024-07-10)
 
 
@@ -3046,6 +3070,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix default useGetResourceAPI property name (#1)
 - Use by default the actual S3 Bucket region instead of default region used to fetch it (#2)
+
 
 ## 0.2.11 (2024-07-09)
 
@@ -3066,7 +3091,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.9 (2024-07-02)
 
 
-### Bugfix
+### Bug Fixes
 
 - Ensure default region for global resources (#1)
 
@@ -3102,12 +3127,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed default mapping to include describeResources for resources which doesn't include tags by default from cloud control (#1)
 
+
 ## 0.2.4 (2024-06-17)
 
 
 ### Improvements
 
 - Fix _aws_credentials overflow bug (#1)
+
 
 ## 0.2.3 (2024-06-17)
 
@@ -3125,6 +3152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Run all single describe in parallel (#1)
+
 
 ## 0.2.1 (2024-06-16)
 
@@ -3148,7 +3176,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
-
 
 
 ## 0.1.7 (2024-06-13)

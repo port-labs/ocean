@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.192-beta (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.191-beta (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.2.190-beta (2026-08-13)
 
 
@@ -1251,7 +1267,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.35-beta (2025-12-25)
 
 
-## Bug Fixes
+### Bug Fixes
 
 - Fixed spec.yaml conventions
 
@@ -1512,6 +1528,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped starlette version to 0.49.3
 - Bumped aiohttp version to 3.13.2
 
+
 ## 0.2.2-beta (2025-11-09)
 
 
@@ -1537,11 +1554,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored API request handling to use Port's httpx client instead of the Azure SDK. This reduces resource usage and eliminates the overhead of managing multiple client contexts concurrently.
 - Azure typically returns around 1,000 entities per Resource Graph request. This release implementes a buffering mechanism to yield results in batches of 100, reducing the processing load on Ocean Core.
 
-## Breaking Changes
+### Breaking Changes
 
 - The `resource` and `resourceContainer` Kinds have been revamped, enabling users to perform advanced queries through `graphQuery` selector thereby fully leveraging all features of the Azure Resource Graph API.
 
-## Bug Fixes
+### Bug Fixes
 
 - Fixed mapping to follow standard conventions
 
@@ -1549,7 +1566,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.8-beta (2025-11-06)
 
 
-## Bug Fixes
+### Bug Fixes
 
 - Bumped ocean version to ^0.29.1
 
@@ -1612,12 +1629,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.0-beta (2025-10-14)
 
+
 ### Improvements
 
 - Upgrade integration to Beta
 
 
 ## 0.1.0-dev (2025-04-15)
+
 
 ### Features
 

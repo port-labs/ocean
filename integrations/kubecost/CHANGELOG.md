@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.402 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.1.401 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.1.400 (2026-08-13)
 
 
@@ -1470,6 +1486,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.217 (2025-11-09)
 
 
@@ -2021,6 +2038,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed deprecated `config.yaml`
 
+
 ## 0.1.148 (2025-05-19)
 
 
@@ -2054,6 +2072,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.144 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2706,12 +2725,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.63 (2024-07-31)
 
+
 ### Improvements
 
 - Upgraded integration dependencies (#1)
 
 
 ## 0.1.62 (2024-07-31)
+
 
 ### Improvements
 
@@ -2720,12 +2741,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.61 (2024-07-31)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.6 (#1)
 
 
 ## 0.1.60 (2024-07-24)
+
 
 ### Improvements
 
@@ -2734,10 +2757,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.59 (2024-07-15)
 
+
 ### Features
 
 - Added support for filter in 'cloud' and 'kubesystem' kind (#749)
 - Added separate resource config for 'allocation' v1 and v2 (#749)
+
 
 ### Improvements
 
@@ -2747,12 +2772,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.58 (2024-07-15)
 
+
 ### Bug Fixes
 
 - Ensured integration keeps on working if a cloud cost is missing
 
 
 ## 0.1.57 (2024-07-10)
+
 
 ### Improvements
 
@@ -2761,12 +2788,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.56 (2024-07-09)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.3 (#1)
 
 
 ## 0.1.55 (2024-07-07)
+
 
 ### Improvements
 
@@ -2775,12 +2804,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.54 (2024-06-23)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
 
 ## 0.1.53 (2024-06-19)
+
 
 ### Improvements
 
@@ -2789,12 +2820,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.52 (2024-06-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
 
 
 ## 0.1.51 (2024-06-13)
+
 
 ### Improvements
 
@@ -2803,12 +2836,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.50 (2024-06-13)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
 
 ## 0.1.49 (2024-06-10)
+
 
 ### Improvements
 
@@ -2817,12 +2852,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.48 (2024-06-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
 
 ## 0.1.47 (2024-06-03)
+
 
 ### Improvements
 
@@ -2831,12 +2868,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.46 (2024-06-02)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
 
 ## 0.1.45 (2024-05-30)
+
 
 ### Improvements
 
@@ -2846,6 +2885,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.44 (2024-05-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
@@ -2853,12 +2893,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.43 (2024-05-26)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.21 (#1)
 
 
 ## 0.1.42 (2024-05-26)
+
 
 ### Improvements
 
@@ -2868,12 +2910,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.41 (2024-05-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.19 (#1)
 
 
 ## 0.1.40 (2024-05-15)
+
 
 ### Improvements
 
@@ -2882,12 +2926,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.39 (2024-05-15)
 
+
 ### Bug Fixes
 
 - Updated the URL of KubeCost cloud cost endpoint from version 1.X (`/model/cloudCost/aggregate`) to 2.2 (`/model/cloudCost`)
 
 
 ## 0.1.38 (2024-05-12)
+
 
 ### Improvements
 
@@ -2896,12 +2942,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.37 (2024-05-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.17 (#1)
 
 
 ## 0.1.36 (2024-05-01)
+
 
 ### Improvements
 
@@ -2910,12 +2958,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.35 (2024-04-30)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.15 (#1)
 
 
 ## 0.1.34 (2024-04-24)
+
 
 ### Improvements
 
@@ -2924,12 +2974,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.33 (2024-04-17)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.12 (#1)
 
 
 ## 0.1.32 (2024-04-11)
+
 
 ### Improvements
 
@@ -2938,12 +2990,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.31 (2024-04-10)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.10 (#1)
 
 
 ## 0.1.30 (2024-04-01)
+
 
 ### Improvements
 
@@ -2952,12 +3006,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.29 (2024-03-28)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.8 (#1)
 
 
 ## 0.1.28 (2024-03-20)
+
 
 ### Improvements
 
@@ -2966,12 +3022,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.27 (2024-03-17)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.6 (#1)
 
 
 ## 0.1.26 (2024-03-06)
+
 
 ### Improvements
 
@@ -2980,12 +3038,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.25 (2024-03-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.4 (#1)
 
 
 ## 0.1.24 (2024-03-03)
+
 
 ### Improvements
 
@@ -2994,12 +3054,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.23 (2024-02-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.2 (#1)
 
 
 ## 0.1.22 (2024-02-20)
+
 
 ### Improvements
 
@@ -3008,12 +3070,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.21 (2024-02-18)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.0 (#1)
 
 
 ## 0.1.20 (2024-01-23)
+
 
 ### Improvements
 
@@ -3022,12 +3086,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.19 (2024-01-11)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.16 (#1)
 
 
 ## 0.1.18 (2024-01-07)
+
 
 ### Improvements
 
@@ -3036,12 +3102,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.17 (2024-01-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.14 (#1)
 
 
 ## 0.1.16 (2024-01-01)
+
 
 ### Improvements
 
@@ -3050,12 +3118,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.15 (2023-12-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.12 (#1)
 
 
 ## 0.1.14 (2023-12-21)
+
 
 ### Improvements
 
@@ -3064,12 +3134,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.13 (2023-12-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.10 (#1)
 
 
 ## 0.1.12 (2023-12-14)
+
 
 ### Improvements
 
@@ -3078,12 +3150,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.11 (2023-12-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.7 (#1)
 
 
 ## 0.1.10 (2023-12-04)
+
 
 ### Improvements
 
@@ -3092,12 +3166,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.9 (2023-11-30)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.5 (#1)
 
 
 ## 0.1.8 (2023-11-29)
+
 
 ### Improvements
 
@@ -3107,12 +3183,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.7 (2023-11-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.3 (#1)
 
 
 ## 0.1.6 (2023-11-08)
+
 
 ### Improvements
 
@@ -3121,6 +3199,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.5 (2023-11-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.1 (#1)
@@ -3128,37 +3207,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.4 (2023-11-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.0 (#1)
 
 
-# Kubecost 0.1.3 (2023-10-29)
+## 0.1.3 (2023-10-29)
+
 
 ### Improvements
 
 - Bumped ocean version to 0.3.2 (#1)
 
 
-# Kubecost 0.1.2 (2023-10-29)
+## 0.1.2 (2023-10-29)
+
 
 ### Improvements
 
 - Updated integration & blueprint icons to Kubecost icon (PORT-5063)
 
 
-# Kubecost 0.1.1 (2023-10-26)
+## 0.1.1 (2023-10-26)
+
 
 ### Improvements
 
 - Added a sanity check for the kubecost startup to check for connectivity issues (PORT-5039)
+
 
 ### Bug Fixes
 
 - Fixed the config.yml to read the kubecostHost from the environment variables (PORT-5039)
 
 
-# Kubecost 0.1.0 (2023-10-24)
+## 0.1.0 (2023-10-24)
+
 
 ### Features
 
