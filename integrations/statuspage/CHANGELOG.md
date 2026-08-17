@@ -414,6 +414,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.45 (2026-06-28)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.44.2
@@ -1490,6 +1491,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.164 (2025-11-09)
 
 
@@ -2075,6 +2077,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.91 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2720,12 +2723,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.11 (2024-08-01)
 
+
 ### Improvements
 
 - Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
 
 
 ## 0.1.10 (2024-07-31)
+
 
 ### Improvements
 
@@ -2734,12 +2739,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.9 (2024-07-31)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
 
 ## 0.1.8 (2024-07-31)
+
 
 ### Improvements
 
@@ -2748,6 +2755,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.7 (2024-07-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
@@ -2755,17 +2763,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6 (2024-07-10)
 
+
 ### Improvements
 
 - Added the StatusPage icon to the integration and default blueprints
 
+
 ## 0.1.5 (2024-07-10)
+
 
 ### Improvements
 
 - Fix links in descriptions of integration configuration variables
 
+
 ## 0.1.4 (2024-07-10)
+
 
 ### Improvements
 
@@ -2774,11 +2787,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.3 (2024-07-09)
 
+
 ### Improvements
 
 - Revised description to the integration configuration variables
 
+
 ## 0.1.2 (2024-07-09)
+
 
 ### Improvements
 
@@ -2787,12 +2803,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1 (2024-07-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
 
 ## 0.1.0 (2024-06-25)
+
 
 ### Features
 
