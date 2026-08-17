@@ -128,9 +128,20 @@ class GitManipulationHandler(JQEntityProcessor):
 
 
 class FoldersSelector(BaseModel):
-    path: str
-    repos: List[str] = Field(default_factory=list)
-    branch: str | None = None
+    path: str = Field(
+        title="Path",
+        description="Relative folder path to export under the repository.",
+    )
+    repos: List[str] = Field(
+        default_factory=list,
+        title="Repositories",
+        description="Optional list of repository names to limit folder export to.",
+    )
+    branch: str | None = Field(
+        default=None,
+        title="Branch",
+        description="Branch to use for folder export. Defaults to the repository default branch.",
+    )
 
 
 class GitlabSelector(Selector):
@@ -230,9 +241,14 @@ GitlabObjectWithMembersResourceConfig = (
 
 
 class FilesSelector(BaseModel):
-    path: str = Field(description="The path to get the files from")
+    path: str = Field(
+        title="Path",
+        description="The path to get the files from",
+    )
     repos: List[str] = Field(
-        description="A list of repositories to search files in", default_factory=list
+        default_factory=list,
+        title="Repositories",
+        description="A list of repositories to search files in",
     )
 
 
@@ -254,12 +270,18 @@ class GitLabFilesSelector(Selector):
 
 class GitLabFilesResourceConfig(ResourceConfig):
     selector: GitLabFilesSelector
-    kind: Literal["file"]
+    kind: Literal["file"] = Field(
+        title="GitLab File",
+        description="GitLab file resource kind.",
+    )
 
 
 class GitLabProjectResourceConfig(ResourceConfig):
     selector: GitLabProjectSelector
-    kind: Literal["project"]
+    kind: Literal["project"] = Field(
+        title="GitLab Project",
+        description="GitLab project resource kind.",
+    )
 
 
 class GitlabPortAppConfig(PortAppConfig):

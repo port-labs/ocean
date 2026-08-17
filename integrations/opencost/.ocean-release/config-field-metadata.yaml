@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add missing Field titles and descriptions required by PortAppConfig schema validation.
