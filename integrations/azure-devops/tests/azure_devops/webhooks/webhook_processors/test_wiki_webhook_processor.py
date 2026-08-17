@@ -18,7 +18,6 @@ from azure_devops.webhooks.webhook_processors.wiki_webhook_processor import (
 from azure_devops.webhooks.events import PushEvents
 from tests.conftest import MOCK_RESOURCE_CONTAINERS_ACCOUNT, mock_client_manager
 
-
 MOCK_WIKI_PUSH_PAYLOAD = {
     "eventType": PushEvents.PUSH,
     "publisherId": "tfs",
