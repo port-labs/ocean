@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.102 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
 ## 0.3.101 (2026-08-16)
 
 
@@ -1552,6 +1560,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.77 (2025-11-09)
 
 
@@ -2138,6 +2147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.4 (2025-04-27)
 
+
 ### Bug Fixes
 
 - Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
@@ -2172,6 +2182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.0 (2025-04-02)
+
 
 ### Features
 

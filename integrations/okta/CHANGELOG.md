@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.195 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
 ## 0.1.194 (2026-08-16)
 
 
@@ -1234,6 +1242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed non-existing docs reference in installation docs
 
+
 ## 0.1.41 (2026-01-11)
 
 
@@ -1288,6 +1297,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Released the Okta integration as GA
+
 
 ## 0.1.34-beta (2025-12-15)
 
@@ -1435,16 +1445,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.16-beta (2025-11-23)
 
+
 ### Features
 
 - Move Okta to Identity Providers
--
+
+
 ## 0.1.15-beta (2025-11-23)
 
 
 ### Improvements
 
 - Changed `createMissingRelatedEntities` to `false` by default
+
 
 ## 0.1.14-beta (2025-11-23)
 
@@ -1516,6 +1529,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.1.5-beta (2025-11-09)
 

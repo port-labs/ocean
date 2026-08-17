@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.87 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
 ## 0.5.86 (2026-08-16)
 
 
@@ -906,6 +914,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.51 (2026-03-30)
 
+
 ### Improvements
 
 - Enabled formMappingEnabled flag
@@ -1578,7 +1587,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.91 (2025-11-13)
 
 
-### Bug fixes
+### Bug Fixes
 
 - Correct badly constructed urls in default mapping
 
@@ -1609,6 +1618,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.2.87 (2025-11-09)
 
@@ -1840,6 +1850,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - fixed description in the spec.yaml
+
 
 ## 0.2.58 (2025-08-11)
 
@@ -2211,6 +2222,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.12 (2025-04-27)
 
+
 ### Bug Fixes
 
 - Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
@@ -2303,6 +2315,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.1 (2025-02-27)
 
+
 ### Improvements
 
 - Enabled live events for Snyk Ocean SaaS installation
@@ -2310,13 +2323,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.0 (2025-02-24)
 
+
 ### Improvements
 
 - Implemented Snyk integration with standardized abstraction.
 - Added webhook processors for project, issue, and target events.
 - Refactored and modularized Snyk client initialization and kinds enumeration.
 - Developed extensive unit tests for webhook processors.
-
 
 
 ## 0.1.146 (2025-02-26)
@@ -3326,6 +3339,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ###  Features
+
 - Added support for Snyk Organization
 - Added a new feature to enable automatic discovery and syncing of groups and associated organizations, providing users with the ability to filter and fetch all relevant data seamlessly. This helps to avoid the situation of having to install the exporter per every organization (#5551)
 
@@ -3393,12 +3407,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.13 (2023-12-14)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.8 (#1)
 
 
 ## 0.1.12 (2023-12-05)
+
 
 ### Improvements
 
@@ -3407,6 +3423,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.11 (2023-12-04)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.6 (#1)
@@ -3414,12 +3431,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.10 (2023-11-30)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.5 (#1)
 
 
 ## 0.1.9 (2023-11-29)
+
 
 ### Improvements
 
@@ -3429,12 +3448,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.8 (2023-11-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.3 (#1)
 
 
 ## 0.1.7 (2023-11-08)
+
 
 ### Improvements
 
@@ -3443,12 +3464,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6 (2023-11-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.1 (#1)
 
 
 ## 0.1.5 (2023-11-01)
+
 
 ### Improvements
 
@@ -3457,12 +3480,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.4 (2023-10-29)
 
+
 ### Improvements
 
 - Bumped ocean version to 0.3.2 (#1)
 
 
 ## 0.1.3 (2023-10-16)
+
 
 ### Improvements
 
@@ -3471,6 +3496,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.2 (2023-10-02)
 
+
 ### Improvements
 
 - Try catch 404 error (#2)
@@ -3478,11 +3504,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1 (2023-09-27)
 
+
 ### Improvements
 
 - Bumped ocean to version 0.3.1 (#1)
 
+
 ## 0.1.0 (2023-08-16)
+
 
 ### Features
 
