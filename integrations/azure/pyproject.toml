@@ -33,6 +33,8 @@ yamllint = "^1.37.1"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

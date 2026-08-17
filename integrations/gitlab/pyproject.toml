@@ -32,7 +32,8 @@ types-PyYAML = "^6.0.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-title_format = "{version} ({project_date})"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"
