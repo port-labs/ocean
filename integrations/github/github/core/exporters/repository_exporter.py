@@ -5,7 +5,11 @@ from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
-from github.helpers.utils import parse_github_options, get_repository_metadata, fetch_repository_metadata
+from github.helpers.utils import (
+    parse_github_options,
+    get_repository_metadata,
+    fetch_repository_metadata,
+)
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
@@ -56,7 +60,11 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         included_relations = options.get("included_relations")
 
-        fetch = fetch_repository_metadata if skip_metadata_cache else get_repository_metadata
+        fetch = (
+            fetch_repository_metadata
+            if skip_metadata_cache
+            else get_repository_metadata
+        )
         response = await fetch(self.client, organization, name)
         if not response:
             logger.warning(
