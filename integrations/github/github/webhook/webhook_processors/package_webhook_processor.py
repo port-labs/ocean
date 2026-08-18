@@ -52,11 +52,18 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not owner_login:
             return False
 
-        if self.is_personal_account_webhook(event.payload):
-            identifier = f"personal account: {event.payload['repository']['full_name']}"
-        else:
-            identifier = owner_login
+        identifier = self._signature_identifier(event.payload, owner_login)
         return await self._verify_webhook_signature(identifier, event._original_request)
+
+    def _signature_identifier(self, payload: EventPayload, owner_login: str) -> str:
+        repository = payload.get("repository")
+        if (
+            isinstance(repository, dict)
+            and repository.get("full_name")
+            and not payload.get("organization")
+        ):
+            return f"personal account: {repository['full_name']}"
+        return owner_login
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.PACKAGE]
@@ -87,8 +94,11 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
         if owner.get("login"):
             return str(owner["login"])
 
-        if self.is_personal_account_webhook(payload):
-            return str(payload["repository"]["owner"]["login"])
+        repository = payload.get("repository")
+        if isinstance(repository, dict):
+            repo_owner = repository.get("owner") or {}
+            if repo_owner.get("login"):
+                return str(repo_owner["login"])
         return None
 
     def _package_owner_type(self, payload: EventPayload) -> str:

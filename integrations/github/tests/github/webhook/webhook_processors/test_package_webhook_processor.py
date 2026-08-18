@@ -286,6 +286,22 @@ class TestPackageWebhookProcessor:
 
         assert await package_webhook_processor.should_process_event(event) is True
 
+    async def test_should_process_event_user_package_with_null_repository(
+        self, package_webhook_processor: PackageWebhookProcessor
+    ) -> None:
+        ocean.integration_config["webhook_secret"] = ""
+        payload = _package_payload(include_organization=False, owner_type="User")
+        payload["package"]["owner"] = {"login": "octocat", "type": "User"}
+        payload["repository"] = None
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload=payload,
+            headers={"x-github-event": "package"},
+        )
+        event._original_request = AsyncMock()
+
+        assert await package_webhook_processor.should_process_event(event) is True
+
     async def test_handle_event_skips_visibility_mismatch_in_payload(
         self, package_webhook_processor: PackageWebhookProcessor
     ) -> None:
