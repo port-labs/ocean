@@ -69,33 +69,6 @@ resources:
             link: .url
           relations:
             project: .__project.id | gsub(" "; "")
-  - kind: work-item
-    selector:
-      query: 'true'
-      wiql: "[System.State] NOT IN ('Closed','Done','Removed') OR [System.ChangedDate] >= @today - 7"
-      expand: 'All'
-    port:
-      entity:
-        mappings:
-          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
-          title: .fields."System.Title"
-          blueprint: '"azureDevopsWorkItem"'
-          properties:
-            type: .fields."System.WorkItemType"
-            state: .fields."System.State"
-            effort: .fields."Microsoft.VSTS.Scheduling.Effort" // -1
-            description: .fields."System.Description" // ''
-            link: .url
-            reason: .fields."System.Reason"
-            createdBy: .fields."System.CreatedBy".displayName
-            changedBy: .fields."System.ChangedBy".displayName
-            createdDate: .fields."System.CreatedDate"
-            changedDate: .fields."System.ChangedDate"
-          relations:
-            project: .__projectId | gsub(" "; "")
-            column: >-
-              .fields."System.WorkItemType"+"-"+.fields."System.BoardColumn"+"-"+.__project.id
-              | gsub(" "; "")
   - kind: column
     selector:
       query: 'true'
@@ -127,3 +100,165 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: environment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .project.id + "/" + (.id | tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"azureDevopsEnvironment"'
+          properties:
+            description: .description
+            createdOn: .createdOn
+            lastModifiedOn: .lastModifiedOn
+          relations:
+            project: .project.id | gsub(" "; "")
+  - kind: build
+    selector:
+      query: '.finishTime != null'
+    port:
+      entity:
+        mappings:
+          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
+          title: .buildNumber
+          blueprint: '"azureDevopsBuild"'
+          properties:
+            status: .status
+            result: .result
+            queueTime: .queueTime
+            startTime: .startTime
+            finishTime: .finishTime
+            definitionName: .definition.name
+            requestedFor: .requestedFor.displayName
+            sourceBranch: .sourceBranch | gsub("refs/heads/"; "")
+            link: ._links.web.href
+          relations:
+            project: .__project.id | gsub(" "; "")
+            repository: .repository.id
+  - kind: pipeline-stage
+    selector:
+      query: '.finishTime != null'
+    port:
+      entity:
+        mappings:
+          identifier: .__project.id + "/" + (.__build.id | tostring) + "/" + (.id | tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"azureDevopsPipelineStage"'
+          properties:
+            state: .state
+            result: .result
+            startTime: .startTime
+            finishTime: .finishTime
+          relations:
+            project: .__project.id | gsub(" "; "")
+            build: .__project.id + "/" + (.__build.id | tostring) | gsub(" "; "")
+  - kind: pipeline-deployment
+    selector:
+      query: '.finishTime != null'
+    port:
+      entity:
+        mappings:
+          identifier: .__project.id + "/" + (.environmentId | tostring) + "/" + (.id | tostring) | gsub(" "; "")
+          title: .owner.name
+          blueprint: '"azureDevopsPipelineDeployment"'
+          properties:
+            planType: .planType
+            stageName: .stageName
+            jobName: .jobName
+            result: .result
+            startTime: .startTime
+            finishTime: .finishTime
+          relations:
+            project: .__project.id | gsub(" "; "")
+            environment: .__project.id + "/" + (.environmentId | tostring) | gsub(" "; "")
+  - kind: release-deployment
+    selector:
+      # ADO returns .NET DateTime.MinValue ("0001-01-01T00:00:00") for unset dates
+      query: '.completedOn != null and .completedOn != "0001-01-01T00:00:00"'
+    port:
+      entity:
+        mappings:
+          identifier: .releaseDefinition.projectReference.id + "/" + (.release.id | tostring) + "/" + (.id | tostring) | gsub(" "; "")
+          title: .release.name + " - " + .releaseEnvironment.name
+          blueprint: '"azureDevopsReleaseDeployment"'
+          properties:
+            status: .deploymentStatus
+            url: ._links.web.href
+            reason: .reason
+            startedOn: >-
+              .startedOn | if . == "0001-01-01T00:00:00" then null else . end
+            completedOn: .completedOn
+            requestedBy: .requestedBy.displayName
+            operationStatus: .operationStatus
+            environment: .releaseEnvironment.name
+          relations:
+            project: .releaseDefinition.projectReference.id | gsub(" "; "")
+            release: .releaseDefinition.projectReference.id + "/" + (.release.id | tostring) | gsub(" "; "")
+  - kind: work-item
+    selector:
+      query: 'true'
+      wiql: "[System.ChangedDate] >= @today - 30 AND [System.State] NOT IN ('Closed','Done','Removed')"
+      expand: 'All'
+    port:
+      entity:
+        mappings:
+          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
+          title: .fields."System.Title"
+          blueprint: '"azureDevopsWorkItem"'
+          properties:
+            type: .fields."System.WorkItemType"
+            state: .fields."System.State"
+            effort: .fields."Microsoft.VSTS.Scheduling.Effort" // -1
+            description: .fields."System.Description" // ''
+            link: .url
+            reason: .fields."System.Reason"
+            createdBy: .fields."System.CreatedBy".displayName
+            changedBy: .fields."System.ChangedBy".displayName
+            createdDate: .fields."System.CreatedDate"
+            changedDate: .fields."System.ChangedDate"
+          relations:
+            project: .__projectId | gsub(" "; "")
+            column: >-
+              .fields."System.WorkItemType"+"-"+.fields."System.BoardColumn"+"-"+.__project.id
+              | gsub(" "; "")
+  - kind: pipeline-run
+    selector:
+      query: '.finishedDate != null'
+    port:
+      entity:
+        mappings:
+          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"azureDevopsPipelineRun"'
+          properties:
+            state: .state
+            result: .result
+            createdDate: .createdDate
+            finishedDate: .finishedDate
+            pipelineName: .pipeline.name
+          relations:
+            project: .__project.id | gsub(" "; "")
+  - kind: pull-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .repository.project.id + "/" + (.pullRequestId | tostring) | gsub(" "; "")
+          title: .title
+          blueprint: '"azureDevopsPullRequest"'
+          properties:
+            status: .status
+            createdAt: .creationDate
+            closedAt: .closedDate
+            link: ._links.web.href
+            description: .description
+            creator: .createdBy.displayName
+            reviewers: '[.reviewers[].displayName]'
+            sourceBranch: .sourceRefName | gsub("refs/heads/"; "")
+            targetBranch: .targetRefName | gsub("refs/heads/"; "")
+          relations:
+            repository: .repository.id
+            project: .repository.project.id | gsub(" "; "")
