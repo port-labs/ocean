@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed failed-entity dependency sorting when entities use search identifiers or search relations.
