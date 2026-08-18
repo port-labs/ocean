@@ -15,7 +15,6 @@ def normalize_identifier(identifier: Any) -> str:
     identifier_dict = identifier_to_dict(identifier)
     if identifier_dict is not None:
         return json.dumps(identifier_dict, sort_keys=True)
-
     return str(identifier)
 
 
