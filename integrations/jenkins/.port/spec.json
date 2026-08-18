@@ -1,5 +1,6 @@
 {
   "title": "Jenkins",
+  "type": "jenkins",
   "description": "Jenkins integration for Port Ocean",
   "icon": "Jenkins",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cicd/jenkins",
