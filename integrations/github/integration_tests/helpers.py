@@ -228,6 +228,17 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
             title=".login",
             properties={"url": ".html_url"},
         ),
+        "package": _entity_mapping(
+            "package",
+            "githubPackage",
+            identifier=".id | tostring",
+            title=".name",
+            properties={
+                "visibility": ".visibility",
+                "image": ".__image",
+            },
+            relations={"repository": ".__repository"},
+        ),
     }
 
     if kind not in resources:

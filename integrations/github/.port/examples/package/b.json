@@ -1,0 +1,41 @@
+{
+  "id": 312,
+  "name": "api/service",
+  "package_type": "container",
+  "owner": {
+    "login": "port-labs",
+    "id": 18208701,
+    "node_id": "MDEyOk9yZ2FuaXphdGlvbjE4MjA4NzAx",
+    "avatar_url": "https://avatars.githubusercontent.com/u/18208701?v=4",
+    "url": "https://api.github.com/orgs/port-labs",
+    "html_url": "https://github.com/port-labs",
+    "type": "Organization",
+    "site_admin": false
+  },
+  "version_count": 3,
+  "visibility": "public",
+  "url": "https://api.github.com/orgs/port-labs/packages/container/api%2Fservice",
+  "created_at": "2024-03-20T10:00:00Z",
+  "updated_at": "2024-08-01T12:00:00Z",
+  "html_url": "https://github.com/orgs/port-labs/packages/container/package/api%2Fservice",
+  "repository": {
+    "id": 5500123,
+    "node_id": "R_kgDOAPI",
+    "name": "api",
+    "full_name": "port-labs/api",
+    "private": false,
+    "owner": {
+      "login": "port-labs",
+      "id": 18208701,
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://github.com/port-labs/api",
+    "description": "Port API service",
+    "fork": false,
+    "url": "https://api.github.com/repos/port-labs/api"
+  },
+  "__organization": "port-labs",
+  "__repository": "api",
+  "__image": "ghcr.io/port-labs/api/service"
+}

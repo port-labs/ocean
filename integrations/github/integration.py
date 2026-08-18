@@ -755,6 +755,38 @@ class GithubOrganizationConfig(ResourceConfig):
     )
 
 
+class GithubPackageSelector(Selector):
+    visibility: Optional[Literal["public", "private", "internal"]] = Field(
+        title="Visibility",
+        default=None,
+        description=(
+            "Filter GHCR packages by visibility. When unset, packages of all "
+            "visibilities are ingested."
+        ),
+    )
+    include_versions: bool = Field(
+        title="Include Versions",
+        alias="includeVersions",
+        default=False,
+        description=(
+            "Fetch package versions (container image tags and digests) and attach "
+            "them as `__versions`. This makes an extra paginated API call per "
+            "package and can significantly increase sync time."
+        ),
+    )
+
+
+class GithubPackageConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PACKAGE] = Field(
+        title="Github Package",
+        description="GitHub Container Registry (GHCR) package resource kind.",
+    )
+    selector: GithubPackageSelector = Field(
+        title="Package selector",
+        description="Selector for GitHub Container Registry packages.",
+    )
+
+
 class GithubWorkflowConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW] = Field(
         title="Github Workflow",
@@ -922,6 +954,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTagConfig
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
+        | GithubPackageConfig
     ] = Field(
         title="Resources",
         default_factory=list,
