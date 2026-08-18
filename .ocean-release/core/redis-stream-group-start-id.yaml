@@ -1,0 +1,6 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Start Redis live-events consumer groups from the beginning of the stream when
+  the stream already exists, so messages published before the group was created
+  are no longer skipped.
