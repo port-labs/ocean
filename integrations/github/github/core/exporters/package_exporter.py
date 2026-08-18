@@ -65,6 +65,10 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
     def _owner_type(self, options: dict[str, Any]) -> str:
         return options.get("owner_type") or "Organization"
 
+    def _max_versions(self, options: dict[str, Any]) -> Optional[int]:
+        max_versions = options.get("max_versions")
+        return max_versions if isinstance(max_versions, int) else None
+
     def _enrich_package(
         self, package: dict[str, Any], organization: str
     ) -> dict[str, Any]:
@@ -125,7 +129,7 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
         package_name = options["package_name"]
         owner_type = self._owner_type(dict(options))
         include_versions = bool(options.get("include_versions", False))
-        max_versions = options.get("max_versions")
+        max_versions = self._max_versions(dict(options))
 
         endpoint = package_resource_url(
             self.client.base_url, organization, owner_type, package_name
@@ -153,7 +157,7 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         owner_type = self._owner_type(dict(options))
         include_versions = bool(options.get("include_versions", False))
-        max_versions = options.get("max_versions")
+        max_versions = self._max_versions(dict(options))
         visibility = options.get("visibility")
 
         params: dict[str, Any] = {"package_type": GHCR_PACKAGE_TYPE}
