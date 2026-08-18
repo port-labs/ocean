@@ -62,6 +62,62 @@ async def ensure_consumer_group(
         )
 
 
+async def cleanup_idle_consumers_from_group(
+    redis: RedisClient,
+    *,
+    stream_key: str,
+    consumer_group: str,
+    idle_threshold_ms: int,
+    protected_consumer_names: frozenset[str],
+) -> int:
+    """Remove consumers idle beyond the threshold that have no pending messages."""
+    try:
+        consumers_info = await redis.xinfo_consumers(stream_key, consumer_group)
+    except ResponseError as error:
+        if not is_missing_stream_or_group_error(error):
+            raise
+        logger.warning(
+            "Redis stream or consumer group missing during idle consumer cleanup",
+            stream_key=stream_key,
+            consumer_group=consumer_group,
+            error=str(error),
+        )
+        return 0
+
+    removed_count = 0
+    for consumer in consumers_info:
+        name = str(consumer["name"])
+        pending = int(consumer["pending"])
+        idle = int(consumer["idle"])
+
+        if name in protected_consumer_names or pending > 0 or idle < idle_threshold_ms:
+            continue
+
+        await redis.xgroup_delconsumer(
+            stream_key,
+            consumer_group,
+            name,
+        )
+        removed_count += 1
+        logger.info(
+            "Removed idle Redis stream consumer from group",
+            stream_key=stream_key,
+            consumer_group=consumer_group,
+            consumer_name=name,
+            idle_ms=idle,
+        )
+
+    if removed_count:
+        logger.info(
+            "Idle Redis stream consumer cleanup complete",
+            stream_key=stream_key,
+            consumer_group=consumer_group,
+            removed_count=removed_count,
+        )
+
+    return removed_count
+
+
 ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT = """
 redis.call('XACK', KEYS[1], ARGV[1], ARGV[2])
 return redis.call('XDEL', KEYS[1], ARGV[2])

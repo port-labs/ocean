@@ -114,7 +114,10 @@ class OpencostSelector(Selector):
 
 class OpencostResourceConfig(ResourceConfig):
 
-    kind: Literal["cost"]
+    kind: Literal["cost"] = Field(
+        title="OpenCost Cost",
+        description="OpenCost allocation cost resource kind.",
+    )
     selector: OpencostSelector
 
 
@@ -160,7 +163,10 @@ class CloudCostSelector(Selector):
 
 class CloudCostResourceConfig(ResourceConfig):
 
-    kind: Literal["cloudcost"]
+    kind: Literal["cloudcost"] = Field(
+        title="OpenCost Cloud Cost",
+        description="OpenCost cloud cost resource kind.",
+    )
     selector: CloudCostSelector
 
 

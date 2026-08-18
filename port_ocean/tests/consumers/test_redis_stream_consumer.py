@@ -18,7 +18,7 @@ from port_ocean.exceptions.live_events import (
     LiveEventsUuidNotFoundError,
     MissingLiveEventsBaseUrlError,
 )
-from port_ocean.consumers.pel_requeue import PELRequeueWorker
+from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
 from port_ocean.consumers.redis_stream_utils import (
     ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
@@ -668,19 +668,19 @@ class TestRedisStreamConsumerAck:
         mock_redis.xgroup_create.assert_not_awaited()
 
 
-class TestRedisStreamConsumerPelWorkerLifecycle:
+class TestRedisStreamConsumerMaintenanceWorkerLifecycle:
     @pytest.mark.asyncio
-    async def test_start_starts_pel_worker_when_enabled(
+    async def test_start_starts_stream_maintenance_worker_when_enabled(
         self,
         mock_ocean_config: MagicMock,
     ) -> None:
         settings = LiveEventsRedisSettings(
             url="redis://localhost:6379",
-            pel_requeue_worker_enabled=True,
+            stream_maintenance_worker_enabled=True,
         )
         mock_redis = AsyncMock()
         mock_redis.xgroup_create = AsyncMock()
-        mock_pel_worker = AsyncMock()
+        mock_maintenance_worker = AsyncMock()
 
         with (
             patch(
@@ -691,9 +691,9 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 new=AsyncMock(return_value=mock_redis),
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
-                return_value=mock_pel_worker,
-            ) as mock_pel_worker_cls,
+                "port_ocean.consumers.redis_stream_consumer.RedisStreamMaintenanceWorker",
+                return_value=mock_maintenance_worker,
+            ) as mock_maintenance_worker_cls,
         ):
             consumer = RedisStreamConsumer(
                 redis_settings=settings,
@@ -702,24 +702,26 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             )
             await consumer.start()
 
-            mock_pel_worker_cls.assert_called_once()
-            mock_pel_worker.start.assert_awaited_once()
-            assert consumer._pel_worker is mock_pel_worker
+            mock_maintenance_worker_cls.assert_called_once()
+            call_kwargs = mock_maintenance_worker_cls.call_args.kwargs
+            assert call_kwargs["stream_consumer_name"] == consumer._consumer_name
+            mock_maintenance_worker.start.assert_awaited_once()
+            assert consumer._stream_maintenance_worker is mock_maintenance_worker
 
             await consumer.stop()
 
-            mock_pel_worker.stop.assert_awaited_once()
-            assert consumer._pel_worker is None
+            mock_maintenance_worker.stop.assert_awaited_once()
+            assert consumer._stream_maintenance_worker is None
             mock_redis.aclose.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_start_skips_pel_worker_when_disabled(
+    async def test_start_skips_stream_maintenance_worker_when_disabled(
         self,
         mock_ocean_config: MagicMock,
     ) -> None:
         settings = LiveEventsRedisSettings(
             url="redis://localhost:6379",
-            pel_requeue_worker_enabled=False,
+            stream_maintenance_worker_enabled=False,
         )
         mock_redis = AsyncMock()
         mock_redis.xgroup_create = AsyncMock()
@@ -733,8 +735,8 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
                 new=AsyncMock(return_value=mock_redis),
             ),
             patch(
-                "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
-            ) as mock_pel_worker_cls,
+                "port_ocean.consumers.redis_stream_consumer.RedisStreamMaintenanceWorker",
+            ) as mock_maintenance_worker_cls,
         ):
             consumer = RedisStreamConsumer(
                 redis_settings=settings,
@@ -743,21 +745,21 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             )
             await consumer.start()
 
-            mock_pel_worker_cls.assert_not_called()
-            assert consumer._pel_worker is None
+            mock_maintenance_worker_cls.assert_not_called()
+            assert consumer._stream_maintenance_worker is None
 
             await consumer.stop()
 
-            assert consumer._pel_worker is None
+            assert consumer._stream_maintenance_worker is None
             mock_redis.aclose.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_pel_worker_requeues_while_handler_still_processing(
+    async def test_stream_maintenance_worker_requeues_while_handler_still_processing(
         self,
         mock_ocean_config: MagicMock,
     ) -> None:
-        """If processing exceeds stuck_timeout, PEL worker can requeue while the
-        original handler is still in flight — enabling duplicate delivery."""
+        """If processing exceeds stuck_timeout, the maintenance worker can requeue
+        while the original handler is still in flight — enabling duplicate delivery."""
         handler_entered = asyncio.Event()
         release_handler = asyncio.Event()
 
@@ -799,13 +801,13 @@ class TestRedisStreamConsumerPelWorkerLifecycle:
             )
             await handler_entered.wait()
 
-            pel_worker = PELRequeueWorker(
+            maintenance_worker = RedisStreamMaintenanceWorker(
                 mock_redis,
                 redis_settings=settings,
                 stream_key="stream",
                 consumer_group=consumer._consumer_group,
             )
-            await pel_worker._scan_and_requeue()
+            await maintenance_worker._scan_and_requeue()
 
             mock_redis.eval.assert_awaited_once()
             assert mock_redis.eval.await_args is not None

@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.48.10 (2026-08-17)
+
+
+### Improvements
+
+- Enable PortAppConfig field metadata and kind-discriminator checks at class definition time.
+
+
+## 0.48.9 (2026-08-17)
+
+
+### Improvements
+
+- Rename the Redis PEL requeue worker to Redis stream maintenance worker to reflect PEL reclaim and idle consumer cleanup.
+
+
 ## 0.48.8 (2026-08-16)
 
 
