@@ -48,13 +48,12 @@ class HookHandler(ABC):
             return
 
         for resource_config in matching_resource_configs:
-            include_bot_members = resource_config.selector.include_bot_members
-            include_inherited_members = (
-                resource_config.selector.include_inherited_members
-            )
-            include_verbose_member_object = (
-                resource_config.selector.include_verbose_member_object
-            )
+            selector = resource_config.selector
+            if not isinstance(selector, GitlabMemberSelector):
+                continue
+            include_bot_members = selector.include_bot_members
+            include_inherited_members = selector.include_inherited_members
+            include_verbose_member_object = selector.include_verbose_member_object
 
             object_result: RESTObject = (
                 await self.gitlab_service.enrich_object_with_members(
