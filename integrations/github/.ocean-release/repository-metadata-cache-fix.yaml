@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix stale repository data on live events by bypassing cached repository metadata when processing repository webhooks.
