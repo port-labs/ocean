@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.48.11 (2026-08-18)
+
+
+### Bug Fixes
+
+- Fixed failed-entity dependency sorting when entities use search identifiers or search relations.
+
+
 ## 0.48.10 (2026-08-17)
 
 
