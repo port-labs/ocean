@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.49 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.48 (2026-08-17)
+
+
+### Bug Fixes
+
+- Use a 2-day lag for skill-usage date windows so the latest day matches when Anthropic actually serves data (docs cite ~1 day but availability often lags further).
+- Restore startup API verification to a single `/analytics/users` probe; one `read:analytics` check is sufficient and avoids noisy 400s from the skills endpoint.
+
+
 ## 0.2.47 (2026-08-17)
 
 

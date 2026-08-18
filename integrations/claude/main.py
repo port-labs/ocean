@@ -248,72 +248,39 @@ async def _verify_api_access(client: ClaudeClient) -> None:
     a misconfiguration is visible without crash-looping the integration.
     """
     if client.deployment == ClaudeDeployment.ENTERPRISE:
-        scope = "read:analytics"
-        probes: list[tuple[str, dict[str, str | int]]] = []
-
-        user_dates = get_user_activity_dates(starting_date=None, time_frame=1)
-        if user_dates:
-            probes.append(
-                (
-                    "/v1/organizations/analytics/users",
-                    {"date": user_dates[-1], "limit": 1},
-                )
-            )
-
-        skill_dates = get_skill_usage_dates(starting_date=None, time_frame=1)
-        if skill_dates:
-            probes.append(
-                (
-                    "/v1/organizations/analytics/skills",
-                    {"date": skill_dates[-1], "limit": 1},
-                )
-            )
-
-        if not probes:
+        dates = get_user_activity_dates(starting_date=None, time_frame=1)
+        if not dates:
             return
+        endpoint = "/v1/organizations/analytics/users"
+        params = {"date": dates[-1], "limit": 1}
+        scope = "read:analytics"
     else:
+        endpoint = "/v1/organizations/usage_report/messages"
+        params = {
+            "starting_at": "2026-01-01T00:00:00Z",
+            "limit": 1,
+            "bucket_width": "1d",
+        }
         scope = "api:admin"
-        probes = [
-            (
-                "/v1/organizations/usage_report/messages",
-                {
-                    "starting_at": "2026-01-01T00:00:00Z",
-                    "limit": 1,
-                    "bucket_width": "1d",
-                },
-            )
-        ]
 
-    verified_any = False
-    for endpoint, params in probes:
-        try:
-            payload = await client.send_api_request(
-                endpoint, params, soft_fail_statuses={401, 403}
-            )
-        except Exception as error:
-            logger.warning(
-                f"Could not verify Anthropic API access for {endpoint} at startup: "
-                f"{error}"
-            )
-            continue
+    try:
+        payload = await client.send_api_request(
+            endpoint, params, soft_fail_statuses={401, 403}
+        )
+    except Exception as error:
+        logger.warning(f"Could not verify Anthropic API access at startup: {error}")
+        return
 
-        if payload is None:
-            logger.error(
-                f"Anthropic API access check failed for {endpoint} on the "
-                f"'{client.deployment.value}' deployment. Verify the admin API key "
-                f"is valid and carries the '{scope}' scope."
-            )
-        else:
-            verified_any = True
-            logger.info(
-                f"Verified Anthropic API access for {endpoint} on the "
-                f"'{client.deployment.value}' deployment."
-            )
-
-    if verified_any:
+    if payload is None:
+        logger.error(
+            f"Anthropic API access check failed for the "
+            f"'{client.deployment.value}' deployment. Verify the admin API key is "
+            f"valid and carries the '{scope}' scope."
+        )
+    else:
         logger.info(
-            f"Anthropic API startup checks completed for the "
-            f"'{client.deployment.value}' deployment."
+            f"Verified Anthropic API access for the '{client.deployment.value}' "
+            "deployment."
         )
 
 

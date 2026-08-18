@@ -20,64 +20,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Changelogs eligible for validation. Expand as integrations are standardized.
-# Once all are standardized, this bit of the logic should be removed.
-# Please note all have now been added, I'll fully remove this logic in a dedicated PR
-ALLOWED_CHANGELOG_PATHS = frozenset(
-    {
-        "CHANGELOG.md",
-        "integrations/aikido/CHANGELOG.md",
-        "integrations/amplication/CHANGELOG.md",
-        "integrations/argocd/CHANGELOG.md",
-        "integrations/armorcode/CHANGELOG.md",
-        "integrations/aws/CHANGELOG.md",
-        "integrations/aws-v3/CHANGELOG.md",
-        "integrations/azure/CHANGELOG.md",
-        "integrations/azure-devops/CHANGELOG.md",
-        "integrations/azure-resource-graph/CHANGELOG.md",
-        "integrations/backstage/CHANGELOG.md",
-        "integrations/bitbucket-cloud/CHANGELOG.md",
-        "integrations/bitbucket-server/CHANGELOG.md",
-        "integrations/checkmarx-one/CHANGELOG.md",
-        "integrations/claude/CHANGELOG.md",
-        "integrations/claude-managed-agents/CHANGELOG.md",
-        "integrations/cursor/CHANGELOG.md",
-        "integrations/cursor-cloud-agents/CHANGELOG.md",
-        "integrations/custom/CHANGELOG.md",
-        "integrations/datadog/CHANGELOG.md",
-        "integrations/dynatrace/CHANGELOG.md",
-        "integrations/fake-integration/CHANGELOG.md",
-        "integrations/firehydrant/CHANGELOG.md",
-        "integrations/gcp/CHANGELOG.md",
-        "integrations/github/CHANGELOG.md",
-        "integrations/github-copilot/CHANGELOG.md",
-        "integrations/gitlab/CHANGELOG.md",
-        "integrations/gitlab-v2/CHANGELOG.md",
-        "integrations/jenkins/CHANGELOG.md",
-        "integrations/jira/CHANGELOG.md",
-        "integrations/jira-server/CHANGELOG.md",
-        "integrations/kafka/CHANGELOG.md",
-        "integrations/komodor/CHANGELOG.md",
-        "integrations/kubecost/CHANGELOG.md",
-        "integrations/launchdarkly/CHANGELOG.md",
-        "integrations/linear/CHANGELOG.md",
-        "integrations/mend/CHANGELOG.md",
-        "integrations/newrelic/CHANGELOG.md",
-        "integrations/octopus/CHANGELOG.md",
-        "integrations/okta/CHANGELOG.md",
-        "integrations/opencost/CHANGELOG.md",
-        "integrations/opsgenie/CHANGELOG.md",
-        "integrations/pagerduty/CHANGELOG.md",
-        "integrations/sentry/CHANGELOG.md",
-        "integrations/servicenow/CHANGELOG.md",
-        "integrations/snyk/CHANGELOG.md",
-        "integrations/sonarqube/CHANGELOG.md",
-        "integrations/statuspage/CHANGELOG.md",
-        "integrations/terraform-cloud/CHANGELOG.md",
-        "integrations/wiz/CHANGELOG.md",
-    }
-)
-
 STANDARD_SECTIONS = frozenset(
     {
         "Bug Fixes",
@@ -115,17 +57,6 @@ def resolve_changelog_path(path: Path | str) -> Path:
     if resolved.is_absolute():
         return resolved
     return REPO_ROOT / resolved
-
-
-def filter_allowlisted_paths(paths: list[str | Path]) -> list[Path]:
-    filtered: list[Path] = []
-    for path in paths:
-        resolved = resolve_changelog_path(path)
-        if resolved.relative_to(REPO_ROOT).as_posix() in ALLOWED_CHANGELOG_PATHS:
-            filtered.append(resolved)
-        else:
-            print(f"Skipping {resolved}: not in allowlist", file=sys.stdout)
-    return filtered
 
 
 def count_blank_lines_after(lines: list[str], start_index: int) -> tuple[int, int]:
@@ -305,8 +236,9 @@ def main() -> int:
         help="Changelog paths to validate (only allowlisted paths are checked)",
     )
     args = parser.parse_args()
-    paths = filter_allowlisted_paths(args.paths)
+    paths = [resolve_changelog_path(path) for path in args.paths]
 
+    print("Received paths:", paths, sep=", ")
     if not paths:
         print("No changelogs to validate; skipping")
         return 0

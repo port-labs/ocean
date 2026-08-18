@@ -37,6 +37,7 @@ class Kind(StrEnum):
     ADVANCED_SECURITY_ALERT = "advanced-security-alert"
     GROUP = "group"
     GROUP_MEMBER = "group-member"
+    WIKI = "wiki"
 
 
 ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
@@ -90,14 +91,17 @@ def extract_org_name_from_url(url: str) -> str:
 
 
 class RepositoryBranchMapping(BaseModel):
-    name: str = Field(description="Repository name")
-    branch: str | None = Field(default=None, description="Branch to scan")
+    name: str = Field(title="Name", description="Repository name")
+    branch: str | None = Field(
+        default=None, title="Branch", description="Branch to scan"
+    )
 
 
 class FolderPattern(BaseModel):
     path: str = Field(
         ...,
         alias="path",
+        title="Path",
         description="""Specify the repositories and folders to include under this relative path.
         Supports glob pattern (*) for matching within a path segment:
         - Use * to match any characters within a path segment
@@ -111,6 +115,7 @@ class FolderPattern(BaseModel):
     repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
         alias="repos",
+        title="Repositories",
         description="Specify the repositories and branches to include under this relative path",
     )
 
