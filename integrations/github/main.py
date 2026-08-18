@@ -392,6 +392,7 @@ async def resync_packages(
                     owner_type=org["type"],
                     visibility=config.selector.visibility,
                     include_versions=config.selector.include_versions,
+                    max_versions=config.selector.max_versions,
                 )
             )
             for org in organizations

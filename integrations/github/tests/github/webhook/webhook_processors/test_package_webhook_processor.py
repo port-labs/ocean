@@ -193,6 +193,7 @@ class TestPackageWebhookProcessor:
                 package_name="hello_docker",
                 owner_type="Organization",
                 include_versions=False,
+                max_versions=10,
             )
         )
         assert isinstance(result, WebhookEventRawResults)
@@ -267,6 +268,7 @@ class TestPackageWebhookProcessor:
                 package_name="hello_docker",
                 owner_type="User",
                 include_versions=False,
+                max_versions=10,
             )
         )
         assert result.updated_raw_results == [expected_data]

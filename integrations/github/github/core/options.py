@@ -316,6 +316,7 @@ class SinglePackageOptions(SingleOrganizationOptions):
     package_name: Required[str]
     owner_type: NotRequired[str]
     include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]
 
 
 class ListPackageOptions(SingleOrganizationOptions):
@@ -324,3 +325,4 @@ class ListPackageOptions(SingleOrganizationOptions):
     owner_type: NotRequired[str]
     visibility: NotRequired[Optional[str]]
     include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]

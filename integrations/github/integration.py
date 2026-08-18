@@ -770,8 +770,19 @@ class GithubPackageSelector(Selector):
         default=False,
         description=(
             "Fetch package versions (container image tags and digests) and attach "
-            "them as `__versions`. This makes an extra paginated API call per "
-            "package and can significantly increase sync time."
+            "them as `__versions`. Extra API calls are limited with a semaphore "
+            "so only a few packages fetch versions at once."
+        ),
+    )
+    max_versions: Optional[int] = Field(
+        title="Max Versions",
+        alias="maxVersions",
+        default=10,
+        ge=1,
+        description=(
+            "Maximum number of versions to fetch per package, newest first. "
+            "Only used when includeVersions is true. Increase this to ingest more "
+            "history; each extra page of 100 versions is another GitHub API call."
         ),
     )
 

@@ -1,10 +1,12 @@
 from typing import Any, AsyncGenerator
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.package_exporter import (
+    MAX_CONCURRENT_VERSION_ENRICHMENTS,
     RestPackageExporter,
     encode_package_name,
     ghcr_image_ref,
@@ -222,6 +224,63 @@ class TestRestPackageExporter:
             assert package is not None
             assert package["__versions"] == TEST_VERSIONS
 
+    async def test_get_resource_with_max_versions(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestPackageExporter(rest_client)
+        extra_versions = [
+            *TEST_VERSIONS,
+            {
+                "id": 45764,
+                "name": "sha256:def456",
+                "metadata": {
+                    "package_type": "container",
+                    "container": {"tags": ["1.0.1"]},
+                },
+            },
+            {
+                "id": 45765,
+                "name": "sha256:ghi789",
+                "metadata": {
+                    "package_type": "container",
+                    "container": {"tags": ["1.0.2"]},
+                },
+            },
+        ]
+
+        version_pages_consumed = 0
+
+        async def mock_paginated(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal version_pages_consumed
+            version_pages_consumed += 1
+            yield extra_versions[:2]
+            version_pages_consumed += 1
+            yield extra_versions[2:]
+
+        with (
+            patch.object(
+                rest_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_request,
+            patch.object(
+                rest_client, "send_paginated_request", side_effect=mock_paginated
+            ),
+        ):
+            mock_request.return_value = TEST_PACKAGES[0]
+            package = await exporter.get_resource(
+                SinglePackageOptions(
+                    organization="test-org",
+                    package_name="hello_docker",
+                    include_versions=True,
+                    max_versions=2,
+                )
+            )
+
+            assert package is not None
+            assert package["__versions"] == extra_versions[:2]
+            assert version_pages_consumed == 1
+
     async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
         async def mock_paginated(
             *args: Any, **kwargs: Any
@@ -299,3 +358,39 @@ class TestRestPackageExporter:
             assert len(packages[0]) == 2
             for package in packages[0]:
                 assert package["__versions"] == TEST_VERSIONS
+
+    async def test_version_enrichment_is_limited_by_semaphore(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        in_flight = 0
+        max_in_flight = 0
+        many_packages = [
+            {**TEST_PACKAGES[0], "id": 1000 + i, "name": f"image-{i}"}
+            for i in range(MAX_CONCURRENT_VERSION_ENRICHMENTS + 4)
+        ]
+
+        async def mock_paginated(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal in_flight, max_in_flight
+            if endpoint.endswith("/versions"):
+                in_flight += 1
+                max_in_flight = max(max_in_flight, in_flight)
+                await asyncio.sleep(0.02)
+                in_flight -= 1
+                yield TEST_VERSIONS
+            else:
+                yield many_packages
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated
+        ):
+            exporter = RestPackageExporter(rest_client)
+            _ = [
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    ListPackageOptions(organization="test-org", include_versions=True)
+                )
+            ]
+
+        assert max_in_flight <= MAX_CONCURRENT_VERSION_ENRICHMENTS

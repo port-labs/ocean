@@ -158,6 +158,7 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
                 package_name=package_name,
                 owner_type=self._package_owner_type(payload),
                 include_versions=config.selector.include_versions,
+                max_versions=config.selector.max_versions,
             )
         )
         if not data_to_upsert:

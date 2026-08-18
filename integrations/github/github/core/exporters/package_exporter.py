@@ -12,7 +12,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 GHCR_PACKAGE_TYPE = "container"
 OWNER_TYPE_USER = "User"
-MAX_CONCURRENT_VERSION_ENRICHMENTS = 10
+MAX_CONCURRENT_VERSION_ENRICHMENTS = 3
 
 
 def encode_package_name(package_name: str) -> str:
@@ -88,6 +88,7 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
         package: dict[str, Any],
         organization: str,
         owner_type: str,
+        max_versions: Optional[int] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
     ) -> dict[str, Any]:
         async def _fetch() -> dict[str, Any]:
@@ -97,7 +98,13 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
                 "/versions"
             )
             async for batch in self.client.send_paginated_request(endpoint):
-                versions.extend(batch)
+                if max_versions is None:
+                    versions.extend(batch)
+                    continue
+                remaining = max_versions - len(versions)
+                versions.extend(batch[:remaining])
+                if len(versions) >= max_versions:
+                    break
 
             logger.debug(
                 f"Fetched {len(versions)} versions for package '{package['name']}' "
@@ -118,6 +125,7 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
         package_name = options["package_name"]
         owner_type = self._owner_type(dict(options))
         include_versions = bool(options.get("include_versions", False))
+        max_versions = options.get("max_versions")
 
         endpoint = package_resource_url(
             self.client.base_url, organization, owner_type, package_name
@@ -132,7 +140,7 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
 
         if include_versions:
             response = await self._enrich_with_versions(
-                response, organization, owner_type
+                response, organization, owner_type, max_versions
             )
 
         logger.info(f"Fetched GHCR package {package_name} from {organization}")
@@ -145,6 +153,7 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         owner_type = self._owner_type(dict(options))
         include_versions = bool(options.get("include_versions", False))
+        max_versions = options.get("max_versions")
         visibility = options.get("visibility")
 
         params: dict[str, Any] = {"package_type": GHCR_PACKAGE_TYPE}
@@ -167,7 +176,11 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
                     await asyncio.gather(
                         *[
                             self._enrich_with_versions(
-                                package, organization, owner_type, semaphore
+                                package,
+                                organization,
+                                owner_type,
+                                max_versions,
+                                semaphore,
                             )
                             for package in packages
                         ]
