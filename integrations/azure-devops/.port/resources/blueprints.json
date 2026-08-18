@@ -385,7 +385,7 @@
         "reviewers": {
           "title": "Reviewers",
           "type": "array",
-          "items": { "type": "string" },
+          "items": {"type": "string"},
           "icon": "User"
         },
         "sourceBranch": {
