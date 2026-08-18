@@ -43,8 +43,33 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
         action = event.payload.get("action")
         return action in PACKAGE_EVENTS
 
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        """Accept org and user-owned package events, including those with no repository."""
+        if not (event._original_request and await self._should_process_event(event)):
+            return False
+
+        owner_login = self._package_owner_login(event.payload)
+        if not owner_login:
+            return False
+
+        if self.is_personal_account_webhook(event.payload):
+            identifier = f"personal account: {event.payload['repository']['full_name']}"
+        else:
+            identifier = owner_login
+        return await self._verify_webhook_signature(identifier, event._original_request)
+
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.PACKAGE]
+
+    def _matches_visibility(
+        self, package: dict[str, Any], expected_visibility: str | None
+    ) -> bool:
+        if not expected_visibility:
+            return True
+        visibility = package.get("visibility")
+        if visibility is None:
+            return True
+        return visibility == expected_visibility
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         package = payload.get("package")
@@ -100,6 +125,17 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
             )
 
         config = cast(GithubPackageConfig, resource_config)
+        expected_visibility = config.selector.visibility
+        if not self._matches_visibility(package, expected_visibility):
+            logger.info(
+                f"Skipping package event {action} for {package_name} from {organization}: "
+                f"visibility {package.get('visibility')!r} does not match selector "
+                f"{expected_visibility!r}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         logger.info(
             f"Processing package event: {action} for {package_name} from {organization}"
         )
@@ -115,6 +151,16 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
             )
         )
         if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if not self._matches_visibility(data_to_upsert, expected_visibility):
+            logger.info(
+                f"Skipping package {package_name} from {organization}: "
+                f"visibility {data_to_upsert.get('visibility')!r} does not match selector "
+                f"{expected_visibility!r}"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )

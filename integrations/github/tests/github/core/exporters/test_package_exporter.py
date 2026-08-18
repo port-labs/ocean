@@ -72,7 +72,13 @@ class TestPackageExporterHelpers:
     def test_ghcr_image_ref_github_enterprise(self) -> None:
         assert (
             ghcr_image_ref("https://ghe.example.com/api/v3", "acme", "my-image")
-            == "ghe.example.com/acme/my-image"
+            == "containers.ghe.example.com/acme/my-image"
+        )
+
+    def test_ghcr_image_ref_does_not_match_api_github_com_substring(self) -> None:
+        assert (
+            ghcr_image_ref("https://evilapi.github.com", "acme", "my-image")
+            == "containers.evilapi.github.com/acme/my-image"
         )
 
     def test_packages_collection_url_org_and_user(self) -> None:

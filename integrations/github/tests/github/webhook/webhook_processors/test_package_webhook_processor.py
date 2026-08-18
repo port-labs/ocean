@@ -1,7 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 import pytest
 from unittest.mock import AsyncMock, patch
 
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
@@ -23,20 +24,7 @@ from integration import GithubPackageConfig, GithubPackageSelector
 
 @pytest.fixture
 def resource_config() -> GithubPackageConfig:
-    return GithubPackageConfig(
-        kind=ObjectKind.PACKAGE,
-        selector=GithubPackageSelector(query="true"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".id | tostring",
-                    title=".name",
-                    blueprint='"githubPackage"',
-                    properties={},
-                )
-            )
-        ),
-    )
+    return _resource_config()
 
 
 @pytest.fixture
@@ -54,6 +42,7 @@ def _package_payload(
     include_organization: bool = True,
     owner_type: str = "Organization",
     registry_type: str | None = None,
+    visibility: str | None = None,
 ) -> dict[str, Any]:
     package: dict[str, Any] = {
         "id": 197,
@@ -64,11 +53,33 @@ def _package_payload(
     }
     if registry_type is not None:
         package["registry"] = {"type": registry_type, "url": "https://ghcr.io"}
+    if visibility is not None:
+        package["visibility"] = visibility
 
     payload: dict[str, Any] = {"action": action, "package": package}
     if include_organization:
         payload["organization"] = {"login": "test-org"}
     return payload
+
+
+def _resource_config(
+    *,
+    visibility: Literal["public", "private", "internal"] | None = None,
+) -> GithubPackageConfig:
+    return GithubPackageConfig(
+        kind=ObjectKind.PACKAGE,
+        selector=GithubPackageSelector(query="true", visibility=visibility),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id | tostring",
+                    title=".name",
+                    blueprint='"githubPackage"',
+                    properties={},
+                )
+            )
+        ),
+    )
 
 
 class TestIsGhcrPackage:
@@ -258,4 +269,81 @@ class TestPackageWebhookProcessor:
                 include_versions=False,
             )
         )
+        assert result.updated_raw_results == [expected_data]
+
+    async def test_should_process_event_user_package_without_org_or_repo(
+        self, package_webhook_processor: PackageWebhookProcessor
+    ) -> None:
+        ocean.integration_config["webhook_secret"] = ""
+        payload = _package_payload(include_organization=False, owner_type="User")
+        payload["package"]["owner"] = {"login": "octocat", "type": "User"}
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload=payload,
+            headers={"x-github-event": "package"},
+        )
+        event._original_request = AsyncMock()
+
+        assert await package_webhook_processor.should_process_event(event) is True
+
+    async def test_handle_event_skips_visibility_mismatch_in_payload(
+        self, package_webhook_processor: PackageWebhookProcessor
+    ) -> None:
+        payload = _package_payload(visibility="public")
+
+        with patch(
+            "github.webhook.webhook_processors.package_webhook_processor.RestPackageExporter"
+        ) as mock_exporter_cls:
+            result = await package_webhook_processor.handle_event(
+                payload, _resource_config(visibility="private")
+            )
+
+        mock_exporter_cls.assert_not_called()
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
+    async def test_handle_event_skips_visibility_mismatch_after_fetch(
+        self, package_webhook_processor: PackageWebhookProcessor
+    ) -> None:
+        payload = _package_payload()
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = {
+            "id": 197,
+            "name": "hello_docker",
+            "visibility": "public",
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.package_webhook_processor.RestPackageExporter",
+            return_value=mock_exporter,
+        ):
+            result = await package_webhook_processor.handle_event(
+                payload, _resource_config(visibility="private")
+            )
+
+        mock_exporter.get_resource.assert_called_once()
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
+    async def test_handle_event_upserts_when_visibility_matches(
+        self, package_webhook_processor: PackageWebhookProcessor
+    ) -> None:
+        payload = _package_payload(visibility="private")
+        expected_data = {
+            "id": 197,
+            "name": "hello_docker",
+            "visibility": "private",
+        }
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = expected_data
+
+        with patch(
+            "github.webhook.webhook_processors.package_webhook_processor.RestPackageExporter",
+            return_value=mock_exporter,
+        ):
+            result = await package_webhook_processor.handle_event(
+                payload, _resource_config(visibility="private")
+            )
+
+        mock_exporter.get_resource.assert_called_once()
         assert result.updated_raw_results == [expected_data]

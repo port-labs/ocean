@@ -24,17 +24,23 @@ def encode_package_name(package_name: str) -> str:
     return quote(package_name, safe="")
 
 
+GITHUB_DOT_COM_API_HOSTS = frozenset({"api.github.com", "github.com"})
+
+
 def ghcr_image_ref(github_host: str, owner: str, package_name: str) -> str:
     """Build the container image reference for a GHCR package.
 
     github.com packages are hosted at `ghcr.io`. GitHub Enterprise Server
-    serves the container registry on the instance hostname.
+    serves the container registry at `containers.<hostname>`.
+    See: https://docs.github.com/en/packages/learn-github-packages/introduction-to-github-packages
     """
-    host = github_host.rstrip("/")
-    if host.endswith("api.github.com"):
+    hostname = (urlparse(github_host).hostname or "").lower()
+    if hostname in GITHUB_DOT_COM_API_HOSTS:
         registry = "ghcr.io"
+    elif hostname:
+        registry = f"containers.{hostname}"
     else:
-        registry = urlparse(github_host).hostname or "ghcr.io"
+        registry = "ghcr.io"
     return f"{registry}/{owner}/{package_name}"
 
 
