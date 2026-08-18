@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.48.12 (2026-08-18)
+
+
+### Bug Fixes
+
+- Start Redis live-events consumer groups from the beginning of the stream when the stream already exists, so messages published before the group was created are no longer skipped.
+
+
 ## 0.48.11 (2026-08-18)
 
 
