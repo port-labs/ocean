@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.141 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.5.140 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.5.139 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.5.138 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.5.137 (2026-08-13)
 
 
@@ -85,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add integration tests for the PagerDuty integration
+
 
 ## 0.5.127 (2026-08-09)
 
@@ -1336,6 +1369,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.4.21 (2025-12-14)
 
+
 ### Improvements
 
 - Support dynamic since & until in selector params
@@ -1343,9 +1377,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.4.20 (2025-12-11)
 
+
 ### Improvements
 
 - Support since & until in selector params for schedule kind
+
 
 ## 0.4.19 (2025-12-10)
 
@@ -1539,6 +1575,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Retries on 500 status from pagerduty api
 
+
 ## 0.3.94 (2025-11-10)
 
 
@@ -1561,6 +1598,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.3.91 (2025-11-09)
 
@@ -1828,6 +1866,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.58 (2025-08-03)
 
+
 ### Improvements
 
 - Added explicit query params for tabs selection on intallationDocs
@@ -1842,28 +1881,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.3.56 (2025-08-03)
+
+
 ### Improvements
 
 - Aligned installationDocs param with convensions
 
 
 ## 0.3.55 (2025-07-30)
+
+
 ### Improvements
 
 - Added anchors to PagerDuty installation methods
 
 
 ## 0.3.54 (2025-07-27)
-### Fix
+
+
+### Bug Fixes
 
 - Removed docs from PagerDuty OAuth installationDocs
 
 
 ## 0.3.53 (2025-07-27)
 
-### Fix
+
+### Bug Fixes
 
 - Restructured changed specs installationDocs param
+
 
 ## 0.3.52 (2025-07-27)
 
@@ -2179,11 +2226,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.13 (2025-04-27)
 
+
 ### Bug Fixes
 
 - Removed httpx dependency to resolve h11 vulnerability
 
+
 ## 0.3.12 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2214,7 +2264,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.3.9 (2025-04-09)
 
 
-### Bugfix
+### Bug Fixes
 
 - Introduced retry mechanism for the services webhook process when ingesting service data from PagerDuty.
 
@@ -2244,6 +2294,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.3.5 (2025-03-21)
+
 
 ### Bug Fixes
 
@@ -2290,6 +2341,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added live event webhook processors to incidents and services, which replaces the former direct router function.
 - Aded OAuthClient dependency to load secrets while ongoing integration run
 - QOL name changes and code placements
+
 
 ## 0.2.31 (2025-03-03)
 
@@ -2374,7 +2426,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.21 (2025-02-14)
 
 
-### Bug Fix
+### Bug Fixes
 
 - Fixed rate limiting by changing analytics fetch from per-incident API calls to service-based batch retrieval
 
@@ -2536,6 +2588,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.2.1 (2024-12-30)
+
+
+### Bug Fixes
 
 - Fixed apiUrl typo in spec
 
@@ -2888,11 +2943,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.9.14 (#1)
 
 
-# Port_Ocean 0.1.90 (2024-08-15)
+## 0.1.90 (2024-08-15)
+
 
 ### Improvements
 
 - Change PagerDuty `created_at` property title from "Create At" to "Created At"
+
 
 ## 0.1.89 (2024-08-13)
 
@@ -2912,10 +2969,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.87 (2024-08-05)
 
+
 ### Bug Fixes
 
 - Fixed incident assignees mapping to get email from the user object (#1)
 - Fixed incident default relation to service to one-to-one relation instead of many (#2)
+
 
 ## 0.1.86 (2024-08-05)
 
@@ -2935,12 +2994,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.84 (2024-08-01)
 
+
 ### Improvements
 
 - Added _target='blank' attribute to html links in the spec.yaml file to open a new browser tab instead of the current browser
 
 
 ## 0.1.83 (2024-07-31)
+
 
 ### Improvements
 
@@ -2949,12 +3010,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.82 (2024-07-31)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
 
 ## 0.1.81 (2024-07-31)
+
 
 ### Improvements
 
@@ -2963,12 +3026,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.80 (2024-07-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
 
 
 ## 0.1.79 (2024-07-10)
+
 
 ### Improvements
 
@@ -2977,12 +3042,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.78 (2024-07-10)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.4 (#1)
 
 
 ## 0.1.77 (2024-07-09)
+
 
 ### Improvements
 
@@ -2991,12 +3058,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.76 (2024-07-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
 
 ## 0.1.75 (2024-07-05)
+
 
 ### Improvements
 
@@ -3005,9 +3074,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.74 (2024-06-25)
 
+
 ### Features
 
 - Added secondary on call user to PagerDuty Service (0.1.74)
+
 
 ### Improvements
 
@@ -3016,12 +3087,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.73 (2024-06-23)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
 
 ## 0.1.72 (2024-06-19)
+
 
 ### Improvements
 
@@ -3030,12 +3103,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.71 (2024-06-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
 
 
 ## 0.1.70 (2024-06-13)
+
 
 ### Improvements
 
@@ -3044,12 +3119,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.69 (2024-06-13)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
 
 ## 0.1.68 (2024-06-10)
+
 
 ### Improvements
 
@@ -3058,12 +3135,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.67 (2024-06-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
 
 ## 0.1.66 (2024-06-03)
+
 
 ### Improvements
 
@@ -3072,12 +3151,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.65 (2024-06-02)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
 
 ## 0.1.64 (2024-05-30)
+
 
 ### Improvements
 
@@ -3087,6 +3168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.63 (2024-05-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
@@ -3094,12 +3176,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.62 (2024-05-26)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.21 (#1)
 
 
 ## 0.1.61 (2024-05-26)
+
 
 ### Improvements
 
@@ -3109,12 +3193,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.60 (2024-05-23)
 
+
 ### Improvements
 
 - Updated the assignees and user properties from type string to email
 
 
 ## 0.1.59 (2024-05-17)
+
 
 ### Improvements
 
@@ -3123,12 +3209,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.58 (2024-05-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.19 (#1)
 
 
 ## 0.1.57 (2024-05-13)
+
 
 ### Improvements
 
@@ -3138,12 +3226,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.56 (2024-05-12)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.18 (#1)
 
 
 ## 0.1.55 (2024-05-01)
+
 
 ### Improvements
 
@@ -3152,12 +3242,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.54 (2024-05-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.16 (#1)
 
 
 ## 0.1.53 (2024-04-30)
+
 
 ### Improvements
 
@@ -3166,12 +3258,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.52 (2024-04-26)
 
+
 ### Improvements
 
 - Updated the who is oncall for a service to map the first escalation level
 
 
 ## 0.1.51 (2024-04-24)
+
 
 ### Improvements
 
@@ -3180,12 +3274,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.50 (2024-04-17)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.12 (#1)
 
 
 ## 0.1.49 (2024-04-11)
+
 
 ### Improvements
 
@@ -3194,12 +3290,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.48 (2024-04-10)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.10 (#1)
 
 
 ## 0.1.47 (2024-04-01)
+
 
 ### Improvements
 
@@ -3208,12 +3306,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.46 (2024-03-28)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.8 (#1)
 
 
 ## 0.1.45 (2024-03-20)
+
 
 ### Improvements
 
@@ -3222,12 +3322,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.44 (2024-03-19)
 
+
 ### Improvements
 
 - Updated the format for properties in the default blueprints
 
 
 ## 0.1.43 (2024-03-17)
+
 
 ### Improvements
 
@@ -3236,12 +3338,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.42 (2024-03-08)
 
+
 ### Improvements
 
 - Added support for Pagerduty oncall schedules, allowing the user to see who is oncall over a period of time (PORT-6981)
 
 
 ## 0.1.41 (2024-03-06)
+
 
 ### Improvements
 
@@ -3250,12 +3354,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.40 (2024-03-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.4 (#1)
 
 
 ## 0.1.39 (2024-03-03)
+
 
 ### Improvements
 
@@ -3264,12 +3370,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.38 (2024-02-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.2 (#1)
 
 
 ## 0.1.37 (2024-02-20)
+
 
 ### Improvements
 
@@ -3278,12 +3386,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.36 (2024-02-18)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.0 (#1)
 
 
 ## 0.1.35 (2024-02-12)
+
 
 ### Features
 
@@ -3292,12 +3402,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.34 (2024-01-26)
 
+
 ### Features
 
 - Improved on the PagerDuty incident blueprint by adding analytics data
 
 
 ## 0.1.33 (2024-01-23)
+
 
 ### Improvements
 
@@ -3306,12 +3418,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.32 (2024-01-11)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.16 (#1)
 
 
 ## 0.1.31 (2024-01-07)
+
 
 ### Improvements
 
@@ -3320,12 +3434,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.30 (2024-01-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.14 (#1)
 
 
 ## 0.1.29 (2024-01-01)
+
 
 ### Improvements
 
@@ -3334,12 +3450,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.28 (2023-12-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.12 (#1)
 
 
 ## 0.1.27 (2023-12-21)
+
 
 ### Improvements
 
@@ -3348,12 +3466,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.26 (2023-12-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.10 (#1)
 
 
 ## 0.1.25 (2023-12-19)
+
 
 ### Features
 
@@ -3362,12 +3482,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.24 (2023-12-14)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.8 (#1)
 
 
 ## 0.1.23 (2023-12-05)
+
 
 ### Improvements
 
@@ -3376,6 +3498,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.22 (2023-12-04)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.6 (#1)
@@ -3383,11 +3506,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.21 (2023-12-03)
 
+
 ### Bug Fixes
 
 - Fixed an issue where get_oncall_users only returned 1 on call instead of everyone (#251)
 
+
 ## 0.1.20 (2023-11-30)
+
 
 ### Improvements
 
@@ -3396,12 +3522,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.19 (2023-11-29)
 
+
 ### Improvements
 
 - Enhance oncalls API with detailed logging (#19)
 
 
 ## 0.1.18 (2023-11-29)
+
 
 ### Improvements
 
@@ -3411,12 +3539,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.17 (2023-11-23)
 
+
 ### Improvements
 
 - Added retry handler to the pagerduty client to handle connection errors and rate limiting (#1)
 
 
 ## 0.1.16 (2023-11-23)
+
 
 ### Bug Fixes
 
@@ -3425,12 +3555,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.15 (2023-11-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.3 (#1)
 
 
 ## 0.1.14 (2023-11-08)
+
 
 ### Improvements
 
@@ -3439,12 +3571,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.13 (2023-11-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.1 (#1)
 
 
 ## 0.1.12 (2023-11-01)
+
 
 ### Improvements
 
@@ -3453,6 +3587,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.11 (2023-10-29)
 
+
 ### Improvements
 
 - Bumped ocean version to 0.3.2 (#1)
@@ -3460,23 +3595,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.10 (2023-10-18)
 
-### Improvement
+
+### Improvements
 
 - Changed api query api_query_params key in the port configuration to apiQueryParams (PORT-4965)
 
 
 ## 0.1.9 (2023-10-18)
 
+
 ### Features
 
 - Extended api query abilities for services & incidents exporting (PORT-4965)
 
-### Improvement
+
+### Improvements
 
 - Used async generator syntax to return exported kinds instead of waiting for all the data (PORT-4965)
 
 
 ## 0.1.8 (2023-10-17)
+
 
 ### Bug Fixes
 
@@ -3485,42 +3624,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.7 (2023-09-27)
 
+
 ### Improvements
 
 - Bumped ocean to version 0.3.1 (#1)
 
+
 ## 0.1.5 (2023-08-29)
+
 
 ### Improvements
 
 - Changed the `app_host` to not be required for the installation (PORT-4527)
 - Bumped Ocean to 0.2.3 (#1)
 
+
 ## 0.1.4 (2023-08-11)
+
 
 ### Improvements
 
 - Optimized dockerfile to produce smaller images (PORT-4485)
 
+
 ## 0.1.3 (2023-08-11)
+
 
 ### Improvements
 
 - Upgraded ocean to version 0.2.2
 
+
 ## 0.1.2 (2023-08-09)
+
 
 ### Improvements
 
 - Integration syntax improvements
 
+
 ## 0.1.1 (2023-08-07)
+
 
 ### Features
 
 - Added oncall user and improved on service url (#1)
 
+
 ## 0.1.0 (2023-07-30)
+
 
 ### Features
 

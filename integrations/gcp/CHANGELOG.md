@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.16 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.2.15 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.14 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
+## 0.2.13 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.12 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.2.11 (2026-08-13)
 
 
@@ -1292,7 +1332,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.232 (2025-12-25)
 
 
-## Bug Fixes
+### Bug Fixes
 
 - Fixed spec.yaml conventions
 
@@ -1551,6 +1591,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.1.199 (2025-11-09)
 
@@ -1943,6 +1984,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update dependencies
 
+
 ## 0.1.150 (2025-06-22)
 
 
@@ -2144,6 +2186,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.125 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -3085,6 +3128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated the returned response from the GCP integration to reflect the latest known resource version as identified by the GCP Asset Inventory. Removed the need for `.versioned_resources | max_by(.version).resource | .<property_name>`, now only requiring `.<property_name>` (#1)
 
+
 ## 0.1.9 (2024-05-22)
 
 
@@ -3124,6 +3168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added Terraform deployment method as main deployment method (#1)
 - Added logs for Project/Folder/Org Injestion (#1)
+
 
 ## 0.1.4 (2024-05-01)
 

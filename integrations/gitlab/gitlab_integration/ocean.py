@@ -13,7 +13,7 @@ from gitlab_integration.models.webhook_groups_override_config import (
 )
 from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import (
-    GitlabResourceConfig,
+    GitlabFolderResourceConfig,
     GitLabFilesResourceConfig,
     GitlabObjectWithMembersResourceConfig,
     GitLabProjectResourceConfig,
@@ -261,10 +261,10 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
-        gitlab_resource_config: GitlabResourceConfig = typing.cast(
-            "GitlabResourceConfig", event.resource_config
+        gitlab_resource_config: GitlabFolderResourceConfig = typing.cast(
+            "GitlabFolderResourceConfig", event.resource_config
         )
-        if not isinstance(gitlab_resource_config, GitlabResourceConfig):
+        if not isinstance(gitlab_resource_config, GitlabFolderResourceConfig):
             return
         selector = gitlab_resource_config.selector
         async for projects_batch in service.get_all_projects():

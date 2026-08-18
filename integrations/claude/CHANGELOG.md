@@ -1,4 +1,4 @@
-# Changelog - Ocean - claude
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.2.50 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.2.49 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.48 (2026-08-17)
+
+
+### Bug Fixes
+
+- Use a 2-day lag for skill-usage date windows so the latest day matches when Anthropic actually serves data (docs cite ~1 day but availability often lags further).
+- Restore startup API verification to a single `/analytics/users` probe; one `read:analytics` check is sufficient and avoids noisy 400s from the skills endpoint.
+
+
+## 0.2.47 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.46 (2026-08-16)
+
+
+### Improvements
+
+- Split deprecated Claude kind aliases onto dedicated ResourceConfig classes.
+
+
+## 0.2.45 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
 
 ## 0.2.44 (2026-08-13)
 
@@ -726,6 +775,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.0 (2025-04-02)
+
 
 ### Features
 
