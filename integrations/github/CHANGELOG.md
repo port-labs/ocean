@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.7.28 (2026-08-18)
+
+
+### Bug Fixes
+
+- Fix stale repository data on live events by bypassing cached repository metadata when processing repository webhooks.
+
+
 ## 6.7.27 (2026-08-17)
 
 
