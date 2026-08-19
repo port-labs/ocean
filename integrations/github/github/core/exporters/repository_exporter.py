@@ -122,10 +122,6 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         search_params = cast(
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
-        # Popped (not left in `params`) so it's never sent as a GitHub API query
-        # param. Note: exclude_archived is part of the cached function's options,
-        # so @cache_iterator_result() naturally keys different values separately -
-        # no cross-kind cache conflicts.
         exclude_archived = params.pop("exclude_archived", False)
         is_personal_account = organization_type == "User"
         is_github_app_authenticated = isinstance(
