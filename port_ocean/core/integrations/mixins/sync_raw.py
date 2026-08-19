@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from graphlib import CycleError
 import inspect
+import time
 import typing
 from typing import AsyncGenerator, Callable, Awaitable, Any
 import httpx
@@ -429,9 +430,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
             logger.info("Starting extract phase")
+            extract_start = time.monotonic()
             results, errors = await self._get_resource_raw_results(
                 resource_config, send_raw_data_examples_amount
             )
+            static_extract_duration_sec = time.monotonic() - extract_start
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
             lakehouse_data_enabled = await is_lakehouse_data_enabled()
@@ -481,7 +484,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     metadata=metadata,
                     export_env_variables=resource_config.selector.export_env_variables,
                 )
-                await buffer.add(lakehouse_data_entry)
+                await buffer.add(
+                    lakehouse_data_entry,
+                    extract_duration_sec=static_extract_duration_sec,
+                )
             batch_index += 1
             number_of_raw_results += len(raw_results)
 
@@ -503,7 +509,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         for generator in async_generators:
             try:
-                async for items in generator:
+                gen_iter = generator.__aiter__()
+                while True:
+                    iter_start = time.monotonic()
+                    try:
+                        items = await gen_iter.__anext__()
+                    except StopAsyncIteration:
+                        break
+                    extract_duration_sec = time.monotonic() - iter_start
                     batch_index += 1
                     if lakehouse_data_enabled and buffer:
                         metadata = LakehouseDataEntryMetadata(
@@ -517,7 +530,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             metadata=metadata,
                             export_env_variables=resource_config.selector.export_env_variables,
                         )
-                        await buffer.add(lakehouse_data_entry)
+                        await buffer.add(
+                            lakehouse_data_entry,
+                            extract_duration_sec=extract_duration_sec,
+                        )
                     number_of_raw_results += len(items)
 
                     if not await is_dsp_mode_enabled():

@@ -461,6 +461,8 @@ class IntegrationClientMixin:
             body["resyncStartTime"] = event["resync_start_time"].isoformat()
         if event["event_id"]:
             body["eventId"] = event["event_id"]
+        if "extract_duration_ms" in event:
+            body["extractDurationMs"] = event["extract_duration_ms"]
 
         response = await self.client.post(
             f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",

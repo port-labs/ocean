@@ -1471,6 +1471,153 @@ async def test_register_in_batches_sets_extract_etl_phase_in_logger_context(
 
 
 @pytest.mark.asyncio
+async def test_register_in_batches_passes_extract_duration_to_lakehouse_for_sync_results(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    from port_ocean.context.resource import resource_context
+
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(  # type: ignore
+        return_value=([{"id": "1"}, {"id": "2"}], [])
+    )
+    mock_sync_raw_mixin._register_resource_raw = AsyncMock()  # type: ignore
+    mock_buffer = MagicMock()
+    mock_buffer.add = AsyncMock()
+    mock_buffer.flush = AsyncMock()
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.LakehouseBuffer",
+            return_value=mock_buffer,
+        ),
+    ):
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            async with resource_context(mock_resource_config, 0):
+                await mock_sync_raw_mixin._register_in_batches(
+                    mock_resource_config,
+                    UserAgentType.exporter,
+                    index=0,
+                    dsp_enabled=True,
+                )
+
+    mock_buffer.add.assert_awaited_once()
+    assert mock_buffer.add.await_args.kwargs["extract_duration_sec"] >= 0
+    mock_buffer.flush.assert_awaited_once()
+    mock_sync_raw_mixin._register_resource_raw.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_register_in_batches_passes_extract_duration_per_generator_yield(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    from port_ocean.context.resource import resource_context
+
+    async def generator() -> AsyncGenerator[list[dict[str, str]], None]:
+        yield [{"id": "1"}]
+        yield [{"id": "2"}, {"id": "3"}]
+
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(  # type: ignore
+        return_value=([generator()], [])
+    )
+    mock_sync_raw_mixin._register_resource_raw = AsyncMock()  # type: ignore
+    mock_buffer = MagicMock()
+    mock_buffer.add = AsyncMock()
+    mock_buffer.flush = AsyncMock()
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.LakehouseBuffer",
+            return_value=mock_buffer,
+        ),
+    ):
+        async with event_context(
+            EventType.INCREMENTAL_RESYNC, trigger_type="machine"
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            async with resource_context(mock_resource_config, 0):
+                await mock_sync_raw_mixin._register_in_batches(
+                    mock_resource_config,
+                    UserAgentType.exporter,
+                    index=0,
+                    dsp_enabled=True,
+                )
+
+    assert mock_buffer.add.await_count == 2
+    for call in mock_buffer.add.await_args_list:
+        assert call.kwargs["extract_duration_sec"] >= 0
+    mock_buffer.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_register_in_batches_skips_lakehouse_when_disabled(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    from port_ocean.context.resource import resource_context
+
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(  # type: ignore
+        return_value=([{"id": "1"}], [])
+    )
+    calc_result = MagicMock()
+    calc_result.errors = []
+    calc_result.entity_selector_diff = MagicMock()
+    calc_result.entity_selector_diff.passed = []
+    calc_result.number_of_transformed_entities = 0
+    mock_sync_raw_mixin._register_resource_raw = AsyncMock(return_value=calc_result)  # type: ignore
+    mock_ocean.metrics.set_metric = MagicMock()  # type: ignore
+    mock_ocean.metrics.inc_metric = MagicMock()  # type: ignore
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=False),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=False),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.LakehouseBuffer",
+        ) as mock_lakehouse_buffer_cls,
+    ):
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            async with resource_context(mock_resource_config, 0):
+                await mock_sync_raw_mixin._register_in_batches(
+                    mock_resource_config,
+                    UserAgentType.exporter,
+                    index=0,
+                    dsp_enabled=False,
+                )
+
+    mock_lakehouse_buffer_cls.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_resync_reconciliation_sets_reconciliation_etl_phase_in_logger_context(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,
