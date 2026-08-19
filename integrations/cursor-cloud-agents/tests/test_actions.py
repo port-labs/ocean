@@ -16,6 +16,8 @@ from actions.trigger_agent_executor import TriggerAgentExecutor
 
 T = TypeVar("T", bound=AbstractCursorExecutor)
 
+_WEBHOOK_SIGNING_SECRET = "x" * 32
+
 _V0_LAUNCH_AGENT: dict[str, object] = {
     "id": "bc-1",
     "status": "CREATING",
@@ -42,7 +44,7 @@ def _build_mock_ocean(*, base_url: str | None = "https://cca.example.com") -> Ma
     mock_ocean = MagicMock()
     mock_ocean.app.base_url = base_url
     mock_ocean.integration_config = {
-        "webhook_signing_secret": "test-webhook-signing-secret",
+        "webhook_signing_secret": _WEBHOOK_SIGNING_SECRET,
     }
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
@@ -208,7 +210,7 @@ async def test_create_agent_executor_v0_tracked_with_webhook() -> None:
     assert launch_body["webhook"]["url"] == (
         "https://cca.example.com/integration/webhook"
     )
-    assert launch_body["webhook"]["secret"] == "test-webhook-signing-secret"
+    assert launch_body["webhook"]["secret"] == _WEBHOOK_SIGNING_SECRET
 
 
 @pytest.mark.asyncio

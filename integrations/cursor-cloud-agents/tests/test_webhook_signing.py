@@ -21,8 +21,6 @@ def test_get_webhook_signing_secret_returns_none_when_missing() -> None:
 
 def test_verify_hmac_signature_matches_sha256_header() -> None:
     body = '{"id":"bc-1"}'
-    header = (
-        "sha256=" + hmac.new(b"secret", body.encode(), hashlib.sha256).hexdigest()
-    )
+    header = "sha256=" + hmac.new(b"secret", body.encode(), hashlib.sha256).hexdigest()
     assert verify_hmac_signature("secret", body, header) is True
     assert verify_hmac_signature("other", body, header) is False
