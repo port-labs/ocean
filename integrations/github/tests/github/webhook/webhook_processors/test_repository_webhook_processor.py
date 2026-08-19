@@ -146,6 +146,101 @@ class TestRepositoryWebhookProcessor:
             assert result.deleted_raw_results == [repo_data]
 
     @pytest.mark.parametrize(
+        "action,archived",
+        [
+            ("archived", True),
+            ("unarchived", False),
+        ],
+    )
+    async def test_handle_event_excludes_archived_repository_when_selector_opts_in(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+        action: str,
+        archived: bool,
+    ) -> None:
+        """When exclude_archived is enabled, an "archived" event must not
+        delete or upsert the repository (no action - the next resync will
+        simply omit it from discovery). An "unarchived" event reports
+        archived=False in the payload, so it is unaffected and still upserts
+        normally."""
+        resource_config.selector.exclude_archived = True
+
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "visibility": "public",
+            "default_branch": "main",
+            "archived": archived,
+        }
+
+        payload = {
+            "action": action,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = repo_data
+
+        with (
+            patch.object(
+                repository_webhook_processor,
+                "validate_repository_visibility",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                return_value=mock_exporter,
+            ),
+        ):
+            result = await repository_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        if archived:
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+            mock_exporter.get_resource.assert_not_called()
+        else:
+            assert result.updated_raw_results == [repo_data]
+            assert result.deleted_raw_results == []
+
+    async def test_handle_event_archived_repository_unaffected_by_default(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+    ) -> None:
+        """exclude_archived defaults to False, so an "archived" event must
+        keep deleting the repository as before (backward compatible)."""
+        assert resource_config.selector.exclude_archived is False
+
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "visibility": "public",
+            "default_branch": "main",
+            "archived": True,
+        }
+
+        payload = {
+            "action": "archived",
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        result = await repository_webhook_processor.handle_event(
+            payload, resource_config
+        )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == [repo_data]
+
+    @pytest.mark.parametrize(
         "include_relationships",
         [["teams"], ["collaborators"], ["teams", "collaborators"]],
     )
