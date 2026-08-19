@@ -1334,6 +1334,51 @@ class TestGitLabClient:
                 assert results == []
                 mock_get_paginated.assert_not_called()
 
+    async def test_match_files_with_repository_tree_missing_default_branch(
+        self, client: GitLabClient
+    ) -> None:
+        """Projects without default_branch have no tree ref to search."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/empty",
+        }
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/empty", build_search_query("README.md")
+                ):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
+
+    async def test_match_files_with_repository_tree_null_default_branch(
+        self, client: GitLabClient
+    ) -> None:
+        """Empty GitLab repositories can return default_branch as null."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/empty",
+            "default_branch": None,
+        }
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/empty", build_search_query("README.md")
+                ):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
+
     async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
         """Test that parsed file content with file:// reference fetches and resolves content."""
         # Arrange

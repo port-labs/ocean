@@ -1170,7 +1170,15 @@ class GitLabClient:
             if not project:
                 return
 
-        ref = project["default_branch"]
+        ref = project.get("default_branch")
+        if not ref:
+            logger.info(
+                f"Skipping repository tree file search for project "
+                f"{project.get('path_with_namespace', project.get('id'))}: "
+                "no default branch"
+            )
+            return
+
         match_patterns: list[str] = []
         # (api_path, recursive) — exact file paths keep a non-recursive directory list.
         walks: set[tuple[str, bool]] = set()
