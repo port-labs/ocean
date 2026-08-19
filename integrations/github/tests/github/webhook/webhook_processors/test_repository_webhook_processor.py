@@ -159,11 +159,12 @@ class TestRepositoryWebhookProcessor:
         action: str,
         archived: bool,
     ) -> None:
-        """When exclude_archived is enabled, an "archived" event must not
-        delete or upsert the repository (no action - the next resync will
-        simply omit it from discovery). An "unarchived" event reports
-        archived=False in the payload, so it is unaffected and still upserts
-        normally."""
+        """When exclude_archived is enabled, an "archived" event must delete
+        the repository rather than leave a stale entity behind - the next
+        resync would omit it from discovery, mirroring how a repository that
+        no longer matches the visibility filter is handled. An "unarchived"
+        event reports archived=False in the payload, so it is unaffected and
+        still upserts normally."""
         resource_config.selector.exclude_archived = True
 
         repo_data = {
@@ -202,7 +203,7 @@ class TestRepositoryWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         if archived:
             assert result.updated_raw_results == []
-            assert result.deleted_raw_results == []
+            assert result.deleted_raw_results == [repo_data]
             mock_exporter.get_resource.assert_not_called()
         else:
             assert result.updated_raw_results == [repo_data]
@@ -239,6 +240,47 @@ class TestRepositoryWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == [repo_data]
+
+    async def test_handle_event_upsert_event_on_archived_repository_deletes_instead_of_reintroducing(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+    ) -> None:
+        """An upsert event on an already-archived repository must not
+        reintroduce an entity that resync would skip. The repository is
+        deleted instead, and no fetch is issued for it."""
+        resource_config.selector.exclude_archived = True
+
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "visibility": "public",
+            "default_branch": "main",
+            "archived": True,
+        }
+
+        payload = {
+            "action": "edited",
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = repo_data
+
+        with patch(
+            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+            return_value=mock_exporter,
+        ):
+            result = await repository_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == [repo_data]
+        mock_exporter.get_resource.assert_not_called()
 
     @pytest.mark.parametrize(
         "include_relationships",
