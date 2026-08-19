@@ -39,7 +39,7 @@ class HttpEventListenerSettings(EventListenerSettings):
         """
         return {
             "type": self.type,
-            "url": self.app_host + "/resync",
+            "url": f"{self.app_host}/resync",
         }
 
 
