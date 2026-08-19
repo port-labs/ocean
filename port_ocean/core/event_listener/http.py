@@ -2,9 +2,9 @@ from typing import Any, Literal
 
 from fastapi import APIRouter
 from loguru import logger
-from pydantic.v1 import AnyHttpUrl
-from pydantic.v1.fields import Field
+from pydantic import AnyHttpUrl
 
+from port_ocean.config.base import sensitive_field
 from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
@@ -26,7 +26,7 @@ class HttpEventListenerSettings(EventListenerSettings):
     """
 
     type: Literal[EventListenerType.WEBHOOK]
-    app_host: AnyHttpUrl = Field(..., sensitive=True)
+    app_host: AnyHttpUrl = sensitive_field()
 
     def get_changelog_destination_details(self) -> dict[str, Any]:
         """
