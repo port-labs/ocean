@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Allow empty files in GraphQL resync to align with REST/webhook paths
