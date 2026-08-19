@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.7.30 (2026-08-19)
+
+
+### Bug Fixes
+
+- Allow empty files in GraphQL resync to align with REST/webhook paths (PORT-18387)
+
+
 ## 6.7.29 (2026-08-18)
 
 
