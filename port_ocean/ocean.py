@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, Callable, Dict, Type
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
 
 import port_ocean.helpers.metric.metric
@@ -263,7 +263,7 @@ class Ocean:
     def base_url(self) -> str:
         integration_config = self.config.integration.config
         if isinstance(integration_config, BaseModel):
-            integration_config = integration_config.dict()
+            integration_config = integration_config.model_dump(mode="json")
         if integration_config.get("app_host"):
             logger.warning(
                 "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
