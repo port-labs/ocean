@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Paginate services with the cursor token returned by Komodor so resync fetches every page
