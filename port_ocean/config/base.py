@@ -1,4 +1,5 @@
 import os
+from pydantic import Field
 import re
 from types import GenericAlias
 from typing import Any
@@ -182,3 +183,9 @@ def _get_sensitive_information(
         sensitive_set.update(sensitive_data)
 
     return sensitive_set
+
+
+def sensitive_field(**kwargs: Any) -> Any:
+    extra = dict(kwargs.pop("json_schema_extra", None) or {})
+    extra["sensitive"] = True
+    return Field(**kwargs, json_schema_extra=extra)
