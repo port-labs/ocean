@@ -1,7 +1,8 @@
 name: Notify on external contribution
 
 on:
-  pull_request:
+  # pull_request_target so fork PRs get secrets; safe since no PR code is checked out
+  pull_request_target:
     types: [opened, synchronize]
   issue_comment:
     types: [created, edited, deleted]
@@ -21,26 +22,21 @@ jobs:
     steps:
       - name: Evaluate contributor status and notify n8n
         uses: actions/github-script@v9
+        continue-on-error: true # informational only, must never block a PR
         env:
           N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_URL: ${{ secrets.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_URL }}
           N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_USERNAME: ${{ secrets.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_USERNAME }}
           N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_PASSWORD: ${{ secrets.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_PASSWORD }}
+          ORG_MEMBERSHIP_TOKEN: ${{ secrets.ORG_MEMBERSHIP_TOKEN }}
         with:
           script: |
             const eventName = context.eventName;
             const payload = context.payload;
 
-            // Associations that count as "internal" to the org.
-            // Adjust this set if e.g. invited external collaborators
-            // should still be treated as external.
-            const INTERNAL_ASSOCIATIONS = new Set(['MEMBER', 'OWNER', 'COLLABORATOR']);
-
-            // Always resolve the PR's *author* association — never the
-            // commenter's — since "internal vs external" is determined
-            // by who opened the PR, per the requirements.
+            // "internal vs external" is determined by the PR author, never the commenter
             let pr;
             switch (eventName) {
-              case 'pull_request':
+              case 'pull_request_target':
                 pr = payload.pull_request;
                 break;
               case 'issue_comment':
@@ -57,12 +53,31 @@ jobs:
             }
 
             const authorAssociation = pr.author_association;
-            const isExternal = !INTERNAL_ASSOCIATIONS.has(authorAssociation);
+            const org = payload.repository.owner.login;
 
-            core.info(`Event: ${eventName} | PR author association: ${authorAssociation} | external: ${isExternal}`);
+            // author_association misreports private org members as CONTRIBUTOR, so check
+            // real org membership via a fine-grained PAT (org resource, Members: Read-only)
+            const { getOctokit } = require('@actions/github');
+            const orgClient = getOctokit(process.env.ORG_MEMBERSHIP_TOKEN);
+
+            let isExternal;
+            try {
+              await orgClient.rest.orgs.checkMembershipForUser({ org, username: pr.user.login });
+              isExternal = false;
+            } catch (err) {
+              if (err.status === 404) {
+                isExternal = true;
+              } else {
+                // Can't determine membership — skip rather than guess or fail the job
+                core.warning(`Org membership check failed (${err.status}): ${err.message}. Skipping notification.`);
+                return;
+              }
+            }
+
+            core.info(`Event: ${eventName} | PR author: ${pr.user.login} | org member: ${!isExternal}`);
 
             if (!isExternal) {
-              core.info('PR author is internal — skipping webhook.');
+              core.info('PR author is an org member — skipping webhook.');
               return;
             }
 
