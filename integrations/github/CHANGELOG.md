@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Allow empty files in GraphQL resync to align with REST/webhook paths (PORT-18387)
+- Allow empty files in GraphQL resync to align with REST/webhook paths
 
 
 ## 6.7.29 (2026-08-18)
