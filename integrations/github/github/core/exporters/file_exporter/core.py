@@ -340,7 +340,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             size = file_data.get("byteSize", 0)
             skip_parsing = file_metadata.get(file_path, False)
 
-            if not content:
+            if content is None:
                 logger.warning(f"File {file_path} has no content from {organization}")
                 continue
 
