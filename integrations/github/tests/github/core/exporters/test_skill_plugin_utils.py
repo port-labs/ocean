@@ -130,7 +130,9 @@ description: A minimal example
         assert deleted["skill"]["skillMdPath"] == upserted["skill"]["skillMdPath"]
         assert deleted["skill"]["name"] == "hello"
         assert deleted["skill"]["blob_sha"] is None
-        assert upserted["skill"]["blob_sha"] == "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
+        assert (
+            upserted["skill"]["blob_sha"] == "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
+        )
 
 
 class TestPluginUtils:

@@ -146,9 +146,9 @@ def build_skill_raw_item(
 ) -> dict[str, Any]:
     """Single entry point for building a skill raw item.
 
-    Webhook deletes call this with an empty ``content`` (and no ``blob_sha``) so
-    that deleted entities carry the exact same identifiers as the upserted
-    ones.
+    Webhook deletes call this with an empty ``content`` so that deleted
+    entities carry the exact same identifiers as the upserted ones. The
+    compare API's blob SHA is passed through as ``blob_sha`` when present.
     """
     return SkillRawItem(
         skill=_build_skill(
