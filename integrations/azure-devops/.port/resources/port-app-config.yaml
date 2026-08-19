@@ -168,6 +168,7 @@ resources:
             result: .result
             startTime: .startTime
             finishTime: .finishTime
+            stageType: .type
           relations:
             project: .__project.id | gsub(" "; "")
             build: .__project.id + "/" + (.__build.id | tostring) | gsub(" "; "")
@@ -277,6 +278,7 @@ resources:
             reviewers: '[.reviewers[].displayName]'
             sourceBranch: .sourceRefName | gsub("refs/heads/"; "")
             targetBranch: .targetRefName | gsub("refs/heads/"; "")
+            leadTimeHours: (.creationDate as $createdAt | .status as $status | .closedDate as $closedAt | ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp | ($closedAt | if . == null then null else sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $closedTimestamp | if $status == "completed" and $closedTimestamp != null then (((($closedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) else null end)
           relations:
             repository: .repository.id
             project: .repository.project.id | gsub(" "; "")

@@ -390,7 +390,11 @@
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": ["completed", "abandoned", "active"],
+          "enum": [
+            "completed",
+            "abandoned",
+            "active"
+          ],
           "enumColors": {
             "completed": "yellow",
             "abandoned": "red",
@@ -425,7 +429,9 @@
         "reviewers": {
           "title": "Reviewers",
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "icon": "User"
         },
         "sourceBranch": {
@@ -435,6 +441,10 @@
         "targetBranch": {
           "title": "Target Branch",
           "type": "string"
+        },
+        "leadTimeHours": {
+          "title": "Lead Time in hours",
+          "type": "number"
         }
       },
       "required": []
@@ -470,7 +480,13 @@
         "result": {
           "title": "Result",
           "type": "string",
-          "enum": ["succeeded", "partiallySucceeded", "failed", "canceled", "none"],
+          "enum": [
+            "succeeded",
+            "partiallySucceeded",
+            "failed",
+            "canceled",
+            "none"
+          ],
           "enumColors": {
             "succeeded": "green",
             "partiallySucceeded": "yellow",
@@ -523,7 +539,7 @@
       "project": {
         "title": "Project",
         "target": "azureDevopsProject",
-        "required": false,
+        "required": true,
         "many": false
       },
       "repository": {
@@ -596,7 +612,14 @@
         "result": {
           "title": "Result",
           "type": "string",
-          "enum": ["succeeded", "succeededWithIssues", "failed", "canceled", "skipped", "abandoned"],
+          "enum": [
+            "succeeded",
+            "succeededWithIssues",
+            "failed",
+            "canceled",
+            "skipped",
+            "abandoned"
+          ],
           "enumColors": {
             "succeeded": "green",
             "succeededWithIssues": "yellow",
@@ -615,6 +638,10 @@
           "title": "Finish Time",
           "type": "string",
           "format": "date-time"
+        },
+        "stageType": {
+          "title": "Stage Type",
+          "type": "string"
         }
       },
       "required": []
@@ -626,13 +653,13 @@
       "project": {
         "title": "Project",
         "target": "azureDevopsProject",
-        "required": false,
+        "required": true,
         "many": false
       },
       "build": {
         "title": "Build",
         "target": "azureDevopsBuild",
-        "required": false,
+        "required": true,
         "many": false
       }
     }
@@ -667,7 +694,7 @@
       "project": {
         "title": "Project",
         "target": "azureDevopsProject",
-        "required": false,
+        "required": true,
         "many": false
       }
     }
@@ -714,13 +741,13 @@
       "project": {
         "title": "Project",
         "target": "azureDevopsProject",
-        "required": false,
+        "required": true,
         "many": false
       },
       "environment": {
         "title": "Environment",
         "target": "azureDevopsEnvironment",
-        "required": false,
+        "required": true,
         "many": false
       }
     }
@@ -783,7 +810,7 @@
       "release": {
         "title": "Release",
         "target": "azureDevopsRelease",
-        "required": false,
+        "required": true,
         "many": false
       }
     }
