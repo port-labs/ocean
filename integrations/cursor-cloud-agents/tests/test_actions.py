@@ -9,7 +9,6 @@ import pytest
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-import core.webhook_signing as webhook_signing
 from actions.abstract_executor import AbstractCursorExecutor
 from actions.create_agent_executor import CreateAgentExecutor
 from actions.exceptions import InvalidActionParametersException
@@ -24,11 +23,6 @@ _V0_LAUNCH_AGENT: dict[str, object] = {
     "target": {"url": "https://cursor.com/agents?id=bc-1"},
     "createdAt": "2026-07-16T11:11:03.025Z",
 }
-
-
-@pytest.fixture(autouse=True)
-def _reset_org_id_cache() -> None:
-    webhook_signing._org_id_cache = None
 
 
 @asynccontextmanager
@@ -50,7 +44,6 @@ def _build_mock_ocean(*, base_url: str | None = "https://cca.example.com") -> Ma
     mock_ocean.integration_config = {
         "webhook_signing_secret": "test-webhook-signing-secret",
     }
-    mock_ocean.port_client.get_org_id = AsyncMock(return_value="test-org-id")
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     return mock_ocean
@@ -213,9 +206,9 @@ async def test_create_agent_executor_v0_tracked_with_webhook() -> None:
 
     launch_body = client_mock.send_api_request.await_args.kwargs["json_body"]
     assert launch_body["webhook"]["url"] == (
-        "https://cca.example.com/integration/webhook/run_1"
+        "https://cca.example.com/integration/webhook"
     )
-    assert len(launch_body["webhook"]["secret"]) >= 32
+    assert launch_body["webhook"]["secret"] == "test-webhook-signing-secret"
 
 
 @pytest.mark.asyncio
@@ -340,7 +333,7 @@ async def test_create_agent_executor_v0_tracked_works_without_webhook_signing_se
 
     launch_body = client_mock.send_api_request.await_args.kwargs["json_body"]
     assert launch_body["webhook"]["url"] == (
-        "https://cca.example.com/integration/webhook/run_1"
+        "https://cca.example.com/integration/webhook"
     )
     assert "secret" not in launch_body["webhook"]
 
