@@ -100,6 +100,23 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: pipeline
+    selector:
+      query: 'true'
+      includeRepo: true
+    port:
+      entity:
+        mappings:
+          identifier: .__projectId + "/" + (.id | tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"azureDevopsPipeline"'
+          properties:
+            url: ._links.web.href
+            revision: .revision
+            folder: .folder
+          relations:
+            project: .__projectId | gsub(" "; "")
+            repository: 'if .__repository then .__repository.id else null end'
   - kind: environment
     selector:
       query: 'true'
@@ -240,6 +257,7 @@ resources:
             pipelineName: .pipeline.name
           relations:
             project: .__project.id | gsub(" "; "")
+            pipeline: .__project.id + "/" + (.__pipeline.id | tostring) | gsub(" "; "")
   - kind: pull-request
     selector:
       query: 'true'

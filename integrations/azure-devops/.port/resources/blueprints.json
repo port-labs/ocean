@@ -342,6 +342,46 @@
     }
   },
   {
+    "identifier": "azureDevopsPipeline",
+    "title": "Pipeline",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "number"
+        },
+        "folder": {
+          "title": "Folder",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": false,
+        "many": false
+      },
+      "repository": {
+        "title": "Repository",
+        "target": "azureDevopsRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "azureDevopsPullRequest",
     "title": "Pull Request",
     "icon": "AzureDevops",
@@ -532,6 +572,12 @@
       "project": {
         "title": "Project",
         "target": "azureDevopsProject",
+        "required": false,
+        "many": false
+      },
+      "pipeline": {
+        "title": "Pipeline",
+        "target": "azureDevopsPipeline",
         "required": false,
         "many": false
       }
