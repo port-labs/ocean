@@ -54,6 +54,7 @@ jobs:
 
             const authorAssociation = pr.author_association;
             const org = payload.repository.owner.login;
+            const user = pr.user.login;
 
             // author_association misreports private org members as CONTRIBUTOR, so check
             // real org membership via a fine-grained PAT (org resource, Members: Read-only)
@@ -62,7 +63,7 @@ jobs:
 
             let isExternal;
             try {
-              await orgClient.rest.orgs.checkMembershipForUser({ org, username: pr.user.login });
+              await orgClient.rest.orgs.checkMembershipForUser({ org, username: user });
               isExternal = false;
             } catch (err) {
               if (err.status === 404) {
@@ -74,7 +75,7 @@ jobs:
               }
             }
 
-            core.info(`Event: ${eventName} | PR author: ${pr.user.login} | org member: ${!isExternal}`);
+            core.info(`Event: ${eventName} | PR author: ${user} | org member: ${!isExternal}`);
 
             if (!isExternal) {
               core.info('PR author is an org member — skipping webhook.');
@@ -89,7 +90,7 @@ jobs:
                 number: pr.number,
                 title: pr.title,
                 url: pr.html_url,
-                author: pr.user.login,
+                author: user,
                 author_association: authorAssociation,
                 state: pr.state,
               },
