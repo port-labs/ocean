@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added the git blob SHA (`blob_sha`) of each `SKILL.md` file to the `skill` kind's raw payload, enabling content-addressed duplicate/change detection without diffing full file text.
