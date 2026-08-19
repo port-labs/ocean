@@ -218,6 +218,7 @@ def filter_github_tree_entries_by_pattern(
                 {
                     "path": path,
                     "fetch_method": fetch_method,
+                    "sha": entry.get("sha"),
                 }
             )
 
@@ -225,7 +226,13 @@ def filter_github_tree_entries_by_pattern(
 
 
 def get_graphql_file_metadata(
-    host: str, organization: str, repo_name: str, branch: str, file_path: str, size: int
+    host: str,
+    organization: str,
+    repo_name: str,
+    branch: str,
+    file_path: str,
+    size: int,
+    sha: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Get metadata for a file from the GraphQL API.
@@ -236,6 +243,7 @@ def get_graphql_file_metadata(
         "url": url,
         "path": file_path,
         "size": size,
+        "sha": sha,
     }
 
 
@@ -292,16 +300,18 @@ def extract_file_index(field_name: str) -> Optional[int]:
 
 def extract_file_paths_and_metadata(
     files: List[Dict[str, Any]],
-) -> tuple[list[str], dict[str, bool]]:
+) -> tuple[list[str], dict[str, bool], dict[str, Optional[str]]]:
     file_paths = []
     file_metadata = {}
+    file_shas: dict[str, Optional[str]] = {}
 
     for file in files:
         file_path = file["file_path"]
         file_paths.append(file_path)
         file_metadata[file_path] = file["skip_parsing"]
+        file_shas[file_path] = file.get("sha")
 
-    return file_paths, file_metadata
+    return file_paths, file_metadata, file_shas
 
 
 def deep_dict(d: Union[DefaultDict[str, Any], Dict[str, Any], list[Any], Any]) -> Any:
