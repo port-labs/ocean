@@ -167,16 +167,17 @@ class BaseOceanModel(BaseModel):
 def _get_sensitive_information(
     model: BaseOceanModel | BaseSettings,
 ) -> set[str]:
+    fields = type(model).model_fields
     sensitive_fields = [
         field_name
-        for field_name, field in model.__fields__.items()
-        if field.field_info.extra.get("sensitive", False)
+        for field_name, field in fields.items()
+        if isinstance(extra := field.json_schema_extra, dict) and extra.get("sensitive")
     ]
     sensitive_set = {str(getattr(model, field_name)) for field_name in sensitive_fields}
 
     recursive_sensitive_data = [
         getattr(model, field_name).get_sensitive_fields_data()
-        for field_name, field in model.__fields__.items()
+        for field_name, field in fields.items()
         if isinstance(getattr(model, field_name), BaseOceanModel)
     ]
     for sensitive_data in recursive_sensitive_data:
