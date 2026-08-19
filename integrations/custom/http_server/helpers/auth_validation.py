@@ -4,7 +4,7 @@ Custom authentication configuration validation helpers.
 
 from typing import Any
 
-from pydantic import parse_raw_as, parse_obj_as, ValidationError
+from pydantic.v1 import parse_raw_as, parse_obj_as, ValidationError
 
 from http_server.overrides import (
     CustomAuthRequestConfig,

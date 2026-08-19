@@ -2,31 +2,14 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
 
 CUSTOM_KIND = "__custom__"
 
 
-class _FieldMetadataEnforcer(BaseModel):
-    pass
-
-    # TODO: Uncomment this when we completed assigning all the titles and descriptions
-    # def __init_subclass__(cls, **kwargs: Any) -> None:
-    #     super().__init_subclass__(**kwargs)
-    #     for field_name, field in cls.__fields__.items():
-    #         if field.field_info.title is None:
-    #             raise TypeError(
-    #                 f"Field '{field_name}' in '{cls.__name__}' must have a 'title'"
-    #             )
-    #         if field.field_info.description is None:
-    #             raise TypeError(
-    #                 f"Field '{field_name}' in '{cls.__name__}' must have a 'description'"
-    #             )
-
-
-class Rule(_FieldMetadataEnforcer):
+class Rule(BaseModel):
     property: str = Field(title="Property", description="The property to search on.")
     operator: str = Field(
         title="Operator", description="The operator to use for the search."
@@ -34,7 +17,7 @@ class Rule(_FieldMetadataEnforcer):
     value: str = Field(title="Value", description="The value to search for.")
 
 
-class IngestSearchQuery(_FieldMetadataEnforcer):
+class IngestSearchQuery(BaseModel):
     combinator: str = Field(
         title="Combinator",
         description="The combinator to use for the search, avaliable: 'and', 'or'.",
@@ -44,7 +27,7 @@ class IngestSearchQuery(_FieldMetadataEnforcer):
     )
 
 
-class EntityMapping(_FieldMetadataEnforcer):
+class EntityMapping(BaseModel):
     identifier: str | IngestSearchQuery = Field(
         title="Identifier", description="The identifier to use for the entity."
     )
@@ -78,13 +61,13 @@ class EntityMapping(_FieldMetadataEnforcer):
         )
 
 
-class MappingsConfig(_FieldMetadataEnforcer):
+class MappingsConfig(BaseModel):
     mappings: EntityMapping = Field(
         title="Mappings", description="The mappings to use for the entity."
     )
 
 
-class PortResourceConfig(_FieldMetadataEnforcer):
+class PortResourceConfig(BaseModel):
     entity: MappingsConfig = Field(
         title="Entity", description="The entity to use for the resource."
     )
@@ -107,14 +90,20 @@ class PortResourceConfig(_FieldMetadataEnforcer):
     )
 
 
-class Selector(_FieldMetadataEnforcer):
+class Selector(BaseModel):
     query: str = Field(
         title="Query",
         description="JQ expression that will filter which objects of the specified kind will be ingested into Port.",
     )
+    export_env_variables: list[str] = Field(
+        alias="exportEnvVariables",
+        default_factory=list,
+        title="Export Env Variables",
+        description="Environment variable names whose values should be included in lakehouse ingest payloads for DSP processing.",
+    )
 
 
-class ResourceConfig(_FieldMetadataEnforcer):
+class ResourceConfig(BaseModel):
     kind: str = Field(
         title="Kind",
         description="key is a specifier for the object you wish to map from the tool's API.",
@@ -129,7 +118,7 @@ class ResourceConfig(_FieldMetadataEnforcer):
     )
 
 
-class PortAppConfig(_FieldMetadataEnforcer):
+class PortAppConfig(BaseModel):
     allow_custom_kinds: ClassVar[bool] = False
 
     enable_merge_entity: bool = Field(
@@ -156,8 +145,8 @@ class PortAppConfig(_FieldMetadataEnforcer):
         default=0.9,
         ge=0,
         le=1,
-        title="Deletion safety limit",
-        description="Skip deletion if the number of entities to delete exceeds this percentage of total entities. Set between 0 and 1. Protects against accidental mass deletion from misconfigurations.",
+        title="Allow entity deletion",
+        description="When on - deletes entities missing from the source, keeping the catalog in sync. When off - no deletions, stale entities may remain.",
     )
     resources: list[ResourceConfig] = Field(
         default_factory=list,
@@ -185,15 +174,14 @@ class PortAppConfig(_FieldMetadataEnforcer):
             ],
         }
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-
-        # TODO: Uncomment this when we completed sweeping on integration classes
-        # from port_ocean.core.handlers.port_app_config.validators import (
-        #     validate_and_get_config_schema,
-        # )
-
-        # validate_and_get_resource_kinds(cls)
+    def to_dsp_lifecycle_mapping(self) -> dict[str, Any]:
+        mapping = self.to_request()
+        for resource in mapping.get("resources", []):
+            entity = resource.get("port", {}).get("entity", {})
+            mappings = entity.get("mappings")
+            if mappings is not None and not isinstance(mappings, list):
+                entity["mappings"] = [mappings]
+        return mapping
 
     class Config:
         allow_population_by_field_name = True

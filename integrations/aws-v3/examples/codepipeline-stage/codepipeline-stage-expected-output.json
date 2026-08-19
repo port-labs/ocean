@@ -1,0 +1,39 @@
+{
+  "identifier": "arn:aws:codepipeline:eu-west-1:123456789012:my-pipeline/Source",
+  "title": "my-pipeline/Source",
+  "properties": {
+    "pipelineName": "my-pipeline",
+    "pipelineArn": "arn:aws:codepipeline:eu-west-1:1234589012:my-pipeline",
+    "actions": [
+      {
+        "name": "GitHub_Source",
+        "region": "eu-west-1",
+        "runOrder": 1,
+        "actionTypeId": {
+          "owner": "AWS",
+          "version": "1",
+          "category": "Source",
+          "provider": "CodeStarSourceConnection"
+        },
+        "configuration": {
+          "BranchName": "main",
+          "ConnectionArn": "arn:aws:codeconnections:eu-west-1:123456789012:connection/1fb190f1-18f2-47f5-9f19-35f6d26b6134",
+          "FullRepositoryId": "Org/Repo",
+          "OutputArtifactFormat": "CODEBUILD_CLONE_REF"
+        },
+        "inputArtifacts": [],
+        "outputArtifacts": [
+          {
+            "name": "SourceArtifact"
+          }
+        ]
+      }
+    ],
+    "name": "Source",
+    "order": 1
+  },
+  "relations": {
+    "account": "123456789012"
+  },
+  "icon": "AWS"
+}

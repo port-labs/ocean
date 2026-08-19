@@ -1,4 +1,3 @@
-import asyncio
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
@@ -11,21 +10,46 @@ if TYPE_CHECKING:
 
 
 class TokenRetryTransport(RetryTransport):
+    """Retry transport for the Port API client (async httpx only).
+
+    Token refresh on 401 is implemented in ``before_retry_async``; the sync retry
+    path does not refresh tokens because ``PortClient`` uses ``httpx.AsyncClient``.
+    """
+
     def __init__(self, port_client: "PortClient", **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.port_client = port_client
-
-    async def _handle_unauthorized(self, response: httpx.Response) -> None:
-        token = await self.port_client.auth.token
-        response.headers["Authorization"] = f"Bearer {token}"
 
     def is_token_error(self, response: httpx.Response) -> bool:
         return (
             response.status_code == HTTPStatus.UNAUTHORIZED
             and "/auth/access_token" not in str(response.request.url)
             and self.port_client.auth.last_token_object is not None
-            and self.port_client.auth.last_token_object.expired
         )
+
+    async def _refresh_request_authorization(
+        self, request: httpx.Request
+    ) -> httpx.Request:
+        headers = request.headers.copy()
+        headers["Authorization"] = await self.port_client.auth.refresh_token()
+        return httpx.Request(
+            method=request.method,
+            url=request.url,
+            headers=headers,
+            content=request.content,
+            extensions=request.extensions,
+        )
+
+    async def before_retry_async(
+        self,
+        request: httpx.Request,
+        response: httpx.Response | None,
+        sleep_time: float,
+        attempt: int,
+    ) -> httpx.Request | None:
+        if response is not None and self.is_token_error(response):
+            return await self._refresh_request_authorization(request)
+        return None
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if self.is_token_error(response):
@@ -33,19 +57,5 @@ class TokenRetryTransport(RetryTransport):
                 self._logger.info(
                     "Got unauthorized response, trying to refresh token before retrying"
                 )
-            await self._handle_unauthorized(response)
             return True
         return await super()._should_retry_async(response)
-
-    def _should_retry(self, response: httpx.Response) -> bool:
-        if self.is_token_error(response):
-            if self._logger:
-                self._logger.info(
-                    "Got unauthorized response, trying to refresh token before retrying"
-                )
-            asyncio.get_running_loop().run_until_complete(
-                self._handle_unauthorized(response)
-            )
-
-            return True
-        return super()._should_retry(response)

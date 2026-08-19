@@ -8,7 +8,6 @@ from loguru import logger
 from bitbucket_cloud.client import BitbucketClient
 from fnmatch import fnmatch
 
-
 FILE_PROPERTY_PREFIX = "file://"
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")

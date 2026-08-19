@@ -19,7 +19,6 @@ from github.helpers.gql_queries import (
     FETCH_GITHUB_USER_GQL,
 )
 
-
 TEST_USERS_NO_EMAIL_INITIAL = [
     {
         "login": "user1",

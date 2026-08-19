@@ -2,15 +2,11 @@ from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
-class ListOrganizationOptions(TypedDict):
-    """Options for listing organizations."""
-
-    organization: NotRequired[str]
-    allowed_multi_organizations: NotRequired[List[str]]
-    include_authenticated_user: NotRequired[bool]
+class ListOrganizationOptions(BaseModel):
+    organization: Optional[str] = None
 
 
 class SingleOrganizationOptions(TypedDict):
@@ -47,11 +43,16 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
-    """Options for listing pull requests."""
+    """Options for listing pull requests.
+
+    For closed PRs exactly one cutoff drives filtering: ``updated_after`` filters by
+    ``updated_at`` (days lookback); ``closed_after`` filters by ``closed_at`` (closedSinceDate).
+    """
 
     states: Required[list[str]]
-    max_results: Required[int]
-    updated_after: Required[datetime]
+    max_results: Required[Optional[int]]
+    updated_after: NotRequired[Optional[datetime]]
+    closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
 
@@ -113,6 +114,8 @@ class ListWorkflowRunOptions(RepositoryIdentifier):
 
     workflow_id: Required[int]
     max_runs: Required[int]
+    status: NotRequired[Optional[str]]
+    created: NotRequired[Optional[str]]
 
 
 class SingleWorkflowRunOptions(RepositoryIdentifier):
@@ -159,10 +162,13 @@ class SingleEnvironmentOptions(RepositoryIdentifier):
     """Options for fetching a single environment."""
 
     name: str
+    include_variables: NotRequired[bool]
 
 
 class ListEnvironmentsOptions(RepositoryIdentifier):
     """Options for listing environments."""
+
+    include_variables: NotRequired[bool]
 
 
 class SingleDeploymentOptions(RepositoryIdentifier):
@@ -176,6 +182,7 @@ class ListDeploymentsOptions(RepositoryIdentifier):
 
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
+    enrich_with_first_commit: NotRequired[bool]
 
 
 class SingleDeploymentStatusOptions(RepositoryIdentifier):
@@ -238,6 +245,19 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+
+
+class PluginRepositoryOptions(SingleOrganizationOptions):
+    """Options for detecting an agent plugin in a single repository."""
+
+    repository: Required[dict[str, Any]]
+    branch: Required[str]
+
+
+class ListPluginOptions(SingleOrganizationOptions):
+    """Options for detecting agent plugins across an organization's repositories."""
+
+    repositories: Required[List[PluginRepositoryOptions]]
 
 
 class SingleFolderOptions(TypedDict):

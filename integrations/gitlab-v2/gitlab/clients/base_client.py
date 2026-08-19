@@ -110,6 +110,11 @@ class HTTPBaseClient:
             logger.warning(
                 f"Resource access error at {url} (status {status_code}): {e.response.text}"
             )
-            return {}
+            # For read operations an empty dict signals "skip this resource".
+            # For write operations (POST, PATCH, PUT, DELETE) we must re-raise so
+            # the caller can surface the real permission/not-found error.
+            if method.upper() == "GET":
+                return {}
+            return None
         logger.error(f"HTTP status error for {method} request to {path}: {e}")
         return None

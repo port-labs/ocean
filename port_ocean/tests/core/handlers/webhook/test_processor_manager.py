@@ -6,6 +6,7 @@ import pytest
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 from httpx import Response
+from starlette.requests import ClientDisconnect
 
 from port_ocean import Ocean
 from port_ocean.clients.port.client import PortClient
@@ -277,7 +278,6 @@ def mock_http_client() -> MagicMock:
 @pytest.fixture
 def mock_port_client(mock_http_client: MagicMock) -> PortClient:
     mock_port_client = PortClient(
-        MagicMock(),
         MagicMock(),
         MagicMock(),
         MagicMock(),
@@ -701,6 +701,22 @@ async def test_handle_webhook_does_not_call_log_webhook_event_when_events_debug_
 
     assert response.status_code == 200
     mock_log_webhook_event.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_webhook_reraises_client_disconnect(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    test_path = "/webhook-client-disconnect"
+    processor_manager.register_processor(test_path, MockProcessor)
+    app = FastAPI()
+    app.include_router(processor_manager._router)
+
+    with patch.object(WebhookEvent, "from_request", side_effect=ClientDisconnect()):
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post(test_path, json={"event": "test"})
+
+    assert response.status_code == 500
 
 
 @pytest.mark.asyncio

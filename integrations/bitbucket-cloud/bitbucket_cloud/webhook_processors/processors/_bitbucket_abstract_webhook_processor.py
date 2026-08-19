@@ -6,13 +6,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
+    WebhookOriginalRequest,
 )
 from abc import abstractmethod
 
 import hashlib
 import hmac
 
-from fastapi import Request
 from loguru import logger
 
 
@@ -23,7 +23,7 @@ class _BitbucketAbstractWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
-    async def _verify_webhook_signature(self, request: Request) -> bool:
+    async def _verify_webhook_signature(self, request: WebhookOriginalRequest) -> bool:
         """Authenticate the Bitbucket webhook payload using the secret.
         Skip if secret was not provided
         """

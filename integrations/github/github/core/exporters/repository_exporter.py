@@ -1,9 +1,18 @@
 import asyncio
+import copy
+from datetime import datetime
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
-from github.helpers.utils import parse_github_options, get_repository_metadata
-from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+from github.helpers.utils import (
+    parse_github_options,
+    get_repository_metadata,
+    fetch_repository_metadata,
+)
+from github.clients.auth.github_app.installation_authenticator import (
+    GitHubAppInstallationAuthenticator,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
@@ -12,9 +21,27 @@ from github.core.options import (
     SingleRepositoryOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    paginate_with_strategy,
+)
+
+REPOSITORY_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="updated_at",
+    query_params={"sort": "updated", "direction": "desc"},
+)
+
+
+REPOSITORY_SEARCH_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="updated_at",
+    query_params={"sort": "updated", "order": "desc"},
+)
 
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
+
+ENRICHMENT_BATCH_SIZE = 10
 
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
@@ -26,14 +53,19 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "pages": "_enrich_repository_with_pages",
     }
 
-    async def get_resource[
-        ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
+        self, options: ExporterOptionsT, *, skip_metadata_cache: bool = False
+    ) -> Optional[RAW_ITEM]:
         name = options["name"]
         organization = options["organization"]
         included_relations = options.get("included_relations")
 
-        response = await get_repository_metadata(self.client, organization, name)
+        fetch = (
+            fetch_repository_metadata
+            if skip_metadata_cache
+            else get_repository_metadata
+        )
+        response = await fetch(self.client, organization, name)
         if not response:
             logger.warning(
                 f"No repository found with identifier: {name} for organization {organization}"
@@ -53,39 +85,46 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             organization,
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListRepositoryOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
         options_dict = dict(options)
         included_relations = options_dict.pop("included_relations", None)
 
         async for repos in self._fetch_repositories(
-            cast(ListRepositoryOptions, options_dict)
+            cast(ListRepositoryOptions, options_dict),
+            incremental_cursor=active_incremental_cursor(),
         ):
             if not included_relations:
                 yield repos
-            else:
-                included_relations = cast(dict[str, dict[str, Any]], included_relations)
-                logger.info(
-                    f"Enriching repositories with {list(included_relations.keys())}"
-                )
-                batch = await asyncio.gather(
+                continue
+
+            included_relations = cast(dict[str, dict[str, Any]], included_relations)
+            logger.info(
+                f"Enriching repositories with {list(included_relations.keys())}"
+            )
+
+            for batch in batched(repos, ENRICHMENT_BATCH_SIZE):
+                enriched = await asyncio.gather(
                     *[
                         self.enrich_repository_with_selected_relationships(
-                            repo,
+                            copy.deepcopy(repo),
                             included_relations,
                             organization,
                         )
-                        for repo in repos
+                        for repo in batch
                     ]
                 )
-                yield batch
+                yield enriched
 
     @cache_iterator_result()
     async def _fetch_repositories(
-        self, options: ListRepositoryOptions
+        self,
+        options: ListRepositoryOptions,
+        *,
+        incremental_cursor: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
         organization_type = params.pop("organization_type")
@@ -94,7 +133,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         )
         is_personal_account = organization_type == "User"
         is_github_app_authenticated = isinstance(
-            self.client.authenticator, GitHubAppAuthenticator
+            self.client.authenticator, GitHubAppInstallationAuthenticator
         )
 
         use_search_api = search_params is not None or (
@@ -103,7 +142,11 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         strategy = self._search_strategy if use_search_api else self._list_strategy
 
         async for batch in strategy(
-            organization, organization_type, params, search_params
+            organization,
+            organization_type,
+            params,
+            search_params,
+            incremental_cursor=incremental_cursor,
         ):
             yield batch
 
@@ -113,11 +156,20 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization_type: str,
         params: dict[str, Any],
         _: Optional[RepoSearchParams],
+        *,
+        incremental_cursor: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         url, final_params = self._build_repos_url_and_params(
-            organization, organization_type, params
+            organization,
+            organization_type,
+            REPOSITORY_INCREMENTAL.merge_params(params, incremental_cursor),
         )
-        async for repos in self.client.send_paginated_request(url, final_params):
+
+        async for repos in paginate_with_strategy(
+            self.client.send_paginated_request(url, final_params),
+            cursor=incremental_cursor,
+            strategy=REPOSITORY_INCREMENTAL,
+        ):
             logger.info(
                 f"Fetched batch of {len(repos)} repositories from organization {organization}"
             )
@@ -129,6 +181,8 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         _: str,
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
+        *,
+        incremental_cursor: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repository_type = params.pop("type")
         forced_qualifiers = (
@@ -141,9 +195,26 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else " ".join(forced_qualifiers).strip()
         )
 
-        query_params = {"q": f"org:{organization} {raw_q}", **params}
+        query_params = {
+            "q": f"org:{organization} {raw_q}",
+            **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, incremental_cursor),
+        }
         url = f"{self.client.base_url}/search/repositories"
 
+        async for repos in paginate_with_strategy(
+            self._search_result_items(url, query_params),
+            cursor=incremental_cursor,
+            strategy=REPOSITORY_SEARCH_INCREMENTAL,
+        ):
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
+            )
+            yield repos
+
+    async def _search_result_items(
+        self, url: str, query_params: dict[str, Any]
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Unwrap the search API envelope so pages are plain repository lists."""
         async for search_results in self.client.send_paginated_request(
             url, query_params
         ):

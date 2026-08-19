@@ -213,7 +213,7 @@ class TestGithubIncludedFilesEnrichment:
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "github.webhook.webhook_processors.repository_webhook_processor.create_github_client",
+                "github.webhook.webhook_processors.repository_webhook_processor.create_github_client_for_org",
                 return_value=MagicMock(),
             ),
             patch(

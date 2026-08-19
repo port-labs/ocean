@@ -1,0 +1,108 @@
+import asyncio
+import time
+
+from loguru import logger
+
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.installation_authenticator import (
+    GitHubAppInstallationAuthenticator,
+)
+from github.helpers.exceptions import AuthenticationException
+from port_ocean.context.ocean import ocean
+
+_DISCOVERY_TTL_SECONDS = 15 * 60
+
+_authenticators_by_org: dict[str, GitHubAppInstallationAuthenticator] = {}
+_discovered_at: float = 0
+_discovery_lock = asyncio.Lock()
+
+
+def reset_authenticators_by_org() -> None:
+    global _authenticators_by_org, _discovered_at, _discovery_lock
+    _authenticators_by_org.clear()
+    _discovered_at = 0
+    _discovery_lock = asyncio.Lock()
+
+
+def _is_discovery_fresh() -> bool:
+    if not _authenticators_by_org:
+        return False
+    return (time.monotonic() - _discovered_at) < _DISCOVERY_TTL_SECONDS
+
+
+def _authenticator(
+    app_auth: GitHubAppAuthenticator,
+    organization: str,
+    installation_id: str,
+) -> GitHubAppInstallationAuthenticator:
+    return GitHubAppInstallationAuthenticator(
+        app_auth=app_auth,
+        organization=organization,
+        installation_id=installation_id,
+    )
+
+
+async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator]:
+    app_auth = GitHubAppAuthenticator.from_config()
+    configured_organization = ocean.integration_config.get("github_organization")
+    index: dict[str, GitHubAppInstallationAuthenticator] = {}
+    async for page in app_auth.iter_app_installations():
+        for installation in page:
+            login = installation.get("account", {}).get("login")
+            is_suspended = installation.get("suspended_at", None) is not None
+            if not login or is_suspended:
+                logger.warning(
+                    f"Installation {installation} skipped: organization login missing or installation suspended."
+                )
+                continue
+            if (
+                configured_organization
+                and login.casefold() != configured_organization.casefold()
+            ):
+                continue
+            index[login.casefold()] = _authenticator(
+                app_auth=app_auth,
+                organization=login,
+                installation_id=str(installation["id"]),
+            )
+
+    if configured_organization and not index:
+        raise AuthenticationException(
+            f"No GitHub App installation found for organization '{configured_organization}'"
+        )
+    return index
+
+
+async def _discover_installations() -> None:
+    global _authenticators_by_org, _discovered_at
+    async with _discovery_lock:
+        if _is_discovery_fresh():
+            return
+
+        _authenticators_by_org = await _fetch_installations()
+        _discovered_at = time.monotonic()
+
+
+async def list_installations_authenticators() -> (
+    list[GitHubAppInstallationAuthenticator]
+):
+    await _discover_installations()
+    if not _authenticators_by_org:
+        raise AuthenticationException("No GitHub App installations found")
+
+    authenticators = list(_authenticators_by_org.values())
+    logger.info(f"Discovered {len(authenticators)} GitHub App installation(s)")
+    return authenticators
+
+
+async def get_installation_authenticator_for_organization(
+    organization: str,
+) -> GitHubAppInstallationAuthenticator:
+    await _discover_installations()
+    normalized_organization = organization.casefold()
+    if normalized_organization not in _authenticators_by_org:
+        raise AuthenticationException(
+            f"No GitHub App installation found for organization '{organization}'"
+        )
+
+    return _authenticators_by_org[normalized_organization]

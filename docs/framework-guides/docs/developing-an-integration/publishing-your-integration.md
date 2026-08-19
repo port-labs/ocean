@@ -26,7 +26,30 @@ All of the integrations powered by Ocean are expected to pass the automated CI c
 
 ### For Developers Contributing to an Existing Integration
 
-If you've already cloned and developed your changes to an existing integration within the Ocean repository, the process is straightforward:
+If you've already cloned and developed your changes to an existing integration within the Ocean repository:
+
+**Option A — declarative release (recommended):**
+
+1. Add a release intent file (changeset), for example:
+
+   - Integration: `integrations/jira/.ocean-release/my-change.yaml`
+   - Ocean core: `.ocean-release/core/my-change.yaml`
+
+   ```yaml
+   bump: patch
+   changelog-type: bugfix
+   changelog: Fixed pagination when Jira returns empty pages
+   ```
+
+   `bump` must be one of `patch`, `minor`, or `major`. `changelog-type` must be one of `breaking`,
+   `deprecation`, `feature`, `improvement`, `bugfix`, or `doc`.
+
+2. Commit your code changes and the release file to a new branch
+3. Push and open a pull request
+
+On merge, CI opens a pull request with the version bump and changelog updates. Review and merge that PR to publish. Manual bumps still work and take priority if you update both `pyproject.toml` and `CHANGELOG.md` in the PR.
+
+**Option B — manual release:**
 
 1. Create a changelog for your changes
 2. Bump the version in your `pyproject.toml` file
@@ -92,7 +115,7 @@ Commit your changes and push them to your fork. Then, open a pull request from y
 
 ### Version Management
 
-When updating your integration, remember to update the version number in the `pyproject.toml` file. This allows the CI to detect the new version and publish it to Port's image registry. 
+When updating your integration, remember to update the version number in the `pyproject.toml` file. This allows the CI to detect the new version and publish it to Port's image registry.
 
 ## Conclusion
 

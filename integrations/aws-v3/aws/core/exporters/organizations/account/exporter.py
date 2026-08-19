@@ -14,7 +14,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class OrganizationsAccountExporter(IResourceExporter):
+class OrganizationsAccountExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "organizations"
     _model_cls: Type[Account] = Account
     _actions_map: Type[OrganizationsAccountActionsMap] = OrganizationsAccountActionsMap

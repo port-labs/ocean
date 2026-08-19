@@ -27,6 +27,10 @@ class UnsupportedEventListenerTypeException(BaseOceanException):
     pass
 
 
+class UnsupportedLiveEventsConsumerTypeException(BaseOceanException):
+    pass
+
+
 class IntegrationAlreadyStartedException(BaseOceanException):
     pass
 

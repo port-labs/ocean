@@ -5,7 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, validator
+from pydantic.v1 import Field, validator
 
 
 class AzureSpecificKindSelector(Selector):

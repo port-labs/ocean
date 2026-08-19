@@ -1,0 +1,28 @@
+{
+  "identifier": "my-config-set",
+  "title": "my-config-set",
+  "blueprint": "sesConfigurationSet",
+  "properties": {
+    "sendingEnabled": true,
+    "reputationMetricsEnabled": true,
+    "tlsPolicy": "REQUIRE",
+    "trackingDomain": "tracking.example.com",
+    "suppressionList": [
+      "BOUNCE",
+      "COMPLAINT"
+    ],
+    "tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      }
+    ]
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

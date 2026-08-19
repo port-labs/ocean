@@ -1,0 +1,7 @@
+{
+  "Type": "AWS::Account::Info",
+  "Properties": {
+    "Id": "123456789012",
+    "Name": "account-name"
+  }
+}

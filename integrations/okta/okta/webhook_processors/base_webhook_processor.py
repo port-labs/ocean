@@ -1,6 +1,5 @@
 from abc import abstractmethod
 
-from fastapi import Request
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -11,6 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
+    WebhookOriginalRequest,
 )
 
 
@@ -19,7 +19,7 @@ class OktaBaseWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
-    async def _verify_webhook_signature(self, request: Request) -> bool:
+    async def _verify_webhook_signature(self, request: WebhookOriginalRequest) -> bool:
         """
         Validate the authenticity of the webhook payload using the Authorization header.
         If no secret is configured, validation is bypassed.

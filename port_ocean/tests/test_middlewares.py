@@ -31,6 +31,7 @@ async def test_request_handler_log_level(
     initialized: bool,
 ) -> None:
     request = MagicMock(spec=Request)
+    request.scope = {"path": path}
     request.url.path = path
     request.method = "GET"
 

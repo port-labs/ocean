@@ -22,7 +22,6 @@ from github.core.options import SingleCollaboratorOptions
 from typing import Any
 from port_ocean.context.event import event_context
 
-
 VALID_MEMBER_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "action": "added",
     "repository": {"name": "test-repo"},
@@ -162,7 +161,7 @@ class TestCollaboratorMemberWebhookProcessor:
         }
 
         with patch(
-            "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.create_github_client"
+            "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.create_github_client_for_org"
         ) as mock_create_client:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
@@ -219,7 +218,7 @@ class TestCollaboratorMemberWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.create_github_client"
+                "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.create_github_client_for_org"
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.RestCollaboratorExporter"

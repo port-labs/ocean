@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -7,7 +7,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.helpers.utils import is_bot_member
+from gitlab.helpers.utils import build_search_query, is_bot_member
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +30,11 @@ def mock_ocean_context() -> None:
 async def async_mock_generator(items: list[Any]) -> AsyncGenerator[Any, None]:
     for item in items:
         yield item
+
+
+async def async_raising_generator(error: Exception) -> AsyncGenerator[Any, None]:
+    raise error
+    yield  # pragma: no cover
 
 
 @pytest.mark.asyncio
@@ -212,6 +217,33 @@ class TestGitLabClient:
                 "groups",
                 params={
                     "min_access_level": 50,
+                    "all_available": True,
+                },
+            )
+
+    async def test_get_personal_namespace_projects(self, client: GitLabClient) -> None:
+        mock_projects = [
+            {"id": 1, "namespace": {"kind": "user"}},
+            {"id": 2, "namespace": {"kind": "group"}},
+            {"id": 3, "namespace": {"kind": "user"}},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ) as mock_get_resource:
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_personal_namespace_projects():
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results[0]["id"] == 1
+            assert results[1]["id"] == 3
+            mock_get_resource.assert_called_once_with(
+                "projects",
+                params={
+                    "owned": True,
                     "all_available": True,
                 },
             )
@@ -713,7 +745,7 @@ class TestGitLabClient:
         ]
         repos = ["group/project"]
         scope = "blobs"
-        query = "test.json"
+        query = build_search_query("test.json")
         with patch.object(
             client,
             "_search_files_in_repository",
@@ -731,8 +763,67 @@ class TestGitLabClient:
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
                 mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", "test.json filename:test.json", False
+                    "group/project", "blobs", query, False
                 )
+
+    @pytest.mark.parametrize(
+        "status_code,response_text",
+        [
+            (400, "Bad Request"),
+            (404, "Not Found"),
+        ],
+    )
+    async def test_match_files_with_project_search_skips_repo_on_skippable_status(
+        self,
+        client: GitLabClient,
+        status_code: int,
+        response_text: str,
+    ) -> None:
+        """Skippable statuses from project blob search skip that repo instead of aborting."""
+        mock_response = MagicMock()
+        mock_response.status_code = status_code
+        mock_response.text = response_text
+        error = httpx.HTTPStatusError(
+            f"{status_code} {response_text}",
+            request=MagicMock(),
+            response=mock_response,
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_raising_generator(error),
+        ):
+            results = [
+                batch
+                async for batch in client._match_files_with_project_search(
+                    "group/bad-repo", "blobs", build_search_query("compose.y_")
+                )
+            ]
+
+        assert results == []
+
+    async def test_match_files_with_project_search_reraises_non_skippable_status(
+        self, client: GitLabClient
+    ) -> None:
+        """Non-skippable HTTP errors from project blob search still propagate."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        error = httpx.HTTPStatusError(
+            "500 Internal Server Error", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_raising_generator(error),
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client._match_files_with_project_search(
+                    "group/project", "blobs", build_search_query("*.yml")
+                ):
+                    pass
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
         """Test file search across all groups — search_files calls get_parent_groups (which calls get_groups) and params are forwarded"""
@@ -741,7 +832,7 @@ class TestGitLabClient:
             {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
         ]
         scope = "blobs"
-        query = "test.yaml"
+        query = build_search_query("test.yaml")
 
         with patch.object(
             client, "get_groups", return_value=async_mock_generator([mock_groups])
@@ -773,17 +864,57 @@ class TestGitLabClient:
                         params={"min_access_level": 30}
                     )
                     mock_search_group.assert_called_once_with(
-                        "1", "blobs", "test.yaml filename:test.yaml", False
+                        "1", "blobs", query, False
                     )
 
     async def test_search_files_in_group_blobs_scope_unavailable(
         self, client: GitLabClient
     ) -> None:
-        """Test that _search_files_in_group falls back to _search_files_in_group_projects when blobs scope is unavailable (400 error)"""
+        """400 on group blob search falls back to project search and caches the group."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
-            "message": "400 Bad request - Scope 'blobs' is not available for this search"
+            "message": "400 Bad request - Advanced search is not available"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ) as mock_group_search:
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+                return_value=async_mock_generator([]),
+            ) as mock_fallback:
+                results = []
+                async for batch in client._search_files_in_group(
+                    "my-group", "blobs", build_search_query("test.json")
+                ):
+                    results.extend(batch)
+
+                # Second call should skip advanced search entirely.
+                async for batch in client._search_files_in_group(
+                    "my-group", "blobs", build_search_query("other.json")
+                ):
+                    results.extend(batch)
+
+        assert results == []
+        assert mock_group_search.call_count == 1
+        assert mock_fallback.call_count == 2
+        assert "my-group" in client._groups_without_advanced_search
+
+    async def test_search_files_in_group_blobs_scope_legacy_message(
+        self, client: GitLabClient
+    ) -> None:
+        """Legacy GitLab message still triggers Advanced Search fallback."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "Scope 'blobs' is not available for this search"
         }
         error = httpx.HTTPStatusError(
             "400 Bad Request", request=MagicMock(), response=mock_response
@@ -798,19 +929,21 @@ class TestGitLabClient:
                 client,
                 "_search_files_in_group_projects",
                 return_value=async_mock_generator([]),
-            ):
+            ) as mock_fallback:
                 results = []
                 async for batch in client._search_files_in_group(
-                    "my-group", "blobs", "test.json"
+                    "legacy-group", "blobs", build_search_query("test.json")
                 ):
                     results.extend(batch)
 
         assert results == []
+        assert mock_fallback.call_count == 1
+        assert "legacy-group" in client._groups_without_advanced_search
 
-    async def test_search_files_in_group_other_400_raises(
+    async def test_search_files_in_group_blob_validation_400_raises(
         self, client: GitLabClient
     ) -> None:
-        """Test that _search_files_in_group re-raises 400 errors unrelated to blobs scope"""
+        """Request-specific / unrecognized blob 400s are not treated as capability misses."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {
@@ -825,9 +958,40 @@ class TestGitLabClient:
             "get_paginated_resource",
             side_effect=error,
         ):
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+            ) as mock_fallback:
+                with pytest.raises(httpx.HTTPStatusError):
+                    async for _ in client._search_files_in_group(
+                        "my-group", "blobs", build_search_query("test.json")
+                    ):
+                        pass
+                mock_fallback.assert_not_called()
+
+        assert "my-group" not in client._groups_without_advanced_search
+
+    async def test_search_files_in_group_non_blob_400_raises(
+        self, client: GitLabClient
+    ) -> None:
+        """Non-blob group search 400s are not treated as Advanced Search fallback."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "400 Bad request - Advanced search is not available"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ):
             with pytest.raises(httpx.HTTPStatusError):
                 async for _ in client._search_files_in_group(
-                    "my-group", "blobs", "test.json"
+                    "my-group", "issues", build_search_query("test.json")
                 ):
                     pass
 
@@ -896,7 +1060,7 @@ class TestGitLabClient:
             assert exists is False
 
     async def test_get_repository_tree(self, client: GitLabClient) -> None:
-        """Test fetching repository tree (folders only) for a project"""
+        """Test fetching repository tree (files and folders) for a project"""
         project = {"path_with_namespace": "group/project"}
         path = "src"
         ref = "main"
@@ -914,11 +1078,13 @@ class TestGitLabClient:
             async for batch in client.get_repository_tree(project, path, ref):
                 results.extend(batch)
 
-            assert len(results) == 2
-            assert results[0]["folder"]["name"] == "folder1"
-            assert results[1]["folder"]["name"] == "folder2"
-            assert all(r["repo"] == project for r in results)
-            assert all(r["__branch"] == ref for r in results)
+            assert len(results) == 3
+            assert results[0]["type"] == "tree"
+            assert results[0]["name"] == "folder1"
+            assert results[1]["type"] == "blob"
+            assert results[1]["name"] == "file.txt"
+            assert results[2]["type"] == "tree"
+            assert results[2]["name"] == "folder2"
             mock_get_paginated.assert_called_once_with(
                 "group/project",
                 "repository/tree",
@@ -939,8 +1105,8 @@ class TestGitLabClient:
         }
 
         mock_tree = [
-            {"type": "tree", "name": "folder1"},
-            {"type": "blob", "name": "file.txt"},
+            {"type": "tree", "name": "folder1", "path": "src/folder1"},
+            {"type": "blob", "name": "file.txt", "path": "src/file.txt"},
         ]
 
         with patch.object(
@@ -970,6 +1136,203 @@ class TestGitLabClient:
                     "repository/tree",
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
+
+    async def test_match_files_with_repository_tree_scoped_directory(
+        self, client: GitLabClient
+    ) -> None:
+        """A non-wildcard directory pattern scopes the tree listing to that directory
+        (non-recursive) and matches items against the full repo-root-relative path."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        # GitLab returns full repo-root-relative paths even when `path` scopes the listing.
+        mock_tree = [
+            {"type": "blob", "name": "app.json", "path": "src/config/app.json"},
+            {"type": "blob", "name": "other.json", "path": "src/config/other.json"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project", build_search_query("src/config/app.json")
+                ):
+                    results.extend(batch)
+
+                assert [f["path"] for f in results] == ["src/config/app.json"]
+                assert results[0]["ref"] == "main"
+                assert results[0]["project_id"] == "1"
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {"ref": "main", "path": "src/config", "recursive": False},
+                )
+
+    async def test_match_files_with_repository_tree_scopes_wildcard_prefix(
+        self, client: GitLabClient
+    ) -> None:
+        """Wildcard patterns recurse under their literal prefix, not the whole repo."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {
+                "type": "blob",
+                "name": "SKILL.md",
+                "path": ".cursor/skills/hello/SKILL.md",
+            },
+            {
+                "type": "blob",
+                "name": "readme.md",
+                "path": ".cursor/skills/hello/readme.md",
+            },
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project",
+                    build_search_query(".cursor/skills/**/SKILL.md"),
+                ):
+                    results.extend(batch)
+
+                assert [f["path"] for f in results] == [".cursor/skills/hello/SKILL.md"]
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {
+                        "ref": "main",
+                        "path": ".cursor/skills",
+                        "recursive": True,
+                    },
+                )
+
+    async def test_match_files_with_repository_tree_patterns_one_walk(
+        self, client: GitLabClient
+    ) -> None:
+        """Multiple globs under one prefix share a single recursive tree walk."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {
+                "type": "blob",
+                "name": "plugin.json",
+                "path": ".claude-plugin/plugin.json",
+            },
+            {
+                "type": "blob",
+                "name": "marketplace.json",
+                "path": ".claude-plugin/marketplace.json",
+            },
+            {"type": "blob", "name": "other.txt", "path": ".claude-plugin/other.txt"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree_patterns(
+                    "group/project",
+                    [
+                        ".claude-plugin/plugin.json",
+                        ".claude-plugin/marketplace.json",
+                    ],
+                ):
+                    results.extend(batch)
+
+                assert sorted(f["path"] for f in results) == [
+                    ".claude-plugin/marketplace.json",
+                    ".claude-plugin/plugin.json",
+                ]
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {
+                        "ref": "main",
+                        "path": ".claude-plugin",
+                        "recursive": False,
+                    },
+                )
+
+    async def test_match_files_with_repository_tree_pathless_is_recursive(
+        self, client: GitLabClient
+    ) -> None:
+        """A pathless pattern (no directory) walks the whole tree recursively and
+        matches by filename anywhere, including subdirectories — mirroring the
+        search API's filename: behavior rather than only listing the repo root."""
+        mock_project = {
+            "id": "1",
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree = [
+            {"type": "blob", "name": "app.yaml", "path": "app.yaml"},
+            {"type": "blob", "name": "app.yaml", "path": "config/app.yaml"},
+            {"type": "blob", "name": "deep.yaml", "path": "a/b/deep.yaml"},
+            {"type": "blob", "name": "notes.md", "path": "docs/notes.md"},
+            {"type": "tree", "name": "config", "path": "config"},
+        ]
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest,
+                "get_paginated_project_resource",
+                return_value=async_mock_generator([mock_tree]),
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/project", build_search_query("*.yaml")
+                ):
+                    results.extend(batch)
+
+                # Matches every *.yaml at any depth, not just the repo root.
+                assert sorted(f["path"] for f in results) == [
+                    "a/b/deep.yaml",
+                    "app.yaml",
+                    "config/app.yaml",
+                ]
+                # Whole-repo recursive listing (path empty, recursive True).
+                mock_get_paginated.assert_called_once_with(
+                    "group/project",
+                    "repository/tree",
+                    {"ref": "main", "path": "", "recursive": True},
+                )
+
+    async def test_match_files_with_repository_tree_missing_project(
+        self, client: GitLabClient
+    ) -> None:
+        """No project resolved → no tree fetched, no results."""
+        with patch.object(client, "get_project", AsyncMock(return_value=None)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/missing", build_search_query("*.yaml")
+                ):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
 
     async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
         """Test that parsed file content with file:// reference fetches and resolves content."""
@@ -1021,6 +1384,197 @@ class TestGitLabClient:
                 "123", "other_file.txt", "main"
             )
 
+    async def test_process_file_retries_with_default_branch_on_empty_response(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 111, "default_branch": "main"}
+
+        with (
+            patch.object(
+                client,
+                "get_project",
+                AsyncMock(return_value=project),
+            ) as mock_get_project,
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(
+                    side_effect=[
+                        {},
+                        {"content": "hello", "path": "a.yml"},
+                    ]
+                ),
+            ) as mock_get_file_data,
+        ):
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "deadbeef"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert result["content"] == "hello"
+        mock_get_project.assert_called_once_with("111")
+        assert mock_get_file_data.call_args_list == [
+            call("111", "a.yml", "deadbeef"),
+            call("111", "a.yml", "main"),
+        ]
+
+    async def test_process_file_no_retry_when_ref_matches_default_branch(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 111, "default_branch": "main"}
+
+        with (
+            patch.object(
+                client,
+                "get_project",
+                AsyncMock(return_value=project),
+            ),
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(return_value={}),
+            ) as mock_get_file_data,
+        ):
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "main"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert "content" not in result
+        mock_get_file_data.assert_called_once_with("111", "a.yml", "main")
+
+    async def test_process_file_no_retry_when_first_fetch_succeeds(
+        self, client: GitLabClient
+    ) -> None:
+        with patch.object(
+            client.rest,
+            "get_file_data",
+            AsyncMock(return_value={"content": "ok", "path": "a.yml"}),
+        ) as mock_get_file_data:
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "deadbeef"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert result["content"] == "ok"
+        mock_get_file_data.assert_called_once_with("111", "a.yml", "deadbeef")
+
+    async def test_resolve_file_references_relative_reference(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a relative file:// reference resolves normally."""
+        data = {"ref": "file://other_file.txt"}
+
+        with patch.object(
+            client,
+            "get_file_content",
+            AsyncMock(return_value="Referenced content"),
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "Referenced content"}
+        mock_get_file_content.assert_called_once_with("123", "other_file.txt", "main")
+
+    async def test_resolve_file_references_skips_absolute_triple_slash(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that file:/// (absolute-path URI) references are left untouched and never fetched."""
+        data = {"dest": "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7"}
+
+        with patch.object(
+            client, "get_file_content", AsyncMock()
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"dest": "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7"}
+        mock_get_file_content.assert_not_called()
+
+    async def test_resolve_file_references_leaves_any_leading_slash_variant_unresolved(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that any file:// value with a leading slash after the prefix (i.e. file:///...,
+        which is the only way a leading slash can appear there) is skipped rather than fetched
+        with a sanitized path -- matching the deprecation note that file:// was never meant to
+        carry an absolute path."""
+        data = {"ref": "file:////double/leading/slash.txt"}
+
+        with patch.object(
+            client, "get_file_content", AsyncMock()
+        ) as mock_get_file_content:
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file:////double/leading/slash.txt"}
+        mock_get_file_content.assert_not_called()
+
+    async def test_resolve_file_references_best_effort_on_http_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a failed reference fetch (e.g. 400) is logged and left unresolved, not raised."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "400 Bad Request"}
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+        data = {"ref": "file://missing_file.txt"}
+
+        with patch.object(client, "get_file_content", AsyncMock(side_effect=error)):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file://missing_file.txt"}
+
+    async def test_resolve_file_references_best_effort_on_transport_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that a transport-level failure (timeout/connection error, not an HTTP status
+        error) is also caught and left unresolved rather than aborting the resync."""
+        error = httpx.ConnectTimeout("Connection timed out")
+        data = {"ref": "file://missing_file.txt"}
+
+        with patch.object(client, "get_file_content", AsyncMock(side_effect=error)):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {"ref": "file://missing_file.txt"}
+
+    async def test_resolve_file_references_nested_structures(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that resolution recurses through nested dicts/lists with mixed reference outcomes."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "400 Bad Request"}
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+        data = {
+            "nested": {
+                "resolved": "file://ok.txt",
+                "absolute": "file:///abs/path.txt",
+            },
+            "items": ["file://failing.txt", "plain string"],
+        }
+
+        async def side_effect(project_id: str, file_path: str, ref: str) -> str:
+            if file_path == "ok.txt":
+                return "ok content"
+            raise error
+
+        with patch.object(
+            client, "get_file_content", AsyncMock(side_effect=side_effect)
+        ):
+            result = await client._resolve_file_references(data, "123", "main")
+
+        assert result == {
+            "nested": {
+                "resolved": "ok content",
+                "absolute": "file:///abs/path.txt",
+            },
+            "items": ["file://failing.txt", "plain string"],
+        }
+
     async def test_get_pipeline_jobs(self, client: GitLabClient) -> None:
         """Test fetching jobs through pipelines"""
         # Arrange
@@ -1045,10 +1599,34 @@ class TestGitLabClient:
             assert results[0]["name"] == "Test Job"
             # Verify both pipeline and job API calls
             assert mock_get_paginated.call_count == 2
-            mock_get_paginated.assert_any_call("1", "pipelines")
+            mock_get_paginated.assert_any_call("1", "pipelines", params=None)
             mock_get_paginated.assert_any_call(
                 "1", "pipelines/1/jobs", params={"per_page": 100}
             )
+
+    async def test_get_pipeline_jobs_forwards_pipeline_params(
+        self, client: GitLabClient
+    ) -> None:
+        """pipeline_params should be passed through to the pipelines listing call."""
+        mock_projects = [{"id": 1, "name": "Test Project"}]
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
+        mock_jobs = [{"id": 1, "name": "Test Job"}]
+        pipeline_params = {"status": "success", "ref": "main"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=[
+                async_mock_generator([mock_pipelines]),
+                async_mock_generator([mock_jobs]),
+            ],
+        ) as mock_get_paginated:
+            async for _ in client.get_pipeline_jobs(
+                mock_projects, pipeline_params=pipeline_params
+            ):
+                pass
+
+            mock_get_paginated.assert_any_call("1", "pipelines", params=pipeline_params)
 
     async def test_project_resource(self, client: GitLabClient) -> None:
         """Test project resource fetching delegates to REST client"""
@@ -1070,7 +1648,29 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Pipeline"
-            mock_get_project_resource.assert_called_once_with("1", "pipelines")
+            mock_get_project_resource.assert_called_once_with(
+                "1", "pipelines", params=None
+            )
+
+    async def test_project_resource_forwards_params(self, client: GitLabClient) -> None:
+        """get_projects_resource should forward the params dict to the REST call."""
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
+        mock_projects = [{"id": 1, "name": "Test Project"}]
+        params = {"status": "success", "ref": "main"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_pipelines]),
+        ) as mock_get_project_resource:
+            async for _ in client.get_projects_resource(
+                mock_projects, "pipelines", params=params
+            ):
+                pass
+
+            mock_get_project_resource.assert_called_once_with(
+                "1", "pipelines", params=params
+            )
 
     async def test_default_params_with_min_access_level(self) -> None:
         """Test that default_params includes min_access_level when configured."""
@@ -1897,3 +2497,280 @@ class TestGitLabClient:
                 results.extend(batch)
 
             assert len(results) == 1
+
+    async def test_get_deployments_enriches_each_deployment_with_full_project(
+        self, client: GitLabClient
+    ) -> None:
+        project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "name": "Test Project",
+            "web_url": "https://gitlab.example.com/group/project",
+        }
+        mock_deployments = [
+            {"id": 10, "status": "success", "ref": "main"},
+            {"id": 11, "status": "failed", "ref": "main"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_deployments]),
+        ):
+            results = []
+            async for batch in client.get_deployments([project]):
+                results.extend(batch)
+
+        assert len(results) == 2
+        assert all(result["__project"] == project for result in results)
+
+    async def test_get_deployments_passes_params_to_rest_client(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        params = {"status": "success", "environment": "production"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([[]]),
+        ) as mock_get_paginated:
+            async for _ in client.get_deployments([project], params=params):
+                pass
+
+        mock_get_paginated.assert_called_once_with("1", "deployments", params=params)
+
+    async def test_get_deployments_yields_nothing_when_project_has_no_deployments(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([[]]),
+        ):
+            results = []
+            async for batch in client.get_deployments([project]):
+                results.extend(batch)
+
+        assert results == []
+
+    async def test_get_deployments_fans_out_across_multiple_projects_tagging_each_deployment_with_its_own_project(
+        self, client: GitLabClient
+    ) -> None:
+        project_a = {"id": 1, "path_with_namespace": "group/project-a"}
+        project_b = {"id": 2, "path_with_namespace": "group/project-b"}
+        deployments_a = [{"id": 10, "status": "success"}]
+        deployments_b = [{"id": 20, "status": "success"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=[
+                async_mock_generator([deployments_a]),
+                async_mock_generator([deployments_b]),
+            ],
+        ):
+            results = []
+            async for batch in client.get_deployments([project_a, project_b]):
+                results.extend(batch)
+
+        assert len(results) == 2
+        project_paths = {r["__project"]["path_with_namespace"] for r in results}
+        assert project_paths == {"group/project-a", "group/project-b"}
+
+    async def test_get_single_deployment_returns_deployment_for_given_ids(
+        self, client: GitLabClient
+    ) -> None:
+        project_id = 123
+        deployment_id = 456
+        mock_deployment = {
+            "id": deployment_id,
+            "iid": 1,
+            "status": "success",
+            "ref": "main",
+        }
+
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value=mock_deployment),
+        ) as mock_send_request:
+            result = await client.get_single_deployment(project_id, deployment_id)
+
+        assert result == mock_deployment
+        mock_send_request.assert_called_once_with(
+            "GET", f"projects/{project_id}/deployments/{deployment_id}"
+        )
+
+    async def test_get_single_deployment_returns_none_when_api_returns_empty(
+        self, client: GitLabClient
+    ) -> None:
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value={}),
+        ):
+            result = await client.get_single_deployment(123, 456)
+
+        assert result is None
+
+    async def test_get_single_deployment_url_encodes_string_project_path(
+        self, client: GitLabClient
+    ) -> None:
+        deployment_id = 42
+        mock_deployment = {"id": deployment_id, "status": "success"}
+
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value=mock_deployment),
+        ) as mock_send_request:
+            await client.get_single_deployment("group/project", deployment_id)
+
+        mock_send_request.assert_called_once_with(
+            "GET", "projects/group%2Fproject/deployments/42"
+        )
+
+    async def test_enrich_project_resources_skips_project_on_status_code_in_skip_set(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "Environments are not available"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        results = []
+        async for batch in client._enrich_project_resources(
+            project,
+            async_raising_generator(error),
+            full_project_enrichment=True,
+            skip_http_errors=frozenset({400}),
+        ):
+            results.extend(batch)
+
+        assert results == []
+
+    async def test_enrich_project_resources_reraises_when_status_code_not_in_skip_set(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "Environments are not available"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            async for _ in client._enrich_project_resources(
+                project,
+                async_raising_generator(error),
+                full_project_enrichment=True,
+                skip_http_errors=frozenset(),
+            ):
+                pass
+
+    async def test_enrich_project_resources_reraises_non_matching_status_code(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {"message": "Internal Server Error"}
+        error = httpx.HTTPStatusError(
+            "500", request=MagicMock(), response=mock_response
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            async for _ in client._enrich_project_resources(
+                project,
+                async_raising_generator(error),
+                full_project_enrichment=True,
+                skip_http_errors=frozenset({400}),
+            ):
+                pass
+
+    async def test_get_deployments_skips_project_without_environments_and_continues_with_others(
+        self, client: GitLabClient
+    ) -> None:
+        project_with_envs = {"id": 1, "path_with_namespace": "group/has-envs"}
+        project_without_envs = {"id": 2, "path_with_namespace": "group/no-envs"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "404 Environment Not Found"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        def side_effect(
+            project_id: str, resource_type: str, params: Any = None
+        ) -> AsyncGenerator[Any, None]:
+            if project_id == "2":
+                return async_raising_generator(error)
+            return async_mock_generator([[{"id": 10, "status": "success"}]])
+
+        with patch.object(
+            client.rest, "get_paginated_project_resource", side_effect=side_effect
+        ):
+            results = []
+            async for batch in client.get_deployments(
+                [project_with_envs, project_without_envs]
+            ):
+                results.extend(batch)
+
+        assert len(results) == 1
+        assert results[0]["id"] == 10
+        assert results[0]["__project"] == project_with_envs
+
+    async def test_get_deployments_returns_empty_when_all_projects_return_400(
+        self, client: GitLabClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "404 Environment Not Found"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=lambda *a, **kw: async_raising_generator(error),
+        ):
+            results = []
+            async for batch in client.get_deployments(
+                [
+                    {"id": 1, "path_with_namespace": "group/a"},
+                    {"id": 2, "path_with_namespace": "group/b"},
+                ]
+            ):
+                results.extend(batch)
+
+        assert results == []
+
+    async def test_get_deployments_propagates_non_400_errors(
+        self, client: GitLabClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {"message": "Internal Server Error"}
+        error = httpx.HTTPStatusError(
+            "500", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=lambda *a, **kw: async_raising_generator(error),
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client.get_deployments(
+                    [{"id": 1, "path_with_namespace": "group/a"}]
+                ):
+                    pass

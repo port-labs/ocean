@@ -5,7 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import Field
+from pydantic.v1 import Field
 
 
 class JiraIssueSelector(Selector):

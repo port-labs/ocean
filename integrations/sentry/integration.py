@@ -1,4 +1,4 @@
-from pydantic.fields import Field
+from pydantic.v1.fields import Field
 from typing import Literal
 from enum import StrEnum
 

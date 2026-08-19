@@ -1,0 +1,22 @@
+{
+  "identifier": "43858f3d-2987-40c7-9332-f82611de1449",
+  "title": "my-pipeline/43858f3d-2987-40c7-9332-f82611de1449",
+  "properties": {
+    "pipelineName": "my-pipeline",
+    "pipelineVersion": 2,
+    "pipelineExecutionId": "43858f3d-2987-40c7-9332-f82611de1449",
+    "status": "Failed",
+    "executionMode": "SUPERSEDED",
+    "trigger": {
+      "triggerType": "StartPipelineExecution",
+      "triggerDetail": "arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_PowerUserAccess_43dd902745d50632/my_user@port.io"
+    },
+    "artifactRevisions": [],
+    "lastUpdateTime": "2026-06-03T10:57:55.571000+03:00",
+    "startTime": "2026-06-03T10:57:43.693000+03:00"
+  },
+  "relations": {
+    "account": "123456789012"
+  },
+  "icon": "AWS"
+}

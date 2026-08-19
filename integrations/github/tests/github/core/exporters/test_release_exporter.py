@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -5,9 +6,9 @@ import httpx
 from github.core.exporters.release_exporter import RestReleaseExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from github.core.options import SingleReleaseOptions, ListReleaseOptions
 from github.clients.http.rest_client import GithubRestClient
-
 
 TEST_RELEASES = [
     {
@@ -88,3 +89,51 @@ class TestRestReleaseExporter:
                     f"{rest_client.base_url}/repos/test-org/repo1/releases",
                     {},
                 )
+
+    async def test_get_paginated_resources_with_incremental_cursor_stops_at_old_items(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        mixed_releases = [
+            {
+                "id": 1,
+                "name": "New release",
+                "tag_name": "v2.0",
+                "created_at": "2026-06-02T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "name": "Old release",
+                "tag_name": "v1.0",
+                "created_at": "2026-05-01T00:00:00Z",
+            },
+        ]
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield mixed_releases
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                exporter = RestReleaseExporter(rest_client)
+                with with_active_incremental_cursor(cursor):
+                    releases = [
+                        batch
+                        async for batch in exporter.get_paginated_resources(
+                            ListReleaseOptions(
+                                organization="test-org",
+                                repo_name="repo1",
+                            )
+                        )
+                    ]
+
+            assert len(releases) == 1
+            assert len(releases[0]) == 1
+            assert releases[0][0]["tag_name"] == "v2.0"
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/test-org/repo1/releases",
+                {},
+            )

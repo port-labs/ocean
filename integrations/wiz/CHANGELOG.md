@@ -7,6 +7,614 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.34 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.3.33 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.3.32 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.3.31 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.3.30 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.3.29 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.3.28 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.3.27 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.3.26 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.3.25 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.3.24 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.3.23 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.3.22 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.3.21 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.3.20 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 0.3.19 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 0.3.18 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 0.3.17 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.3.16 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.3.15 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.3.14 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.3.13 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.3.12 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.3.11 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.3.10 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.3.9 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.3.8 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.3.7 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.3.6 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.3.5 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.3.4 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 0.3.3 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 0.3.2 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 0.3.1 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 0.3.0 (2026-07-20)
+
+
+### Improvements
+
+- Add option for parallelism when ingesting vulnerability findings
+
+
+## 0.2.96 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 0.2.95 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 0.2.94 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.2.93 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.2.92 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.2.91 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.2.90 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.2.89 (2026-07-14)
+
+
+### Improvements
+
+- Convert TypedDict options to Pydantic models
+
+
+## 0.2.88 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.2.87 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.2.86 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.2.85 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.2.84 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.2.83 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.2.82 (2026-07-12)
+
+
+### Improvements
+
+- Fix default Issue blueprint's 'notes' property type
+
+
+## 0.2.81 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.2.80 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.2.79 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.2.78 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.2.77 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.2.76 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.2.75 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.2.74 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.2.73 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.2.72 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.2.71 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.2.70 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.2.69 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.2.68 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.2.67 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.2.66 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.2.65 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.2.64 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.2.63 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.2.62 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.2.61 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.2.60 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.2.59 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.2.58 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.2.57 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.2.56 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
 ## 0.2.55 (2026-05-25)
 
 
@@ -974,6 +1582,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.1.197 (2025-11-09)
 
 
@@ -1560,6 +2169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.124 (2025-04-27)
 
+
 ### Bug Fixes
 
 - Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
@@ -2084,6 +2694,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.59 (2024-09-17)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.10.11
@@ -2091,9 +2702,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.58 (2024-09-13)
 
+
 ### Improvements
 
 - Filter issues by status and increase limit to 50k
+
 
 ## 0.1.57 (2024-09-12)
 
@@ -2105,349 +2718,464 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.56 (2024-09-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.10.9 (#1)
 
+
 ## 0.1.55 (2024-09-04)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.8 (#1)
 
+
 ## 0.1.54 (2024-09-01)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.7 (#1)
 
+
 ## 0.1.53 (2024-08-30)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.5 (#1)
 
+
 ## 0.1.52 (2024-08-28)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.4 (#1)
 
+
 ## 0.1.51 (2024-08-28)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.3 (#1)
 
+
 ## 0.1.50 (2024-08-26)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.2 (#1)
 
+
 ## 0.1.49 (2024-08-26)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.1 (#1)
 
+
 ## 0.1.48 (2024-08-22)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.0 (#1)
 
+
 ## 0.1.47 (2024-08-20)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.14 (#1)
 
+
 ## 0.1.46 (2024-08-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.13 (#1)
 
+
 ## 0.1.45 (2024-08-11)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.12 (#1)
 
+
 ## 0.1.44 (2024-08-05)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.11 (#1)
 
+
 ## 0.1.43 (2024-08-04)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.10 (#1)
 
+
 ## 0.1.42 (2024-08-01)
+
 
 ### Improvements
 
 - Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
 
+
 ## 0.1.41 (2024-07-31)
+
 
 ### Improvements
 
 - Upgraded integration dependencies (#1)
 
+
 ## 0.1.40 (2024-07-31)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
+
 ## 0.1.39 (2024-07-31)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.6 (#1)
 
+
 ## 0.1.38 (2024-07-24)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
 
+
 ## 0.1.37 (2024-07-10)
+
 
 ### Improvements
 
 - Fix links in descriptions of integration configuration variables
 
+
 ## 0.1.36 (2024-07-10)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.4 (#1)
 
+
 ## 0.1.35 (2024-07-09)
+
 
 ### Improvements
 
 - Added description to the integration configuration variables
 
+
 ## 0.1.34 (2024-07-09)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.3 (#1)
 
+
 ## 0.1.33 (2024-07-07)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
+
 ## 0.1.32 (2024-06-23)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
+
 ## 0.1.31 (2024-06-19)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.0 (#1)
 
+
 ## 0.1.30 (2024-06-16)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
 
+
 ## 0.1.29 (2024-06-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.1 (#1)
 
+
 ## 0.1.28 (2024-06-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
+
 ## 0.1.27 (2024-06-10)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.6.0 (#1)
 
+
 ## 0.1.26 (2024-06-05)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
+
 ## 0.1.25 (2024-06-03)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.25 (#1)
 
+
 ## 0.1.24 (2024-06-02)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
+
 ## 0.1.23 (2024-05-30)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.23 (#1)
 - Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
 
+
 ## 0.1.22 (2024-05-29)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
 
+
 ## 0.1.21 (2024-05-26)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.21 (#1)
 
+
 ## 0.1.20 (2024-05-26)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.20 (#1)
 - Removed the config.yaml file due to unused overrides
 
+
 ## 0.1.19 (2024-05-16)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.19 (#1)
 
+
 ## 0.1.18 (2024-05-12)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.18 (#1)
 
+
 ## 0.1.18 (2024-05-01)
+
 
 ### Improvements
 
 - Enhanced wizIssue blueprint with properties for vulnerability details
 
+
 ## 0.1.17 (2024-05-01)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.17 (#1)
 
+
 ## 0.1.16 (2024-05-01)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.16 (#1)
 
+
 ## 0.1.15 (2024-04-30)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.15 (#1)
 
+
 ## 0.1.14 (2024-04-24)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.14 (#1)
 
+
 ## 0.1.13 (2024-04-17)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.12 (#1)
 
+
 ## 0.1.12 (2024-04-11)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.11 (#1)
 
+
 ## 0.1.11 (2024-04-10)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.10 (#1)
 
+
 ## 0.1.10 (2024-04-01)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.9 (#1)
 
+
 ## 0.1.9 (2024-03-28)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.8 (#1)
 
+
 ## 0.1.8 (2024-03-20)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.7 (#1)
 
+
 ## 0.1.7 (2024-03-17)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.6 (#1)
 
+
 ## 0.1.6 (2024-03-06)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.5 (#1)
 
+
 ## 0.1.5 (2024-03-03)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.4 (#1)
 
+
 ## 0.1.4 (2024-03-03)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.3 (#1)
 
+
 ## 0.1.3 (2024-02-21)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.2 (#1)
 
+
 ## 0.1.2 (2024-02-20)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.1 (#1)
 
+
 ## 0.1.1 (2024-02-18)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.0 (#1)
 
+
 ## 0.1.0 (2024-01-23)
+
 
 ### Features
 

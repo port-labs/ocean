@@ -7,6 +7,606 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.207 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.2.206 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.205 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
+## 0.2.204 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.203 (2026-08-16)
+
+
+### Improvements
+
+- Add title and description metadata to OpenCost allocation and cloud-cost selector fields.
+
+
+## 0.2.202 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.2.201 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.2.200 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.2.199 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.2.198 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.2.197 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.2.196 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.2.195 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.2.194 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.2.193 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.2.192 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.2.191 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 0.2.190 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 0.2.189 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 0.2.188 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.2.187 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.2.186 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.2.185 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.2.184 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.2.183 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.2.182 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.2.181 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.2.180 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.2.179 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.2.178 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.2.177 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.2.176 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.2.175 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 0.2.174 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 0.2.173 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 0.2.172 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 0.2.171 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 0.2.170 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 0.2.169 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.2.168 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.2.167 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.2.166 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.2.165 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.2.164 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.2.163 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.2.162 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.2.161 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.2.160 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.2.159 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.2.158 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.2.157 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.2.156 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.2.155 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.2.154 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.2.153 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.2.152 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.2.151 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.2.150 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.2.149 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.2.148 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.2.147 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.2.146 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.2.145 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.2.144 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.2.143 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.2.142 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.2.141 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.2.140 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.2.139 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.2.138 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.2.137 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.2.136 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.2.135 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.2.134 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.2.133 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
 ## 0.2.132 (2026-05-25)
 
 
@@ -918,6 +1518,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.2.18 (2025-11-09)
 
 
@@ -1474,6 +2075,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed deprecated `config.yaml`
 
+
 ## 0.1.146 (2025-05-19)
 
 
@@ -1507,6 +2109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.142 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2152,12 +2755,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.62 (2024-07-31)
 
+
 ### Improvements
 
 - Upgraded integration dependencies (#1)
 
 
 ## 0.1.61 (2024-07-31)
+
 
 ### Improvements
 
@@ -2166,12 +2771,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.60 (2024-07-31)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.6 (#1)
 
 
 ## 0.1.59 (2024-07-24)
+
 
 ### Improvements
 
@@ -2180,12 +2787,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.58 (2024-07-15)
 
+
 ### Features
 
 - Added v2 filter params to cloudcost kind (#749)
 
 
 ## 0.1.57 (2024-07-10)
+
 
 ### Improvements
 
@@ -2194,12 +2803,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.56 (2024-07-09)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.3 (#1)
 
 
 ## 0.1.55 (2024-07-07)
+
 
 ### Improvements
 
@@ -2208,12 +2819,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.54 (2024-06-23)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
 
 ## 0.1.53 (2024-06-19)
+
 
 ### Improvements
 
@@ -2222,12 +2835,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.52 (2024-06-16)
 
+
 ### Improvements
 
 - Updated spec.yaml indication that saas installation is not supported
 
 
 ## 0.1.51 (2024-06-16)
+
 
 ### Improvements
 
@@ -2236,12 +2851,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.50 (2024-06-13)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.7.1 (#1)
 
 
 ## 0.1.49 (2024-06-13)
+
 
 ### Improvements
 
@@ -2250,12 +2867,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.48 (2024-06-10)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.6.0 (#1)
 
 
 ## 0.1.47 (2024-06-05)
+
 
 ### Improvements
 
@@ -2264,6 +2883,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.46 (2024-06-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.25 (#1)
@@ -2271,12 +2891,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.45 (2024-06-02)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
 
 ## 0.1.44 (2024-05-30)
+
 
 ### Improvements
 
@@ -2286,12 +2908,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.43 (2024-05-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
 
 
 ## 0.1.42 (2024-05-27)
+
 
 ### Features
 
@@ -2300,12 +2924,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.41 (2024-05-26)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.21 (#1)
 
 
 ## 0.1.40 (2024-05-26)
+
 
 ### Improvements
 
@@ -2315,12 +2941,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.39 (2024-05-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.19 (#1)
 
 
 ## 0.1.38 (2024-05-12)
+
 
 ### Improvements
 
@@ -2329,12 +2957,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.37 (2024-05-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.17 (#1)
 
 
 ## 0.1.36 (2024-05-01)
+
 
 ### Improvements
 
@@ -2343,12 +2973,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.35 (2024-04-30)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.15 (#1)
 
 
 ## 0.1.34 (2024-04-24)
+
 
 ### Improvements
 
@@ -2357,12 +2989,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.33 (2024-04-17)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.12 (#1)
 
 
 ## 0.1.32 (2024-04-11)
+
 
 ### Improvements
 
@@ -2371,12 +3005,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.31 (2024-04-10)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.10 (#1)
 
 
 ## 0.1.30 (2024-04-01)
+
 
 ### Improvements
 
@@ -2385,12 +3021,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.29 (2024-03-28)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.8 (#1)
 
 
 ## 0.1.28 (2024-03-20)
+
 
 ### Improvements
 
@@ -2399,12 +3037,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.27 (2024-03-17)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.6 (#1)
 
 
 ## 0.1.26 (2024-03-06)
+
 
 ### Improvements
 
@@ -2413,12 +3053,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.25 (2024-03-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.4 (#1)
 
 
 ## 0.1.24 (2024-03-03)
+
 
 ### Improvements
 
@@ -2427,12 +3069,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.23 (2024-02-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.2 (#1)
 
 
 ## 0.1.22 (2024-02-20)
+
 
 ### Improvements
 
@@ -2441,12 +3085,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.21 (2024-02-18)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.0 (#1)
 
 
 ## 0.1.20 (2024-01-23)
+
 
 ### Improvements
 
@@ -2455,12 +3101,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.19 (2024-01-11)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.16 (#1)
 
 
 ## 0.1.18 (2024-01-07)
+
 
 ### Improvements
 
@@ -2469,12 +3117,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.17 (2024-01-07)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.14 (#1)
 
 
 ## 0.1.16 (2024-01-01)
+
 
 ### Improvements
 
@@ -2483,12 +3133,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.15 (2023-12-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.12 (#1)
 
 
 ## 0.1.14 (2023-12-21)
+
 
 ### Improvements
 
@@ -2497,12 +3149,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.13 (2023-12-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.10 (#1)
 
 
 ## 0.1.12 (2023-12-14)
+
 
 ### Improvements
 
@@ -2511,12 +3165,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.11 (2023-12-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.7 (#1)
 
 
 ## 0.1.10 (2023-12-04)
+
 
 ### Improvements
 
@@ -2525,12 +3181,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.9 (2023-11-30)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.5 (#1)
 
 
 ## 0.1.8 (2023-11-29)
+
 
 ### Improvements
 
@@ -2540,12 +3198,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.7 (2023-11-21)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.3 (#1)
 
 
 ## 0.1.6 (2023-11-08)
+
 
 ### Improvements
 
@@ -2554,6 +3214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.5 (2023-11-03)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.1 (#1)
@@ -2561,32 +3222,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.4 (2023-11-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.4.0 (#1)
 
 
-# OpenCost 0.1.3 (2023-10-29)
+## 0.1.3 (2023-10-29)
+
 
 ### Improvements
 
 - Bumped ocean version to 0.3.2 (#1)
 
 
-# OpenCost 0.1.2 (2023-10-29)
+## 0.1.2 (2023-10-29)
+
 
 ### Improvements
 
 - Updated integration & blueprint icons to Opencost icon (PORT-5063)
 
-# OpenCost 0.1.1 (2023-10-11)
+
+## 0.1.1 (2023-10-11)
+
 
 ### Improvements
 
 - Modified the way parameters are passed to the query request using the port app config
 - Updated the icon to `Cluster` icon
 
-# OpenCost 0.1.0 (2023-10-11)
+
+## 0.1.0 (2023-10-11)
+
 
 ### Features
 

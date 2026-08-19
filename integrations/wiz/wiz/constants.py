@@ -1,9 +1,21 @@
+from enum import StrEnum
+
 PAGE_SIZE = 100
+UPSERT_BATCH_MAX_SIZE = 100
 AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
 COGNITO_URLS = [
     "https://auth.app.wiz.io/oauth/token",
     "https://auth.gov.wiz.io/oauth/token",
 ]
+
+
+class VULNERABILITY_FINDING_SEVERITIES(StrEnum):
+    CRITICAL = "CRITICAL"
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+    NONE = "NONE"
+
 
 ISSUES_GQL = """
 query IssuesTable(
@@ -197,6 +209,15 @@ query VulnerabilityFindingsTable(
       hasNextPage
       endCursor
     }
+    totalCount
+  }
+}
+"""
+
+VULNERABILITY_FINDINGS_COUNT_GQL = """
+query VulnerabilityFindingsCount($filterBy: VulnerabilityFindingFilters) {
+  vulnerabilityFindings(first: 1, filterBy: $filterBy) {
+    totalCount
   }
 }
 """
@@ -459,4 +480,8 @@ GRAPH_QUERIES = {
     "repositories": REPOSITORIES_GQL,
     "sbomArtifactsGroupedByName": SBOM_ARTIFACTS_GROUPED_BY_NAME_GQL,
     "sbomArtifacts": SBOM_ARTIFACTS_GQL,
+}
+
+RESOURCE_TOTAL_COUNT_QUERIES = {
+    "vulnerabilityFindings": VULNERABILITY_FINDINGS_COUNT_GQL,
 }

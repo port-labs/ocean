@@ -26,4 +26,4 @@ configurations:
   - name: appHost
     type: string
     required: false
-    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in FireHydrant"
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in FireHydrant. This field is deprecated. Please use the OCEAN__BASE_URL field instead."

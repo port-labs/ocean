@@ -1,0 +1,67 @@
+{
+  "type": "sca",
+  "id": "Cx8bc4df28-fcf5",
+  "alternateId": "9HGM9QgtRC/SfpqMEgtqirDD8p3h2rFNliI2tq+2u2k=",
+  "similarityId": "Cx8bc4df28-fcf5",
+  "status": "RECURRENT",
+  "state": "TO_VERIFY",
+  "severity": "LOW",
+  "confidenceLevel": 0,
+  "created": "2025-10-28T13:32:34Z",
+  "firstFoundAt": "2025-10-28T13:29:29Z",
+  "foundAt": "2025-10-28T13:32:34Z",
+  "firstScanId": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "description": "In NPM \"debug\" versions prior to 4.4.0, the \"enable\" function accepts a regular expression from user input without escaping it. Arbitrary regular expressions could be injected to cause a Denial of Service attack on the user's browser, otherwise known as a ReDoS (Regular Expression Denial of Service). This is a different issue than CVE-2017-16137.",
+  "data": {
+    "packageIdentifier": "Npm-debug-2.6.4",
+    "publishedAt": "2020-12-10T17:14:00+00:00",
+    "recommendations": "4.4.0",
+    "recommendedVersion": "4.4.0",
+    "exploitableMethods": null,
+    "packageData": [
+      {
+        "url": "https://github.com/debug-js/debug/issues/737",
+        "type": "Issue"
+      },
+      {
+        "url": "https://github.com/debug-js/debug/issues/656",
+        "type": "Other",
+        "comment": "Roadmap that mentions Issue"
+      },
+      {
+        "url": "https://github.com/Checkmarx/Vulnerabilities-Proofs-of-Concept/tree/main/2020/Cx8bc4df28-fcf5",
+        "type": "POC/Exploit"
+      },
+      {
+        "url": "https://github.com/debug-js/debug/commit/d2d6bf0bab3a0eeeb3a9ce7113cb0a31d8da678f",
+        "type": "Commit"
+      },
+      {
+        "url": "https://github.com/debug-js/debug/releases/tag/4.4.0",
+        "type": "Release Note"
+      }
+    ]
+  },
+  "comments": {
+    "comments": ""
+  },
+  "vulnerabilityDetails": {
+    "cvssScore": 3.700000047683716,
+    "cveName": "Cx8bc4df28-fcf5",
+    "cweId": "CWE-1333",
+    "cvss": {
+      "scope": "UNCHANGED",
+      "score": 3.7,
+      "version": 3,
+      "severity": "Low",
+      "integrity": "NONE",
+      "attackVector": "NETWORK",
+      "availability": "LOW",
+      "confidentiality": "NONE",
+      "userInteraction": "NONE",
+      "attackComplexity": "HIGH",
+      "privilegesRequired": "NONE"
+    }
+  },
+  "__scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440"
+}

@@ -14,6 +14,8 @@ from port_ocean.log.handlers import HTTPMemoryHandler
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.utils.signal import signal_handler
 
+_sensitive_http_log_filter = sensitive_log_filter.create_filter(full_hide=True)
+
 
 def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
     logger.remove()
@@ -56,7 +58,7 @@ def _http_loguru_handler(level: LogLevelType) -> None:
         format=lambda record: "{message}",  # strip loguru decorations (timestamp, level, module) — the HTTP handler builds its own JSON payload
         diagnose=False,  # hide variable values in log backtrace
         enqueue=True,  # process logs in background
-        filter=sensitive_log_filter.create_filter(full_hide=True),
+        filter=_http_log_filter,
     )
     logger.configure(patcher=_combined_patcher)
 
@@ -68,6 +70,12 @@ def _http_loguru_handler(level: LogLevelType) -> None:
 
     queue_listener = QueueListener(queue, http_memory_handler)
     queue_listener.start()
+
+
+def _http_log_filter(record: "loguru.Record") -> bool:
+    if record["extra"].get("local_only"):
+        return False
+    return _sensitive_http_log_filter(record)
 
 
 def _extract_traceback(record: "loguru.Record") -> None:

@@ -3,9 +3,7 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import (
-    ActionRun,
-)
+from port_ocean.core.models import ActionRun
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
 INTERNAL_ACTIONS_CLIENT_HEADER = {"x-port-reserved-usage": "true"}
@@ -29,16 +27,22 @@ class ActionsClientMixin:
         handle_port_status_code(response, should_log=should_log)
 
     async def claim_pending_action_runs(
-        self, limit: int, visibility_timeout_ms: int
+        self,
+        limit: int,
+        visibility_timeout_ms: int,
+        exclude_action_identifiers: list[str] | None = None,
     ) -> list[ActionRun]:
+        body: dict[str, Any] = {
+            "installationId": self.auth.integration_identifier,
+            "limit": limit,
+            "visibilityTimeoutMs": visibility_timeout_ms,
+        }
+        if exclude_action_identifiers:
+            body["exclude"] = exclude_action_identifiers
         response = await self.client.post(
             f"{self.auth.api_url}/actions/runs/claim-pending",
             headers={**(await self.auth.headers()), **INTERNAL_ACTIONS_CLIENT_HEADER},
-            json={
-                "installationId": self.auth.integration_identifier,
-                "limit": limit,
-                "visibilityTimeoutMs": visibility_timeout_ms,
-            },
+            json=body,
         )
         if response.is_error:
             logger.error("Error claiming pending runs", error=response.text)
@@ -55,7 +59,7 @@ class ActionsClientMixin:
         runs = response.json().get("runs", [])
         return None if not len(runs) else ActionRun.parse_obj(runs[0])
 
-    async def patch_run(
+    async def patch_action_run(
         self,
         run_id: str,
         run: ActionRun | dict[str, Any],

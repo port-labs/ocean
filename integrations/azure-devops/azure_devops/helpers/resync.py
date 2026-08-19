@@ -5,9 +5,11 @@ the resource config selector, and yields batches enriched with
 __organizationUrl / __organizationName.
 """
 
+from datetime import datetime
 from typing import Any, AsyncGenerator, Optional
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.user_sources import UserSource
 from azure_devops.helpers.multi_org import iterate_per_organization
 
 
@@ -21,11 +23,9 @@ async def iter_projects(
 
 
 async def iter_users(
-    additional_params: Optional[dict[str, Any]] = None,
+    source: UserSource,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async for batch in iterate_per_organization(
-        lambda client: client.generate_users(additional_params=additional_params or {})
-    ):
+    async for batch in iterate_per_organization(lambda client: source.generate(client)):
         yield batch
 
 
@@ -96,9 +96,14 @@ async def iter_repository_policies() -> AsyncGenerator[list[dict[str, Any]], Non
 async def iter_work_items(
     wiql: Optional[str] = None,
     expand: Optional[str] = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_work_items(wiql=wiql, expand=expand)
+        lambda client: client.generate_work_items(
+            wiql=wiql,
+            expand=expand,
+            incremental_cursor=incremental_cursor,
+        )
     ):
         yield batch
 
@@ -117,10 +122,12 @@ async def iter_boards() -> AsyncGenerator[list[dict[str, Any]], None]:
 
 async def iter_releases(
     additional_params: Optional[dict[str, Any]] = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_releases(
-            additional_params=additional_params or {}
+            additional_params=additional_params or {},
+            incremental_cursor=incremental_cursor,
         )
     ):
         yield batch
@@ -137,9 +144,15 @@ async def iter_release_definitions(
         yield batch
 
 
-async def iter_builds() -> AsyncGenerator[list[dict[str, Any]], None]:
+async def iter_builds(
+    enrich_with_first_commit: bool = False,
+    incremental_cursor: Optional[datetime] = None,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_builds()
+        lambda client: client.generate_builds(
+            enrich_with_first_commit=enrich_with_first_commit,
+            incremental_cursor=incremental_cursor,
+        )
     ):
         yield batch
 
@@ -158,9 +171,13 @@ async def iter_environments() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield batch
 
 
-async def iter_release_deployments() -> AsyncGenerator[list[dict[str, Any]], None]:
+async def iter_release_deployments(
+    incremental_cursor: Optional[datetime] = None,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_release_deployments()
+        lambda client: client.generate_release_deployments(
+            incremental_cursor=incremental_cursor
+        )
     ):
         yield batch
 
@@ -189,12 +206,28 @@ async def iter_pipeline_runs() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield batch
 
 
+async def iter_pipeline_runs_incremental(
+    incremental_cursor: Optional[datetime] = None,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async for batch in iterate_per_organization(
+        lambda client: client.generate_pipeline_runs_incremental(
+            incremental_cursor=incremental_cursor
+        )
+    ):
+        yield batch
+
+
 async def iter_test_runs(
     include_results: bool = False,
     coverage_config: Any = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.fetch_test_runs(include_results, coverage_config)
+        lambda client: client.fetch_test_runs(
+            include_results,
+            coverage_config,
+            incremental_cursor=incremental_cursor,
+        )
     ):
         yield batch
 
@@ -206,23 +239,55 @@ async def iter_iterations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield batch
 
 
+async def iter_area_paths(
+    depth: Optional[int],
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async for batch in iterate_per_organization(
+        lambda client: client.generate_area_paths(depth=depth)
+    ):
+        yield batch
+
+
 async def _advanced_security_alerts_per_client(
     client: AzureDevopsClient,
     params: dict[str, Any],
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async for repositories in client.generate_repositories():
+    async for repositories in client.generate_repositories(
+        include_disabled_repositories=False
+    ):
         for repository in repositories:
             async for alerts in client.generate_advanced_security_alerts(
-                repository, params
+                repository, params, incremental_cursor=incremental_cursor
             ):
                 yield alerts
 
 
 async def iter_advanced_security_alerts(
     params: Optional[dict[str, Any]] = None,
+    incremental_cursor: Optional[datetime] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     resolved_params = params or {}
     async for batch in iterate_per_organization(
-        lambda client: _advanced_security_alerts_per_client(client, resolved_params)
+        lambda client: _advanced_security_alerts_per_client(
+            client, resolved_params, incremental_cursor
+        )
+    ):
+        yield batch
+
+
+async def iter_wiki_pages(
+    wiki_type: Optional[str],
+    include_content: bool,
+    api_version: Optional[str] = None,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    kwargs: dict[str, Any] = {
+        "wiki_type": wiki_type,
+        "include_content": include_content,
+    }
+    if api_version:
+        kwargs["api_version"] = api_version
+    async for batch in iterate_per_organization(
+        lambda client: client.generate_wiki_pages(**kwargs)
     ):
         yield batch

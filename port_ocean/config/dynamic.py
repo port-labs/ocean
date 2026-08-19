@@ -2,7 +2,7 @@ import json
 from typing import Type, Any, Optional
 
 from humps import decamelize
-from pydantic import (
+from pydantic.v1 import (
     BaseConfig,
     BaseModel,
     AnyUrl,
@@ -11,7 +11,7 @@ from pydantic import (
     parse_obj_as,
     validator,
 )
-from pydantic.fields import ModelField, Field
+from pydantic.v1.fields import ModelField, Field
 
 from port_ocean.config.base import BaseOceanModel
 

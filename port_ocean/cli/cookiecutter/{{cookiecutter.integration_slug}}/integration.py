@@ -1,7 +1,7 @@
 from typing import Literal, List
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic.v1 import Field
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,

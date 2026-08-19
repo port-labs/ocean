@@ -13,10 +13,8 @@ from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.push_constants import DELETED_COMMIT_SHA
 from integration import BranchResourceConfig
-
-# GitLab sets the `after` commit SHA to all zeros when a branch is deleted
-DELETED_COMMIT_SHA = "0000000000000000000000000000000000000000"
 
 
 class BranchWebhookProcessor(_GitlabAbstractWebhookProcessor):

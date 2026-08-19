@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import binascii
 from collections import defaultdict
@@ -16,18 +18,18 @@ from typing import (
     Union,
 )
 
-import yaml
+from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
 
-from github.clients.utils import get_mono_repo_organization
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import FileSearchOptions, ListFileSearchOptions
-from github.helpers.utils import GithubClientType, matches_glob_pattern
-from github.helpers.repo_selectors import (
-    CompositeRepositorySelector,
-    OrganizationLoginAndTypeGenerator,
+from github.core.options import (
+    FileSearchOptions,
+    ListOrganizationOptions,
+    ListFileSearchOptions,
 )
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.helpers.utils import GithubClientType, matches_glob_pattern
+from github.helpers.repo_selectors import CompositeRepositorySelector
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -96,7 +98,8 @@ def parse_content(content: str, file_path: str) -> Any:
         if file_path.endswith(JSON_FILE_SUFFIX):
             return json.loads(content)
         elif file_path.endswith(YAML_FILE_SUFFIX):
-            return yaml.safe_load(content)
+            yaml = YAML(typ="safe")
+            return yaml.load(content)
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
 
@@ -137,9 +140,7 @@ class FilePatternMappingBuilder:
         repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
-        self.generate_org_logins_and_types = OrganizationLoginAndTypeGenerator(
-            org_exporter
-        )
+        self.org_exporter = org_exporter
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
@@ -151,21 +152,23 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            organization = get_mono_repo_organization(file_sel.organization)
-            async for org_login, org_type in self.generate_org_logins_and_types(
-                organization
+            async for batch in self.org_exporter.get_paginated_resources(
+                ListOrganizationOptions(organization=file_sel.organization)
             ):
-                async for repo_name, branch, _ in self.repo_selector.select_repos(
-                    file_sel, self.repo_exporter, org_login, org_type
-                ):
-                    repo_map[(org_login, repo_name)].append(
-                        FileSearchOptions(
-                            organization=org_login,
-                            path=file_sel.path,
-                            skip_parsing=file_sel.skip_parsing,
-                            branch=branch,
+                for org in batch:
+                    org_login = org["login"]
+                    org_type = org["type"]
+                    async for repo_name, branch, _ in self.repo_selector.select_repos(
+                        file_sel, self.repo_exporter, org_login, org_type
+                    ):
+                        repo_map[(org_login, repo_name)].append(
+                            FileSearchOptions(
+                                organization=org_login,
+                                path=file_sel.path,
+                                skip_parsing=file_sel.skip_parsing,
+                                branch=branch,
+                            )
                         )
-                    )
 
         return [
             ListFileSearchOptions(
@@ -215,6 +218,7 @@ def filter_github_tree_entries_by_pattern(
                 {
                     "path": path,
                     "fetch_method": fetch_method,
+                    "sha": entry.get("sha"),
                 }
             )
 
@@ -222,7 +226,13 @@ def filter_github_tree_entries_by_pattern(
 
 
 def get_graphql_file_metadata(
-    host: str, organization: str, repo_name: str, branch: str, file_path: str, size: int
+    host: str,
+    organization: str,
+    repo_name: str,
+    branch: str,
+    file_path: str,
+    size: int,
+    sha: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Get metadata for a file from the GraphQL API.
@@ -233,6 +243,7 @@ def get_graphql_file_metadata(
         "url": url,
         "path": file_path,
         "size": size,
+        "sha": sha,
     }
 
 
@@ -242,17 +253,14 @@ def build_batch_file_query(
     """
     Build a GraphQL query to fetch multiple files from a repository.
     """
-    objects = "\n".join(
-        f"""
+    objects = "\n".join(f"""
         file_{file_index}: object(expression: "{branch}:{path}") {{
             ... on Blob {{
                 text
                 byteSize
             }}
         }}
-        """
-        for file_index, path in enumerate(file_paths)
-    )
+        """ for file_index, path in enumerate(file_paths))
 
     query = f"""
     query {{
@@ -292,16 +300,18 @@ def extract_file_index(field_name: str) -> Optional[int]:
 
 def extract_file_paths_and_metadata(
     files: List[Dict[str, Any]],
-) -> tuple[list[str], dict[str, bool]]:
+) -> tuple[list[str], dict[str, bool], dict[str, Optional[str]]]:
     file_paths = []
     file_metadata = {}
+    file_shas: dict[str, Optional[str]] = {}
 
     for file in files:
         file_path = file["file_path"]
         file_paths.append(file_path)
         file_metadata[file_path] = file["skip_parsing"]
+        file_shas[file_path] = file.get("sha")
 
-    return file_paths, file_metadata
+    return file_paths, file_metadata, file_shas
 
 
 def deep_dict(d: Union[DefaultDict[str, Any], Dict[str, Any], list[Any], Any]) -> Any:

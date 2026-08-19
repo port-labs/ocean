@@ -1,4 +1,4 @@
-# Changelog - Ocean - aws-v3
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,878 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 2.20.11-beta (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 2.20.10-beta (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 2.20.9-beta (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 2.20.8-beta (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 2.20.7-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 2.20.6-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 2.20.5-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 2.20.4-beta (2026-08-12)
+
+
+### Bug Fixes
+
+- Remove liveEventsApiKey from spec.yaml so it is not shown in the UI while live events are behind a feature flag
+
+
+## 2.20.3-beta (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 2.20.2-beta (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 2.20.1-beta (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 2.20.0-beta (2026-08-10)
+
+
+### Features
+
+- Added AWS::SNS::Topic kind with topic attributes, delivery feedback, and optional tags support
+
+
+## 2.19.3-beta (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 2.19.2-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 2.19.1-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 2.19.0-beta (2026-08-09)
+
+
+### Features
+
+- Added CloudTrail live events support for `AWS::S3::Bucket` and `AWS::Lambda::Function` kinds, enabled via the `AWS_V3_LIVE_EVENTS_ENABLED` organization feature flag.
+
+
+## 2.18.7-beta (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 2.18.6-beta (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 2.18.5-beta (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 2.18.4-beta (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 2.18.3-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 2.18.2-beta (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 2.18.1-beta (2026-08-02)
+
+
+### Improvements
+
+- Added dict from kind to exporter metadata instead of needing to have an on_resync for each kind
+
+
+## 2.18.0-beta (2026-07-31)
+
+
+### Features
+
+- Add support for AWS::SES::ConfigurationSet kind
+
+
+## 2.17.0-beta (2026-07-30)
+
+
+### Features
+
+- Added DynamoDB Table support by fetching table metadata and tags concurrently per region, enabling customers to track table status, billing mode, item count, size, encryption type, and deletion protection directly in Port. Backup and PITR status is available as an optional action (`GetTableBackupStatusAction`).
+
+
+## 2.16.12-beta (2026-07-30)
+
+
+### Improvements
+
+- Added support for AWS::SES::EmailIdentity kind resource
+
+
+## 2.16.11-beta (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 2.16.10-beta (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 2.16.9-beta (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 2.16.8-beta (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 2.16.7-beta (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 2.16.6-beta (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 2.16.5-beta (2026-07-27)
+
+
+### Improvements
+
+- Improve "ADDING NEW KINDS" instructions
+
+
+## 2.16.4-beta (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 2.16.3-beta (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 2.16.2-beta (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 2.16.1-beta (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 2.16.0-beta (2026-07-22)
+
+
+### Improvements
+
+- Internal data serialization models use Pydantic v2 instead of v1
+
+
+## 2.15.24-beta (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 2.15.23-beta (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 2.15.22-beta (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 2.15.21-beta (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 2.15.20-beta (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 2.15.19-beta (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 2.15.18-beta (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 2.15.17-beta (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 2.15.16-beta (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 2.15.15-beta (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 2.15.14-beta (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 2.15.13-beta (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 2.15.12-beta (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 2.15.11-beta (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 2.15.10-beta (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 2.15.9-beta (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 2.15.8-beta (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 2.15.7-beta (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 2.15.6-beta (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 2.15.5-beta (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 2.15.4-beta (2026-07-07)
+
+
+### Improvements
+
+- Supported account_role_arns in partition extraction
+
+
+## 2.15.3-beta (2026-07-05)
+
+
+### Improvements
+
+- Added static examples
+
+
+## 2.15.2-beta (2026-07-05)
+
+
+### Improvements
+
+- Added missing/fixed existing internal examples
+
+
+## 2.15.1-beta (2026-07-05)
+
+
+### Improvements
+
+- Typing for models uses new syntax rather than the deprecated format
+
+
+## 2.15.0-beta (2026-07-02)
+
+
+### Improvements
+
+- Added support for GovCloud environments
+
+
+## 2.14.3-beta (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 2.14.2-beta (2026-07-01)
+
+
+### Improvements
+
+- Fixed typo in alias kwarg which caused ExportedEnvironmentVariables field in CodeBuild Build Run to not be ingested properly
+
+
+## 2.14.1-beta (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 2.14.0-beta (2026-06-29)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::DeploymentTarget resource kind, enabling ingestion of CodeDeploy Deployment Targets into the Port catalog
+
+
+## 2.13.0-beta (2026-06-29)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::ActionExecution resource kind, enabling ingestion of CodePipeline Action Executions into the Port catalog
+
+
+## 2.12.0-beta (2026-06-28)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::PipelineExecution resource kind, enabling ingestion of CodePipeline Pipeline Executions into the Port catalog
+
+
+## 2.11.3-beta (2026-06-28)
+
+
+### Improvements
+
+- Optimized the shared `ResourceBuilder` (used by all AWS kinds, notably the property-heavy `AWS::EC2::Instance`) to remove redundant per-resource work: it no longer instantiates and discards an empty default `Properties` model, now validates `Properties` exactly once by constructing the resource model in a single pass, and replaces the per-resource JSON serialize/deserialize round-trip with an in-place dict conversion (only non-JSON-native leaves are rewritten). Output is byte-for-byte identical.
+
+
+## 2.11.2-beta (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 2.11.1-beta (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 2.11.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::Stage resource kind, enabling ingestion of CodePipeline Stages into the Port catalog
+
+
+## 2.10.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::Deployment resource kind, enabling ingestion of CodeDeploy Deployment into the Port catalog
+
+
+## 2.9.4-beta (2026-06-25)
+
+
+### Improvements
+
+- Added base (and used in CodePipeline) to allow for Action merge by id rather than index
+
+
+## 2.9.3-beta (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 2.9.2-beta (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 2.9.1-beta (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 2.9.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Deployment Group resource kind, enabling ingestion of CodeDeploy Deployment Groups into the Port catalog
+
+
+## 2.8.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Action resource kind, enabling ingestion of CodePipeline Actions into the Port catalog
+
+
+## 2.7.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Pipeline resource kind, enabling ingestion of CodePipeline Pipelines into the Port catalog
+
+
+## 2.6.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Application resource kind, enabling ingestion of CodeDeploy Applications into the Port catalog
+
+
+## 2.5.4-beta (2026-06-16)
+
+
+### Bug Fixes
+
+- Fixed silent index-shift in concurrent action result merging that caused enrichment data (tags, encryption, etc.) to be applied to the wrong AWS resource when one resource's API call returned a recoverable error. All recoverable-skip paths in S3, SQS, RDS, Lambda, Organizations, and the shared `execute_concurrent_aws_operations` helper (used by ECR, ECS, EC2) now preserve list alignment via an empty placeholder.
+
+
+## 2.5.3-beta (2026-06-16)
+
+
+### Improvements
+
+- Base Action class Generic had variable name override fixed, should now properly identify typing
+
+
+## 2.5.2-beta (2026-06-15)
+
+
+### Improvements
+
+- Added ruff ignore on unused imports in __init__ files to remove the need for __all__
+
+
+## 2.5.1-beta (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 2.5.0-beta (2026-06-15)
+
+
+### Features
+
+- Added support for AWS::CodeBuild::Build Run resource kind, enabling ingestion of CodeBuild Build Runs into the Port catalog
+
+
+## 2.4.1-beta (2026-06-15)
+
+
+### Improvements
+
+- Base Action class uses Generic[T] instead of list[Any] for typing, enabling more efficient data handling
+
+
+## 2.4.0-beta (2026-06-11)
+
+
+### Features
+
+- Added support for AWS::CodeBuild::Project resource kind, enabling ingestion of CodeBuild projects into the Port catalog
+
+
+## 2.3.1-beta (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 2.3.0-beta (2026-06-10)
+
+
+### Features
+
+- Extended `ouId` to support multiple AWS Organizational Units via comma-separated values (e.g. `ou-abc,ou-def`).
+
+
+## 2.2.42-beta (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 2.2.41-beta (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 2.2.40-beta (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 2.2.39-beta (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 2.2.38-beta (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 2.2.37-beta (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 2.2.36-beta (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 2.2.35-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 2.2.34-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 2.2.33-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::MSK::ServerlessCluster resource kind, enabling ingestion of MSK serverless clusters into the Port catalog with attributes such as cluster state, creation time, VPC configuration, client authentication, and tags.
+
+
+## 2.2.32-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::RDS::DBCluster resource kind, enabling ingestion of Aurora and multi-AZ RDS cluster entities into the Port catalog with attributes such as cluster members, engine mode, writer/reader endpoints, availability zones, and encryption settings.
+
+
+## 2.2.31-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 2.2.30-beta (2026-05-31)
+
+
+### Features
+
+- Added support for `AWS::MemoryDB::User` resource kind, enabling ingestion of MemoryDB users into the Port catalog with attributes such as status, access string, ACL names, authentication mode, and optional tags via `ListTagsForMemoryDbUserAction`.
+
+
+## 2.2.29-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 2.2.28-beta (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 2.2.27-beta (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 2.2.26-beta (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 2.2.25-beta (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
 
 ## 2.2.24-beta (2026-05-26)
 
@@ -986,7 +1858,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Bumped ocean version to ^0.29.8
 
 
@@ -999,6 +1870,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 2.0.7-beta (2025-11-17)
+
 
 ### Bug Fixes
 
@@ -1108,6 +1980,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.4.8-beta (2025-10-26)
 
+
 ### Improvements
 
 - Move aws-v3 integration from stable to beta
@@ -1131,9 +2004,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.4.5 (2025-10-20)
 
+
 ### Improvements
 
 - Move aws-v3 integration from beta to stable
+
 
 ## 1.4.4-beta (2025-10-15)
 
@@ -1514,6 +2389,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add assume role with web identity provider
+
 
 ## 0.1.2-dev (2025-07-20)
 

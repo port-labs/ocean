@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import List, Literal, Optional
 
-from pydantic import Field
+from pydantic.v1 import Field
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -8,6 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from clients.literals import IssueStatusLiteral, IssueSeverityLiteral, IssueTypeLiteral
 
 
 class ObjectKind:
@@ -58,10 +59,35 @@ class ContainerResourceConfig(ResourceConfig):
     )
 
 
+class IssueSelector(Selector):
+    filter_status: IssueStatusLiteral = Field(
+        default="all",
+        alias="filterStatus",
+        title="Status",
+        description="Filter issues by status.",
+    )
+    filter_severities: Optional[List[IssueSeverityLiteral]] = Field(
+        default=None,
+        alias="filterSeverities",
+        title="Severities",
+        description="Filter issues by one or more severities. Multiple values are combined with OR.",
+    )
+    filter_issue_type: Optional[IssueTypeLiteral] = Field(
+        default=None,
+        alias="filterIssueType",
+        title="Issue type",
+        description="Filter issues by type.",
+    )
+
+
 class IssueResourceConfig(ResourceConfig):
     kind: Literal["issues"] = Field(
         title="Aikido Issue",
         description="Aikido issue resource kind.",
+    )
+    selector: IssueSelector = Field(
+        title="Issue Selector",
+        description="Selector for the Aikido issue resource.",
     )
 
 

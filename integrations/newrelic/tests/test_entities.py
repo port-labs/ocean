@@ -49,7 +49,6 @@ async def mock_render_query() -> AsyncGenerator[AsyncMock, None]:
         yield mock
 
 
-# Test class using async test cases
 @pytest.mark.asyncio
 class TestEntitiesHandler:
 
@@ -178,7 +177,7 @@ class TestEntitiesHandler:
 
         # Call the method under test
         entities: List[Dict[str, Any]] = await entities_handler.list_entities_by_guids(
-            mock_send_request, ["entity1"]
+            ["entity1"]
         )
         # Assertions
         assert len(entities) == 1

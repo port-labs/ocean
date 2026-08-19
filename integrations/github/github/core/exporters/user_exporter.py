@@ -12,9 +12,9 @@ from github.helpers.utils import enrich_members_with_saml_email
 
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    async def get_resource[
-        ExporterOptionT: SingleUserOptions
-    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionT: SingleUserOptions](
+        self, options: ExporterOptionT
+    ) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         login_option = options["login"]
         include_saml_email = bool(options["include_saml_email"])
@@ -35,9 +35,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         return user
 
-    async def get_paginated_resources[
-        ExporterOptionT: ListUserOptions
-    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionT: ListUserOptions](
+        self, options: ExporterOptionT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         organization = options["organization"]
         include_saml_email = bool(options["include_saml_email"])
         variables = {

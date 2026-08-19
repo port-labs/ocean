@@ -1,0 +1,50 @@
+resources:
+  - kind: AWS::RDS::DBCluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.DBClusterArn
+          title: .Properties.DBClusterIdentifier
+          blueprint: '"rdsDbCluster"'
+          properties:
+            activityStreamStatus: .Properties.ActivityStreamStatus
+            associatedRoles: .Properties.AssociatedRoles
+            autoMinorVersionUpgrade: .Properties.AutoMinorVersionUpgrade
+            availabilityZones: .Properties.AvailabilityZones
+            backupRetentionPeriod: .Properties.BackupRetentionPeriod
+            clusterCreateTime: .Properties.ClusterCreateTime
+            copyTagsToSnapshot: .Properties.CopyTagsToSnapshot
+            crossAccountClone: .Properties.CrossAccountClone
+            databaseName: .Properties.DatabaseName
+            dbClusterArn: .Properties.DBClusterArn
+            dbClusterIdentifier: .Properties.DBClusterIdentifier
+            dbClusterMembers: .Properties.DBClusterMembers
+            dbClusterResourceId: .Properties.DbClusterResourceId
+            deletionProtection: .Properties.DeletionProtection
+            earliestRestorableTime: .Properties.EarliestRestorableTime
+            endpoint: .Properties.Endpoint
+            engine: .Properties.Engine
+            engineMode: .Properties.EngineMode
+            engineVersion: .Properties.EngineVersion
+            globalWriteForwardingStatus: .Properties.GlobalWriteForwardingStatus
+            httpEndpointEnabled: .Properties.HttpEndpointEnabled
+            iamDatabaseAuthenticationEnabled: .Properties.IAMDatabaseAuthenticationEnabled
+            kmsKeyId: .Properties.KmsKeyId
+            latestRestorableTime: .Properties.LatestRestorableTime
+            masterUsername: .Properties.MasterUsername
+            multiAZ: .Properties.MultiAZ
+            networkType: .Properties.NetworkType
+            port: .Properties.Port
+            preferredBackupWindow: .Properties.PreferredBackupWindow
+            preferredMaintenanceWindow: .Properties.PreferredMaintenanceWindow
+            readerEndpoint: .Properties.ReaderEndpoint
+            status: .Properties.Status
+            storageEncrypted: .Properties.StorageEncrypted
+            storageType: .Properties.StorageType
+            tags: .Properties.Tags
+            vpcSecurityGroups: .Properties.VpcSecurityGroups
+            dbSubnetGroup: .Properties.DBSubnetGroup
+          relations:
+            account: .__ExtraContext.AccountId

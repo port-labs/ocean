@@ -1,0 +1,21 @@
+{
+  "Type": "AWS::MemoryDB::User",
+  "Properties": {
+    "Name": "default",
+    "Status": "active",
+    "AccessString": "on ~* &* +@all",
+    "ACLNames": [
+      "open-access"
+    ],
+    "MinimumEngineVersion": "6.0",
+    "Authentication": {
+      "Type": "no-password"
+    },
+    "ARN": "arn:aws:memorydb:eu-west-1:123456789012:user/default",
+    "TagList": []
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}

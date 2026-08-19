@@ -1,0 +1,21 @@
+{
+  "identifier": "d-F7ZFJNVSJ",
+  "title": "MyPythonCodeDeployApp - d-F7ZFJNVSJ",
+  "properties": {
+    "deploymentId": "d-F7ZFJNVSJ",
+    "applicationName": "MyPythonCodeDeployApp",
+    "deploymentGroupName": "MyDeploymentGroup",
+    "status": "InProgress",
+    "creator": "user",
+    "createTime": "2026-06-16T16:16:16.162000+03:00",
+    "deploymentStyle": {
+      "deploymentType": "IN_PLACE",
+      "deploymentOption": "WITHOUT_TRAFFIC_CONTROL"
+    },
+    "region": "eu-west-1"
+  },
+  "relations": {
+    "account": "123456789012"
+  },
+  "icon": "AWS"
+}

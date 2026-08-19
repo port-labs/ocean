@@ -17,6 +17,11 @@ configurations:
     required: false
     description: The allowed number of requests to the GCP assets inventory. By default it is set to 400, but can be adjusted per to your GCP plan. For more information see the <a href="https://cloud.google.com/asset-inventory/docs/quota#project_quota" target="_blank">GCP quota documentation</a>
     default: 400
+  - name: cloudFunctionSecret
+    type: object
+    required: false
+    sensitive: true
+    description: Key-value pairs forwarded to cloud-function sync endpoints in every request body (e.g. upstream API credentials). Set via environment variable to keep secrets out of the Port mapping.
 deploymentMethodRequirements:
   - type: default
     configurations: ["encodedADCConfiguration"]

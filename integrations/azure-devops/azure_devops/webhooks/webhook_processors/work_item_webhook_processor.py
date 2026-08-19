@@ -45,8 +45,15 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         resource = payload["resource"]
         work_item_id = resource["id"]
         project_id = payload["resourceContainers"]["project"]["id"]
-
         event_type = payload["eventType"]
+
+        if await self._is_project_excluded(project_id):
+            logger.info(
+                f"Work item {work_item_id} skipped - project {project_id} matched excludedTags"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         project = await client.get_single_project(project_id)
         if not project:

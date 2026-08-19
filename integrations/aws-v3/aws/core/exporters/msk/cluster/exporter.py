@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class MskClusterExporter(IResourceExporter):
+class MskClusterExporter(IResourceExporter[list[dict[str, Any]]]):
     """Exporter for MSK cluster resources."""
 
     _service_name: SupportedServices = "kafka"

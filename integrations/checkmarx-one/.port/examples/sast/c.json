@@ -1,0 +1,80 @@
+{
+  "compliances": [
+    "OWASP ASVS",
+    "PCI DSS v3.2.1",
+    "ASA Premium",
+    "MOIS(KISA) Secure Coding 2021",
+    "PCI DSS v4.0",
+    "OWASP Top 10 2017",
+    "OWASP Top 10 2021",
+    "ASD STIG 6.1",
+    "OWASP Top 10 API"
+  ],
+  "confidenceLevel": 0,
+  "cweID": 472,
+  "firstFoundAt": "2025-09-02T21:57:56Z",
+  "firstScanID": "d7f73679-0b80-4478-abd8-69dad4de54a1",
+  "group": "Python_Medium_Threat",
+  "languageName": "python",
+  "nodes": [
+    {
+      "column": 23,
+      "fileName": "/api_security_risks.py",
+      "fullName": "request.args",
+      "length": 4,
+      "line": 21,
+      "methodLine": 20,
+      "name": "args",
+      "nodeID": 1052
+    },
+    {
+      "column": 28,
+      "fileName": "/api_security_risks.py",
+      "fullName": "request.args.get",
+      "length": 3,
+      "line": 21,
+      "methodLine": 20,
+      "name": "get",
+      "nodeID": 1055
+    },
+    {
+      "column": 5,
+      "fileName": "/api_security_risks.py",
+      "fullName": "user_id",
+      "length": 7,
+      "line": 21,
+      "methodLine": 20,
+      "name": "user_id",
+      "nodeID": 1060
+    },
+    {
+      "column": 54,
+      "fileName": "/api_security_risks.py",
+      "fullName": "user_id",
+      "length": 7,
+      "line": 25,
+      "methodLine": 20,
+      "name": "user_id",
+      "nodeID": 1091
+    },
+    {
+      "column": 12,
+      "fileName": "/api_security_risks.py",
+      "fullName": "cursor.execute",
+      "length": 7,
+      "line": 25,
+      "methodLine": 20,
+      "name": "execute",
+      "nodeID": 1085
+    }
+  ],
+  "pathSystemID": "WR19KK9rQkgmEpD5CliuKSCjzuI=",
+  "queryID": 13511769189989343000,
+  "queryName": "Parameter_Tampering",
+  "resultHash": "WR19KK9rQkgmEpD5CliuKSCjzuI=",
+  "scanID": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "severity": "MEDIUM",
+  "similarityID": 463073604,
+  "state": "TO_VERIFY",
+  "status": "RECURRENT"
+}

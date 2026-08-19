@@ -1,9 +1,14 @@
 from typing import List, Literal, Optional, Union, Any
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
+from azure_devops.client.user_sources import (
+    EntitlementsUserSource,
+    GraphUserSource,
+    UserSource,
+)
 from azure_devops.misc import AzureDevopsFolderResourceConfig, Kind
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -18,6 +23,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
+from port_ocean.utils.relative_time import days_ago
 
 
 class AzureDevopsSelector(Selector):
@@ -168,6 +174,12 @@ class TeamSelector(Selector):
         title="Include Members",
         description="Whether to include the members of the team, defaults to false",
     )
+    include_area_paths: bool = Field(
+        alias="includeAreaPaths",
+        default=False,
+        title="Include Area Paths",
+        description="Whether to attach the team's configured area paths under __areaPaths (from the Team Field Values API), defaults to false",
+    )
 
 
 class AzureDevopsTeamResourceConfig(ResourceConfig):
@@ -258,7 +270,7 @@ class AzureDevopsPullRequestSelector(Selector):
     @property
     def min_time_datetime(self) -> datetime:
         """Convert the min time in days to a timezone-aware datetime object."""
-        return datetime.now(timezone.utc) - timedelta(days=self.min_time_in_days)
+        return days_ago(self.min_time_in_days)
 
 
 class AzureDevopsPullRequestResourceConfig(ResourceConfig):
@@ -296,25 +308,49 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
 
 
 class AzureDevopsUserSelector(Selector):
+    source: Literal["graph", "entitlements"] = Field(
+        default="entitlements",
+        alias="source",
+        title="Source",
+        description="Where to read users from. 'graph' uses the read-only Graph Users API (vso.graph scope); 'entitlements' uses the Member Entitlement Management API, which also returns license data but requires an elevated scope.",
+    )
+    subject_types: Optional[list[str]] = Field(
+        default=None,
+        alias="subjectTypes",
+        title="Subject Types",
+        description="Graph source only. Filter users by subject subtype, e.g. 'aad', 'msa', 'svc', 'imp'.",
+    )
+    include_group_memberships: bool = Field(
+        default=False,
+        alias="includeGroupMemberships",
+        title="Include Group Memberships",
+        description="Graph source only. Enrich each user with their direct group memberships (__groups) and derived project entitlements (__projects).",
+    )
     include_fields: Optional[
         list[Literal["license", "extensions", "projects", "groupRules"]]
     ] = Field(
         default=None,
         alias="includeFields",
         title="Include Fields",
-        description="List of additional properties to include in user entitlements.",
+        description="Entitlements source only. List of additional properties to include in user entitlements.",
+    )
+    api_version: Optional[str] = Field(
+        default=None,
+        alias="apiVersion",
+        title="API Version",
+        description="Entitlements source only. API version for the User Entitlements endpoint. Override if your organization requires a specific version. Will use the default version if not provided.",
     )
 
-    def to_params(self) -> dict[str, str]:
-        data = self.dict(
-            by_alias=True,
-            exclude_none=True,
-            exclude={"query"},
+    def build_source(self) -> UserSource:
+        if self.source == "graph":
+            return GraphUserSource(
+                subject_types=self.subject_types,
+                include_group_memberships=self.include_group_memberships,
+            )
+        return EntitlementsUserSource(
+            include_fields=self.include_fields,
+            api_version=self.api_version,
         )
-        if "includeFields" in data:
-            data["select"] = ",".join(data["includeFields"])
-            del data["includeFields"]
-        return data
 
 
 class AzureDevopsUserConfig(ResourceConfig):
@@ -455,25 +491,26 @@ class AzureDevopsReleaseConfig(ResourceConfig):
     )
 
 
+class AzureDevopsBuildSelector(AzureDevopsSelector):
+    enrich_with_first_commit: bool = Field(
+        default=False,
+        alias="enrichWithFirstCommit",
+        title="Enrich With First Commit",
+        description=(
+            "When enabled, each build is enriched under __firstCommit with the earliest commit it "
+            "shipped (__sha, __timestamp in UTC, __commitCount). Defaults to false."
+        ),
+    )
+
+
 class AzureDevopsBuildConfig(ResourceConfig):
     kind: Literal[Kind.BUILD] = Field(
         title="Azure Devops Build",
         description="Azure Devops build resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsBuildSelector = Field(
         title="Build selector",
         description="Selector for the build resource.",
-    )
-
-
-class AzureDevopsPipelineStageConfig(ResourceConfig):
-    kind: Literal[Kind.PIPELINE_STAGE] = Field(
-        title="Azure Devops Pipeline Stage",
-        description="Azure Devops pipeline stage resource kind.",
-    )
-    selector: AzureDevopsSelector = Field(
-        title="Pipeline stage selector",
-        description="Selector for the pipeline stage resource.",
     )
 
 
@@ -485,6 +522,17 @@ class AzureDevopsPipelineRunConfig(ResourceConfig):
     selector: AzureDevopsSelector = Field(
         title="Pipeline run selector",
         description="Selector for the pipeline run resource.",
+    )
+
+
+class AzureDevopsPipelineStageConfig(ResourceConfig):
+    kind: Literal[Kind.PIPELINE_STAGE] = Field(
+        title="Azure Devops Pipeline Stage",
+        description="Azure Devops pipeline stage resource kind.",
+    )
+    selector: AzureDevopsSelector = Field(
+        title="Pipeline stage selector",
+        description="Selector for the pipeline stage resource.",
     )
 
 
@@ -574,6 +622,26 @@ class AzureDevopsIterationConfig(ResourceConfig):
     )
 
 
+class AzureDevopsAreaPathSelector(Selector):
+    depth: Optional[int] = Field(
+        default=None,
+        alias="depth",
+        title="Depth",
+        description="How many levels of the area-path tree to fetch in a single call.",
+    )
+
+
+class AzureDevopsAreaPathResourceConfig(ResourceConfig):
+    kind: Literal[Kind.AREA_PATH] = Field(
+        title="Azure Devops Area Path",
+        description="Azure Devops area path resource kind.",
+    )
+    selector: AzureDevopsAreaPathSelector = Field(
+        title="Area path selector",
+        description="Selector for the area path resource.",
+    )
+
+
 class AzureDevopsGroupResourceConfig(ResourceConfig):
     kind: Literal[Kind.GROUP] = Field(
         title="Azure Devops Group",
@@ -588,8 +656,45 @@ class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
     )
 
 
+class AzureDevopsWikiSelector(Selector):
+    wiki_type: Optional[Literal["projectWiki", "codeWiki"]] = Field(
+        alias="wikiType",
+        default=None,
+        title="Wiki Type",
+        description="Filter wikis by type. If not provided, both project wikis and code wikis are ingested.",
+    )
+    include_content: bool = Field(
+        alias="includeContent",
+        default=False,
+        title="Include Content",
+        description="Whether to fetch the markdown content of each wiki page. Defaults to false to reduce API calls and payload size.",
+    )
+    api_version: Optional[str] = Field(
+        default=None,
+        alias="apiVersion",
+        title="API Version",
+        description="API version for the Wiki endpoints. Override if your organization requires a specific version. Will use the default version if not provided.",
+    )
+
+
+class AzureDevopsWikiResourceConfig(ResourceConfig):
+    kind: Literal[Kind.WIKI] = Field(
+        title="Azure Devops Wiki",
+        description="Azure Devops wiki page resource kind.",
+    )
+    selector: AzureDevopsWikiSelector = Field(
+        title="Wiki selector",
+        description="Selector for the wiki resource.",
+    )
+
+
 class GitPortAppConfig(PortAppConfig):
-    spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
+    spec_path: List[str] | str = Field(
+        alias="specPath",
+        default="port.yml",
+        title="Spec Path",
+        description="Path to Port spec files in the repository. Default is 'port.yml'.",
+    )
     use_default_branch: bool | None = Field(
         default=None,
         alias="useDefaultBranch",
@@ -627,8 +732,10 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsReleaseDeploymentConfig
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig
+        | AzureDevopsAreaPathResourceConfig
         | AzureDevopsGroupResourceConfig
         | AzureDevopsGroupMemberResourceConfig
+        | AzureDevopsWikiResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
@@ -650,12 +757,14 @@ class AzureDevopsIntegration(BaseIntegration, AzureDevopsHandlerMixin):
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
         # Replace the Ocean's webhook manager with our custom one
-        self.context.app.webhook_manager = AzureDevopsLiveEventsProcessorManager(
+        processor_manager = AzureDevopsLiveEventsProcessorManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
+        self.context.app.webhook_manager = processor_manager
+        self.context.app.execution_manager._webhook_manager = processor_manager
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitPortAppConfig

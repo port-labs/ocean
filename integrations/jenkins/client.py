@@ -9,7 +9,6 @@ from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
-
 PAGE_SIZE = 50
 MAX_BUILDS = 100
 

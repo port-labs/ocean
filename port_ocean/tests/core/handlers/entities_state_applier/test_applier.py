@@ -1,4 +1,5 @@
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from typing import Any
 import pytest
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
@@ -11,6 +12,13 @@ from port_ocean.context.ocean import PortOceanContext
 from port_ocean.tests.core.conftest import create_entity
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.context.event import event_context, EventType
+
+
+@pytest.fixture
+def port_app_config_no_dependents() -> MagicMock:
+    config = MagicMock(spec=PortAppConfig)
+    config.delete_dependent_entities = False
+    return config
 
 
 @pytest.mark.asyncio
@@ -286,3 +294,179 @@ async def test_upsert_groups_entities_by_blueprint(
         assert blueprint_counts["deployment"] == 1
         assert blueprint_counts["user"] == 1
         assert len(blueprint_counts) == 3
+
+
+@pytest.mark.asyncio
+async def test_delete_empty_list_makes_no_client_calls(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    mock_bulk_delete = AsyncMock(return_value=[])
+    setattr(mock_ocean.port_client, "bulk_delete_entities", mock_bulk_delete)
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config
+        await applier.delete([], UserAgentType.exporter)
+
+    mock_bulk_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_groups_entities_by_blueprint(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    entities = [
+        Entity(identifier="svc_1", blueprint="service"),
+        Entity(identifier="svc_2", blueprint="service"),
+        Entity(identifier="dep_1", blueprint="deployment"),
+    ]
+    mock_bulk_delete = AsyncMock(return_value=[])
+    setattr(mock_ocean.port_client, "bulk_delete_entities", mock_bulk_delete)
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
+        await applier.delete(entities, UserAgentType.exporter)
+
+    assert mock_bulk_delete.call_count == 2
+    calls_by_blueprint = {
+        call[0][0]: call[0][1] for call in mock_bulk_delete.call_args_list
+    }
+    assert set(calls_by_blueprint["service"]) == {"svc_1", "svc_2"}
+    assert calls_by_blueprint["deployment"] == ["dep_1"]
+
+
+@pytest.mark.asyncio
+async def test_delete_with_dependents_calls_bulk_delete_per_blueprint(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    entities = [
+        Entity(identifier="svc_1", blueprint="service"),
+        Entity(identifier="dep_1", blueprint="deployment"),
+        Entity(identifier="dep_2", blueprint="deployment"),
+    ]
+    mock_bulk_delete = AsyncMock(return_value=[])
+    setattr(mock_ocean.port_client, "bulk_delete_entities", mock_bulk_delete)
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
+        await applier.delete(entities, UserAgentType.exporter)
+
+    called_blueprints = {call[0][0] for call in mock_bulk_delete.call_args_list}
+    assert called_blueprints == {"service", "deployment"}
+
+
+@pytest.mark.asyncio
+async def test_delete_without_dependents_processes_blueprints_sequentially(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    port_app_config_no_dependents: MagicMock,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    entities = [
+        Entity(identifier="svc_1", blueprint="service"),
+        Entity(identifier="dep_1", blueprint="deployment"),
+    ]
+
+    call_order: list[str] = []
+
+    async def track_blueprint_calls(
+        blueprint: str, *args: Any, **kwargs: Any
+    ) -> list[str]:
+        call_order.append(blueprint)
+        return []
+
+    setattr(mock_ocean.port_client, "bulk_delete_entities", track_blueprint_calls)
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = port_app_config_no_dependents
+        await applier.delete(entities, UserAgentType.exporter)
+
+    assert len(call_order) == 2
+
+
+@pytest.mark.asyncio
+async def test_delete_with_dependents_never_calls_single_delete_entity(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    mock_single_delete = AsyncMock()
+    setattr(mock_ocean.port_client, "delete_entity", mock_single_delete)
+    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
+        await applier.delete(
+            [Entity(identifier="svc_1", blueprint="service")], UserAgentType.exporter
+        )
+
+    mock_single_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_without_dependents_never_calls_single_delete_entity(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    port_app_config_no_dependents: MagicMock,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    mock_single_delete = AsyncMock()
+    setattr(mock_ocean.port_client, "delete_entity", mock_single_delete)
+    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = port_app_config_no_dependents
+        await applier.delete(
+            [Entity(identifier="svc_1", blueprint="service")], UserAgentType.exporter
+        )
+
+    mock_single_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_with_dependents_never_calls_batch_delete_entities(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    mock_batch_delete = AsyncMock()
+    setattr(mock_ocean.port_client, "batch_delete_entities", mock_batch_delete)
+    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
+        await applier.delete(
+            [Entity(identifier="svc_1", blueprint="service")], UserAgentType.exporter
+        )
+
+    mock_batch_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_without_dependents_never_calls_batch_delete_entities(
+    mock_context: PortOceanContext,
+    mock_ocean: Ocean,
+    port_app_config_no_dependents: MagicMock,
+) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
+    mock_batch_delete = AsyncMock()
+    setattr(mock_ocean.port_client, "batch_delete_entities", mock_batch_delete)
+    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = port_app_config_no_dependents
+        await applier.delete(
+            [Entity(identifier="svc_1", blueprint="service")], UserAgentType.exporter
+        )
+
+    mock_batch_delete.assert_not_called()

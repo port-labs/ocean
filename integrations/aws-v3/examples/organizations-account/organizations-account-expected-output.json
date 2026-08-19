@@ -1,0 +1,14 @@
+{
+  "identifier": "123456789013",
+  "title": "dev-account",
+  "blueprint": "organizationsAccount",
+  "properties": {
+    "arn": "arn:aws:organizations::123456789012:account/o-exampleorg11/123456789013",
+    "email": "dev-team@example.com",
+    "name": "dev-account",
+    "status": "ACTIVE",
+    "joinedMethod": "CREATED",
+    "joinedTimestamp": "2023-06-15T09:00:00.000Z"
+  },
+  "relations": {}
+}

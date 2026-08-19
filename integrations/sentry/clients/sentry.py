@@ -143,7 +143,9 @@ class SentryClient:
                 response = await self.send_api_request(
                     "GET", url, params=params, ignored_errors=ignored_errors
                 )
-                records = response.json()
+                if not response or not (records := response.json()):
+                    break
+
                 logger.debug(
                     f"Received {len(records)} records from Sentry for URL: {url}"
                 )

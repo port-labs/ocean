@@ -1,15 +1,36 @@
-from typing import Generator
+from typing import Any, Generator
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from datadog.client import DatadogClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 
 @pytest.fixture(autouse=True)
-def mock_integration_config() -> Generator[dict[str, str], None, None]:
+def mock_client_manager() -> Generator[MagicMock, None, None]:
+    """Patch the client manager at the point it is consumed so processor fixtures
+    can be created without real Datadog credentials. By default the manager
+    resolves any payload to a single mock client."""
+    manager = MagicMock()
+    manager.is_multi_org = False
+    manager.clients = [MagicMock()]
+    manager.get_clients_by_org_name.return_value = [MagicMock()]
+    manager.get_client_by_org_id.return_value = MagicMock()
+    with patch(
+        "datadog.webhook.webhook_processors.base_webhook_processor.get_client_manager",
+        return_value=manager,
+    ):
+        yield manager
+
+
+@pytest.fixture(autouse=True)
+def mock_integration_config() -> Generator[dict[str, Any], None, None]:
     """Mock the ocean integration config."""
-    config = {"datadog_service_dependency_env": "prod", "webhook_secret": "test_token"}
+    config: dict[str, Any] = {
+        "datadog_service_dependency_env": "prod",
+        "webhook_secret": "test_token",
+    }
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,
@@ -20,10 +41,10 @@ def mock_integration_config() -> Generator[dict[str, str], None, None]:
 
 @pytest.fixture(autouse=True)
 def mock_integration_config_without_webhook_secret() -> (
-    Generator[dict[str, str], None, None]
+    Generator[dict[str, Any], None, None]
 ):
     """Mock the ocean integration config."""
-    config = {"datadog_service_dependency_env": "prod"}
+    config: dict[str, Any] = {"datadog_service_dependency_env": "prod"}
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,
@@ -45,3 +66,12 @@ def mock_ocean_context(mock_integration_config: dict[str, str]) -> None | MagicM
         # Context already initialized, ignore
         pass
     return None
+
+
+@pytest.fixture
+def mock_datadog_client() -> DatadogClient:
+    return DatadogClient(
+        api_url="https://api.datadoghq.com",
+        api_key="test_api_key",
+        app_key="test_app_key",
+    )

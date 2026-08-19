@@ -1,0 +1,114 @@
+{
+  "compliances": [
+    "SANS top 25",
+    "ASA Premium",
+    "CWE top 25",
+    "PCI DSS v4.0",
+    "ASD STIG 6.1",
+    "FISMA 2014",
+    "NIST SP 800-53",
+    "OWASP Top 10 2021",
+    "MOIS(KISA) Secure Coding 2021",
+    "OWASP ASVS",
+    "OWASP Top 10 2013",
+    "PCI DSS v3.2.1",
+    "Top Tier",
+    "OWASP Top 10 2017"
+  ],
+  "confidenceLevel": 0,
+  "cweID": 79,
+  "firstFoundAt": "2025-09-02T21:57:56Z",
+  "firstScanID": "d7f73679-0b80-4478-abd8-69dad4de54a1",
+  "group": "Python_High_Risk",
+  "languageName": "python",
+  "nodes": [
+    {
+      "column": 20,
+      "fileName": "/api_security_risks.py",
+      "fullName": "request.data",
+      "length": 4,
+      "line": 34,
+      "methodLine": 33,
+      "name": "data",
+      "nodeID": 1114
+    },
+    {
+      "column": 5,
+      "fileName": "/api_security_risks.py",
+      "fullName": "data",
+      "length": 4,
+      "line": 34,
+      "methodLine": 33,
+      "name": "data",
+      "nodeID": 1115
+    },
+    {
+      "column": 24,
+      "fileName": "/api_security_risks.py",
+      "fullName": "data",
+      "length": 4,
+      "line": 36,
+      "methodLine": 33,
+      "name": "data",
+      "nodeID": 1125
+    },
+    {
+      "column": 18,
+      "fileName": "/api_security_risks.py",
+      "fullName": "pickle.loads",
+      "length": 5,
+      "line": 36,
+      "methodLine": 33,
+      "name": "loads",
+      "nodeID": 1121
+    },
+    {
+      "column": 5,
+      "fileName": "/api_security_risks.py",
+      "fullName": "obj",
+      "length": 3,
+      "line": 36,
+      "methodLine": 33,
+      "name": "obj",
+      "nodeID": 1126
+    },
+    {
+      "column": 16,
+      "fileName": "/api_security_risks.py",
+      "fullName": "obj",
+      "length": 3,
+      "line": 37,
+      "methodLine": 33,
+      "name": "obj",
+      "nodeID": 1134
+    },
+    {
+      "column": 12,
+      "fileName": "/api_security_risks.py",
+      "fullName": "str",
+      "length": 3,
+      "line": 37,
+      "methodLine": 33,
+      "name": "str",
+      "nodeID": 1130
+    },
+    {
+      "column": 5,
+      "fileName": "/api_security_risks.py",
+      "length": 6,
+      "line": 37,
+      "methodLine": 33,
+      "name": "ReturnStmt",
+      "nodeID": 1127
+    }
+  ],
+  "pathSystemID": "8Y7Ggt1hVks6kkXSmQeiFhqn/NA=",
+  "queryID": 11301225196674650000,
+  "queryName": "Reflected_XSS",
+  "resultHash": "8Y7Ggt1hVks6kkXSmQeiFhqn/NA=",
+  "scanID": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "severity": "HIGH",
+  "similarityID": -510261233,
+  "state": "TO_VERIFY",
+  "status": "RECURRENT"
+}

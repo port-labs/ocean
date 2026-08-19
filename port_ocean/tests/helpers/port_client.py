@@ -41,5 +41,4 @@ def get_port_client_for_integration(
         integration_identifier=integration_identifier,
         integration_type=integration_type,
         integration_version=integration_version,
-        ingest_url="https://ingest.getport.io",
     )

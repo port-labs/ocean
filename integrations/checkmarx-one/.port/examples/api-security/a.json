@@ -1,0 +1,18 @@
+{
+  "risk_id": "17637f08-28da-4f14-b31b-192595b16c33",
+  "api_id": "0304f628-50de-40db-84ed-c9a13e7e4aa9",
+  "severity": "critical",
+  "name": "Stored_XSS",
+  "status": "recurrent",
+  "http_method": "GET",
+  "url": "/load",
+  "origin": "code",
+  "documented": null,
+  "authenticated": null,
+  "discovery_date": "2025-10-28 13:29:59+00:00",
+  "scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "sast_risk_id": "E5cErjqBgpSZw2NDyDTJSqm91B0=",
+  "project_id": "6ace8769-7ad3-4812-8990-0d4111ba0156",
+  "state": "to_verify",
+  "__scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440"
+}

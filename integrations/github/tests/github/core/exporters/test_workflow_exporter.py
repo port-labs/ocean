@@ -11,7 +11,6 @@ from github.core.options import (
 )
 from port_ocean.context.event import event_context
 
-
 TEST_DATA: dict[str, Any] = {
     "total_count": 2,
     "workflows": [

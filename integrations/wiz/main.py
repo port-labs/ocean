@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -16,7 +16,9 @@ from wiz.options import (
     ProjectOptions,
     SbomArtifactOptions,
     VulnerabilityFindingOptions,
+    ParallelismConfig,
 )
+from wiz.constants import UPSERT_BATCH_MAX_SIZE
 from initialize_client import init_client
 from integration import ObjectKindWithSpecialHandling, ObjectKind
 from wiz.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
@@ -93,19 +95,36 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     status_list = selector.status_list
     severity_list = selector.severity_list
     max_pages = selector.max_pages
+    parallelism_selector = selector.parallelism
 
     logger.info(
-        f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, max pages: {max_pages}"
+        f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, max pages: {max_pages}, parallelism: {parallelism_selector}"
     )
 
-    options = VulnerabilityFindingOptions(
+    options: VulnerabilityFindingOptions = VulnerabilityFindingOptions(
         max_pages=max_pages,
         status_list=status_list,
         severity_list=severity_list,
     )
+    if parallelism_selector is not None:
+        options.parallelism = ParallelismConfig(
+            strategy=parallelism_selector.strategy,
+            date_interval_days=parallelism_selector.date_interval_days,
+            lookback_days=parallelism_selector.lookback_days,
+            api_requests_per_second=parallelism_selector.api_requests_per_second,
+            max_partition_entities=parallelism_selector.max_partition_entities,
+        )
+
+    upsert_batch: list[dict[str, Any]] = []
 
     async for vulnerability_findings in wiz_client.get_vulnerability_findings(options):
-        yield vulnerability_findings
+        upsert_batch.extend(vulnerability_findings)
+        while len(upsert_batch) >= UPSERT_BATCH_MAX_SIZE:
+            yield upsert_batch[:UPSERT_BATCH_MAX_SIZE]
+            upsert_batch = upsert_batch[UPSERT_BATCH_MAX_SIZE:]
+
+    if upsert_batch:
+        yield upsert_batch
 
 
 @ocean.on_resync(ObjectKindWithSpecialHandling.SBOM_ARTIFACT)

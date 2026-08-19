@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig, Selector
 
@@ -32,10 +32,12 @@ class Kind(StrEnum):
     USER = "user"
     FOLDER = "folder"
     ITERATION = "iteration"
+    AREA_PATH = "area-path"
     BRANCH = "branch"
     ADVANCED_SECURITY_ALERT = "advanced-security-alert"
     GROUP = "group"
     GROUP_MEMBER = "group-member"
+    WIKI = "wiki"
 
 
 ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
@@ -89,14 +91,17 @@ def extract_org_name_from_url(url: str) -> str:
 
 
 class RepositoryBranchMapping(BaseModel):
-    name: str = Field(description="Repository name")
-    branch: str | None = Field(default=None, description="Branch to scan")
+    name: str = Field(title="Name", description="Repository name")
+    branch: str | None = Field(
+        default=None, title="Branch", description="Branch to scan"
+    )
 
 
 class FolderPattern(BaseModel):
     path: str = Field(
         ...,
         alias="path",
+        title="Path",
         description="""Specify the repositories and folders to include under this relative path.
         Supports glob pattern (*) for matching within a path segment:
         - Use * to match any characters within a path segment
@@ -110,6 +115,7 @@ class FolderPattern(BaseModel):
     repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
         alias="repos",
+        title="Repositories",
         description="Specify the repositories and branches to include under this relative path",
     )
 

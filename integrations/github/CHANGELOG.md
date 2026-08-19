@@ -7,6 +7,974 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.8.0 (2026-08-19)
+
+
+### Features
+
+- Added the git blob SHA (`blob_sha`) of each `SKILL.md` file to the `skill` kind's raw payload, enabling content-addressed duplicate/change detection without diffing full file text.
+
+
+## 6.7.29 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 6.7.28 (2026-08-18)
+
+
+### Bug Fixes
+
+- Fix stale repository data on live events by bypassing cached repository metadata when processing repository webhooks.
+
+
+## 6.7.27 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 6.7.26 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
+## 6.7.25 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 6.7.24 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 6.7.23 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 6.7.22 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 6.7.21 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 6.7.20 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 6.7.19 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 6.7.18 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 6.7.17 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 6.7.16 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 6.7.15 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 6.7.14 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 6.7.13 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 6.7.12 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 6.7.11 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 6.7.10 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 6.7.9 (2026-08-03)
+
+
+### Improvements
+
+- Add a default value override for authentication mode
+
+
+## 6.7.8 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 6.7.7 (2026-07-30)
+
+
+### Improvements
+
+- Github form displays either PAT or App fields and marks them as required
+
+
+## 6.7.6 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 6.7.5 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 6.7.4 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 6.7.3 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 6.7.2 (2026-07-28)
+
+
+### Improvements
+
+- Omit unset repository filters from default Skill path schema entries.
+
+
+## 6.7.1 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 6.7.0 (2026-07-27)
+
+
+### Features
+
+- Added `skill` kind to discover Agent Skills (`SKILL.md`) via glob paths
+  (defaults: `.agents/skills/**/SKILL.md`, `.agent/skills/**/SKILL.md`,
+  `.cursor/skills/**/SKILL.md`, `.claude/skills/**/SKILL.md`,
+  `.codex/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`,
+  `.opencode/skills/**/SKILL.md`, `skills/**/SKILL.md`) with multi-org
+  path selectors (same shape as the file kind)
+- Added `plugin` kind to detect agent plugin packages (aligned with
+  [obra/superpowers](https://github.com/obra/superpowers)): `.claude-plugin/`,
+  `.cursor-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `.kimi-plugin/`,
+  `.opencode/plugins/`, `.pi/extensions/`, `gemini-extension.json`, with
+  multi-org path selectors
+
+
+## 6.6.3 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 6.6.2 (2026-07-27)
+
+
+### Features
+
+- Expanded team payload by fetching the external IdP group linked to each team via the GitHub EMU external groups API, enabling customers to relate `githubTeam` entities to Entra ID groups ingested from the Entra ID Ocean integration. Controlled by the new `include_external_group` selector field (default: `false`).
+
+
+## 6.6.1 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 6.6.0 (2026-07-26)
+
+
+### Features
+
+- Added incremental sync for `repository`, `issue`, `pull-request`, `workflow-run`, `release`, `deployment`, `dependabot-alert`, and `code-scanning-alert`, so scheduled resyncs fetch only changes since the last cursor. Workflow runs filter on GitHub's `created` parameter only, so a run created before the cursor that finishes afterward may keep a stale `status`/`conclusion` until the next full sync. Releases and deployments intentionally use `created_at` for the cutoff because those resources are immutable
+
+
+## 6.5.2 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 6.5.1 (2026-07-23)
+
+
+### Bug Fixes
+
+- Re-apply spec changes
+
+
+## 6.5.0 (2026-07-23)
+
+
+### Improvements
+
+- Updated GitHub client creation to use authenticator-scoped `create_github_client()` for resyncs and `create_github_client_for_org()` for webhook and action requests.
+- Resync handlers iterate `get_auth_provider().list_authenticators()` and discover organizations via `RestOrganizationExporter.get_paginated_resources()`.
+- Removed `GitHubAuthenticatorFactory` and the sync legacy client factory path.
+- Removed deprecated `OrganizationLoginAndTypeGenerator`; file and folder pattern builders call `RestOrganizationExporter.get_paginated_resources()` directly.
+- Deprecated `githubAppInstallationId`; GitHub App organization scope is discovered from app installations. OAuth installations no longer publish `githubAppInstallationId` or `githubOrganization`, so `githubOrganization` remains editable in the integration config.
+
+
+## 6.4.2 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 6.4.1 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 6.4.0 (2026-07-22)
+
+
+### Features
+
+- Added an `includeVariables` selector option for the `environment` kind that fetches environment variables (via the paginated GitHub variables REST API) and exposes them as `__variables` on each environment. (#3591)
+
+
+## 6.3.8 (2026-07-22)
+
+
+### Improvements
+
+- Implement fetching excluded fields individually as well as property-reduction for unknown 200 errors.
+
+
+## 6.3.7 (2026-07-22)
+
+
+### Improvements
+
+- Use shared Ocean relative time helpers for pull request and workflow run lookback selectors.
+
+
+## 6.3.6 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 6.3.5 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 6.3.4 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 6.3.3 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 6.3.2 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 6.3.1 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 6.3.0 (2026-07-20)
+
+
+### Improvements
+
+- Restructured GitHub App authentication internals behind installation-scoped backends and a central installation registry. No user-facing behavior change.
+- Set GitHub App JWT `iat` 60 seconds in the past to tolerate clock drift between Ocean and GitHub.
+- Refreshed the GitHub App installation registry on a 15-minute TTL.
+
+
+## 6.2.25 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 6.2.24 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 6.2.23 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 6.2.22 (2026-07-17)
+
+
+### Features
+
+- Expanded team member ingestion to support GitHub Enterprise (`ent:*`) teams by falling back to the REST members API when GraphQL returns null, enabling Port to display members for EMU organisations.
+
+
+## 6.2.21 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 6.2.20 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 6.2.19 (2026-07-15)
+
+
+### Improvements
+
+- Recover from GraphQL queries that return HTTP 200 with unknown errors by shrinking the page size and retrying until the page succeeds
+
+
+## 6.2.18 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 6.2.17 (2026-07-15)
+
+
+### Improvements
+
+- Properly handle GraphQL rate-limit responses with bounded retry logic (max 5 attempts) and sleep-until-reset backoff
+- Detect both primary rate limits (HTTP 200 with exhausted x-ratelimit-* headers) and secondary rate limits (retry-after header)
+
+
+## 6.2.16 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 6.2.15 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 6.2.14 (2026-07-13)
+
+
+### Improvements
+
+- Implement property-reduction optimization for expensive GraphQL paginated requests
+
+
+## 6.2.13 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 6.2.12 (2026-07-12)
+
+
+### Improvements
+
+- Renamed the `update_repo_external_properties` action to `update_repo_external_custom_properties` and updated it to use GitHub's `/properties/installations/values` API endpoint.
+
+
+### Bug Fixes
+
+- Handle non-JSON GitHub API error responses when updating external custom properties.
+
+
+## 6.2.11 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 6.2.10 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 6.2.9 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 6.2.8 (2026-07-12)
+
+
+### Improvements
+
+- Added `legacyDispatchWorkflowTracking` configuration for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch. When enabled, the dispatch_workflow action polls GitHub for workflow runs and serializes dispatches per organization/repository/workflow.
+
+
+## 6.2.7 (2026-07-10)
+
+
+### Bug Fixes
+
+- Reverted the file-kind live event deletion changes introduced in 6.2.3 that fetched old file content for `items_to_parse` deletions.
+
+
+## 6.2.6 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 6.2.5 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 6.2.4 (2026-07-07)
+
+
+### Improvements
+
+- Use GitHub workflow run ID returned on dispatch to track workflow runs, enabling concurrent dispatch workflow action executions.
+
+
+## 6.2.3 (2026-07-02)
+
+
+### Bug Fixes
+
+- Fixed file-kind live events not deleting entities when a file is deleted or renamed, or an item is removed from a file that uses `items_to_parse`. When `items_to_parse` is configured, old content is fetched from the before commit (concurrently with new content) so the delete path carries real content. When `items_to_parse` is not configured, deletions for removed and renamed files are emitted from metadata only, avoiding extra Contents API calls.
+
+
+## 6.2.2 (2026-07-02)
+
+
+### Improvements
+
+- Improve log message in the GraphQL error handler
+
+
+## 6.2.1 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 6.2.0 (2026-07-01)
+
+
+### Features
+
+- Added `update_repo_external_properties` action that pushes Port blueprint property values to GitHub repository external properties.
+
+
+## 6.1.3 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 6.1.2 (2026-06-29)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `deployment` kind that attaches the earliest commit since the previous deployment under `__firstCommit`, powering the DORA Lead Time for Changes metric (defaults to false; adds one API call per deployment when enabled).
+
+
+## 6.1.1 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 6.1.0 (2026-06-28)
+
+
+### Improvements
+
+- Added integration tests for all kinds of resources
+
+
+## 6.0.14 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 6.0.13 (2026-06-25)
+
+
+### Bug Fixes
+
+- Implemented rate limit reservation threshold to prevent resync deadlocks
+
+
+## 6.0.12 (2026-06-25)
+
+
+### Improvements
+
+- Reduce GraphQL API minimum page size to 1, add tests to formalize page-recovery behavior
+
+
+## 6.0.11 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 6.0.10 (2026-06-25)
+
+
+### Improvements
+
+- Added a warning log when a GraphQL query's page size is reduced on retry
+
+
+## 6.0.9 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 6.0.8 (2026-06-23)
+
+
+### Bug Fixes
+
+- Fix semaphore permit leak in `GitHubRateLimiter.__aenter__` on cancellation
+
+
+## 6.0.7 (2026-06-22)
+
+
+### Improvements
+
+- Retry timed-out Graphql paginated requests with lower page size.
+
+
+## 6.0.6 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 6.0.5 (2026-06-18)
+
+
+### Features
+
+- Added a `closedSinceDate` pull request selector to ingest all closed PRs since an absolute date.
+
+
+## 6.0.4 (2026-06-18)
+
+
+### Bug Fixes
+
+- Fixed pull request resync stopping when only some repositories failed during parallel fetch; remaining repository pages are processed, failures are logged, and all errors are reported together when the resync completes
+
+
+## 6.0.3 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 6.0.2 (2026-06-14)
+
+
+### Improvements
+
+- Add happy flow integration test
+
+
+## 6.0.1 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 6.0.0 (2026-06-10)
+
+
+### Improvements
+
+- Parse yaml files in the file kind with yaml spec 1.2 by default
+
+
+## 5.5.33 (2026-06-09)
+
+
+### Improvements
+
+- Added `statuses` selector to `workflow-run` kind to filter runs by status or conclusion. Accepts a list of values; each additional status results in one extra API call per workflow.
+- Added `since` selector to `workflow-run` kind to limit resync to runs created within the last N days.
+- Added `sinceDate` selector to `workflow-run` kind to limit resync to runs created on or after a fixed ISO 8601 date. Ignored if `since` is also set.
+
+
+## 5.5.32 (2026-06-09)
+
+
+### Bug Fixes
+
+- Fixed `workflow-run` webhook processor to treat `completed` events as upserts instead of deletions.
+
+
+## 5.5.31 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 5.5.30 (2026-06-08)
+
+
+### Improvements
+
+- Add reviews and statusCheckRollup to returned pull request kind in GraphQL-based exporter
+
+
+## 5.5.29 (2026-06-08)
+
+
+### Bug Fixes
+
+- Fixed sync failures from intermittent 500 errors on large pages by retrying with a smaller page size
+
+
+## 5.5.28 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 5.5.27 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 5.5.26 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 5.5.25 (2026-06-03)
+
+
+### Improvements
+
+- Bumped version to 5.5.25
+
+
+## 5.5.23 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 5.5.22 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 5.5.21 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 5.5.20 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed asyncio event loop error when `repoManagedMapping` is enabled with multiple file resources.
+
+
+## 5.5.19 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 5.5.18 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 5.5.17 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 5.5.16 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 5.5.15 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 5.5.14 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 5.5.13 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 5.5.12 (2026-05-27)
+
+
+### Bug Fixes
+
+- Fixed OOM crashes during repository enrichment by sub-batching calls to process at most 10 repositories concurrently and preventing cache pollution from enriched data
+
+
+## 5.5.11 (2026-05-27)
+
+
+### Improvements
+
+- Point `repoSearch` selector description to Port docs limitations instead of duplicating GitHub Search API constraints in the UI.
+
+
+## 5.5.10 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
 ## 5.5.9 (2026-05-25)
 
 
@@ -445,9 +1413,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 5.2.13 (2026-04-06)
 
 
-### Bug fixes
+### Bug Fixes
 
 - Fixed spacing for file kind's descriptions
+
 
 ## 5.2.12 (2026-04-06)
 
@@ -467,6 +1436,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 5.2.10 (2026-04-05)
 
+
 ### Improvements
 
 - Make github CI and gitlab CI docs more specific
@@ -474,7 +1444,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 5.2.9 (2026-04-05)
 
-### Bug fixes
+
+### Bug Fixes
 
 - Fixed installation docs
 
@@ -518,6 +1489,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated description for attached files
 
+
 ## 5.2.3 (2026-03-25)
 
 
@@ -536,6 +1508,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 5.2.1 (2026-03-24)
 
+
 ### Improvements
 
 - Renamed the pull request `since` selector label from "Since (Days)" to "Closed PRs Lookback Days" and updated its description to clarify it applies to the lookback window for closed pull requests.
@@ -547,6 +1520,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Renamed `included files` to `Additional files`
+
 
 ## 5.1.36 (2026-03-24)
 
@@ -854,6 +1828,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Restored REST API page size to 100.
+
 
 ## 5.0.47 (2026-02-25)
 
@@ -1630,6 +2605,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Adapt to the new ocean core itemstoparse logic
 
+
 ## 4.1.0-beta (2025-11-19)
 
 
@@ -1758,6 +2734,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 3.2.3-beta (2025-11-09)
 
 
@@ -1782,7 +2759,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.29.1
 
 
-# 3.2.0-beta (2025-11-04)
+## 3.2.0-beta (2025-11-04)
 
 
 ### Improvements
@@ -1924,6 +2901,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.5.6-beta (2025-09-17)
 
+
 ### Improvements
 
 - Fix token decoder from oauth-flow
@@ -2006,6 +2984,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.4.0-beta (2025-08-27)
 
+
+### Features
 
 - Enhanced repository selector to support multiple relationship types simultaneously
 - Changed `included_property` to `included_relationships` to allow specifying both "collaborators" and "teams" in a single configuration
@@ -2230,7 +3210,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 1.0.5-beta (2025-07-09)
 
 
-### Bugfix
+### Bug Fixes
 
 - Fix default resources not getting created due to blueprint config error
 
@@ -2270,7 +3250,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 1.0.0-beta (2025-07-04)
 
 
-### Release
+### Features
 
 - Bumped integration from dev to beta release
 
@@ -2478,6 +3458,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.13-dev (2025-06-11)
 
 
+### Features
+
 - Added support for Pull Request resources with state-based filtering (open, closed, all)
 - Implemented pull request webhook processor for real-time updates
 
@@ -2532,6 +3514,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6-dev (2025-06-04)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.24.2
@@ -2555,6 +3538,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.3-dev (2025-06-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.23.5
@@ -2567,6 +3551,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix timezone inconsistency issue while checking for expired Github App token (PORT-14913)
 
+
 ### Improvements
 
 - Removed `Optional` from `AbstractGithubExporter` options to enforce stricter type adherence for concrete exporters.
@@ -2574,12 +3559,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1-dev (2025-05-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.23.4
 
 
 ## 0.1.0-dev (2025-05-28)
+
 
 ### Features
 

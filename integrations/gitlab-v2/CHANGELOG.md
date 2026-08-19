@@ -7,6 +7,742 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.30 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.9.29 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.9.28 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
+## 0.9.27 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.9.26 (2026-08-16)
+
+
+### Improvements
+
+- Add title and description metadata to the GitLab v2 file selector.
+
+
+## 0.9.25 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.9.24 (2026-08-16)
+
+
+### Bug Fixes
+
+- Retry file content fetch with the project's default branch when a stale ref from GitLab search returns empty, fixing 404 errors on renamed or deleted branches.
+
+
+## 0.9.23 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.9.22 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.9.21 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.9.20 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.9.19 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.9.18 (2026-08-11)
+
+
+### Bug Fixes
+
+- Fixed file kind resync aborting when a single repository returns 400 or 404 on project blob search; that repo is now skipped so remaining repositories continue syncing
+
+
+## 0.9.17 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.9.16 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.9.15 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.9.14 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.9.13 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.9.12 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
+## 0.9.11 (2026-08-05)
+
+
+### Bug Fixes
+
+- Fixed GitLab file live events to ignore non-default branch pushes, keeping file-kind webhook behavior consistent with default-branch-only resync discovery.
+- Fixed GitLab webhook matching to ignore non-GitLab webhook requests instead of failing when the `x-gitlab-event` header is missing.
+
+
+## 0.9.10 (2026-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.6
+
+
+## 0.9.9 (2026-08-04)
+
+
+### Improvements
+
+- Bump poetry to 2.X with range
+
+
+## 0.9.8 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.4
+
+
+## 0.9.7 (2026-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.3
+
+
+## 0.9.6 (2026-07-30)
+
+
+### Bug Fixes
+
+- Fixed the `file` kind's `file://` reference resolution so an absolute-path URI (`file:///...`) is left unresolved instead of being requested with a leading slash, and made resolution of a `file://` reference best-effort: a failed fetch (e.g. HTTP 400 or transport error) is now logged and the reference is left unresolved instead of aborting the entire `file` kind resync.
+
+
+## 0.9.5 (2026-07-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.2
+
+
+## 0.9.4 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.1
+
+
+## 0.9.3 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.0
+
+
+## 0.9.2 (2026-07-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.6
+
+
+## 0.9.1 (2026-07-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.5
+
+
+## 0.9.0 (2026-07-26)
+
+
+### Features
+
+- Added `skill` and `plugin` kinds (Agent Skills / agent plugin packages)
+
+
+### Improvements
+
+- Skill/plugin push webhooks only process the project default branch, and ignore branch deletes
+- File/skill/plugin push webhooks resolve changed paths from the repository compare API, falling back to the (capped) payload commits list
+- Skill and plugin discovery always walks the repository tree with the configured glob patterns
+- Repository tree discovery scopes walks to each pattern's fixed path prefix and matches multiple globs per repository in a single minimized set of walks
+
+
+## 0.8.16 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.4
+
+
+## 0.8.15 (2026-07-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.3
+
+
+## 0.8.14 (2026-07-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.2
+
+
+## 0.8.13 (2026-07-23)
+
+
+### Bug Fixes
+
+- Fixed `reportPipelineStatus=false` incorrectly completing `trigger_pipeline` runs immediately instead of leaving them in progress, aligning behavior with the GitHub integration's `reportWorkflowStatus` (the run stays in progress until externally updated, e.g. via a CI job calling back into Port).
+
+
+## 0.8.12 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.1
+
+
+## 0.8.11 (2026-07-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.46.0
+
+
+## 0.8.10 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.10
+
+
+## 0.8.9 (2026-07-22)
+
+
+### Improvements
+
+- Added the `repositoryTree` search strategy to the file kind, which discovers files by walking the Git repository tree instead of the GitLab search API. It does not depend on the search index, so it returns complete and consistent results even when search is stale or disabled, at the cost of being slower.
+
+
+## 0.8.8 (2026-07-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.8
+
+
+## 0.8.7 (2026-07-21)
+
+
+### Improvements
+
+- Replaces the parameterized webhook route /hook/{group_id} with a static /webhook path
+
+
+## 0.8.6 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.7
+
+
+## 0.8.5 (2026-07-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.6
+
+
+## 0.8.4 (2026-07-21)
+
+
+### Bug Fixes
+
+- Fix group search fallback to recognize multiple GitLab error messages when blob scope is unavailable
+
+
+## 0.8.3 (2026-07-21)
+
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+## 0.8.2 (2026-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.5
+
+
+## 0.8.1 (2026-07-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.4
+
+
+## 0.8.0 (2026-07-19)
+
+
+### Features
+
+- Added `searchStrategy` to GitLab file selectors, allowing project-level file search to be selected explicitly for broad repository scans.
+
+
+## 0.7.62 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.3
+
+
+## 0.7.61 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.2
+
+
+## 0.7.60 (2026-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.1
+
+
+## 0.7.59 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.45.0
+
+
+## 0.7.58 (2026-07-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.14
+
+
+## 0.7.57 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.13
+
+
+## 0.7.56 (2026-07-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.12
+
+
+## 0.7.55 (2026-07-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.11
+
+
+## 0.7.54 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.10
+
+
+## 0.7.53 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.9
+
+
+## 0.7.52 (2026-07-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.8
+
+
+## 0.7.51 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.7
+
+
+## 0.7.50 (2026-07-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.6
+
+
+## 0.7.49 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 0.7.48 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 0.7.47 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 0.7.46 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 0.7.45 (2026-06-24)
+
+
+### Features
+
+- Added project-level webhook registration for GitLab projects in personal namespaces, enabling live events for projects not belonging to any group
+
+
+## 0.7.44 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.7.43 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.7.42 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.7.41 (2026-06-21)
+
+
+### Features
+
+- Added `trigger_pipeline` workflow action node to trigger GitLab CI/CD pipelines from Port workflows and report pipeline completion status back to Port
+
+### Bug Fixes
+
+- Fixed 403/404 responses on non-GET requests being swallowed as empty dicts instead of raising
+- Fixed `pipelineVariables: null` and non-dict jq output causing crashes in `TriggerPipelineExecutor`
+- Fixed `reportPipelineStatus=false` leaving runs stuck in IN_PROGRESS indefinitely
+
+
+## 0.7.40 (2026-06-18)
+
+
+### Features
+
+- Added `trigger_pipeline` method to `GitLabClient` to trigger CI/CD pipelines via the GitLab API
+- Added `get_rate_limit_status` method to `GitLabClient` to expose current rate-limit state
+
+
+## 0.7.39 (2026-06-15)
+
+
+### Improvements
+
+- Added `deployment` kind to sync CI/CD deployment records into Port
+
+
+## 0.7.38 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.7.37 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.7.36 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.7.35 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.7.34 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.7.33 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.7.32 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.7.31 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.7.30 (2026-06-01)
+
+
+### Improvements
+
+- Add `apiQueryParams` and `pipelineQueryParams` to pipeline and jobs kinds to help filter fetched pipelines
+
+
+## 0.7.29 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.7.28 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.7.27 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.7.26 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.7.25 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.7.24 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.7.23 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.7.22 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.7.21 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
 ## 0.7.20 (2026-05-25)
 
 
@@ -1085,12 +1821,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix Resolve File References feature on array content yaml file
 
+
 ## 0.3.13 (2025-11-09)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.3
+
 
 ## 0.3.12 (2025-11-09)
 
@@ -1115,6 +1853,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix async stream tried to be read in a sync context in file kind
 
+
 ## 0.3.9 (2025-11-06)
 
 
@@ -1137,7 +1876,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - Fix pagination bug in get_parent_groups that was creating duplicate webhooks for child groups
-
 
 
 ## 0.3.6 (2025-11-02)
@@ -1199,7 +1937,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.38 (2025-10-15)
 
 
-### Breaking change
+### Breaking Changes
 
 - Add memory optimizations and alignment with itemsToParse streaming for file kind
 - File kind mappings which previously assumed an object shape for file content, now to be updated to account for an array. See the updated examples for guidance - [GitLab v2 — Files and file contents](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#files-and-file-contents)
@@ -1219,6 +1957,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add refresh token mid session
+
 
 ## 0.2.35 (2025-09-30)
 
@@ -1480,6 +2219,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.3 (2025-06-26)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.24.20
@@ -1562,7 +2302,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Added filtering for top-level groups in group search
 - Updated webhook creation to only fetch groups owned by the authenticated user
 
@@ -1603,7 +2342,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Improvements
-
 
 - Bumped ocean version to ^0.24.8
 
@@ -1650,10 +2388,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.22 (2025-06-05)
 
+
+### Bug Fixes
+
 - Graceful handling of HTTP error codes (401, 403, 404) to prevent resync failures
 
 
 ## 0.1.21 (2025-06-04)
+
 
 ### Improvements
 
@@ -1798,6 +2540,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.2 (2025-04-28)
 
+
 ### Improvements
 
 - Added title to the integration to be viewed in the data sources page
@@ -1805,10 +2548,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1 (2025-04-27)
 
+
 ### Bug Fixes
 
 - Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
-
 
 ### Improvements
 
@@ -1818,7 +2561,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.0 (2025-23-04)
 
 
-### Improvement
+### Improvements
 
 - Bumped integration version from beta to GA
 
@@ -1842,7 +2585,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.0-beta (2025-04-15)
 
 
-### Improvement
+### Improvements
 
 - Bumped integration version from dev to beta
 
@@ -1870,7 +2613,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.11-dev (2025-04-14)
-
 
 
 ### Improvements

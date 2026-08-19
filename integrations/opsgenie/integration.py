@@ -1,5 +1,5 @@
 from typing import Any, Literal
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (

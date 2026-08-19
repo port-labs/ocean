@@ -1,0 +1,64 @@
+{
+  "Type": "AWS::DynamoDB::Table",
+  "Properties": {
+    "TableName": "port-test",
+    "TableArn": "arn:aws:dynamodb:us-east-1:123456789012:table/port-test",
+    "TableId": "a1b2c3d4-5678-90ab-cdef-EXAMPLE11111",
+    "TableStatus": "ACTIVE",
+    "CreationDateTime": "2025-01-15T10:30:00.000000+00:00",
+    "ProvisionedThroughput": {
+      "NumberOfDecreasesToday": 0,
+      "ReadCapacityUnits": 5,
+      "WriteCapacityUnits": 5
+    },
+    "TableSizeBytes": 2048,
+    "ItemCount": 25,
+    "BillingModeSummary": {
+      "BillingMode": "PROVISIONED",
+      "LastUpdateToPayPerRequestDateTime": null
+    },
+    "KeySchema": [
+      {
+        "AttributeName": "id",
+        "KeyType": "HASH"
+      },
+      {
+        "AttributeName": "sortKey",
+        "KeyType": "RANGE"
+      }
+    ],
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "id",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "sortKey",
+        "AttributeType": "S"
+      }
+    ],
+    "GlobalSecondaryIndexes": null,
+    "LocalSecondaryIndexes": null,
+    "StreamSpecification": null,
+    "LatestStreamArn": null,
+    "LatestStreamLabel": null,
+    "SSEDescription": {
+      "Status": "ENABLED",
+      "SSEType": "KMS",
+      "KMSMasterKeyArn": "arn:aws:kms:us-east-1:123456789012:key/example-key-id"
+    },
+    "RestoreSummary": null,
+    "ArchivalSummary": null,
+    "TableClassSummary": {
+      "TableClass": "STANDARD"
+    },
+    "DeletionProtectionEnabled": true,
+    "Replicas": null,
+    "GlobalTableVersion": null,
+    "ContinuousBackupsDescription": null
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}
