@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.48.13 (2026-08-19)
+
+
+### Bug Fixes
+
+- Allow empty files in GraphQL resync to align with REST/webhook paths
+
+
 ## 0.48.12 (2026-08-18)
 
 
