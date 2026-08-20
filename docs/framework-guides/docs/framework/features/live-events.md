@@ -110,6 +110,14 @@ Ocean prefixes integration routes with `/integration/`.
 For example, if you register a processor for `/webhook`, the Ocean framework will expose the path: `/integration/webhook`.
 :::
 
+:::warning Static webhook paths only (Redis live events)
+Register processors at **fixed paths** such as `/webhook`, not dynamic route templates like `/webhook/{run_id}`.
+
+When live events are consumed from Redis, Ocean matches the stream's `webhookPath` to registered processor paths **by exact string** after normalization. A concrete path such as `/webhook/run_1` does not match a registered template `/webhook/{run_id}`, so the consumer acknowledges the message and **drops it** without processing.
+
+Use a static path and correlate runs or resources from the payload, headers, or query parameters instead of embedding ids in the URL path.
+:::
+
 ### Processor Configuration
 
 Processors support configurable retry behavior:

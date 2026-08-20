@@ -42,33 +42,33 @@ from port_ocean.core.handlers.webhook.webhook_event import EventPayload, EventHe
 
 class AbstractServiceWebhookProcessor(AbstractWebhookProcessor):
     """Base processor with signature verification."""
-    
+
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True  # Verification happens in should_process_event
-    
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if not await self._should_process_event(event):
             return False
         return self._verify_signature(event)
-    
+
     def _verify_signature(self, event: WebhookEvent) -> bool:
         webhook_secret = ocean.integration_config.get("webhook_secret")
         if not webhook_secret:
             return True  # No secret configured
-        
+
         signature = event.headers.get("x-signature-header")
         if not signature:
             logger.warning("Missing signature header")
             return False
-        
+
         expected = hmac.new(
             webhook_secret.encode(),
             event.body,
             hashlib.sha256
         ).hexdigest()
-        
+
         return hmac.compare_digest(signature, expected)
-    
+
     @abstractmethod
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         pass
@@ -90,43 +90,43 @@ The `validate_payload` method serves as a contract: if it returns `True`, then `
 
 ```python
 class ProjectWebhookProcessor(AbstractServiceWebhookProcessor):
-    
+
     async def validate_payload(self, payload: EventPayload) -> bool:
         # Validate ONLY fields that handle_event will access directly
         # Use .get() in validation to avoid KeyError on malformed payloads
-        
+
         if not payload.get("event_type"):
             return False
-        
+
         project = payload.get("project")
         if not isinstance(project, dict):
             return False
         if not project.get("id"):
             return False
-            
+
         return True
-    
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         # CORRECT: Use [] for validated fields - they are guaranteed to exist
         event_type = payload["event_type"]
         project_id = payload["project"]["id"]
-        
+
         # WRONG: Don't use .get() for validated fields - it implies uncertainty
         # project_id = payload.get("project", {}).get("id")  # NO!
-        
+
         if event_type == EventType.PROJECT_DELETED:
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[{"id": project_id}],
             )
-        
+
         # Fetch full resource data
         client = ClientFactory.get_client()
         exporter = ProjectExporter(client)
         project = await exporter.get_single_resource(project_id)
-        
+
         return WebhookEventRawResults(
             updated_raw_results=[project] if project else [],
             deleted_raw_results=[],
@@ -161,11 +161,11 @@ async def handle_event(self, payload, resource_config):
 ```python
 class ResourceWebhookProcessor(AbstractServiceWebhookProcessor):
     events = [EventType.RESOURCE_CREATED, EventType.RESOURCE_UPDATED]
-    
+
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload.get("event_type")
         return event_type in [e.value for e in self.events]
-    
+
     async def validate_payload(self, payload: EventPayload) -> bool:
         # Use .get() to safely check fields that handle_event will access
         resource = payload.get("resource")
@@ -174,19 +174,19 @@ class ResourceWebhookProcessor(AbstractServiceWebhookProcessor):
         if not resource.get("id"):
             return False
         return True
-    
+
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.RESOURCE]
-    
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         # Use [] indexing - fields were validated
         resource_id = payload["resource"]["id"]
-        
+
         client = ClientFactory.get_client()
         exporter = ResourceExporter(client)
-        
+
         resource = await exporter.get_single_resource(resource_id)
         return WebhookEventRawResults(
             updated_raw_results=[resource] if resource else [],
@@ -203,6 +203,33 @@ WEBHOOK_PATH = "/webhook"
 def register_webhooks() -> None:
     ocean.add_webhook_processor(WEBHOOK_PATH, ResourceWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, AnotherResourceProcessor)
+```
+
+### Static paths only (required for Redis live events)
+
+When live events are delivered through the Redis stream consumer (`live_events.type: redis`), Ocean routes each message to processors by **exact path match**. The stream's `webhookPath` field is normalized (for example `integration/webhook` → `/webhook`) and compared against the paths registered via `ocean.add_webhook_processor()` — see `RedisStreamConsumer._handle_message` in `port_ocean/consumers/redis_stream_consumer.py`.
+
+**Do not register dynamic FastAPI route patterns** such as `/webhook/{run_id}`. FastAPI may accept direct HTTP POSTs to `/webhook/run_1`, but Redis live events arrive with `webhookPath` set to the concrete request path (`/webhook/run_1`). That path will not match a registered template like `/webhook/{run_id}`, so the consumer logs *"No processors registered for webhookPath, acknowledging"* and **drops the event**.
+
+| Registration | Direct HTTP POST | Redis live events |
+|--------------|------------------|-------------------|
+| `/webhook` | ✅ | ✅ |
+| `/webhook/monitor-events` | ✅ | ✅ |
+| `/webhook/{run_id}` | ✅ (FastAPI path param) | ❌ dropped |
+
+**Use static paths only.** Examples:
+
+- **Single endpoint** — register `/webhook` and filter event types in `should_process_event()`
+- **Multiple static endpoints** — e.g. `/webhook` and `/webhook/monitor-events` (Datadog pattern)
+
+**Correlate per-request context** from the payload, headers, or query string—not from URL path templates. If a third party needs a unique callback URL per subscription, point every callback at the same static integration path.
+
+```python
+# WRONG for Redis live events — dynamic path template
+ocean.add_webhook_processor("/webhook/{run_id}", MyProcessor)
+
+# CORRECT — static path; extract correlation ids in the processor
+ocean.add_webhook_processor("/webhook", MyProcessor)
 ```
 
 ## Verification Patterns by Provider
@@ -228,7 +255,7 @@ class CustomLiveEventsProcessorManager(LiveEventsProcessorManager):
                 challenge = request.headers.get("x-verification-challenge")
                 if challenge:
                     return {"verification": challenge}
-            
+
             # Normal POST handling
             event = await WebhookEvent.from_request(request)
             await self._event_queues[path].put(event)
