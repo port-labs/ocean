@@ -745,7 +745,7 @@ Only implement if the third-party supports webhooks:
    - Webhook signature verification method
    - Payload structure
 
-2. **Register processors in main.py** using **static paths only** (not path templates like `/webhook/{id}`):
+2. **Register processors in main.py:**
    ```python
    ocean.add_webhook_processor("/webhook", ResourceWebhookProcessor)
    ```
