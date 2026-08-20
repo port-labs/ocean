@@ -100,11 +100,35 @@ def exception_deserializer(record: "loguru.Record") -> None:
     Workaround for when trying to log exception objects with loguru.
     Loguru doesn't able to deserialize `Exception` subclasses.
     https://github.com/Delgan/loguru/issues/504#issuecomment-917365972
+
+    Special handling for httpx.HTTPStatusError which requires keyword-only
+    arguments that pickle cannot preserve.
     """
     exception: loguru.RecordException | None = record["exception"]
     if exception is not None:
-        fixed = Exception(str(exception.value))
+        fixed = _safe_exception_for_serialization(exception.value)
         record["exception"] = exception._replace(value=fixed)
+
+
+def _safe_exception_for_serialization(exc: Exception) -> Exception:
+    """
+    Convert exceptions to serialization-safe format for async queue handlers.
+
+    Special case: httpx.HTTPStatusError requires keyword-only arguments that
+    pickle cannot preserve. Convert to string-based exception.
+    """
+    if type(exc).__name__ != "HTTPStatusError":
+        return Exception(str(exc))
+
+    try:
+        msg = f"HTTPStatusError: {exc.response.status_code} {exc.request.method} {exc.request.url}"
+        if exc.response.reason_phrase:
+            msg += f" ({exc.response.reason_phrase})"
+        if exc.response.text:
+            msg += f" | {exc.response.text[:200]}"
+        return Exception(msg)
+    except Exception:
+        return Exception(str(exc))
 
 
 def resolve_hostname() -> str:
