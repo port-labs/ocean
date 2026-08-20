@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: improvement
+changelog: Migrate Ocean core settings models from Pydantic v1 to v2, keeping integration config as a JSON-mode dict of primitives.
