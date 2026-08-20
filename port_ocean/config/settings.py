@@ -1,15 +1,25 @@
-from typing import Any, Literal, Optional, Type
+from typing import Any, Literal, Optional, Self, Type
 from urllib.parse import urlparse
 
 import os
 
 from loguru import logger
-from pydantic.v1 import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
-from pydantic.v1.class_validators import root_validator, validator
-from pydantic.v1.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
-from pydantic.v1.main import BaseModel
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
-from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
+from port_ocean.config.base import BaseOceanModel, BaseOceanSettings, sensitive_field
 from port_ocean.core.event_listener import (
     EventListenerSettingsType,
     PollingEventListenerSettings,
@@ -54,32 +64,39 @@ class ApplicationSettings(BaseSettings):
     enable_http_logging: bool = True
     port: int = 8000
 
-    class Config:
-        env_prefix = "APPLICATION__"
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_prefix="APPLICATION__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
-        @classmethod
-        def customise_sources(  # type: ignore
-            cls,
-            init_settings: InitSettingsSource,
-            env_settings: EnvSettingsSource,
-            *_,
-            **__,
-        ):
-            return env_settings, init_settings
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        *_,
+        **__,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return env_settings, dotenv_settings, init_settings
 
 
-class PortSettings(BaseOceanModel, extra=Extra.allow):
-    client_id: str = Field(..., sensitive=True)
-    client_secret: str = Field(..., sensitive=True)
-    base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
+class PortSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
+    client_id: str = sensitive_field()
+    client_secret: str = sensitive_field()
+    base_url: AnyHttpUrl = Field(default="https://api.getport.io")  # type: ignore[assignment]
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     blueprint_cache_ttl_seconds: float = 120.0
 
 
-class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
+class IntegrationSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
     identifier: str
     type: str
     config: Any = Field(default_factory=dict)
@@ -88,7 +105,8 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
         15  # minutes; env may be "15m", "1h", or bare minutes
     )
 
-    @validator("incremental_sync_interval", pre=True)
+    @field_validator("incremental_sync_interval", mode="before")
+    @classmethod
     def parse_incremental_sync_interval(cls, value: Any) -> int:
         if value is None:
             return 15
@@ -100,7 +118,8 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
             )
         return minutes
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
         integ_type = values.get("type")
 
@@ -114,19 +133,25 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
         return values
 
 
-class MetricsSettings(BaseOceanModel, extra=Extra.allow):
+class MetricsSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
     enabled: bool = Field(default=False)
     webhook_url: str | None = Field(default=None)
 
 
-class StreamingSettings(BaseOceanModel, extra=Extra.allow):
+class StreamingSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
     enabled: bool = Field(default=False)
     max_buffer_size_mb: int = Field(default=1024 * 1024 * 20)  # 20 mb
     chunk_size: int = Field(default=1024 * 64)  # 64 kb
     location: str = Field(default="/tmp/ocean/streaming")
 
 
-class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
+class ActionsProcessorSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
     enabled: bool = Field(default=False)
     runs_buffer_high_watermark: int = Field(
         default=300,
@@ -171,10 +196,12 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     )
 
 
-class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
+class LiveEventsRedisSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
     url: str = Field(default="redis://localhost:6379")
     username: str | None = None
-    password: str | None = Field(default=None, sensitive=True)
+    password: str | None = sensitive_field(default=None)
     enable_tls: bool = False
     ca: str | None = Field(
         default=None,
@@ -184,9 +211,8 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         default=None,
         description="Base64-encoded PEM client certificate for mutual TLS.",
     )
-    private_key: str | None = Field(
+    private_key: str | None = sensitive_field(
         default=None,
-        sensitive=True,
         description="Base64-encoded PEM private key for mutual TLS.",
     )
     block_ms: int = Field(default=1000, ge=1)
@@ -302,54 +328,51 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
     def consumer_cleanup_idle_ms(self) -> int:
         return self.stream_maintenance_consumer_cleanup_idle_seconds * 1000
 
-    @root_validator
-    def validate_tls_settings(cls, values: dict[str, Any]) -> dict[str, Any]:
-        url = values.get("url", "redis://localhost:6379")
-        enable_tls = values.get("enable_tls", False)
-        cert = values.get("cert")
-        private_key = values.get("private_key")
-
-        scheme = urlparse(url).scheme.lower()
+    @model_validator(mode="after")
+    def validate_tls_settings(self) -> Self:
+        scheme = urlparse(self.url).scheme.lower()
         uses_tls_scheme = scheme == "rediss"
 
-        if enable_tls and not uses_tls_scheme:
+        if self.enable_tls and not uses_tls_scheme:
             raise ValueError(
                 "enable_tls is True but the Redis URL does not use the rediss:// "
                 "scheme. Use a rediss:// URL or set enable_tls to False."
             )
-        if not enable_tls and uses_tls_scheme:
+        if not self.enable_tls and uses_tls_scheme:
             raise ValueError(
                 "The Redis URL uses rediss:// but enable_tls is False. "
                 "Set enable_tls to True or use a redis:// URL."
             )
 
-        has_cert = bool(cert)
-        has_private_key = bool(private_key)
+        has_cert = bool(self.cert)
+        has_private_key = bool(self.private_key)
         if has_cert != has_private_key:
             raise ValueError(
                 "Redis mutual TLS requires both cert and private_key to be set."
             )
 
-        return values
+        return self
 
 
-class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
+class LiveEventsSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
     is_redis_stream_consumer_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):
     type: Literal[LiveEventsConsumerType.REDIS] = LiveEventsConsumerType.REDIS
-    redis: LiveEventsRedisSettings = Field(
-        default_factory=lambda: LiveEventsRedisSettings()
-    )
+    redis: LiveEventsRedisSettings = Field(default_factory=LiveEventsRedisSettings)
 
 
 LiveEventsSettingsType = RedisLiveEventsSettings
 
 
-class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
-    _integration_config_model: BaseModel | None = None
+class IntegrationConfiguration(BaseOceanSettings):
+    model_config = SettingsConfigDict(extra="allow")
+
+    integration_config_model: Type[BaseModel] | None = Field(default=None, exclude=True)
 
     allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
@@ -400,19 +423,16 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default_factory=lambda: get_cgroup_cpu_limit()
     )
     delete_entities_max_batch_size: int = 1000
-    streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
+    streaming: StreamingSettings = Field(default_factory=StreamingSettings)
     actions_processor: ActionsProcessorSettings = Field(
-        default_factory=lambda: ActionsProcessorSettings()
+        default_factory=ActionsProcessorSettings
     )
-    live_events: LiveEventsSettingsType = Field(
-        default_factory=lambda: RedisLiveEventsSettings()
-    )
+    live_events: LiveEventsSettingsType = Field(default_factory=RedisLiveEventsSettings)
     ssl: SslSettings = Field(default_factory=SslSettings)
 
-    @root_validator(pre=True)
-    def warn_removed_process_execution_mode_env(
-        cls, values: dict[str, Any]
-    ) -> dict[str, Any]:
+    @model_validator(mode="before")
+    @classmethod
+    def warn_removed_process_execution_mode_env(cls, values: Any) -> Any:
         process_execution_mode = os.environ.get("OCEAN__PROCESS_EXECUTION_MODE")
         if process_execution_mode:
             logger.warning(
@@ -422,7 +442,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             )
         return values
 
-    @validator("metrics", pre=True)
+    @field_validator("metrics", mode="before")
+    @classmethod
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:
         if v is None:
             return MetricsSettings(enabled=False, webhook_url=None)
@@ -436,37 +457,31 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         except (TypeError, ValueError):
             return MetricsSettings(enabled=False, webhook_url=None)
 
-    @root_validator()
-    def set_disable_ip_outbound_blocker_default(
-        cls, values: dict[str, Any]
-    ) -> dict[str, Any]:
-        if values.get("disable_ip_outbound_blocker") is None:
-            runtime = values.get("runtime", Runtime.OnPrem)
-            values["disable_ip_outbound_blocker"] = not runtime.is_saas_runtime
-        return values
+    @model_validator(mode="after")
+    def set_disable_ip_outbound_blocker_default(self) -> Self:
+        if self.disable_ip_outbound_blocker is None:
+            self.disable_ip_outbound_blocker = not self.runtime.is_saas_runtime
+        return self
 
-    @root_validator()
-    def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if not (config_model := values.get("_integration_config_model")):
-            return values
+    @model_validator(mode="after")
+    def validate_integration_config(self) -> Self:
+        if not (config_model := self.integration_config_model):
+            return self
 
         # Using the integration dynamic config model to parse the config
         def parse_config(model: Type[BaseModel], config: Any) -> BaseModel:
             # In some cases, the config is parsed as a string so we need to handle it
             # Example: when the config is loaded from the environment variables and there is an object inside the config
             if isinstance(config, str):
-                return parse_raw_as(model, config)
+                return TypeAdapter(model).validate_json(config)
             else:
-                return parse_obj_as(model, config)
+                return TypeAdapter(model).validate_python(config)
 
-        integration_config = values["integration"]
-        integration_config.config = parse_config(
-            config_model, integration_config.config
-        )
+        self.integration.config = parse_config(config_model, self.integration.config)
+        return self
 
-        return values
-
-    @validator("runtime")
+    @field_validator("runtime")
+    @classmethod
     def validate_runtime(cls, runtime: Runtime) -> Runtime:
         if runtime.is_saas_runtime:
             spec = get_spec_file()
@@ -482,7 +497,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
         return runtime
 
-    @validator("actions_processor")
+    @field_validator("actions_processor")
+    @classmethod
     def validate_actions_processor(
         cls, actions_processor: ActionsProcessorSettings
     ) -> ActionsProcessorSettings:

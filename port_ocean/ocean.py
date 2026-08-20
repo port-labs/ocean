@@ -51,7 +51,7 @@ class Ocean:
         self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
-            _integration_config_model=config_factory,
+            integration_config_model=config_factory,
             **(config_override or {}),
         )
         self._warn_non_default_ssl_settings()
