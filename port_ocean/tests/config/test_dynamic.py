@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 
@@ -12,7 +14,7 @@ def test_factory_builds_url_fields_as_strings_without_trailing_slash() -> None:
     )
 
     # Act
-    config = model_cls(host_url="https://example.com/")
+    config: Any = model_cls(host_url="https://example.com/")
 
     # Assert
     assert config.host_url == "https://example.com"
@@ -30,7 +32,7 @@ def test_factory_parses_json_object_and_array_strings() -> None:
     )
 
     # Act
-    config = model_cls(headers='{"Authorization": "Bearer x"}', tags='["a", "b"]')
+    config: Any = model_cls(headers='{"Authorization": "Bearer x"}', tags='["a", "b"]')
 
     # Assert
     assert config.headers == {"Authorization": "Bearer x"}

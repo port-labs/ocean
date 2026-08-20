@@ -47,8 +47,8 @@ class Configuration(BaseModel):
 
 
 def dynamic_parse(value: Any, field: FieldInfo) -> Any:
-    should_json_load = issubclass(field.annotation, dict) or issubclass(
-        field.annotation, list
+    should_json_load = issubclass(field.annotation, dict) or issubclass(  # type: ignore[arg-type]
+        field.annotation, list  # type: ignore[arg-type]
     )
     if isinstance(value, str) and should_json_load:
         try:

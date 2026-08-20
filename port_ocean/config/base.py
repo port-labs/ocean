@@ -170,8 +170,8 @@ class BaseOceanSettings(BaseSettings):
         init_settings: PydanticBaseSettingsSource,
         env_settings: PydanticBaseSettingsSource,
         dotenv_settings: PydanticBaseSettingsSource,
-        *_,
-        **__,
+        *_: Any,
+        **__: Any,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
             init_settings,

@@ -77,8 +77,8 @@ class ApplicationSettings(BaseSettings):
         init_settings: PydanticBaseSettingsSource,
         env_settings: PydanticBaseSettingsSource,
         dotenv_settings: PydanticBaseSettingsSource,
-        *_,
-        **__,
+        *_: Any,
+        **__: Any,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return env_settings, dotenv_settings, init_settings
 
