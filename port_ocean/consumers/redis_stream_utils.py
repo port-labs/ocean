@@ -40,12 +40,15 @@ async def ensure_consumer_group(
 ) -> None:
     """Create the stream and consumer group if they do not exist."""
     stream_existed = bool(await redis.exists(stream_key))
+    # When the stream already exists, start from the beginning so messages
+    # published before the consumer group was created are not skipped.
+    group_start_id = "0" if stream_existed else "$"
     consumer_group_created = False
     try:
         await redis.xgroup_create(
             stream_key,
             consumer_group,
-            id="$",
+            id=group_start_id,
             mkstream=True,
         )
         consumer_group_created = True
