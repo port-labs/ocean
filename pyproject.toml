@@ -67,7 +67,7 @@ prometheus-client = "^0.21.1"
 pytest-cov = ">=6,<8"
 ijson = "^3.4.0"
 aiofiles = "^24.1.0"
-cryptography = "^49.0.0"
+cryptography = ">=49,<51"
 jmespath = "^1.0.1"
 psutil = "^7.2.1"
 redis = { version = "^6.1.0", extras = ["hiredis"] }
