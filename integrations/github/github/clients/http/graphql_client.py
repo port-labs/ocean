@@ -12,6 +12,7 @@ from typing import (
     NamedTuple,
     Optional,
 )
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 from loguru import logger
@@ -25,22 +26,23 @@ from github.clients.graphql_page_reduction import (
     reduce_graphql_page_size,
 )
 from github.clients.http.base_client import AbstractGithubClient
+from github.clients.rate_limiter.utils import (
+    GitHubRateLimiterConfig,
+    extract_graphql_rate_limit_info,
+)
 from github.helpers.exceptions import (
     GraphQLClientError,
     GraphQLErrorGroup,
     RateLimitException,
 )
 from github.helpers.utils import IgnoredError
-from github.clients.rate_limiter.utils import (
-    GitHubRateLimiterConfig,
-    extract_graphql_rate_limit_info,
-)
-from urllib.parse import urlparse, urlunparse
 
 PAGE_SIZE = 25
 FORBIDDEN_ERROR_TYPE = "FORBIDDEN"
 RETRY_WITHOUT_FIELDS_MARKER = "retry_without_fields"
-FIELD_REMOVAL_PATTERN = r'\b{field}\s*(?:\([^)]*\))?\s*(?:\{{(?:[^{{}}]|(?:\{{[^{{}}]*\}})*)*\}})?'
+FIELD_REMOVAL_PATTERN = (
+    r"\b{field}\s*(?:\([^)]*\))?\s*(?:\{{(?:[^{{}}]|(?:\{{[^{{}}]*\}})*)*\}})?"
+)
 
 
 class GraphQLFallback(NamedTuple):
