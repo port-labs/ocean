@@ -16,25 +16,40 @@ from .version import (
 )
 
 
-def apply(git: GitContext, *, merge_sha: str, main_ref: str) -> list[AppliedRelease]:
-    parent_ref = f"{merge_sha}^"
-    applied: list[AppliedRelease] = []
-    release_files = git.release_files_added_in_diff(merge_sha)
+def apply(
+    git: GitContext,
+    *,
+    main_ref: str,
+    merge_sha: str | None = None,
+    base_ref: str | None = None,
+    head_ref: str | None = None,
+) -> list[AppliedRelease]:
+    if head_ref is not None:
+        parent_ref = base_ref or f"{head_ref}^"
+        compare_head = head_ref
+        release_files = git.release_files_added_in_diff(parent_ref, compare_head)
+        source = f"{parent_ref}...{compare_head}"
+    elif merge_sha is not None:
+        parent_ref = f"{merge_sha}^"
+        compare_head = merge_sha
+        release_files = git.release_files_added_in_diff(merge_sha)
+        source = merge_sha
+    else:
+        raise ValueError("Either merge_sha or head_ref is required")
 
-    print(f"Applying releases for merge {merge_sha} (version base: {main_ref})")
+    applied: list[AppliedRelease] = []
+    print(f"Applying releases for {source} (version base: {main_ref})")
     if not release_files:
-        print("No release files added in merge commit")
+        print("No release files added")
         return applied
 
-    print(f"Found {len(release_files)} release file(s) in merge commit")
+    print(f"Found {len(release_files)} release file(s)")
     for relative_path in release_files:
         print(f"Processing {relative_path}")
         target = target_from_release_path(git.repo_root, relative_path)
 
-        if git.has_version_changed(parent_ref, merge_sha, target.pyproject_path):
-            print(
-                f"Skipping {target.label}: manual version bump detected in merge commit"
-            )
+        if git.has_version_changed(parent_ref, compare_head, target.pyproject_path):
+            print(f"Skipping {target.label}: manual version bump detected in {source}")
             continue
 
         release_path = Path(git.repo_root, *Path(relative_path).parts)

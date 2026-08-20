@@ -4,10 +4,13 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    paths:
+      - "**/.ocean-release/**"
 
 concurrency:
-  group: ocean-release-main
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('ocean-release-pr-{0}', github.event.pull_request.number) || 'ocean-release-main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: write
@@ -17,6 +20,7 @@ jobs:
   apply-release:
     name: Apply declarative release
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -42,22 +46,30 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Detect new release files in merge commit
+      - name: Detect new release files
         if: steps.skip.outputs.skip != 'true'
         id: detect
         run: |
-          MERGE_SHA="${{ github.sha }}"
-          FILES=$(git diff --name-only --diff-filter=A "${MERGE_SHA}^" "${MERGE_SHA}" | grep '\.ocean-release/.*\.ya\?ml$' || true)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}"
+            git fetch origin "${{ github.head_ref }}"
+            BASE="origin/${{ github.base_ref }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+            FILES=$(git diff --name-only --diff-filter=A "${BASE}...${HEAD}" | grep '\.ocean-release/.*\.ya\?ml$' || true)
+          else
+            HEAD="${{ github.sha }}"
+            FILES=$(git diff --name-only --diff-filter=A "${HEAD}^" "${HEAD}" | grep '\.ocean-release/.*\.ya\?ml$' || true)
+          fi
           if [ -z "$FILES" ]; then
             echo "has_release=false" >> "$GITHUB_OUTPUT"
-            echo "No new .ocean-release files in ${MERGE_SHA}"
+            echo "No new .ocean-release files"
           else
             echo "has_release=true" >> "$GITHUB_OUTPUT"
             echo "Found release files:"
             echo "$FILES"
           fi
 
-      - name: Apply release on merge commit
+      - name: Apply release
         if: steps.detect.outputs.has_release == 'true'
         id: apply
         run: |
@@ -65,11 +77,35 @@ jobs:
           git config user.email "ocean-release[bot]@users.noreply.github.com"
           git fetch origin main
 
-          python3 scripts/ci/apply_ocean_release.py \
-            --merge-sha "${{ github.sha }}" \
-            --main-ref origin/main \
-            --skip-checkout \
-            --skip-commit
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.head_ref }}"
+            PR_HEAD="${{ github.event.pull_request.head.sha }}"
+            mapfile -t INTENT_FILES < <(
+              git diff --name-only --diff-filter=A \
+                "origin/${{ github.base_ref }}...${PR_HEAD}" \
+                | grep '\.ocean-release/.*\.ya\?ml$' || true
+            )
+            git checkout --detach origin/main
+            git checkout "${PR_HEAD}" -- scripts/ci "${INTENT_FILES[@]}"
+            python3 scripts/ci/apply_ocean_release.py \
+              --base origin/main \
+              --head "${PR_HEAD}" \
+              --main-ref origin/main \
+              --skip-checkout \
+              --skip-commit
+            git checkout origin/main -- scripts/ci
+            BRANCH_NAME="ocean-release/preview-pr-${{ github.event.pull_request.number }}"
+            TITLE_PREFIX="[Preview]"
+          else
+            python3 scripts/ci/apply_ocean_release.py \
+              --merge-sha "${{ github.sha }}" \
+              --main-ref origin/main \
+              --skip-checkout \
+              --skip-commit
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+            BRANCH_NAME="ocean-release/apply-${SHORT_SHA}"
+            TITLE_PREFIX=""
+          fi
 
           if [ -z "$(git status --porcelain)" ]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
@@ -77,12 +113,11 @@ jobs:
             exit 0
           fi
 
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          BRANCH_NAME="ocean-release/apply-${SHORT_SHA}"
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "branch_name=${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
           PR_TITLE=$(
-            git diff --name-only | python3 -c '
+            git diff --name-only | TITLE_PREFIX="$TITLE_PREFIX" python3 -c '
+          import os
           import sys
           labels = []
           has_core = False
@@ -94,6 +129,9 @@ jobs:
                   labels.append(path.split("/")[1])
 
           prefix = "[CoreBump]" if has_core else "[IntegrationBump]"
+          preview = os.environ.get("TITLE_PREFIX", "")
+          if preview:
+              prefix = f"{preview} {prefix}"
           labels_text = ", ".join(labels)
           print(f"{prefix} Apply version and changelog for {labels_text}")
           '
@@ -161,19 +199,20 @@ jobs:
           branch: ${{ steps.apply.outputs.branch_name }}
           base: main
           title: ${{ steps.apply.outputs.pr_title }}
+          draft: ${{ github.event_name == 'pull_request' }}
           commit-message: "chore: apply ocean releases [ocean-release]"
           committer: ocean-release[bot] <ocean-release[bot]@users.noreply.github.com>
           author: ocean-release[bot] <ocean-release[bot]@users.noreply.github.com>
           body: |
-            This PR was automatically created after merging a contribution with `.ocean-release` intent files.
+            ${{ github.event_name == 'pull_request' && format('This is a **preview** of the ocean-release apply PR, generated from #{0}. It applies that PR''s `.ocean-release` files onto `main`. **Do not merge** — it updates on each push to the source PR.', github.event.pull_request.number) || 'This PR was automatically created after merging a contribution with `.ocean-release` intent files.' }}
 
             **Triggered by:** @${{ steps.developer.outputs.login }}
-            **Merge commit:** ${{ github.sha }}
+            **Source:** ${{ github.sha }}
 
             Please review the version and changelog updates before merging. Publish workflows run after this PR is merged.
 
       - name: Send Slack notification
-        if: steps.open_pr.outputs.pull-request-url != ''
+        if: steps.open_pr.outputs.pull-request-url != '' && github.event_name != 'pull_request'
         continue-on-error: true
         uses: fjogeleit/http-request-action@v2
         with:
