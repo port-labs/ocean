@@ -18,17 +18,19 @@ from port_ocean.config.base import BaseOceanModel, sensitive_field
 
 
 def _normalize_no_trailing_slash_url(value: Any) -> Any:
-    if value is not None:
-        if isinstance(value, (bytes, bytearray)):
-            try:
-                value = value.decode()
-            except UnicodeDecodeError as exc:
-                raise ValueError("URL bytes must be valid UTF-8") from exc
-        else:
-            value = str(value)
+    if value is None:
+        return value
 
-        if value != "/":
-            value = value.rstrip("/")
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            value = value.decode()
+        except UnicodeDecodeError as exc:
+            raise ValueError("URL bytes must be valid UTF-8") from exc
+    else:
+        value = str(value)
+
+    if value != "/":
+        value = value.rstrip("/")
     TypeAdapter(AnyUrl).validate_python(value)
     return value
 
