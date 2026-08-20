@@ -18,7 +18,8 @@ def parse_release_yaml(content: str) -> dict[str, str]:
         if ":" not in stripped:
             if current_key != "changelog":
                 raise ValueError(f"Invalid release file line: {line}")
-            data[current_key] += f"\n{stripped}"
+            continuation = stripped if stripped.startswith("-") else line.rstrip()
+            data[current_key] += f"\n{continuation}"
             continue
         key, value = stripped.split(":", 1)
         current_key = key.strip()
