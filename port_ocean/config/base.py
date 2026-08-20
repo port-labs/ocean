@@ -1,22 +1,25 @@
 import os
-from pydantic import Field
 import re
+from pathlib import Path
 from types import GenericAlias
-from typing import Any
+from typing import Any, ClassVar, cast
 
 import yaml
 from humps import decamelize
-from pathlib import Path
-from pydantic.v1 import BaseSettings
-from pydantic.v1.env_settings import EnvSettingsSource, InitSettingsSource
-from pydantic.v1.main import ModelMetaclass, BaseModel
+from pydantic import BaseModel, Field, PrivateAttr
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 PROVIDER_WRAPPER_PATTERN = r"{{ from (.*) }}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
 
 
 def read_yaml_config_settings_source(settings: "BaseOceanSettings") -> dict[str, Any]:
-    yaml_file = getattr(settings.Config, "yaml_file", "")
+    yaml_file = settings.yaml_file
 
     assert yaml_file, "Settings.yaml_file not properly configured"
     path = Path(
@@ -56,7 +59,7 @@ def load_from_config_provider(config_provider: str) -> Any:
 
 
 def parse_providers(
-    settings_model: BaseModel | ModelMetaclass,
+    settings_model: BaseModel | type[BaseModel],
     config: dict[str, Any],
     existing_data: dict[str, Any],
 ) -> dict[str, Any]:
@@ -98,7 +101,7 @@ def parse_providers(
 
 
 def decamelize_config(
-    settings_model: BaseModel | ModelMetaclass, config: dict[str, Any]
+    settings_model: BaseModel | type[BaseModel], config: dict[str, Any]
 ) -> dict[str, Any]:
     """
     Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
@@ -131,32 +134,50 @@ def load_providers(
     return parse_providers(settings, snake_case_config, existing_values)
 
 
+class YamlProviderSettingsSource(PydanticBaseSettingsSource):
+    """Lowest-priority source that fills settings from config.yaml providers."""
+
+    def get_field_value(
+        self, field: FieldInfo, field_name: str
+    ) -> tuple[Any, str, bool]:
+        """ABC stub. Never called; this source loads all fields in ``__call__``."""
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        settings = cast("BaseOceanSettings", self.settings_cls.model_construct())
+        return load_providers(settings, dict(self.current_state))
+
+
 class BaseOceanSettings(BaseSettings):
-    _base_path: str = "./"
+    yaml_file: ClassVar[str] = "./config.yaml"
+    _base_path: str = PrivateAttr(default="./")
+
+    model_config = SettingsConfigDict(
+        env_prefix="OCEAN__",
+        env_nested_delimiter="__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     def get_sensitive_fields_data(self) -> set[str]:
         return _get_sensitive_information(self)
 
-    class Config:
-        yaml_file = "./config.yaml"
-        env_prefix = "OCEAN__"
-        env_nested_delimiter = "__"
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
-        @classmethod
-        def customise_sources(  # type: ignore
-            cls,
-            init_settings: InitSettingsSource,
-            env_settings: EnvSettingsSource,
-            *_,
-            **__,
-        ):
-            return (
-                init_settings,
-                env_settings,
-                lambda s: load_providers(s, {**env_settings(s), **init_settings(s)}),
-            )
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        *_,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            YamlProviderSettingsSource(settings_cls),
+        )
 
 
 class BaseOceanModel(BaseModel):
