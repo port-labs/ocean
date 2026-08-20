@@ -237,7 +237,11 @@ class RepositorySourceModel(ExcludeArchivedSelector):
 
 
 class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
-    path: str = Field(default="*")
+    path: str = Field(
+        default="*",
+        title="Path",
+        description="Relative folder path to sync. Supports glob (*) within a path segment.",
+    )
 
     class Config:
         extra = "forbid"

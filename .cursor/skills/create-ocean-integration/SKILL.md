@@ -73,7 +73,7 @@ When invoking this skill, provide:
 If a task requires a forbidden action, **STOP** and report:
 
 ```
-BLOCKED: This requires {action} which is not allowed. 
+BLOCKED: This requires {action} which is not allowed.
 Please {alternative approach}.
 ```
 
@@ -144,34 +144,34 @@ Before writing any code, gather evidence from authoritative sources. Guessing le
    Create a notes file with:
    ```markdown
    ## API Evidence for {ServiceName}
-   
+
    ### Authentication
    - Method: {Bearer token | API key header | OAuth2}
    - Header: {Authorization: Bearer | X-API-Key | custom}
    - Source: {link to auth docs}
-   
+
    ### Pagination
    - Type: {offset | cursor | page-based | link-header}
    - Page size param: {limit | per_page | pageSize}
    - Max page size: {number}
    - Next indicator: {hasNextPage | Link header | afterKey}
    - Source: {link to pagination docs}
-   
+
    ### Rate Limits
    - Overall: {X requests per minute/hour}
    - Concurrent: {Y simultaneous requests}
    - Headers: {X-RateLimit-Remaining | Retry-After}
    - Source: {link to rate limit docs}
-   
+
    ### Resources to Sync
    - {resource1}: GET /endpoint - {description}
    - {resource2}: GET /endpoint - {description}
-   
+
    ### Permissions / Scopes
    - Minimum required: {list scopes for OOTB functionality}
    - Optional for {feature}: {additional scope}
    - Source: {link to permissions docs}
-   
+
    ### Webhook Event Mapping
    | Event Type | Maps to Kind | Action |
    |------------|--------------|--------|
@@ -307,7 +307,7 @@ integrations/{integration-name}/
 class ServiceClient(BaseClient):
     async def send_api_request(self, endpoint): ...  # OK
     async def send_paginated_request(self, endpoint): ...  # OK
-    
+
     # WRONG - These belong in EXPORTERS, not client:
     async def get_projects(self): ...  # MOVE TO ProjectExporter
     async def get_issues(self, project_id): ...  # MOVE TO IssueExporter
@@ -332,11 +332,11 @@ class ServiceClient(BaseClient):
     async def send_api_request(self, endpoint: str, method: str = "GET", **kwargs):
         """Generic HTTP request - no resource-specific logic."""
         ...
-    
+
     async def send_paginated_request(self, endpoint: str, **kwargs):
         """Generic pagination - no resource-specific logic."""
         ...
-    
+
     # NO get_projects(), get_issues(), get_users() methods here!
 ```
 
@@ -351,7 +351,7 @@ class ProjectExporter(AbstractExporter[ServiceClient]):
             data_key="projects"
         ):
             yield batch
-    
+
     async def get_single_resource(self, project_id: str) -> dict | None:
         data = await self.client.send_api_request(f"projects/{project_id}")
         return data if data else None
@@ -363,7 +363,7 @@ class ProjectExporter(AbstractExporter[ServiceClient]):
 async def on_resync_projects(kind: str):
     client = ClientFactory.get_client()
     exporter = ProjectExporter(client)
-    
+
     for org in await get_organizations():
         async for batch in exporter.get_paginated_resources(org["id"]):
             yield batch
@@ -383,14 +383,14 @@ T = TypeVar("T")  # Client type
 class AbstractExporter(ABC, Generic[T]):
     def __init__(self, client: T) -> None:
         self.client = client
-    
+
     @abstractmethod
     async def get_paginated_resources(
         self, **options
     ) -> AsyncGenerator[list[RAW_ITEM], None]:
         """Yield batches of resources."""
         pass
-    
+
     @abstractmethod
     async def get_single_resource(self, resource_id: str) -> Optional[RAW_ITEM]:
         """Fetch a single resource by ID."""
@@ -416,7 +416,7 @@ class ProjectExporter(AbstractExporter[ServiceClient]):
             "/projects", params={"archived": include_archived}
         ):
             yield batch
-    
+
     async def get_single_resource(self, resource_id: str) -> Optional[RAW_ITEM]:
         return await self.client.send_api_request(f"/projects/{resource_id}")
 ```
@@ -436,7 +436,7 @@ T = TypeVar("T")
 
 class ClientFactory:
     _instances: dict[Type, object] = {}
-    
+
     @classmethod
     def get_client(cls) -> ServiceClient:
         if ServiceClient not in cls._instances:
@@ -447,7 +447,7 @@ class ClientFactory:
                 api_token=ocean.integration_config["service_token"],
             )
         return cls._instances[ServiceClient]
-    
+
     @classmethod
     def clear(cls) -> None:
         cls._instances.clear()
@@ -467,39 +467,39 @@ from aiolimiter import AsyncLimiter
 class BaseClient(ABC):
     """
     Base HTTP client - GENERIC ONLY.
-    
+
     This class handles:
     - HTTP request sending
     - Rate limiting
     - Error handling
     - Pagination mechanics
-    
+
     This class does NOT handle:
     - Resource-specific endpoints (use Exporters)
     - Data transformation (use Exporters)
     - Business logic (use Exporters)
     """
-    
+
     PAGE_SIZE = 100
-    
+
     def __init__(self, base_url: str, rate_limit_per_minute: int = 100) -> None:
         self.base_url = base_url.rstrip("/")
         self.rate_limiter = AsyncLimiter(rate_limit_per_minute, 60)
-    
+
     @abstractmethod
     async def send_api_request(
         self, endpoint: str, method: str = "GET", **kwargs
     ) -> dict[str, Any]:
         """Send a generic HTTP request. Endpoint is passed by exporter."""
         pass
-    
+
     @abstractmethod
     async def send_paginated_request(
         self, endpoint: str, **kwargs
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Handle pagination. Endpoint is passed by exporter."""
         pass
-    
+
     # DO NOT ADD: get_workspaces(), get_projects(), get_tasks(), etc.
     # Those belong in EXPORTERS, not here.
 ```
@@ -515,7 +515,7 @@ from {integration}.core.exporters.project_exporter import ProjectExporter
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = ClientFactory.get_client()
     exporter = ProjectExporter(client)
-    
+
     async for batch in exporter.get_paginated_resources():
         yield batch
 ```
@@ -626,11 +626,11 @@ Continue from this generated scaffold rather than creating files from scratch.
 ```python
 class BaseClient(ABC):
     PAGE_SIZE = 100  # From API docs, not assumed
-    
+
     def __init__(self, base_url: str, authenticator: AbstractAuthenticator):
         self.base_url = base_url.rstrip("/")
         self.authenticator = authenticator
-    
+
     async def send_api_request(
         self,
         endpoint: str,
@@ -641,7 +641,7 @@ class BaseClient(ABC):
     ) -> Dict[str, Any]:
         # Implementation with error handling
         pass
-    
+
     async def send_paginated_request(
         self,
         endpoint: str,
@@ -657,13 +657,13 @@ class BaseClient(ABC):
 class AbstractExporter(ABC, Generic[T]):
     def __init__(self, client: T):
         self.client = client
-    
+
     @abstractmethod
     async def get_paginated_resources(
         self, options: Optional[Dict] = None
     ) -> AsyncGenerator[List[RAW_ITEM], None]:
         pass
-    
+
     @abstractmethod
     async def get_resource(self, resource_id: str) -> Optional[RAW_ITEM]:
         pass
@@ -680,7 +680,7 @@ class MissingScopeError(Exception):
 
 async def send_api_request(self, endpoint: str, ...) -> Dict[str, Any]:
     response = await self._http_client.request(...)
-    
+
     if response.status_code == 403:
         # Log actionable error message
         logger.error(
@@ -749,6 +749,7 @@ Only implement if the third-party supports webhooks:
    ```python
    ocean.add_webhook_processor("/webhook", ResourceWebhookProcessor)
    ```
+   When live events use the Redis consumer, paths are matched exactly; dynamic registration paths cause events to be acknowledged and dropped. See [references/webhook-patterns.md](references/webhook-patterns.md#static-paths-only-required-for-redis-live-events).
 
 For detailed webhook patterns, see [references/webhook-patterns.md](references/webhook-patterns.md).
 
@@ -987,11 +988,11 @@ class TestServiceClient:
             base_url="https://api.service.com",
             api_token="test-token",
         )
-        
+
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
         mock_response.json.return_value = {"id": "1", "name": "Test"}
-        
+
         with patch(
             "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
@@ -1004,13 +1005,13 @@ class TestServiceClient:
             base_url="https://api.service.com",
             api_token="test-token",
         )
-        
+
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 404
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "404 Not Found", request=MagicMock(), response=mock_response
         )
-        
+
         with patch(
             "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
@@ -1023,13 +1024,13 @@ class TestServiceClient:
             base_url="https://api.service.com",
             api_token="test-token",
         )
-        
+
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 500
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "500 Error", request=MagicMock(), response=mock_response
         )
-        
+
         with patch(
             "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
@@ -1059,34 +1060,34 @@ class TestProjectExporter:
     async def test_get_single_resource(self) -> None:
         mock_client = MagicMock()
         mock_client.send_api_request = AsyncMock(return_value=TEST_PROJECTS[0])
-        
+
         exporter = ProjectExporter(mock_client)
         result = await exporter.get_single_resource("1")
-        
+
         assert result == TEST_PROJECTS[0]
         mock_client.send_api_request.assert_called_once()
 
     async def test_get_paginated_resources(self) -> None:
         mock_client = MagicMock()
-        
+
         async def mock_paginated(*args: Any, **kwargs: Any) -> AsyncGenerator[list, None]:
             yield TEST_PROJECTS
 
         mock_client.send_paginated_request = mock_paginated
-        
+
         exporter = ProjectExporter(mock_client)
         results = [batch async for batch in exporter.get_paginated_resources()]
-        
+
         assert len(results) == 1
         assert results[0] == TEST_PROJECTS
 
     async def test_get_single_resource_not_found(self) -> None:
         mock_client = MagicMock()
         mock_client.send_api_request = AsyncMock(return_value={})
-        
+
         exporter = ProjectExporter(mock_client)
         result = await exporter.get_single_resource("nonexistent")
-        
+
         assert result == {}
 ```
 
@@ -1171,10 +1172,10 @@ class TestRateLimiter:
             await asyncio.sleep(0.01)
             concurrent -= 1
 
-        tasks = [asyncio.create_task(tracked_request()) 
+        tasks = [asyncio.create_task(tracked_request())
                  for _ in range(max_concurrent * 2)]
         await asyncio.gather(*tasks)
-        
+
         assert max_seen <= max_concurrent
 ```
 

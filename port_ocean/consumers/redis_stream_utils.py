@@ -1,4 +1,6 @@
 import asyncio
+from collections.abc import Awaitable
+from typing import Any, cast
 
 from loguru import logger
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -38,12 +40,15 @@ async def ensure_consumer_group(
 ) -> None:
     """Create the stream and consumer group if they do not exist."""
     stream_existed = bool(await redis.exists(stream_key))
+    # When the stream already exists, start from the beginning so messages
+    # published before the consumer group was created are not skipped.
+    group_start_id = "0" if stream_existed else "$"
     consumer_group_created = False
     try:
         await redis.xgroup_create(
             stream_key,
             consumer_group,
-            id="$",
+            id=group_start_id,
             mkstream=True,
         )
         consumer_group_created = True
@@ -60,6 +65,92 @@ async def ensure_consumer_group(
         )
 
 
+async def cleanup_idle_consumers_from_group(
+    redis: RedisClient,
+    *,
+    stream_key: str,
+    consumer_group: str,
+    idle_threshold_ms: int,
+    protected_consumer_names: frozenset[str],
+) -> int:
+    """Remove consumers idle beyond the threshold that have no pending messages."""
+    try:
+        consumers_info = await redis.xinfo_consumers(stream_key, consumer_group)
+    except ResponseError as error:
+        if not is_missing_stream_or_group_error(error):
+            raise
+        logger.warning(
+            "Redis stream or consumer group missing during idle consumer cleanup",
+            stream_key=stream_key,
+            consumer_group=consumer_group,
+            error=str(error),
+        )
+        return 0
+
+    removed_count = 0
+    for consumer in consumers_info:
+        name = str(consumer["name"])
+        pending = int(consumer["pending"])
+        idle = int(consumer["idle"])
+
+        if name in protected_consumer_names or pending > 0 or idle < idle_threshold_ms:
+            continue
+
+        await redis.xgroup_delconsumer(
+            stream_key,
+            consumer_group,
+            name,
+        )
+        removed_count += 1
+        logger.info(
+            "Removed idle Redis stream consumer from group",
+            stream_key=stream_key,
+            consumer_group=consumer_group,
+            consumer_name=name,
+            idle_ms=idle,
+        )
+
+    if removed_count:
+        logger.info(
+            "Idle Redis stream consumer cleanup complete",
+            stream_key=stream_key,
+            consumer_group=consumer_group,
+            removed_count=removed_count,
+        )
+
+    return removed_count
+
+
+ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT = """
+redis.call('XACK', KEYS[1], ARGV[1], ARGV[2])
+return redis.call('XDEL', KEYS[1], ARGV[2])
+"""
+
+REQUEUE_STREAM_ENTRY_SCRIPT = """
+redis.call('XADD', KEYS[1], '*', unpack(ARGV, 3))
+redis.call('XACK', KEYS[1], ARGV[1], ARGV[2])
+return redis.call('XDEL', KEYS[1], ARGV[2])
+"""
+
+
+async def _eval_lua_script(
+    redis: RedisClient,
+    script: str,
+    keys: list[str],
+    args: list[str],
+) -> Any:
+    """Run a Lua script on Redis so multiple commands execute atomically.
+
+    Stream ack/finalize and requeue paths issue several commands (e.g. XACK + XDEL).
+    Redis runs each EVAL script as a single atomic unit, so partial updates cannot
+    leave entries half-processed if another client or failure interleaves.
+    """
+    return await cast(
+        Awaitable[Any],
+        redis.eval(script, len(keys), *keys, *args),
+    )
+
+
 async def ack_and_finalize_stream_entry(
     redis: RedisClient,
     *,
@@ -67,12 +158,14 @@ async def ack_and_finalize_stream_entry(
     consumer_group: str,
     message_id: str,
 ) -> None:
-    """Ack a stream entry and delete it in one transaction."""
+    """Atomically ack a stream entry and delete it using a Lua script."""
     try:
-        async with redis.pipeline(transaction=True) as pipe:
-            await pipe.xack(stream_key, consumer_group, message_id)
-            await pipe.xdel(stream_key, message_id)
-            await pipe.execute()
+        await _eval_lua_script(
+            redis,
+            ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
+            [stream_key],
+            [consumer_group, message_id],
+        )
     except ResponseError as error:
         if not is_missing_stream_or_group_error(error):
             raise
@@ -83,3 +176,24 @@ async def ack_and_finalize_stream_entry(
             message_id=message_id,
             error=str(error),
         )
+
+
+async def requeue_stream_entry(
+    redis: RedisClient,
+    *,
+    stream_key: str,
+    consumer_group: str,
+    message_id: str,
+    fields: dict[str, str],
+) -> None:
+    """Atomically re-enqueue a stream entry and finalize the original via Lua."""
+    field_items: list[str] = []
+    for key, value in fields.items():
+        field_items.extend((key, value))
+
+    await _eval_lua_script(
+        redis,
+        REQUEUE_STREAM_ENTRY_SCRIPT,
+        [stream_key],
+        [consumer_group, message_id, *field_items],
+    )

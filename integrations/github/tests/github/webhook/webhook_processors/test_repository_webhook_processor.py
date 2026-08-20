@@ -132,7 +132,8 @@ class TestRepositoryWebhookProcessor:
                         organization="test-org",
                         name="test-repo",
                         included_relations={},
-                    )
+                    ),
+                    skip_metadata_cache=True,
                 )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -336,7 +337,8 @@ class TestRepositoryWebhookProcessor:
                 included_relations={
                     item: {"include": True} for item in include_relationships
                 },
-            )
+            ),
+            skip_metadata_cache=True,
         )
 
         assert isinstance(result, WebhookEventRawResults)

@@ -34,6 +34,7 @@ class Skill(BaseModel):
     path: str
     skill_md_path: str = Field(serialization_alias="skillMdPath")
     root: str
+    blob_sha: Optional[str] = None
 
 
 class SkillRawItem(BaseModel):
@@ -107,6 +108,7 @@ def _build_skill(
     skill_md_path: str,
     content: str,
     path_globs: list[str],
+    blob_sha: Optional[str] = None,
 ) -> Skill:
     frontmatter, body = _parse_skill_markdown(content)
     path_obj = Path(skill_md_path)
@@ -128,6 +130,7 @@ def _build_skill(
         path=skill_dir,
         skill_md_path=skill_md_path,
         root=_infer_skill_root(skill_md_path, path_globs),
+        blob_sha=blob_sha,
     )
 
 
@@ -139,17 +142,20 @@ def build_skill_raw_item(
     branch: str,
     path_globs: list[str],
     organization: Optional[str] = None,
+    blob_sha: Optional[str] = None,
 ) -> dict[str, Any]:
     """Single entry point for building a skill raw item.
 
-    Webhook deletes call this with an empty ``content`` so that deleted entities
-    carry the exact same identifiers as the upserted ones.
+    Webhook deletes call this with an empty ``content`` so that deleted
+    entities carry the exact same identifiers as the upserted ones. The
+    compare API's blob SHA is passed through as ``blob_sha`` when present.
     """
     return SkillRawItem(
         skill=_build_skill(
             skill_md_path=skill_md_path,
             content=content,
             path_globs=path_globs,
+            blob_sha=blob_sha,
         ),
         repository=repository,
         branch=branch,

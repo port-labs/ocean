@@ -40,8 +40,9 @@ USER_ACTIVITY_DATA_LAG_DAYS = 3
 # Default look-back window applied when neither startingDate nor timeFrame is set.
 DEFAULT_USER_ACTIVITY_TIME_FRAME = 30
 
-# The skills endpoint rejects any date newer than this many days ago with a 400.
-SKILL_USAGE_DATA_LAG_DAYS = 1
+# The skills endpoint documents a typical 1-day lag, but availability varies by
+# query; in practice the latest queryable day is often two days ago.
+SKILL_USAGE_DATA_LAG_DAYS = 2
 
 DEFAULT_SKILL_USAGE_TIME_FRAME = 30
 
