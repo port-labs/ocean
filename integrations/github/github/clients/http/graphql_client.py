@@ -1,4 +1,5 @@
 import asyncio
+import re
 from http import HTTPStatus
 from json import JSONDecodeError
 from typing import (
@@ -37,6 +38,9 @@ from github.clients.rate_limiter.utils import (
 from urllib.parse import urlparse, urlunparse
 
 PAGE_SIZE = 25
+FORBIDDEN_ERROR_TYPE = "FORBIDDEN"
+RETRY_WITHOUT_FIELDS_MARKER = "retry_without_fields"
+FIELD_REMOVAL_PATTERN = r'\b{field}\s*(?:\([^)]*\))?\s*(?:\{{(?:[^{{}}]|(?:\{{[^{{}}]*\}})*)*\}})?'
 
 
 class GraphQLFallback(NamedTuple):
@@ -120,15 +124,25 @@ class GithubGraphQLClient(AbstractGithubClient):
         ignored_types = {e.type: e.message for e in all_ignored}
 
         non_ignored_exceptions = []
+        forbidden_fields: set[str] = set()
+
         for error in body["errors"]:
             error_type = error.get("type")
+            error_path = error.get("path", [])
+
             if error_type in ignored_types:
                 logger.warning(
                     f"{ignored_types[error_type]} due to {error['message']} "
-                    f"for {error.get('path', [])} (status {response.status_code})"
+                    f"for {error_path} (status {response.status_code})"
                 )
+                # Track field-level FORBIDDEN errors that can be retried without those fields
+                if error_type == FORBIDDEN_ERROR_TYPE:
+                    field = self._extract_field_from_error_path(error_path)
+                    if field:
+                        forbidden_fields.add(field)
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
+
         if non_ignored_exceptions:
             # The transport can rewrite variables between retries (e.g. shrinking
             # `variables.first`); prefer what it actually sent over the caller's copy.
@@ -138,6 +152,12 @@ class GithubGraphQLClient(AbstractGithubClient):
                 f"{query_path} with variables {variables}"
             )
             raise GraphQLErrorGroup(non_ignored_exceptions)
+
+        # If we have field-level FORBIDDEN errors and data was returned, signal a retry
+        if forbidden_fields and body.get("data"):
+            result = body.copy()
+            result[RETRY_WITHOUT_FIELDS_MARKER] = forbidden_fields
+            return result
 
         return {}
 
@@ -153,6 +173,30 @@ class GithubGraphQLClient(AbstractGithubClient):
         """
         return response.extensions.get(GRAPHQL_SENT_VARIABLES_EXTENSION)
 
+    @staticmethod
+    def _extract_field_from_error_path(error_path: Any) -> Optional[str]:
+        """Extract field name from GraphQL error path.
+
+        GraphQL error paths look like: ["repository", "pullRequests", "nodes", 0, "statusCheckRollup"]
+        We extract the leaf field name (the last string element).
+        """
+        if not error_path or not isinstance(error_path, list):
+            return None
+        leaf = error_path[-1]
+        return leaf if isinstance(leaf, str) else None
+
+    @staticmethod
+    def _remove_fields_from_query(query: str, fields: set[str]) -> str:
+        """Remove specified fields from GraphQL query.
+
+        Uses regex to remove field definitions and their nested content.
+        Simple but effective for most cases.
+        """
+        for field in fields:
+            pattern = FIELD_REMOVAL_PATTERN.format(field=re.escape(field))
+            query = re.sub(pattern, '', query)
+        return query
+
     async def send_api_request(
         self,
         resource: str,
@@ -166,22 +210,48 @@ class GithubGraphQLClient(AbstractGithubClient):
     ) -> Dict[str, Any]:
         max_retries = 5
         retry_count = 0
+        forbidden_fields: set[str] = set()
+
         while retry_count < max_retries:
+            # Remove forbidden fields from query if any were found on previous attempts
+            modified_json_data = json_data
+            if forbidden_fields and json_data and "query" in json_data:
+                modified_json_data = json_data.copy()
+                modified_json_data["query"] = self._remove_fields_from_query(
+                    json_data["query"], forbidden_fields
+                )
+                logger.info(
+                    f"[GraphQL] Retrying query without forbidden fields: {forbidden_fields}"
+                )
+
             response = await self.make_request(
                 resource=resource,
                 params=params,
                 method=method,
-                json_data=json_data,
+                json_data=modified_json_data,
                 ignored_errors=ignored_errors,
                 ignore_default_errors=ignore_default_errors,
             )
             try:
-                return self._handle_graphql_errors(
+                result = self._handle_graphql_errors(
                     response,
                     ignored_errors,
                     query_path=query_path,
                     query_params=query_params,
                 )
+                # Check if we should retry without forbidden fields
+                if result and isinstance(result, dict) and RETRY_WITHOUT_FIELDS_MARKER in result:
+                    new_forbidden = result[RETRY_WITHOUT_FIELDS_MARKER]
+                    if new_forbidden and new_forbidden != forbidden_fields:
+                        forbidden_fields.update(new_forbidden)
+                        logger.warning(
+                            f"[GraphQL] Field-level FORBIDDEN errors for path {query_path}, "
+                            f"retrying without fields: {new_forbidden}"
+                        )
+                        continue
+                    # Remove the marker before returning
+                    del result[RETRY_WITHOUT_FIELDS_MARKER]
+                return result
             except RateLimitException as exc:
                 retry_count += 1
                 if retry_count >= max_retries:
