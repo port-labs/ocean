@@ -21,9 +21,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Apply Ocean release intent after merge"
     )
-    parser.add_argument(
-        "--merge-sha", required=True, help="Merge commit SHA to process"
-    )
+    parser.add_argument("--merge-sha", help="Merge commit SHA to process")
+    parser.add_argument("--base", help="Base git ref for PR-style apply")
+    parser.add_argument("--head", help="Head git ref for PR-style apply")
     parser.add_argument(
         "--main-ref", default="origin/main", help="Current main ref for version base"
     )
@@ -36,12 +36,22 @@ def main() -> int:
         help="Apply on the current branch without detaching to merge-sha",
     )
     args = parser.parse_args()
+    if bool(args.merge_sha) == bool(args.head):
+        parser.error("Provide exactly one of --merge-sha or --head")
 
     git = GitContext(REPO_ROOT)
     if not args.skip_checkout:
+        if args.merge_sha is None:
+            parser.error("--skip-checkout is required when using --head")
         git.checkout_detach(args.merge_sha, fetch_ref=args.main_ref)
 
-    applied = apply(git, merge_sha=args.merge_sha, main_ref=args.main_ref)
+    applied = apply(
+        git,
+        merge_sha=args.merge_sha,
+        base_ref=args.base,
+        head_ref=args.head,
+        main_ref=args.main_ref,
+    )
 
     if not applied:
         print("No releases to apply")
