@@ -212,18 +212,19 @@ class GithubGraphQLClient(AbstractGithubClient):
     ) -> Dict[str, Any]:
         max_retries = 5
         retry_count = 0
-        forbidden_fields: set[str] = set()
+        tried_removing: set[str] = set()
+        fallback_partial_data = None
 
         while retry_count < max_retries:
             # Remove forbidden fields from query if any were found on previous attempts
             modified_json_data = json_data
-            if forbidden_fields and json_data and "query" in json_data:
+            if tried_removing and json_data and "query" in json_data:
                 modified_json_data = json_data.copy()
                 modified_json_data["query"] = self._remove_fields_from_query(
-                    json_data["query"], forbidden_fields
+                    json_data["query"], tried_removing
                 )
                 logger.info(
-                    f"[GraphQL] Retrying query without forbidden fields: {forbidden_fields}"
+                    f"[GraphQL] Retrying query without forbidden fields: {tried_removing}"
                 )
 
             response = await self.make_request(
@@ -244,16 +245,27 @@ class GithubGraphQLClient(AbstractGithubClient):
                 # Check if we should retry without forbidden fields
                 if result and isinstance(result, dict) and RETRY_WITHOUT_FIELDS_MARKER in result:
                     new_forbidden = result[RETRY_WITHOUT_FIELDS_MARKER]
-                    if new_forbidden and new_forbidden != forbidden_fields:
-                        forbidden_fields.update(new_forbidden)
+                    untried = new_forbidden - tried_removing
+                    if untried:
+                        fallback_partial_data = result.copy()
+                        del fallback_partial_data[RETRY_WITHOUT_FIELDS_MARKER]
+                        tried_removing.update(new_forbidden)
                         logger.warning(
                             f"[GraphQL] Field-level FORBIDDEN errors for path {query_path}, "
-                            f"retrying without fields: {new_forbidden}"
+                            f"retrying without fields: {untried}"
                         )
                         continue
                     # Remove the marker before returning
                     del result[RETRY_WITHOUT_FIELDS_MARKER]
                 return result
+            except GraphQLErrorGroup as exc:
+                if fallback_partial_data:
+                    logger.warning(
+                        f"[GraphQL] Retry failed for path {query_path}, "
+                        f"returning partial data from previous attempt"
+                    )
+                    return fallback_partial_data
+                raise
             except RateLimitException as exc:
                 retry_count += 1
                 if retry_count >= max_retries:
