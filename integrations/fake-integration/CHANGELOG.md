@@ -5,6 +5,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.333-dev (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.1.332-dev (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.1.331-dev (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.1.330-dev (2026-08-16)
+
+
+### Improvements
+
+- Add a PortAppConfig class so ocean port-app-config schema can load fake-integration.
+
+
+## 0.1.329-dev (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.1.328-dev (2026-08-13)
 
 
@@ -139,6 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Manual change test
+
 
 ## 0.1.311-dev (2026-07-30)
 
@@ -931,6 +972,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added integration tests to the fake integration resync process
 
+
 ## 0.1.212-dev (2026-03-15)
 
 
@@ -1489,6 +1531,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.1.140-dev (2025-11-09)
 
@@ -2067,6 +2110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.69-dev (2025-04-27)
+
 
 ### Bug Fixes
 

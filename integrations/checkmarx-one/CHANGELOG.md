@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.148 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.2.147 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.146 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.145 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.2.144 (2026-08-13)
 
 
@@ -1646,7 +1678,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.0 (2025-09-30)
 
 
-### Release
+### Features
 
 - Bumped integration version from dev to GA
 
@@ -1821,24 +1853,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated blueprint icons to Checkmarx
 
 
-
 ## 0.1.2-dev (2025-08-24)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.10
 
 
-
 ## 0.1.1-dev (2025-08-20)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.9
 
 
-
 ## 0.1.0-dev (2025-08-18)
+
 
 ### Features
 

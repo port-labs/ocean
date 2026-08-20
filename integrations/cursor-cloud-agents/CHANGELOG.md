@@ -1,4 +1,4 @@
-# Changelog - Ocean - cursor-cloud-agents
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.1.20 (2026-08-20)
+
+
+### Bug Fixes
+
+- Use a static /integration/webhook URL and the configured webhookSigningSecret so SaaS Redis live-events can complete reportCompletion runs.
+
+
+## 0.1.19 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.1.18 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.1.17 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.1.16 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
 
 ## 0.1.15 (2026-08-13)
 
@@ -128,6 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.0 (2026-07-19)
+
 
 ### Features
 

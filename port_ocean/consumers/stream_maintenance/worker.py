@@ -1,36 +1,42 @@
-"""PEL (Pending Entry List) requeue worker.
+"""Redis stream maintenance worker.
 
 All pods run the scan concurrently. XAUTOCLAIM is a single atomic Redis
 command, so only one pod will ever claim a given stuck message; redundant
 scans by other pods are harmless no-ops.
 
-The worker itself contains no processing logic — consumer pods handle all
-actual processing.  When a message has been stuck in the PEL longer than
-``stuck_timeout_ms`` the worker:
+The worker reclaims stuck PEL entries and performs consumer-group hygiene.
+Stream consumer pods handle all actual message processing. When a message has
+been stuck in the PEL longer than ``stuck_timeout_ms`` the worker:
 
 1. Claims it with XAUTOCLAIM.
 2. If ``requeue_count`` has reached ``max_requeue_count``, ACKs and discards it.
 3. Otherwise increments ``requeue_count``, re-enqueues via XADD, then ACKs the
    original entry to remove it from the PEL.
+
+After each scan, the worker may also remove idle consumers from the group that
+have no pending messages (see ``stream_maintenance_consumer_cleanup_enabled``).
 """
 
 import asyncio
-from typing import Any, cast
 
 from loguru import logger
 from redis.exceptions import ResponseError
 from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.redis_client import RedisClient
-from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
+from port_ocean.consumers.stream_maintenance.settings import (
+    STREAM_MAINTENANCE_CONSUMER_NAME,
+)
 from port_ocean.consumers.redis_stream_utils import (
     ack_and_finalize_stream_entry,
+    cleanup_idle_consumers_from_group,
     ensure_consumer_group,
     is_missing_stream_or_group_error,
+    requeue_stream_entry,
 )
 
 
-class PELRequeueWorker:
-    """Background worker that rescues messages stuck in the Redis PEL.
+class RedisStreamMaintenanceWorker:
+    """Background worker for Redis stream consumer-group maintenance.
 
     Every pod runs the scan independently on a fixed interval. XAUTOCLAIM
     atomicity ensures each stuck message is claimed and processed by exactly
@@ -43,11 +49,18 @@ class PELRequeueWorker:
         redis_settings: LiveEventsRedisSettings,
         stream_key: str,
         consumer_group: str,
+        *,
+        stream_consumer_name: str | None = None,
     ) -> None:
         self._redis = redis
         self._redis_settings = redis_settings
         self._stream_key = stream_key
         self._consumer_group = consumer_group
+        self._protected_consumer_names = (
+            frozenset({STREAM_MAINTENANCE_CONSUMER_NAME, stream_consumer_name})
+            if stream_consumer_name
+            else frozenset({STREAM_MAINTENANCE_CONSUMER_NAME})
+        )
         self._is_running = False
         self._lifecycle_task: asyncio.Task[None] | None = None
 
@@ -55,7 +68,7 @@ class PELRequeueWorker:
         self._is_running = True
         self._lifecycle_task = asyncio.create_task(self._worker_loop())
         logger.info(
-            "PEL requeue worker started",
+            "Redis stream maintenance worker started",
             stream_key=self._stream_key,
             consumer_group=self._consumer_group,
         )
@@ -70,7 +83,7 @@ class PELRequeueWorker:
     async def _recover_missing_stream(self) -> None:
         try:
             logger.warning(
-                "Redis stream or consumer group missing in PEL requeue worker, recreating",
+                "Redis stream or consumer group missing in stream maintenance worker, recreating",
                 stream_key=self._stream_key,
                 consumer_group=self._consumer_group,
             )
@@ -83,7 +96,7 @@ class PELRequeueWorker:
         except Exception as recovery_error:
             logger.exception(
                 "Failed to recreate Redis stream consumer group "
-                "from PEL requeue worker",
+                "from stream maintenance worker",
                 stream_key=self._stream_key,
                 error=str(recovery_error),
             )
@@ -92,7 +105,11 @@ class PELRequeueWorker:
         while self._is_running:
             try:
                 await self._scan_and_requeue()
-                await asyncio.sleep(self._redis_settings.pel_scan_interval_seconds)
+                if self._redis_settings.stream_maintenance_consumer_cleanup_enabled:
+                    await self._cleanup_idle_consumers()
+                await asyncio.sleep(
+                    self._redis_settings.stream_maintenance_scan_interval_seconds
+                )
             except asyncio.CancelledError:
                 break
             except ResponseError as error:
@@ -100,20 +117,20 @@ class PELRequeueWorker:
                     await self._recover_missing_stream()
                 else:
                     logger.exception(
-                        "Unexpected Redis error in PEL requeue worker loop",
+                        "Unexpected Redis error in stream maintenance worker loop",
                         stream_key=self._stream_key,
                         error=str(error),
                     )
                 await asyncio.sleep(
-                    self._redis_settings.pel_lifecycle_error_backoff_seconds
+                    self._redis_settings.stream_maintenance_error_backoff_seconds
                 )
             except Exception as error:
                 logger.exception(
-                    "Unexpected error in PEL requeue worker loop",
+                    "Unexpected error in stream maintenance worker loop",
                     error=str(error),
                 )
                 await asyncio.sleep(
-                    self._redis_settings.pel_lifecycle_error_backoff_seconds
+                    self._redis_settings.stream_maintenance_error_backoff_seconds
                 )
 
     async def _scan_and_requeue(self) -> None:
@@ -126,7 +143,7 @@ class PELRequeueWorker:
                 result = await self._redis.xautoclaim(
                     self._stream_key,
                     self._consumer_group,
-                    PEL_CONSUMER_NAME,
+                    STREAM_MAINTENANCE_CONSUMER_NAME,
                     self._redis_settings.stuck_timeout_ms,
                     cursor,
                     count=self._redis_settings.pel_xautoclaim_count,
@@ -192,6 +209,20 @@ class PELRequeueWorker:
                 stream_key=self._stream_key,
             )
 
+    async def _cleanup_idle_consumers(self) -> None:
+        try:
+            await cleanup_idle_consumers_from_group(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                idle_threshold_ms=self._redis_settings.consumer_cleanup_idle_ms,
+                protected_consumer_names=self._protected_consumer_names,
+            )
+        except ResponseError as error:
+            if not is_missing_stream_or_group_error(error):
+                raise
+            await self._recover_missing_stream()
+
     async def _handle_stuck_message(
         self, message_id: str, fields: dict[str, str]
     ) -> None:
@@ -218,11 +249,13 @@ class PELRequeueWorker:
         new_fields["requeue_count"] = str(requeue_count + 1)
 
         try:
-            async with self._redis.pipeline(transaction=True) as pipe:
-                await pipe.xadd(self._stream_key, cast(Any, new_fields))
-                await pipe.xack(self._stream_key, self._consumer_group, message_id)
-                await pipe.xdel(self._stream_key, message_id)
-                await pipe.execute()
+            await requeue_stream_entry(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                message_id=message_id,
+                fields=new_fields,
+            )
         except ResponseError as error:
             if is_missing_stream_or_group_error(error):
                 await self._recover_missing_stream()

@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.2 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.12.1 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.12.0 (2026-08-17)
+
+
+### Features
+
+- Added `wiki` kind to ingest Azure DevOps wiki pages, supporting per-type filtering (projectWiki/codeWiki) and optional markdown content enrichment
+- Added live events support for project wikis by listening to git.push events on wiki-backing repositories, enabling real-time wiki page updates without waiting for scheduled resync
+
+
+## 0.11.19 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
+## 0.11.18 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.11.17 (2026-08-16)
+
+
+### Improvements
+
+- Add title and description metadata to the Azure DevOps specPath config field.
+
+
+## 0.11.16 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
 ## 0.11.15 (2026-08-13)
 
 
@@ -558,6 +615,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `excludeTagFilter` integration config field to `excludedTags` (the old key is still supported for backward compatibility).
 
+
 ## 0.9.13 (2026-06-09)
 
 
@@ -664,9 +722,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.9.0 (2026-05-31)
 
+
 ### Improvements
 
 - Added a configurable `apiVersion` selector field (defaults to the latest supported version) for the User Entitlements endpoint, with automatic pagination strategy selection based on the version (top/skip for legacy versions < 7.x, continuation token for 7.x+)
+
 
 ## 0.8.54 (2026-05-31)
 
@@ -1109,6 +1169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `included files` to `Additional files`
 
+
 ## 0.7.48 (2026-03-24)
 
 
@@ -1127,10 +1188,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.7.46 (2026-03-23)
 
+
 ### Bug Fixes
 
 - Fixed work items sync capped at 20K per project: added ID-range pagination to fetch all work items when a project exceeds the Azure DevOps WIQL API limit of 20,000 results per query
 - When user's WIQL contains ORDER BY: use their query as-is (respecting their order) but disable pagination with a warning; without ORDER BY we append our own for full pagination
+
 
 ## 0.7.45 (2026-03-22)
 
@@ -1232,6 +1295,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added default values for work_item kind for effort and description fields
 - Added missing Enum values for work_item blueprint
 - Fixed ingestion issues with work_item kind
+
 
 ## 0.7.33 (2026-03-12)
 
@@ -1363,6 +1427,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.7.17 (2026-02-25)
+
 
 ### Features
 
@@ -1661,6 +1726,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.6.13 (2025-12-15)
+
 
 ### Bug Fixes
 
@@ -1961,6 +2027,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.4.25 (2025-11-09)
 
 
@@ -2020,9 +2087,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.4.18 (2025-10-22)
 
 
-### Bug Fix
+### Bug Fixes
 
 - Increase timeout for itemsbatch
+
 
 ## 0.4.17 (2025-10-22)
 
@@ -2103,10 +2171,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped ocean version to ^0.28.8
 
+
 ## 0.4.8 (2025-09-25)
 
 
-### Bug fixes
+### Bug Fixes
 
 - Handle request timeouts introduced by throttling delays.
 - Change expected headers to lowercase
@@ -2317,7 +2386,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.38 (2025-08-06)
 
 
-## Improvements
+### Improvements
 
 - Added glob pattern support in AzureDevopsClient which allows for path in mapping to be passed as (e.g., `**/*.yaml`, `/src/**/*.json`)
 - Optimized file fetching using itemsbatch API and path descriptors
@@ -2366,7 +2435,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.32 (2025-07-08)
 
 
-### Bug Fix
+### Bug Fixes
 
 - Fixed bug in file kind live event causing tracked file not getting deleted from port when file has been deleted from ADO repo.
 
@@ -2379,11 +2448,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.25.0
 
 
-
 ## 0.2.30 (2025-07-03)
 
 
-### Bug Fix
+### Bug Fixes
 
 - Fixed pagination in Azure DevOps integration where `continuationToken` is not present in header
 
@@ -2542,12 +2610,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.10 (2025-06-05)
 
+
 ### Features
 
 - Added live events for folder kind
 
 
 ## 0.2.9 (2025-06-04)
+
 
 ### Improvements
 
@@ -2576,7 +2646,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.23.5
-
 
 
 ## 0.2.5 (2025-05-29)
@@ -2621,9 +2690,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.0 (2025-05-26)
 
+
 ### Features
 
  Transitioned live events management to ocean’s `LiveEventProcessorManager` to streamline processing
+
 
 ## 0.1.156 (2025-05-26)
 
@@ -2650,6 +2721,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.153 (2025-05-20)
+
 
 ### Improvements
 
@@ -2935,7 +3007,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.118 (2025-02-11)
 
 
-### Bugfix
+### Bug Fixes
 
 - Fixed an issue where if the organization url was formatted like https://XXX.visualstudio.com pulling users would return 404
 
@@ -3140,6 +3212,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed pagination in Azure DevOps integration by replacing `skip` pagination with `continuationToken` for `generate_releases` method.
 
+
 ## 0.1.92 (2024-12-12)
 
 
@@ -3225,7 +3298,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Bumped ocean version to ^0.13.1
 
 
@@ -3290,7 +3362,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Added support for ingesting boards and columns
 
 
@@ -3298,7 +3369,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Improvements
-
 
 - Bumped ocean version to ^0.12.3
 
@@ -3308,7 +3378,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Bumped ocean version to ^0.12.2
 
 
@@ -3316,7 +3385,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Improvements
-
 
 - Bumped ocean version to ^0.12.1
 
@@ -3451,9 +3519,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.54 (2024-08-21)
 
+
 ### Features
 
 - Added work items to get issues, tasks, and epics
+
 
 ## 0.1.53 (2024-08-20)
 
@@ -3497,12 +3567,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.48 (2024-08-01)
 
+
 ### Improvements
 
 - Added target='blank' attribute to links in config and secrets description to make them open in new tab
 
 
 ## 0.1.47 (2024-07-31)
+
 
 ### Improvements
 
@@ -3511,12 +3583,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.46 (2024-07-31)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
 
 ## 0.1.45 (2024-07-31)
+
 
 ### Improvements
 
@@ -3525,12 +3599,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.44 (2024-07-25)
 
+
 ### Bug Fixes
 
 - Fixed case where comparing events failed because ADO returns unexpected additional keys inside the PublisherInputs.
 
 
 ## 0.1.43 (2024-07-24)
+
 
 ### Improvements
 
@@ -3539,6 +3615,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.41 (2024-07-18)
 
+
 ### Bug Fixes
 
 - Fixed `visibility` property in mapping which had a typo and changed the default relation to required `false` to be more permissive
@@ -3546,18 +3623,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.41 (2024-07-10)
 
+
 ### Improvements
 
 - Set the `isProjectsLimited` paramater to True by default
 - Revise the configuration parameters' descriptions.
 
+
 ## 0.1.40 (2024-07-09)
+
 
 ### Improvements
 
 - Added description to the ##  configuration variables
 
+
 ## 0.1.39 (2024-07-09)
+
 
 ### Improvements
 
@@ -3566,11 +3648,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.38 (2024-07-08)
 
+
 ### Features
 
 - Make webhook creation project-scoped by default
 
+
 ## 0.1.37 (2024-07-07)
+
 
 ### Improvements
 
@@ -3579,12 +3664,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.36 (2024-06-23)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
 
 ## 0.1.35 (2024-06-19)
+
 
 ### Improvements
 
@@ -3593,12 +3680,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.34 (2024-06-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
 
 
 ## 0.1.33 (2024-06-13)
+
 
 ### Improvements
 
@@ -3607,12 +3696,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.32 (2024-06-13)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
 
 ## 0.1.31 (2024-06-10)
+
 
 ### Improvements
 
@@ -3621,12 +3712,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.30 (2024-06-05)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
 
 ## 0.1.29 (2024-06-03)
+
 
 ### Improvements
 
@@ -3635,12 +3728,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.28 (2024-06-02)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
 
 ## 0.1.27 (2024-05-30)
+
 
 ### Improvements
 
@@ -3650,6 +3745,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.26 (2024-05-29)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
@@ -3657,12 +3753,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.25 (2024-05-26)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.21 (#1)
 
 
 ## 0.1.24 (2024-05-26)
+
 
 ### Improvements
 
@@ -3672,6 +3770,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.23 (2024-05-16)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.19 (#1)
@@ -3679,11 +3778,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.22 (2024-05-15)
 
+
 ### Bug Fixes
 
 - Fixed default relation mapping between service and project (#1)
 
+
 ## 0.1.21 (2024-05-12)
+
 
 ### Improvements
 
@@ -3692,12 +3794,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.20 (2024-05-10)
 
+
 ### Improvements
 
 - Enhanced the jq functionality for both 'repository' and 'repository-policy' identifiers, automatically removing spaces and converting all characters to lowercase by default. (PORT-7916)
 
 
 ## 0.1.19 (2024-05-08)
+
 
 ### Improvements
 
@@ -3706,12 +3810,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.18 (2024-05-08)
 
+
 ### Improvements
 
 - Changed url to service from api url to remoteUrl (#1)
 
 
 ## 0.1.17 (2024-05-01)
+
 
 ### Improvements
 
@@ -3720,12 +3826,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.16 (2024-05-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.16 (#1)
 
 
 ## 0.1.15 (2024-04-30)
+
 
 ### Improvements
 
@@ -3734,12 +3842,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.14 (2024-04-24)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.14 (#1)
 
 
 ## 0.1.13 (2024-04-17)
+
 
 ### Improvements
 
@@ -3748,12 +3858,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.12 (2024-04-15)
 
+
 ### Features
 
 - Added project kind as well as relation between repo and project, to get the team mirror property (PORT-7573)
 
 
 ## 0.1.11 (2024-04-15)
+
 
 ### Bug Fixes
 
@@ -3762,12 +3874,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.10 (2024-04-11)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.11 (#1)
 
 
 ## 0.1.9 (2024-04-10)
+
 
 ### Improvements
 
@@ -3776,12 +3890,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.8 (2024-04-01)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.9 (#1)
 
 
 ## 0.1.7 (2024-03-28)
+
 
 ### Improvements
 
@@ -3790,12 +3906,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.6 (2024-03-20)
 
+
 ### Improvements
 
 - Bumped ocean version to ^0.5.7 (#1)
 
 
 ## 0.1.5 (2024-03-17)
+
 
 ### Improvements
 
@@ -3804,12 +3922,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.4 (2024-03-07)
 
+
 ### Bug Fixes
 
 - Fixed issue causing disabled repositories to fail resynchronization for pull requests, policies, and item content (#413)
 
 
 ## 0.1.3 (2024-03-03)
+
 
 ### Improvements
 
@@ -3818,16 +3938,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.2 (2024-03-03)
 
+
 ### Improvements
+
 - Fixed the default scorecard to match the rule
+
 
 ## 0.1.1 (2024-03-03)
 
-### Bugs
+
+### Bug Fixes
 
 - Fix compatibility issue with None type and operand "|"
 
+
 ## 0.1.0 (2024-03-03)
+
 
 ### Features
 

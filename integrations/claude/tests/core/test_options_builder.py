@@ -114,7 +114,7 @@ def test_user_activity_dates_defaults_to_30_when_neither_provided(
 # ---------------------------------------------------------------------------
 
 
-FIXED_LATEST_SKILL_USAGE = "2026-03-14"
+FIXED_LATEST_SKILL_USAGE = "2026-03-13"
 
 
 def test_skill_usage_dates_time_frame(frozen_now: None) -> None:
@@ -130,13 +130,13 @@ def test_skill_usage_dates_clamped_to_min_date(frozen_now: None) -> None:
     assert dates[-1] == FIXED_LATEST_SKILL_USAGE
 
 
-def test_skill_usage_dates_stop_at_one_day_lag(frozen_now: None) -> None:
-    dates = get_skill_usage_dates(starting_date="2026-03-13", time_frame=None)
-    assert dates == ["2026-03-13", "2026-03-14"]
+def test_skill_usage_dates_stop_at_two_day_lag(frozen_now: None) -> None:
+    dates = get_skill_usage_dates(starting_date="2026-03-12", time_frame=None)
+    assert dates == ["2026-03-12", "2026-03-13"]
 
 
 def test_skill_usage_dates_too_recent_returns_empty(frozen_now: None) -> None:
-    dates = get_skill_usage_dates(starting_date="2026-03-15", time_frame=None)
+    dates = get_skill_usage_dates(starting_date="2026-03-14", time_frame=None)
     assert dates == []
 
 
