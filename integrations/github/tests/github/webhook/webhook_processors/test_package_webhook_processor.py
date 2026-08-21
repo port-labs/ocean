@@ -191,7 +191,7 @@ class TestPackageWebhookProcessor:
             SinglePackageOptions(
                 organization="test-org",
                 package_name="hello_docker",
-                owner_type="Organization",
+                org_type="Organization",
                 include_versions=False,
                 max_versions=10,
             )
@@ -266,7 +266,7 @@ class TestPackageWebhookProcessor:
             SinglePackageOptions(
                 organization="octocat",
                 package_name="hello_docker",
-                owner_type="User",
+                org_type="User",
                 include_versions=False,
                 max_versions=10,
             )

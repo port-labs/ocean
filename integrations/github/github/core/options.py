@@ -314,7 +314,7 @@ class SinglePackageOptions(SingleOrganizationOptions):
     """Options for fetching a single GitHub Container Registry package."""
 
     package_name: Required[str]
-    owner_type: NotRequired[str]
+    org_type: NotRequired[str]
     include_versions: NotRequired[bool]
     max_versions: NotRequired[Optional[int]]
 
@@ -322,7 +322,7 @@ class SinglePackageOptions(SingleOrganizationOptions):
 class ListPackageOptions(SingleOrganizationOptions):
     """Options for listing GitHub Container Registry packages."""
 
-    owner_type: NotRequired[str]
+    org_type: NotRequired[str]
     visibility: NotRequired[Optional[str]]
     include_versions: NotRequired[bool]
     max_versions: NotRequired[Optional[int]]

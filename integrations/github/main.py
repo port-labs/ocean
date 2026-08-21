@@ -389,7 +389,7 @@ async def resync_packages(
             exporter.get_paginated_resources(
                 ListPackageOptions(
                     organization=org["login"],
-                    owner_type=org["type"],
+                    org_type=org["type"],
                     visibility=config.selector.visibility,
                     include_versions=config.selector.include_versions,
                     max_versions=config.selector.max_versions,

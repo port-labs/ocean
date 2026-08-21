@@ -4,7 +4,7 @@ from loguru import logger
 
 from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.package_exporter import (
-    GHCR_PACKAGE_TYPE,
+    CONTAINER_PACKAGE_STRATEGY,
     RestPackageExporter,
 )
 from github.core.options import SinglePackageOptions
@@ -29,11 +29,7 @@ def is_ghcr_package(package: dict[str, Any]) -> bool:
     send `package_type` as `"CONTAINER"` and/or `registry.type` as `"CONTAINER"`.
     Legacy `docker.pkg.github.com` packages (`package_type: docker`) are excluded.
     """
-    package_type = str(package.get("package_type") or "").lower()
-    if package_type == GHCR_PACKAGE_TYPE:
-        return True
-    registry = package.get("registry") or {}
-    return str(registry.get("type") or "").lower() == GHCR_PACKAGE_TYPE
+    return CONTAINER_PACKAGE_STRATEGY.matches(package)
 
 
 class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
@@ -101,7 +97,7 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
                 return str(repo_owner["login"])
         return None
 
-    def _package_owner_type(self, payload: EventPayload) -> str:
+    def _package_org_type(self, payload: EventPayload) -> str:
         if payload.get("organization"):
             return "Organization"
         package = payload.get("package") or {}
@@ -156,7 +152,7 @@ class PackageWebhookProcessor(_GithubAbstractWebhookProcessor):
             SinglePackageOptions(
                 organization=organization,
                 package_name=package_name,
-                owner_type=self._package_owner_type(payload),
+                org_type=self._package_org_type(payload),
                 include_versions=config.selector.include_versions,
                 max_versions=config.selector.max_versions,
             )

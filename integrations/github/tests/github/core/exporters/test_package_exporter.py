@@ -6,11 +6,11 @@ import httpx
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.package_exporter import (
+    CONTAINER_PACKAGE_STRATEGY,
     MAX_CONCURRENT_VERSION_ENRICHMENTS,
     RestPackageExporter,
     encode_package_name,
     ghcr_image_ref,
-    package_resource_url,
     packages_collection_url,
 )
 from github.core.options import ListPackageOptions, SinglePackageOptions
@@ -97,11 +97,17 @@ class TestPackageExporterHelpers:
 
     def test_package_resource_url_encodes_name(self) -> None:
         assert (
-            package_resource_url(
+            CONTAINER_PACKAGE_STRATEGY.resource_url(
                 "https://api.github.com", "test-org", "Organization", "api/service"
             )
             == "https://api.github.com/orgs/test-org/packages/container/api%2Fservice"
         )
+
+    def test_container_strategy_enrich_adds_image(self) -> None:
+        package = CONTAINER_PACKAGE_STRATEGY.enrich(
+            TEST_PACKAGES[0], "https://api.github.com", "test-org"
+        )
+        assert package["__image"] == "ghcr.io/test-org/hello_docker"
 
 
 @pytest.mark.asyncio
@@ -170,7 +176,7 @@ class TestRestPackageExporter:
                 SinglePackageOptions(
                     organization="octocat",
                     package_name="hello_docker",
-                    owner_type="User",
+                    org_type="User",
                 )
             )
 
