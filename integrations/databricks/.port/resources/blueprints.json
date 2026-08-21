@@ -1,0 +1,340 @@
+[
+  {
+    "identifier": "databricksCluster",
+    "description": "This blueprint represents a Databricks compute cluster in our software catalog",
+    "title": "Databricks Cluster",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "RUNNING",
+            "RESTARTING",
+            "RESIZING",
+            "TERMINATING",
+            "TERMINATED",
+            "ERROR",
+            "UNKNOWN"
+          ],
+          "enumColors": {
+            "PENDING": "yellow",
+            "RUNNING": "green",
+            "RESTARTING": "yellow",
+            "RESIZING": "yellow",
+            "TERMINATING": "orange",
+            "TERMINATED": "lightGray",
+            "ERROR": "red",
+            "UNKNOWN": "darkGray"
+          }
+        },
+        "sparkVersion": {
+          "title": "Spark Version",
+          "type": "string"
+        },
+        "nodeTypeId": {
+          "title": "Node Type",
+          "type": "string"
+        },
+        "numWorkers": {
+          "title": "Number of Workers",
+          "type": "number"
+        },
+        "creatorUserName": {
+          "title": "Creator",
+          "type": "string",
+          "format": "user"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "databricksJob",
+    "description": "This blueprint represents a Databricks job in our software catalog",
+    "title": "Databricks Job",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "creatorUserName": {
+          "title": "Creator",
+          "type": "string",
+          "format": "user"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "databricksJobRun",
+    "description": "This blueprint represents a single execution of a Databricks job in our software catalog",
+    "title": "Databricks Job Run",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "lifeCycleState": {
+          "title": "Life Cycle State",
+          "type": "string"
+        },
+        "resultState": {
+          "title": "Result State",
+          "type": "string",
+          "enum": [
+            "SUCCESS",
+            "FAILED",
+            "TIMEDOUT",
+            "CANCELED",
+            "MAXIMUM_CONCURRENT_RUNS_REACHED",
+            "EXCLUDED",
+            "SUCCESS_WITH_FAILURES",
+            "UPSTREAM_FAILED",
+            "UPSTREAM_CANCELED"
+          ],
+          "enumColors": {
+            "SUCCESS": "green",
+            "FAILED": "red",
+            "TIMEDOUT": "red",
+            "CANCELED": "lightGray",
+            "MAXIMUM_CONCURRENT_RUNS_REACHED": "orange",
+            "EXCLUDED": "lightGray",
+            "SUCCESS_WITH_FAILURES": "yellow",
+            "UPSTREAM_FAILED": "red",
+            "UPSTREAM_CANCELED": "lightGray"
+          }
+        },
+        "startTime": {
+          "title": "Start Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "title": "End Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "runPageUrl": {
+          "title": "Run URL",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "databricksJob": {
+        "title": "Job",
+        "target": "databricksJob",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "databricksPipeline",
+    "description": "This blueprint represents a Databricks Delta Live Tables pipeline in our software catalog",
+    "title": "Databricks Pipeline",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string",
+          "enum": [
+            "DEPLOYING",
+            "STARTING",
+            "RUNNING",
+            "STOPPING",
+            "IDLE",
+            "DELETED",
+            "FAILED",
+            "RECOVERING",
+            "RESETTING"
+          ],
+          "enumColors": {
+            "DEPLOYING": "yellow",
+            "STARTING": "yellow",
+            "RUNNING": "green",
+            "STOPPING": "orange",
+            "IDLE": "lightGray",
+            "DELETED": "darkGray",
+            "FAILED": "red",
+            "RECOVERING": "yellow",
+            "RESETTING": "yellow"
+          }
+        },
+        "creatorUserName": {
+          "title": "Creator",
+          "type": "string",
+          "format": "user"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "databricksSqlWarehouse",
+    "description": "This blueprint represents a Databricks SQL warehouse in our software catalog",
+    "title": "Databricks SQL Warehouse",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string",
+          "enum": [
+            "STARTING",
+            "RUNNING",
+            "STOPPING",
+            "STOPPED",
+            "DELETING",
+            "DELETED"
+          ],
+          "enumColors": {
+            "STARTING": "yellow",
+            "RUNNING": "green",
+            "STOPPING": "orange",
+            "STOPPED": "lightGray",
+            "DELETING": "orange",
+            "DELETED": "darkGray"
+          }
+        },
+        "clusterSize": {
+          "title": "Cluster Size",
+          "type": "string"
+        },
+        "creatorName": {
+          "title": "Creator",
+          "type": "string",
+          "format": "user"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "databricksCatalog",
+    "description": "This blueprint represents a Unity Catalog catalog in our software catalog",
+    "title": "Databricks Catalog",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "owner": {
+          "title": "Owner",
+          "type": "string",
+          "format": "user"
+        },
+        "comment": {
+          "title": "Comment",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "databricksSchema",
+    "description": "This blueprint represents a Unity Catalog schema in our software catalog",
+    "title": "Databricks Schema",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "owner": {
+          "title": "Owner",
+          "type": "string",
+          "format": "user"
+        },
+        "comment": {
+          "title": "Comment",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "databricksCatalog": {
+        "title": "Catalog",
+        "target": "databricksCatalog",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "databricksTable",
+    "description": "This blueprint represents a Unity Catalog table in our software catalog",
+    "title": "Databricks Table",
+    "icon": "Databricks",
+    "schema": {
+      "properties": {
+        "tableType": {
+          "title": "Table Type",
+          "type": "string",
+          "enum": [
+            "MANAGED",
+            "EXTERNAL",
+            "VIEW",
+            "MATERIALIZED_VIEW",
+            "STREAMING_TABLE"
+          ]
+        },
+        "dataSourceFormat": {
+          "title": "Data Source Format",
+          "type": "string"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string",
+          "format": "user"
+        },
+        "comment": {
+          "title": "Comment",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "databricksSchema": {
+        "title": "Schema",
+        "target": "databricksSchema",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

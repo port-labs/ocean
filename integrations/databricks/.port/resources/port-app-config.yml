@@ -1,0 +1,115 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: clusters
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .cluster_id
+          title: .cluster_name
+          blueprint: '"databricksCluster"'
+          properties:
+            state: .state
+            sparkVersion: .spark_version
+            nodeTypeId: .node_type_id
+            numWorkers: .num_workers
+            creatorUserName: .creator_user_name
+  - kind: jobs
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .job_id | tostring
+          title: .settings.name
+          blueprint: '"databricksJob"'
+          properties:
+            creatorUserName: .creator_user_name
+            tags: .settings.tags
+  - kind: job_runs
+    selector:
+      query: 'true'
+      completedOnly: false
+    port:
+      entity:
+        mappings:
+          identifier: .run_id | tostring
+          title: .run_name
+          blueprint: '"databricksJobRun"'
+          properties:
+            lifeCycleState: .state.life_cycle_state
+            resultState: .state.result_state
+            startTime: .start_time
+            endTime: .end_time
+            runPageUrl: .run_page_url
+          relations:
+            databricksJob: .job_id | tostring
+  - kind: pipelines
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .pipeline_id
+          title: .name
+          blueprint: '"databricksPipeline"'
+          properties:
+            state: .state
+            creatorUserName: .creator_user_name
+  - kind: sql_warehouses
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"databricksSqlWarehouse"'
+          properties:
+            state: .state
+            clusterSize: .cluster_size
+            creatorName: .creator_name
+  - kind: catalogs
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"databricksCatalog"'
+          properties:
+            owner: .owner
+            comment: .comment
+  - kind: schemas
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .catalog_name + "." + .name
+          title: .name
+          blueprint: '"databricksSchema"'
+          properties:
+            owner: .owner
+            comment: .comment
+          relations:
+            databricksCatalog: .catalog_name
+  - kind: tables
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .full_name // (.catalog_name + "." + .schema_name + "." + .name)
+          title: .name
+          blueprint: '"databricksTable"'
+          properties:
+            tableType: .table_type
+            dataSourceFormat: .data_source_format
+            owner: .owner
+            comment: .comment
+          relations:
+            databricksSchema: .catalog_name + "." + .schema_name

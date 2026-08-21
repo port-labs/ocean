@@ -1,0 +1,57 @@
+title: Databricks
+description: Databricks integration for Port Ocean
+icon: Databricks
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/data-engineering/databricks
+formMappingEnabled: true
+features:
+  - type: exporter
+    section: Compute & Jobs
+    resources:
+      - kind: clusters
+      - kind: jobs
+      - kind: job_runs
+      - kind: pipelines
+      - kind: sql_warehouses
+  - type: exporter
+    section: Unity Catalog
+    resources:
+      - kind: catalogs
+      - kind: schemas
+      - kind: tables
+configurations:
+  - name: workspaceUrl
+    required: true
+    type: url
+    description: The URL of your Databricks workspace, e.g. https://&lt;your-workspace&gt;.cloud.databricks.com
+  - name: token
+    required: false
+    type: string
+    sensitive: true
+    description: A Databricks personal access token (PAT). Either this or a client ID/secret pair must be provided. See the <a href="https://docs.databricks.com/en/dev-tools/auth/pat.html" target="_blank">Databricks documentation</a> for how to create one.
+  - name: clientId
+    required: false
+    type: string
+    description: The client ID of a Databricks service principal, used together with clientSecret for OAuth machine-to-machine (M2M) authentication.
+  - name: clientSecret
+    required: false
+    type: string
+    sensitive: true
+    description: The client secret of a Databricks service principal, used together with clientId for OAuth machine-to-machine (M2M) authentication.
+  - name: appHost
+    required: false
+    type: url
+    description: The host of the Port Ocean app. Used to register a Databricks webhook notification destination that delivers live job run updates.
+saas:
+  enabled: false
+installationDocs:
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/data-engineering/databricks/?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/data-engineering/databricks/?installation-methods=one-time-ci&cicd-method=gitlab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/data-engineering/databricks/?installation-methods=real-time-self-hosted#setup
+  docker:
+    enabled: false
