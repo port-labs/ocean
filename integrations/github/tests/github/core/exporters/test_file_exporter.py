@@ -1000,6 +1000,35 @@ class TestRestFileExporterRepoNotFound:
         assert len(results) == 1
         assert results[0]["name"] == "readme.txt"
 
+    async def test_process_retrieved_graphql_files_passes_tree_sha_as_metadata_sha(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """The git tree's blob `sha` (collected during tree traversal) must be
+        threaded through to the metadata passed to `file_processor.process_file`,
+        so downstream exporters (e.g. the skill kind) can surface it without
+        extending the GraphQL query."""
+        exporter = RestFileExporter(rest_client)
+
+        process_file_mock = AsyncMock(
+            return_value={"name": "readme.txt", "content": "hello"}
+        )
+        with patch.object(exporter.file_processor, "process_file", process_file_mock):
+            await exporter._process_retrieved_graphql_files(
+                organization="test-org",
+                retrieved_files={"file_0": {"text": "hello", "byteSize": 5}},
+                file_paths=["readme.txt"],
+                file_metadata={"readme.txt": True},
+                file_shas={"readme.txt": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"},
+                repository_metadata=TEST_REPO_METADATA,
+                repo_name="live-repo",
+                branch="main",
+            )
+
+        process_file_mock.assert_awaited_once()
+        assert process_file_mock.await_args is not None
+        metadata = process_file_mock.await_args.kwargs["metadata"]
+        assert metadata["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
 
 class TestFileExporterUtils:
     @pytest.mark.asyncio
@@ -1203,6 +1232,7 @@ class TestFileExporterUtils:
         assert len(matched) == 1
         assert matched[0]["path"] == "test.txt"
         assert matched[0]["fetch_method"] == GithubClientType.GRAPHQL
+        assert matched[0]["sha"] == "abc123"
 
     def test_filter_github_tree_entries_by_pattern_no_matches(self) -> None:
         matched = filter_github_tree_entries_by_pattern(TEST_TREE_ENTRIES, "*.py")
@@ -1236,6 +1266,20 @@ class TestFileExporterUtils:
             == "https://api.github.com/repos/test-org/repo1/contents/src/test.txt?ref=main"
         )
         assert metadata["size"] == 100
+        assert metadata["sha"] is None
+
+    def test_get_graphql_file_metadata_with_sha(self) -> None:
+        metadata = get_graphql_file_metadata(
+            "https://api.github.com",
+            "test-org",
+            "repo1",
+            "main",
+            "src/test.txt",
+            100,
+            sha="e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        )
+
+        assert metadata["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
     def test_build_batch_file_query(self) -> None:
         query = build_batch_file_query(

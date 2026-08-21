@@ -6,21 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from webhook_processors.utils import (
-    extract_port_run_id_from_request,
     parse_webhook_timestamp,
     resolve_newest_run_id_at_or_before,
 )
-
-
-def test_extract_port_run_id_from_path_params() -> None:
-    request = MagicMock()
-    request.path_params = {"run_id": "run_1"}
-    assert extract_port_run_id_from_request(request) == "run_1"
-
-
-def test_extract_port_run_id_returns_none_without_path_params() -> None:
-    request = MagicMock(spec=[])
-    assert extract_port_run_id_from_request(request) is None
 
 
 def test_parse_webhook_timestamp_uses_payload_value() -> None:
