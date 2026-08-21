@@ -265,4 +265,20 @@ QUERIES = {
         }
     }
     """,
+    "UPDATE_LIVE_EVENTS_WEBHOOK": """
+    mutation {
+        webhookUpdate(
+            id: "{{ webhook_id }}"
+            input: {
+                resourceTypes: {{ resource_types|tojson() }}
+            }
+        ) {
+            success
+            webhook {
+                id
+                enabled
+            }
+        }
+    }
+    """,
 }

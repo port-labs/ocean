@@ -15,6 +15,35 @@ def linear_client() -> LinearClient:
 
 @pytest.mark.asyncio
 class TestLinearDocumentClient:
+    async def test_create_events_webhook_updates_existing_webhook(
+        self, linear_client: LinearClient
+    ) -> None:
+        webhook_check_response = MagicMock()
+        webhook_check_response.json.return_value = {
+            "data": {
+                "webhooks": {
+                    "nodes": [
+                        {
+                            "id": "webhook-1",
+                            "url": "https://app.getport.io/integration/webhook",
+                        }
+                    ]
+                }
+            }
+        }
+        webhook_update_response = MagicMock()
+        mock_post = AsyncMock(
+            side_effect=[webhook_check_response, webhook_update_response]
+        )
+
+        with patch.object(linear_client.client, "post", mock_post):
+            await linear_client.create_events_webhook("https://app.getport.io")
+
+        assert mock_post.await_count == 2
+        assert mock_post.await_args_list[1].kwargs["json"]["query"]
+        assert "webhookUpdate" in mock_post.await_args_list[1].kwargs["json"]["query"]
+        assert "webhook-1" in mock_post.await_args_list[1].kwargs["json"]["query"]
+
     async def test_get_paginated_documents(self, linear_client: LinearClient) -> None:
         first_page = {
             "data": {

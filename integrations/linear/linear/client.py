@@ -73,7 +73,21 @@ class LinearClient:
 
             for webhook in webhook_check["data"]["webhooks"]["nodes"]:
                 if webhook["url"] == webhook_target_app_host:
-                    logger.info("Ocean real time reporting webhook already exists")
+                    template = jinja2.Template(
+                        QUERIES["UPDATE_LIVE_EVENTS_WEBHOOK"], enable_async=True
+                    )
+                    query = await template.render_async(
+                        webhook_id=webhook["id"],
+                        resource_types=WEBHOOK_EVENTS,
+                    )
+                    logger.debug(f"Webhook update query: {query}")
+                    webhook_update_response = await self.client.post(
+                        self.linear_url, json={"query": query}
+                    )
+                    webhook_update_response.raise_for_status()
+                    logger.info(
+                        "Ocean real time reporting webhook already exists and was updated"
+                    )
                     return
 
             template = jinja2.Template(
