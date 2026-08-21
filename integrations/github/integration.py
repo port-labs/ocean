@@ -755,6 +755,49 @@ class GithubOrganizationConfig(ResourceConfig):
     )
 
 
+class GithubPackageSelector(Selector):
+    visibility: Optional[Literal["public", "private", "internal"]] = Field(
+        title="Visibility",
+        default=None,
+        description=(
+            "Filter GHCR packages by visibility. When unset, packages of all "
+            "visibilities are ingested."
+        ),
+    )
+    include_versions: bool = Field(
+        title="Include Versions",
+        alias="includeVersions",
+        default=False,
+        description=(
+            "Fetch package versions (tags and digests) and attach them as "
+            "`__versions`. Enabling this consumes additional GitHub API rate "
+            "limit and may slow down the resync."
+        ),
+    )
+    max_versions: Optional[int] = Field(
+        title="Max Versions",
+        alias="maxVersions",
+        default=10,
+        ge=1,
+        description=(
+            "Maximum number of versions to fetch per package, newest first. "
+            "Only used when includeVersions is true. A larger version history "
+            "consumes additional GitHub API rate limit and may slow down the resync."
+        ),
+    )
+
+
+class GithubPackageConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PACKAGE] = Field(
+        title="Github Package",
+        description="GitHub Container Registry (GHCR) package resource kind.",
+    )
+    selector: GithubPackageSelector = Field(
+        title="Package selector",
+        description="Selector for GitHub Container Registry packages.",
+    )
+
+
 class GithubWorkflowConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW] = Field(
         title="Github Workflow",
@@ -922,6 +965,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTagConfig
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
+        | GithubPackageConfig
     ] = Field(
         title="Resources",
         default_factory=list,

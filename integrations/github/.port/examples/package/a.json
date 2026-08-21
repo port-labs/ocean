@@ -1,0 +1,41 @@
+{
+  "id": 197,
+  "name": "hello_docker",
+  "package_type": "container",
+  "owner": {
+    "login": "github",
+    "id": 9919,
+    "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+    "url": "https://api.github.com/orgs/github",
+    "html_url": "https://github.com/github",
+    "type": "Organization",
+    "site_admin": false
+  },
+  "version_count": 1,
+  "visibility": "private",
+  "url": "https://api.github.com/orgs/github/packages/container/hello_docker",
+  "created_at": "2019-12-31T22:47:51Z",
+  "updated_at": "2020-01-01T00:00:00Z",
+  "html_url": "https://github.com/orgs/github/packages/container/package/hello_docker",
+  "repository": {
+    "id": 1296269,
+    "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+    "name": "Hello-World",
+    "full_name": "octocat/Hello-World",
+    "private": false,
+    "owner": {
+      "login": "octocat",
+      "id": 1,
+      "type": "User",
+      "site_admin": false
+    },
+    "html_url": "https://github.com/octocat/Hello-World",
+    "description": "This your first repo!",
+    "fork": false,
+    "url": "https://api.github.com/repos/octocat/Hello-World"
+  },
+  "__organization": "github",
+  "__repository": "Hello-World",
+  "__image": "ghcr.io/github/hello_docker"
+}

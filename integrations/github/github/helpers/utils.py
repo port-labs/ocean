@@ -56,6 +56,7 @@ class ObjectKind(StrEnum):
     COLLABORATOR = "collaborator"
     SKILL = "skill"
     PLUGIN = "plugin"
+    PACKAGE = "package"
 
 
 def enrich_with_organization(

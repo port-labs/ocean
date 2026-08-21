@@ -308,3 +308,21 @@ class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
     """Options for listing secret scanning alerts."""
 
     state: Required[str]
+
+
+class SinglePackageOptions(SingleOrganizationOptions):
+    """Options for fetching a single GitHub Container Registry package."""
+
+    package_name: Required[str]
+    org_type: NotRequired[str]
+    include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]
+
+
+class ListPackageOptions(SingleOrganizationOptions):
+    """Options for listing GitHub Container Registry packages."""
+
+    org_type: NotRequired[str]
+    visibility: NotRequired[Optional[str]]
+    include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]
