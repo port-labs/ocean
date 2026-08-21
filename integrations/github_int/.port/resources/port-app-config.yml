@@ -1,0 +1,112 @@
+# .port/port-app-config.yaml
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  # Repository kind
+  - kind: githubRepository
+    selector:
+      query: "true"  # Fetch all repos
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            url: .html_url
+            defaultBranch: .default_branch
+            readme: (.readme | @base64d)  # Decode if needed
+
+  # Pull Request kind
+  - kind: githubPullRequest
+    selector:
+      query: "(.state == \"open\" or .state == \"closed\" or .merged_at != null) and (.updated_at >= (now - 2592000))"  # Last 30 days
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            creator: .user.login
+            assignees: (.assignees | map(.login))
+            reviewers: (.requested_reviewers | map(.login))
+            status: "if .merged_at != null then \"merged\" else .state end"
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
+            createdAt: .created_at
+            link: .html_url
+            leadTimeHours: >-
+                (.created_at as $createdAt | .merged_at as $mergedAt |
+                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
+                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
+                if $mergedTimestamp == null then null else
+                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
+          relations:
+            repository: .base.repo.id | tostring
+
+  # Issue kind
+  - kind: githubIssue
+    selector:
+      query: "(.state == \"open\" or .state == \"closed\") and (.updated_at >= (now - 2592000)) and (.pull_request | not)"  # Issues only, last 30 days
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            creator: .user.login
+            assignees: (.assignees | map(.login))
+            labels: (.labels | map(.name))
+            status: .state
+            createdAt: .created_at
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            description: .body
+            issueNumber: .number
+            link: .html_url
+          relations:
+            repository: .repository.id | tostring
+
+  # File kind
+  - kind: file
+    selector:
+      query: >-
+        (.path | test("\\.(yaml|json|md|py)$"; "i")) and
+        (.path | test("^services/") or true)
+    port:
+      entity:
+        mappings:
+          identifier: "(.repository_id | tostring) + \"_\" + .path | gsub(\"/\"; \"_\")"
+          title: .path
+          blueprint: '"file"'
+          properties:
+            path: .path
+            content: .content
+            parsedContent: .parsed_content
+            link: .html_url
+          relations:
+            repository: .repository_id | tostring
+
+  # Folder kind
+  - kind: githubFolder
+    selector:
+      query: >-
+        (.type == "folder") and
+        (.path | test("^services/") or true)
+    port:
+      entity:
+        mappings:
+          identifier: "(.repository_id | tostring) + \"_\" + .path | gsub(\"/\"; \"_\")"
+          title: "(.path | split(\"/\")[-1])"
+          blueprint: '"githubFolder"'
+          properties:
+            path: .path
+            url: .url
+            readme: .readme
+          relations:
+            repository: .repository_id | tostring
+            parent: "if .parent_path != \"\" then (.repository_id | tostring + \"_\" + .parent_path | gsub(\"/\"; \"_\")) else null end"
