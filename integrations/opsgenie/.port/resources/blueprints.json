@@ -365,5 +365,42 @@
         "many": true
       }
     }
+  },
+  {
+    "identifier": "opsGeniePolicy",
+    "description": "This blueprint represents an OpsGenie policy in our software catalog",
+    "title": "OpsGenie Policy",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "notification",
+            "alert"
+          ]
+        },
+        "order": {
+          "title": "Order",
+          "type": "number"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "opsGenieTeam": {
+        "title": "OpsGenie Team",
+        "target": "opsGenieTeam",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
