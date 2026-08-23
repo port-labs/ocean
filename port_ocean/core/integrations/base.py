@@ -91,3 +91,15 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         logger.info("Initializing event listener")
         event_listener = await self.event_listener_factory.create_event_listener()
         await event_listener.start()
+
+    async def run_probe(self) -> None:
+        """Invoke the registered ``on_probe`` listener."""
+        listener = self.event_strategy["on_probe"]
+        if listener is None:
+            raise NotImplementedError("on_probe is not implemented")
+
+        async with event_context(
+            EventType.ON_PROBE,
+            trigger_type="machine",
+        ):
+            await listener()
