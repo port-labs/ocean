@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.9.0 (2026-08-23)
+
+
+### Features
+
+- Added a `package` kind that ingests GitHub Container Registry (GHCR) packages.
+
+
 ## 6.8.2 (2026-08-23)
 
 
