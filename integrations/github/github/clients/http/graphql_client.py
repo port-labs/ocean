@@ -282,7 +282,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         ignored_errors: Optional[List[IgnoredError]] = None,
         fallbacks: Optional[List[GraphQLFallback]] = None,
-        regenerate_fallbacks: Optional[Callable[[set[str]], Awaitable[List[GraphQLFallback]]]] = None,
+        regenerate_query: Optional[Callable[[set[str]], Awaitable[str]]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)
@@ -295,6 +295,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         fallbacks = list(fallbacks or [])
         cursor = None
         page_size = PAGE_SIZE
+        forbidden_retries = 0
+        max_forbidden_retries = 5
         logger.info(f"[GraphQL] Starting pagination for query with path {path}")
 
         while True:
@@ -310,13 +312,21 @@ class GithubGraphQLClient(AbstractGithubClient):
                     page_size=page_size,
                 )
             except GraphQLForbiddenFieldError as exc:
-                if not regenerate_fallbacks:
+                if not regenerate_query:
+                    raise
+                forbidden_retries += 1
+                if forbidden_retries >= max_forbidden_retries:
+                    logger.error(
+                        f"[GraphQL] Max forbidden field retries ({max_forbidden_retries}) exceeded "
+                        f"for path {path}. Fields: {exc.fields}"
+                    )
                     raise
                 logger.warning(
-                    f"[GraphQL] Forbidden fields {exc.fields} for path {path}, "
-                    f"regenerating fallbacks"
+                    f"[GraphQL] Forbidden fields {exc.fields} for path {path} "
+                    f"(attempt {forbidden_retries}/{max_forbidden_retries}), regenerating query"
                 )
-                fallbacks = await regenerate_fallbacks(exc.fields)
+                resource = await regenerate_query(exc.fields)
+                fallbacks = []
                 cursor = None
                 page_size = PAGE_SIZE
                 continue
