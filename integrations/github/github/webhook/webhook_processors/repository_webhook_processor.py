@@ -107,7 +107,7 @@ class RepositoryWebhookProcessor(
             included_relations=included_relations,
         )
 
-        data_to_upsert = await exporter.get_resource(options)
+        data_to_upsert = await exporter.get_resource(options, skip_metadata_cache=True)
         if not data_to_upsert:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
