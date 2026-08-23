@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added a `package` kind that ingests GitHub Container Registry (GHCR) packages.
