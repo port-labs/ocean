@@ -11,7 +11,6 @@ from github.core.exporters.package_exporter import (
     RestPackageExporter,
     matching_package_strategy,
     encode_package_name,
-    ghcr_image_ref,
     packages_collection_url,
 )
 from github.core.options import ListPackageOptions, SinglePackageOptions
@@ -67,24 +66,6 @@ class TestPackageExporterHelpers:
         assert encode_package_name("api/service") == "api%2Fservice"
         assert encode_package_name("hello_docker") == "hello_docker"
 
-    def test_ghcr_image_ref_github_dot_com(self) -> None:
-        assert (
-            ghcr_image_ref("https://api.github.com", "test-org", "hello_docker")
-            == "ghcr.io/test-org/hello_docker"
-        )
-
-    def test_ghcr_image_ref_github_enterprise(self) -> None:
-        assert (
-            ghcr_image_ref("https://ghe.example.com/api/v3", "acme", "my-image")
-            == "containers.ghe.example.com/acme/my-image"
-        )
-
-    def test_ghcr_image_ref_does_not_match_api_github_com_substring(self) -> None:
-        assert (
-            ghcr_image_ref("https://evilapi.github.com", "acme", "my-image")
-            == "containers.evilapi.github.com/acme/my-image"
-        )
-
     def test_packages_collection_url_org_and_user(self) -> None:
         assert (
             packages_collection_url(
@@ -104,12 +85,6 @@ class TestPackageExporterHelpers:
             )
             == "https://api.github.com/orgs/test-org/packages/container/api%2Fservice"
         )
-
-    def test_container_strategy_enrich_adds_image(self) -> None:
-        package = PACKAGE_TYPE_STRATEGIES[PackageType.CONTAINER].enrich(
-            TEST_PACKAGES[0], "https://api.github.com", "test-org"
-        )
-        assert package["__image"] == "ghcr.io/test-org/hello_docker"
 
     def test_matching_package_strategy_uses_selected_types(self) -> None:
         package = {"package_type": "container", "name": "hello_docker"}
@@ -147,7 +122,6 @@ class TestRestPackageExporter:
             assert package["name"] == "hello_docker"
             assert package["__organization"] == "test-org"
             assert package["__repository"] == "hello-world"
-            assert package["__image"] == "ghcr.io/test-org/hello_docker"
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/orgs/test-org/packages/container/hello_docker"
             )
@@ -170,7 +144,7 @@ class TestRestPackageExporter:
             )
 
             assert package is not None
-            assert package["__image"] == "ghcr.io/test-org/api/service"
+            assert package["name"] == "api/service"
             assert "__repository" not in package
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/orgs/test-org/packages/container/api%2Fservice"
@@ -199,7 +173,6 @@ class TestRestPackageExporter:
 
             assert package is not None
             assert package["__organization"] == "octocat"
-            assert package["__image"] == "ghcr.io/octocat/hello_docker"
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/users/octocat/packages/container/hello_docker"
             )
@@ -333,7 +306,6 @@ class TestRestPackageExporter:
             assert len(packages[0]) == 2
             assert packages[0][0]["__organization"] == "test-org"
             assert packages[0][0]["__repository"] == "hello-world"
-            assert packages[0][0]["__image"] == "ghcr.io/test-org/hello_docker"
             assert "__repository" not in packages[0][1]
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/orgs/test-org/packages",

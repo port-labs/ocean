@@ -20,7 +20,6 @@
   "html_url": "https://github.com/users/octocat/packages/container/package/demo-image",
   "repository": null,
   "__organization": "octocat",
-  "__image": "ghcr.io/octocat/demo-image",
   "__versions": [
     {
       "id": 45763,

@@ -189,7 +189,6 @@ class TestPackageWebhookProcessor:
             "id": 197,
             "name": "hello_docker",
             "__organization": "test-org",
-            "__image": "ghcr.io/test-org/hello_docker",
         }
 
         mock_exporter = AsyncMock()

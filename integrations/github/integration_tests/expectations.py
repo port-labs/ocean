@@ -228,7 +228,6 @@ KIND_EXPECTATIONS: dict[str, KindExpectation] = {
                 title="hello-docker",
                 properties={
                     "visibility": "private",
-                    "image": "ghcr.io/port-labs-testing/hello-docker",
                 },
                 relations={"repository": "test-repo-1"},
             ),
@@ -237,7 +236,6 @@ KIND_EXPECTATIONS: dict[str, KindExpectation] = {
                 title="api/service",
                 properties={
                     "visibility": "public",
-                    "image": "ghcr.io/port-labs-testing/api/service",
                 },
                 relations={"repository": "test-repo-2"},
             ),

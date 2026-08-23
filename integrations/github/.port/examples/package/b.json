@@ -36,6 +36,5 @@
     "url": "https://api.github.com/repos/port-labs/api"
   },
   "__organization": "port-labs",
-  "__repository": "api",
-  "__image": "ghcr.io/port-labs/api/service"
+  "__repository": "api"
 }

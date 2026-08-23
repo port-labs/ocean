@@ -2,7 +2,7 @@ from abc import ABC
 from functools import partial
 from collections.abc import Sequence
 from typing import Any, AsyncIterator, Optional
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 import asyncio
 
 from loguru import logger
@@ -24,7 +24,6 @@ from port_ocean.utils.async_iterators import (
 
 MAX_CONCURRENT_VERSION_ENRICHMENTS = 3
 OWNER_TYPE_USER = "User"
-GITHUB_DOT_COM_API_HOSTS = frozenset({"api.github.com", "github.com"})
 
 
 def encode_package_name(package_name: str) -> str:
@@ -36,30 +35,13 @@ def encode_package_name(package_name: str) -> str:
     return quote(package_name, safe="")
 
 
-def ghcr_image_ref(github_host: str, owner: str, package_name: str) -> str:
-    """Build the container image reference for a GHCR package.
-
-    github.com packages are hosted at `ghcr.io`. GitHub Enterprise Server
-    serves the container registry at `containers.<hostname>`.
-    See: https://docs.github.com/en/packages/learn-github-packages/introduction-to-github-packages
-    """
-    hostname = (urlparse(github_host).hostname or "").lower()
-    if hostname in GITHUB_DOT_COM_API_HOSTS:
-        registry = "ghcr.io"
-    elif hostname:
-        registry = f"containers.{hostname}"
-    else:
-        registry = "ghcr.io"
-    return f"{registry}/{owner}/{package_name}"
-
-
 def packages_collection_url(base_url: str, organization: str, org_type: str) -> str:
     scope = "users" if org_type == OWNER_TYPE_USER else "orgs"
     return f"{base_url}/{scope}/{organization}/packages"
 
 
 class PackageTypeStrategy(ABC):
-    """Package-type-specific GitHub Packages REST + enrichment behavior."""
+    """Package-type-specific GitHub Packages REST behavior."""
 
     package_type: PackageType
 
@@ -75,11 +57,6 @@ class PackageTypeStrategy(ABC):
     def matches(self, package: dict[str, Any]) -> bool:
         return str(package.get("package_type")).lower() == self.package_type
 
-    def enrich(
-        self, package: dict[str, Any], github_host: str, organization: str
-    ) -> dict[str, Any]:
-        return package
-
 
 class ContainerPackageStrategy(PackageTypeStrategy):
     """GitHub Container Registry (GHCR) packages."""
@@ -91,15 +68,6 @@ class ContainerPackageStrategy(PackageTypeStrategy):
             return True
         registry = package.get("registry") or {}
         return str(registry.get("type") or "").lower() == self.package_type
-
-    def enrich(
-        self, package: dict[str, Any], github_host: str, organization: str
-    ) -> dict[str, Any]:
-        owner_login = (package.get("owner") or {}).get("login") or organization
-        return {
-            **package,
-            "__image": ghcr_image_ref(github_host, owner_login, package["name"]),
-        }
 
 
 PACKAGE_TYPE_STRATEGIES: dict[PackageType, PackageTypeStrategy] = {
@@ -131,12 +99,8 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         package: dict[str, Any],
         organization: str,
-        strategy: PackageTypeStrategy,
     ) -> dict[str, Any]:
-        enriched = enrich_with_organization(
-            strategy.enrich(package, self.client.base_url, organization),
-            organization,
-        )
+        enriched = enrich_with_organization(package, organization)
         repository = package.get("repository")
         if isinstance(repository, dict) and repository.get("name"):
             return enrich_with_repository(enriched, repository["name"], repo=repository)
@@ -206,7 +170,7 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(
             f"Fetched {package_type} package {package_name} from {organization}"
         )
-        return self._enrich_package(response, organization, strategy)
+        return self._enrich_package(response, organization)
 
     async def get_paginated_resources[ExporterOptionsT: ListPackageOptions](
         self, options: ExporterOptionsT
@@ -271,6 +235,5 @@ class RestPackageExporter(AbstractGithubExporter[GithubRestClient]):
                     ]
 
                 yield [
-                    self._enrich_package(package, organization, package_strategy)
-                    for package in packages
+                    self._enrich_package(package, organization) for package in packages
                 ]

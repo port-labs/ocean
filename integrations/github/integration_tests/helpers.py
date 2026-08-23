@@ -235,7 +235,6 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
             title=".name",
             properties={
                 "visibility": ".visibility",
-                "image": ".__image",
             },
             relations={"repository": ".__repository"},
         ),
