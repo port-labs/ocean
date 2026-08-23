@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import cast
 
 from loguru import logger
 
@@ -9,7 +10,7 @@ from port_ocean.core.ocean_types import (
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
     INCREMENTAL_EVENT_LISTENER,
-    ON_CHECK_EVENT_LISTENER,
+    ON_PROBE_EVENT_LISTENER,
 )
 
 
@@ -30,7 +31,7 @@ class EventsMixin:
             "resync_start": [],
             "resync_complete": [],
             "incremental": defaultdict(list),
-            "on_check": None,
+            "on_probe": None,
         }
 
     @property
@@ -91,8 +92,8 @@ class EventsMixin:
             self.event_strategy["incremental"][kind].append(function)
         return function
 
-    def on_check(self, function: ON_CHECK_EVENT_LISTENER) -> ON_CHECK_EVENT_LISTENER:
-        """Register a function as a listener for connection test events."""
-        logger.info(f"Registering connection test listener")
-        self.event_strategy["on_check"] = function
+    def on_probe(self, function: ON_PROBE_EVENT_LISTENER) -> ON_PROBE_EVENT_LISTENER:
+        """Register a function that probes the integration's connection."""
+        logger.info("Registering connection probe listener")
+        self.event_strategy["on_probe"] = function
         return function
