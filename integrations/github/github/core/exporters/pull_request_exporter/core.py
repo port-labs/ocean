@@ -533,7 +533,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             organization, repo_name, pr_gql_options, GRAPHQL_ORDER_BY_UPDATED_AT
         )
 
-        accumulated_excluded_closed: set[str] = set(pr_gql_options.exclude_graphql_fields)
+        accumulated_excluded_closed: set[str] = set(
+            pr_gql_options.exclude_graphql_fields
+        )
 
         async def regenerate_closed_pr_query(forbidden_fields: set[str]) -> str:
             nonlocal accumulated_excluded_closed
