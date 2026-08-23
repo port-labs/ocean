@@ -321,7 +321,7 @@
       "envFile": "${workspaceFolder}/integrations/github/.env",
       "justMyCode": true,
       "name": "Resync Github integration",
-      "program": "${workspaceFolder}/integrations/github/debug/debug_resync.py",
+      "program": "${workspaceFolder}/integrations/github/debug_resync.py",
       "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
@@ -332,7 +332,7 @@
       "envFile": "${workspaceFolder}/integrations/github/.env",
       "justMyCode": true,
       "name": "Probe Github integration",
-      "program": "${workspaceFolder}/integrations/github/debug/debug_probe.py",
+      "program": "${workspaceFolder}/integrations/github/debug_probe.py",
       "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
