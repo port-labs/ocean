@@ -16,7 +16,7 @@ from port_ocean.core.ocean_types import (
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
     INCREMENTAL_EVENT_LISTENER,
-    ON_CHECK_EVENT_LISTENER,
+    ON_PROBE_EVENT_LISTENER,
 )
 from port_ocean.exceptions.context import (
     PortOceanContextNotFoundError,
@@ -148,13 +148,13 @@ class PortOceanContext:
 
         return wrapper
 
-    def on_check(
+    def on_probe(
         self,
-    ) -> Callable[[ON_CHECK_EVENT_LISTENER], ON_CHECK_EVENT_LISTENER]:
+    ) -> Callable[[ON_PROBE_EVENT_LISTENER], ON_PROBE_EVENT_LISTENER]:
         def wrapper(
-            function: ON_CHECK_EVENT_LISTENER,
-        ) -> ON_CHECK_EVENT_LISTENER:
-            return self.integration.on_check(function)
+            function: ON_PROBE_EVENT_LISTENER,
+        ) -> ON_PROBE_EVENT_LISTENER:
+            return self.integration.on_probe(function)
 
         return wrapper
 

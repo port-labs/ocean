@@ -214,9 +214,9 @@ def _resync_per_authenticator(
     return wrapper
 
 
-@ocean.on_check()
-async def check() -> None:
-    logger.info('Checkin that connection bro')
+@ocean.on_probe()
+async def probe() -> None:
+    logger.info("Probing the GitHub connection")
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)
