@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.98 (2026-08-19)
+
+
+### Bug Fixes
+
+- Paginate services with the cursor token returned by Komodor so resync fetches every page
+
+
+## 0.2.97 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
 ## 0.2.96 (2026-08-17)
 
 

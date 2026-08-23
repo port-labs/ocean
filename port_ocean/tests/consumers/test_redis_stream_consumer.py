@@ -465,7 +465,7 @@ class TestRedisStreamConsumerGroupCreation:
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_uses_start_id_dollar_when_stream_already_exists(
+    async def test_uses_start_id_zero_when_stream_already_exists(
         self,
         mock_ocean_config: MagicMock,
     ) -> None:
@@ -492,7 +492,7 @@ class TestRedisStreamConsumerGroupCreation:
             )
 
         assert mock_redis.xgroup_create.await_args is not None
-        assert mock_redis.xgroup_create.await_args.kwargs["id"] == "$"
+        assert mock_redis.xgroup_create.await_args.kwargs["id"] == "0"
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio
