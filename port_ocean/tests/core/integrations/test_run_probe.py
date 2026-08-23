@@ -4,6 +4,7 @@ import pytest
 
 from port_ocean.context.event import EventType, event
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.exceptions.core import ModeNotSupportedException
 
 
 @pytest.mark.asyncio
@@ -24,10 +25,16 @@ async def test_run_probe_invokes_handler_in_probe_context() -> None:
 
 @pytest.mark.asyncio
 async def test_run_probe_requires_registered_handler() -> None:
-    integration = MagicMock(spec=BaseIntegration)
+    # Arrange
+    integration = MagicMock()
     integration.event_strategy = {"on_probe": None}
+    integration.context.config.integration.type = "github"
 
-    with pytest.raises(NotImplementedError, match="on_probe is not implemented"):
+    # Act / Assert
+    with pytest.raises(
+        ModeNotSupportedException,
+        match="github does not support probe mode",
+    ):
         await BaseIntegration.run_probe(integration)
 
 

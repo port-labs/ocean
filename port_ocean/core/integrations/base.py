@@ -11,7 +11,10 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
-from port_ocean.exceptions.core import IntegrationAlreadyStartedException
+from port_ocean.exceptions.core import (
+    IntegrationAlreadyStartedException,
+    ModeNotSupportedException,
+)
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):
@@ -37,6 +40,8 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             more than once.
         NotImplementedError: Raised if the `on_resync` method is not implemented, and the event
             strategy does not have a custom implementation for resync events.
+        ModeNotSupportedException: Raised if probe mode is invoked but no ``on_probe``
+            handler is registered.
     """
 
     def __init__(self, context: PortOceanContext):
@@ -96,7 +101,9 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         """Invoke the registered ``on_probe`` listener."""
         listener = self.event_strategy["on_probe"]
         if listener is None:
-            raise NotImplementedError("on_probe is not implemented")
+            raise ModeNotSupportedException(
+                self.context.config.integration.type, "probe"
+            )
 
         async with event_context(
             EventType.ON_PROBE,
