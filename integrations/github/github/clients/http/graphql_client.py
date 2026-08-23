@@ -32,16 +32,9 @@ from github.clients.rate_limiter.utils import (
 from github.helpers.exceptions import (
     GraphQLClientError,
     GraphQLErrorGroup,
+    GraphQLForbiddenFieldError,
     RateLimitException,
 )
-
-
-class GraphQLForbiddenFieldError(Exception):
-    """Signals that fields got 403 FORBIDDEN and need to be excluded."""
-
-    def __init__(self, fields: set[str]):
-        self.fields = fields
-        super().__init__(f"Fields {fields} returned 403 FORBIDDEN")
 from github.helpers.utils import IgnoredError
 
 PAGE_SIZE = 25
@@ -289,6 +282,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         ignored_errors: Optional[List[IgnoredError]] = None,
         fallbacks: Optional[List[GraphQLFallback]] = None,
+        regenerate_fallbacks: Optional[Callable[[set[str]], Awaitable[List[GraphQLFallback]]]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)
@@ -315,6 +309,17 @@ class GithubGraphQLClient(AbstractGithubClient):
                     fallbacks=fallbacks,
                     page_size=page_size,
                 )
+            except GraphQLForbiddenFieldError as exc:
+                if not regenerate_fallbacks:
+                    raise
+                logger.warning(
+                    f"[GraphQL] Forbidden fields {exc.fields} for path {path}, "
+                    f"regenerating fallbacks"
+                )
+                fallbacks = await regenerate_fallbacks(exc.fields)
+                cursor = None
+                page_size = PAGE_SIZE
+                continue
             except GraphQLErrorGroup:
                 reduced_page_size = reduce_graphql_page_size(page_size)
                 if reduced_page_size is None:

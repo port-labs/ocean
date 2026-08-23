@@ -15,7 +15,6 @@ from loguru import logger
 from github.clients.http.graphql_client import (
     GithubGraphQLClient,
     GraphQLFallback,
-    GraphQLForbiddenFieldError,
 )
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -336,50 +335,6 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             )
         return primary, fallbacks
 
-    async def _get_paginated_prs_with_fallback_retry(
-        self,
-        organization: str,
-        repo_name: str,
-        pr_gql_options: PullRequestGraphQLOptions,
-        primary_query: str,
-        fallbacks: list[GraphQLFallback],
-        variables: dict[str, Any],
-        paginator: Callable,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Execute paginated request, regenerating fallbacks if forbidden fields found."""
-        try:
-            async for result in paginator(
-                self.client.send_paginated_request(
-                    primary_query, variables, fallbacks=fallbacks
-                )
-            ):
-                yield result
-        except GraphQLForbiddenFieldError as exc:
-            logger.warning(
-                f"[GraphQL] Forbidden fields {exc.fields} detected, "
-                f"regenerating queries with exclusions"
-            )
-            # Merge forbidden fields with user config
-            updated_options = PullRequestGraphQLOptions(
-                **{
-                    **pr_gql_options.__dict__,
-                    "exclude_graphql_fields": sorted(
-                        set(pr_gql_options.exclude_graphql_fields) | exc.fields
-                    ),
-                }
-            )
-
-            # Rebuild fallbacks and retry
-            primary_query, fallbacks = self._build_pr_queries(
-                organization, repo_name, updated_options
-            )
-            async for result in paginator(
-                self.client.send_paginated_request(
-                    primary_query, variables, fallbacks=fallbacks
-                )
-            ):
-                yield result
-
     def _make_field_backfiller(
         self,
         organization: str,
@@ -504,22 +459,31 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             organization, repo_name, pr_gql_options, order_by_field
         )
 
-        async def paginate_open_prs(paginator_gen):
-            async for result in paginate_with_strategy(
-                paginator_gen,
-                cursor=incremental_cursor,
-                strategy=OPEN_PULL_REQUEST_INCREMENTAL_GRAPHQL,
-            ):
-                yield result
+        async def regenerate_open_pr_fallbacks(
+            forbidden_fields: set[str],
+        ) -> list[GraphQLFallback]:
+            updated_options = PullRequestGraphQLOptions(
+                **{
+                    **pr_gql_options.__dict__,
+                    "exclude_graphql_fields": sorted(
+                        set(pr_gql_options.exclude_graphql_fields) | forbidden_fields
+                    ),
+                }
+            )
+            _, new_fallbacks = self._build_pr_queries(
+                organization, repo_name, updated_options, order_by_field
+            )
+            return new_fallbacks
 
-        async for pr_nodes in self._get_paginated_prs_with_fallback_retry(
-            organization,
-            repo_name,
-            pr_gql_options,
-            primary_query,
-            fallbacks,
-            variables,
-            paginate_open_prs,
+        async for pr_nodes in paginate_with_strategy(
+            self.client.send_paginated_request(
+                primary_query,
+                variables,
+                fallbacks=fallbacks,
+                regenerate_fallbacks=regenerate_open_pr_fallbacks,
+            ),
+            cursor=incremental_cursor,
+            strategy=OPEN_PULL_REQUEST_INCREMENTAL_GRAPHQL,
         ):
             if not pr_nodes:
                 continue
@@ -573,28 +537,37 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             organization, repo_name, pr_gql_options, GRAPHQL_ORDER_BY_UPDATED_AT
         )
 
-        async def paginate_closed_prs(paginator_gen):
-            async for result in paginate_closed_pull_requests(
-                paginator_gen,
-                enrich=enrich,
-                max_results=max_results,
-                cutoff=cutoff,
-                include_field=include_field,
-                stop_field=GRAPHQL_UPDATED_AT_FIELD,
-                log_prefix="[GraphQL]",
-                repo_name=repo_name,
-                organization=organization,
-            ):
-                yield result
+        async def regenerate_closed_pr_fallbacks(
+            forbidden_fields: set[str],
+        ) -> list[GraphQLFallback]:
+            updated_options = PullRequestGraphQLOptions(
+                **{
+                    **pr_gql_options.__dict__,
+                    "exclude_graphql_fields": sorted(
+                        set(pr_gql_options.exclude_graphql_fields) | forbidden_fields
+                    ),
+                }
+            )
+            _, new_fallbacks = self._build_pr_queries(
+                organization, repo_name, updated_options, GRAPHQL_ORDER_BY_UPDATED_AT
+            )
+            return new_fallbacks
 
-        async for batch in self._get_paginated_prs_with_fallback_retry(
-            organization,
-            repo_name,
-            pr_gql_options,
-            primary_query,
-            fallbacks,
-            variables,
-            paginate_closed_prs,
+        async for batch in paginate_closed_pull_requests(
+            self.client.send_paginated_request(
+                primary_query,
+                variables,
+                fallbacks=fallbacks,
+                regenerate_fallbacks=regenerate_closed_pr_fallbacks,
+            ),
+            enrich=enrich,
+            max_results=max_results,
+            cutoff=cutoff,
+            include_field=include_field,
+            stop_field=GRAPHQL_UPDATED_AT_FIELD,
+            log_prefix="[GraphQL]",
+            repo_name=repo_name,
+            organization=organization,
         ):
             yield batch
 
