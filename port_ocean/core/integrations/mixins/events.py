@@ -9,6 +9,7 @@ from port_ocean.core.ocean_types import (
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
     INCREMENTAL_EVENT_LISTENER,
+    ON_CHECK_EVENT_LISTENER,
 )
 
 
@@ -29,6 +30,7 @@ class EventsMixin:
             "resync_start": [],
             "resync_complete": [],
             "incremental": defaultdict(list),
+            "on_check": None,
         }
 
     @property
@@ -87,4 +89,10 @@ class EventsMixin:
         if function is not None:
             logger.info(f"Registering incremental resync listener for kind {kind}")
             self.event_strategy["incremental"][kind].append(function)
+        return function
+
+    def on_check(self, function: ON_CHECK_EVENT_LISTENER) -> ON_CHECK_EVENT_LISTENER:
+        """Register a function as a listener for connection test events."""
+        logger.info(f"Registering connection test listener")
+        self.event_strategy["on_check"] = function
         return function

@@ -23,6 +23,8 @@ START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 BEFORE_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
 AFTER_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
+ON_CHECK_EVENT_LISTENER = Callable[[], Awaitable[None]]
+
 
 class RawEntityDiff(TypedDict):
     before: list[RAW_ITEM]
@@ -59,3 +61,4 @@ class IntegrationEventsCallbacks(TypedDict):
     resync_start: list[BEFORE_RESYNC_EVENT_LISTENER]
     resync_complete: list[AFTER_RESYNC_EVENT_LISTENER]
     incremental: dict[str | None, list[INCREMENTAL_EVENT_LISTENER]]
+    on_check: ON_CHECK_EVENT_LISTENER | None
