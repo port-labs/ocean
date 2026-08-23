@@ -40,7 +40,6 @@ def _package_payload(
     name: str = "hello_docker",
     include_organization: bool = True,
     owner_type: str = "Organization",
-    registry_type: str | None = None,
     visibility: str | None = None,
 ) -> dict[str, Any]:
     package: dict[str, Any] = {
@@ -50,8 +49,6 @@ def _package_payload(
         "namespace": "test-org",
         "owner": {"login": "test-org", "type": owner_type},
     }
-    if registry_type is not None:
-        package["registry"] = {"type": registry_type, "url": "https://ghcr.io"}
     if visibility is not None:
         package["visibility"] = visibility
 
@@ -93,14 +90,6 @@ class TestMatchingPackageStrategy:
     def test_webhook_uppercase_container_type(self) -> None:
         strategy = matching_package_strategy(
             {"package_type": "CONTAINER"}, [PackageType.CONTAINER]
-        )
-        assert strategy is not None
-        assert strategy.package_type == PackageType.CONTAINER
-
-    def test_registry_type_fallback(self) -> None:
-        strategy = matching_package_strategy(
-            {"package_type": "unknown", "registry": {"type": "CONTAINER"}},
-            [PackageType.CONTAINER],
         )
         assert strategy is not None
         assert strategy.package_type == PackageType.CONTAINER

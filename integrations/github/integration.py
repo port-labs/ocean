@@ -760,10 +760,8 @@ class GithubPackageSelector(Selector):
         title="Package Types",
         alias="packageTypes",
         default=[PackageType.CONTAINER],
-        description=(
-            "GitHub package types to ingest. Currently only `container` (GHCR) "
-            "is supported."
-        ),
+        min_items=1,
+        description="GitHub package types to ingest.",
     )
     visibility: Optional[Literal["public", "private", "internal"]] = Field(
         title="Visibility",

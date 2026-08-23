@@ -63,12 +63,6 @@ class ContainerPackageStrategy(PackageTypeStrategy):
 
     package_type = PackageType.CONTAINER
 
-    def matches(self, package: dict[str, Any]) -> bool:
-        if super().matches(package):
-            return True
-        registry = package.get("registry") or {}
-        return str(registry.get("type") or "").lower() == self.package_type
-
 
 PACKAGE_TYPE_STRATEGIES: dict[PackageType, PackageTypeStrategy] = {
     ContainerPackageStrategy.package_type: ContainerPackageStrategy(),
