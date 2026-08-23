@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.8.2 (2026-08-23)
+
+
+### Improvements
+
+- Log an error when GitHub webhook signature verification fails
+
+
 ## 6.8.1 (2026-08-19)
 
 
 ### Bug Fixes
 
 - Allow empty files in GraphQL resync to align with REST/webhook paths
+
 
 ## 6.8.0 (2026-08-19)
 
