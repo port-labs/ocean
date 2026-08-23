@@ -377,7 +377,7 @@ async def resync_teams(
 async def resync_packages(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync GitHub Container Registry (GHCR) packages across organizations."""
+    """Resync GitHub packages across organizations."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -391,6 +391,7 @@ async def resync_packages(
                     organization=org["login"],
                     org_type=org["type"],
                     visibility=config.selector.visibility,
+                    package_types=config.selector.package_types,
                     include_versions=config.selector.include_versions,
                     max_versions=config.selector.max_versions,
                 )

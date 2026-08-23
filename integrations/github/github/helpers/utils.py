@@ -59,6 +59,12 @@ class ObjectKind(StrEnum):
     PACKAGE = "package"
 
 
+class PackageType(StrEnum):
+    """GitHub Packages REST `package_type` values we ingest."""
+
+    CONTAINER = "container"
+
+
 def enrich_with_organization(
     response: Dict[str, Any], organization: str
 ) -> Dict[str, Any]:

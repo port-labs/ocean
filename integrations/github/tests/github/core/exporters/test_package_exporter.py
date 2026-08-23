@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Sequence, cast
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -6,14 +6,16 @@ import httpx
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.package_exporter import (
-    CONTAINER_PACKAGE_STRATEGY,
     MAX_CONCURRENT_VERSION_ENRICHMENTS,
+    PACKAGE_TYPE_STRATEGIES,
     RestPackageExporter,
+    matching_package_strategy,
     encode_package_name,
     ghcr_image_ref,
     packages_collection_url,
 )
 from github.core.options import ListPackageOptions, SinglePackageOptions
+from github.helpers.utils import PackageType
 
 TEST_PACKAGES = [
     {
@@ -97,17 +99,27 @@ class TestPackageExporterHelpers:
 
     def test_package_resource_url_encodes_name(self) -> None:
         assert (
-            CONTAINER_PACKAGE_STRATEGY.resource_url(
+            PACKAGE_TYPE_STRATEGIES[PackageType.CONTAINER].resource_url(
                 "https://api.github.com", "test-org", "Organization", "api/service"
             )
             == "https://api.github.com/orgs/test-org/packages/container/api%2Fservice"
         )
 
     def test_container_strategy_enrich_adds_image(self) -> None:
-        package = CONTAINER_PACKAGE_STRATEGY.enrich(
+        package = PACKAGE_TYPE_STRATEGIES[PackageType.CONTAINER].enrich(
             TEST_PACKAGES[0], "https://api.github.com", "test-org"
         )
         assert package["__image"] == "ghcr.io/test-org/hello_docker"
+
+    def test_matching_package_strategy_uses_selected_types(self) -> None:
+        package = {"package_type": "container", "name": "hello_docker"}
+        strategy = matching_package_strategy(package, [PackageType.CONTAINER])
+        assert strategy is not None
+        assert strategy.package_type == PackageType.CONTAINER
+        assert (
+            matching_package_strategy({"package_type": "npm"}, [PackageType.CONTAINER])
+            is None
+        )
 
 
 @pytest.mark.asyncio
@@ -125,7 +137,9 @@ class TestRestPackageExporter:
             mock_request.return_value = mock_response.json()
             package = await exporter.get_resource(
                 SinglePackageOptions(
-                    organization="test-org", package_name="hello_docker"
+                    organization="test-org",
+                    package_name="hello_docker",
+                    package_type=PackageType.CONTAINER,
                 )
             )
 
@@ -149,7 +163,9 @@ class TestRestPackageExporter:
             mock_request.return_value = TEST_PACKAGES[1]
             package = await exporter.get_resource(
                 SinglePackageOptions(
-                    organization="test-org", package_name="api/service"
+                    organization="test-org",
+                    package_name="api/service",
+                    package_type=PackageType.CONTAINER,
                 )
             )
 
@@ -177,6 +193,7 @@ class TestRestPackageExporter:
                     organization="octocat",
                     package_name="hello_docker",
                     org_type="User",
+                    package_type=PackageType.CONTAINER,
                 )
             )
 
@@ -195,7 +212,11 @@ class TestRestPackageExporter:
         ) as mock_request:
             mock_request.return_value = {}
             package = await exporter.get_resource(
-                SinglePackageOptions(organization="test-org", package_name="missing")
+                SinglePackageOptions(
+                    organization="test-org",
+                    package_name="missing",
+                    package_type=PackageType.CONTAINER,
+                )
             )
 
             assert package is None
@@ -223,6 +244,7 @@ class TestRestPackageExporter:
                 SinglePackageOptions(
                     organization="test-org",
                     package_name="hello_docker",
+                    package_type=PackageType.CONTAINER,
                     include_versions=True,
                 )
             )
@@ -278,6 +300,7 @@ class TestRestPackageExporter:
                 SinglePackageOptions(
                     organization="test-org",
                     package_name="hello_docker",
+                    package_type=PackageType.CONTAINER,
                     include_versions=True,
                     max_versions=2,
                 )
@@ -300,7 +323,9 @@ class TestRestPackageExporter:
             packages = [
                 batch
                 async for batch in exporter.get_paginated_resources(
-                    ListPackageOptions(organization="test-org")
+                    ListPackageOptions(
+                        organization="test-org", package_types=[PackageType.CONTAINER]
+                    )
                 )
             ]
 
@@ -330,13 +355,46 @@ class TestRestPackageExporter:
             _ = [
                 batch
                 async for batch in exporter.get_paginated_resources(
-                    ListPackageOptions(organization="test-org", visibility="private")
+                    ListPackageOptions(
+                        organization="test-org",
+                        visibility="private",
+                        package_types=[PackageType.CONTAINER],
+                    )
                 )
             ]
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/orgs/test-org/packages",
                 {"package_type": "container", "visibility": "private"},
+            )
+
+    async def test_get_paginated_resources_iterates_package_types(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        async def mock_paginated(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_PACKAGES
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated
+        ) as mock_request:
+            exporter = RestPackageExporter(rest_client)
+            _ = [
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    ListPackageOptions(
+                        organization="test-org",
+                        package_types=cast(
+                            Sequence[PackageType], [PackageType.CONTAINER, "npm"]
+                        ),
+                    )
+                )
+            ]
+
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/orgs/test-org/packages",
+                {"package_type": "container"},
             )
 
     async def test_get_paginated_resources_with_versions(
@@ -357,7 +415,11 @@ class TestRestPackageExporter:
             packages = [
                 batch
                 async for batch in exporter.get_paginated_resources(
-                    ListPackageOptions(organization="test-org", include_versions=True)
+                    ListPackageOptions(
+                        organization="test-org",
+                        package_types=[PackageType.CONTAINER],
+                        include_versions=True,
+                    )
                 )
             ]
 
@@ -395,7 +457,11 @@ class TestRestPackageExporter:
             _ = [
                 batch
                 async for batch in exporter.get_paginated_resources(
-                    ListPackageOptions(organization="test-org", include_versions=True)
+                    ListPackageOptions(
+                        organization="test-org",
+                        package_types=[PackageType.CONTAINER],
+                        include_versions=True,
+                    )
                 )
             ]
 
