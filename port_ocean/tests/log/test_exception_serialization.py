@@ -6,6 +6,12 @@ from unittest.mock import Mock
 from port_ocean.log.logger_setup import _safe_exception_for_serialization
 
 
+class _HTTPStatusError(Exception):
+    """Mock HTTPStatusError for testing."""
+
+    pass
+
+
 class TestHTTPStatusErrorSerialization:
     """Test that HTTPStatusError can be safely serialized for async queues."""
 
@@ -20,7 +26,7 @@ class TestHTTPStatusErrorSerialization:
         mock_request.method = "GET"
         mock_request.url = "https://api.example.com/entities"
 
-        exc = Exception("Mocked HTTPStatusError")
+        exc = _HTTPStatusError("Mocked HTTPStatusError")
         exc.__class__.__name__ = "HTTPStatusError"
         exc.response = mock_response
         exc.request = mock_request
@@ -36,7 +42,7 @@ class TestHTTPStatusErrorSerialization:
 
     def test_http_status_error_handles_missing_fields(self):
         """HTTPStatusError with missing fields uses fallback values."""
-        exc = Exception("Mocked HTTPStatusError")
+        exc = _HTTPStatusError("Mocked HTTPStatusError")
         exc.__class__.__name__ = "HTTPStatusError"
         exc.response = Mock(status_code=500, reason_phrase="", text="")
         exc.request = Mock(method="POST", url=None)
@@ -59,7 +65,7 @@ class TestHTTPStatusErrorSerialization:
         mock_request.method = "POST"
         mock_request.url = "https://api.example.com/sync"
 
-        exc = Exception("Mocked HTTPStatusError")
+        exc = _HTTPStatusError("Mocked HTTPStatusError")
         exc.__class__.__name__ = "HTTPStatusError"
         exc.response = mock_response
         exc.request = mock_request
@@ -83,7 +89,7 @@ class TestHTTPStatusErrorSerialization:
 
     def test_exception_extraction_failure_fallback(self):
         """If extraction fails, falls back to str(exc)."""
-        exc = Exception("Mocked HTTPStatusError")
+        exc = _HTTPStatusError("Mocked HTTPStatusError")
         exc.__class__.__name__ = "HTTPStatusError"
         # Attribute access will fail
         type(exc).response = property(lambda self: 1 / 0)

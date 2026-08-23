@@ -121,7 +121,8 @@ def _safe_exception_for_serialization(exc: Exception) -> Exception:
         return Exception(str(exc))
 
     try:
-        msg = f"HTTPStatusError: {exc.response.status_code} {exc.request.method} {exc.request.url}"
+        url = exc.request.url or "?"
+        msg = f"HTTPStatusError: {exc.response.status_code} {exc.request.method} {url}"
         if exc.response.reason_phrase:
             msg += f" ({exc.response.reason_phrase})"
         if exc.response.text:
