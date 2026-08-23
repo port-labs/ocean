@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Log an error when GitHub webhook signature verification fails
