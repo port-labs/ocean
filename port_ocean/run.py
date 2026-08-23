@@ -1,27 +1,14 @@
 import asyncio
-from inspect import getmembers
-from typing import Dict, Any, Type
+from typing import Dict, Any
 
 import uvicorn
-from pydantic.v1 import BaseModel
 
-from port_ocean.bootstrap import create_default_app
-from port_ocean.config.dynamic import default_config_factory
+from port_ocean.bootstrap import load_ocean_app
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
 from port_ocean.core.defaults.initialization.initialize import initialize_defaults
 from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
-from port_ocean.ocean import Ocean
-from port_ocean.utils.misc import get_spec_file, load_module
 from port_ocean.utils.signal import init_signal_handler
-
-
-def _get_default_config_factory() -> None | Type[BaseModel]:
-    spec = get_spec_file()
-    config_factory = None
-    if spec is not None:
-        config_factory = default_config_factory(spec.get("configurations", []))
-    return config_factory
 
 
 def run(
@@ -39,14 +26,7 @@ def run(
         enable_http_handler=application_settings.enable_http_logging,
     )
 
-    config_factory = _get_default_config_factory()
-    default_app = create_default_app(path, config_factory, config_override)
-
-    main_path = f"{path}/main.py" if path else "main.py"
-    app_module = load_module(main_path)
-    app: Ocean = {name: item for name, item in getmembers(app_module)}.get(
-        "app", default_app
-    )
+    app = load_ocean_app(path, config_override)
 
     # Validate that the current integration's runtime matches the execution parameters
     asyncio.get_event_loop().run_until_complete(
