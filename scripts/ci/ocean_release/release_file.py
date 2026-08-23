@@ -15,10 +15,17 @@ def parse_release_yaml(content: str) -> dict[str, str]:
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if ":" not in stripped:
+        if ":" not in stripped or stripped.split(":")[0] not in {
+            "bump",
+            "changelog-type",
+            "changelog",
+        }:
             if current_key != "changelog":
                 raise ValueError(f"Invalid release file line: {line}")
-            continuation = stripped if stripped.startswith("-") else line.rstrip()
+            if stripped.startswith("-") or stripped.startswith("\\-"):
+                continuation = stripped
+            else:
+                continuation = line.rstrip()
             data[current_key] += f"\n{continuation}"
             continue
         key, value = stripped.split(":", 1)
