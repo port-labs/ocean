@@ -39,3 +39,19 @@ def run(
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
     uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
+
+
+def run_probe(
+    path: str = ".",
+    log_level: LogLevelType = "INFO",
+) -> None:
+    application_settings = ApplicationSettings(log_level=log_level)
+
+    init_signal_handler()
+    setup_logger(
+        application_settings.log_level,
+        enable_http_handler=application_settings.enable_http_logging,
+    )
+
+    app = load_ocean_app(path)
+    asyncio.run(app.integration.run_probe())
