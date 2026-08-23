@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Allow empty files in GraphQL resync to align with REST/webhook paths
 
+
 ## 6.8.0 (2026-08-19)
 
 
