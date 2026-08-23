@@ -15,7 +15,7 @@ from actions.utils import (
     build_webhook_url,
 )
 from clients.endpoints import V0_AGENTS
-from core.webhook_signing import derive_webhook_secret
+from core.webhook_signing import get_webhook_signing_secret
 from exporter_factory import create_runs_exporter
 from integration import ObjectKind
 
@@ -38,13 +38,13 @@ class CreateAgentV0Handler(CreateAgentHandler):
         parse_v0_create_body(body, report_completion=ctx.report_completion)
 
         if ctx.report_completion:
-            webhook_url = build_webhook_url(run.id)
+            webhook_url = build_webhook_url()
             if webhook_url is None:
                 raise InvalidActionParametersException(
                     "reportCompletion requires a reachable public URL (OCEAN__BASE_URL)"
                 )
             body["webhook"] = build_webhook_config(
-                webhook_url, await derive_webhook_secret(run.id)
+                webhook_url, get_webhook_signing_secret()
             )
 
         try:
