@@ -1,22 +1,19 @@
 from loguru import logger
 
-from github.actions.external_custom_properties.abstract_executor import (
-    AbstractExternalCustomPropertiesExecutor,
-)
+from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.external_custom_properties.utils import (
     external_property_values_endpoint,
     get_external_custom_properties_partition_key,
     raise_external_custom_properties_action_error,
 )
 from github.clients.client_factory import create_github_client_for_org
+from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 
-class BulkDeleteExternalCustomPropertyValuesExecutor(
-    AbstractExternalCustomPropertiesExecutor
-):
+class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
     """DELETE all values for one external custom property across organizations."""
 
     ACTION_NAME = "bulk_delete_external_custom_property_values"
@@ -24,6 +21,15 @@ class BulkDeleteExternalCustomPropertyValuesExecutor(
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         return get_external_custom_properties_partition_key(run)
+
+    async def _get_execution_clients(
+        self, run: IntegrationRun
+    ) -> list[AbstractGithubClient]:
+        organizations = run.execution_properties.get("orgs") or []
+        return [
+            await create_github_client_for_org(organization)
+            for organization in organizations
+        ]
 
     async def execute(self, run: IntegrationRun) -> None:
         property_name = run.execution_properties.get("propertyName")

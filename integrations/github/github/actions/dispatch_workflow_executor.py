@@ -26,6 +26,7 @@ from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.client_factory import (
     create_github_client_for_org,
 )
+from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.ocean import ocean
 
@@ -125,11 +126,13 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
 
         return f"{organization}/{repo}/{workflow}"
 
-    async def _get_execution_client(self, run: IntegrationRun) -> GithubRestClient:
+    async def _get_execution_clients(
+        self, run: IntegrationRun
+    ) -> list[AbstractGithubClient]:
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
             raise InvalidActionParametersException("org is required")
-        return await create_github_client_for_org(organization)
+        return [await create_github_client_for_org(organization)]
 
     async def _get_default_ref(
         self, rest_client: GithubRestClient, organization: str, repo_name: str
@@ -276,7 +279,12 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         inputs: dict[str, str] = self._parse_inputs(
             run.execution_properties.get("workflowInputs", {})
         )
-        rest_client = await self._get_execution_client(run)
+        clients = await self._get_execution_clients(run)
+        if not clients:
+            raise InvalidActionParametersException("org is required")
+        rest_client = clients[0]
+        if not isinstance(rest_client, GithubRestClient):
+            raise InvalidActionParametersException("GitHub REST client is required")
         ref = inputs.pop("ref", None)
         if not ref:
             ref = await self._get_default_ref(rest_client, organization, repo)

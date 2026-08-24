@@ -1,21 +1,18 @@
 from loguru import logger
 
-from github.actions.external_custom_properties.abstract_executor import (
-    AbstractExternalCustomPropertiesExecutor,
-)
+from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.external_custom_properties.utils import (
     external_properties_from_mapping,
     raise_external_custom_properties_action_error,
 )
 from github.clients.client_factory import create_github_client_for_org
+from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 
-class UpdateRepoExternalCustomPropertiesExecutor(
-    AbstractExternalCustomPropertiesExecutor
-):
+class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
     """
     Writes changed Port entity properties back to GitHub as repository
     external custom properties.
@@ -32,6 +29,14 @@ class UpdateRepoExternalCustomPropertiesExecutor(
         org = run.execution_properties.get("org")
         repo = run.execution_properties.get("repo")
         return f"{org}/{repo}"
+
+    async def _get_execution_clients(
+        self, run: IntegrationRun
+    ) -> list[AbstractGithubClient]:
+        organization = run.execution_properties.get("org")
+        if not isinstance(organization, str):
+            raise InvalidActionParametersException("org is required")
+        return [await create_github_client_for_org(organization)]
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")

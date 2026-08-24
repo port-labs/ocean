@@ -2,9 +2,7 @@ from itertools import batched
 
 from loguru import logger
 
-from github.actions.external_custom_properties.abstract_executor import (
-    AbstractExternalCustomPropertiesExecutor,
-)
+from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.external_custom_properties.utils import (
     REPOSITORY_VALUES_BATCH_SIZE,
     external_property_values_endpoint,
@@ -13,14 +11,13 @@ from github.actions.external_custom_properties.utils import (
     raise_external_custom_properties_action_error,
 )
 from github.clients.client_factory import create_github_client_for_org
+from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 
-class BulkUpdateExternalCustomPropertyValuesExecutor(
-    AbstractExternalCustomPropertiesExecutor
-):
+class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
     """PATCH sparse updates for one external custom property across repositories."""
 
     ACTION_NAME = "bulk_update_external_custom_property_values"
@@ -28,6 +25,21 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         return get_external_custom_properties_partition_key(run)
+
+    async def _get_execution_clients(
+        self, run: IntegrationRun
+    ) -> list[AbstractGithubClient]:
+        default_org = run.execution_properties.get(
+            "org"
+        ) or ocean.integration_config.get("github_organization")
+        grouped_repository_values = group_repository_values_by_org(
+            run.execution_properties.get("repositoryValues"),
+            default_org=default_org,
+        )
+        return [
+            await create_github_client_for_org(organization)
+            for organization in grouped_repository_values
+        ]
 
     async def execute(self, run: IntegrationRun) -> None:
         property_name = run.execution_properties.get("propertyName")
