@@ -7,7 +7,12 @@ from azure_devops.actions.exceptions import (
     TriggerPipelineError,
 )
 from azure_devops.actions.utils import build_external_id
-from azure_devops.client.azure_devops_client import RunPipelineOptions
+from azure_devops.client.auth import BearerAuthProvider
+from azure_devops.client.azure_devops_client import (
+    AzureDevopsClient,
+    RunPipelineOptions,
+)
+from port_ocean.identity_propagation.token_exchanger import resolve_user_token
 from azure_devops.webhooks.webhook_processors.pipeline_run_action_webhook_processor import (
     PipelineRunActionWebhookProcessor,
 )
@@ -68,8 +73,12 @@ class TriggerPipelineExecutor(AbstractAzureDevopsExecutor):
         await ocean.port_client.post_run_log(
             run, f"Triggering pipeline {pipeline_id} in project '{project_input}'"
         )
+        user_token = await resolve_user_token(run)
+        pipeline_client = (
+            self._client_for_token(user_token) if user_token else self.client
+        )
         try:
-            pipeline_run = await self.client.run_pipeline(
+            pipeline_run = await pipeline_client.run_pipeline(
                 project_id, str(pipeline_id), options
             )
         except httpx.HTTPStatusError as e:
@@ -106,4 +115,13 @@ class TriggerPipelineExecutor(AbstractAzureDevopsExecutor):
             link,
             external_id,
             extra_output={"pipelineRunId": pipeline_run["id"]},
+        )
+
+    def _client_for_token(self, token: str) -> AzureDevopsClient:
+        base_client = self.client
+        return AzureDevopsClient(
+            base_client._organization_base_url,
+            BearerAuthProvider(token),
+            base_client.webhook_auth_username,
+            base_client.excluded_tags,
         )
