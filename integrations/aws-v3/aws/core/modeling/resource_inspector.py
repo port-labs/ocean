@@ -114,17 +114,20 @@ class ResourceInspector[
         self, action: Action[ActionInput], identifiers: ActionInput
     ) -> List[Dict[str, Any]]:
         """
-        Execute a single action for the given identifiers, handling exceptions gracefully.
+        Execute a single action for the given identifiers.
 
         Args:
             action: The action instance to execute.
             identifiers: The resource identifier(s) to pass to the action.
 
         Returns:
-            Dict[str, Any]: The result of the action, or an empty dict if the action fails.
+            List[Dict[str, Any]]: The result of the action.
+
+        Raises:
+            Exception: Propagates action execution errors for proper error handling.
         """
         try:
             return await action.execute(identifiers)
         except Exception as e:
-            logger.warning(f"{action.__class__.__name__} failed: {e}, skipping ...")
-            return []
+            logger.error(f"{action.__class__.__name__} failed: {e}")
+            raise

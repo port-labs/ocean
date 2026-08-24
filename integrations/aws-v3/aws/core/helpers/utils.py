@@ -36,10 +36,22 @@ def is_resource_not_found_exception(e: Exception) -> bool:
     return False
 
 
+def is_throttling_exception(e: Exception) -> bool:
+    throttling_error_codes = [
+        "ThrottlingException",
+        "Throttling",
+    ]
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code")
+        return error_code in throttling_error_codes
+    return False
+
+
 def is_recoverable_aws_exception(exception: Exception) -> bool:
     """
     Check if an AWS exception is recoverable and the action can continue.
-    Recoverable exceptions (ResourceNotFound, AccessDenied) allow processing to continue.
+    Recoverable exceptions (ResourceNotFound, AccessDenied, Throttling) allow processing to continue.
     Non-recoverable exceptions should be re-raised to break the action.
 
     Args:
@@ -48,8 +60,10 @@ def is_recoverable_aws_exception(exception: Exception) -> bool:
     Returns:
         True if exception is recoverable and processing can continue, False if it should be re-raised
     """
-    return is_resource_not_found_exception(exception) or is_access_denied_exception(
-        exception
+    return (
+        is_resource_not_found_exception(exception)
+        or is_access_denied_exception(exception)
+        or is_throttling_exception(exception)
     )
 
 
@@ -63,15 +77,17 @@ async def execute_concurrent_aws_operations(
     operation_func: Callable[[Any], Awaitable[Any]],
     get_resource_identifier: Callable[[Any], str],
     operation_name: str,
+    concurrency_limit: int = 10,
 ) -> list[dict[str, Any]]:
     """
-    Generic concurrent AWS operation executor.
+    Generic concurrent AWS operation executor with concurrency control.
 
     Args:
         input_items: List of input items (repositories, queues, instances, etc.)
         operation_func: Async function that takes an input item and returns result
         get_resource_identifier: Function to extract resource ID from input item
         operation_name: Name for logging (e.g., "repository policy")
+        concurrency_limit: Maximum number of concurrent operations (default: 10)
 
     Returns:
         One entry per input item, in the same order as ``input_items``. An empty
@@ -79,8 +95,14 @@ async def execute_concurrent_aws_operations(
         recoverable AWS exception, so callers can rely on positional alignment
         when merging results with other concurrent operations.
     """
+    semaphore = asyncio.Semaphore(concurrency_limit)
+
+    async def bounded_operation(item: Any) -> Any:
+        async with semaphore:
+            return await operation_func(item)
+
     operation_results = await asyncio.gather(
-        *(operation_func(item) for item in input_items),
+        *(bounded_operation(item) for item in input_items),
         return_exceptions=True,
     )
 
