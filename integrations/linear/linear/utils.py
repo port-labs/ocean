@@ -7,3 +7,4 @@ class ObjectKind(StrEnum):
     TEAM = "team"
     LABEL = "label"
     ISSUE = "issue"
+    DOCUMENT = "document"

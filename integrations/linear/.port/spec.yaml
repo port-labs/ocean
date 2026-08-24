@@ -11,6 +11,7 @@ features:
       - kind: team
       - kind: issue
       - kind: label
+      - kind: document
 configurations:
   - name: appHost
     required: false
