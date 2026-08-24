@@ -85,5 +85,5 @@ class EventsMixin:
     def on_probe(self, function: ON_PROBE_EVENT_LISTENER) -> ON_PROBE_EVENT_LISTENER:
         """Register a function that probes the integration's connection."""
         logger.info("Registering connection probe listener")
-        self.event_strategy["on_probe"] = function
+        self.event_strategy.on_probe = function
         return function

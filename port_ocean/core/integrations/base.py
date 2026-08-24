@@ -101,7 +101,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
     async def run_probe(self) -> ProbeContext:
         """Invoke the registered ``on_probe`` listener."""
         context = ProbeContext()
-        listener = self.event_strategy["on_probe"]
+        listener = self.event_strategy.on_probe
         if listener is None:
             context.on_fatal_error()
             raise ModeNotSupportedException(
