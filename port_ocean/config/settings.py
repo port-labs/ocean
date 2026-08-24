@@ -5,7 +5,6 @@ import os
 
 from loguru import logger
 from pydantic import (
-    AnyHttpUrl,
     BaseModel,
     ConfigDict,
     Field,
@@ -20,6 +19,7 @@ from pydantic_settings import (
 )
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings, sensitive_field
+from port_ocean.config.dynamic import NoTrailingSlashUrl
 from port_ocean.core.event_listener import (
     EventListenerSettingsType,
     PollingEventListenerSettings,
@@ -88,7 +88,7 @@ class PortSettings(BaseOceanModel):
 
     client_id: str = sensitive_field()
     client_secret: str = sensitive_field()
-    base_url: AnyHttpUrl = Field(default="https://api.getport.io")  # type: ignore[assignment]
+    base_url: NoTrailingSlashUrl = "https://api.getport.io"
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     blueprint_cache_ttl_seconds: float = 120.0
