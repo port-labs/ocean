@@ -7,6 +7,7 @@ from azure_devops.client.auth import (
     ACCOUNT_MODE_MULTIPLE,
     ACCOUNT_MODE_SINGLE,
     AZURE_DEVOPS_API_SCOPE,
+    BearerAuthProvider,
     PatAuthProvider,
     ServicePrincipalAuthProvider,
     build_auth_provider,
@@ -19,6 +20,13 @@ async def test_pat_auth_provider_returns_basic_header() -> None:
     headers = await provider.get_auth_headers()
     expected = base64.b64encode(b":my-test-pat").decode()
     assert headers == {"Authorization": f"Basic {expected}"}
+
+
+@pytest.mark.asyncio
+async def test_bearer_auth_provider_returns_bearer_header() -> None:
+    provider = BearerAuthProvider("user-oauth-token")
+    headers = await provider.get_auth_headers()
+    assert headers == {"Authorization": "Bearer user-oauth-token"}
 
 
 @pytest.mark.asyncio

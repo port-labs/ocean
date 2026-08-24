@@ -38,6 +38,16 @@ class ServicePrincipalAuthProvider:
         return {"Authorization": f"Bearer {token}"}
 
 
+class BearerAuthProvider:
+    auth_description = "Bearer (user OAuth token)"
+
+    def __init__(self, token: str) -> None:
+        self._token = token
+
+    async def get_auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._token}"}
+
+
 def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
     account_mode = config.get("account_mode", ACCOUNT_MODE_SINGLE)
 
