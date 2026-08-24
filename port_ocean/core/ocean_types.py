@@ -67,4 +67,4 @@ class IntegrationEventsCallbacks:
     incremental: dict[str | None, list[INCREMENTAL_EVENT_LISTENER]] = field(
         default_factory=lambda: defaultdict(list)
     )
-    on_probe: ON_PROBE_EVENT_LISTENER | None
+    on_probe: ON_PROBE_EVENT_LISTENER | None = None
