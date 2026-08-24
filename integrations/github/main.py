@@ -56,6 +56,7 @@ from github.core.exporters.secret_scanning_alert_exporter import (
     RestSecretScanningAlertExporter,
 )
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
+from github.core.exporters.package_exporter import RestPackageExporter
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
     FolderPatternMappingBuilder,
@@ -81,6 +82,7 @@ from github.core.options import (
     ListCodeScanningAlertOptions,
     ListCollaboratorOptions,
     ListSecretScanningAlertOptions,
+    ListPackageOptions,
 )
 from github.helpers.utils import (
     ObjectKind,
@@ -114,6 +116,7 @@ from integration import (
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
     GithubUserConfig,
+    GithubPackageConfig,
 )
 from github.core.exporters.skill_exporter import (
     SkillExporter,
@@ -374,6 +377,38 @@ async def resync_teams(
                     ).enrich_teams_with_external_group(teams, org_name)
 
                 yield teams
+
+
+@ocean.on_resync(ObjectKind.PACKAGE)
+@_resync_per_authenticator
+async def resync_packages(
+    kind: str, authenticator: AbstractGitHubAuthenticator
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync GitHub packages across organizations."""
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    exporter = RestPackageExporter(rest_client)
+    config = cast(GithubPackageConfig, event.resource_config)
+
+    async for organizations in org_exporter.get_paginated_resources():
+        tasks = [
+            exporter.get_paginated_resources(
+                ListPackageOptions(
+                    organization=org["login"],
+                    org_type=org["type"],
+                    visibility=config.selector.visibility,
+                    package_types=config.selector.package_types,
+                    include_versions=config.selector.include_versions,
+                    max_versions=config.selector.max_versions,
+                )
+            )
+            for org in organizations
+        ]
+        if tasks:
+            async for packages in stream_async_iterators_tasks(*tasks):
+                logger.info(f"Received {len(packages)} batch {kind}s")
+                yield packages
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW)

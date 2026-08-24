@@ -84,7 +84,7 @@ def register_incremental_handler(
         yield [{"id": "1"}]
 
     handler.side_effect = gen
-    mixin.event_strategy["incremental"][kind].append(handler)
+    mixin.event_strategy.incremental[kind].append(handler)
     return handler
 
 
@@ -389,7 +389,7 @@ class TestEventsMixinIncrementalRegistration:
             yield [{"id": "1"}]
 
         mixin.on_incremental_resync(handler, kind="issue")
-        assert handler in mixin.event_strategy["incremental"]["issue"]
+        assert handler in mixin.event_strategy.incremental["issue"]
 
     def test_on_incremental_resync_registers_catch_all_handler(self) -> None:
         from port_ocean.core.integrations.mixins.events import EventsMixin
@@ -400,7 +400,7 @@ class TestEventsMixinIncrementalRegistration:
             yield [{"id": "1"}]
 
         mixin.on_incremental_resync(handler, kind=None)
-        assert handler in mixin.event_strategy["incremental"][None]
+        assert handler in mixin.event_strategy.incremental[None]
 
     def test_on_incremental_resync_ignores_none_function(self) -> None:
         from port_ocean.core.integrations.mixins.events import EventsMixin
@@ -408,7 +408,7 @@ class TestEventsMixinIncrementalRegistration:
         mixin = EventsMixin()
         result = mixin.on_incremental_resync(None, kind="issue")
         assert result is None
-        assert len(mixin.event_strategy["incremental"]["issue"]) == 0
+        assert len(mixin.event_strategy.incremental["issue"]) == 0
 
     def test_available_incremental_kinds_returns_registered_kinds(self) -> None:
         from port_ocean.core.integrations.mixins.events import EventsMixin

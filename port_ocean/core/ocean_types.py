@@ -1,3 +1,5 @@
+from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import (
     TypedDict,
     Any,
@@ -6,8 +8,6 @@ from typing import (
     Awaitable,
     NamedTuple,
 )
-
-from dataclasses import field
 from port_ocean.core.models import Entity
 from port_ocean.core.probe import ProbeContext
 
@@ -56,10 +56,15 @@ class ETLPhase:
     RECONCILIATION = "reconciliation"
 
 
-class IntegrationEventsCallbacks(TypedDict):
-    start: list[START_EVENT_LISTENER]
-    resync: dict[str | None, list[RESYNC_EVENT_LISTENER]]
-    resync_start: list[BEFORE_RESYNC_EVENT_LISTENER]
-    resync_complete: list[AFTER_RESYNC_EVENT_LISTENER]
-    incremental: dict[str | None, list[INCREMENTAL_EVENT_LISTENER]]
+@dataclass
+class IntegrationEventsCallbacks:
+    start: list[START_EVENT_LISTENER] = field(default_factory=list)
+    resync: dict[str | None, list[RESYNC_EVENT_LISTENER]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
+    resync_start: list[BEFORE_RESYNC_EVENT_LISTENER] = field(default_factory=list)
+    resync_complete: list[AFTER_RESYNC_EVENT_LISTENER] = field(default_factory=list)
+    incremental: dict[str | None, list[INCREMENTAL_EVENT_LISTENER]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
     on_probe: ON_PROBE_EVENT_LISTENER | None

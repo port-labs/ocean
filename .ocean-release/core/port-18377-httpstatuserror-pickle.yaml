@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix HTTPStatusError unpickling failure in Loguru async queue by converting to safe serializable format
