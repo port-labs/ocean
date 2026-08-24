@@ -8,6 +8,7 @@ import pytest
 from port_ocean.context.ocean import ocean
 
 from github.actions.dispatch_workflow_executor import DispatchWorkflowExecutor
+from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import (
     InvalidActionParametersException,
     RepositoryDefaultBranchNotFoundException,
@@ -64,7 +65,7 @@ def mock_port_client(patched_ocean: MagicMock) -> MagicMock:
 
 @pytest.fixture
 def mock_rest_client() -> MagicMock:
-    client = MagicMock()
+    client = MagicMock(spec=GithubRestClient)
     client.base_url = "https://api.github.com"
     client.make_request = AsyncMock()
     client.send_api_request = AsyncMock()
