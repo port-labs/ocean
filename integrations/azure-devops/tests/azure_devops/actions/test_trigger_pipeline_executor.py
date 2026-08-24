@@ -15,6 +15,7 @@ from port_ocean.core.models import (
     IntegrationActionInvocationPayload,
     RunStatus,
 )
+from port_ocean.context.ocean import PortOceanContext
 
 
 def _make_run(props: dict[str, Any]) -> ActionRun:
@@ -153,3 +154,84 @@ async def test_execute_wraps_http_error_as_trigger_pipeline_error(
         await executor.execute(_make_run({"project": "proj", "pipelineId": "12"}))
 
     assert "bad pipeline" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_execute_identity_run_uses_bearer_client_for_run_pipeline(
+    executor: TriggerPipelineExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client.get_single_project.return_value = {"id": "proj-guid"}
+    client._organization_base_url = "https://dev.azure.com/myorg"
+    client.webhook_auth_username = "webhook-user"
+    client.excluded_tags = ["skip"]
+
+    user_pipeline_client = MagicMock()
+    user_pipeline_client.run_pipeline = AsyncMock(
+        return_value={
+            "id": 99,
+            "_links": {"web": {"href": "https://dev.azure.com/run/99"}},
+        }
+    )
+    mock_client_for_token = MagicMock(return_value=user_pipeline_client)
+    monkeypatch.setattr(executor, "_client_for_token", mock_client_for_token)
+    monkeypatch.setattr(
+        "azure_devops.actions.trigger_pipeline_executor.resolve_user_token",
+        AsyncMock(return_value="entra-user-token"),
+    )
+    mock_ocean = _make_mock_ocean()
+    monkeypatch.setattr(
+        "azure_devops.actions.trigger_pipeline_executor.ocean", mock_ocean
+    )
+
+    await executor.execute(_make_run({"project": "proj", "pipelineId": "12"}))
+
+    mock_client_for_token.assert_called_once_with("entra-user-token")
+    user_pipeline_client.run_pipeline.assert_awaited_once()
+    client.run_pipeline.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_execute_non_identity_run_uses_default_client_for_run_pipeline(
+    executor: TriggerPipelineExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client.get_single_project.return_value = {"id": "proj-guid"}
+    client.run_pipeline.return_value = {"id": 1, "_links": {}}
+    monkeypatch.setattr(
+        "azure_devops.actions.trigger_pipeline_executor.resolve_user_token",
+        AsyncMock(return_value=None),
+    )
+    mock_client_for_token = MagicMock()
+    monkeypatch.setattr(executor, "_client_for_token", mock_client_for_token)
+    monkeypatch.setattr(
+        "azure_devops.actions.trigger_pipeline_executor.ocean", _make_mock_ocean()
+    )
+
+    await executor.execute(_make_run({"project": "proj", "pipelineId": "12"}))
+
+    mock_client_for_token.assert_not_called()
+    client.run_pipeline.assert_awaited_once()
+
+
+def test_client_for_token_builds_azure_devops_client_with_bearer_auth(
+    executor: TriggerPipelineExecutor,
+    client: MagicMock,
+    mock_context: PortOceanContext,
+) -> None:
+    from azure_devops.client.auth import BearerAuthProvider
+    from azure_devops.client.azure_devops_client import AzureDevopsClient
+
+    client._organization_base_url = "https://dev.azure.com/org"
+    client.webhook_auth_username = "hook-user"
+    client.excluded_tags = ["tag1"]
+
+    token_client = executor._client_for_token("oauth-token")
+
+    assert isinstance(token_client, AzureDevopsClient)
+    assert token_client._organization_base_url == "https://dev.azure.com/org"
+    assert token_client.webhook_auth_username == "hook-user"
+    assert token_client.excluded_tags == ["tag1"]
+    assert isinstance(token_client._auth_provider, BearerAuthProvider)
