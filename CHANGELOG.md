@@ -15,6 +15,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Migrate Ocean core settings models from Pydantic v1 to v2, keeping integration config as a JSON-mode dict of primitives.
 
 
+## 0.48.13 (2026-08-24)
+
+
+### Bug Fixes
+
+- Fix HTTPStatusError unpickling failure in Loguru async queue by converting to safe serializable format
+
+
 ## 0.48.12 (2026-08-18)
 
 
