@@ -30,6 +30,10 @@ def _wf_run(e: Json) -> str:
     return e["workflow_run"]["id"]
 
 
+def _package(e: Json) -> str:
+    return e["package"]["id"]
+
+
 GITHUB_RESOURCE_ID: dict[str, Callable[[Json], str]] = {
     "pull_request": _pull_request,
     "pull_request_review_comment": _pull_request,
@@ -40,6 +44,7 @@ GITHUB_RESOURCE_ID: dict[str, Callable[[Json], str]] = {
     "release": _release,
     "status": _status,
     "workflow_run": _wf_run,
+    "package": _package,
 }
 
 

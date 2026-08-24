@@ -38,25 +38,20 @@ class KomodorClient:
         return response.json()
 
     async def get_all_services(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        current_page = 0
+        pagination: dict[str, Any] = {"pageSize": SERVICES_PAGE_SIZE}
         while True:
             response = await self._send_request(
                 url=f"{self.api_url}/services/search",
-                data={
-                    "kind": ["Deployment", "StatefulSet", "DaemonSet", "Rollout"],
-                    "pagination": {
-                        "pageSize": SERVICES_PAGE_SIZE,
-                        "page": current_page,
-                    },
-                },
+                data={"pagination": pagination},
                 method="POST",
             )
             yield response.get("data", {}).get("services", [])
 
-            current_page = response.get("meta", {}).get("nextPage", None)
-            if not current_page:
+            next_token = (response.get("meta") or {}).get("token")
+            if not next_token:
                 logger.debug("No more service pages, breaking")
                 break
+            pagination = {"pageSize": SERVICES_PAGE_SIZE, "token": next_token}
 
     async def get_health_monitor(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         offset = 0

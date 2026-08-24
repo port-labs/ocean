@@ -30,6 +30,7 @@ KIND_BLUEPRINTS: dict[str, str] = {
     "deployment": "githubDeployment",
     "deployment-status": "githubDeploymentStatus",
     "collaborator": "githubCollaborator",
+    "package": "githubPackage",
 }
 
 KIND_BUILDERS: dict[str, str] = {
@@ -51,6 +52,7 @@ KIND_BUILDERS: dict[str, str] = {
     "deployment": "with_deployment_routes",
     "deployment-status": "with_deployment_status_routes",
     "collaborator": "with_collaborator_routes",
+    "package": "with_package_routes",
 }
 
 assert set(KIND_EXPECTATIONS) == set(
