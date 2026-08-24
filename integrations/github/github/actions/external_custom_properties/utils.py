@@ -49,14 +49,6 @@ class RepositoryValuesInput(BaseModel):
     org: str | None = None
     repository_values: list[RepositoryValueInput] = Field(..., min_items=1)
 
-    @validator("repository_values")
-    def repository_values_must_not_be_empty(
-        cls, values: list[RepositoryValueInput]
-    ) -> list[RepositoryValueInput]:
-        if not values:
-            raise ValueError("is required and must not be empty")
-        return values
-
     def group_by_org(self) -> dict[str, list[RepositoryGithubValue]]:
         grouped: dict[str, list[RepositoryGithubValue]] = defaultdict(list)
         for value in self.repository_values:

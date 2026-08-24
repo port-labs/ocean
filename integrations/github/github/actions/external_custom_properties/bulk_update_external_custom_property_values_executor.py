@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from functools import partial
 from itertools import batched
 
 from loguru import logger
@@ -93,21 +94,18 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
                 endpoint = external_property_values_endpoint(
                     rest_client.base_url, organization, str(property_name)
                 )
-
-                for repository_batch in batched(
-                    repository_values, REPOSITORY_VALUES_BATCH_SIZE
-                ):
-                    patch_operations.append(
-                        lambda rest_client=rest_client,
-                        endpoint=endpoint,
-                        organization=organization,
-                        repository_batch=repository_batch: self._patch_repository_batch(
-                            rest_client,
-                            endpoint,
-                            organization,
-                            repository_batch,
-                        )
+                patch_operations.extend(
+                    partial(
+                        self._patch_repository_batch,
+                        rest_client,
+                        endpoint,
+                        organization,
+                        repository_batch,
                     )
+                    for repository_batch in batched(
+                        repository_values, REPOSITORY_VALUES_BATCH_SIZE
+                    )
+                )
 
             outcomes = await throttle_batch_operation(
                 patch_operations,

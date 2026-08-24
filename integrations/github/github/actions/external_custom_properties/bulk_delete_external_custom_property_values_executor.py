@@ -1,3 +1,5 @@
+from functools import partial
+
 from loguru import logger
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
@@ -72,8 +74,10 @@ class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
             logger.info("Processing bulk external custom property delete")
             outcomes = await throttle_batch_operation(
                 [
-                    lambda organization=organization: self._delete_for_organization(
-                        organization, str(property_name)
+                    partial(
+                        self._delete_for_organization,
+                        organization,
+                        str(property_name),
                     )
                     for organization in organizations
                 ],
