@@ -1,8 +1,6 @@
 import pytest
 
-from github.actions.external_custom_properties.utils import (
-    group_repository_values_by_org,
-)
+from github.actions.external_custom_properties.utils import group_repository_values_by_org
 from github.helpers.exceptions import InvalidActionParametersException
 
 
@@ -48,3 +46,23 @@ class TestGroupRepositoryValuesByOrg:
                 [{"org": "port-labs", "value": "x"}],
                 default_org=None,
             )
+
+    def test_preserves_falsy_non_empty_values(self) -> None:
+        grouped = group_repository_values_by_org(
+            [{"repository_name": "ocean", "value": 0}],
+            default_org="port-labs",
+        )
+
+        assert grouped == {
+            "port-labs": [{"repository_name": "ocean", "value": "0"}],
+        }
+
+    def test_empty_string_value_becomes_none(self) -> None:
+        grouped = group_repository_values_by_org(
+            [{"repository_name": "ocean", "value": ""}],
+            default_org="port-labs",
+        )
+
+        assert grouped == {
+            "port-labs": [{"repository_name": "ocean", "value": None}],
+        }

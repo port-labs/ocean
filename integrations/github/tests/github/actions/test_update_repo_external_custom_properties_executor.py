@@ -9,9 +9,7 @@ import pytest
 from github.actions.external_custom_properties.update_repo_external_custom_properties_executor import (
     UpdateRepoExternalCustomPropertiesExecutor,
 )
-from github.actions.external_custom_properties.utils import (
-    external_properties_from_mapping,
-)
+from github.actions.external_custom_properties.utils import ExternalPropertyGithubValue
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from port_ocean.core.models import (
@@ -35,27 +33,33 @@ def make_run(execution_properties: dict[str, Any]) -> ActionRun:
     )
 
 
-class TestExternalPropertiesFromMapping:
+class TestExternalPropertyGithubValue:
     def test_string_value(self) -> None:
-        assert external_properties_from_mapping({"lifecycle": "Deprecated"}) == [
-            {"property_name": "lifecycle", "value": "Deprecated"}
-        ]
+        assert ExternalPropertyGithubValue(
+            property_name="lifecycle", value="Deprecated"
+        ).dict() == {"property_name": "lifecycle", "value": "Deprecated"}
 
     def test_none_value(self) -> None:
-        assert external_properties_from_mapping({"prop": None}) == [
-            {"property_name": "prop", "value": None}
-        ]
+        assert ExternalPropertyGithubValue(property_name="prop", value=None).dict() == {
+            "property_name": "prop",
+            "value": None,
+        }
 
     def test_empty_string_becomes_none(self) -> None:
-        assert external_properties_from_mapping({"prop": ""}) == [
-            {"property_name": "prop", "value": None}
-        ]
+        assert ExternalPropertyGithubValue(property_name="prop", value="").dict() == {
+            "property_name": "prop",
+            "value": None,
+        }
 
     def test_non_string_value_coerced_to_str(self) -> None:
-        assert external_properties_from_mapping({"count": 42, "active": True}) == [
-            {"property_name": "count", "value": "42"},
-            {"property_name": "active", "value": "True"},
-        ]
+        assert ExternalPropertyGithubValue(property_name="count", value=42).dict() == {
+            "property_name": "count",
+            "value": "42",
+        }
+        assert ExternalPropertyGithubValue(property_name="active", value=True).dict() == {
+            "property_name": "active",
+            "value": "True",
+        }
 
 
 @pytest.fixture

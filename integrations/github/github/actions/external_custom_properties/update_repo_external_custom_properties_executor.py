@@ -2,14 +2,15 @@ from loguru import logger
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.external_custom_properties.utils import (
-    external_properties_from_mapping,
-    raise_external_custom_properties_action_error,
+    ExternalPropertyGithubValue,
+    external_custom_properties_action_error_message,
 )
 from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
 class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
@@ -56,9 +57,10 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
 
         with logger.contextualize(org=org, repo=repo):
             logger.info("Processing external custom properties update")
-            github_properties = external_properties_from_mapping(
-                external_properties_mapping
-            )
+            github_properties = [
+                ExternalPropertyGithubValue(property_name=name, value=value).dict()
+                for name, value in external_properties_mapping.items()
+            ]
 
             try:
                 rest_client = await create_github_client_for_org(org)
@@ -72,10 +74,10 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
                     ignore_default_errors=False,
                 )
             except Exception as error:
-                raise_external_custom_properties_action_error(
-                    error,
-                    "updating external custom properties",
-                )
+                raise ActionExecutionError(
+                    "Error updating external custom properties: "
+                    f"{external_custom_properties_action_error_message(error)}"
+                ) from error
 
             logger.info("Successfully updated external custom properties")
             await ocean.port_client.report_run_completed(

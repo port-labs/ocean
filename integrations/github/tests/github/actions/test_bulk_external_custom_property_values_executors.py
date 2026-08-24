@@ -12,14 +12,15 @@ from github.actions.external_custom_properties.bulk_delete_external_custom_prope
 from github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor import (
     BulkUpdateExternalCustomPropertyValuesExecutor,
 )
-from github.actions.external_custom_properties.utils import REPOSITORY_VALUES_BATCH_SIZE
+from github.actions.external_custom_properties.utils import (
+    REPOSITORY_VALUES_BATCH_SIZE,
+)
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
     RunStatus,
 )
-from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> ActionRun:
@@ -119,11 +120,9 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
-            message=(
-                "Updated external custom property 'lifecycle' for 2 repositories "
-                "across 1 organization(s)."
-            ),
+            message="Updated external custom property 'lifecycle': 1/1 request(s) succeeded.",
         )
+        mock_port_client.post_run_log.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_batches_repository_values(
@@ -220,7 +219,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         mock_rest_client.make_request.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_forbidden_raises_missing_permission_error(
+    async def test_forbidden_reports_partial_failure(
         self,
         bulk_update_executor: BulkUpdateExternalCustomPropertyValuesExecutor,
         mock_rest_client: MagicMock,
@@ -229,31 +228,56 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         run = make_run(
             "bulk_update_external_custom_property_values",
             {
-                "org": "port-labs",
                 "propertyName": "tier",
                 "repositoryValues": [
-                    {"repository_name": "ocean", "value": "1"},
+                    {
+                        "org": "port-labs",
+                        "repository_name": "ocean",
+                        "value": "1",
+                    },
+                    {
+                        "org": "other-org",
+                        "repository_name": "api",
+                        "value": "2",
+                    },
                 ],
             },
         )
         request = httpx.Request(
             "PATCH",
-            "https://api.github.com/orgs/port-labs/properties/installations/values/tier",
+            "https://api.github.com/orgs/other-org/properties/installations/values/tier",
         )
         response = httpx.Response(403, json={"message": "Forbidden"}, request=request)
-        mock_rest_client.make_request.side_effect = httpx.HTTPStatusError(
-            "403", request=request, response=response
-        )
 
-        with pytest.raises(
-            ActionExecutionError, match="external custom properties write"
-        ):
-            with patch(
-                "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
-            ) as mock_ocean:
-                mock_ocean.port_client = mock_port_client
-                mock_ocean.integration_config = {}
-                await bulk_update_executor.execute(run)
+        async def make_request_side_effect(
+            endpoint: str, **kwargs: object
+        ) -> None:
+            if "other-org" in endpoint:
+                raise httpx.HTTPStatusError(
+                    "403", request=request, response=response
+                )
+
+        mock_rest_client.make_request.side_effect = make_request_side_effect
+
+        with patch(
+            "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
+        ) as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.integration_config = {}
+            await bulk_update_executor.execute(run)
+
+        assert mock_rest_client.make_request.await_count == 2
+        mock_port_client.report_run_completed.assert_awaited_once_with(
+            run,
+            success=False,
+            message="Updated external custom property 'tier': 1/2 request(s) succeeded.",
+        )
+        mock_port_client.post_run_log.assert_awaited_once_with(
+            run,
+            "Failed other-org (api): Missing external custom properties write "
+            "permission on the organization. Update the integration permissions "
+            "in order to enable this action.",
+        )
 
     @pytest.mark.asyncio
     async def test_partition_key(
@@ -301,10 +325,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
-            message=(
-                "Deleted all values for external custom property "
-                "'lifecycle' in 1 organization(s)."
-            ),
+            message="Deleted external custom property 'lifecycle': 1/1 organization(s) succeeded.",
         )
 
     @pytest.mark.asyncio
@@ -337,6 +358,52 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
             "https://api.github.com/orgs/port-labs/properties/installations/values/lifecycle",
             "https://api.github.com/orgs/other-org/properties/installations/values/lifecycle",
         }
+
+    @pytest.mark.asyncio
+    async def test_partial_failure_reports_summary(
+        self,
+        bulk_delete_executor: BulkDeleteExternalCustomPropertyValuesExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            "bulk_delete_external_custom_property_values",
+            {
+                "orgs": ["port-labs", "other-org"],
+                "propertyName": "lifecycle",
+            },
+        )
+        request = httpx.Request(
+            "DELETE",
+            "https://api.github.com/orgs/other-org/properties/installations/values/lifecycle",
+        )
+        response = httpx.Response(404, json={"message": "Not Found"}, request=request)
+
+        async def make_request_side_effect(
+            endpoint: str, **kwargs: object
+        ) -> None:
+            if "other-org" in endpoint:
+                raise httpx.HTTPStatusError(
+                    "404", request=request, response=response
+                )
+
+        mock_rest_client.make_request.side_effect = make_request_side_effect
+
+        with patch(
+            "github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor.ocean"
+        ) as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.integration_config = {}
+            await bulk_delete_executor.execute(run)
+
+        mock_port_client.report_run_completed.assert_awaited_once_with(
+            run,
+            success=False,
+            message="Deleted external custom property 'lifecycle': 1/2 organization(s) succeeded.",
+        )
+        mock_port_client.post_run_log.assert_awaited_once_with(
+            run, "Failed other-org: Not Found"
+        )
 
     @pytest.mark.asyncio
     async def test_missing_orgs_fails(

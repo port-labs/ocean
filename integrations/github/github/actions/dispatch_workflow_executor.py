@@ -279,10 +279,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         inputs: dict[str, str] = self._parse_inputs(
             run.execution_properties.get("workflowInputs", {})
         )
-        clients = await self._get_execution_clients(run)
-        if not clients:
-            raise InvalidActionParametersException("org is required")
-        rest_client = clients[0]
+        rest_client = (await self._get_execution_clients(run))[0]
         if not isinstance(rest_client, GithubRestClient):
             raise InvalidActionParametersException("GitHub REST client is required")
         ref = inputs.pop("ref", None)
