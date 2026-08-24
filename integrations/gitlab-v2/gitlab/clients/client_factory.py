@@ -16,3 +16,8 @@ def create_gitlab_client() -> GitLabClient:
     base_url = integration_config["gitlab_host"].rstrip("/")
     _gitlab_client = GitLabClient(base_url, integration_config["gitlab_token"])
     return _gitlab_client
+
+
+def create_user_gitlab_client(token: str) -> GitLabClient:
+    base_url = ocean.integration_config["gitlab_host"].rstrip("/")
+    return GitLabClient(base_url, token)
