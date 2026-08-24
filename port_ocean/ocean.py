@@ -31,6 +31,13 @@ from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
+from port_ocean.identity_propagation.oauth_broker.router import register_oauth_broker
+from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
+from port_ocean.identity_propagation.vault.base import VaultClient, build_vault_client
+from port_ocean.identity_propagation.verifier import (
+    IdentityTokenVerifier,
+    PortIdentityTokenVerifier,
+)
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
@@ -108,6 +115,13 @@ class Ocean:
         self.lifecycle_client: LifecycleClient = LifecycleClient(
             auth=self.port_client.auth,
         )
+        if self.config.identity_propagation.enabled:
+            self.vault_client: VaultClient | None = build_vault_client(self.config.identity_propagation.vault)
+            self.identity_verifier: IdentityTokenVerifier = PortIdentityTokenVerifier()
+            self.oauth_provider: OAuth2Provider | None = None
+            if self.vault_client is None:
+                raise ValueError("Identity propagation enabled but no vault client configured.")
+
         self.app_initialized = False
         self._status_heartbeat_task: asyncio.Task[None] | None = None
 
@@ -286,6 +300,23 @@ class Ocean:
                 )
         return None
 
+    @staticmethod
+    def _is_public_url(url: str) -> bool:
+        import ipaddress
+        from urllib.parse import urlparse
+
+        try:
+            host = urlparse(url).hostname or ""
+        except Exception:
+            return False
+        if host in ("localhost", "127.0.0.1", "::1") or host.endswith(".local"):
+            return False
+        try:
+            addr = ipaddress.ip_address(host)
+            return addr.is_global
+        except ValueError:
+            return True  # hostname, not an IP — assume public
+
     async def _register_addons(self) -> None:
         if self.base_url and self.config.event_listener.should_process_webhooks:
             await self.webhook_manager.start_processing_event_messages()
@@ -304,6 +335,17 @@ class Ocean:
                 "Execution agent is not enabled, or actions processing is disabled in this event listener, skipping execution agent setup"
             )
 
+        if self.config.identity_propagation.enabled:
+            if self.base_url and self._is_public_url(self.base_url):
+                broker_url = f"{self.base_url}/v1/oauth-broker/authorize"
+                await self.port_client.patch_integration(oauth_broker_url=broker_url)
+                logger.info("Registered OAuth broker URL", url=broker_url)
+            else:
+                logger.warning(
+                    "Identity propagation enabled but OCEAN__BASE_URL is not a publicly reachable URL. "
+                    "OAuth broker will not be registered. Workflow runs requiring user authentication will fail."
+                )
+
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(
             self.integration_router, prefix=f"{self.route_prefix}/integration"
@@ -314,6 +356,8 @@ class Ocean:
         self.fast_api_app.include_router(
             create_health_router(), prefix=f"{self.route_prefix}/health"
         )
+        if self.config.identity_propagation.enabled:
+            register_oauth_broker()
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
