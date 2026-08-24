@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added a Linear document kind with default blueprint, mapping, and live-event support for specs and PRDs. Existing Ocean webhooks are updated to subscribe to Document events.
