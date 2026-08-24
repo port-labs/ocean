@@ -39,6 +39,7 @@ from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
     RunAlreadyAcknowledgedError,
 )
+from port_ocean.exceptions.identity_propagation import UserAuthRequiredError
 from port_ocean.ocean import Ocean
 from port_ocean.utils.signal import SignalHandler
 
@@ -115,8 +116,6 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
     ocean_mock.port_client = mock_port_client
     ocean_mock.integration_router = APIRouter()
     ocean_mock.fast_api_app = FastAPI()
-    ocean_mock.integration = MagicMock()
-    ocean_mock.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     return ocean_mock
 
 
@@ -880,6 +879,24 @@ class TestExecutionManager:
 
         _, called_kwargs = mock_port_client.report_run_completed.call_args
         assert called_kwargs["status_label"] == DEFAULT_FAILURE_STATUS_LABEL
+
+    @pytest.mark.asyncio
+    async def test_execute_run_pauses_the_run_when_the_user_must_authenticate(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        mock_test_executor: MagicMock,
+    ) -> None:
+        run = generate_mock_wf_node_run()
+        mock_test_executor.execute.side_effect = UserAuthRequiredError()
+
+        await execution_manager._execute_run(run)
+
+        mock_port_client.patch_run.assert_called_once_with(
+            run, {"reauthRequired": True}, should_raise=False
+        )
+        # The run is paused, not finished; reporting completion would fail it.
+        mock_port_client.report_run_completed.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_run_handles_acknowledge_run_api_error(
