@@ -55,7 +55,7 @@ class TestAbstractGithubExecutorRateLimits:
         assert await executor.is_close_to_rate_limit(run) is False
 
     @pytest.mark.asyncio
-    async def test_is_close_to_rate_limit_requires_all_clients_to_be_close(
+    async def test_is_close_to_rate_limit_returns_true_when_any_client_is_close(
         self, run: IntegrationRun
     ) -> None:
         executor = StubGithubExecutor(
@@ -65,25 +65,20 @@ class TestAbstractGithubExecutorRateLimits:
             ]
         )
 
-        assert await executor.is_close_to_rate_limit(run) is False
-
-        executor = StubGithubExecutor(
-            [
-                make_client(MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW - 1, 30),
-                make_client(MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW, 10),
-            ]
-        )
-
-        assert await executor.is_close_to_rate_limit(run) is False
-
-        executor = StubGithubExecutor(
-            [
-                make_client(MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW - 1, 30),
-                make_client(MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW - 1, 10),
-            ]
-        )
-
         assert await executor.is_close_to_rate_limit(run) is True
+
+    @pytest.mark.asyncio
+    async def test_is_close_to_rate_limit_returns_false_when_no_client_is_close(
+        self, run: IntegrationRun
+    ) -> None:
+        executor = StubGithubExecutor(
+            [
+                make_client(MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW, 30),
+                make_client(100, 10),
+            ]
+        )
+
+        assert await executor.is_close_to_rate_limit(run) is False
 
     @pytest.mark.asyncio
     async def test_get_remaining_seconds_until_rate_limit_returns_max(

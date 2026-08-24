@@ -35,7 +35,7 @@ class AbstractGithubExecutor(AbstractExecutor):
         if not clients:
             return False
 
-        return all(self._is_client_close_to_rate_limit(client) for client in clients)
+        return any(self._is_client_close_to_rate_limit(client) for client in clients)
 
     async def get_remaining_seconds_until_rate_limit(
         self, run: IntegrationRun
