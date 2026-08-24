@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Literal, Optional, Self, Type
 from urllib.parse import urlparse
 
@@ -20,6 +21,7 @@ from pydantic_settings import (
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings, sensitive_field
 from port_ocean.config.dynamic import NoTrailingSlashUrl
+from port_ocean.identity_propagation.vault.base import DEFAULT_SECRET_PREFIX
 from port_ocean.core.event_listener import (
     EventListenerSettingsType,
     PollingEventListenerSettings,
@@ -59,6 +61,69 @@ class SslSettings(BaseOceanModel):
     third_party: SslClientSettings = Field(default_factory=SslClientSettings)
 
 
+class OAuthProviderSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
+    client_id: str = sensitive_field()
+    client_secret: str = sensitive_field()
+    scopes: str | None = None
+    authorize_url: str | None = None
+    token_url: str | None = None
+
+
+class GitHubOAuthSettings(OAuthProviderSettings):
+    pass
+
+
+class GitLabOAuthSettings(OAuthProviderSettings):
+    host: str | None = None
+
+
+class AzureDevOpsOAuthSettings(OAuthProviderSettings):
+    tenant_id: str
+
+
+class IdentityPropagationOAuthSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
+    github: GitHubOAuthSettings | None = None
+    gitlab: GitLabOAuthSettings | None = None
+    azure_devops: AzureDevOpsOAuthSettings | None = None
+    state_signing_secret: str | None = sensitive_field(default=None)
+
+
+class VaultType(str, Enum):
+    aws_secrets_manager = "aws_secrets_manager"
+    custom = "custom"
+
+
+class VaultSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
+    type: VaultType = VaultType.aws_secrets_manager
+    secret_prefix: str = DEFAULT_SECRET_PREFIX
+
+
+class AWSSecretsManagerVaultSettings(VaultSettings):
+    aws_region: str | None = None
+    # Local testing only (e.g. LocalStack). Left unset, boto3 falls through to its default
+    # credential chain (env vars, then ~/.aws profiles including SSO) and talks to real AWS.
+    endpoint_url: str | None = None
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+
+
+class IdentityPropagationSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
+    enabled: bool = False
+    mock_verification: bool = False
+    vault: VaultSettings = Field(default_factory=AWSSecretsManagerVaultSettings)
+    oauth: IdentityPropagationOAuthSettings = Field(
+        default_factory=IdentityPropagationOAuthSettings
+    )
+
+
 class ApplicationSettings(BaseSettings):
     log_level: LogLevelType = "INFO"
     enable_http_logging: bool = True
@@ -90,6 +155,10 @@ class PortSettings(BaseOceanModel):
     client_id: str = sensitive_field()
     client_secret: str = sensitive_field()
     base_url: NoTrailingSlashUrl = "https://api.getport.io"
+    # Explicit app (frontend) URL for post-OAuth redirects, matching the POC's PORT_RESUME_URL.
+    # Left unset, identity propagation falls back to guessing it from base_url (api. -> app.),
+    # which breaks if the app domain doesn't follow that exact convention.
+    app_url: NoTrailingSlashUrl | None = None
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     blueprint_cache_ttl_seconds: float = 120.0
@@ -413,11 +482,11 @@ class IntegrationConfiguration(BaseOceanSettings):
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
-    lakehouse_enabled: bool = True
+    lakehouse_enabled: bool = False
     disable_ip_outbound_blocker: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
-    processing_mode: ProcessingMode = ProcessingMode.dsp
+    processing_mode: ProcessingMode = ProcessingMode.ocean_core
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(
@@ -430,6 +499,9 @@ class IntegrationConfiguration(BaseOceanSettings):
     )
     live_events: LiveEventsSettingsType = Field(default_factory=RedisLiveEventsSettings)
     ssl: SslSettings = Field(default_factory=SslSettings)
+    identity_propagation: IdentityPropagationSettings = Field(
+        default_factory=IdentityPropagationSettings
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -489,7 +561,7 @@ class IntegrationConfiguration(BaseOceanSettings):
             if spec is None:
                 raise ValueError(
                     "Could not determine whether it's safe to run "
-                    "the integration due to not found spec.json or spec.yaml."
+                    "the integration due to not found spec.yaml."
                 )
 
             saas_config = spec.get("saas")
