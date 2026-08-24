@@ -4,6 +4,7 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
+from pydantic import Field
 from pydantic.v1 import BaseModel, validator
 from port_ocean.core.models import IntegrationRun
 
@@ -31,12 +32,37 @@ class _GithubExternalPropertyValue(BaseModel):
         return str(value)
 
 
+class ExternalPropertyGithubValue(_GithubExternalPropertyValue):
+    property_name: str
+
+
 class RepositoryGithubValue(_GithubExternalPropertyValue):
     repository_name: str
 
 
-class ExternalPropertyGithubValue(_GithubExternalPropertyValue):
-    property_name: str
+class RepositoryValuesInput(BaseModel):
+
+    class RepositoryValueInput(RepositoryGithubValue):
+        org: str | None = None
+
+    org: str | None = None
+    repository_values: list[RepositoryValueInput] = Field(min_items=1)
+
+    def group_by_org(self) -> dict[str, list[RepositoryGithubValue]]:
+        grouped: dict[str, list[RepositoryGithubValue]] = defaultdict(list)
+        for value in self.repository_values:
+            organization: str | None = value.org or self.org
+            if not organization:
+                raise InvalidActionParametersException(
+                    f"No org provided for repository {value.repository_name}"
+                )
+            grouped[organization].append(
+                RepositoryGithubValue(
+                    repository_name=value.repository_name,
+                    value=value.value,
+                )
+            )
+        return grouped
 
 
 def get_external_custom_properties_partition_key(run: IntegrationRun) -> str:
@@ -51,52 +77,6 @@ def external_property_values_endpoint(
         f"{base_url}/orgs/{org}/properties/installations/values/"
         f"{encoded_property_name}"
     )
-
-
-def group_repository_values_by_org(
-    repository_values: Any,
-    *,
-    default_org: str | None,
-) -> dict[str, list[dict[str, str | None]]]:
-    if repository_values is None or repository_values == []:
-        raise InvalidActionParametersException(
-            "repositoryValues is required and must not be empty"
-        )
-    if not isinstance(repository_values, list):
-        raise InvalidActionParametersException("repositoryValues must be an array")
-
-    grouped: dict[str, list[dict[str, str | None]]] = defaultdict(list)
-    for index, item in enumerate(repository_values):
-        if not isinstance(item, dict):
-            raise InvalidActionParametersException(
-                f"repositoryValues[{index}] must be an object"
-            )
-
-        organization = item.get("org") or default_org
-        if not organization:
-            raise InvalidActionParametersException(
-                f"repositoryValues[{index}].org is required when top level org "
-                "is not configured"
-            )
-
-        repository_name = item.get("repository_name")
-        if not repository_name:
-            raise InvalidActionParametersException(
-                f"repositoryValues[{index}].repository_name is required"
-            )
-        if "value" not in item:
-            raise InvalidActionParametersException(
-                f"repositoryValues[{index}].value is required"
-            )
-
-        grouped[str(organization)].append(
-            RepositoryGithubValue(
-                repository_name=str(repository_name),
-                value=item["value"],
-            ).dict()
-        )
-
-    return grouped
 
 
 def external_custom_properties_action_error_message(error: Exception) -> str:

@@ -7,6 +7,7 @@ from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.external_custom_properties.utils import (
     REPOSITORY_VALUES_BATCH_SIZE,
     BulkOperationOutcome,
+    RepositoryValuesInput,
     external_custom_properties_action_error_message,
     external_property_values_endpoint,
     get_external_custom_properties_partition_key,
@@ -31,16 +32,13 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
     async def _get_execution_clients(
         self, run: IntegrationRun
     ) -> list[AbstractGithubClient]:
-        default_org = run.execution_properties.get(
-            "org"
-        ) or ocean.integration_config.get("github_organization")
-        grouped_repository_values = group_repository_values_by_org(
-            run.execution_properties.get("repositoryValues"),
-            default_org=default_org,
+        input = RepositoryValuesInput(
+            org=run.execution_properties.get("org"),
+            repository_values=run.execution_properties.get("repositoryValues"),
         )
         return [
             await create_github_client_for_org(organization)
-            for organization in grouped_repository_values
+            for organization in input.group_by_org().keys()
         ]
 
     async def _patch_repository_batch(
@@ -75,14 +73,10 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
         if not property_name:
             raise InvalidActionParametersException("propertyName is required")
 
-        default_org = run.execution_properties.get(
-            "org"
-        ) or ocean.integration_config.get("github_organization")
-        grouped_repository_values = group_repository_values_by_org(
-            run.execution_properties.get("repositoryValues"),
-            default_org=default_org,
-        )
-
+        grouped_repository_values = RepositoryValuesInput(
+            org=run.execution_properties.get("org"),
+            repository_values=run.execution_properties.get("repositoryValues"),
+        ).group_by_org()
         patch_tasks: list[asyncio.Task[BulkOperationOutcome]] = []
 
         with logger.contextualize(property_name=property_name):
