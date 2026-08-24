@@ -10,7 +10,7 @@ from github.clients.auth.abstract_authenticator import (
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, ProbeContext
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -215,8 +215,9 @@ def _resync_per_authenticator(
 
 
 @ocean.on_probe()
-async def probe() -> None:
+async def probe(context: ProbeContext) -> ProbeContext:
     logger.info("Probing the GitHub connection")
+    return context
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)

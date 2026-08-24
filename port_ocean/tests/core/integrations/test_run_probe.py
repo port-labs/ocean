@@ -4,6 +4,7 @@ import pytest
 
 from port_ocean.context.event import EventType, event
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.ocean_types import ProbeContext, ProbeResult
 from port_ocean.exceptions.core import ModeNotSupportedException
 
 
@@ -11,16 +12,19 @@ from port_ocean.exceptions.core import ModeNotSupportedException
 async def test_run_probe_invokes_handler_in_probe_context() -> None:
     captured_event_type: str | None = None
 
-    async def handler() -> None:
+    async def handler() -> ProbeContext:
         nonlocal captured_event_type
         captured_event_type = event.event_type
+        return ProbeContext()
 
     integration = MagicMock(spec=BaseIntegration)
     integration.event_strategy = {"on_probe": handler}
 
-    await BaseIntegration.run_probe(integration)
+    result = await BaseIntegration.run_probe(integration)
 
     assert captured_event_type == EventType.ON_PROBE
+    assert isinstance(result, ProbeContext)
+    assert isinstance(result.result, ProbeResult)
 
 
 @pytest.mark.asyncio

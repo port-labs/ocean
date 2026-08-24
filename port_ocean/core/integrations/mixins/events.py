@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import wraps
 from typing import cast
 
 from loguru import logger
@@ -11,6 +12,7 @@ from port_ocean.core.ocean_types import (
     AFTER_RESYNC_EVENT_LISTENER,
     INCREMENTAL_EVENT_LISTENER,
     ON_PROBE_EVENT_LISTENER,
+    ProbeContext,
 )
 
 
@@ -36,11 +38,11 @@ class EventsMixin:
 
     @property
     def available_resync_kinds(self) -> list[str]:
-        return list(self.event_strategy["resync"].keys())
+        return cast(list[str], list(self.event_strategy["resync"].keys()))
 
     @property
     def available_incremental_kinds(self) -> list[str]:
-        return list(self.event_strategy["incremental"].keys())
+        return cast(list[str], list(self.event_strategy["incremental"].keys()))
 
     def on_start(self, function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
         """Register a function as a listener for the "start" event."""
@@ -93,7 +95,19 @@ class EventsMixin:
         return function
 
     def on_probe(self, function: ON_PROBE_EVENT_LISTENER) -> ON_PROBE_EVENT_LISTENER:
-        """Register a function that probes the integration's connection."""
+        """Register a function that probes the integration's connection.
+
+        The decorator injects a ``ProbeContext`` (with an empty ``ProbeResult``)
+        and always returns a ``ProbeContext``. If the handler returns one, that
+        value is used; otherwise the injected context is returned.
+        """
         logger.info("Registering connection probe listener")
-        self.event_strategy["on_probe"] = function
+
+        @wraps(function)
+        async def wrapped() -> ProbeContext:
+            context = ProbeContext()
+            returned = await function(context)
+            return returned or context
+
+        self.event_strategy["on_probe"] = wrapped
         return function

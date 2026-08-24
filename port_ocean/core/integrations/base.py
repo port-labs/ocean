@@ -11,6 +11,7 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
+from port_ocean.core.ocean_types import ProbeContext
 from port_ocean.exceptions.core import (
     IntegrationAlreadyStartedException,
     ModeNotSupportedException,
@@ -78,6 +79,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         self.started = True
 
         if self.event_strategy["start"]:
+
             async def run_on_start_tasks() -> None:
                 try:
                     async with event_context(
@@ -97,7 +99,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         event_listener = await self.event_listener_factory.create_event_listener()
         await event_listener.start()
 
-    async def run_probe(self) -> None:
+    async def run_probe(self) -> ProbeContext:
         """Invoke the registered ``on_probe`` listener."""
         listener = self.event_strategy["on_probe"]
         if listener is None:
@@ -109,4 +111,4 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             EventType.ON_PROBE,
             trigger_type="machine",
         ):
-            await listener()
+            return await listener()
