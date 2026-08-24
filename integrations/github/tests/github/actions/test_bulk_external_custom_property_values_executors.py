@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from pydantic.v1 import ValidationError
 
 from github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor import (
     BulkDeleteExternalCustomPropertyValuesExecutor,
@@ -120,7 +121,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
-            message="Updated external custom property 'lifecycle': 1/1 request(s) succeeded.",
+            message="Updated external custom property 'lifecycle': 2 repositories succeeded, 0 failed.",
         )
         mock_port_client.post_run_log.assert_not_awaited()
 
@@ -206,10 +207,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
             {"org": "port-labs", "propertyName": "lifecycle"},
         )
 
-        with pytest.raises(
-            InvalidActionParametersException,
-            match="repositoryValues is required and must not be empty",
-        ):
+        with pytest.raises(ValidationError):
             with patch(
                 "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
             ) as mock_ocean:
@@ -270,7 +268,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=False,
-            message="Updated external custom property 'tier': 1/2 request(s) succeeded.",
+            message="Updated external custom property 'tier': 1 repositories succeeded, 1 failed.",
         )
         mock_port_client.post_run_log.assert_awaited_once_with(
             run,
@@ -325,7 +323,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
-            message="Deleted external custom property 'lifecycle': 1/1 organization(s) succeeded.",
+            message="Deleted external custom property 'lifecycle': 1 organizations succeeded, 0 failed.",
         )
 
     @pytest.mark.asyncio
@@ -399,7 +397,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=False,
-            message="Deleted external custom property 'lifecycle': 1/2 organization(s) succeeded.",
+            message="Deleted external custom property 'lifecycle': 1 organizations succeeded, 1 failed.",
         )
         mock_port_client.post_run_log.assert_awaited_once_with(
             run, "Failed other-org: Not Found"

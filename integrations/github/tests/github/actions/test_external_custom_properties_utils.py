@@ -1,13 +1,14 @@
 import pytest
+from pydantic.v1 import ValidationError
 
-from github.actions.external_custom_properties.utils import group_repository_values_by_org
+from github.actions.external_custom_properties.utils import RepositoryValuesInput
 from github.helpers.exceptions import InvalidActionParametersException
 
 
-class TestGroupRepositoryValuesByOrg:
+class TestRepositoryValuesInput:
     def test_groups_by_explicit_org(self) -> None:
-        grouped = group_repository_values_by_org(
-            [
+        grouped = RepositoryValuesInput(
+            repository_values=[
                 {
                     "org": "port-labs",
                     "repository_name": "ocean",
@@ -18,51 +19,65 @@ class TestGroupRepositoryValuesByOrg:
                     "repository_name": "api",
                     "value": "production",
                 },
-            ],
-            default_org=None,
-        )
+            ]
+        ).group_by_org()
 
-        assert grouped == {
+        assert {
+            organization: [value.dict() for value in values]
+            for organization, values in grouped.items()
+        } == {
             "port-labs": [{"repository_name": "ocean", "value": "Deprecated"}],
             "other-org": [{"repository_name": "api", "value": "production"}],
         }
 
     def test_uses_default_org(self) -> None:
-        grouped = group_repository_values_by_org(
-            [{"repository_name": "ocean", "value": None}],
-            default_org="port-labs",
-        )
+        grouped = RepositoryValuesInput(
+            org="port-labs",
+            repository_values=[{"repository_name": "ocean", "value": None}],
+        ).group_by_org()
 
-        assert grouped == {
+        assert {
+            organization: [value.dict() for value in values]
+            for organization, values in grouped.items()
+        } == {
             "port-labs": [{"repository_name": "ocean", "value": None}],
         }
 
-    def test_missing_repository_name_fails(self) -> None:
+    def test_missing_org_fails(self) -> None:
         with pytest.raises(
             InvalidActionParametersException,
-            match="repositoryValues\\[0\\]\\.repository_name is required",
+            match="No org provided for repository ocean",
         ):
-            group_repository_values_by_org(
-                [{"org": "port-labs", "value": "x"}],
-                default_org=None,
-            )
+            RepositoryValuesInput(
+                repository_values=[{"repository_name": "ocean", "value": "x"}]
+            ).group_by_org()
 
     def test_preserves_falsy_non_empty_values(self) -> None:
-        grouped = group_repository_values_by_org(
-            [{"repository_name": "ocean", "value": 0}],
-            default_org="port-labs",
-        )
+        grouped = RepositoryValuesInput(
+            org="port-labs",
+            repository_values=[{"repository_name": "ocean", "value": 0}],
+        ).group_by_org()
 
-        assert grouped == {
+        assert {
+            organization: [value.dict() for value in values]
+            for organization, values in grouped.items()
+        } == {
             "port-labs": [{"repository_name": "ocean", "value": "0"}],
         }
 
     def test_empty_string_value_becomes_none(self) -> None:
-        grouped = group_repository_values_by_org(
-            [{"repository_name": "ocean", "value": ""}],
-            default_org="port-labs",
-        )
+        grouped = RepositoryValuesInput(
+            org="port-labs",
+            repository_values=[{"repository_name": "ocean", "value": ""}],
+        ).group_by_org()
 
-        assert grouped == {
+        assert {
+            organization: [value.dict() for value in values]
+            for organization, values in grouped.items()
+        } == {
             "port-labs": [{"repository_name": "ocean", "value": None}],
         }
+
+    def test_empty_repository_values_fails(self) -> None:
+        with pytest.raises(ValidationError):
+            RepositoryValuesInput(repository_values=[])

@@ -4,20 +4,21 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from pydantic import Field
-from pydantic.v1 import BaseModel, validator
+from pydantic.v1 import BaseModel, Field, validator
 from port_ocean.core.models import IntegrationRun
 
 from github.clients.rate_limiter.utils import is_rest_rate_limit_response
 from github.helpers.exceptions import InvalidActionParametersException
 
 REPOSITORY_VALUES_BATCH_SIZE = 100
+MAX_CONCURRENT_BULK_REQUESTS = 5
 
 
 @dataclass(frozen=True)
 class BulkOperationOutcome:
     target: str
     success: bool
+    item_count: int = 1
     error_message: str | None = None
 
 
@@ -46,7 +47,15 @@ class RepositoryValuesInput(BaseModel):
         org: str | None = None
 
     org: str | None = None
-    repository_values: list[RepositoryValueInput] = Field(min_items=1)
+    repository_values: list[RepositoryValueInput] = Field(..., min_items=1)
+
+    @validator("repository_values")
+    def repository_values_must_not_be_empty(
+        cls, values: list[RepositoryValueInput]
+    ) -> list[RepositoryValueInput]:
+        if not values:
+            raise ValueError("is required and must not be empty")
+        return values
 
     def group_by_org(self) -> dict[str, list[RepositoryGithubValue]]:
         grouped: dict[str, list[RepositoryGithubValue]] = defaultdict(list)

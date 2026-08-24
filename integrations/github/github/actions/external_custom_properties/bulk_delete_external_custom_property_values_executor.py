@@ -1,9 +1,8 @@
-import asyncio
-
 from loguru import logger
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.external_custom_properties.utils import (
+    MAX_CONCURRENT_BULK_REQUESTS,
     BulkOperationOutcome,
     external_custom_properties_action_error_message,
     external_property_values_endpoint,
@@ -14,6 +13,7 @@ from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
+from port_ocean.utils.async_iterators import throttle_batch_operation
 
 
 class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
@@ -70,14 +70,16 @@ class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
 
         with logger.contextualize(property_name=property_name):
             logger.info("Processing bulk external custom property delete")
-            outcomes = list(
-                await asyncio.gather(
-                    *(
-                        self._delete_for_organization(organization, str(property_name))
-                        for organization in organizations
+            outcomes = await throttle_batch_operation(
+                [
+                    lambda organization=organization: self._delete_for_organization(
+                        organization, str(property_name)
                     )
-                )
+                    for organization in organizations
+                ],
+                MAX_CONCURRENT_BULK_REQUESTS,
             )
+
             failures = [outcome for outcome in outcomes if not outcome.success]
             for failure in failures:
                 logger.error(
@@ -94,6 +96,7 @@ class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
                 success=not failures,
                 message=(
                     f"Deleted external custom property '{property_name}': "
-                    f"{len(outcomes) - len(failures)}/{len(outcomes)} organization(s) succeeded."
+                    f"{len(outcomes) - len(failures)} organizations succeeded, "
+                    f"{len(failures)} failed."
                 ),
             )
