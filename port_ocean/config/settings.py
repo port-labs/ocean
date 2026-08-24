@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Literal, Optional, Type
 from urllib.parse import urlparse
 
@@ -9,6 +10,7 @@ from pydantic.v1.class_validators import root_validator, validator
 from pydantic.v1.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
 from pydantic.v1.main import BaseModel
 
+from port_ocean.identity_propagation.vault.base import DEFAULT_SECRET_PREFIX
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import (
     EventListenerSettingsType,
@@ -49,6 +51,63 @@ class SslSettings(BaseOceanModel):
     third_party: SslClientSettings = Field(default_factory=SslClientSettings)
 
 
+class OAuthProviderSettings(BaseOceanModel, extra=Extra.allow):
+    client_id: str = Field(..., sensitive=True)
+    client_secret: str = Field(..., sensitive=True)
+    scopes: str | None = None
+    authorize_url: str | None = None
+    token_url: str | None = None
+
+
+class GitHubOAuthSettings(OAuthProviderSettings):
+    pass
+
+
+class GitLabOAuthSettings(OAuthProviderSettings):
+    host: str | None = None
+
+
+class AzureDevOpsOAuthSettings(OAuthProviderSettings):
+    tenant_id: str
+
+
+class IdentityPropagationOAuthSettings(BaseOceanModel, extra=Extra.allow):
+    github: GitHubOAuthSettings | None = None
+    gitlab: GitLabOAuthSettings | None = None
+    azure_devops: AzureDevOpsOAuthSettings | None = None
+    state_signing_secret: str | None = Field(default=None, sensitive=True)
+
+
+class VaultType(str, Enum):
+    aws_secrets_manager = "aws_secrets_manager"
+    custom = "custom"
+
+
+class VaultSettings(BaseOceanModel, extra=Extra.allow):
+    type: VaultType = VaultType.aws_secrets_manager
+    secret_prefix: str = DEFAULT_SECRET_PREFIX
+
+
+class AWSSecretsManagerVaultSettings(VaultSettings):
+    aws_region: str | None = None
+    # Local testing only (e.g. LocalStack). Left unset, boto3 falls through to its default
+    # credential chain (env vars, then ~/.aws profiles including SSO) and talks to real AWS.
+    endpoint_url: str | None = None
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+
+
+class IdentityPropagationSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = False
+    mock_verification: bool = False
+    vault: VaultSettings = Field(
+        default_factory=AWSSecretsManagerVaultSettings
+    )
+    oauth: IdentityPropagationOAuthSettings = Field(
+        default_factory=IdentityPropagationOAuthSettings
+    )
+
+
 class ApplicationSettings(BaseSettings):
     log_level: LogLevelType = "INFO"
     enable_http_logging: bool = True
@@ -74,6 +133,10 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_id: str = Field(..., sensitive=True)
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
+    # Explicit app (frontend) URL for post-OAuth redirects, matching the POC's PORT_RESUME_URL.
+    # Left unset, identity propagation falls back to guessing it from base_url (api. -> app.),
+    # which breaks if the app domain doesn't follow that exact convention.
+    app_url: AnyHttpUrl | None = None
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     blueprint_cache_ttl_seconds: float = 120.0
@@ -196,111 +259,53 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
     stream_ttl_seconds: int | None = Field(
-        default=2_592_000,  # 30 days
+        default=3600,
         ge=1,
         description=(
-            "TTL in seconds for the Redis stream. Set when the consumer creates "
-            "the stream via MKSTREAM. Set to null to disable stream expiry."
+            "TTL in seconds for the Redis stream when the consumer creates it "
+            "via MKSTREAM. Set to null to disable stream expiry."
         ),
     )
-    # Redis stream maintenance worker settings
-    stream_maintenance_worker_enabled: bool = Field(
+    # PEL requeue worker settings
+    pel_requeue_worker_enabled: bool = Field(
         default=True,
         description=(
             "When true, starts a background worker that reclaims stuck PEL "
-            "entries, re-enqueues them for reprocessing, and removes idle "
-            "consumers from the group."
+            "entries and re-enqueues them for reprocessing."
         ),
     )
     pel_stuck_timeout_seconds: int = Field(
         default=600,
         ge=1,
-        description=(
-            "Seconds a PEL entry must be idle before the maintenance worker "
-            "reclaims it."
-        ),
+        description="Seconds a PEL entry must be idle before the requeue worker reclaims it.",
     )
     pel_max_requeue_count: int = Field(
         default=3,
         ge=1,
         description="Maximum number of times a message is requeued before being discarded.",
     )
-    stream_maintenance_scan_interval_seconds: float = Field(
+    pel_scan_interval_seconds: float = Field(
         default=30.0,
         gt=0,
-        description=(
-            "Seconds between successive maintenance worker scans of the "
-            "consumer group."
-        ),
+        description="Seconds between successive PEL scans by the requeue worker.",
     )
     pel_xautoclaim_count: int = Field(
         default=100,
         ge=1,
         description="Maximum number of PEL entries to claim per XAUTOCLAIM call.",
     )
-    stream_maintenance_error_backoff_seconds: float = Field(
+    pel_lifecycle_error_backoff_seconds: float = Field(
         default=5.0,
         gt=0,
         description=(
-            "Seconds to wait before retrying the stream maintenance worker loop "
+            "Seconds to wait before retrying the PEL worker lifecycle loop "
             "after an unexpected error."
-        ),
-    )
-    stream_maintenance_consumer_cleanup_enabled: bool = Field(
-        default=True,
-        description=(
-            "When true, the stream maintenance worker periodically removes idle "
-            "consumers from the group that have no pending messages."
-        ),
-    )
-    stream_maintenance_consumer_cleanup_idle_seconds: int = Field(
-        default=86_400,  # 24 hours
-        ge=1,
-        description=(
-            "Seconds a consumer must be idle before the maintenance worker "
-            "removes it from the consumer group."
-        ),
-    )
-    connection_error_backoff_seconds: float = Field(
-        default=5.0,
-        gt=0,
-        description=(
-            "Seconds to wait before retrying the Redis stream read loop "
-            "after a connection error."
-        ),
-    )
-    connection_startup_max_retries: int = Field(
-        default=5,
-        ge=0,
-        description=(
-            "Maximum number of connection retries when establishing the "
-            "initial Redis client at startup."
-        ),
-    )
-    connection_startup_initial_backoff_seconds: float = Field(
-        default=1.0,
-        gt=0,
-        description=(
-            "Initial delay in seconds before the first Redis startup "
-            "connection retry."
-        ),
-    )
-    connection_startup_exponential_base: float = Field(
-        default=2.0,
-        gt=0,
-        description=(
-            "Exponential base used to calculate Redis startup connection "
-            "retry delays."
         ),
     )
 
     @property
     def stuck_timeout_ms(self) -> int:
         return self.pel_stuck_timeout_seconds * 1000
-
-    @property
-    def consumer_cleanup_idle_ms(self) -> int:
-        return self.stream_maintenance_consumer_cleanup_idle_seconds * 1000
 
     @root_validator
     def validate_tls_settings(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -389,11 +394,11 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
-    lakehouse_enabled: bool = True
+    lakehouse_enabled: bool = False
     disable_ip_outbound_blocker: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
-    processing_mode: ProcessingMode = ProcessingMode.dsp
+    processing_mode: ProcessingMode = ProcessingMode.ocean_core
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(
@@ -408,6 +413,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default_factory=lambda: RedisLiveEventsSettings()
     )
     ssl: SslSettings = Field(default_factory=SslSettings)
+    identity_propagation: IdentityPropagationSettings = Field(
+        default_factory=IdentityPropagationSettings
+    )
 
     @root_validator(pre=True)
     def warn_removed_process_execution_mode_env(
@@ -473,7 +481,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             if spec is None:
                 raise ValueError(
                     "Could not determine whether it's safe to run "
-                    "the integration due to not found spec.json or spec.yaml."
+                    "the integration due to not found spec.yaml."
                 )
 
             saas_config = spec.get("saas")
