@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.49.0 (2026-08-24)
+
+
+### Improvements
+
+- Migrate Ocean core settings models from Pydantic v1 to v2, keeping integration config as a JSON-mode dict of primitives.
+
+
 ## 0.48.13 (2026-08-24)
 
 

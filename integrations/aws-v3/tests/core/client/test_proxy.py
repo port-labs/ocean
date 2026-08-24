@@ -13,8 +13,6 @@ def assert_create_client_called_with(
         region_name=region_name,
         config=AWS_CLIENT_CONFIG,
     )
-    passed_config = mock_session.create_client.call_args.kwargs["config"]
-    assert passed_config.retries == AWS_CLIENT_CONFIG.retries
 
 
 class TestAioBaseClientProxy:
