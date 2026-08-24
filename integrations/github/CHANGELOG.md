@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.9.0 (2026-08-23)
+
+
+### Features
+
+- Added a `package` kind that ingests GitHub Container Registry (GHCR) packages.
+
+
+## 6.8.2 (2026-08-23)
+
+
+### Improvements
+
+- Log an error when GitHub webhook signature verification fails
+
+
+## 6.8.1 (2026-08-19)
+
+
+### Bug Fixes
+
+- Allow empty files in GraphQL resync to align with REST/webhook paths
+
+
+## 6.8.0 (2026-08-19)
+
+
+### Features
+
+- Added the git blob SHA (`blob_sha`) of each `SKILL.md` file to the `skill` kind's raw payload, enabling content-addressed duplicate/change detection without diffing full file text.
+
+
+## 6.7.29 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 6.7.28 (2026-08-18)
+
+
+### Bug Fixes
+
+- Fix stale repository data on live events by bypassing cached repository metadata when processing repository webhooks.
+
+
 ## 6.7.27 (2026-08-17)
 
 

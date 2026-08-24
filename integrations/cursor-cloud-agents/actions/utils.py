@@ -2,16 +2,11 @@ from typing import Any
 
 from port_ocean.context.ocean import ocean
 
-WEBHOOK_PATH = "/webhook/{run_id}"
-"""Templated so each `create_agent`/`trigger_agent` run gets its own callback
-URL, with the Port run id embedded directly in the path - see
-`core.webhook_signing`."""
+WEBHOOK_PATH = "/webhook"
 
 
-def build_webhook_url(run_id: str) -> str | None:
-    """Build the public URL Cursor should call back with agent status updates,
-    with `run_id` embedded in the path (see `WEBHOOK_PATH` and
-    `core.webhook_signing`).
+def build_webhook_url() -> str | None:
+    """Build the public URL Cursor should call back with agent status updates.
 
     `None` when Ocean's public base URL isn't configured (`OCEAN__BASE_URL`),
     in which case callers fall back to the fire-and-forget path - a webhook
@@ -20,8 +15,7 @@ def build_webhook_url(run_id: str) -> str | None:
     base_url = ocean.app.base_url
     if not base_url:
         return None
-    path = WEBHOOK_PATH.format(run_id=run_id)
-    return f"{base_url.rstrip('/')}/integration{path}"
+    return f"{base_url.rstrip('/')}/integration{WEBHOOK_PATH}"
 
 
 def build_webhook_config(url: str, secret: str | None = None) -> dict[str, str]:
