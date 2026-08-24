@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.49.1 (2026-08-24)
+
+
+### Improvements
+
+- Added `throttle_batch_operation` util for running multiple async callables with bounded concurrency.
+
+
 ## 0.49.0 (2026-08-24)
 
 
