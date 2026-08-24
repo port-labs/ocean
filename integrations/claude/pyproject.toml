@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "claude"
-version = "0.2.51"
+version = "0.2.52"
 description = "Claude ocean integration"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
