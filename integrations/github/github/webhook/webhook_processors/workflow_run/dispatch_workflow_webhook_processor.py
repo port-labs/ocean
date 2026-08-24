@@ -59,15 +59,23 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 logger.debug("Skipping workflow run event as it's not completed yet")
                 return False
 
-            integration_actor = await get_auth_provider().get_integration_actor()
-            if workflow_run_actor == integration_actor:
-                return True
+            if not await self._was_dispatched_by_integration(workflow_run, workflow_run_actor):
+                logger.debug(
+                    "Skipping workflow run event as it was not triggered by this integration",
+                )
+                return False
+            return True
 
-            logger.debug(
-                "Skipping workflow run event as it was not triggered by this integration",
-                integration_actor=integration_actor,
-            )
-            return False
+    async def _was_dispatched_by_integration(
+        self, workflow_run: dict, workflow_run_actor: str | None
+    ) -> bool:
+        integration_actor = await get_auth_provider().get_integration_actor()
+        if workflow_run_actor == integration_actor:
+            return True
+        # Identity runs: check if we registered this run in Port.
+        external_id = build_external_id(workflow_run)
+        port_run = await ocean.port_client.find_run_by_external_id(external_id)
+        return port_run is not None
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

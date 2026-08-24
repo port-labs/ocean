@@ -23,11 +23,16 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
     DispatchWorkflowWebhookProcessor,
 )
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
 from github.clients.client_factory import (
     create_github_client_for_org,
 )
 from github.clients.http.rest_client import GithubRestClient
+from github.clients.utils import integration_config
 from port_ocean.context.ocean import ocean
+from port_ocean.identity_propagation.token_exchanger import resolve_user_token
 
 from port_ocean.core.models import IntegrationRun
 from github.actions.abstract_github_executor import (
@@ -129,6 +134,12 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
             raise InvalidActionParametersException("org is required")
+
+        user_token = await resolve_user_token(run)
+        if user_token:
+            return GithubRestClient(
+                **integration_config(PersonalTokenAuthenticator(user_token))
+            )
         return await create_github_client_for_org(organization)
 
     async def _get_default_ref(
@@ -175,9 +186,15 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         workflow: str,
         ref: str,
         iso_date: str,
+        user_token: str | None = None,
     ) -> dict[str, Any]:
         workflow_runs: list[dict[str, Any]] = []
-        actor = await get_auth_provider().get_integration_actor()
+        if user_token:
+            actor = await PersonalTokenAuthenticator(
+                user_token
+            ).get_authenticated_actor()
+        else:
+            actor = await get_auth_provider().get_integration_actor()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
             response = await rest_client.send_api_request(
@@ -283,11 +300,18 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         try:
             if self._use_legacy_dispatch_workflow_tracking():
                 iso_date = datetime.now(timezone.utc).isoformat()
+                user_token = await resolve_user_token(run)
                 await self._dispatch_workflow_legacy(
                     rest_client, organization, repo, workflow, ref, inputs
                 )
                 workflow_run = await self._get_workflow_run(
-                    rest_client, organization, repo, workflow, ref, iso_date
+                    rest_client,
+                    organization,
+                    repo,
+                    workflow,
+                    ref,
+                    iso_date,
+                    user_token=user_token,
                 )
                 workflow_run_id = workflow_run["id"]
             else:
