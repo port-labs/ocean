@@ -56,6 +56,13 @@ class ObjectKind(StrEnum):
     COLLABORATOR = "collaborator"
     SKILL = "skill"
     PLUGIN = "plugin"
+    PACKAGE = "package"
+
+
+class PackageType(StrEnum):
+    """GitHub Packages REST `package_type` values we ingest."""
+
+    CONTAINER = "container"
 
 
 def enrich_with_organization(
