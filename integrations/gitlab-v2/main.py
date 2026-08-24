@@ -5,6 +5,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from gitlab.actions.registry import register_actions_executors
+from gitlab.oauth.registry import register_oauth_provider
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -660,3 +661,6 @@ ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
 
 register_actions_executors()
+
+# Register identity-propagation OAuth provider (no-op if not configured)
+register_oauth_provider()
