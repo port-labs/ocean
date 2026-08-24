@@ -42,6 +42,7 @@ def run(
 
 
 def run_probe(
+    probe_id: str | None = None,
     path: str = ".",
     log_level: LogLevelType = "INFO",
 ) -> None:
@@ -54,4 +55,4 @@ def run_probe(
     )
 
     app = load_ocean_app(path)
-    asyncio.run(app.integration.run_probe())
+    asyncio.run(app.integration.run_probe(probe_id))

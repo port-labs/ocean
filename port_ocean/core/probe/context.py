@@ -1,17 +1,30 @@
+from loguru import logger
+
 from port_ocean.core.probe.result import ProbeResult
 
 
 class ProbeContext:
     result: ProbeResult
+    probe_id: str | None
 
-    def __init__(self) -> None:
+    def __init__(self, probe_id: str | None = None) -> None:
+        self.probe_id = probe_id
         self.result = ProbeResult()
 
-    def send_update(self):
-        pass
+    def update_progress(self) -> None:
+        if self.probe_id is None:
+            logger.debug("Local probe: skipping progress update")
+            return
+        logger.debug(f"Reporting probe progress to Port for probe {self.probe_id}")
 
-    def send_final_result(self):
-        pass
+    def finalize(self) -> None:
+        if self.probe_id is None:
+            logger.debug("Local probe: skipping final result report")
+            return
+        logger.debug(f"Reporting final probe result to Port for probe {self.probe_id}")
 
-    def on_fatal_error(self):
-        pass
+    def fail(self) -> None:
+        if self.probe_id is None:
+            logger.debug("Local probe: skipping fatal error report")
+            return
+        logger.debug(f"Reporting fatal probe error to Port for probe {self.probe_id}")

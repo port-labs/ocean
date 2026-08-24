@@ -4,6 +4,7 @@ import pytest
 
 from port_ocean.context.event import EventType, event
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.ocean_types import IntegrationEventsCallbacks
 from port_ocean.core.probe import ProbeContext, ProbeResult
 from port_ocean.exceptions.core import ModeNotSupportedException
 
@@ -13,10 +14,10 @@ async def test_run_probe_invokes_handler_in_probe_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured_event_type: str | None = None
-    send_final_result = MagicMock()
-    on_fatal_error = MagicMock()
-    monkeypatch.setattr(ProbeContext, "send_final_result", send_final_result)
-    monkeypatch.setattr(ProbeContext, "on_fatal_error", on_fatal_error)
+    finalize = MagicMock()
+    fail = MagicMock()
+    monkeypatch.setattr(ProbeContext, "finalize", finalize)
+    monkeypatch.setattr(ProbeContext, "fail", fail)
 
     async def handler(context: ProbeContext) -> ProbeContext:
         nonlocal captured_event_type
@@ -24,15 +25,35 @@ async def test_run_probe_invokes_handler_in_probe_context(
         return context
 
     integration = MagicMock(spec=BaseIntegration)
-    integration.event_strategy = {"on_probe": handler}
+    integration.event_strategy = IntegrationEventsCallbacks(on_probe=handler)
 
-    result = await BaseIntegration.run_probe(integration)
+    result = await BaseIntegration.run_probe(integration, "probe-id")
 
     assert captured_event_type == EventType.ON_PROBE
     assert isinstance(result, ProbeContext)
+    assert result.probe_id == "probe-id"
     assert isinstance(result.result, ProbeResult)
-    send_final_result.assert_called_once()
-    on_fatal_error.assert_not_called()
+    finalize.assert_called_once()
+    fail.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_probe_allows_a_local_run_without_probe_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    finalize = MagicMock()
+    monkeypatch.setattr(ProbeContext, "finalize", finalize)
+
+    async def handler(context: ProbeContext) -> ProbeContext:
+        return context
+
+    integration = MagicMock(spec=BaseIntegration)
+    integration.event_strategy = IntegrationEventsCallbacks(on_probe=handler)
+
+    result = await BaseIntegration.run_probe(integration)
+
+    assert result.probe_id is None
+    finalize.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -40,12 +61,12 @@ async def test_run_probe_requires_registered_handler(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    on_fatal_error = MagicMock()
-    send_final_result = MagicMock()
-    monkeypatch.setattr(ProbeContext, "on_fatal_error", on_fatal_error)
-    monkeypatch.setattr(ProbeContext, "send_final_result", send_final_result)
+    fail = MagicMock()
+    finalize = MagicMock()
+    monkeypatch.setattr(ProbeContext, "fail", fail)
+    monkeypatch.setattr(ProbeContext, "finalize", finalize)
     integration = MagicMock()
-    integration.event_strategy = {"on_probe": None}
+    integration.event_strategy = IntegrationEventsCallbacks(on_probe=None)
     integration.context.config.integration.type = "github"
 
     # Act / Assert
@@ -53,26 +74,26 @@ async def test_run_probe_requires_registered_handler(
         ModeNotSupportedException,
         match="github does not support probe mode",
     ):
-        await BaseIntegration.run_probe(integration)
+        await BaseIntegration.run_probe(integration, "probe-id")
 
-    on_fatal_error.assert_called_once()
-    send_final_result.assert_not_called()
+    fail.assert_called_once()
+    finalize.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_run_probe_propagates_handler_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    on_fatal_error = MagicMock()
-    send_final_result = MagicMock()
-    monkeypatch.setattr(ProbeContext, "on_fatal_error", on_fatal_error)
-    monkeypatch.setattr(ProbeContext, "send_final_result", send_final_result)
+    fail = MagicMock()
+    finalize = MagicMock()
+    monkeypatch.setattr(ProbeContext, "fail", fail)
+    monkeypatch.setattr(ProbeContext, "finalize", finalize)
     handler = AsyncMock(side_effect=RuntimeError("unreachable"))
     integration = MagicMock(spec=BaseIntegration)
-    integration.event_strategy = {"on_probe": handler}
+    integration.event_strategy = IntegrationEventsCallbacks(on_probe=handler)
 
     with pytest.raises(RuntimeError, match="unreachable"):
-        await BaseIntegration.run_probe(integration)
+        await BaseIntegration.run_probe(integration, "probe-id")
 
-    on_fatal_error.assert_called_once()
-    send_final_result.assert_not_called()
+    fail.assert_called_once()
+    finalize.assert_not_called()

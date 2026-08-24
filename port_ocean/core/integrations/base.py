@@ -79,6 +79,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         self.started = True
 
         if self.event_strategy.start:
+
             async def run_on_start_tasks() -> None:
                 try:
                     async with event_context(
@@ -98,12 +99,12 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         event_listener = await self.event_listener_factory.create_event_listener()
         await event_listener.start()
 
-    async def run_probe(self) -> ProbeContext:
+    async def run_probe(self, probe_id: str | None = None) -> ProbeContext:
         """Invoke the registered ``on_probe`` listener."""
-        context = ProbeContext()
+        context = ProbeContext(probe_id)
         listener = self.event_strategy.on_probe
         if listener is None:
-            context.on_fatal_error()
+            context.fail()
             raise ModeNotSupportedException(
                 self.context.config.integration.type, "probe"
             )
@@ -115,9 +116,9 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             try:
                 returned = await listener(context)
             except Exception:
-                context.on_fatal_error()
+                context.fail()
                 raise
 
             final_context = returned or context
-            final_context.send_final_result()
+            final_context.finalize()
             return final_context

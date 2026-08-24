@@ -9,18 +9,50 @@ from port_ocean.cli.commands.main import cli_start
 probe_module = import_module("port_ocean.cli.commands.probe")
 
 
-def test_probe_command_runs_registered_probe(monkeypatch: MonkeyPatch) -> None:
+def test_probe_command_passes_probe_id_through(monkeypatch: MonkeyPatch) -> None:
     # Arrange
     run_probe = MagicMock()
     monkeypatch.setattr(probe_module, "run_probe", run_probe)
+
+    # Act
+    result = CliRunner().invoke(cli_start, ["probe", ".", "--probe-id", "abc-123"])
+
+    # Assert
+    assert result.exit_code == 0
+    assert "Probe succeeded" in result.output
+    run_probe.assert_called_once_with("abc-123", ".", "INFO")
+
+
+def test_probe_command_reads_probe_id_from_environment(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    # Arrange
+    run_probe = MagicMock()
+    monkeypatch.setattr(probe_module, "run_probe", run_probe)
+    monkeypatch.setenv("OCEAN__PROBE_ID", "from-env")
 
     # Act
     result = CliRunner().invoke(cli_start, ["probe", "."])
 
     # Assert
     assert result.exit_code == 0
-    assert "Probe succeeded" in result.output
-    run_probe.assert_called_once_with(".", "INFO")
+    run_probe.assert_called_once_with("from-env", ".", "INFO")
+
+
+def test_probe_command_runs_locally_without_a_probe_id(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    # Arrange
+    run_probe = MagicMock()
+    monkeypatch.setattr(probe_module, "run_probe", run_probe)
+    monkeypatch.delenv("OCEAN__PROBE_ID", raising=False)
+
+    # Act
+    result = CliRunner().invoke(cli_start, ["probe", "."])
+
+    # Assert
+    assert result.exit_code == 0
+    run_probe.assert_called_once_with(None, ".", "INFO")
 
 
 def test_probe_command_returns_nonzero_when_probe_fails(
@@ -31,7 +63,7 @@ def test_probe_command_returns_nonzero_when_probe_fails(
     monkeypatch.setattr(probe_module, "run_probe", run_probe)
 
     # Act
-    result = CliRunner().invoke(cli_start, ["probe", "."])
+    result = CliRunner().invoke(cli_start, ["probe", ".", "--probe-id", "abc-123"])
 
     # Assert
     assert result.exit_code == 1
