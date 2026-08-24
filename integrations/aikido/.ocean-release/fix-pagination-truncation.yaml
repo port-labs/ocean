@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed pagination stopping early on empty pages when the Aikido API reported more results via X-Has-Next-Page, which could cause entities to be deleted during resync
