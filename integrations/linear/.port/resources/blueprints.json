@@ -126,5 +126,99 @@
         "many": true
       }
     }
+  },
+  {
+    "identifier": "linearDocument",
+    "title": "Linear Document",
+    "icon": "Linear",
+    "description": "A Linear document such as a spec or PRD",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Document URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the document in Linear"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string",
+          "description": "A short summary of the document"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string",
+          "format": "markdown",
+          "description": "The document body in markdown"
+        },
+        "slugId": {
+          "title": "Slug ID",
+          "type": "string",
+          "description": "The unique URL slug of the document"
+        },
+        "parentType": {
+          "title": "Parent Type",
+          "type": "string",
+          "description": "The Linear entity type this document is attached to",
+          "enum": ["project", "issue", "team", "initiative", "cycle", "release"]
+        },
+        "project": {
+          "title": "Project",
+          "type": "string",
+          "description": "The Linear project this document belongs to"
+        },
+        "initiative": {
+          "title": "Initiative",
+          "type": "string",
+          "description": "The Linear initiative this document belongs to"
+        },
+        "cycle": {
+          "title": "Cycle",
+          "type": "number",
+          "description": "The Linear cycle number this document belongs to"
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "string",
+          "format": "user",
+          "description": "The user that created the document"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string",
+          "format": "user",
+          "description": "The user that owns the document"
+        },
+        "created": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time",
+          "description": "The created datetime of the document"
+        },
+        "updated": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time",
+          "description": "The updated datetime of the document"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "team": {
+        "target": "linearTeam",
+        "title": "Team",
+        "description": "The Linear team this document belongs to",
+        "required": false,
+        "many": false
+      },
+      "issue": {
+        "target": "linearIssue",
+        "title": "Issue",
+        "description": "The Linear issue this document belongs to",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
