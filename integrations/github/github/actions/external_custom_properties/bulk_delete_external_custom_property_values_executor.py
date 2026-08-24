@@ -9,11 +9,11 @@ from github.actions.external_custom_properties.utils import (
     external_custom_properties_action_error_message,
     external_property_values_endpoint,
     get_external_custom_properties_partition_key,
+    report_bulk_operation_results,
 )
 from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
-from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 from port_ocean.utils.async_iterators import throttle_batch_operation
 
@@ -83,24 +83,13 @@ class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
                 ],
                 MAX_CONCURRENT_BULK_REQUESTS,
             )
-
-            failures = [outcome for outcome in outcomes if not outcome.success]
-            for failure in failures:
-                logger.error(
-                    "Bulk external custom property delete failed",
-                    target=failure.target,
-                    error=failure.error_message,
-                )
-                await ocean.port_client.post_run_log(
-                    run, f"Failed {failure.target}: {failure.error_message}"
-                )
-
-            await ocean.port_client.report_run_completed(
+            await report_bulk_operation_results(
                 run,
-                success=not failures,
-                message=(
+                outcomes,
+                failure_log_event="Bulk external custom property delete failed",
+                completion_message=lambda summary: (
                     f"Deleted external custom property '{property_name}': "
-                    f"{len(outcomes) - len(failures)} organizations succeeded, "
-                    f"{len(failures)} failed."
+                    f"{summary.succeeded_item_count} organizations succeeded, "
+                    f"{summary.failed_item_count} failed."
                 ),
             )

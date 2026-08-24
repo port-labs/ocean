@@ -98,7 +98,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         )
 
         with patch(
-            "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
+            "github.actions.external_custom_properties.utils.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.integration_config = {}
@@ -146,7 +146,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         )
 
         with patch(
-            "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
+            "github.actions.external_custom_properties.utils.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.integration_config = {}
@@ -181,7 +181,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         )
 
         with patch(
-            "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
+            "github.actions.external_custom_properties.utils.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.integration_config = {}
@@ -209,7 +209,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
 
         with pytest.raises(ValidationError):
             with patch(
-                "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
+                "github.actions.external_custom_properties.utils.ocean"
             ) as mock_ocean:
                 mock_ocean.integration_config = {}
                 await bulk_update_executor.execute(run)
@@ -254,7 +254,7 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         mock_rest_client.make_request.side_effect = make_request_side_effect
 
         with patch(
-            "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.ocean"
+            "github.actions.external_custom_properties.utils.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.integration_config = {}
@@ -301,7 +301,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
         )
 
         with patch(
-            "github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor.ocean"
+            "github.actions.external_custom_properties.utils.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.integration_config = {}
@@ -338,7 +338,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
         )
 
         with patch(
-            "github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor.ocean"
+            "github.actions.external_custom_properties.utils.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.integration_config = {}
@@ -380,7 +380,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
         mock_rest_client.make_request.side_effect = make_request_side_effect
 
         with patch(
-            "github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor.ocean"
+            "github.actions.external_custom_properties.utils.ocean"
         ) as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.integration_config = {}
@@ -411,7 +411,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
             match="orgs is required",
         ):
             with patch(
-                "github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor.ocean"
+                "github.actions.external_custom_properties.utils.ocean"
             ) as mock_ocean:
                 mock_ocean.integration_config = {}
                 await bulk_delete_executor.execute(run)
@@ -433,7 +433,7 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
             InvalidActionParametersException, match="propertyName is required"
         ):
             with patch(
-                "github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor.ocean"
+                "github.actions.external_custom_properties.utils.ocean"
             ) as mock_ocean:
                 mock_ocean.integration_config = {}
                 await bulk_delete_executor.execute(run)

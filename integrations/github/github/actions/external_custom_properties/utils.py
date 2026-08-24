@@ -1,10 +1,13 @@
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
 import httpx
+from loguru import logger
 from pydantic.v1 import BaseModel, Field, validator
+from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from github.clients.rate_limiter.utils import is_rest_rate_limit_response
@@ -20,6 +23,56 @@ class BulkOperationOutcome:
     success: bool
     item_count: int = 1
     error_message: str | None = None
+
+
+@dataclass(frozen=True)
+class BulkOperationSummary:
+    failures: tuple[BulkOperationOutcome, ...]
+    succeeded_item_count: int
+    failed_item_count: int
+
+    @property
+    def success(self) -> bool:
+        return not self.failures
+
+
+async def report_bulk_operation_results(
+    run: IntegrationRun,
+    outcomes: list[BulkOperationOutcome],
+    *,
+    failure_log_event: str,
+    completion_message: Callable[[BulkOperationSummary], str],
+) -> None:
+    failures: list[BulkOperationOutcome] = []
+    succeeded_item_count = 0
+    failed_item_count = 0
+
+    for outcome in outcomes:
+        if outcome.success:
+            succeeded_item_count += outcome.item_count
+            continue
+
+        failed_item_count += outcome.item_count
+        failures.append(outcome)
+        logger.error(
+            failure_log_event,
+            target=outcome.target,
+            error=outcome.error_message,
+        )
+        await ocean.port_client.post_run_log(
+            run, f"Failed {outcome.target}: {outcome.error_message}"
+        )
+
+    summary = BulkOperationSummary(
+        failures=tuple(failures),
+        succeeded_item_count=succeeded_item_count,
+        failed_item_count=failed_item_count,
+    )
+    await ocean.port_client.report_run_completed(
+        run,
+        success=summary.success,
+        message=completion_message(summary),
+    )
 
 
 class _GithubExternalPropertyValue(BaseModel):
