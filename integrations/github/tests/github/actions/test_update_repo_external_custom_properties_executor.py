@@ -52,11 +52,15 @@ class TestExternalPropertyGithubValue:
         }
 
     def test_non_string_value_coerced_to_str(self) -> None:
-        assert ExternalPropertyGithubValue(property_name="count", value=42).dict() == {
+        assert ExternalPropertyGithubValue.parse_obj(
+            {"property_name": "count", "value": 42}
+        ).dict() == {
             "property_name": "count",
             "value": "42",
         }
-        assert ExternalPropertyGithubValue(property_name="active", value=True).dict() == {
+        assert ExternalPropertyGithubValue.parse_obj(
+            {"property_name": "active", "value": True}
+        ).dict() == {
             "property_name": "active",
             "value": "True",
         }

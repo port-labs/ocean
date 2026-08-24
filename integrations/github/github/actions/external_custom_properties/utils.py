@@ -49,6 +49,17 @@ class RepositoryValuesInput(BaseModel):
     org: str | None = None
     repository_values: list[RepositoryValueInput] = Field(..., min_items=1)
 
+    @classmethod
+    def from_execution_properties(
+        cls, execution_properties: dict[str, Any]
+    ) -> "RepositoryValuesInput":
+        return cls.parse_obj(
+            {
+                "org": execution_properties.get("org"),
+                "repository_values": execution_properties.get("repositoryValues"),
+            }
+        )
+
     def group_by_org(self) -> dict[str, list[RepositoryGithubValue]]:
         grouped: dict[str, list[RepositoryGithubValue]] = defaultdict(list)
         for value in self.repository_values:

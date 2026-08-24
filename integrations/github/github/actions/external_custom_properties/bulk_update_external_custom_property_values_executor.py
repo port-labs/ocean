@@ -35,9 +35,8 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
     async def _get_execution_clients(
         self, run: IntegrationRun
     ) -> list[AbstractGithubClient]:
-        input = RepositoryValuesInput(
-            org=run.execution_properties.get("org"),
-            repository_values=run.execution_properties.get("repositoryValues"),
+        input = RepositoryValuesInput.from_execution_properties(
+            run.execution_properties
         )
         return [
             await create_github_client_for_org(organization)
@@ -81,9 +80,8 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
         if not property_name:
             raise InvalidActionParametersException("propertyName is required")
 
-        grouped_repository_values = RepositoryValuesInput(
-            org=run.execution_properties.get("org"),
-            repository_values=run.execution_properties.get("repositoryValues"),
+        grouped_repository_values = RepositoryValuesInput.from_execution_properties(
+            run.execution_properties
         ).group_by_org()
         patch_operations: list[Callable[[], Awaitable[BulkOperationOutcome]]] = []
 

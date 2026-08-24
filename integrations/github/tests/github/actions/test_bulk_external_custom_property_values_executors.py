@@ -247,13 +247,9 @@ class TestBulkUpdateExternalCustomPropertyValuesExecutor:
         )
         response = httpx.Response(403, json={"message": "Forbidden"}, request=request)
 
-        async def make_request_side_effect(
-            endpoint: str, **kwargs: object
-        ) -> None:
+        async def make_request_side_effect(endpoint: str, **kwargs: object) -> None:
             if "other-org" in endpoint:
-                raise httpx.HTTPStatusError(
-                    "403", request=request, response=response
-                )
+                raise httpx.HTTPStatusError("403", request=request, response=response)
 
         mock_rest_client.make_request.side_effect = make_request_side_effect
 
@@ -377,13 +373,9 @@ class TestBulkDeleteExternalCustomPropertyValuesExecutor:
         )
         response = httpx.Response(404, json={"message": "Not Found"}, request=request)
 
-        async def make_request_side_effect(
-            endpoint: str, **kwargs: object
-        ) -> None:
+        async def make_request_side_effect(endpoint: str, **kwargs: object) -> None:
             if "other-org" in endpoint:
-                raise httpx.HTTPStatusError(
-                    "404", request=request, response=response
-                )
+                raise httpx.HTTPStatusError("404", request=request, response=response)
 
         mock_rest_client.make_request.side_effect = make_request_side_effect
 
