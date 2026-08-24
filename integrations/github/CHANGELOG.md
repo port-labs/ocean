@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.9.4 (2026-08-24)
+
+
+### Features
+
+- Add bulk update and bulk delete actions for GitHub external custom property values APIs, with automatic 100-repo batching and multi-org support.
+
+
 ## 6.9.3 (2026-08-24)
 
 
