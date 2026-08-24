@@ -68,6 +68,7 @@ class ApplicationSettings(BaseSettings):
         env_prefix="APPLICATION__",
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     @classmethod
