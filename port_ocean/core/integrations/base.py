@@ -11,7 +11,7 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
-from port_ocean.core.ocean_types import ProbeContext
+from port_ocean.core.probe import ProbeContext
 from port_ocean.exceptions.core import (
     IntegrationAlreadyStartedException,
     ModeNotSupportedException,

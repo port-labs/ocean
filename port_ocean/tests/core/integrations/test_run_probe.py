@@ -4,7 +4,7 @@ import pytest
 
 from port_ocean.context.event import EventType, event
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.ocean_types import ProbeContext, ProbeResult
+from port_ocean.core.probe import ProbeContext, ProbeResult
 from port_ocean.exceptions.core import ModeNotSupportedException
 
 

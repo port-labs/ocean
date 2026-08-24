@@ -7,8 +7,9 @@ from typing import (
     NamedTuple,
 )
 
-from dataclasses import dataclass, field
+from dataclasses import field
 from port_ocean.core.models import Entity
+from port_ocean.core.probe import ProbeContext
 
 RAW_ITEM = dict[Any, Any]
 RAW_RESULT = list[RAW_ITEM]
@@ -22,19 +23,6 @@ START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
 BEFORE_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
 AFTER_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
-
-
-@dataclass
-class ProbeResult:
-    pass
-
-
-class ProbeContext:
-    result: ProbeResult
-
-    def __init__(self):
-        self.result = ProbeResult()
-
 
 ON_PROBE_EVENT_LISTENER = Callable[[ProbeContext], Awaitable[ProbeContext | None]]
 ON_PROBE_RUNTIME_LISTENER = Callable[[], Awaitable[ProbeContext]]

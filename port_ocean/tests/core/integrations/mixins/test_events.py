@@ -1,7 +1,7 @@
 import pytest
 
 from port_ocean.core.integrations.mixins.events import EventsMixin
-from port_ocean.core.ocean_types import ProbeContext, ProbeResult
+from port_ocean.core.probe import ProbeContext, ProbeResult
 
 
 @pytest.mark.asyncio

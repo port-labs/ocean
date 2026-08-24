@@ -12,8 +12,8 @@ from port_ocean.core.ocean_types import (
     AFTER_RESYNC_EVENT_LISTENER,
     INCREMENTAL_EVENT_LISTENER,
     ON_PROBE_EVENT_LISTENER,
-    ProbeContext,
 )
+from port_ocean.core.probe import ProbeContext
 
 
 class EventsMixin:
