@@ -25,15 +25,17 @@ _usage() {
   cat <<EOF
 Usage: ${SCRIPT_NAME} <bump> <changelog-type> <changelog...> [--only NAME ...] [--exclude NAME ...] [--core] [--name FILE]
 
+Arguments must appear in that order: bump, changelog-type, and changelog first, then any flags.
+
 Generate the same release intent file under each selected integration:
   integrations/<name>/.ocean-release/<file>.yaml
 Or, with --core, only:
   .ocean-release/core/<file>.yaml
 
-Positional arguments (in order, no flags required):
+Positional arguments (must come first, before any flags):
   bump             One of: ${ALLOWED_BUMPS[*]}
   changelog-type   One of: ${ALLOWED_TYPES[*]}
-  changelog        Remaining words; the changelog message written into each file
+  changelog        Remaining words until the first flag; the changelog message written into each file
 
 Options:
   --only NAME ...      Generate only for these integrations (space- and/or comma-separated)
@@ -97,6 +99,21 @@ _append_names() {
   done
 }
 
+if [[ $# -gt 0 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
+  _usage
+  exit 0
+fi
+
+# Positionals must come first so flags like --only cannot swallow bump/type/changelog.
+while [[ $# -gt 0 && "$1" != -* ]]; do
+  POSITIONAL+=("$1")
+  shift
+done
+
+if [[ ${#POSITIONAL[@]} -lt 3 ]]; then
+  _err "expected <bump> <changelog-type> <changelog> before any flags"
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help)
@@ -140,15 +157,15 @@ while [[ $# -gt 0 ]]; do
       ;;
     --)
       shift
-      POSITIONAL+=("$@")
-      break
+      if [[ $# -gt 0 ]]; then
+        _err "unexpected argument '$1'; put <bump> <changelog-type> <changelog> first, then flags"
+      fi
       ;;
     -*)
       _err "unknown option: $1"
       ;;
     *)
-      POSITIONAL+=("$1")
-      shift
+      _err "unexpected argument '$1'; put <bump> <changelog-type> <changelog> first, then flags"
       ;;
   esac
 done
@@ -158,10 +175,6 @@ if [[ ${CORE} -eq 1 && ( ${#ONLY[@]} -gt 0 || ${#EXCLUDE[@]} -gt 0 ) ]]; then
 fi
 if [[ ${#ONLY[@]} -gt 0 && ${#EXCLUDE[@]} -gt 0 ]]; then
   _err "--only and --exclude cannot be used together"
-fi
-
-if [[ ${#POSITIONAL[@]} -lt 3 ]]; then
-  _err "expected <bump> <changelog-type> <changelog>"
 fi
 
 BUMP="${POSITIONAL[0]}"
