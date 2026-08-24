@@ -32,9 +32,19 @@ class IssueResourceConfig(ResourceConfig):
     )
 
 
+class DocumentResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.DOCUMENT] = Field(
+        title="Linear Document",
+        description="Linear document resource kind.",
+    )
+
+
 class LinearPortAppConfig(PortAppConfig):
     resources: list[
-        TeamResourceConfig | LabelResourceConfig | IssueResourceConfig
+        TeamResourceConfig
+        | LabelResourceConfig
+        | IssueResourceConfig
+        | DocumentResourceConfig
     ] = Field(
         default_factory=list,
     )  # type: ignore[assignment]
