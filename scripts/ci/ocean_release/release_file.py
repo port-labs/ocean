@@ -10,14 +10,27 @@ from .version import CHANGELOG_SECTIONS
 
 def parse_release_yaml(content: str) -> dict[str, str]:
     data: dict[str, str] = {}
+    current_key: str = ""
     for line in content.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if ":" not in stripped:
-            raise ValueError(f"Invalid release file line: {line}")
+        if ":" not in stripped or stripped.split(":")[0] not in {
+            "bump",
+            "changelog-type",
+            "changelog",
+        }:
+            if current_key != "changelog":
+                raise ValueError(f"Invalid release file line: {line}")
+            if stripped.startswith("-") or stripped.startswith("\\-"):
+                continuation = stripped
+            else:
+                continuation = line.rstrip()
+            data[current_key] += f"\n{continuation}"
+            continue
         key, value = stripped.split(":", 1)
-        data[key.strip()] = value.strip().strip('"').strip("'")
+        current_key = key.strip()
+        data[current_key] = value.strip().strip('"').strip("'")
     return data
 
 
@@ -25,7 +38,7 @@ def parse_release_file(path: Path, content: str) -> ReleaseIntent:
     raw = parse_release_yaml(content)
     bump = raw.get("bump", "").lower()
     changelog_type = raw.get("changelog-type", raw.get("changelog_type", "")).lower()
-    changelog = raw.get("changelog", "")
+    changelog = raw.get("changelog", "").strip()
     if bump not in {"patch", "minor", "major"}:
         raise ValueError(f"{path}: bump must be patch, minor, or major")
     if changelog_type not in CHANGELOG_SECTIONS:

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2026-08-24)
+
+
+### Features
+
+- Added a Linear document kind with default blueprint, mapping, and live-event support for specs and PRDs. Existing Ocean webhooks are updated to subscribe to Document events. (#23811486)
+
+
 ## 0.3.97 (2026-08-18)
 
 
