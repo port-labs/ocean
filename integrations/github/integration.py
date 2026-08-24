@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional, Type, Literal
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, PackageType
 from github.core.exporters.skill_exporter.utils import DEFAULT_SKILL_PATHS
 from github.core.exporters.plugin_exporter.utils import (
     DEFAULT_PLUGIN_PROVIDERS,
@@ -755,6 +755,56 @@ class GithubOrganizationConfig(ResourceConfig):
     )
 
 
+class GithubPackageSelector(Selector):
+    package_types: list[PackageType] = Field(
+        title="Package Types",
+        alias="packageTypes",
+        default=[PackageType.CONTAINER],
+        min_items=1,
+        description="GitHub package types to ingest.",
+    )
+    visibility: Optional[Literal["public", "private", "internal"]] = Field(
+        title="Visibility",
+        default=None,
+        description=(
+            "Filter packages by visibility. When unset, packages of all "
+            "visibilities are ingested."
+        ),
+    )
+    include_versions: bool = Field(
+        title="Include Versions",
+        alias="includeVersions",
+        default=False,
+        description=(
+            "Fetch package versions (tags and digests) and attach them as "
+            "`__versions`. Enabling this consumes additional GitHub API rate "
+            "limit and may slow down the resync."
+        ),
+    )
+    max_versions: Optional[int] = Field(
+        title="Max Versions",
+        alias="maxVersions",
+        default=10,
+        ge=1,
+        description=(
+            "Maximum number of versions to fetch per package, newest first. "
+            "Only used when includeVersions is true. A larger version history "
+            "consumes additional GitHub API rate limit and may slow down the resync."
+        ),
+    )
+
+
+class GithubPackageConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PACKAGE] = Field(
+        title="Github Package",
+        description="GitHub package resource kind.",
+    )
+    selector: GithubPackageSelector = Field(
+        title="Package selector",
+        description="Selector for GitHub packages.",
+    )
+
+
 class GithubWorkflowConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW] = Field(
         title="Github Workflow",
@@ -922,6 +972,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTagConfig
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
+        | GithubPackageConfig
     ] = Field(
         title="Resources",
         default_factory=list,

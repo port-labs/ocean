@@ -28,6 +28,7 @@ features:
       - kind: skill
       - kind: plugin
       - kind: collaborator
+      - kind: package
 configurations:
   - name: githubHost
     required: false

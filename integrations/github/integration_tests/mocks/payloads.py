@@ -239,6 +239,49 @@ def collaborator_response(repo_name: str, collab_id: int) -> list[dict[str, Any]
     ]
 
 
+def packages_list_response() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": 5001,
+            "name": "hello-docker",
+            "package_type": "container",
+            "owner": {"login": ORG_LOGIN, "id": ORG_ID, "type": "Organization"},
+            "version_count": 2,
+            "visibility": "private",
+            "url": f"https://api.github.com/orgs/{ORG_LOGIN}/packages/container/hello-docker",
+            "html_url": (
+                f"https://github.com/orgs/{ORG_LOGIN}/packages/container/package/hello-docker"
+            ),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-06-01T00:00:00Z",
+            "repository": {
+                "id": 1001,
+                "name": "test-repo-1",
+                "full_name": f"{ORG_LOGIN}/test-repo-1",
+            },
+        },
+        {
+            "id": 5002,
+            "name": "api/service",
+            "package_type": "container",
+            "owner": {"login": ORG_LOGIN, "id": ORG_ID, "type": "Organization"},
+            "version_count": 1,
+            "visibility": "public",
+            "url": f"https://api.github.com/orgs/{ORG_LOGIN}/packages/container/api%2Fservice",
+            "html_url": (
+                f"https://github.com/orgs/{ORG_LOGIN}/packages/container/package/api%2Fservice"
+            ),
+            "created_at": "2024-03-20T10:00:00Z",
+            "updated_at": "2024-08-01T12:00:00Z",
+            "repository": {
+                "id": 1002,
+                "name": "test-repo-2",
+                "full_name": f"{ORG_LOGIN}/test-repo-2",
+            },
+        },
+    ]
+
+
 def teams_list_response() -> list[dict[str, Any]]:
     return [
         {
