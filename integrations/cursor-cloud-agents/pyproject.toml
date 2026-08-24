@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cursor-cloud-agents"
-version = "0.1.21"
+version = "0.1.22"
 description = "Cursor Cloud Agents integration for Port Ocean"
 authors = ["Tal Sabag <tal@port.io>"]
 
