@@ -10,6 +10,37 @@ CANCELLED_TASK_CLEANUP_TIMEOUT = 10
 T = typing.TypeVar("T")
 
 
+async def throttle_batch_operation(
+    operations: typing.Iterable[typing.Callable[[], typing.Awaitable[T]]],
+    concurrency: int,
+) -> list[T]:
+    """
+    Run multiple async operations with bounded concurrency.
+
+    Each operation is a nullary callable returning an awaitable. Apply arguments
+    with functools.partial or a lambda before passing it in.
+
+    Parameters:
+        operations: Callables to execute concurrently under the concurrency limit.
+        concurrency: Maximum number of operations running at the same time.
+
+    Returns:
+        Results in the same order as the provided operations.
+    """
+    if concurrency < 1:
+        raise ValueError("concurrency must be at least 1")
+
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def run_operation(operation: typing.Callable[[], typing.Awaitable[T]]) -> T:
+        async with semaphore:
+            return await operation()
+
+    return list(
+        await asyncio.gather(*(run_operation(operation) for operation in operations))
+    )
+
+
 @dataclass(slots=True)
 class _IteratorItem(typing.Generic[T]):
     item: T
