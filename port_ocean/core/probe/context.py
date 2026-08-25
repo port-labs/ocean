@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from loguru import logger
 
 from port_ocean.core.probe.result import ProbeResult
@@ -18,12 +20,14 @@ class ProbeContext:
         logger.debug(f"Reporting probe progress to Port for probe {self.probe_id}")
 
     def finalize(self) -> None:
+        self.result.probe_end = datetime.now(timezone.utc)
         if self.probe_id is None:
             logger.debug("Local probe: skipping final result report")
             return
         logger.debug(f"Reporting final probe result to Port for probe {self.probe_id}")
 
     def fail(self) -> None:
+        self.result.probe_end = datetime.now(timezone.utc)
         if self.probe_id is None:
             logger.debug("Local probe: skipping fatal error report")
             return
