@@ -14,7 +14,8 @@ class ProbeStatus(StrEnum):
 class ProbeCheck:
     status: ProbeStatus = ProbeStatus.PENDING
     message: str | None = None
-    scopes: dict[str, str] | None = None
+    kind: str | None = None
+    scopes: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
