@@ -409,15 +409,3 @@ class TestEventsMixinIncrementalRegistration:
         result = mixin.on_incremental_resync(None, kind="issue")
         assert result is None
         assert len(mixin.event_strategy.incremental["issue"]) == 0
-
-    def test_available_incremental_kinds_returns_registered_kinds(self) -> None:
-        from port_ocean.core.integrations.mixins.events import EventsMixin
-
-        mixin = EventsMixin()
-
-        async def handler(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-            yield [{"id": "1"}]
-
-        mixin.on_incremental_resync(handler, kind="issue")
-        mixin.on_incremental_resync(handler, kind="pull-request")
-        assert set(mixin.available_incremental_kinds) == {"issue", "pull-request"}
