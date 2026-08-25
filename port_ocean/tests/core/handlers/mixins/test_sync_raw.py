@@ -1634,7 +1634,9 @@ async def test_collect_resync_functions_returns_functions_without_setting_logger
     Verify the removal doesn't break function collection and leaks no context."""
     records, sink_id = _capture_loguru_extras()
     try:
-        fns = mock_sync_raw_mixin._collect_resync_functions(mock_resource_config)
+        fns = mock_sync_raw_mixin._collect_resync_functions(
+            mock_resource_config, mock_sync_raw_mixin.event_strategy.resync
+        )
     finally:
         logger.remove(sink_id)
 
