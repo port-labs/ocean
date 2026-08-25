@@ -2,7 +2,7 @@ from typing import Callable, TYPE_CHECKING, Any, Union
 
 from fastapi import APIRouter
 from port_ocean.helpers.metric.metric import Metrics
-from pydantic.v1.main import BaseModel
+from pydantic import BaseModel
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
@@ -67,7 +67,7 @@ class PortOceanContext:
     @property
     def integration_config(self) -> dict[str, Any]:
         if isinstance(self.app.config.integration.config, BaseModel):
-            return self.app.config.integration.config.dict()
+            return self.app.config.integration.config.model_dump(mode="json")
         return self.app.config.integration.config
 
     @property
