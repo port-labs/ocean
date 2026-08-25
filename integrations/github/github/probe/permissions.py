@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import ProbeCheck, ProbeStatus
@@ -86,9 +86,9 @@ _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
 
 @dataclass(frozen=True)
 class PermissionSnapshot:
-    authentication: str
     permissions: dict[str, str] | None
     organization: str | None = None
+    scopes: dict[str, str] = field(default_factory=dict)
 
 
 async def probe_github_permissions(kinds: Iterable[str]) -> list[ProbeCheck]:
@@ -96,35 +96,36 @@ async def probe_github_permissions(kinds: Iterable[str]) -> list[ProbeCheck]:
     kinds = tuple(kinds)
     provider = get_auth_provider()
     authenticators = await provider.list_authenticators()
-    is_multi_org = len(authenticators) > 1
 
     if provider.is_app_auth():
-        snapshots = [
-            PermissionSnapshot(
-                authentication="github-app",
-                organization=authenticator.organization,
-                permissions=(await authenticator.get_token()).permissions,
-            )
-            for authenticator in authenticators
-        ]
-        return [
-            _app_check(kind, snapshot, is_multi_org)
-            for snapshot in snapshots
-            for kind in kinds
-        ]
+        snapshots = _with_org_scopes(
+            [
+                PermissionSnapshot(
+                    organization=authenticator.organization,
+                    permissions=(await authenticator.get_token()).permissions,
+                )
+                for authenticator in authenticators
+            ]
+        )
+        return [_app_check(kind, snapshot) for snapshot in snapshots for kind in kinds]
 
     authenticator = authenticators[0]
-    scopes = await _get_pat_scopes(authenticator)
-    snapshot = PermissionSnapshot(
-        authentication="personal-access-token",
-        organization=authenticator.organization,
-        permissions=(
-            {scope: "granted" for scope in _expand_pat_scopes(scopes)}
-            if scopes is not None
-            else None
-        ),
+    granted_scopes = await _get_pat_scopes(authenticator)
+    organizations = await _get_pat_organizations(authenticator)
+    snapshots = _with_org_scopes(
+        [
+            PermissionSnapshot(
+                organization=organization,
+                permissions=(
+                    {scope: "granted" for scope in _expand_pat_scopes(granted_scopes)}
+                    if granted_scopes is not None
+                    else None
+                ),
+            )
+            for organization in organizations
+        ]
     )
-    return [_pat_check(kind, snapshot, is_multi_org) for kind in kinds]
+    return [_pat_check(kind, snapshot) for snapshot in snapshots for kind in kinds]
 
 
 async def _get_pat_scopes(
@@ -144,24 +145,71 @@ async def _get_pat_scopes(
     }
 
 
-def _app_check(
-    kind: str, snapshot: PermissionSnapshot, is_multi_org: bool
-) -> ProbeCheck:
+async def _get_pat_organizations(
+    authenticator: AbstractGitHubAuthenticator,
+) -> list[str | None]:
+    if authenticator.organization:
+        return [authenticator.organization]
+
+    headers = (await authenticator.get_headers()).as_dict()
+    url: str | None = f"{ocean.integration_config['github_host'].rstrip('/')}/user/orgs"
+    organizations: list[str | None] = []
+    params: dict[str, int] | None = {"per_page": 100}
+    while url:
+        response = await authenticator.client.get(
+            url,
+            headers=headers,
+            params=params,
+        )
+        response.raise_for_status()
+        organizations.extend(
+            login
+            for organization in response.json()
+            if isinstance(organization, dict)
+            and isinstance(login := organization.get("login"), str)
+            and login not in organizations
+        )
+        next_link = response.links.get("next")
+        url = next_link.get("url") if next_link else None
+        params = None
+    if organizations:
+        return organizations
+    return [None]
+
+
+def _with_org_scopes(
+    snapshots: list[PermissionSnapshot],
+) -> list[PermissionSnapshot]:
+    is_multi_org = len(snapshots) > 1
+    return [
+        PermissionSnapshot(
+            permissions=snapshot.permissions,
+            organization=snapshot.organization,
+            scopes=(
+                {"org": snapshot.organization}
+                if is_multi_org and snapshot.organization
+                else {}
+            ),
+        )
+        for snapshot in snapshots
+    ]
+
+
+def _app_check(kind: str, snapshot: PermissionSnapshot) -> ProbeCheck:
     required_permissions = APP_KIND_PERMISSIONS.get(kind)
-    scopes = _org_scopes(snapshot, is_multi_org)
     if required_permissions is None:
         return ProbeCheck(
             status=ProbeStatus.UNKNOWN,
             message=f"No GitHub App permission mapping is defined for {kind}",
             kind=kind,
-            scopes=scopes,
+            scopes=snapshot.scopes,
         )
     if snapshot.permissions is None:
         return ProbeCheck(
             status=ProbeStatus.UNKNOWN,
             message="GitHub did not return permissions for the installation token",
             kind=kind,
-            scopes=scopes,
+            scopes=snapshot.scopes,
         )
 
     granted: tuple[str, str] | None = None
@@ -179,15 +227,12 @@ def _app_check(
             + " or ".join(required_permissions)
         ),
         kind=kind,
-        scopes=scopes,
+        scopes=snapshot.scopes,
     )
 
 
-def _pat_check(
-    kind: str, snapshot: PermissionSnapshot, is_multi_org: bool
-) -> ProbeCheck:
+def _pat_check(kind: str, snapshot: PermissionSnapshot) -> ProbeCheck:
     required = PAT_KIND_SCOPES.get(kind)
-    scopes = _org_scopes(snapshot, is_multi_org)
     if snapshot.permissions is None:
         return ProbeCheck(
             status=ProbeStatus.UNKNOWN,
@@ -196,14 +241,14 @@ def _pat_check(
                 "this is expected for fine-grained personal access tokens"
             ),
             kind=kind,
-            scopes=scopes,
+            scopes=snapshot.scopes,
         )
     if required is None:
         return ProbeCheck(
             status=ProbeStatus.UNKNOWN,
             message=f"No personal access token scope mapping is defined for {kind}",
             kind=kind,
-            scopes=scopes,
+            scopes=snapshot.scopes,
         )
 
     has_scope = required in snapshot.permissions
@@ -215,14 +260,8 @@ def _pat_check(
             else f"Personal access token requires {required} for private resources"
         ),
         kind=kind,
-        scopes=scopes,
+        scopes=snapshot.scopes,
     )
-
-
-def _org_scopes(snapshot: PermissionSnapshot, is_multi_org: bool) -> dict[str, str]:
-    if is_multi_org and snapshot.organization:
-        return {"org": snapshot.organization}
-    return {}
 
 
 def _expand_pat_scopes(scopes: set[str]) -> set[str]:

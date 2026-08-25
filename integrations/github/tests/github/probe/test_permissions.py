@@ -170,16 +170,133 @@ async def test_classic_pat_repo_scope_implies_security_events(
 
 
 @pytest.mark.asyncio
-async def test_fine_grained_pat_permissions_are_unknown(
+async def test_unscoped_pat_checks_include_discovered_org_scopes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response = httpx.Response(
+    scope_response = httpx.Response(
         200,
+        headers={"X-OAuth-Scopes": "repo"},
         request=httpx.Request("GET", "https://api.github.com/user"),
+    )
+    organizations_response = httpx.Response(
+        200,
+        json=[{"login": "port-labs"}, {"login": "port-team"}],
+        request=httpx.Request("GET", "https://api.github.com/user/orgs"),
     )
     authenticator = SimpleNamespace(
         organization=None,
-        client=SimpleNamespace(get=AsyncMock(return_value=response)),
+        client=SimpleNamespace(
+            get=AsyncMock(side_effect=[scope_response, organizations_response])
+        ),
+        get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
+    )
+    provider = SimpleNamespace(
+        is_app_auth=lambda: False,
+        list_authenticators=AsyncMock(return_value=[authenticator]),
+    )
+    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
+
+    checks = await permissions.probe_github_permissions(["repository"])
+
+    assert [check.kind for check in checks] == ["repository", "repository"]
+    assert [check.scopes for check in checks] == [
+        {"org": "port-labs"},
+        {"org": "port-team"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_single_discovered_pat_org_omits_scope_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scope_response = httpx.Response(
+        200,
+        headers={"X-OAuth-Scopes": "repo"},
+        request=httpx.Request("GET", "https://api.github.com/user"),
+    )
+    organizations_response = httpx.Response(
+        200,
+        json=[{"login": "port-labs"}],
+        request=httpx.Request("GET", "https://api.github.com/user/orgs"),
+    )
+    authenticator = SimpleNamespace(
+        organization=None,
+        client=SimpleNamespace(
+            get=AsyncMock(side_effect=[scope_response, organizations_response])
+        ),
+        get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
+    )
+    provider = SimpleNamespace(
+        is_app_auth=lambda: False,
+        list_authenticators=AsyncMock(return_value=[authenticator]),
+    )
+    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
+
+    checks = await permissions.probe_github_permissions(["repository"])
+
+    assert len(checks) == 1
+    assert checks[0].scopes == {}
+
+
+@pytest.mark.asyncio
+async def test_pat_organization_discovery_follows_pagination(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scope_response = httpx.Response(
+        200,
+        headers={"X-OAuth-Scopes": "repo"},
+        request=httpx.Request("GET", "https://api.github.com/user"),
+    )
+    first_page = httpx.Response(
+        200,
+        json=[{"login": "port-labs"}],
+        headers={"Link": ('<https://api.github.com/user/orgs?page=2>; rel="next"')},
+        request=httpx.Request("GET", "https://api.github.com/user/orgs"),
+    )
+    second_page = httpx.Response(
+        200,
+        json=[{"login": "port-team"}],
+        request=httpx.Request("GET", "https://api.github.com/user/orgs?page=2"),
+    )
+    authenticator = SimpleNamespace(
+        organization=None,
+        client=SimpleNamespace(
+            get=AsyncMock(side_effect=[scope_response, first_page, second_page])
+        ),
+        get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
+    )
+    provider = SimpleNamespace(
+        is_app_auth=lambda: False,
+        list_authenticators=AsyncMock(return_value=[authenticator]),
+    )
+    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
+
+    checks = await permissions.probe_github_permissions(["repository"])
+
+    assert [check.scopes for check in checks] == [
+        {"org": "port-labs"},
+        {"org": "port-team"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fine_grained_pat_permissions_are_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scope_response = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://api.github.com/user"),
+    )
+    organizations_response = httpx.Response(
+        200,
+        json=[],
+        request=httpx.Request("GET", "https://api.github.com/user/orgs"),
+    )
+    authenticator = SimpleNamespace(
+        organization=None,
+        client=SimpleNamespace(
+            get=AsyncMock(side_effect=[scope_response, organizations_response])
+        ),
         get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
     )
     provider = SimpleNamespace(
