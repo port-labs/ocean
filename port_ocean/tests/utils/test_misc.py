@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from port_ocean.exceptions.spec import SpecFileError
+from port_ocean.exceptions.spec import SpecFileError, SpecNotFoundError
 from port_ocean.utils.misc import get_spec_file, get_spec_kinds
 
 
@@ -141,6 +141,6 @@ def test_get_spec_kinds_returns_empty_when_features_have_no_resources(
 def test_get_spec_kinds_raises_when_spec_is_missing(tmp_path: Path) -> None:
     # Act + Assert
     with pytest.raises(
-        SpecFileError, match="expected spec.json, spec.yaml, or spec.yml"
+        SpecNotFoundError, match="expected spec.json, spec.yaml, or spec.yml"
     ):
         get_spec_kinds(tmp_path)

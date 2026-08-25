@@ -15,7 +15,7 @@ from uuid import uuid4
 import tomli
 import yaml
 
-from port_ocean.exceptions.spec import SpecFileError
+from port_ocean.exceptions.spec import SpecFileError, SpecNotFoundError
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
@@ -111,7 +111,7 @@ def get_spec_kinds(path: str | Path = Path(".")) -> list[str]:
     spec_path = Path(path)
     spec = get_spec_file(spec_path)
     if spec is None:
-        raise SpecFileError(
+        raise SpecNotFoundError(
             f"Failed to load spec from {spec_path / '.port'}: "
             "expected spec.json, spec.yaml, or spec.yml"
         )
