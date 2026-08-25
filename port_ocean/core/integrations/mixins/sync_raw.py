@@ -108,7 +108,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     def _collect_resync_functions(
         self, resource_config: ResourceConfig, strategy_key: str = "resync"
     ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
-        event_mapping = getattr(self.event_strategy, strategy_key)
+        event_mapping = self.event_strategy.resync if strategy_key == "resync" else self.event_strategy.incremental
         fns = [
             *event_mapping[resource_config.kind],
             *event_mapping[None],
