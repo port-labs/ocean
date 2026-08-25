@@ -225,3 +225,24 @@ class TestTriggerPipelineExecutor:
             "my-group/my-project", "main", []
         )
         executor.client.trigger_pipeline.assert_not_called()  # type: ignore[attr-defined]
+
+    async def test_non_identity_run_uses_default_client(
+        self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
+    ) -> None:
+        run = make_run({"project": "my-group/my-project", "ref": "main"})
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            patch(
+                "gitlab.actions.trigger_pipeline_executor.resolve_user_token",
+                new_callable=AsyncMock,
+                return_value=None,
+            ) as mock_resolve_user_token,
+        ):
+            mock_ocean.port_client = mock_port_client
+            executor.client.trigger_pipeline = AsyncMock(return_value=PIPELINE_RESPONSE)  # type: ignore[attr-defined]
+            await executor.execute(run)
+
+        mock_resolve_user_token.assert_awaited_once_with(run)
+        executor.client.trigger_pipeline.assert_called_once_with(  # type: ignore[attr-defined]
+            "my-group/my-project", "main", []
+        )
