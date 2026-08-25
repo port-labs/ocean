@@ -155,7 +155,7 @@ resources:
       entity:
         mappings:
           identifier: .__project.id + "/" + (.environmentId | tostring) + "/" + (.id | tostring) | gsub(" "; "")
-          title: .owner.name
+          title: .owner.name // (.id | tostring)
           blueprint: '"azureDevopsPipelineDeployment"'
           properties:
             planType: .planType
