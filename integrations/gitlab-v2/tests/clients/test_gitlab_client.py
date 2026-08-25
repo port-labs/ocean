@@ -1164,9 +1164,7 @@ class TestGitLabClient:
                 client.rest, "get_paginated_project_resource"
             ) as mock_get_paginated:
                 results = []
-                async for batch in client.get_repository_folders(
-                    "src", "group/empty"
-                ):
+                async for batch in client.get_repository_folders("src", "group/empty"):
                     results.extend(batch)
 
                 assert results == []
@@ -1389,12 +1387,16 @@ class TestGitLabClient:
     async def test_partition_and_log_skipped_projects_without_default_branch(
         self, client: GitLabClient
     ) -> None:
-        projects = [
+        projects: list[dict[str, Any]] = [
             {"id": "1", "path_with_namespace": "group/ok", "default_branch": "main"},
             {"id": "2", "path_with_namespace": "group/null", "default_branch": None},
             {"id": "3", "path_with_namespace": "group/empty", "default_branch": ""},
             {"id": "4", "path_with_namespace": "group/missing"},
-            {"id": "5", "path_with_namespace": "group/also-ok", "default_branch": "master"},
+            {
+                "id": "5",
+                "path_with_namespace": "group/also-ok",
+                "default_branch": "master",
+            },
             {"id": "6", "path_with_namespace": "group/extra-1"},
             {"id": "7", "path_with_namespace": "group/extra-2"},
             {"id": "8", "path_with_namespace": "group/extra-3"},

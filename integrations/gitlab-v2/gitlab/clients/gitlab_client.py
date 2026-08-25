@@ -377,9 +377,7 @@ class GitLabClient:
                 )
         return searchable, skipped
 
-    def _log_skipped_projects_without_default_branch(
-        self, skipped: list[str]
-    ) -> None:
+    def _log_skipped_projects_without_default_branch(self, skipped: list[str]) -> None:
         if not skipped:
             return
         examples = skipped[:5]
@@ -1326,9 +1324,7 @@ class GitLabClient:
 
         if repositories:
             dict_repos = [repo for repo in repositories if isinstance(repo, dict)]
-            other_repos = [
-                repo for repo in repositories if not isinstance(repo, dict)
-            ]
+            other_repos = [repo for repo in repositories if not isinstance(repo, dict)]
             searchable, skipped = self._partition_projects_with_tree_ref(dict_repos)
             self._log_skipped_projects_without_default_branch(skipped)
             repos_to_search: list[str | dict[str, Any]] = [
@@ -1346,9 +1342,7 @@ class GitLabClient:
             return
 
         async for projects_batch in self.get_projects(params=params):
-            searchable, skipped = self._partition_projects_with_tree_ref(
-                projects_batch
-            )
+            searchable, skipped = self._partition_projects_with_tree_ref(projects_batch)
             self._log_skipped_projects_without_default_branch(skipped)
             if not searchable:
                 continue
