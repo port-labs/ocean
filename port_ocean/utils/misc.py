@@ -106,6 +106,29 @@ def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
     return None
 
 
+def get_spec_kinds(path: str | Path = Path(".")) -> list[str]:
+    """Return the unique resource kinds declared by an integration spec."""
+    spec_path = Path(path)
+    spec = get_spec_file(spec_path)
+    if spec is None:
+        raise SpecFileError(
+            f"Failed to load spec from {spec_path / '.port'}: "
+            "expected spec.json, spec.yaml, or spec.yml"
+        )
+
+    kinds: list[str] = []
+    for feature in spec.get("features") or []:
+        if not isinstance(feature, dict):
+            continue
+        for resource in feature.get("resources") or []:
+            if not isinstance(resource, dict):
+                continue
+            kind = resource.get("kind")
+            if isinstance(kind, str) and kind not in kinds:
+                kinds.append(kind)
+    return kinds
+
+
 def load_module(file_path: str) -> ModuleType:
     spec = spec_from_file_location("module.name", file_path)
     if spec is None or spec.loader is None:
