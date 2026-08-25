@@ -20,13 +20,15 @@ def test_probe_result_can_record_scoped_checks() -> None:
         ProbeCheck(
             status=ProbeStatus.SUCCESS,
             message="auth succeeded",
-            scopes={"organization": "port-team"},
+            kind="repository",
+            scopes={"org": "port-team"},
         )
     )
     result.probe_end = datetime.now(timezone.utc)
 
     assert result.results[0].status is ProbeStatus.SUCCESS
-    assert result.results[0].scopes == {"organization": "port-team"}
+    assert result.results[0].kind == "repository"
+    assert result.results[0].scopes == {"org": "port-team"}
     assert result.probe_end is not None
     assert result.probe_end >= result.probe_start
 
@@ -36,4 +38,5 @@ def test_probe_check_defaults_to_pending() -> None:
 
     assert check.status is ProbeStatus.PENDING
     assert check.message is None
-    assert check.scopes is None
+    assert check.kind is None
+    assert check.scopes == {}

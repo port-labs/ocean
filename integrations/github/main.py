@@ -8,6 +8,7 @@ from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
 )
+from github.probe import probe_github_permissions
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -220,7 +221,13 @@ def _resync_per_authenticator(
 
 @ocean.on_probe()
 async def probe(context: ProbeContext) -> ProbeContext:
-    logger.info("Probing the GitHub connection")
+    logger.info(
+        f"Probing GitHub permissions for {len(context.available_kinds)} resource kinds"
+    )
+    context.result.results.extend(
+        await probe_github_permissions(context.available_kinds)
+    )
+    context.update_progress()
     return context
 
 

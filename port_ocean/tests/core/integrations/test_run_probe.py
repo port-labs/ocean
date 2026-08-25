@@ -5,8 +5,16 @@ import pytest
 from port_ocean.context.event import EventType, event
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.ocean_types import IntegrationEventsCallbacks
-from port_ocean.core.probe import ProbeContext, ProbeResult
+from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeResult
 from port_ocean.exceptions.core import ModeNotSupportedException
+
+
+@pytest.fixture(autouse=True)
+def stub_spec_kinds(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "port_ocean.core.probe.context.get_spec_kinds",
+        lambda path=".": ["repository", "issue"],
+    )
 
 
 @pytest.mark.asyncio
@@ -27,11 +35,15 @@ async def test_run_probe_invokes_handler_in_probe_context(
     integration = MagicMock(spec=BaseIntegration)
     integration.event_strategy = IntegrationEventsCallbacks(on_probe=handler)
 
-    result = await BaseIntegration.run_probe(integration, "probe-id")
+    result = await BaseIntegration.run_probe(
+        integration, "probe-id", ProbeConfig(path=".", kinds=["repository"])
+    )
 
     assert captured_event_type == EventType.ON_PROBE
     assert isinstance(result, ProbeContext)
     assert result.probe_id == "probe-id"
+    assert result.available_kinds == ["repository", "issue"]
+    assert result.config.kinds == ["repository"]
     assert isinstance(result.result, ProbeResult)
     finalize.assert_called_once()
     fail.assert_not_called()

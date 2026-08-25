@@ -3,7 +3,7 @@ import pytest
 import httpx
 from unittest.mock import AsyncMock, patch
 
-from github.clients.auth.abstract_authenticator import GitHubToken
+from github.clients.auth.abstract_authenticator import GitHubHeaders, GitHubToken
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
 )
@@ -31,6 +31,37 @@ class TestGithubAuthenticator:
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
         assert github_auth.rate_limit_scope == "installation:12345"
+
+    @pytest.mark.asyncio
+    async def test_installation_token_includes_granted_permissions(self) -> None:
+        app_auth = GitHubAppAuthenticator(
+            app_id="test-app-id",
+            private_key="test-private-key",
+            github_host="https://api.github.com",
+        )
+        response = httpx.Response(
+            201,
+            json={
+                "token": "installation-token",
+                "expires_at": "2026-08-24T18:00:00Z",
+                "permissions": {"contents": "read", "issues": "write"},
+            },
+            request=httpx.Request(
+                "POST",
+                "https://api.github.com/app/installations/123/access_tokens",
+            ),
+        )
+        app_auth._http_client = AsyncMock()
+        app_auth._http_client.post.return_value = response
+
+        with patch.object(
+            app_auth,
+            "get_headers",
+            AsyncMock(return_value=GitHubHeaders(Authorization="Bearer test-jwt")),
+        ):
+            token = await app_auth.fetch_installation_access_token("123")
+
+        assert token.permissions == {"contents": "read", "issues": "write"}
 
     @pytest.mark.asyncio
     async def test_token_generated(
