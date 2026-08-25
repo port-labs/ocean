@@ -56,30 +56,6 @@ resources:
           blueprint: '"azureDevopsRepository"'
           properties:
             workItemLinking: .isEnabled and .isBlocking
-  - kind: board
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id | gsub(" "; "")
-          title: .name
-          blueprint: '"azureDevopsBoard"'
-          properties:
-            link: .url
-          relations:
-            project: .__project.id | gsub(" "; "")
-  - kind: column
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .__stateType + "/" +.name+ "/"+.__board.__project.id | gsub(" "; "")
-          title: .name
-          blueprint: '"azureDevopsColumn"'
-          relations:
-            board: .__board.id | gsub(" "; "")
   - kind: release
     selector:
       query: 'true'
@@ -214,33 +190,6 @@ resources:
           relations:
             project: .releaseDefinition.projectReference.id | gsub(" "; "")
             release: .releaseDefinition.projectReference.id + "/" + (.release.id | tostring) | gsub(" "; "")
-  - kind: work-item
-    selector:
-      query: 'true'
-      wiql: "[System.ChangedDate] >= @today - 30 AND [System.State] NOT IN ('Closed','Done','Removed')"
-      expand: 'All'
-    port:
-      entity:
-        mappings:
-          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
-          title: .fields."System.Title"
-          blueprint: '"azureDevopsWorkItem"'
-          properties:
-            type: .fields."System.WorkItemType"
-            state: .fields."System.State"
-            effort: .fields."Microsoft.VSTS.Scheduling.Effort" // -1
-            description: .fields."System.Description" // ''
-            link: .url
-            reason: .fields."System.Reason"
-            createdBy: .fields."System.CreatedBy".displayName
-            changedBy: .fields."System.ChangedBy".displayName
-            createdDate: .fields."System.CreatedDate"
-            changedDate: .fields."System.ChangedDate"
-          relations:
-            project: .__projectId | gsub(" "; "")
-            column: >-
-              .fields."System.WorkItemType"+"-"+.fields."System.BoardColumn"+"-"+.__project.id
-              | gsub(" "; "")
   - kind: pipeline-run
     selector:
       query: '.finishedDate != null'
