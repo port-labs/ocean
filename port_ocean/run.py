@@ -6,6 +6,7 @@ import uvicorn
 from port_ocean.bootstrap import load_ocean_app
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
 from port_ocean.core.defaults.initialization.initialize import initialize_defaults
+from port_ocean.core.probe import ProbeConfig
 from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.utils.signal import init_signal_handler
@@ -45,6 +46,7 @@ def run_probe(
     probe_id: str | None = None,
     path: str = ".",
     log_level: LogLevelType = "INFO",
+    kinds: list[str] | None = None,
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level)
 
@@ -55,4 +57,9 @@ def run_probe(
     )
 
     app = load_ocean_app(path)
-    asyncio.run(app.integration.run_probe(probe_id))
+    asyncio.run(
+        app.integration.run_probe(
+            probe_id,
+            ProbeConfig(path=path, kinds=kinds),
+        )
+    )
