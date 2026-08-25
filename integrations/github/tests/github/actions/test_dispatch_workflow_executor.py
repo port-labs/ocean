@@ -368,37 +368,26 @@ class TestDispatchWorkflowExecutor:
         create_client.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_distinct_user_tokens_get_distinct_clients(self) -> None:
-        alice_run = make_run({"org": "port-labs"})
-        bob_run = make_run({"org": "port-labs"})
-        alice_client = MagicMock()
-        bob_client = MagicMock()
+    async def test_non_identity_run_uses_default_client(
+        self, mock_rest_client: MagicMock
+    ) -> None:
+        run = make_run({"org": "port-labs"})
 
         with (
             patch(
                 "github.actions.dispatch_workflow_executor.resolve_user_token",
-                new=AsyncMock(side_effect=["gho_alice", "gho_bob"]),
+                new=AsyncMock(return_value=None),
             ),
             patch(
-                "github.actions.dispatch_workflow_executor.GithubRestClient",
-                side_effect=[alice_client, bob_client],
-            ) as mock_rest_client_cls,
-            patch(
                 "github.actions.dispatch_workflow_executor.create_github_client_for_org",
-                new=AsyncMock(),
+                new=AsyncMock(return_value=mock_rest_client),
             ) as create_client,
         ):
             executor = DispatchWorkflowExecutor()
-            assert await executor._get_execution_client(alice_run) is alice_client
-            assert await executor._get_execution_client(bob_run) is bob_client
+            client = await executor._get_execution_client(run)
 
-        assert mock_rest_client_cls.call_count == 2
-        alice_auth = mock_rest_client_cls.call_args_list[0].kwargs["authenticator"]
-        bob_auth = mock_rest_client_cls.call_args_list[1].kwargs["authenticator"]
-        assert alice_auth._token.token == "gho_alice"
-        assert bob_auth._token.token == "gho_bob"
-        assert alice_auth is not bob_auth
-        create_client.assert_not_awaited()
+        assert client is mock_rest_client
+        create_client.assert_awaited_once()
 
 
 class TestLegacyDispatchWorkflowExecutor:
