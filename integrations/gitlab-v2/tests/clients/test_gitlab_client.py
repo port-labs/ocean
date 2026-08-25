@@ -37,6 +37,9 @@ async def async_raising_generator(error: Exception) -> AsyncGenerator[Any, None]
     yield  # pragma: no cover
 
 
+_MISSING = object()
+
+
 @pytest.mark.asyncio
 class TestGitLabClient:
     @pytest.fixture
@@ -1137,6 +1140,38 @@ class TestGitLabClient:
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
 
+    @pytest.mark.parametrize(
+        "default_branch",
+        [
+            pytest.param(None, id="null"),
+            pytest.param("", id="empty"),
+            pytest.param(_MISSING, id="missing"),
+        ],
+    )
+    async def test_get_repository_folders_skips_without_default_branch(
+        self, client: GitLabClient, default_branch: Any
+    ) -> None:
+        """Folder tree search skips empty projects with no usable default branch."""
+        mock_project: dict[str, Any] = {
+            "id": "1",
+            "path_with_namespace": "group/empty",
+        }
+        if default_branch is not _MISSING:
+            mock_project["default_branch"] = default_branch
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client.get_repository_folders(
+                    "src", "group/empty"
+                ):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
+
     async def test_match_files_with_repository_tree_scoped_directory(
         self, client: GitLabClient
     ) -> None:
@@ -1334,37 +1369,76 @@ class TestGitLabClient:
                 assert results == []
                 mock_get_paginated.assert_not_called()
 
-    async def test_match_files_with_repository_tree_missing_default_branch(
+    @pytest.mark.parametrize(
+        "default_branch,expected",
+        [
+            pytest.param("main", "main", id="main"),
+            pytest.param(None, None, id="null"),
+            pytest.param("", None, id="empty"),
+            pytest.param(_MISSING, None, id="missing"),
+        ],
+    )
+    async def test_project_tree_ref(
+        self, client: GitLabClient, default_branch: Any, expected: str | None
+    ) -> None:
+        project: dict[str, Any] = {"id": "1", "path_with_namespace": "group/project"}
+        if default_branch is not _MISSING:
+            project["default_branch"] = default_branch
+        assert client._project_tree_ref(project) == expected
+
+    async def test_partition_and_log_skipped_projects_without_default_branch(
         self, client: GitLabClient
     ) -> None:
-        """Projects without default_branch have no tree ref to search."""
-        mock_project = {
+        projects = [
+            {"id": "1", "path_with_namespace": "group/ok", "default_branch": "main"},
+            {"id": "2", "path_with_namespace": "group/null", "default_branch": None},
+            {"id": "3", "path_with_namespace": "group/empty", "default_branch": ""},
+            {"id": "4", "path_with_namespace": "group/missing"},
+            {"id": "5", "path_with_namespace": "group/also-ok", "default_branch": "master"},
+            {"id": "6", "path_with_namespace": "group/extra-1"},
+            {"id": "7", "path_with_namespace": "group/extra-2"},
+            {"id": "8", "path_with_namespace": "group/extra-3"},
+        ]
+        searchable, skipped = client._partition_projects_with_tree_ref(projects)
+        assert [p["path_with_namespace"] for p in searchable] == [
+            "group/ok",
+            "group/also-ok",
+        ]
+        assert skipped == [
+            "group/null",
+            "group/empty",
+            "group/missing",
+            "group/extra-1",
+            "group/extra-2",
+            "group/extra-3",
+        ]
+
+        with patch("gitlab.clients.gitlab_client.logger") as mock_logger:
+            client._log_skipped_projects_without_default_branch(skipped)
+            mock_logger.info.assert_called_once()
+            message = mock_logger.info.call_args.args[0]
+            assert "Skipping 6 project(s) without a default branch" in message
+            assert "group/null" in message
+            assert "(+1 more)" in message
+
+    @pytest.mark.parametrize(
+        "default_branch",
+        [
+            pytest.param(None, id="null"),
+            pytest.param("", id="empty"),
+            pytest.param(_MISSING, id="missing"),
+        ],
+    )
+    async def test_match_files_with_repository_tree_without_default_branch(
+        self, client: GitLabClient, default_branch: Any
+    ) -> None:
+        """Projects without a usable default_branch have no tree ref to search."""
+        mock_project: dict[str, Any] = {
             "id": "1",
             "path_with_namespace": "group/empty",
         }
-
-        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
-            with patch.object(
-                client.rest, "get_paginated_project_resource"
-            ) as mock_get_paginated:
-                results = []
-                async for batch in client._match_files_with_repository_tree(
-                    "group/empty", build_search_query("README.md")
-                ):
-                    results.extend(batch)
-
-                assert results == []
-                mock_get_paginated.assert_not_called()
-
-    async def test_match_files_with_repository_tree_null_default_branch(
-        self, client: GitLabClient
-    ) -> None:
-        """Empty GitLab repositories can return default_branch as null."""
-        mock_project = {
-            "id": "1",
-            "path_with_namespace": "group/empty",
-            "default_branch": None,
-        }
+        if default_branch is not _MISSING:
+            mock_project["default_branch"] = default_branch
 
         with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
             with patch.object(
