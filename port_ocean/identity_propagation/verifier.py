@@ -1,7 +1,11 @@
+import asyncio
+import time
 from abc import ABC, abstractmethod
 
+import jwt
+from jwt import PyJWKClient
 from loguru import logger
-from pydantic.v1 import BaseModel
+from pydantic.v1 import BaseModel, ValidationError
 
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.identity_propagation import (
@@ -11,6 +15,10 @@ from port_ocean.exceptions.identity_propagation import (
 from port_ocean.utils import http_async_client
 
 VERIFY_RUN_PATH = "/workflows/identity/verify-run"
+DISCOVERY_PATH = "/.well-known/openid-configuration"
+# How long to trust a resolved JWKS URI before re-running discovery. Key rotation within
+# the JWKS itself is handled separately by PyJWKClient's own cache.
+DISCOVERY_CACHE_TTL_SECONDS = 3600
 
 
 class IdentityClaims(BaseModel):
@@ -50,32 +58,58 @@ class UnavailableIdentityTokenVerifier(IdentityTokenVerifier):
 
 
 class PortIdentityTokenVerifier(IdentityTokenVerifier):
-    """
-    Verifies identity tokens against the JWKS that Port serves alongside the workflow API.
+    """Verifies identity tokens via OIDC discovery against ocean.port_client.api_url."""
 
-    Port currently issues these tokens from an in-process stub whose signing key lives in
-    memory, so a Port restart invalidates every token already in flight. Once the Identity
-    Service ships, only the issuer moves - this verifier keeps working unchanged.
-    """
+    def __init__(self) -> None:
+        self._jwks_client: PyJWKClient | None = None
+        self._resolved_issuer: str | None = None
+        self._jwks_client_resolved_at: float = 0.0
+
+    async def _resolve_jwks_client(self, issuer_url: str) -> PyJWKClient:
+        is_stale = (
+            self._jwks_client is None
+            or self._resolved_issuer != issuer_url
+            or time.monotonic() - self._jwks_client_resolved_at > DISCOVERY_CACHE_TTL_SECONDS
+        )
+        if is_stale:
+            response = await http_async_client.get(f"{issuer_url.rstrip('/')}{DISCOVERY_PATH}")
+            response.raise_for_status()
+            jwks_uri = response.json()["jwks_uri"]
+            self._jwks_client = PyJWKClient(jwks_uri)
+            self._resolved_issuer = issuer_url
+            self._jwks_client_resolved_at = time.monotonic()
+        assert self._jwks_client is not None
+        return self._jwks_client
 
     async def verify(self, token: str, expected_target: str) -> IdentityClaims:
-        # TODO(identity-propagation): implement real OIDC identity token verification.
-        # This needs to:
-        #   1. Fetch the JWKS from the production identity issuer (cache with a TTL,
-        #      keyed by `kid`, and refresh on cache miss/expiry - see the removed
-        #      _signing_key/_refresh_keys logic in git history for a starting point).
-        #   2. Verify the token's RS256 signature against the matching JWK.
-        #   3. Validate standard claims: `exp` (not expired), `aud` (matches
-        #      `expected_target`), and `iss` (matches the trusted issuer).
-        #   4. Map the verified payload onto `IdentityClaims`, raising
-        #      `IdentityVerificationError` for malformed tokens, unknown signing
-        #      keys, or missing required claims (`sub`, `org_id`, `run_id`).
-        # This is intentionally left unimplemented here; a production-ready
-        # implementation is being built as a separate workstream.
-        raise NotImplementedError(
-            "TODO: implement real OIDC identity token verification against a "
-            "production JWKS endpoint"
-        )
+        issuer_url = ocean.port_client.api_url
+
+        try:
+            jwks_client = await self._resolve_jwks_client(issuer_url)
+            # PyJWKClient does its own blocking HTTP + key-cache lookup by kid.
+            signing_key = await asyncio.to_thread(jwks_client.get_signing_key_from_jwt, token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=expected_target,
+                issuer=issuer_url,
+            )
+        except jwt.PyJWTError as e:
+            raise IdentityVerificationError(f"Identity token verification failed: {e}") from e
+        except Exception as e:
+            raise IdentityVerificationError(f"Could not verify identity token: {e}") from e
+
+        try:
+            return IdentityClaims(
+                sub=payload["sub"],
+                org_id=payload["org_id"],
+                run_id=payload["run_id"],
+                node_run_id=payload.get("node_run_id"),
+                actor_email=payload.get("actor_email"),
+            )
+        except (KeyError, ValidationError) as e:
+            raise IdentityVerificationError(f"Malformed identity token payload: {e}") from e
 
     async def verify_run_actor(
         self, run_id: str, actor_id: str, org_id: str | None = None

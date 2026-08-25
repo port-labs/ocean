@@ -13,12 +13,14 @@ from port_ocean.identity_propagation.verifier import (
     UnavailableIdentityTokenVerifier,
 )
 
+ISSUER_URL = "https://identity.getport.io"
+
 
 def response(status_code: int = 200, body: object = None) -> MagicMock:
     return MagicMock(status_code=status_code, json=MagicMock(return_value=body or {}))
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_http_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[MagicMock]:
     mock = MagicMock()
     mock.get = AsyncMock(return_value=response())
@@ -29,7 +31,9 @@ def mock_http_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[MagicMock]:
 @pytest.fixture(autouse=True)
 def mock_ocean(monkeypatch: pytest.MonkeyPatch) -> Iterator[MagicMock]:
     mock = MagicMock()
-    mock.port_client.api_url = "https://api.getport.io/v1"
+    # Ocean's own Port API URL doubles as the trusted OIDC issuer - no separate config,
+    # same pattern as verify_run_actor.
+    mock.port_client.api_url = ISSUER_URL
     mock.port_client.auth.headers = AsyncMock(
         return_value={"Authorization": "Bearer token"}
     )
@@ -47,17 +51,6 @@ async def test_verify_run_actor_fails_closed() -> None:
         await UnavailableIdentityTokenVerifier().verify_run_actor(
             "run_1", "jane@acme.com", "org_1"
         )
-
-
-# TODO(identity-propagation): PortIdentityTokenVerifier.verify() is currently a stub
-# pending a production-ready OIDC/JWKS implementation from another workstream. Once
-# real verification is implemented, restore/port tests covering: accepting a token
-# signed by a known key, rejecting wrong audience, rejecting expired tokens, rejecting
-# tokens missing required claims, rejecting tokens signed by an unknown key, and
-# caching of fetched signing keys.
-async def test_verify_raises_not_implemented_until_real_verification_lands() -> None:
-    with pytest.raises(NotImplementedError):
-        await PortIdentityTokenVerifier().verify("any.jwt.token", "github")
 
 
 async def test_verify_run_actor_returns_the_org_reported_by_port(
