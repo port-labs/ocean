@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import re
 from contextlib import contextmanager
@@ -74,12 +75,33 @@ def selector_hash_from_query(query: str) -> str:
     return hashlib.sha256(query.encode("utf-8")).hexdigest()
 
 
-def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
-    query = selector_query_from_resource(resource)
-    if not query:
+def _selector_without_query(resource: ResourceConfig) -> dict[str, Any] | None:
+    selector = getattr(resource, "selector", None)
+    if selector is None:
         return None
 
-    return selector_hash_from_query(query)
+    if hasattr(selector, "dict"):
+        selector_payload = selector.dict(
+            by_alias=True, exclude_none=True, exclude_unset=True
+        )
+    elif isinstance(selector, dict):
+        selector_payload = dict(selector)
+    else:
+        selector_payload = dict(getattr(selector, "__dict__", {}))
+
+    selector_payload.pop("query", None)
+    return selector_payload
+
+
+def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
+    selector_without_query = _selector_without_query(resource)
+    if selector_without_query is None:
+        return None
+
+    normalized_selector = json.dumps(
+        selector_without_query, sort_keys=True, separators=(",", ":")
+    )
+    return selector_hash_from_query(normalized_selector)
 
 
 async def is_lakehouse_data_enabled() -> bool:

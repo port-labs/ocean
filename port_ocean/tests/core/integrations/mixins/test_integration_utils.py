@@ -1,3 +1,5 @@
+import hashlib
+import json
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -122,7 +124,7 @@ class TestSelectorHashHelpers:
             == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
         )
 
-    def test_selector_hash_from_resource_returns_hash_for_trimmed_query(self) -> None:
+    def test_selector_hash_from_resource_ignores_query_and_hashes_selector(self) -> None:
         resource = ResourceConfig(
             kind="test-kind",
             selector=Selector(query="  .foo  "),
@@ -139,12 +141,71 @@ class TestSelectorHashHelpers:
             ),
         )
 
-        assert (
-            selector_hash_from_resource(resource)
-            == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
+        expected_selector_payload = {}
+        expected_hash = hashlib.sha256(
+            json.dumps(expected_selector_payload, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+        assert selector_hash_from_resource(resource) == expected_hash
+
+    def test_selector_hash_from_resource_is_stable_when_only_query_changes(self) -> None:
+        base_resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query=".foo", exportEnvVariables=["MY_VAR"]),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+        changed_query_resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query=".bar", exportEnvVariables=["MY_VAR"]),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
         )
 
-    def test_selector_hash_from_resource_returns_none_for_empty_query(self) -> None:
+        assert selector_hash_from_resource(base_resource) == selector_hash_from_resource(
+            changed_query_resource
+        )
+
+    def test_selector_hash_from_resource_returns_none_without_selector(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="true"),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+        resource.selector = None  # type: ignore[assignment]
+
+        assert selector_hash_from_resource(resource) is None
+
+    def test_selector_hash_from_resource_hashes_empty_selector_without_query(self) -> None:
         resource = ResourceConfig(
             kind="test-kind",
             selector=Selector(query=" "),
@@ -161,7 +222,8 @@ class TestSelectorHashHelpers:
             ),
         )
 
-        assert selector_hash_from_resource(resource) is None
+        expected_hash = hashlib.sha256(b"{}").hexdigest()
+        assert selector_hash_from_resource(resource) == expected_hash
 
 
 class TestExtractJqDeletionPathRevised:
