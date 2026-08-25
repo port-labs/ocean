@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
-from gitlab.clients.client_factory import create_gitlab_client_for_token
+from gitlab.clients.client_factory import create_user_gitlab_client
 
 
-def test_create_gitlab_client_for_token_uses_host_and_token() -> None:
+def test_create_user_gitlab_client_uses_host_and_token() -> None:
     with (
         patch("gitlab.clients.client_factory.ocean") as mock_ocean,
         patch("gitlab.clients.client_factory.GitLabClient") as mock_gitlab_client_cls,
@@ -14,7 +14,7 @@ def test_create_gitlab_client_for_token_uses_host_and_token() -> None:
         }
         mock_gitlab_client_cls.return_value = MagicMock()
 
-        client = create_gitlab_client_for_token("user-oauth-token")
+        client = create_user_gitlab_client("user-oauth-token")
 
         mock_gitlab_client_cls.assert_called_once_with(
             "https://gitlab.example.com", "user-oauth-token"
