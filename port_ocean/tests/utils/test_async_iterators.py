@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 import pytest
 
@@ -75,8 +75,14 @@ async def test_throttle_batch_operation_limits_concurrency() -> None:
 
         return value
 
+    def make_operation(value: int) -> Callable[[], Awaitable[int]]:
+        async def run() -> int:
+            return await operation(value)
+
+        return run
+
     results = await throttle_batch_operation(
-        [lambda value=value: operation(value) for value in range(10)],
+        [make_operation(value) for value in range(10)],
         max_concurrency,
     )
 
