@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.43 (2026-08-24)
+
+
+### Bug Fixes
+
+- Fixed pagination stopping early on empty pages when the Aikido API reported more results via X-Has-Next-Page, which could cause entities to be deleted during resync
+
+
 ## 0.3.42 (2026-08-24)
 
 
