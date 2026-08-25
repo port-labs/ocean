@@ -1,3 +1,2 @@
-from github.probe.permissions import probe_github_permissions
-
-__all__ = ["probe_github_permissions"]
+# mypy: implicit_reexport
+from github.probe.permissions import GitHubPermissionProbe as GitHubPermissionProbe

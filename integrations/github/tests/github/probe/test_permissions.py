@@ -1,12 +1,25 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
 
 from github.clients.auth.abstract_authenticator import GitHubHeaders, GitHubToken
+from github.probe import GitHubPermissionProbe
 from github.probe import permissions
-from port_ocean.core.probe import ProbeStatus
+from port_ocean.core.probe import ProbeContext, ProbeStatus
+
+
+async def _run_probe(
+    monkeypatch: pytest.MonkeyPatch,
+    kinds: list[str],
+    provider: object,
+) -> ProbeContext:
+    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
+    context = ProbeContext()
+    context.available_kinds = kinds
+    await GitHubPermissionProbe(context).run()
+    return context
 
 
 @pytest.mark.asyncio
@@ -26,11 +39,13 @@ async def test_app_permissions_are_mapped_only_to_available_kinds(
         is_app_auth=lambda: True,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(
-        ["repository", "issue", "code-scanning-alerts"]
+    context = await _run_probe(
+        monkeypatch,
+        ["repository", "issue", "code-scanning-alerts"],
+        provider,
     )
+    checks = context.result.results
 
     assert [check.status for check in checks] == [
         ProbeStatus.SUCCESS,
@@ -73,9 +88,9 @@ async def test_app_checks_include_org_scopes_when_probing_multiple_installations
         is_app_auth=lambda: True,
         list_authenticators=AsyncMock(return_value=authenticators),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(["repository"])
+    context = await _run_probe(monkeypatch, ["repository"], provider)
+    checks = context.result.results
 
     assert [check.kind for check in checks] == ["repository", "repository"]
     assert [check.scopes for check in checks] == [
@@ -96,9 +111,9 @@ async def test_missing_app_permissions_are_unknown(
         is_app_auth=lambda: True,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(["repository"])
+    context = await _run_probe(monkeypatch, ["repository"], provider)
+    checks = context.result.results
 
     assert checks[0].status == ProbeStatus.UNKNOWN
     assert checks[0].kind == "repository"
@@ -123,11 +138,9 @@ async def test_classic_pat_scopes_are_mapped_to_available_kinds(
         is_app_auth=lambda: False,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(
-        ["repository", "team", "package"]
-    )
+    context = await _run_probe(monkeypatch, ["repository", "team", "package"], provider)
+    checks = context.result.results
 
     assert [check.status for check in checks] == [
         ProbeStatus.SUCCESS,
@@ -156,13 +169,14 @@ async def test_classic_pat_repo_scope_implies_security_events(
         is_app_auth=lambda: False,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(
-        ["repository", "dependabot-alert", "code-scanning-alerts"]
+    context = await _run_probe(
+        monkeypatch,
+        ["repository", "dependabot-alert", "code-scanning-alerts"],
+        provider,
     )
 
-    assert [check.status for check in checks] == [
+    assert [check.status for check in context.result.results] == [
         ProbeStatus.SUCCESS,
         ProbeStatus.SUCCESS,
         ProbeStatus.SUCCESS,
@@ -194,9 +208,9 @@ async def test_unscoped_pat_checks_include_discovered_org_scopes(
         is_app_auth=lambda: False,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(["repository"])
+    context = await _run_probe(monkeypatch, ["repository"], provider)
+    checks = context.result.results
 
     assert [check.kind for check in checks] == ["repository", "repository"]
     assert [check.scopes for check in checks] == [
@@ -230,12 +244,11 @@ async def test_single_discovered_pat_org_omits_scope_identity(
         is_app_auth=lambda: False,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(["repository"])
+    context = await _run_probe(monkeypatch, ["repository"], provider)
 
-    assert len(checks) == 1
-    assert checks[0].scopes == {}
+    assert len(context.result.results) == 1
+    assert context.result.results[0].scopes == {}
 
 
 @pytest.mark.asyncio
@@ -271,12 +284,17 @@ async def test_pat_organization_discovery_follows_pagination(
     )
     monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(["repository"])
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+    progress = MagicMock()
+    monkeypatch.setattr(context, "update_progress", progress)
+    await GitHubPermissionProbe(context).run()
 
-    assert [check.scopes for check in checks] == [
+    assert [check.scopes for check in context.result.results] == [
         {"org": "port-labs"},
         {"org": "port-team"},
     ]
+    assert progress.call_count == 6
 
 
 @pytest.mark.asyncio
@@ -303,9 +321,9 @@ async def test_fine_grained_pat_permissions_are_unknown(
         is_app_auth=lambda: False,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    checks = await permissions.probe_github_permissions(["repository", "issue"])
+    context = await _run_probe(monkeypatch, ["repository", "issue"], provider)
+    checks = context.result.results
 
     assert [check.status for check in checks] == [
         ProbeStatus.UNKNOWN,

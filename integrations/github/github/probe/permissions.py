@@ -1,8 +1,8 @@
-from collections.abc import Iterable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.probe import ProbeCheck, ProbeStatus
+from port_ocean.core.probe import ProbeCheck, ProbeContext, ProbeStatus
 
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -91,90 +91,127 @@ class PermissionSnapshot:
     scopes: dict[str, str] = field(default_factory=dict)
 
 
-async def probe_github_permissions(kinds: Iterable[str]) -> list[ProbeCheck]:
-    """Resolve effective GitHub permissions and evaluate every declared kind."""
-    kinds = tuple(kinds)
-    provider = get_auth_provider()
-    authenticators = await provider.list_authenticators()
+class GitHubPermissionProbe:
+    def __init__(self, context: ProbeContext) -> None:
+        self.context = context
 
-    if provider.is_app_auth():
-        snapshots = _with_org_scopes(
-            [
+    async def run(self) -> None:
+        kinds = tuple(self.context.available_kinds)
+        provider = get_auth_provider()
+        authenticators = await provider.list_authenticators()
+        self.context.update_progress()
+
+        if provider.is_app_auth():
+            await self._probe_app(kinds, authenticators)
+            return
+
+        await self._probe_pat(kinds, authenticators[0])
+
+    async def _probe_app(
+        self,
+        kinds: tuple[str, ...],
+        authenticators: Sequence[AbstractGitHubAuthenticator],
+    ) -> None:
+        snapshots: list[PermissionSnapshot] = []
+        for authenticator in authenticators:
+            snapshots.append(
                 PermissionSnapshot(
                     organization=authenticator.organization,
                     permissions=(await authenticator.get_token()).permissions,
                 )
-                for authenticator in authenticators
+            )
+            self.context.update_progress()
+        for snapshot in _with_org_scopes(snapshots):
+            self._record_snapshot(kinds, snapshot, _app_check)
+
+    async def _probe_pat(
+        self,
+        kinds: tuple[str, ...],
+        authenticator: AbstractGitHubAuthenticator,
+    ) -> None:
+        granted_scopes = await self._get_pat_scopes(authenticator)
+        self.context.update_progress()
+        organizations = await self._get_pat_organizations(authenticator)
+        snapshots = _with_org_scopes(
+            [
+                PermissionSnapshot(
+                    organization=organization,
+                    permissions=(
+                        {
+                            scope: "granted"
+                            for scope in _expand_pat_scopes(granted_scopes)
+                        }
+                        if granted_scopes is not None
+                        else None
+                    ),
+                )
+                for organization in organizations
             ]
         )
-        return [_app_check(kind, snapshot) for snapshot in snapshots for kind in kinds]
+        for snapshot in snapshots:
+            self._record_snapshot(kinds, snapshot, _pat_check)
 
-    authenticator = authenticators[0]
-    granted_scopes = await _get_pat_scopes(authenticator)
-    organizations = await _get_pat_organizations(authenticator)
-    snapshots = _with_org_scopes(
-        [
-            PermissionSnapshot(
-                organization=organization,
-                permissions=(
-                    {scope: "granted" for scope in _expand_pat_scopes(granted_scopes)}
-                    if granted_scopes is not None
-                    else None
-                ),
-            )
-            for organization in organizations
-        ]
-    )
-    return [_pat_check(kind, snapshot) for snapshot in snapshots for kind in kinds]
+    def _record_snapshot(
+        self,
+        kinds: tuple[str, ...],
+        snapshot: PermissionSnapshot,
+        check: Callable[[str, PermissionSnapshot], ProbeCheck],
+    ) -> None:
+        for kind in kinds:
+            self.context.result.results.append(check(kind, snapshot))
+        self.context.update_progress()
 
-
-async def _get_pat_scopes(
-    authenticator: AbstractGitHubAuthenticator,
-) -> set[str] | None:
-    response = await authenticator.client.get(
-        f"{ocean.integration_config['github_host'].rstrip('/')}/user",
-        headers=(await authenticator.get_headers()).as_dict(),
-    )
-    response.raise_for_status()
-    if "x-oauth-scopes" not in response.headers:
-        return None
-    return {
-        scope.strip()
-        for scope in response.headers["x-oauth-scopes"].split(",")
-        if scope.strip()
-    }
-
-
-async def _get_pat_organizations(
-    authenticator: AbstractGitHubAuthenticator,
-) -> list[str | None]:
-    if authenticator.organization:
-        return [authenticator.organization]
-
-    headers = (await authenticator.get_headers()).as_dict()
-    url: str | None = f"{ocean.integration_config['github_host'].rstrip('/')}/user/orgs"
-    organizations: list[str | None] = []
-    params: dict[str, int] | None = {"per_page": 100}
-    while url:
+    async def _get_pat_scopes(
+        self,
+        authenticator: AbstractGitHubAuthenticator,
+    ) -> set[str] | None:
         response = await authenticator.client.get(
-            url,
-            headers=headers,
-            params=params,
+            f"{ocean.integration_config['github_host'].rstrip('/')}/user",
+            headers=(await authenticator.get_headers()).as_dict(),
         )
         response.raise_for_status()
-        organizations.extend(
-            login
-            for organization in response.json()
-            if isinstance(organization, dict)
-            and isinstance(login := organization.get("login"), str)
-            and login not in organizations
+        if "x-oauth-scopes" not in response.headers:
+            return None
+        return {
+            scope.strip()
+            for scope in response.headers["x-oauth-scopes"].split(",")
+            if scope.strip()
+        }
+
+    async def _get_pat_organizations(
+        self,
+        authenticator: AbstractGitHubAuthenticator,
+    ) -> list[str | None]:
+        if authenticator.organization:
+            return [authenticator.organization]
+
+        headers = (await authenticator.get_headers()).as_dict()
+        url: str | None = (
+            f"{ocean.integration_config['github_host'].rstrip('/')}/user/orgs"
         )
-        next_link = response.links.get("next")
-        url = next_link.get("url") if next_link else None
-        params = None
-    if organizations:
-        return organizations
-    return [None]
+        organizations: list[str | None] = []
+        params: dict[str, int] | None = {"per_page": 100}
+        while url:
+            response = await authenticator.client.get(
+                url,
+                headers=headers,
+                params=params,
+            )
+            response.raise_for_status()
+            organizations.extend(
+                login
+                for organization in response.json()
+                if isinstance(organization, dict)
+                and isinstance(login := organization.get("login"), str)
+                and login not in organizations
+            )
+            self.context.update_progress()
+            next_link = response.links.get("next")
+            url = next_link.get("url") if next_link else None
+            params = None
+        if organizations:
+            return organizations
+        return [None]
 
 
 def _with_org_scopes(
