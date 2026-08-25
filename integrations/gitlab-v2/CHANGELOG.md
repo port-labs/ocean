@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.34 (2026-08-25)
+
+
+### Bug Fixes
+
+- Fixed repository tree file resync crashing when GitLab projects have no default branch.
+
+
 ## 0.9.33 (2026-08-24)
 
 
