@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from port_ocean.exceptions.spec import SpecFileError
-from port_ocean.utils.misc import get_spec_file
+from port_ocean.utils.misc import get_spec_file, get_spec_kinds
 
 
 def test_get_spec_file_prefers_json_over_yaml(tmp_path: Path) -> None:
@@ -95,3 +95,52 @@ def test_get_spec_file_raises_when_spec_file_is_empty(tmp_path: Path) -> None:
     # Act + Assert
     with pytest.raises(SpecFileError, match="must contain a JSON object"):
         get_spec_file(tmp_path)
+
+
+def test_get_spec_kinds_reads_unique_resource_kinds(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    (spec_dir / "spec.yaml").write_text(
+        """
+features:
+  - type: exporter
+    resources:
+      - kind: repository
+      - kind: issue
+  - type: another-exporter
+    resources:
+      - kind: repository
+      - invalid: ignored
+""",
+        encoding="utf-8",
+    )
+
+    # Act
+    result = get_spec_kinds(tmp_path)
+
+    # Assert
+    assert result == ["repository", "issue"]
+
+
+def test_get_spec_kinds_returns_empty_when_features_have_no_resources(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    (spec_dir / "spec.yaml").write_text("features:\n  - type: exporter\n")
+
+    # Act
+    result = get_spec_kinds(tmp_path)
+
+    # Assert
+    assert result == []
+
+
+def test_get_spec_kinds_raises_when_spec_is_missing(tmp_path: Path) -> None:
+    # Act + Assert
+    with pytest.raises(
+        SpecFileError, match="expected spec.json, spec.yaml, or spec.yml"
+    ):
+        get_spec_kinds(tmp_path)
