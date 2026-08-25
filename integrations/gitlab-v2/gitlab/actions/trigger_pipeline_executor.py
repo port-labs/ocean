@@ -4,8 +4,10 @@ import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
+from port_ocean.identity_propagation.token_exchanger import resolve_user_token
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
+from gitlab.clients.client_factory import create_user_gitlab_client
 from gitlab.actions.utils import build_external_id
 from gitlab.helpers.exceptions import (
     GitlabTriggerPipelineError,
@@ -47,8 +49,13 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
 
+        user_token = await resolve_user_token(run)
+        client = (
+            create_user_gitlab_client(user_token) if user_token else self.client
+        )
+
         try:
-            pipeline = await self.client.trigger_pipeline(project, ref, variables)
+            pipeline = await client.trigger_pipeline(project, ref, variables)
         except httpx.HTTPStatusError as e:
             raise GitlabTriggerPipelineError.from_response(
                 e.response,

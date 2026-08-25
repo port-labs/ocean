@@ -197,3 +197,52 @@ class TestTriggerPipelineExecutor:
         assert vars_by_key["ENV"] == "prod"
         assert vars_by_key["COUNT"] == json.dumps(3)
         assert vars_by_key["FLAG"] == json.dumps(True)
+
+    async def test_identity_run_uses_user_token_client(
+        self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
+    ) -> None:
+        run = make_run({"project": "my-group/my-project", "ref": "main"})
+        user_client = MagicMock()
+        user_client.trigger_pipeline = AsyncMock(return_value=PIPELINE_RESPONSE)
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            patch(
+                "gitlab.actions.trigger_pipeline_executor.resolve_user_token",
+                new_callable=AsyncMock,
+                return_value="user-oauth-token",
+            ) as mock_resolve_user_token,
+            patch(
+                "gitlab.actions.trigger_pipeline_executor.create_gitlab_client_for_token",
+                return_value=user_client,
+            ) as mock_create_for_token,
+        ):
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        mock_resolve_user_token.assert_awaited_once_with(run)
+        mock_create_for_token.assert_called_once_with("user-oauth-token")
+        user_client.trigger_pipeline.assert_called_once_with(
+            "my-group/my-project", "main", []
+        )
+        executor.client.trigger_pipeline.assert_not_called()  # type: ignore[attr-defined]
+
+    async def test_non_identity_run_uses_default_client(
+        self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
+    ) -> None:
+        run = make_run({"project": "my-group/my-project", "ref": "main"})
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            patch(
+                "gitlab.actions.trigger_pipeline_executor.resolve_user_token",
+                new_callable=AsyncMock,
+                return_value=None,
+            ) as mock_resolve_user_token,
+        ):
+            mock_ocean.port_client = mock_port_client
+            executor.client.trigger_pipeline = AsyncMock(return_value=PIPELINE_RESPONSE)  # type: ignore[attr-defined]
+            await executor.execute(run)
+
+        mock_resolve_user_token.assert_awaited_once_with(run)
+        executor.client.trigger_pipeline.assert_called_once_with(  # type: ignore[attr-defined]
+            "my-group/my-project", "main", []
+        )
