@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.23 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.1.22 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.1.21 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.1.20 (2026-08-20)
+
+
+### Bug Fixes
+
+- Use a static /integration/webhook URL and the configured webhookSigningSecret so SaaS Redis live-events can complete reportCompletion runs.
+
+
 ## 0.1.19 (2026-08-18)
 
 

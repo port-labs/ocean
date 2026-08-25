@@ -28,6 +28,7 @@ features:
       - kind: skill
       - kind: plugin
       - kind: collaborator
+      - kind: package
 configurations:
   - name: githubHost
     required: false
@@ -162,6 +163,38 @@ actions:
         title: External Properties Mapping
         type: jqObject
         description: 'Defines the mapping of Port blueprint properties to GitHub external custom properties. Example: { "buisness_criticality": "{{ .properties.buisness_criticality }}"}'
+        required: true
+  - name: bulk_update_external_custom_property_values
+    icon: Github
+    description: Sparse update of a single external custom property across repositories. Batches automatically when more than 100 repositories are provided.
+    inputs:
+      - name: org
+        title: Organization
+        type: string
+        description: Default GitHub organization for repository values that omit org. Falls back to github_organization when omitted.
+      - name: propertyName
+        title: Property name
+        type: string
+        description: The external custom property name to update
+        required: true
+      - name: repositoryValues
+        title: Repository values
+        type: array
+        description: 'GitHub API repository_values array. Each item requires repository_name and value; org is optional and falls back to the org input or github_organization. Example: [{ "org": "my-org", "repository_name": "api", "value": "production" }, { "repository_name": "web", "value": null }]'
+        required: true
+  - name: bulk_delete_external_custom_property_values
+    icon: Github
+    description: Destructively remove an external custom property and all of its values across one or more organizations
+    inputs:
+      - name: orgs
+        title: Organizations
+        type: array
+        description: 'GitHub organizations to delete the property from. Example: ["my-org", "other-org"]'
+        required: true
+      - name: propertyName
+        title: Property name
+        type: string
+        description: The external custom property name to delete org-wide
         required: true
 installationDocs:
   saas:

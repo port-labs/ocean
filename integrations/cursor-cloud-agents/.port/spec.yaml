@@ -24,7 +24,7 @@ configurations:
     type: string
     required: false
     sensitive: true
-    description: Optional secret used to sign and verify Cursor v0 agent status webhooks. When set, the integration derives a per-run signing secret and validates the X-Webhook-Signature header on incoming webhooks. When unset, webhook signature verification is skipped. Generate a random string (for example with openssl rand -hex 32).
+    description: Optional. When set, must be at least 32 characters (Cursor requirement). This value is sent to Cursor as the webhook secret and used to validate the X-Webhook-Signature header on incoming callbacks. When unset, signature verification is skipped. Generate a random string with openssl rand -hex 32.
   - name: cursorApiHost
     type: url
     required: false

@@ -7,13 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.13.0 (2026-08-18)
+## 0.12.5 (2026-08-24)
 
 
-### Features
+### Improvements
 
-- Expanded default mapping with 7 new resource kinds (build, pipeline-run, pipeline-stage, environment, pipeline-deployment, release-deployment, pull-request), enabling out-of-the-box CI/CD and PR visibility without manual mapping rework
-- Restricted work-item WIQL to items changed in the last 30 days and non-closed, reducing ingestion volume for large orgs
+- Bumped ocean version to ^0.49.1
+
+
+## 0.12.4 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.12.3 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
 
 
 ## 0.12.2 (2026-08-18)

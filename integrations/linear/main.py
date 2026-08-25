@@ -3,7 +3,11 @@ from linear.client import LinearClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from linear.utils import ObjectKind
-from webhook_processors import LabelWebhookProcessor, IssueWebhookProcessor
+from webhook_processors import (
+    DocumentWebhookProcessor,
+    IssueWebhookProcessor,
+    LabelWebhookProcessor,
+)
 
 
 async def setup_application() -> None:
@@ -42,6 +46,15 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
+@ocean.on_resync(ObjectKind.DOCUMENT)
+async def on_resync_documents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for documents in client.get_paginated_documents():
+        logger.info(f"Received document batch with {len(documents)} documents")
+        yield documents
+
+
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
@@ -55,3 +68,4 @@ async def on_start() -> None:
 
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", LabelWebhookProcessor)
+ocean.add_webhook_processor("/webhook", DocumentWebhookProcessor)
