@@ -1,5 +1,4 @@
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import ProbeCheck, ProbeContext, ProbeStatus
@@ -84,13 +83,6 @@ _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
 }
 
 
-@dataclass(frozen=True)
-class PermissionSnapshot:
-    permissions: dict[str, str] | None
-    organization: str | None = None
-    scopes: dict[str, str] = field(default_factory=dict)
-
-
 class GitHubPermissionProbe:
     def __init__(self, context: ProbeContext) -> None:
         self.context = context
@@ -112,53 +104,56 @@ class GitHubPermissionProbe:
         kinds: tuple[str, ...],
         authenticators: Sequence[AbstractGitHubAuthenticator],
     ) -> None:
-        snapshots: list[PermissionSnapshot] = []
-        for authenticator in authenticators:
-            snapshots.append(
-                PermissionSnapshot(
-                    organization=authenticator.organization,
-                    permissions=(await authenticator.get_token()).permissions,
-                )
-            )
-            self.context.update_progress()
-        for snapshot in _with_org_scopes(snapshots):
-            self._record_snapshot(kinds, snapshot, _app_check)
+        pending = self._add_pending_checks(
+            kinds,
+            _org_scopes(
+                [authenticator.organization for authenticator in authenticators]
+            ),
+        )
+        for authenticator, checks in zip(authenticators, pending):
+            token = await authenticator.get_token()
+            self._resolve_checks(kinds, checks, token.permissions, _app_verdict)
 
     async def _probe_pat(
         self,
         kinds: tuple[str, ...],
         authenticator: AbstractGitHubAuthenticator,
     ) -> None:
-        granted_scopes = await self._get_pat_scopes(authenticator)
-        self.context.update_progress()
         organizations = await self._get_pat_organizations(authenticator)
-        snapshots = _with_org_scopes(
-            [
-                PermissionSnapshot(
-                    organization=organization,
-                    permissions=(
-                        {
-                            scope: "granted"
-                            for scope in _expand_pat_scopes(granted_scopes)
-                        }
-                        if granted_scopes is not None
-                        else None
-                    ),
-                )
-                for organization in organizations
-            ]
-        )
-        for snapshot in snapshots:
-            self._record_snapshot(kinds, snapshot, _pat_check)
+        pending = self._add_pending_checks(kinds, _org_scopes(organizations))
 
-    def _record_snapshot(
+        granted_scopes = await self._get_pat_scopes(authenticator)
+        permissions = (
+            {scope: "granted" for scope in _expand_pat_scopes(granted_scopes)}
+            if granted_scopes is not None
+            else None
+        )
+        for checks in pending:
+            self._resolve_checks(kinds, checks, permissions, _pat_verdict)
+
+    def _add_pending_checks(
         self,
         kinds: tuple[str, ...],
-        snapshot: PermissionSnapshot,
-        check: Callable[[str, PermissionSnapshot], ProbeCheck],
+        scopes: Sequence[dict[str, str]],
+    ) -> list[list[ProbeCheck]]:
+        """Publish every kind per scope up front so consumers can stream them."""
+        pending = [
+            [ProbeCheck(kind=kind, scopes=scope) for kind in kinds] for scope in scopes
+        ]
+        for checks in pending:
+            self.context.result.results.extend(checks)
+        self.context.update_progress()
+        return pending
+
+    def _resolve_checks(
+        self,
+        kinds: tuple[str, ...],
+        checks: list[ProbeCheck],
+        permissions: dict[str, str] | None,
+        verdict: Callable[[str, dict[str, str] | None], tuple[ProbeStatus, str]],
     ) -> None:
-        for kind in kinds:
-            self.context.result.results.append(check(kind, snapshot))
+        for kind, check in zip(kinds, checks):
+            check.status, check.message = verdict(kind, permissions)
         self.context.update_progress()
 
     async def _get_pat_scopes(
@@ -214,90 +209,62 @@ class GitHubPermissionProbe:
         return [None]
 
 
-def _with_org_scopes(
-    snapshots: list[PermissionSnapshot],
-) -> list[PermissionSnapshot]:
-    is_multi_org = len(snapshots) > 1
+def _org_scopes(organizations: Sequence[str | None]) -> list[dict[str, str]]:
+    is_multi_org = len(organizations) > 1
     return [
-        PermissionSnapshot(
-            permissions=snapshot.permissions,
-            organization=snapshot.organization,
-            scopes=(
-                {"org": snapshot.organization}
-                if is_multi_org and snapshot.organization
-                else {}
-            ),
-        )
-        for snapshot in snapshots
+        {"org": organization} if is_multi_org and organization else {}
+        for organization in organizations
     ]
 
 
-def _app_check(kind: str, snapshot: PermissionSnapshot) -> ProbeCheck:
+def _app_verdict(
+    kind: str, permissions: dict[str, str] | None
+) -> tuple[ProbeStatus, str]:
     required_permissions = APP_KIND_PERMISSIONS.get(kind)
     if required_permissions is None:
-        return ProbeCheck(
-            status=ProbeStatus.UNKNOWN,
-            message=f"No GitHub App permission mapping is defined for {kind}",
-            kind=kind,
-            scopes=snapshot.scopes,
+        return (
+            ProbeStatus.UNKNOWN,
+            f"No GitHub App permission mapping is defined for {kind}",
         )
-    if snapshot.permissions is None:
-        return ProbeCheck(
-            status=ProbeStatus.UNKNOWN,
-            message="GitHub did not return permissions for the installation token",
-            kind=kind,
-            scopes=snapshot.scopes,
+    if permissions is None:
+        return (
+            ProbeStatus.UNKNOWN,
+            "GitHub did not return permissions for the installation token",
         )
 
-    granted: tuple[str, str] | None = None
     for permission in required_permissions:
-        actual = snapshot.permissions.get(permission, "")
+        actual = permissions.get(permission, "")
         if _PERMISSION_LEVELS.get(actual, 0) >= _PERMISSION_LEVELS["read"]:
-            granted = (permission, actual)
-            break
-    return ProbeCheck(
-        status=ProbeStatus.SUCCESS if granted else ProbeStatus.FAILURE,
-        message=(
-            f"GitHub App has {granted[1]} access for {granted[0]}"
-            if granted
-            else "GitHub App requires read access for "
-            + " or ".join(required_permissions)
-        ),
-        kind=kind,
-        scopes=snapshot.scopes,
+            return (
+                ProbeStatus.SUCCESS,
+                f"GitHub App has {actual} access for {permission}",
+            )
+    return (
+        ProbeStatus.FAILURE,
+        "GitHub App requires read access for " + " or ".join(required_permissions),
     )
 
 
-def _pat_check(kind: str, snapshot: PermissionSnapshot) -> ProbeCheck:
+def _pat_verdict(
+    kind: str, permissions: dict[str, str] | None
+) -> tuple[ProbeStatus, str]:
     required = PAT_KIND_SCOPES.get(kind)
-    if snapshot.permissions is None:
-        return ProbeCheck(
-            status=ProbeStatus.UNKNOWN,
-            message=(
-                "GitHub does not expose granted scopes for this token; "
-                "this is expected for fine-grained personal access tokens"
-            ),
-            kind=kind,
-            scopes=snapshot.scopes,
+    if permissions is None:
+        return (
+            ProbeStatus.UNKNOWN,
+            "GitHub does not expose granted scopes for this token; "
+            "this is expected for fine-grained personal access tokens",
         )
     if required is None:
-        return ProbeCheck(
-            status=ProbeStatus.UNKNOWN,
-            message=f"No personal access token scope mapping is defined for {kind}",
-            kind=kind,
-            scopes=snapshot.scopes,
+        return (
+            ProbeStatus.UNKNOWN,
+            f"No personal access token scope mapping is defined for {kind}",
         )
-
-    has_scope = required in snapshot.permissions
-    return ProbeCheck(
-        status=ProbeStatus.SUCCESS if has_scope else ProbeStatus.FAILURE,
-        message=(
-            f"Personal access token grants {required}"
-            if has_scope
-            else f"Personal access token requires {required} for private resources"
-        ),
-        kind=kind,
-        scopes=snapshot.scopes,
+    if required in permissions:
+        return (ProbeStatus.SUCCESS, f"Personal access token grants {required}")
+    return (
+        ProbeStatus.FAILURE,
+        f"Personal access token requires {required} for private resources",
     )
 
 

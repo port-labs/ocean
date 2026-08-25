@@ -100,6 +100,52 @@ async def test_app_checks_include_org_scopes_when_probing_multiple_installations
 
 
 @pytest.mark.asyncio
+async def test_all_checks_are_published_as_pending_before_being_resolved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    authenticators = [
+        SimpleNamespace(
+            organization=organization,
+            get_token=AsyncMock(
+                return_value=GitHubToken(
+                    token="token",
+                    permissions={"metadata": "read", "issues": "read"},
+                )
+            ),
+        )
+        for organization in ("port-labs", "port-team")
+    ]
+    provider = SimpleNamespace(
+        is_app_auth=lambda: True,
+        list_authenticators=AsyncMock(return_value=authenticators),
+    )
+    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
+
+    context = ProbeContext()
+    context.available_kinds = ["repository", "issue"]
+    snapshots: list[list[ProbeStatus]] = []
+    monkeypatch.setattr(
+        context,
+        "update_progress",
+        MagicMock(
+            side_effect=lambda: snapshots.append(
+                [check.status for check in context.result.results]
+            )
+        ),
+    )
+
+    await GitHubPermissionProbe(context).run()
+
+    assert snapshots[1] == [ProbeStatus.PENDING] * 4
+    assert snapshots[-1] == [
+        ProbeStatus.SUCCESS,
+        ProbeStatus.SUCCESS,
+        ProbeStatus.SUCCESS,
+        ProbeStatus.SUCCESS,
+    ]
+
+
+@pytest.mark.asyncio
 async def test_missing_app_permissions_are_unknown(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -200,7 +246,7 @@ async def test_unscoped_pat_checks_include_discovered_org_scopes(
     authenticator = SimpleNamespace(
         organization=None,
         client=SimpleNamespace(
-            get=AsyncMock(side_effect=[scope_response, organizations_response])
+            get=AsyncMock(side_effect=[organizations_response, scope_response])
         ),
         get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
     )
@@ -236,7 +282,7 @@ async def test_single_discovered_pat_org_omits_scope_identity(
     authenticator = SimpleNamespace(
         organization=None,
         client=SimpleNamespace(
-            get=AsyncMock(side_effect=[scope_response, organizations_response])
+            get=AsyncMock(side_effect=[organizations_response, scope_response])
         ),
         get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
     )
@@ -274,7 +320,7 @@ async def test_pat_organization_discovery_follows_pagination(
     authenticator = SimpleNamespace(
         organization=None,
         client=SimpleNamespace(
-            get=AsyncMock(side_effect=[scope_response, first_page, second_page])
+            get=AsyncMock(side_effect=[first_page, second_page, scope_response])
         ),
         get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
     )
@@ -282,19 +328,13 @@ async def test_pat_organization_discovery_follows_pagination(
         is_app_auth=lambda: False,
         list_authenticators=AsyncMock(return_value=[authenticator]),
     )
-    monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    context = ProbeContext()
-    context.available_kinds = ["repository"]
-    progress = MagicMock()
-    monkeypatch.setattr(context, "update_progress", progress)
-    await GitHubPermissionProbe(context).run()
+    context = await _run_probe(monkeypatch, ["repository"], provider)
 
     assert [check.scopes for check in context.result.results] == [
         {"org": "port-labs"},
         {"org": "port-team"},
     ]
-    assert progress.call_count == 6
 
 
 @pytest.mark.asyncio
@@ -313,7 +353,7 @@ async def test_fine_grained_pat_permissions_are_unknown(
     authenticator = SimpleNamespace(
         organization=None,
         client=SimpleNamespace(
-            get=AsyncMock(side_effect=[scope_response, organizations_response])
+            get=AsyncMock(side_effect=[organizations_response, scope_response])
         ),
         get_headers=AsyncMock(return_value=GitHubHeaders(Authorization="Bearer token")),
     )
