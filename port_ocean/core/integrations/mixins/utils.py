@@ -82,7 +82,7 @@ def _selector_without_query(resource: ResourceConfig) -> dict[str, Any] | None:
 
     if hasattr(selector, "dict"):
         selector_payload = selector.dict(
-            by_alias=True, exclude_none=True, exclude_unset=True
+            by_alias=True, exclude_none=True
         )
     elif isinstance(selector, dict):
         selector_payload = dict(selector)

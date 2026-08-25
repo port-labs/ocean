@@ -185,6 +185,44 @@ class TestSelectorHashHelpers:
             changed_query_resource
         )
 
+    def test_selector_hash_from_resource_is_stable_for_implicit_and_explicit_defaults(
+        self,
+    ) -> None:
+        implicit_defaults = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query=".foo"),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+        explicit_defaults = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query=".foo", exportEnvVariables=[]),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert selector_hash_from_resource(implicit_defaults) == selector_hash_from_resource(
+            explicit_defaults
+        )
+
     def test_selector_hash_from_resource_returns_none_without_selector(self) -> None:
         resource = ResourceConfig(
             kind="test-kind",
