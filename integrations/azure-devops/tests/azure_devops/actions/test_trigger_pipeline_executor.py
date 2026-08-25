@@ -157,7 +157,7 @@ async def test_execute_wraps_http_error_as_trigger_pipeline_error(
 
 
 @pytest.mark.asyncio
-async def test_execute_identity_run_uses_bearer_client_for_run_pipeline(
+async def test_identity_run_uses_user_token_client(
     executor: TriggerPipelineExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
@@ -193,7 +193,7 @@ async def test_execute_identity_run_uses_bearer_client_for_run_pipeline(
 
 
 @pytest.mark.asyncio
-async def test_execute_non_identity_run_uses_default_client_for_run_pipeline(
+async def test_non_identity_run_uses_default_client(
     executor: TriggerPipelineExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
