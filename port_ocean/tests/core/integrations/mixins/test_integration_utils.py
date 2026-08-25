@@ -147,7 +147,9 @@ class TestSelectorHashHelpers:
         )
 
         expected_selector_payload = (
-            resource.selector.dict(by_alias=True, exclude_none=True)
+            resource.selector.dict(
+                by_alias=True, exclude_none=True, exclude_unset=True
+            )
             if resource.selector
             else {}
         )
@@ -197,7 +199,7 @@ class TestSelectorHashHelpers:
             base_resource
         ) == selector_hash_from_resource(changed_query_resource)
 
-    def test_selector_hash_from_resource_is_stable_for_implicit_and_explicit_defaults(
+    def test_selector_hash_from_resource_differs_for_implicit_vs_explicit_defaults(
         self,
     ) -> None:
         implicit_defaults = ResourceConfig(
@@ -233,7 +235,7 @@ class TestSelectorHashHelpers:
 
         assert selector_hash_from_resource(
             implicit_defaults
-        ) == selector_hash_from_resource(explicit_defaults)
+        ) != selector_hash_from_resource(explicit_defaults)
 
     def test_selector_hash_from_resource_returns_none_without_selector(self) -> None:
         resource = ResourceConfig(
@@ -275,7 +277,9 @@ class TestSelectorHashHelpers:
         )
 
         expected_selector_payload = (
-            resource.selector.dict(by_alias=True, exclude_none=True)
+            resource.selector.dict(
+                by_alias=True, exclude_none=True, exclude_unset=True
+            )
             if resource.selector
             else {}
         )
