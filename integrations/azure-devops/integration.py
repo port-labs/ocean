@@ -195,10 +195,10 @@ class AzureDevopsTeamResourceConfig(ResourceConfig):
 
 class AzureDevopsPipelineSelector(Selector):
     include_repo: bool = Field(
-        default=True,
+        default=False,
         alias="includeRepo",
         title="Include Repository",
-        description="Whether to include the repository for each pipeline, defaults to true so pipelines can relate to repositories out of the box",
+        description="Whether to include the repository for each pipeline, defaults to false",
     )
 
 
