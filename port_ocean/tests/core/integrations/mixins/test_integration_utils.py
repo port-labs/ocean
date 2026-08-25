@@ -33,11 +33,14 @@ from port_ocean.core.integrations.mixins.utils import (
 )
 from port_ocean.core.models import LakehouseOperation
 
+
 class TestCollectExportEnvVariables:
     def test_returns_none_for_empty_list(self) -> None:
         assert collect_export_env_variables([]) is None
 
-    def test_collects_requested_variables(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_collects_requested_variables(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("FOO", "bar")
         monkeypatch.delenv("MISSING", raising=False)
 
@@ -124,7 +127,9 @@ class TestSelectorHashHelpers:
             == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
         )
 
-    def test_selector_hash_from_resource_ignores_query_and_hashes_selector(self) -> None:
+    def test_selector_hash_from_resource_ignores_query_and_hashes_selector(
+        self,
+    ) -> None:
         resource = ResourceConfig(
             kind="test-kind",
             selector=Selector(query="  .foo  "),
@@ -141,15 +146,22 @@ class TestSelectorHashHelpers:
             ),
         )
 
-        expected_selector_payload = {}
+        expected_selector_payload = (
+            resource.selector.dict(by_alias=True, exclude_none=True)
+            if resource.selector
+            else {}
+        )
+        expected_selector_payload.pop("query", None)
         expected_hash = hashlib.sha256(
-            json.dumps(expected_selector_payload, sort_keys=True, separators=(",", ":")).encode(
-                "utf-8"
-            )
+            json.dumps(
+                expected_selector_payload, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
         ).hexdigest()
         assert selector_hash_from_resource(resource) == expected_hash
 
-    def test_selector_hash_from_resource_is_stable_when_only_query_changes(self) -> None:
+    def test_selector_hash_from_resource_is_stable_when_only_query_changes(
+        self,
+    ) -> None:
         base_resource = ResourceConfig(
             kind="test-kind",
             selector=Selector(query=".foo", exportEnvVariables=["MY_VAR"]),
@@ -181,9 +193,9 @@ class TestSelectorHashHelpers:
             ),
         )
 
-        assert selector_hash_from_resource(base_resource) == selector_hash_from_resource(
-            changed_query_resource
-        )
+        assert selector_hash_from_resource(
+            base_resource
+        ) == selector_hash_from_resource(changed_query_resource)
 
     def test_selector_hash_from_resource_is_stable_for_implicit_and_explicit_defaults(
         self,
@@ -219,9 +231,9 @@ class TestSelectorHashHelpers:
             ),
         )
 
-        assert selector_hash_from_resource(implicit_defaults) == selector_hash_from_resource(
-            explicit_defaults
-        )
+        assert selector_hash_from_resource(
+            implicit_defaults
+        ) == selector_hash_from_resource(explicit_defaults)
 
     def test_selector_hash_from_resource_returns_none_without_selector(self) -> None:
         resource = ResourceConfig(
@@ -243,7 +255,9 @@ class TestSelectorHashHelpers:
 
         assert selector_hash_from_resource(resource) is None
 
-    def test_selector_hash_from_resource_hashes_empty_selector_without_query(self) -> None:
+    def test_selector_hash_from_resource_hashes_empty_selector_without_query(
+        self,
+    ) -> None:
         resource = ResourceConfig(
             kind="test-kind",
             selector=Selector(query=" "),
@@ -260,7 +274,17 @@ class TestSelectorHashHelpers:
             ),
         )
 
-        expected_hash = hashlib.sha256(b"{}").hexdigest()
+        expected_selector_payload = (
+            resource.selector.dict(by_alias=True, exclude_none=True)
+            if resource.selector
+            else {}
+        )
+        expected_selector_payload.pop("query", None)
+        expected_hash = hashlib.sha256(
+            json.dumps(
+                expected_selector_payload, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest()
         assert selector_hash_from_resource(resource) == expected_hash
 
 
@@ -416,8 +440,8 @@ class TestExtractJqDeletionPathRevised:
 
     def test_path_with_complex_bracket_expression(self) -> None:
         """Test path extraction with complex bracket expression."""
-        result = extract_jq_deletion_path_revised(".[\"key\"].value")
-        assert result == ".[\"key\"].value"
+        result = extract_jq_deletion_path_revised('.["key"].value')
+        assert result == '.["key"].value'
 
     def test_empty_string_returns_none(self) -> None:
         """Test that empty string returns None."""
@@ -838,7 +862,9 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
             mock_ocean_context.metrics = mock_context.app.metrics
-            mock_ocean_context.port_client.ingest_integration_kind_examples = AsyncMock()
+            mock_ocean_context.port_client.ingest_integration_kind_examples = (
+                AsyncMock()
+            )
 
             expanded_batches = [
                 batch
@@ -881,7 +907,9 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
         with patch(
             "port_ocean.core.integrations.mixins.utils.ocean"
         ) as mock_ocean_context:
-            mock_ocean_context.port_client.ingest_integration_kind_examples = AsyncMock()
+            mock_ocean_context.port_client.ingest_integration_kind_examples = (
+                AsyncMock()
+            )
 
             result = await resync_function_wrapper(
                 fake_resync,
@@ -906,7 +934,9 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
         with patch(
             "port_ocean.core.integrations.mixins.utils.ocean"
         ) as mock_ocean_context:
-            mock_ocean_context.port_client.ingest_integration_kind_examples = AsyncMock()
+            mock_ocean_context.port_client.ingest_integration_kind_examples = (
+                AsyncMock()
+            )
 
             batches = [
                 batch
@@ -981,31 +1011,41 @@ class TestProcessingModes:
     async def test_is_dsp_mode_enabled_uses_local_only_warning_for_missing_flags(
         self,
     ) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.processing_mode = ProcessingMode.dsp
             mock_ocean_context.config.lakehouse_enabled = True
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 return_value=[]
             )
 
-            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+            with patch(
+                "port_ocean.core.integrations.mixins.utils.logger"
+            ) as mock_logger:
                 mock_bound = mock_logger.bind.return_value
                 result = await is_dsp_mode_enabled()
 
         assert result is False
         mock_logger.bind.assert_called_with(local_only=True)
         mock_bound.warning.assert_called_once()
-        assert "required feature flags are missing" in mock_bound.warning.call_args.args[0]
+        assert (
+            "required feature flags are missing" in mock_bound.warning.call_args.args[0]
+        )
 
     @pytest.mark.asyncio
     async def test_is_dsp_mode_enabled_uses_local_only_warning_when_lakehouse_disabled(
         self,
     ) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.processing_mode = ProcessingMode.dsp
             mock_ocean_context.config.lakehouse_enabled = False
 
-            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+            with patch(
+                "port_ocean.core.integrations.mixins.utils.logger"
+            ) as mock_logger:
                 mock_bound = mock_logger.bind.return_value
                 result = await is_dsp_mode_enabled()
 
@@ -1018,14 +1058,18 @@ class TestProcessingModes:
     async def test_is_dsp_mode_enabled_uses_local_only_warning_on_exception(
         self,
     ) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.processing_mode = ProcessingMode.dsp
             mock_ocean_context.config.lakehouse_enabled = True
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 side_effect=Exception("connection error")
             )
 
-            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+            with patch(
+                "port_ocean.core.integrations.mixins.utils.logger"
+            ) as mock_logger:
                 mock_bound = mock_logger.bind.return_value
                 result = await is_dsp_mode_enabled()
 
@@ -1038,24 +1082,35 @@ class TestProcessingModes:
     async def test_is_lakehouse_data_enabled_uses_local_only_warning_on_exception(
         self,
     ) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 side_effect=Exception("timeout")
             )
 
-            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+            with patch(
+                "port_ocean.core.integrations.mixins.utils.logger"
+            ) as mock_logger:
                 mock_bound = mock_logger.bind.return_value
                 result = await is_lakehouse_data_enabled()
 
         assert result is False
         mock_logger.bind.assert_called_with(local_only=True)
         mock_bound.warning.assert_called_once()
-        assert "Failed to check lakehouse feature flags" in mock_bound.warning.call_args.args[0]
+        assert (
+            "Failed to check lakehouse feature flags"
+            in mock_bound.warning.call_args.args[0]
+        )
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_enabled_when_flag_on(self) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
-            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = True
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = (
+                True
+            )
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 return_value=[IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED]
             )
@@ -1067,8 +1122,12 @@ class TestProcessingModes:
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_disabled_when_env_opt_in_off(self) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
-            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = False
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = (
+                False
+            )
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 return_value=[IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED]
             )
@@ -1080,8 +1139,12 @@ class TestProcessingModes:
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_disabled_when_flag_off(self) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
-            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = True
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = (
+                True
+            )
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 return_value=[]
             )
@@ -1095,12 +1158,16 @@ class TestProcessingModes:
     async def test_is_redis_live_events_enabled_uses_local_only_warning_on_exception(
         self,
     ) -> None:
-        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
                 side_effect=Exception("timeout")
             )
 
-            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+            with patch(
+                "port_ocean.core.integrations.mixins.utils.logger"
+            ) as mock_logger:
                 mock_bound = mock_logger.bind.return_value
                 result = await is_redis_live_events_enabled()
 
