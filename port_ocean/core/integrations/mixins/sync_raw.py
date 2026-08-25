@@ -86,17 +86,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(f"Fetching {resource_config.kind} resync results")
 
         is_incremental = event.event_type == EventType.INCREMENTAL_RESYNC
-        strategy_key = "incremental" if is_incremental else "resync"
-        available_kinds = (
-            self.available_incremental_kinds
+        event_mapping = (
+            self.event_strategy.incremental
             if is_incremental
-            else self.available_resync_kinds
+            else self.event_strategy.resync
         )
 
-        if resource_config.kind not in available_kinds and None not in available_kinds:
-            return unsupported_kind_response(resource_config.kind, cast(list[str], available_kinds))
+        if not (
+            event_mapping.get(resource_config.kind) or event_mapping.get(None)
+        ):
+            return unsupported_kind_response(
+                resource_config.kind,
+                cast(list[str], list(event_mapping.keys())),
+            )
 
-        fns = self._collect_resync_functions(resource_config, strategy_key)
+        fns = self._collect_resync_functions(resource_config, event_mapping)
         logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
         results, errors = await self._execute_resync_tasks(
@@ -106,9 +110,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return results, errors
 
     def _collect_resync_functions(
-        self, resource_config: ResourceConfig, strategy_key: str = "resync"
+        self,
+        resource_config: ResourceConfig,
+        event_mapping: dict[str | None, list[Callable[[str], Awaitable[RAW_RESULT]]]],
     ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
-        event_mapping = self.event_strategy.resync if strategy_key == "resync" else self.event_strategy.incremental
         fns = [
             *event_mapping[resource_config.kind],
             *event_mapping[None],
