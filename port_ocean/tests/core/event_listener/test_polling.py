@@ -70,7 +70,8 @@ async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
 
     await listener._start()
 
-    port_client.get_current_integration.assert_not_called()
+    # get_current_integration is called once by _check_port_app_config_changed()
+    port_client.get_current_integration.assert_called_once()
     port_client.get_integration_resync_request.assert_called_once()
     resync_mock.assert_called_once_with({})
     assert (
@@ -234,6 +235,7 @@ async def test_polling_cancels_running_resync_when_new_request_arrives(
     import asyncio
 
     port_client = MagicMock()
+    port_client.get_current_integration = AsyncMock(return_value={})
     port_client.get_integration_resync_request = AsyncMock(
         return_value={"id": "resync-1", "updatedAt": "2024-01-01T00:05:00Z"}
     )
@@ -270,12 +272,16 @@ async def test_polling_cancels_running_resync_when_new_request_arrives(
 
     # Spawn the first resync task
     await listener._spawn_resync_task("2024-01-01T00:05:00Z")
+    # Yield control to allow the task to start executing
+    await asyncio.sleep(0)
     assert listener._current_resync_task is not None
     assert not listener._current_resync_task.done()
     assert resync_call_count == 1
 
     # Now spawn a second resync while the first is still running
     await listener._spawn_resync_task("2024-01-01T00:10:00Z")
+    # Yield control to allow the second task to start executing
+    await asyncio.sleep(0)
 
     # The first task should have been cancelled
     assert listener._current_resync_task is not None

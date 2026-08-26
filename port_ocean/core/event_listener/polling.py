@@ -1,4 +1,7 @@
-from asyncio import Task, get_event_loop, CancelledError
+import asyncio
+import hashlib
+import json
+from asyncio import CancelledError, Task, get_event_loop
 from typing import Any, Literal
 
 from loguru import logger
@@ -10,6 +13,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerSettings,
 )
 from port_ocean.core.models import EventListenerType
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.time import convert_str_to_utc_datetime
@@ -52,6 +56,86 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._current_resync_task: Task[Any] | None = None
+        self._last_port_app_config_hash: str | None = None
+
+    async def _get_port_app_config_fresh(self) -> dict[str, Any]:
+        """
+        Fetch fresh Port App Config from Port API.
+
+        Retrieves the current integration configuration from Port API,
+        which includes resource definitions, blueprints, selectors, and mappings.
+        Uses the same pattern as _evaluate_resync_trigger() for consistency.
+
+        Returns:
+            dict: The integration config dict, or an empty dict if fetch fails.
+        """
+        try:
+            integration = await ocean.app.port_client.get_current_integration()
+            return integration.get("config", {})
+        except EmptyPortAppConfigError:
+            logger.debug("Integration config is empty, skipping config check")
+            return {}
+        except Exception as error:
+            logger.debug(
+                f"Failed to fetch Port App Config: {type(error).__name__}: {str(error)}"
+            )
+            return {}
+
+    @staticmethod
+    def _hash_port_app_config(config: dict[str, Any]) -> str:
+        """
+        Generate a deterministic hash of the Port App Config for change detection.
+
+        Uses MD5 hash of the JSON representation with sorted keys to ensure
+        consistent hashing across iterations. This allows detecting when the
+        Port App Config (mappings, selectors, blueprints) has changed.
+
+        Args:
+            config: The Port App Config dictionary to hash.
+
+        Returns:
+            str: The MD5 hash as a hex string, or empty string if hashing fails.
+        """
+        try:
+            config_str = json.dumps(config, sort_keys=True, default=str)
+            return hashlib.md5(config_str.encode()).hexdigest()
+        except Exception as error:
+            logger.warning(
+                "Failed to hash Port App Config, skipping change detection for this iteration",
+                error=error,
+            )
+            return ""
+
+    async def _check_port_app_config_changed(self) -> bool:
+        """
+        Check if Port App Config has changed since the last polling iteration.
+
+        Fetches the current Port App Config and compares its hash to the
+        previously stored hash. On the first iteration, stores the hash
+        without detecting a change. If config fetch fails, returns False.
+
+        Returns:
+            bool: True if the config has changed, False otherwise or on error.
+        """
+        current_config = await self._get_port_app_config_fresh()
+
+        if not current_config:
+            return False
+
+        current_hash = self._hash_port_app_config(current_config)
+
+        if self._last_port_app_config_hash is None:
+            self._last_port_app_config_hash = current_hash
+            return False
+
+        if current_hash != self._last_port_app_config_hash:
+            logger.warning(
+                f"Port App Config has changed (old hash: {self._last_port_app_config_hash}, new hash: {current_hash})"
+            )
+            self._last_port_app_config_hash = current_hash
+            return True
+
+        return False
 
     def should_resync(self) -> bool:
         _last_updated_at = (
@@ -195,27 +279,52 @@ class PollingEventListener(BaseEventListener):
 
     async def _start(self) -> None:
         """
-        Starts the polling event listener.
-        It registers the "on_resync" event to be checked every `interval` seconds specified in the `event_listener_config`.
-        The polling check is non-blocking and doesn't wait for ongoing resyncs to complete.
-        If a resync request arrives while another is running, the running resync is cancelled and restarted.
+        Start the polling event listener that periodically checks for changes.
+
+        Registers a polling task that runs every `interval` seconds to check for:
+        1. Port App Config (mapping) changes - detected via hash comparison
+        2. Integration resync requests - triggered by user or scheduled
+
+        The polling loop is non-blocking and spawns resync tasks in the background.
+        If Port App Config changes while a resync is running, the current resync
+        is cancelled and a new one starts with the updated configuration.
         """
         logger.info(
-            f"Setting up Polling event listener with interval: {self.event_listener_config.interval}"
+            f"Setting up Polling event listener with interval: {self.event_listener_config.interval}s"
         )
 
         @repeat_every(seconds=self.event_listener_config.interval)
         async def resync() -> None:
             logger.info(
-                f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
+                f"Polling event listener checking for changes (interval: {self.event_listener_config.interval}s)"
             )
+
+            config_changed = await self._check_port_app_config_changed()
+
+            if config_changed and self._current_resync_task:
+                if not self._current_resync_task.done():
+                    logger.info(
+                        "Port App Config has changed during active resync, cancelling current resync to start fresh"
+                    )
+                    self._current_resync_task.cancel()
+                    # Brief sleep to allow task to process cancellation before new resync starts
+                    await asyncio.sleep(0.1)
 
             (
                 should_resync,
                 resync_request_updated_at,
             ) = await self._evaluate_resync_trigger()
-            if should_resync:
+
+            if should_resync or config_changed:
+                resync_reasons = []
+                if should_resync:
+                    resync_reasons.append("user_request")
+                if config_changed:
+                    resync_reasons.append("config_changed")
+
+                logger.info(
+                    f"Triggering resync due to: {', '.join(resync_reasons)}"
+                )
                 await self._perform_resync(resync_request_updated_at)
 
-        # Execute resync repeatedly task
         await resync()
