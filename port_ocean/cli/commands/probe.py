@@ -2,6 +2,7 @@ import click
 
 from port_ocean.cli.commands.main import cli_start, console
 from port_ocean.config.settings import LogLevelType
+from port_ocean.core.probe import ProbeMode
 from port_ocean.run import run_probe
 
 
@@ -22,10 +23,22 @@ from port_ocean.run import run_probe
     default="INFO",
     help="Set the logging level for the probe.",
 )
-def probe(path: str, probe_id: str | None, log_level: LogLevelType) -> None:
+@click.option(
+    "--mode",
+    type=click.Choice([mode.value for mode in ProbeMode], case_sensitive=False),
+    default=ProbeMode.SHALLOW.value,
+    show_default=True,
+    help="Probe mode to run.",
+)
+def probe(
+    path: str,
+    probe_id: str | None,
+    log_level: LogLevelType,
+    mode: str,
+) -> None:
     """Run an integration's connection probe and exit."""
     try:
-        run_probe(probe_id, path, log_level)
+        run_probe(probe_id, path, log_level, mode=ProbeMode(mode))
     except Exception as error:
         raise click.ClickException(f"Probe failed: {error}") from error
 

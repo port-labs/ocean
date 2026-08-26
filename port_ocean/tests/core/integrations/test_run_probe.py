@@ -5,7 +5,7 @@ import pytest
 from port_ocean.context.event import EventType, event
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.ocean_types import IntegrationEventsCallbacks
-from port_ocean.core.probe import ProbeConfig, ProbeContext
+from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeMode
 from port_ocean.exceptions.core import ModeNotSupportedException
 
 
@@ -44,6 +44,7 @@ async def test_run_probe_invokes_handler_in_probe_context(
     assert result.probe_id == "probe-id"
     assert result.available_kinds == ["repository", "issue"]
     assert result.config.kinds == ["repository"]
+    assert result.config.mode is ProbeMode.SHALLOW
     assert result.checks == []
     assert result.ended_at is None
     finalize.assert_called_once()

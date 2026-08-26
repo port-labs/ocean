@@ -5,6 +5,7 @@ from click.testing import CliRunner
 from pytest import MonkeyPatch
 
 from port_ocean.cli.commands.main import cli_start
+from port_ocean.core.probe import ProbeMode
 
 probe_module = import_module("port_ocean.cli.commands.probe")
 
@@ -20,7 +21,7 @@ def test_probe_command_passes_probe_id_through(monkeypatch: MonkeyPatch) -> None
     # Assert
     assert result.exit_code == 0
     assert "Probe succeeded" in result.output
-    run_probe.assert_called_once_with("abc-123", ".", "INFO")
+    run_probe.assert_called_once_with("abc-123", ".", "INFO", mode=ProbeMode.SHALLOW)
 
 
 def test_probe_command_reads_probe_id_from_environment(
@@ -36,7 +37,7 @@ def test_probe_command_reads_probe_id_from_environment(
 
     # Assert
     assert result.exit_code == 0
-    run_probe.assert_called_once_with("from-env", ".", "INFO")
+    run_probe.assert_called_once_with("from-env", ".", "INFO", mode=ProbeMode.SHALLOW)
 
 
 def test_probe_command_runs_locally_without_a_probe_id(
@@ -52,7 +53,7 @@ def test_probe_command_runs_locally_without_a_probe_id(
 
     # Assert
     assert result.exit_code == 0
-    run_probe.assert_called_once_with(None, ".", "INFO")
+    run_probe.assert_called_once_with(None, ".", "INFO", mode=ProbeMode.SHALLOW)
 
 
 def test_probe_command_returns_nonzero_when_probe_fails(
@@ -68,3 +69,13 @@ def test_probe_command_returns_nonzero_when_probe_fails(
     # Assert
     assert result.exit_code == 1
     assert "Probe failed: bad credentials" in result.output
+
+
+def test_probe_command_injects_mode(monkeypatch: MonkeyPatch) -> None:
+    run_probe = MagicMock()
+    monkeypatch.setattr(probe_module, "run_probe", run_probe)
+
+    result = CliRunner().invoke(cli_start, ["probe", ".", "--mode", "shallow"])
+
+    assert result.exit_code == 0
+    run_probe.assert_called_once_with(None, ".", "INFO", mode=ProbeMode.SHALLOW)

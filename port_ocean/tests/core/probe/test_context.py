@@ -4,7 +4,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from port_ocean.core.probe import ProbeCheck, ProbeConfig, ProbeContext, ProbeStatus
+from port_ocean.core.probe import (
+    ProbeCheck,
+    ProbeConfig,
+    ProbeContext,
+    ProbeMode,
+    ProbeStatus,
+)
 
 
 def test_local_probe_context_has_no_probe_id() -> None:
@@ -157,3 +163,4 @@ features:
 
     assert context.available_kinds == ["repository", "issue"]
     assert context.config.kinds == ["repository"]
+    assert context.config.mode is ProbeMode.SHALLOW
