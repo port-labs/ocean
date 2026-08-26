@@ -14,6 +14,7 @@ from typing import (
     TYPE_CHECKING,
 )
 
+import httpx
 from loguru import logger
 
 from port_ocean.utils import cache
@@ -290,14 +291,19 @@ def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
     return glob.globmatch(path, pattern, flags=combined_flags)
 
 
-@cache_coroutine_result()
-async def get_saml_identities(
+def _parse_saml_edges(edges: list[dict[str, Any]]) -> dict[str, str]:
+    saml_users: dict[str, str] = {}
+    for edge in edges:
+        if edge["node"].get("user"):
+            login = edge["node"]["user"]["login"]
+            name_id = edge["node"]["samlIdentity"]["nameId"]
+            saml_users[login] = name_id
+    return saml_users
+
+
+async def _get_org_saml_identities(
     client: "AbstractGithubClient", organization: str
 ) -> dict[str, str]:
-    """Fetch and cache SAML identities for an organization.
-
-    Returns a mapping of GitHub login -> SAML nameId (email).
-    """
     from github.helpers.gql_queries import LIST_EXTERNAL_IDENTITIES_GQL
 
     variables = {
@@ -309,23 +315,101 @@ async def get_saml_identities(
 
     saml_users: dict[str, str] = {}
 
-    logger.info(f"Starting SAML identity fetch for organization '{organization}'")
-
     try:
         async for identity_batch in client.send_paginated_request(
             LIST_EXTERNAL_IDENTITIES_GQL,
             variables,
         ):
-            for user in identity_batch:
-                if user["node"].get("user"):
-                    login = user["node"]["user"]["login"]
-                    name_id = user["node"]["samlIdentity"]["nameId"]
-                    saml_users[login] = name_id
-
-        logger.info(
-            f"SAML fetch complete for '{organization}': {len(saml_users)} identities"
-        )
+            saml_users.update(_parse_saml_edges(identity_batch))
     except TypeError:
+        logger.info(f"Org-level SAML not configured for '{organization}'")
+
+    return saml_users
+
+
+@cache_coroutine_result()
+async def _get_enterprise_slug(client: "AbstractGithubClient") -> str | None:
+    from github.helpers.gql_queries import VIEWER_ENTERPRISES_GQL
+
+    try:
+        response = await client.send_api_request(
+            client.base_url,
+            method="POST",
+            json_data={"query": VIEWER_ENTERPRISES_GQL},
+        )
+        enterprises = response["data"]["viewer"]["enterprises"]["nodes"]
+        if enterprises:
+            # A user typically belongs to one enterprise; use the first
+            slug = enterprises[0]["slug"]
+            logger.info(f"Auto-detected enterprise slug: '{slug}'")
+            return slug
+        logger.debug("No enterprise found for authenticated user")
+    except (KeyError, httpx.HTTPStatusError) as exc:
+        logger.debug(
+            f"Failed to detect enterprise slug: {exc}", exc_info=True
+        )
+
+    return None
+
+
+async def _get_enterprise_saml_identities(
+    client: "AbstractGithubClient", enterprise_slug: str
+) -> dict[str, str]:
+    from github.helpers.gql_queries import LIST_ENTERPRISE_EXTERNAL_IDENTITIES_GQL
+
+    variables = {
+        "enterprise": enterprise_slug,
+        "first": 100,
+        "__path": "enterprise.ownerInfo.samlIdentityProvider.externalIdentities",
+        "__node_key": "edges",
+    }
+
+    saml_users: dict[str, str] = {}
+
+    try:
+        async for identity_batch in client.send_paginated_request(
+            LIST_ENTERPRISE_EXTERNAL_IDENTITIES_GQL,
+            variables,
+        ):
+            saml_users.update(_parse_saml_edges(identity_batch))
+    except TypeError:
+        logger.info(
+            f"Enterprise-level SAML not configured for '{enterprise_slug}'"
+        )
+
+    return saml_users
+
+
+@cache_coroutine_result()
+async def get_saml_identities(
+    client: "AbstractGithubClient", organization: str
+) -> dict[str, str]:
+    """Fetch and cache SAML identities for an organization.
+
+    Returns a mapping of GitHub login -> SAML nameId (email).
+    Tries org-level SAML first, falls back to enterprise-level SAML.
+    """
+    logger.info(f"Starting SAML identity fetch for organization '{organization}'")
+
+    saml_users = await _get_org_saml_identities(client, organization)
+
+    if not saml_users:
+        enterprise_slug = await _get_enterprise_slug(client)
+        if enterprise_slug:
+            logger.info(
+                f"Org SAML empty for '{organization}', "
+                f"trying enterprise '{enterprise_slug}'"
+            )
+            saml_users = await _get_enterprise_saml_identities(
+                client, enterprise_slug
+            )
+
+    if saml_users:
+        logger.info(
+            f"SAML fetch complete for '{organization}': "
+            f"{len(saml_users)} identities"
+        )
+    else:
         logger.info(f"SAML not enabled for organization '{organization}'")
 
     return saml_users
