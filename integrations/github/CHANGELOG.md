@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.0 (2026-08-26)
+
+
+### Features
+
+- Add an `excludeArchived` selector to skip archived repositories during repository discovery for pull request, issue, workflow, release, file, folder, skill, and other per-repository kinds.
+
+
 ## 6.9.7 (2026-08-26)
 
 
-### Bug Fixes
+### Improvements
 
-- Added retry with exponential backoff for GraphQL errors during team member enrichment. GitHub server-side errors like "Something went wrong while executing your query" are retried up to 3 times before failing, preventing a single error from aborting the entire team resync.
+- Converted specs from yaml to json
 
 
 ## 6.9.6 (2026-08-26)
