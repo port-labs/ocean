@@ -27,7 +27,7 @@ from port_ocean.core.integrations.mixins.utils import (
     is_redis_live_events_enabled,
     resync_function_wrapper,
     resync_generator_wrapper,
-    selector_hash_from_query,
+    selector_hash_from_selector,
     selector_hash_from_resource,
     selector_query_from_resource,
 )
@@ -123,7 +123,7 @@ class TestSelectorHashHelpers:
 
     def test_selector_hash_from_query_uses_sha256_hex(self) -> None:
         assert (
-            selector_hash_from_query(".foo")
+            selector_hash_from_selector(".foo")
             == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
         )
 

@@ -70,8 +70,8 @@ def selector_query_from_resource(resource: ResourceConfig) -> str | None:
     return trimmed if trimmed else None
 
 
-def selector_hash_from_query(query: str) -> str:
-    return hashlib.sha256(query.encode("utf-8")).hexdigest()
+def selector_hash_from_selector(selector: str) -> str:
+    return hashlib.sha256(selector.encode("utf-8")).hexdigest()
 
 
 def _selector_without_query(resource: ResourceConfig) -> dict[str, Any] | None:
@@ -100,7 +100,7 @@ def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
     normalized_selector = json.dumps(
         selector_without_query, sort_keys=True, separators=(",", ":")
     )
-    return selector_hash_from_query(normalized_selector)
+    return selector_hash_from_selector(normalized_selector)
 
 
 async def is_lakehouse_data_enabled() -> bool:
