@@ -10,11 +10,13 @@ from loguru import logger
 
 from aws.core.helpers.metadata.cloudtrail_event_mappings import (
     EVENT_NAME_MAPPINGS,
+    cloudtrail_mapping_key,
 )
 from aws.core.helpers.metadata.types import (
     CloudTrailDetail,
     CloudTrailEventAction,
     EventBridgeCloudTrailPayload,
+    EventNameMapping,
 )
 
 __all__ = [
@@ -49,6 +51,18 @@ def get_event_name(payload: EventBridgeCloudTrailPayload) -> str | None:
     return _get_detail(payload).get("eventName")
 
 
+def _resolve_event_mapping(detail: CloudTrailDetail) -> EventNameMapping | None:
+    event_name = detail.get("eventName")
+    if not event_name:
+        return None
+
+    event_source = detail.get("eventSource")
+    mapping = EVENT_NAME_MAPPINGS.get(cloudtrail_mapping_key(event_name, event_source))
+    if mapping is None:
+        mapping = EVENT_NAME_MAPPINGS.get(event_name)
+    return mapping
+
+
 def is_supported_cloudtrail_event(payload: EventBridgeCloudTrailPayload) -> bool:
     detail = _get_detail(payload)
     if detail.get("errorCode"):
@@ -57,7 +71,7 @@ def is_supported_cloudtrail_event(payload: EventBridgeCloudTrailPayload) -> bool
             f"skipping live event (eventName={detail.get('eventName')})"
         )
         return False
-    return detail.get("eventName") in EVENT_NAME_MAPPINGS
+    return _resolve_event_mapping(detail) is not None
 
 
 def parse_cloudtrail_event(
@@ -72,12 +86,12 @@ def parse_cloudtrail_event(
     if detail.get("errorCode"):
         return None
 
-    event_name = detail.get("eventName")
-    if not event_name:
+    mapping = _resolve_event_mapping(detail)
+    if mapping is None:
         return None
 
-    mapping = EVENT_NAME_MAPPINGS.get(event_name)
-    if mapping is None:
+    event_name = detail.get("eventName")
+    if not event_name:
         return None
 
     identifier = mapping.extract_identifier(detail)
