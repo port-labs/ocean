@@ -114,7 +114,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource_config: ResourceConfig,
         event_mapping: dict[str | None, list[Callable[[str], Awaitable[RAW_RESULT]]]],
     ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
-        event_mapping = getattr(self.event_strategy, strategy_key)
         fns = [
             *event_mapping[resource_config.kind],
             *event_mapping[None],
