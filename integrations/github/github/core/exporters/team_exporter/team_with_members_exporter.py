@@ -7,7 +7,7 @@ from loguru import logger
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions, ListTeamOptions
-from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
+from github.helpers.exceptions import GraphQLErrorGroup
 from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
 )
@@ -21,9 +21,9 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
     MEMBER_PAGE_SIZE = 30
     MAX_GRAPHQL_RETRIES = 3
 
-    async def get_resource[
-        ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionT: SingleTeamOptions](
+        self, options: ExporterOptionT
+    ) -> Optional[RAW_ITEM]:
         include_saml_email = bool(options["include_saml_email"])
         organization = options["organization"]
         slug = options["slug"]
@@ -76,9 +76,9 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         return enrich_with_organization(team, organization)
 
-    def get_paginated_resources[
-        ExporterOptionT: ListTeamOptions
-    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    def get_paginated_resources[ExporterOptionT: ListTeamOptions](
+        self, options: ExporterOptionT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise NotImplementedError(
             "GraphQL team pagination is retired. Use RestTeamExporter.get_paginated_resources "
             "and GraphQLTeamWithMembersExporter._enrich_team_with_extras for member enrichment."
