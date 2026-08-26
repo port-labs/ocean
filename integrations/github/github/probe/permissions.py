@@ -141,7 +141,7 @@ class GitHubPermissionProbe:
             [ProbeCheck(kind=kind, scopes=scope) for kind in kinds] for scope in scopes
         ]
         for checks in pending:
-            self.context.result.results.extend(checks)
+            self.context.checks.extend(checks)
         self.context.update_progress()
         return pending
 

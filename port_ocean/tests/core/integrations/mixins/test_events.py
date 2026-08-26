@@ -1,7 +1,7 @@
 import pytest
 
 from port_ocean.core.integrations.mixins.events import EventsMixin
-from port_ocean.core.probe import ProbeContext, ProbeResult
+from port_ocean.core.probe import ProbeContext
 
 
 @pytest.mark.asyncio
@@ -26,7 +26,7 @@ async def test_on_probe_injects_context_and_returns_it_when_handler_returns_none
     # Assert
     assert returned is None
     assert seen["context"] is context
-    assert isinstance(context.result, ProbeResult)
+    assert context.checks == []
 
 
 @pytest.mark.asyncio

@@ -45,7 +45,7 @@ async def test_app_permissions_are_mapped_only_to_available_kinds(
         ["repository", "issue", "code-scanning-alerts"],
         provider,
     )
-    checks = context.result.results
+    checks = context.checks
 
     assert [check.status for check in checks] == [
         ProbeStatus.SUCCESS,
@@ -90,7 +90,7 @@ async def test_app_checks_include_org_scopes_when_probing_multiple_installations
     )
 
     context = await _run_probe(monkeypatch, ["repository"], provider)
-    checks = context.result.results
+    checks = context.checks
 
     assert [check.kind for check in checks] == ["repository", "repository"]
     assert [check.scopes for check in checks] == [
@@ -129,7 +129,7 @@ async def test_all_checks_are_published_as_pending_before_being_resolved(
         "update_progress",
         MagicMock(
             side_effect=lambda: snapshots.append(
-                [check.status for check in context.result.results]
+                [check.status for check in context.checks]
             )
         ),
     )
@@ -159,7 +159,7 @@ async def test_missing_app_permissions_are_unknown(
     )
 
     context = await _run_probe(monkeypatch, ["repository"], provider)
-    checks = context.result.results
+    checks = context.checks
 
     assert checks[0].status == ProbeStatus.UNKNOWN
     assert checks[0].kind == "repository"
@@ -186,7 +186,7 @@ async def test_classic_pat_scopes_are_mapped_to_available_kinds(
     )
 
     context = await _run_probe(monkeypatch, ["repository", "team", "package"], provider)
-    checks = context.result.results
+    checks = context.checks
 
     assert [check.status for check in checks] == [
         ProbeStatus.SUCCESS,
@@ -222,7 +222,7 @@ async def test_classic_pat_repo_scope_implies_security_events(
         provider,
     )
 
-    assert [check.status for check in context.result.results] == [
+    assert [check.status for check in context.checks] == [
         ProbeStatus.SUCCESS,
         ProbeStatus.SUCCESS,
         ProbeStatus.SUCCESS,
@@ -256,7 +256,7 @@ async def test_unscoped_pat_checks_include_discovered_org_scopes(
     )
 
     context = await _run_probe(monkeypatch, ["repository"], provider)
-    checks = context.result.results
+    checks = context.checks
 
     assert [check.kind for check in checks] == ["repository", "repository"]
     assert [check.scopes for check in checks] == [
@@ -293,8 +293,8 @@ async def test_single_discovered_pat_org_omits_scope_identity(
 
     context = await _run_probe(monkeypatch, ["repository"], provider)
 
-    assert len(context.result.results) == 1
-    assert context.result.results[0].scopes == {}
+    assert len(context.checks) == 1
+    assert context.checks[0].scopes == {}
 
 
 @pytest.mark.asyncio
@@ -331,7 +331,7 @@ async def test_pat_organization_discovery_follows_pagination(
 
     context = await _run_probe(monkeypatch, ["repository"], provider)
 
-    assert [check.scopes for check in context.result.results] == [
+    assert [check.scopes for check in context.checks] == [
         {"org": "port-labs"},
         {"org": "port-team"},
     ]
@@ -363,7 +363,7 @@ async def test_fine_grained_pat_permissions_are_unknown(
     )
 
     context = await _run_probe(monkeypatch, ["repository", "issue"], provider)
-    checks = context.result.results
+    checks = context.checks
 
     assert [check.status for check in checks] == [
         ProbeStatus.UNKNOWN,
