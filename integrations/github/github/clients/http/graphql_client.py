@@ -11,6 +11,7 @@ from typing import (
     NamedTuple,
     Optional,
 )
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 from loguru import logger
@@ -24,19 +25,20 @@ from github.clients.graphql_page_reduction import (
     reduce_graphql_page_size,
 )
 from github.clients.http.base_client import AbstractGithubClient
-from github.helpers.exceptions import (
-    GraphQLClientError,
-    GraphQLErrorGroup,
-    RateLimitException,
-)
-from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
     extract_graphql_rate_limit_info,
 )
-from urllib.parse import urlparse, urlunparse
+from github.helpers.exceptions import (
+    GraphQLClientError,
+    GraphQLErrorGroup,
+    GraphQLForbiddenFieldError,
+    RateLimitException,
+)
+from github.helpers.utils import IgnoredError
 
 PAGE_SIZE = 25
+FORBIDDEN_ERROR_TYPE = "FORBIDDEN"
 
 
 class GraphQLFallback(NamedTuple):
@@ -120,15 +122,25 @@ class GithubGraphQLClient(AbstractGithubClient):
         ignored_types = {e.type: e.message for e in all_ignored}
 
         non_ignored_exceptions = []
+        forbidden_fields: set[str] = set()
+
         for error in body["errors"]:
             error_type = error.get("type")
+            error_path = error.get("path", [])
+
             if error_type in ignored_types:
                 logger.warning(
                     f"{ignored_types[error_type]} due to {error['message']} "
-                    f"for {error.get('path', [])} (status {response.status_code})"
+                    f"for {error_path} (status {response.status_code})"
                 )
+                # Track field-level FORBIDDEN errors that can be retried without those fields
+                if error_type == FORBIDDEN_ERROR_TYPE:
+                    field = self._extract_field_from_error_path(error_path)
+                    if field:
+                        forbidden_fields.add(field)
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
+
         if non_ignored_exceptions:
             # The transport can rewrite variables between retries (e.g. shrinking
             # `variables.first`); prefer what it actually sent over the caller's copy.
@@ -139,7 +151,11 @@ class GithubGraphQLClient(AbstractGithubClient):
             )
             raise GraphQLErrorGroup(non_ignored_exceptions)
 
-        return {}
+        # If we have field-level FORBIDDEN errors, signal to exclude and retry
+        if forbidden_fields:
+            raise GraphQLForbiddenFieldError(forbidden_fields)
+
+        return body if body.get("data") else {}
 
     @staticmethod
     def _sent_variables(response: httpx.Response) -> Optional[Dict[str, Any]]:
@@ -152,6 +168,18 @@ class GithubGraphQLClient(AbstractGithubClient):
         response extensions, which is what we read here for error logs.
         """
         return response.extensions.get(GRAPHQL_SENT_VARIABLES_EXTENSION)
+
+    @staticmethod
+    def _extract_field_from_error_path(error_path: Any) -> Optional[str]:
+        """Extract field name from GraphQL error path.
+
+        GraphQL error paths look like: ["repository", "pullRequests", "nodes", 0, "statusCheckRollup"]
+        We extract the leaf field name (the last string element).
+        """
+        if not error_path or not isinstance(error_path, list):
+            return None
+        leaf = error_path[-1]
+        return leaf if isinstance(leaf, str) else None
 
     async def send_api_request(
         self,
@@ -166,6 +194,7 @@ class GithubGraphQLClient(AbstractGithubClient):
     ) -> Dict[str, Any]:
         max_retries = 5
         retry_count = 0
+
         while retry_count < max_retries:
             response = await self.make_request(
                 resource=resource,
@@ -253,6 +282,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         ignored_errors: Optional[List[IgnoredError]] = None,
         fallbacks: Optional[List[GraphQLFallback]] = None,
+        regenerate_query: Optional[Callable[[set[str]], Awaitable[str]]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)
@@ -265,6 +295,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         fallbacks = list(fallbacks or [])
         cursor = None
         page_size = PAGE_SIZE
+        forbidden_retries = 0
+        max_forbidden_retries = 5
         logger.info(f"[GraphQL] Starting pagination for query with path {path}")
 
         while True:
@@ -279,6 +311,25 @@ class GithubGraphQLClient(AbstractGithubClient):
                     fallbacks=fallbacks,
                     page_size=page_size,
                 )
+            except GraphQLForbiddenFieldError as exc:
+                if not regenerate_query:
+                    raise
+                forbidden_retries += 1
+                if forbidden_retries >= max_forbidden_retries:
+                    logger.error(
+                        f"[GraphQL] Max forbidden field retries ({max_forbidden_retries}) exceeded "
+                        f"for path {path}. Fields: {exc.fields}"
+                    )
+                    raise
+                logger.warning(
+                    f"[GraphQL] Forbidden fields {exc.fields} for path {path} "
+                    f"(attempt {forbidden_retries}/{max_forbidden_retries}), regenerating query"
+                )
+                resource = await regenerate_query(exc.fields)
+                fallbacks = []
+                cursor = None
+                page_size = PAGE_SIZE
+                continue
             except GraphQLErrorGroup:
                 reduced_page_size = reduce_graphql_page_size(page_size)
                 if reduced_page_size is None:
