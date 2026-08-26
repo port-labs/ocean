@@ -296,9 +296,14 @@ def _parse_saml_edges(edges: list[dict[str, Any]]) -> dict[str, str]:
     saml_users: dict[str, str] = {}
     for edge in edges:
         if edge["node"].get("user"):
-            login = edge["node"]["user"]["login"]
-            name_id = edge["node"]["samlIdentity"]["nameId"]
-            saml_users[login] = name_id
+            try:
+                login = edge["node"]["user"]["login"]
+                name_id = edge["node"]["samlIdentity"]["nameId"]
+                saml_users[login] = name_id
+            except (KeyError, TypeError):
+                logger.warning(
+                    f"Skipping malformed SAML edge: {edge.get('node', {}).get('guid', 'unknown')}"
+                )
     return saml_users
 
 
