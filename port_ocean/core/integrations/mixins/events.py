@@ -24,14 +24,6 @@ class EventsMixin:
     def __init__(self) -> None:
         self.event_strategy: IntegrationEventsCallbacks = IntegrationEventsCallbacks()
 
-    @property
-    def available_resync_kinds(self) -> list[str | None]:
-        return list(self.event_strategy.resync.keys())
-
-    @property
-    def available_incremental_kinds(self) -> list[str | None]:
-        return list(self.event_strategy.incremental.keys())
-
     def on_start(self, function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
         """Register a function as a listener for the "start" event."""
         logger.debug(f"Registering {function} as a start event listener")

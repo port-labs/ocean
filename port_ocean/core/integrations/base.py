@@ -79,7 +79,6 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         self.started = True
 
         if self.event_strategy.start:
-
             async def run_on_start_tasks() -> None:
                 try:
                     async with event_context(

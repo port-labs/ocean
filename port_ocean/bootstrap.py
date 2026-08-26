@@ -2,7 +2,7 @@ from inspect import getmembers
 from pathlib import Path
 from typing import Type, Any, Dict
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.ocean import Ocean

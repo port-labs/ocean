@@ -7,6 +7,41 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.0 (2026-08-26)
+
+
+### Improvements
+
+- Converted IntegrationEventsCallbacks from TypedDict to dataclass for easier IDE tracing.
+  Breaking (internal): custom integrations that mutate `integration.event_strategy` as a dict
+  (e.g. `event_strategy["resync"][kind]`) must use attribute access instead
+  (e.g. `event_strategy.resync[kind]`); `@ocean.on_resync()` and other registration APIs are unchanged.
+
+
+## 0.49.1 (2026-08-24)
+
+
+### Improvements
+
+- Added `throttle_batch_operation` util for running multiple async callables with bounded concurrency.
+
+
+## 0.49.0 (2026-08-24)
+
+
+### Improvements
+
+- Migrate Ocean core settings models from Pydantic v1 to v2, keeping integration config as a JSON-mode dict of primitives.
+
+
+## 0.48.13 (2026-08-24)
+
+
+### Bug Fixes
+
+- Fix HTTPStatusError unpickling failure in Loguru async queue by converting to safe serializable format
+
+
 ## 0.48.12 (2026-08-18)
 
 
