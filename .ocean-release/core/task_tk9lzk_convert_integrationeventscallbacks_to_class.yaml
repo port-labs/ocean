@@ -1,0 +1,7 @@
+bump: minor
+changelog-type: improvement
+changelog: >-
+  Converted IntegrationEventsCallbacks from TypedDict to dataclass for easier IDE tracing.
+  Breaking (internal): custom integrations that mutate `integration.event_strategy` as a dict
+  (e.g. `event_strategy["resync"][kind]`) must use attribute access instead
+  (e.g. `event_strategy.resync[kind]`); `@ocean.on_resync()` and other registration APIs are unchanged.
