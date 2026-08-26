@@ -165,7 +165,12 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         max_retries = 5
+        # 3 retries with exponential backoff (2s, 4s); covers GitHub
+        # server-side errors (e.g. "Something went wrong") without
+        # stalling the sync on persistent failures.
+        max_graphql_retries = 3
         retry_count = 0
+        graphql_retry_count = 0
         while retry_count < max_retries:
             response = await self.make_request(
                 resource=resource,
@@ -195,6 +200,22 @@ class GithubGraphQLClient(AbstractGithubClient):
                 logger.warning(
                     f"[GraphQL] Rate limit exceeded for path {query_path} (attempt {retry_count}/{max_retries}). "
                     f"Sleeping for {sleep_time} seconds until {exc.rate_limit_info.reset_time}"
+                )
+                await asyncio.sleep(sleep_time)
+            except GraphQLErrorGroup as exc:
+                graphql_retry_count += 1
+                if graphql_retry_count >= max_graphql_retries:
+                    logger.error(
+                        f"[GraphQL] Max retries ({max_graphql_retries}) exceeded for path "
+                        f"{query_path} due to GraphQL errors: {exc}"
+                    )
+                    raise
+
+                sleep_time = 2**graphql_retry_count
+                logger.warning(
+                    f"[GraphQL] GraphQL error for path {query_path} "
+                    f"(attempt {graphql_retry_count}/{max_graphql_retries}), "
+                    f"retrying in {sleep_time}s: {exc}"
                 )
                 await asyncio.sleep(sleep_time)
 

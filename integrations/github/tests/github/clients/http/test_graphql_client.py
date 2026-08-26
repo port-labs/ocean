@@ -89,18 +89,20 @@ class TestGithubGraphQLClient:
             "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
-            with pytest.raises(GraphQLErrorGroup) as exc_info:
-                await client.send_api_request(
-                    client.base_url, method="POST", json_data={}
-                )
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(GraphQLErrorGroup) as exc_info:
+                    await client.send_api_request(
+                        client.base_url, method="POST", json_data={}
+                    )
 
-            # Verify the exception group
-            assert (
-                str(exc_info.value) == "GraphQL errors occurred:\n- Error 1\n- Error 2"
-            )
-            assert len(exc_info.value.errors) == 2
-            assert str(exc_info.value.errors[0]) == "Error 1"
-            assert str(exc_info.value.errors[1]) == "Error 2"
+                # Verify the exception group
+                assert (
+                    str(exc_info.value)
+                    == "GraphQL errors occurred:\n- Error 1\n- Error 2"
+                )
+                assert len(exc_info.value.errors) == 2
+                assert str(exc_info.value.errors[0]) == "Error 1"
+                assert str(exc_info.value.errors[1]) == "Error 2"
 
     @pytest.mark.asyncio
     async def test_handle_graphql_success(
@@ -637,6 +639,81 @@ class TestGithubGraphQLClient:
                 # Verify make_request was called 5 times (max retries)
                 assert make_request_mock.call_count == 5
 
+    @pytest.mark.asyncio
+    async def test_send_api_request_retries_on_graphql_error(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test that send_api_request retries on transient GraphQLErrorGroup then succeeds."""
+        client = _make_gql_client(authenticator)
+
+        error_response = MagicMock(spec=httpx.Response)
+        error_response.status_code = 200
+        error_response.headers = {}
+        error_response.extensions = {}
+        error_response.json.return_value = {
+            "errors": [
+                {"message": "Something went wrong while executing your query"}
+            ]
+        }
+
+        success_response = MagicMock(spec=httpx.Response)
+        success_response.status_code = 200
+        success_response.headers = {}
+        success_response.extensions = {}
+        success_response.json.return_value = {
+            "data": {"organization": {"team": {"slug": "my-team"}}}
+        }
+
+        make_request_mock = AsyncMock(
+            side_effect=[error_response, error_response, success_response]
+        )
+
+        with patch.object(client, "make_request", make_request_mock):
+            with patch("asyncio.sleep", new_callable=AsyncMock) as sleep_mock:
+                result = await client.send_api_request(
+                    client.base_url, method="POST", json_data={}
+                )
+
+                assert make_request_mock.call_count == 3
+                assert sleep_mock.call_count == 2
+                assert sleep_mock.call_args_list[0][0][0] == 2  # 2^1
+                assert sleep_mock.call_args_list[1][0][0] == 4  # 2^2
+                assert result == {
+                    "data": {"organization": {"team": {"slug": "my-team"}}}
+                }
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_graphql_error_max_retries_exceeded(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test that send_api_request raises after exhausting GraphQL error retries."""
+        client = _make_gql_client(authenticator)
+
+        error_response = MagicMock(spec=httpx.Response)
+        error_response.status_code = 200
+        error_response.headers = {}
+        error_response.extensions = {}
+        error_response.json.return_value = {
+            "errors": [
+                {"message": "Something went wrong while executing your query"}
+            ]
+        }
+
+        make_request_mock = AsyncMock(return_value=error_response)
+
+        with patch.object(client, "make_request", make_request_mock):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(GraphQLErrorGroup):
+                    await client.send_api_request(
+                        client.base_url,
+                        method="POST",
+                        json_data={},
+                        query_path="test.query",
+                    )
+
+                # 3 attempts (1 initial + 2 retries, raises on 3rd)
+                assert make_request_mock.call_count == 3
+
 
 class TestGithubGraphQLClientRetryConfig:
     """Tests for client property override — POST retryability and caching."""
@@ -786,10 +863,12 @@ class TestGraphQLUnknownErrorPageReduction:
             return httpx.Response(200, json=self._page_body([{"id": 1}]))
 
         with patch.object(client, "make_request", side_effect=fake_make_request):
-            pages = await self._collect(client)
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                pages = await self._collect(client)
 
         assert pages == [[{"id": 1}]]
-        assert seen_first == [PAGE_SIZE, PAGE_SIZE - 5]
+        # 3 retries at PAGE_SIZE, then page reduction succeeds at PAGE_SIZE - 5
+        assert seen_first == [PAGE_SIZE] * 3 + [PAGE_SIZE - 5]
 
     @pytest.mark.asyncio
     async def test_walks_down_to_floor_then_raises(
@@ -805,36 +884,43 @@ class TestGraphQLUnknownErrorPageReduction:
             return httpx.Response(200, json=self._error_body())
 
         with patch.object(client, "make_request", side_effect=fake_make_request):
-            with pytest.raises(GraphQLErrorGroup):
-                await self._collect(client)
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(GraphQLErrorGroup):
+                    await self._collect(client)
 
-        assert seen_first == [25, 20, 15, 10, 5, 1]
+        # 3 retries at each page size level before reduction
+        assert seen_first == [25] * 3 + [20] * 3 + [15] * 3 + [10] * 3 + [5] * 3 + [1] * 3
 
     @pytest.mark.asyncio
     async def test_page_size_resets_to_full_on_next_page(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
         client = _make_gql_client(authenticator)
-        seen_first = []
+        seen_first: list[object] = []
+        page1_resolved = False
 
         async def fake_make_request(**kwargs: object) -> httpx.Response:
+            nonlocal page1_resolved
             json_data = cast(dict[str, object], kwargs["json_data"])
             variables = cast(dict[str, object], json_data["variables"])
-            seen_first.append(variables["first"])
-            if len(seen_first) == 1:
+            first = variables["first"]
+            seen_first.append(first)
+            if not page1_resolved and first == PAGE_SIZE:
                 return httpx.Response(200, json=self._error_body())
-            if len(seen_first) == 2:
+            if not page1_resolved:
+                page1_resolved = True
                 return httpx.Response(
                     200, json=self._page_body([{"id": 1}], has_next=True, cursor="c1")
                 )
             return httpx.Response(200, json=self._page_body([{"id": 2}]))
 
         with patch.object(client, "make_request", side_effect=fake_make_request):
-            pages = await self._collect(client)
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                pages = await self._collect(client)
 
         assert pages == [[{"id": 1}], [{"id": 2}]]
-        # 25 fails, 20 succeeds for page 1, then page 2 starts fresh at 25.
-        assert seen_first == [25, 20, 25]
+        # 3 retries at 25 fail, 20 succeeds for page 1, then page 2 starts fresh at 25.
+        assert seen_first == [25, 25, 25, 20, 25]
 
     @pytest.mark.asyncio
     async def test_strips_to_fallback_query_at_floor_and_recovers(
@@ -853,27 +939,27 @@ class TestGraphQLUnknownErrorPageReduction:
             return httpx.Response(200, json=self._page_body([{"id": 1}]))
 
         with patch.object(client, "make_request", side_effect=fake_make_request):
-            pages = [
-                page
-                async for page in client.send_paginated_request(
-                    "PRIMARY",
-                    params={"__path": self._PATH},
-                    fallbacks=[GraphQLFallback("FALLBACK")],
-                )
-            ]
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                pages = [
+                    page
+                    async for page in client.send_paginated_request(
+                        "PRIMARY",
+                        params={"__path": self._PATH},
+                        fallbacks=[GraphQLFallback("FALLBACK")],
+                    )
+                ]
 
         assert pages == [[{"id": 1}]]
-        # Primary walks the page size to the floor first, then the lighter query
-        # runs at the floor and recovers.
-        assert seen == [
-            (25, "PRIMARY"),
-            (20, "PRIMARY"),
-            (15, "PRIMARY"),
-            (10, "PRIMARY"),
-            (5, "PRIMARY"),
-            (1, "PRIMARY"),
-            (1, "FALLBACK"),
-        ]
+        # 3 retries at each page size, then fallback at floor recovers.
+        assert seen == (
+            [(25, "PRIMARY")] * 3
+            + [(20, "PRIMARY")] * 3
+            + [(15, "PRIMARY")] * 3
+            + [(10, "PRIMARY")] * 3
+            + [(5, "PRIMARY")] * 3
+            + [(1, "PRIMARY")] * 3
+            + [(1, "FALLBACK")]
+        )
 
     @pytest.mark.asyncio
     async def test_unknown_errors_exhaust_page_size_then_fallbacks(
@@ -889,25 +975,27 @@ class TestGraphQLUnknownErrorPageReduction:
             return httpx.Response(200, json=self._error_body())
 
         with patch.object(client, "make_request", side_effect=fake_make_request):
-            with pytest.raises(GraphQLErrorGroup):
-                [
-                    page
-                    async for page in client.send_paginated_request(
-                        "PRIMARY",
-                        params={"__path": self._PATH},
-                        fallbacks=[GraphQLFallback("FALLBACK")],
-                    )
-                ]
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(GraphQLErrorGroup):
+                    [
+                        page
+                        async for page in client.send_paginated_request(
+                            "PRIMARY",
+                            params={"__path": self._PATH},
+                            fallbacks=[GraphQLFallback("FALLBACK")],
+                        )
+                    ]
 
-        assert seen == [
-            (25, "PRIMARY"),
-            (20, "PRIMARY"),
-            (15, "PRIMARY"),
-            (10, "PRIMARY"),
-            (5, "PRIMARY"),
-            (1, "PRIMARY"),
-            (1, "FALLBACK"),
-        ]
+        # 3 retries at each page size, then fallback also retried and exhausted.
+        assert seen == (
+            [(25, "PRIMARY")] * 3
+            + [(20, "PRIMARY")] * 3
+            + [(15, "PRIMARY")] * 3
+            + [(10, "PRIMARY")] * 3
+            + [(5, "PRIMARY")] * 3
+            + [(1, "PRIMARY")] * 3
+            + [(1, "FALLBACK")] * 3
+        )
 
     @pytest.mark.asyncio
     async def test_ignored_errors_do_not_trigger_reduction(
