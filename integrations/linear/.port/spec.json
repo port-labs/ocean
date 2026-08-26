@@ -18,6 +18,9 @@
         },
         {
           "kind": "label"
+        },
+        {
+          "kind": "document"
         }
       ]
     }
