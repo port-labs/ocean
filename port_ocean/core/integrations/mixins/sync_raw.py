@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from graphlib import CycleError
 import inspect
 import typing
-from typing import AsyncGenerator, Callable, Awaitable, Any
+from typing import AsyncGenerator, Callable, Awaitable, Any, cast
 import httpx
 import json
 from loguru import logger
@@ -21,7 +21,6 @@ from port_ocean.core.integrations.mixins.utils import (
     build_lakehouse_data_entry,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
-    is_resource_supported,
     selector_hash_from_resource,
     start_kind_tracking,
     stop_kind_tracking,
@@ -87,19 +86,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(f"Fetching {resource_config.kind} resync results")
 
         is_incremental = event.event_type == EventType.INCREMENTAL_RESYNC
-        strategy_key = "incremental" if is_incremental else "resync"
-        available_kinds = (
-            self.available_incremental_kinds
+        event_mapping = (
+            self.event_strategy.incremental
             if is_incremental
-            else self.available_resync_kinds
+            else self.event_strategy.resync
         )
 
-        if not is_resource_supported(
-            resource_config.kind, self.event_strategy[strategy_key]
+        if not (
+            event_mapping.get(resource_config.kind) or event_mapping.get(None)
         ):
-            return unsupported_kind_response(resource_config.kind, available_kinds)
+            return unsupported_kind_response(
+                resource_config.kind,
+                cast(list[str], list(event_mapping.keys())),
+            )
 
-        fns = self._collect_resync_functions(resource_config, strategy_key)
+        fns = self._collect_resync_functions(resource_config, event_mapping)
         logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
         results, errors = await self._execute_resync_tasks(
@@ -109,11 +110,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return results, errors
 
     def _collect_resync_functions(
-        self, resource_config: ResourceConfig, strategy_key: str = "resync"
+        self,
+        resource_config: ResourceConfig,
+        event_mapping: dict[str | None, list[Callable[[str], Awaitable[RAW_RESULT]]]],
     ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
         fns = [
-            *self.event_strategy[strategy_key][resource_config.kind],
-            *self.event_strategy[strategy_key][None],
+            *event_mapping[resource_config.kind],
+            *event_mapping[None],
         ]
 
         if self.__class__._on_resync != SyncRawMixin._on_resync:
@@ -1003,13 +1006,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.info("Resync finished successfully")
 
             # Execute resync_complete hooks
-            if "resync_complete" in self.event_strategy:
-                logger.info("Executing resync_complete hooks")
+            logger.info("Executing resync_complete hooks")
 
-                for resync_complete_fn in self.event_strategy["resync_complete"]:
-                    await resync_complete_fn()
+            for resync_complete_fn in self.event_strategy.resync_complete:
+                await resync_complete_fn()
 
-                logger.info("Finished executing resync_complete hooks")
+            logger.info("Finished executing resync_complete hooks")
 
             return True
 
@@ -1162,7 +1164,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 incremental_resources = [
                     (index, resource_cfg)
                     for index, resource_cfg in enumerate(app_config.resources)
-                    if self.event_strategy["incremental"].get(resource_cfg.kind)
+                    if self.event_strategy.incremental.get(resource_cfg.kind)
                 ]
 
                 if not incremental_resources:
@@ -1342,7 +1344,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             try:
                 # Execute resync_start hooks
-                for resync_start_fn in self.event_strategy["resync_start"]:
+                for resync_start_fn in self.event_strategy.resync_start:
                     await resync_start_fn()
 
                 did_fetched_current_state = True
