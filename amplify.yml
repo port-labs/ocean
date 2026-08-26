@@ -12,7 +12,7 @@ applications:
             - |
               set -euo pipefail
 
-              DOCS_CHANGES_REGEX='^(docs/framework-guides/|LICENSE\.md$|amplify\.yml$)'
+              DOCS_CHANGES_REGEX='^(docs/framework-guides/|LICENSE\.md$)'
 
               if [ -n "${AWS_PULL_REQUEST_ID:-}" ]; then
                 git fetch origin main --depth=200 2>/dev/null || git fetch origin main 2>/dev/null || true
