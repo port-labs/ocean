@@ -73,8 +73,8 @@ class TestGraphQLUnknownErrorResync:
             if e["blueprint"] == "githubUser"
         }
         assert users == {member["login"] for member in ORG_MEMBERS}
-        # 3 retries at full page size, then one step down succeeds.
-        assert sent_first == [FULL_PAGE_SIZE] * 3 + [FULL_PAGE_SIZE - 5]
+        # Full page fails, one step down succeeds — no replays at the same size.
+        assert sent_first == [FULL_PAGE_SIZE, FULL_PAGE_SIZE - 5]
 
     @pytest.mark.asyncio
     async def test_exhausts_to_floor_and_surfaces_error(self) -> None:
@@ -88,7 +88,5 @@ class TestGraphQLUnknownErrorResync:
         result = await _run_user_resync(respond)
 
         assert result.errors, "Expected the exhausted reduction to surface an error"
-        # 3 retries at each page size level before reduction, then floor.
-        assert (
-            sent_first == [25] * 3 + [20] * 3 + [15] * 3 + [10] * 3 + [5] * 3 + [1] * 3
-        )
+        # 25 -> 20 -> 15 -> 10 -> 5 -> 1, then the floor stops further retries.
+        assert sent_first == [25, 20, 15, 10, 5, 1]

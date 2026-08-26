@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Added retry with exponential backoff for GraphQL errors (HTTP 200 with errors in body) in `send_api_request`. GitHub server-side errors like "Something went wrong while executing your query" are retried 3 times before failing.
+- Added retry with exponential backoff for GraphQL errors during team member enrichment. GitHub server-side errors like "Something went wrong while executing your query" are retried up to 3 times before failing, preventing a single error from aborting the entire team resync.
 
 
 ## 6.9.5 (2026-08-26)
