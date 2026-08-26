@@ -80,6 +80,58 @@ def _lambda_delete_event(function_name: str = "my-function") -> dict[str, Any]:
     }
 
 
+def _dynamodb_create_event(table_name: str = "my-table") -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "CreateTable",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"tableName": table_name},
+        },
+    }
+
+
+def _dynamodb_delete_event(table_name: str = "my-table") -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "DeleteTable",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"tableName": table_name},
+        },
+    }
+
+
+def _rds_create_event(db_instance_identifier: str = "my-db-instance") -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "CreateDBInstance",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"dbInstanceIdentifier": db_instance_identifier},
+        },
+    }
+
+
+def _rds_delete_event(db_instance_identifier: str = "my-db-instance") -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "DeleteDBInstance",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"dbInstanceIdentifier": db_instance_identifier},
+        },
+    }
+
+
 def _delete_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
     return {
         "account": "111122223333",
@@ -335,6 +387,124 @@ async def test_handle_event_lambda_create_fetches_and_returns_resource(
         mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
 
         result = await processor.handle_event(_lambda_create_event(), None)
+
+    fixture.exporter_cls.assert_called_once_with("session")
+    assert result.updated_raw_results == [fake_resource]
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds_returns_dynamodb_table(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="t", payload=_dynamodb_create_event(), headers={})
+    assert await processor.get_matching_kinds(event) == [ObjectKind.DYNAMODB_TABLE]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_dynamodb_delete_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    result = await processor.handle_event(
+        _dynamodb_delete_event("table-to-delete"), None
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        {
+            "Type": ObjectKind.DYNAMODB_TABLE,
+            "Properties": {
+                "TableArn": (
+                    "arn:aws:dynamodb:us-east-1:111122223333:table/table-to-delete"
+                ),
+                "TableName": "table-to-delete",
+            },
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_dynamodb_create_fetches_and_returns_resource(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    fake_resource = {
+        "Type": ObjectKind.DYNAMODB_TABLE,
+        "Properties": {"TableName": "my-table"},
+    }
+
+    fixture = _live_event_metadata()
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.DYNAMODB_TABLE: fixture.metadata},
+        ),
+    ):
+        mock_exporter = fixture.exporter_cls.return_value
+        mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
+
+        result = await processor.handle_event(_dynamodb_create_event(), None)
+
+    fixture.exporter_cls.assert_called_once_with("session")
+    assert result.updated_raw_results == [fake_resource]
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds_returns_rds_db_instance(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="t", payload=_rds_create_event(), headers={})
+    assert await processor.get_matching_kinds(event) == [ObjectKind.RDS_DB_INSTANCE]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_rds_db_instance_delete_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    result = await processor.handle_event(
+        _rds_delete_event("db-instance-to-delete"), None
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        {
+            "Type": ObjectKind.RDS_DB_INSTANCE,
+            "Properties": {
+                "DBInstanceArn": (
+                    "arn:aws:rds:us-east-1:111122223333:db:db-instance-to-delete"
+                ),
+                "DBInstanceIdentifier": "db-instance-to-delete",
+            },
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_rds_db_instance_create_fetches_and_returns_resource(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    fake_resource = {
+        "Type": ObjectKind.RDS_DB_INSTANCE,
+        "Properties": {"DBInstanceIdentifier": "my-db-instance"},
+    }
+
+    fixture = _live_event_metadata()
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.RDS_DB_INSTANCE: fixture.metadata},
+        ),
+    ):
+        mock_exporter = fixture.exporter_cls.return_value
+        mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
+
+        result = await processor.handle_event(_rds_create_event(), None)
 
     fixture.exporter_cls.assert_called_once_with("session")
     assert result.updated_raw_results == [fake_resource]
