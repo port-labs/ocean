@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 6.9.6 (2026-08-26)
 
 
-### Features
+### Bug Fixes
 
-- Added enterprise-level SAML email enrichment fallback. When org-level SAML is not configured, the integration now auto-detects the enterprise slug via `viewer.enterprises` and queries enterprise SAML identities. No new config fields or selectors needed — existing `includeSAMLEmail: true` activates the fallback automatically. Requires a classic PAT from an enterprise owner with `read:enterprise` scope.
+- Fix: Retry GraphQL queries without forbidden fields when field-level permission errors occur
 
 
 ## 6.9.5 (2026-08-26)
