@@ -12,11 +12,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- >-
-    Converted IntegrationEventsCallbacks from TypedDict to dataclass for easier IDE tracing.
-    Breaking (internal): custom integrations that mutate `integration.event_strategy` as a dict
-    (e.g. `event_strategy["resync"][kind]`) must use attribute access instead
-    (e.g. `event_strategy.resync[kind]`); `@ocean.on_resync()` and other registration APIs are unchanged.
+- Converted IntegrationEventsCallbacks from TypedDict to dataclass for easier IDE tracing.
+  Breaking (internal): custom integrations that mutate `integration.event_strategy` as a dict
+  (e.g. `event_strategy["resync"][kind]`) must use attribute access instead
+  (e.g. `event_strategy.resync[kind]`); `@ocean.on_resync()` and other registration APIs are unchanged.
 
 
 ## 0.49.1 (2026-08-24)
