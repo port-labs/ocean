@@ -15,7 +15,11 @@ from uuid import uuid4
 import tomli
 import yaml
 
-from port_ocean.exceptions.spec import SpecFileError, SpecNotFoundError
+from port_ocean.exceptions.spec import (
+    SpecFileError,
+    SpecNotFoundError,
+    MalformedSpecError,
+)
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
@@ -116,17 +120,19 @@ def get_spec_kinds(path: str | Path = Path(".")) -> list[str]:
             "expected spec.json, spec.yaml, or spec.yml"
         )
 
-    kinds: list[str] = []
-    for feature in spec.get("features") or []:
-        if not isinstance(feature, dict):
-            continue
-        for resource in feature.get("resources") or []:
-            if not isinstance(resource, dict):
+    kinds: set[str] = set()
+    try:
+        for feature in spec["features"]:
+            if feature.get("type") != "exporter":
                 continue
-            kind = resource.get("kind")
-            if isinstance(kind, str) and kind not in kinds:
-                kinds.append(kind)
-    return kinds
+
+            for resource in feature["resources"]:
+                kinds.add(resource["kind"])
+    except KeyError as e:
+        raise MalformedSpecError(
+            f"Missing expected key {e} when trying to extract kinds from spec"
+        ) from e
+    return list(kinds)
 
 
 def load_module(file_path: str) -> ModuleType:

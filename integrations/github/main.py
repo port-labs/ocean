@@ -275,6 +275,7 @@ async def resync_repositories(
                     type=port_app_config.repository_type,
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
+                    exclude_archived=repo_config.selector.exclude_archived,
                 )
             )
             for org in organizations
@@ -438,6 +439,7 @@ async def resync_workflows(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -482,6 +484,7 @@ async def resync_workflow_runs(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -561,6 +564,7 @@ async def resync_pull_requests(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repos in repository_exporter.get_paginated_resources(
@@ -632,6 +636,7 @@ async def resync_issues(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repos in repository_exporter.get_paginated_resources(
@@ -678,6 +683,7 @@ async def resync_releases(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -721,6 +727,7 @@ async def resync_tags(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -764,6 +771,7 @@ async def resync_branches(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=selector.repo_search,
+                exclude_archived=selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -819,6 +827,7 @@ async def resync_environments(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -865,6 +874,7 @@ async def resync_deployments(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -921,6 +931,7 @@ async def resync_deployment_statuses(
                 organization_type=org_type,
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -990,6 +1001,7 @@ async def resync_dependabot_alerts(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1037,6 +1049,7 @@ async def resync_code_scanning_alerts(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1189,6 +1202,7 @@ async def resync_skills(
             repos=pattern.repos,
             skipParsing=True,
             validationCheck=False,
+            excludeArchived=pattern.exclude_archived,
         )
         for pattern in paths
     ]
@@ -1275,6 +1289,7 @@ async def resync_collaborators(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1319,6 +1334,7 @@ async def resync_secret_scanning_alerts(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
