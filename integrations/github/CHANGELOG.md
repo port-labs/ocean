@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added enterprise-level SAML email enrichment fallback. When org-level SAML is not configured, the integration now auto-detects the enterprise slug via `viewer.enterprises` and queries enterprise SAML identities. No new config fields or selectors needed — existing `includeSAMLEmail: true` activates the fallback automatically. Requires a classic PAT from an enterprise owner with `read:enterprise` scope.
+- Expanded SAML email enrichment to support enterprise-level SAML SSO by automatically falling back to the enterprise identity provider when org-level SAML is not configured, enabling `__SAMLEmail` population for customers who centralize SAML at the enterprise level. No new config fields or selectors needed — existing `includeSAMLEmail: true` activates the fallback. Requires a classic PAT from an enterprise owner with `read:enterprise` scope.
 
 
 ## 6.9.6 (2026-08-26)

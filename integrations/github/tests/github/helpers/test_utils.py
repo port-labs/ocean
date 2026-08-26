@@ -270,10 +270,12 @@ class TestEnterpriseSamlFallback:
     async def test_org_saml_empty_falls_back_to_enterprise(self) -> None:
         """When org SAML is null (TypeError), falls back to enterprise."""
         client = self._make_client()
-        ent_edges = self._make_saml_edges([
-            ("user1", "user1@enterprise.com"),
-            ("user2", "user2@enterprise.com"),
-        ])
+        ent_edges = self._make_saml_edges(
+            [
+                ("user1", "user1@enterprise.com"),
+                ("user2", "user2@enterprise.com"),
+            ]
+        )
 
         async def mock_ent_paginated(
             *args: Any, **kwargs: Any
@@ -292,11 +294,7 @@ class TestEnterpriseSamlFallback:
         client.send_paginated_request.side_effect = paginated_side_effect
         client.send_api_request.return_value = {
             "data": {
-                "viewer": {
-                    "enterprises": {
-                        "nodes": [{"slug": "test-enterprise"}]
-                    }
-                }
+                "viewer": {"enterprises": {"nodes": [{"slug": "test-enterprise"}]}}
             }
         }
 
@@ -315,11 +313,7 @@ class TestEnterpriseSamlFallback:
 
         client.send_paginated_request.return_value = self._null_saml_generator()
         client.send_api_request.return_value = {
-            "data": {
-                "viewer": {
-                    "enterprises": {"nodes": []}
-                }
-            }
+            "data": {"viewer": {"enterprises": {"nodes": []}}}
         }
 
         result = await get_saml_identities(client, "test-org")
@@ -341,11 +335,7 @@ class TestEnterpriseSamlFallback:
         client.send_paginated_request.side_effect = paginated_side_effect
         client.send_api_request.return_value = {
             "data": {
-                "viewer": {
-                    "enterprises": {
-                        "nodes": [{"slug": "oidc-enterprise"}]
-                    }
-                }
+                "viewer": {"enterprises": {"nodes": [{"slug": "oidc-enterprise"}]}}
             }
         }
 

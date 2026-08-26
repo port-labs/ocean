@@ -17,6 +17,7 @@ from typing import (
 import httpx
 from loguru import logger
 
+from github.helpers.exceptions import GraphQLErrorGroup
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
@@ -344,10 +345,8 @@ async def _get_enterprise_slug(client: "AbstractGithubClient") -> str | None:
             logger.info(f"Auto-detected enterprise slug: '{slug}'")
             return slug
         logger.debug("No enterprise found for authenticated user")
-    except (KeyError, httpx.HTTPStatusError) as exc:
-        logger.debug(
-            f"Failed to detect enterprise slug: {exc}", exc_info=True
-        )
+    except (KeyError, httpx.HTTPStatusError, GraphQLErrorGroup) as exc:
+        logger.debug(f"Failed to detect enterprise slug: {exc}", exc_info=True)
 
     return None
 
@@ -373,9 +372,7 @@ async def _get_enterprise_saml_identities(
         ):
             saml_users.update(_parse_saml_edges(identity_batch))
     except TypeError:
-        logger.info(
-            f"Enterprise-level SAML not configured for '{enterprise_slug}'"
-        )
+        logger.info(f"Enterprise-level SAML not configured for '{enterprise_slug}'")
 
     return saml_users
 
@@ -400,9 +397,7 @@ async def get_saml_identities(
                 f"Org SAML empty for '{organization}', "
                 f"trying enterprise '{enterprise_slug}'"
             )
-            saml_users = await _get_enterprise_saml_identities(
-                client, enterprise_slug
-            )
+            saml_users = await _get_enterprise_saml_identities(client, enterprise_slug)
 
     if saml_users:
         logger.info(
@@ -410,7 +405,10 @@ async def get_saml_identities(
             f"{len(saml_users)} identities"
         )
     else:
-        logger.info(f"SAML not enabled for organization '{organization}'")
+        logger.info(
+            f"No SAML identities found for organization '{organization}' "
+            f"(checked org-level and enterprise-level)"
+        )
 
     return saml_users
 
