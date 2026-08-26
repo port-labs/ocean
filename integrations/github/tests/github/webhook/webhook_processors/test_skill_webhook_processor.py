@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -72,6 +73,58 @@ class TestSkillWebhookProcessor:
             WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
         )
         assert kinds == [ObjectKind.SKILL]
+
+    async def test_handle_event_preserves_exclude_archived_when_building_file_patterns(
+        self,
+        skill_webhook_processor: SkillWebhookProcessor,
+        resource_config: GithubSkillResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        resource_config.selector.paths = [
+            GithubSkillPattern(path="skills/**/SKILL.md", excludeArchived=True)
+        ]
+        archived_payload = {
+            **payload,
+            "repository": {
+                **payload["repository"],
+                "archived": True,
+            },
+        }
+        captured: dict[str, Any] = {}
+
+        def _capture_matching_patterns(
+            file_patterns: list[Any],
+            organization: str,
+            repository: dict[str, Any],
+            current_branch: str,
+            default_branch: str,
+        ) -> list[Any]:
+            captured["file_patterns"] = file_patterns
+            captured["organization"] = organization
+            captured["repository"] = repository
+            captured["current_branch"] = current_branch
+            captured["default_branch"] = default_branch
+            return []
+
+        with patch.object(
+            skill_webhook_processor,
+            "_get_matching_patterns",
+            side_effect=_capture_matching_patterns,
+        ):
+            result = await skill_webhook_processor.handle_event(
+                archived_payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
+        [file_pattern] = captured["file_patterns"]
+        assert file_pattern.exclude_archived is True
+        assert captured["organization"] == "test-org"
+        assert captured["repository"] == archived_payload["repository"]
+        assert captured["current_branch"] == "main"
+        assert captured["default_branch"] == "main"
 
     async def test_handle_event_updated_skill_includes_blob_sha(
         self,

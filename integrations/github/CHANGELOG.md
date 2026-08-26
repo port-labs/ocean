@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.0 (2026-08-26)
+
+
+### Features
+
+- Add an `excludeArchived` selector to skip archived repositories during repository discovery for pull request, issue, workflow, release, file, folder, skill, and other per-repository kinds.
+
+
+## 6.9.7 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 6.9.6 (2026-08-26)
+
+
+### Bug Fixes
+
+- Fix: Retry GraphQL queries without forbidden fields when field-level permission errors occur
+
+
+## 6.9.5 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
 ## 6.9.4 (2026-08-24)
 
 

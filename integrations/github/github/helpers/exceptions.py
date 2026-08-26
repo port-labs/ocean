@@ -30,6 +30,14 @@ class GraphQLErrorGroup(Exception):
         return "GraphQL errors occurred:\n" + "\n".join(f"- {e}" for e in self.errors)
 
 
+class GraphQLForbiddenFieldError(Exception):
+    """Raised when GraphQL fields return 403 FORBIDDEN and need to be excluded."""
+
+    def __init__(self, fields: set[str]):
+        self.fields = fields
+        super().__init__(f"Fields {fields} returned 403 FORBIDDEN")
+
+
 class CheckRunsException(Exception):
     """Exception for check runs errors."""
 

@@ -62,7 +62,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             raise IntegrationAlreadyStartedException("Integration already started")
 
         if (
-            not self.event_strategy["resync"]
+            not self.event_strategy.resync
             and self.__class__._on_resync == BaseIntegration._on_resync
             and self.context.config.event_listener.should_resync
         ):
@@ -72,7 +72,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        if self.event_strategy["start"]:
+        if self.event_strategy.start:
             async def run_on_start_tasks() -> None:
                 try:
                     async with event_context(
@@ -80,7 +80,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                         trigger_type="machine",
                     ):
                         await asyncio.gather(
-                            *(listener() for listener in self.event_strategy["start"])
+                            *(listener() for listener in self.event_strategy.start)
                         )
                 except Exception as e:
                     logger.exception("Error in start event listeners: %s", str(e))
