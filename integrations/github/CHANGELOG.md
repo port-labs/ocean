@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 6.9.5 (2026-08-26)
 
 
-### Bug Fixes
+### Improvements
 
-- Added retry with exponential backoff for GraphQL errors (HTTP 200 with errors in body) in `send_api_request`. GitHub server-side errors like "Something went wrong while executing your query" are retried 3 times before failing.
+- Bumped ocean version to ^0.50.1
 
 
 ## 6.9.4 (2026-08-24)
