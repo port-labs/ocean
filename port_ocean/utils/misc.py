@@ -123,6 +123,9 @@ def get_spec_kinds(path: str | Path = Path(".")) -> list[str]:
     kinds: set[str] = set()
     try:
         for feature in spec["features"]:
+            if feature.get("type") != "exporter":
+                continue
+
             for resource in feature["resources"]:
                 kinds.add(resource["kind"])
     except KeyError as e:

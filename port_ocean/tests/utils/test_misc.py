@@ -109,13 +109,14 @@ def test_get_spec_kinds_returns_unique_kinds_from_yaml_spec(tmp_path: Path) -> N
     spec = {
         "features": [
             {
+                "type": "exporter",
                 "resources": [
                     {"kind": "repository"},
                     {"kind": "pull-request"},
                     {"kind": "repository"},
-                ]
+                ],
             },
-            {"resources": [{"kind": "team"}]},
+            {"type": "exporter", "resources": [{"kind": "team"}]},
         ]
     }
     (spec_dir / "spec.yaml").write_text(yaml.dump(spec))
@@ -127,13 +128,39 @@ def test_get_spec_kinds_returns_unique_kinds_from_yaml_spec(tmp_path: Path) -> N
     assert set(result) == {"repository", "pull-request", "team"}
 
 
+def test_get_spec_kinds_skips_non_exporter_features(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    spec = {
+        "features": [
+            {"type": "gitops", "section": "GitOps"},
+            {
+                "type": "exporter",
+                "section": "Git Providers",
+                "resources": [{"kind": "projects"}],
+            },
+        ]
+    }
+    (spec_dir / "spec.yaml").write_text(yaml.dump(spec))
+
+    # Act
+    result = get_spec_kinds(tmp_path)
+
+    # Assert
+    assert result == ["projects"]
+
+
 def test_get_spec_kinds_returns_kinds_from_json_spec(tmp_path: Path) -> None:
     # Arrange
     spec_dir = tmp_path / ".port"
     spec_dir.mkdir()
     spec = {
         "features": [
-            {"resources": [{"kind": "project"}, {"kind": "issue"}]},
+            {
+                "type": "exporter",
+                "resources": [{"kind": "project"}, {"kind": "issue"}],
+            },
         ]
     }
     (spec_dir / "spec.json").write_text(json.dumps(spec))
@@ -191,7 +218,16 @@ def test_get_spec_kinds_raises_when_kind_key_is_missing(tmp_path: Path) -> None:
     spec_dir = tmp_path / ".port"
     spec_dir.mkdir()
     (spec_dir / "spec.yaml").write_text(
-        yaml.dump({"features": [{"resources": [{"title": "Repository"}]}]})
+        yaml.dump(
+            {
+                "features": [
+                    {
+                        "type": "exporter",
+                        "resources": [{"title": "Repository"}],
+                    }
+                ]
+            }
+        )
     )
 
     # Act + Assert
