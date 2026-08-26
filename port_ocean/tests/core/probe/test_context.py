@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from port_ocean.core.probe import ProbeCheck, ProbeConfig, ProbeContext, ProbeStatus
 
 
@@ -11,10 +13,35 @@ def test_local_probe_context_has_no_probe_id() -> None:
     assert context.available_kinds == []
     assert context.checks == []
     assert context.ended_at is None
+    assert context.build_request_body() == {
+        "started_at": context.started_at.isoformat(),
+        "ended_at": None,
+        "checks": [],
+    }
     context.update_progress()
     context.finalize()
     assert context.ended_at is not None
     context.fail()
+
+
+def test_local_probe_logs_the_request_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorded: list[tuple[str, dict[str, object]]] = []
+    monkeypatch.setattr(
+        "port_ocean.core.probe.context.logger.info",
+        lambda message, **kwargs: recorded.append((message, kwargs)),
+    )
+    context = ProbeContext()
+    context.checks.append(ProbeCheck(kind="repository"))
+    context.update_progress()
+
+    assert recorded == [
+        (
+            "Local probe: skipping progress update",
+            {"request_body": context.build_request_body()},
+        )
+    ]
 
 
 def test_reported_probe_context_keeps_the_given_probe_id() -> None:
@@ -47,6 +74,32 @@ def test_context_records_started_at_and_can_store_checks() -> None:
     assert context.checks[0].scopes == {"org": "port-team"}
     assert context.ended_at is not None
     assert context.ended_at >= context.started_at
+
+
+def test_build_request_body_serializes_timestamps_and_checks() -> None:
+    context = ProbeContext()
+    context.checks.append(
+        ProbeCheck(
+            status=ProbeStatus.SUCCESS,
+            message="auth succeeded",
+            kind="repository",
+            scopes={"org": "port-team"},
+        )
+    )
+    context.finalize()
+
+    body = context.build_request_body()
+
+    assert body["started_at"] == context.started_at.isoformat()
+    assert body["ended_at"] == context.ended_at.isoformat()
+    assert body["checks"] == [
+        {
+            "status": ProbeStatus.SUCCESS,
+            "message": "auth succeeded",
+            "kind": "repository",
+            "scopes": {"org": "port-team"},
+        }
+    ]
 
 
 def test_initialize_loads_kinds_from_the_integration_spec(
