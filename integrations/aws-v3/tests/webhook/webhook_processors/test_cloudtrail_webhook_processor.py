@@ -512,6 +512,55 @@ async def test_handle_event_rds_db_instance_create_fetches_and_returns_resource(
 
 
 @pytest.mark.asyncio
+async def test_handle_event_rds_db_instance_create_treats_not_found_as_deleted(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    class FakeNotFound(Exception):
+        response = {"Error": {"Code": "DBInstanceNotFound"}}
+
+    fixture = _live_event_metadata()
+    assert fixture.metadata.live_events is not None
+    cast(
+        MagicMock,
+        fixture.metadata.live_events.deletion_identifier_properties_factory,
+    ).return_value = {
+        "DBInstanceArn": (
+            "arn:aws:rds:us-east-1:111122223333:db:missing-db-instance"
+        ),
+        "DBInstanceIdentifier": "missing-db-instance",
+    }
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.RDS_DB_INSTANCE: fixture.metadata},
+        ),
+    ):
+        mock_exporter = fixture.exporter_cls.return_value
+        mock_exporter.get_resource = AsyncMock(side_effect=FakeNotFound())
+
+        result = await processor.handle_event(
+            _rds_create_event("missing-db-instance"), None
+        )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        {
+            "Type": ObjectKind.RDS_DB_INSTANCE,
+            "Properties": {
+                "DBInstanceArn": (
+                    "arn:aws:rds:us-east-1:111122223333:db:missing-db-instance"
+                ),
+                "DBInstanceIdentifier": "missing-db-instance",
+            },
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_handle_event_create_skips_access_denied(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
