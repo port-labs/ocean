@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.8 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.12.7 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.12.6 (2026-08-25)
+
+
+### Bug Fixes
+
+- Fixed Azure DevOps org-level git.push webhook subscriptions to request full payload details and avoid duplicate subscription creation during reconciliation.
+
+
 ## 0.12.5 (2026-08-24)
 
 
