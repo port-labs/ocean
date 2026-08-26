@@ -26,7 +26,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
 from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import ETLPhase
+from port_ocean.core.ocean_types import ETLPhase, RAW_RESULT
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.dsp.lifecycle import GranularityType
@@ -1635,7 +1635,11 @@ async def test_collect_resync_functions_returns_functions_without_setting_logger
     records, sink_id = _capture_loguru_extras()
     try:
         fns = mock_sync_raw_mixin._collect_resync_functions(
-            mock_resource_config, mock_sync_raw_mixin.event_strategy.resync
+            mock_resource_config,
+            cast(
+                dict[str | None, list[Callable[[str], Awaitable[RAW_RESULT]]]],
+                mock_sync_raw_mixin.event_strategy.resync,
+            ),
         )
     finally:
         logger.remove(sink_id)
