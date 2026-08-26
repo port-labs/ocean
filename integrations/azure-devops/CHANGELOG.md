@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.13.0 (2026-08-25)
+## 0.12.8 (2026-08-26)
 
 
-### Features
+### Improvements
 
-- Expanded default mapping with 8 new resource kinds (build, pipeline, pipeline-run, pipeline-stage, environment, pipeline-deployment, release-deployment, pull-request), enabling out-of-the-box CI/CD and PR visibility without manual mapping configuration
+- Converted specs from yaml to json
+
+
+## 0.12.7 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
 
 
 ## 0.12.6 (2026-08-25)

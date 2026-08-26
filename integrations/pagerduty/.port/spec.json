@@ -1,0 +1,101 @@
+{
+  "title": "PagerDuty",
+  "description": "PagerDuty integration for Port Ocean",
+  "icon": "pagerduty",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty",
+  "recommendedInstallationMethod": "Saas",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Incident Management",
+      "resources": [
+        {
+          "kind": "incidents"
+        },
+        {
+          "kind": "services"
+        },
+        {
+          "kind": "schedules"
+        },
+        {
+          "kind": "oncalls"
+        },
+        {
+          "kind": "escalation_policies"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "token",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "The PagerDuty API token. To create a token, see the <a href=\"https://support.pagerduty.com/docs/api-access-keys\" target=\"_blank\">PagerDuty documentation</a>"
+    },
+    {
+      "name": "apiUrl",
+      "required": true,
+      "type": "url",
+      "default": "https://api.pagerduty.com",
+      "description": "Pagerduty Api URL. If not specified, the default will be <a href=\"https://api.pagerduty.com\" target=\"_blank\">https://api.pagerduty.com</a>. Customers on the EU data centers should set this to https://api.eu.pagerduty.com"
+    },
+    {
+      "name": "appHost",
+      "required": false,
+      "type": "url",
+      "description": "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in PagerDuty"
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    },
+    "oauthConfiguration": {
+      "requiredSecrets": [
+        {
+          "name": "token",
+          "value": ".oauthData.accessToken",
+          "description": "\"Access Token for Pagerduty OAuth2 integration\""
+        }
+      ],
+      "valuesOverride": {
+        "integrationSpec": {
+          "apiUrl": "\"https://api.pagerduty.com\""
+        }
+      }
+    }
+  },
+  "installationDocs": {
+    "saas": [
+      {
+        "name": "SaasOAuth2",
+        "enabled": false
+      },
+      {
+        "name": "Saas",
+        "enabled": true,
+        "docs": "build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?oauth=manual&installation-methods=hosted-by-port#setup"
+      }
+    ],
+    "githubWorkflow": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?installation-methods=one-time-ci&cicd-method=github#setup"
+    },
+    "gitlabCI": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?installation-methods=one-time-ci&cicd-method=gitlab#setup"
+    },
+    "helm": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/?installation-methods=real-time-self-hosted#setup"
+    },
+    "docker": {
+      "enabled": false
+    }
+  }
+}
