@@ -4,7 +4,11 @@ import pytest
 from botocore.exceptions import ClientError
 
 from aws.core.exporters.dynamodb.table.exporter import DynamoDBTableExporter
-from aws.core.exporters.dynamodb.table.models import SingleTableRequest, Table, TableProperties
+from aws.core.exporters.dynamodb.table.models import (
+    SingleTableRequest,
+    Table,
+    TableProperties,
+)
 
 
 class TestDynamoDBTableExporter:

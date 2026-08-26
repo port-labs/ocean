@@ -524,9 +524,7 @@ async def test_handle_event_rds_db_instance_create_treats_not_found_as_deleted(
         MagicMock,
         fixture.metadata.live_events.deletion_identifier_properties_factory,
     ).return_value = {
-        "DBInstanceArn": (
-            "arn:aws:rds:us-east-1:111122223333:db:missing-db-instance"
-        ),
+        "DBInstanceArn": ("arn:aws:rds:us-east-1:111122223333:db:missing-db-instance"),
         "DBInstanceIdentifier": "missing-db-instance",
     }
 
