@@ -165,9 +165,6 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         max_retries = 5
-        # 3 retries with exponential backoff (2s, 4s); covers GitHub
-        # server-side errors (e.g. "Something went wrong") without
-        # stalling the sync on persistent failures.
         max_graphql_retries = 3
         retry_count = 0
         graphql_retry_count = 0
