@@ -2,9 +2,14 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
-from port_ocean.exceptions.spec import SpecFileError
-from port_ocean.utils.misc import get_spec_file
+from port_ocean.exceptions.spec import (
+    MalformedSpecError,
+    SpecFileError,
+    SpecNotFoundError,
+)
+from port_ocean.utils.misc import get_spec_file, get_spec_kinds
 
 
 def test_get_spec_file_prefers_json_over_yaml(tmp_path: Path) -> None:
@@ -95,3 +100,100 @@ def test_get_spec_file_raises_when_spec_file_is_empty(tmp_path: Path) -> None:
     # Act + Assert
     with pytest.raises(SpecFileError, match="must contain a JSON object"):
         get_spec_file(tmp_path)
+
+
+def test_get_spec_kinds_returns_unique_kinds_from_yaml_spec(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    spec = {
+        "features": [
+            {
+                "resources": [
+                    {"kind": "repository"},
+                    {"kind": "pull-request"},
+                    {"kind": "repository"},
+                ]
+            },
+            {"resources": [{"kind": "team"}]},
+        ]
+    }
+    (spec_dir / "spec.yaml").write_text(yaml.dump(spec))
+
+    # Act
+    result = get_spec_kinds(tmp_path)
+
+    # Assert
+    assert set(result) == {"repository", "pull-request", "team"}
+
+
+def test_get_spec_kinds_returns_kinds_from_json_spec(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    spec = {
+        "features": [
+            {"resources": [{"kind": "project"}, {"kind": "issue"}]},
+        ]
+    }
+    (spec_dir / "spec.json").write_text(json.dumps(spec))
+
+    # Act
+    result = get_spec_kinds(tmp_path)
+
+    # Assert
+    assert set(result) == {"project", "issue"}
+
+
+def test_get_spec_kinds_returns_empty_list_when_no_resources(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    (spec_dir / "spec.yaml").write_text(yaml.dump({"features": []}))
+
+    # Act
+    result = get_spec_kinds(tmp_path)
+
+    # Assert
+    assert result == []
+
+
+def test_get_spec_kinds_raises_when_spec_is_missing(tmp_path: Path) -> None:
+    # Act + Assert
+    with pytest.raises(SpecNotFoundError, match="Failed to load spec"):
+        get_spec_kinds(tmp_path)
+
+
+def test_get_spec_kinds_raises_when_features_key_is_missing(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    (spec_dir / "spec.yaml").write_text(yaml.dump({"title": "Missing features"}))
+
+    # Act + Assert
+    with pytest.raises(MalformedSpecError, match="Missing expected key 'features'"):
+        get_spec_kinds(tmp_path)
+
+
+def test_get_spec_kinds_raises_when_resources_key_is_missing(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    (spec_dir / "spec.yaml").write_text(yaml.dump({"features": [{"type": "exporter"}]}))
+
+    # Act + Assert
+    with pytest.raises(MalformedSpecError, match="Missing expected key 'resources'"):
+        get_spec_kinds(tmp_path)
+
+
+def test_get_spec_kinds_raises_when_kind_key_is_missing(tmp_path: Path) -> None:
+    # Arrange
+    spec_dir = tmp_path / ".port"
+    spec_dir.mkdir()
+    (spec_dir / "spec.yaml").write_text(
+        yaml.dump({"features": [{"resources": [{"title": "Repository"}]}]})
+    )
+
+    # Act + Assert
+    with pytest.raises(MalformedSpecError, match="Missing expected key 'kind'"):
+        get_spec_kinds(tmp_path)
