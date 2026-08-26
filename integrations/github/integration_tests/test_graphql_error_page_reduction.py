@@ -12,7 +12,6 @@ pagination -> Port entities).
 
 import os
 from typing import Any, Callable
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -47,8 +46,7 @@ async def _run_user_resync(
     )
     try:
         await harness.start()
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            return await harness.trigger_resync()
+        return await harness.trigger_resync()
     finally:
         await harness.shutdown()
 
