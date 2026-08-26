@@ -17,7 +17,6 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
-    RESYNC_EVENT_LISTENER,
     RESYNC_RESULT,
 )
 from port_ocean.core.utils.utils import validate_result
@@ -373,11 +372,6 @@ async def resync_generator_wrapper(
                 "At least one of the resync generator iterations failed", errors
             )
 
-
-def is_resource_supported(
-    kind: str, resync_event_mapping: dict[str | None, list[RESYNC_EVENT_LISTENER]]
-) -> bool:
-    return bool(resync_event_mapping[kind] or resync_event_mapping[None])
 
 def unsupported_kind_response(
     kind: str, available_resync_kinds: list[str]
