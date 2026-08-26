@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.9.6 (2026-08-26)
+
+
+### Bug Fixes
+
+- Fix: Retry GraphQL queries without forbidden fields when field-level permission errors occur
+
+
 ## 6.9.5 (2026-08-26)
 
 
