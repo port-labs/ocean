@@ -5,8 +5,10 @@ from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
-    LIST_ORG_MEMBER_GQL,
     FETCH_GITHUB_USER_GQL,
+    FETCH_GITHUB_USER_WITH_VERIFIED_EMAILS_GQL,
+    LIST_ORG_MEMBER_GQL,
+    LIST_ORG_MEMBER_WITH_VERIFIED_EMAILS_GQL,
 )
 from github.helpers.utils import enrich_members_with_saml_email
 
@@ -18,8 +20,18 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         organization = options["organization"]
         login_option = options["login"]
         include_saml_email = bool(options["include_saml_email"])
-        variables = {"login": login_option}
-        payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
+        include_verified_domain_emails = bool(
+            options.get("include_verified_domain_emails")
+        )
+
+        if include_verified_domain_emails:
+            query = FETCH_GITHUB_USER_WITH_VERIFIED_EMAILS_GQL
+            variables = {"login": login_option, "organization": organization}
+        else:
+            query = FETCH_GITHUB_USER_GQL
+            variables = {"login": login_option}
+
+        payload = self.client.build_graphql_payload(query, variables)
         response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
@@ -40,13 +52,20 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         organization = options["organization"]
         include_saml_email = bool(options["include_saml_email"])
+        include_verified_domain_emails = bool(
+            options.get("include_verified_domain_emails")
+        )
+
+        if include_verified_domain_emails:
+            query = LIST_ORG_MEMBER_WITH_VERIFIED_EMAILS_GQL
+        else:
+            query = LIST_ORG_MEMBER_GQL
+
         variables = {
             "organization": organization,
             "__path": "organization.membersWithRole",
         }
-        async for users in self.client.send_paginated_request(
-            LIST_ORG_MEMBER_GQL, variables
-        ):
+        async for users in self.client.send_paginated_request(query, variables):
             await enrich_members_with_saml_email(
                 self.client, organization, users, include_saml_email
             )
