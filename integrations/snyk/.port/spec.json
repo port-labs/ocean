@@ -1,0 +1,78 @@
+{
+  "title": "Snyk",
+  "description": "Snyk integration for Port Ocean",
+  "icon": "Snyk",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk",
+  "recommendedInstallationMethod": "Saas",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Code Quality & Security",
+      "resources": [
+        {
+          "kind": "organization"
+        },
+        {
+          "kind": "issue"
+        },
+        {
+          "kind": "project"
+        },
+        {
+          "kind": "target"
+        },
+        {
+          "kind": "policy"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "token",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "The Snyk API token used for authentication. To create a token, see the <a href=\"https://docs.snyk.io/snyk-api/authentication-for-api#how-to-obtain-your-personal-token\" target=\"_blank\">Snyk documentation</a>"
+    },
+    {
+      "name": "webhookSecret",
+      "required": false,
+      "type": "string",
+      "sensitive": true,
+      "description": "Snyk webhook secret (optional). This is used to secure webhook communication between Snyk and Port. To learn more, see the <a href=\"https://docs.snyk.io/snyk-api/using-specific-snyk-apis/webhooks-apis/validation-and-versioning-of-payloads\" target=\"_blank\">Snyk documentation</a>"
+    },
+    {
+      "name": "apiUrl",
+      "type": "string",
+      "required": false,
+      "default": "https://api.snyk.io",
+      "description": "The base URL of the Snyk API. The default value is https://api.snyk.io is not provided"
+    },
+    {
+      "name": "organizationId",
+      "type": "string",
+      "required": false,
+      "description": "A comma-separated list of the unique identifier for specific organization(s). When provided, the integration fetches data for the specific organization(s). To find the organization id, see the <a href=\"https://docs.snyk.io/snyk-admin/groups-and-organizations/organizations/organization-general-settings\" target=\"_blank\">Snyk documentation</a>"
+    },
+    {
+      "name": "groups",
+      "type": "string",
+      "required": false,
+      "description": "A comma-separated list of group ids to filter data for. Fetches data for organizations within the specified groups. To learn more, see the <a href=\"https://docs.snyk.io/snyk-admin/groups-and-organizations/groups/group-general-settings\" target=\"_blank\">Snyk documentation</a>"
+    },
+    {
+      "name": "appHost",
+      "type": "string",
+      "required": false,
+      "description": "This field is deprecated. Please use the OCEAN__BASE_URL field instead."
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    }
+  }
+}

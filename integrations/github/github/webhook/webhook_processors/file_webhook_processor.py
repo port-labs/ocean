@@ -72,7 +72,11 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         matching_patterns = self._get_matching_patterns(
-            file_patterns, organization, repo_name, current_branch, default_branch
+            file_patterns,
+            organization,
+            repository,
+            current_branch,
+            default_branch,
         )
 
         if not matching_patterns:
@@ -112,10 +116,11 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         self,
         file_patterns: list[GithubFilePattern],
         organization: str,
-        repo_name: str,
+        repository: dict[str, Any],
         current_branch: str,
         default_branch: str,
     ) -> list[GithubFilePattern]:
+        repo_name = repository["name"]
         matching = [
             pattern
             for pattern in file_patterns
@@ -123,6 +128,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                 pattern.organization is None
                 or pattern.organization.casefold() == organization.casefold()
             )
+            and not self._should_skip_archived_repository(pattern, repository)
             and self._is_pattern_applicable_to_branch(
                 pattern, repo_name, current_branch, default_branch
             )
@@ -132,6 +138,15 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"Found {len(matching)} matching file patterns for repo '{repo_name}' on branch '{current_branch}'"
         )
         return matching
+
+    def _should_skip_archived_repository(
+        self, pattern: RepositorySourceModel, repository: dict[str, Any]
+    ) -> bool:
+        return (
+            pattern.exclude_archived
+            and repository.get("archived", False)
+            and not pattern.repos
+        )
 
     def _is_pattern_applicable_to_branch(
         self,
