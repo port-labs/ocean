@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add CloudTrail live events support for DynamoDB tables and RDS DB instances.
