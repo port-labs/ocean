@@ -186,6 +186,47 @@ class TestIssueWebhookProcessor:
                 ]
                 mock_exporter.get_resource.assert_not_called()
 
+    async def test_handle_event_excludes_archived_repository(
+        self,
+        resource_config: GithubIssueConfig,
+        issue_webhook_processor: IssueWebhookProcessor,
+    ) -> None:
+        """Representative check that the shared should_process_repo_search
+        gate also applies exclude_archived for non-repository kinds: an
+        issue event on an archived repository produces no update/delete
+        when the selector opts in to excluding archived repos."""
+        resource_config.selector.exclude_archived = True
+
+        issue_data = {
+            "id": 101,
+            "number": 42,
+            "title": "Test Issue",
+            "state": "open",
+            "labels": [],
+        }
+
+        payload = {
+            "action": "opened",
+            "issue": issue_data,
+            "repository": {"name": "test-repo", "archived": True},
+            "organization": {"login": "test-org"},
+        }
+
+        mock_exporter = AsyncMock()
+
+        with patch(
+            "github.webhook.webhook_processors.issue_webhook_processor.RestIssueExporter",
+            return_value=mock_exporter,
+        ):
+            result = await issue_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        mock_exporter.get_resource.assert_not_called()
+
 
 class TestIssueFiltering:
     """Tests for issue filtering functionality."""
