@@ -651,9 +651,7 @@ class TestGithubGraphQLClient:
         error_response.headers = {}
         error_response.extensions = {}
         error_response.json.return_value = {
-            "errors": [
-                {"message": "Something went wrong while executing your query"}
-            ]
+            "errors": [{"message": "Something went wrong while executing your query"}]
         }
 
         success_response = MagicMock(spec=httpx.Response)
@@ -694,9 +692,7 @@ class TestGithubGraphQLClient:
         error_response.headers = {}
         error_response.extensions = {}
         error_response.json.return_value = {
-            "errors": [
-                {"message": "Something went wrong while executing your query"}
-            ]
+            "errors": [{"message": "Something went wrong while executing your query"}]
         }
 
         make_request_mock = AsyncMock(return_value=error_response)
@@ -889,7 +885,9 @@ class TestGraphQLUnknownErrorPageReduction:
                     await self._collect(client)
 
         # 3 retries at each page size level before reduction
-        assert seen_first == [25] * 3 + [20] * 3 + [15] * 3 + [10] * 3 + [5] * 3 + [1] * 3
+        assert (
+            seen_first == [25] * 3 + [20] * 3 + [15] * 3 + [10] * 3 + [5] * 3 + [1] * 3
+        )
 
     @pytest.mark.asyncio
     async def test_page_size_resets_to_full_on_next_page(
