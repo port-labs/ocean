@@ -15,7 +15,11 @@ from uuid import uuid4
 import tomli
 import yaml
 
-from port_ocean.exceptions.spec import SpecFileError
+from port_ocean.exceptions.spec import (
+    SpecFileError,
+    SpecNotFoundError,
+    MalformedSpecError,
+)
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
@@ -104,6 +108,28 @@ def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
         return result
 
     return None
+
+
+def get_spec_kinds(path: str | Path = Path(".")) -> list[str]:
+    """Return the unique resource kinds declared by an integration spec."""
+    spec_path = Path(path)
+    spec = get_spec_file(spec_path)
+    if spec is None:
+        raise SpecNotFoundError(
+            f"Failed to load spec from {spec_path / '.port'}: "
+            "expected spec.json, spec.yaml, or spec.yml"
+        )
+
+    kinds: set[str] = set()
+    try:
+        for feature in spec["features"]:
+            for resource in feature["resources"]:
+                kinds.add(resource["kind"])
+    except KeyError as e:
+        raise MalformedSpecError(
+            f"Missing expected key {e} when trying to extract kinds from spec"
+        ) from e
+    return list(kinds)
 
 
 def load_module(file_path: str) -> ModuleType:
