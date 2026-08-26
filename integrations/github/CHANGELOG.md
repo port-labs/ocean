@@ -7,12 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.9.5 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 6.9.4 (2026-08-24)
+
+
+### Features
+
+- Add bulk update and bulk delete actions for GitHub external custom property values APIs, with automatic 100-repo batching and multi-org support.
+
+
+## 6.9.3 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 6.9.2 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 6.9.1 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 6.9.0 (2026-08-23)
+
+
+### Features
+
+- Added a `package` kind that ingests GitHub Container Registry (GHCR) packages.
+
+
+## 6.8.2 (2026-08-23)
+
+
+### Improvements
+
+- Log an error when GitHub webhook signature verification fails
+
+
 ## 6.8.1 (2026-08-19)
 
 
 ### Bug Fixes
 
 - Allow empty files in GraphQL resync to align with REST/webhook paths
+
 
 ## 6.8.0 (2026-08-19)
 

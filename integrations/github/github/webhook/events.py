@@ -105,6 +105,9 @@ SECRET_SCANNING_ALERT_ACTION_TO_STATE = {
 
 SECRET_SCANNING_ALERT_EVENTS = list(SECRET_SCANNING_ALERT_ACTION_TO_STATE.keys())
 
+PACKAGE_UPSERT_EVENTS = ["published", "updated"]
+PACKAGE_EVENTS = PACKAGE_UPSERT_EVENTS
+
 
 # Collaborator events
 COLLABORATOR_UPSERT_EVENTS = ["added", "created", "edited"]
@@ -127,6 +130,7 @@ ALL_EVENTS = (
     + COLLABORATOR_EVENTS
     + TEAM_COLLABORATOR_EVENTS
     + SECRET_SCANNING_ALERT_EVENTS
+    + PACKAGE_EVENTS
 )
 
 
@@ -148,4 +152,5 @@ WEBHOOK_CREATE_EVENTS = [
     "membership",
     "member",
     "secret_scanning_alert",
+    "package",
 ]

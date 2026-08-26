@@ -1,30 +1,16 @@
-from typing import Any
-
-import httpx
 from loguru import logger
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
-from github.clients.rate_limiter.utils import is_rest_rate_limit_response
-from github.helpers.exceptions import InvalidActionParametersException
-from github.clients.client_factory import (
-    create_github_client_for_org,
+from github.actions.external_custom_properties.utils import (
+    ExternalPropertyGithubValue,
+    external_custom_properties_action_error_message,
 )
-from github.clients.http.rest_client import GithubRestClient
+from github.clients.client_factory import create_github_client_for_org
+from github.clients.http.base_client import AbstractGithubClient
+from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-
-
-def external_properties_from_mapping(
-    external_properties_mapping: dict[str, Any],
-) -> list[dict[str, str | None]]:
-    return [
-        {
-            "property_name": name,
-            "value": None if value is None or value == "" else str(value),
-        }
-        for name, value in external_properties_mapping.items()
-    ]
 
 
 class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
@@ -45,11 +31,13 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
         repo = run.execution_properties.get("repo")
         return f"{org}/{repo}"
 
-    async def _get_execution_client(self, run: IntegrationRun) -> GithubRestClient:
+    async def _get_execution_clients(
+        self, run: IntegrationRun
+    ) -> list[AbstractGithubClient]:
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
             raise InvalidActionParametersException("org is required")
-        return await create_github_client_for_org(organization)
+        return [await create_github_client_for_org(organization)]
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -69,12 +57,13 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
 
         with logger.contextualize(org=org, repo=repo):
             logger.info("Processing external custom properties update")
-            github_properties = external_properties_from_mapping(
-                external_properties_mapping
-            )
+            github_properties = [
+                ExternalPropertyGithubValue(property_name=name, value=value).dict()
+                for name, value in external_properties_mapping.items()
+            ]
 
             try:
-                rest_client = await self._get_execution_client(run)
+                rest_client = await create_github_client_for_org(org)
                 await rest_client.make_request(
                     f"{rest_client.base_url}/orgs/{org}/properties/installations/values",
                     method="PATCH",
@@ -84,29 +73,11 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
                     },
                     ignore_default_errors=False,
                 )
-            except Exception as e:
-                error_message = str(e)
-                if isinstance(e, httpx.HTTPStatusError):
-                    if (
-                        e.response.status_code == 403
-                        and not is_rest_rate_limit_response(e.response)
-                    ):
-                        raise ActionExecutionError(
-                            "Missing external custom properties write permission on the organization. "
-                            "Update the integration permissions in order to enable this action."
-                        )
-                    try:
-                        error_message = e.response.json().get("message", str(e))
-                    except ValueError:
-                        error_message = e.response.text or str(e)
-                    logger.error(
-                        "GitHub API error while updating external custom properties",
-                        status_code=e.response.status_code,
-                        message=error_message,
-                    )
+            except Exception as error:
                 raise ActionExecutionError(
-                    f"Error updating external custom properties: {error_message}"
-                )
+                    "Error updating external custom properties: "
+                    f"{external_custom_properties_action_error_message(error)}"
+                ) from error
 
             logger.info("Successfully updated external custom properties")
             await ocean.port_client.report_run_completed(
