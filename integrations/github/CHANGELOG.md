@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.9.6 (2026-08-26)
+
+
+### Bug Fixes
+
+- Added retry with exponential backoff for GraphQL errors (HTTP 200 with errors in body) in `send_api_request`. GitHub server-side errors like "Something went wrong while executing your query" are retried 3 times before failing.
+
+
 ## 6.9.5 (2026-08-26)
 
 
