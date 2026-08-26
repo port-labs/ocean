@@ -27,6 +27,7 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         "LifecyclePolicyNotFoundException",
         "NotFoundException",
         "NoSuchBucket",
+        "DBInstanceNotFound",
         "404",
     ]
     response = getattr(e, "response", None)
