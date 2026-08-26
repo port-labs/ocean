@@ -49,11 +49,12 @@ class SkillWebhookProcessor(FileWebhookProcessor):
                     repos=pattern.repos,
                     skipParsing=True,
                     validationCheck=False,
+                    excludeArchived=pattern.exclude_archived,
                 )
                 for pattern in selector.paths
             ],
             organization,
-            repo_name,
+            repository,
             current_branch,
             default_branch,
         )

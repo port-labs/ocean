@@ -47,6 +47,7 @@ class PluginWebhookProcessor(FileWebhookProcessor):
                 path.organization is None
                 or path.organization.casefold() == organization.casefold()
             )
+            and not self._should_skip_archived_repository(path, repository)
             and self._is_pattern_applicable_to_branch(
                 path, repo_name, current_branch, default_branch
             )
