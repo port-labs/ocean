@@ -88,39 +88,35 @@ class GitHubPermissionProbe:
         self.context = context
 
     async def run(self) -> None:
-        kinds = tuple(self.context.available_kinds)
         provider = get_auth_provider()
         authenticators = await provider.list_authenticators()
         self.context.update_progress()
 
         if provider.is_app_auth():
-            await self._probe_app(kinds, authenticators)
+            await self._probe_app(authenticators)
             return
 
-        await self._probe_pat(kinds, authenticators[0])
+        await self._probe_pat(authenticators[0])
 
     async def _probe_app(
         self,
-        kinds: tuple[str, ...],
         authenticators: Sequence[AbstractGitHubAuthenticator],
     ) -> None:
-        pending = self._add_pending_checks(
-            kinds,
-            _org_scopes(
+        pending = self.context.add_scopes(
+            *_org_scopes(
                 [authenticator.organization for authenticator in authenticators]
-            ),
+            )
         )
         for authenticator, checks in zip(authenticators, pending):
             token = await authenticator.get_token()
-            self._resolve_checks(kinds, checks, token.permissions, _app_verdict)
+            self._resolve_checks(checks, token.permissions, _app_verdict)
 
     async def _probe_pat(
         self,
-        kinds: tuple[str, ...],
         authenticator: AbstractGitHubAuthenticator,
     ) -> None:
         organizations = await self._get_pat_organizations(authenticator)
-        pending = self._add_pending_checks(kinds, _org_scopes(organizations))
+        pending = self.context.add_scopes(*_org_scopes(organizations))
 
         granted_scopes = await self._get_pat_scopes(authenticator)
         permissions = (
@@ -129,31 +125,18 @@ class GitHubPermissionProbe:
             else None
         )
         for checks in pending:
-            self._resolve_checks(kinds, checks, permissions, _pat_verdict)
-
-    def _add_pending_checks(
-        self,
-        kinds: tuple[str, ...],
-        scopes: Sequence[dict[str, str]],
-    ) -> list[list[ProbeCheck]]:
-        """Publish every kind per scope up front so consumers can stream them."""
-        pending = [
-            [ProbeCheck(kind=kind, scopes=scope) for kind in kinds] for scope in scopes
-        ]
-        for checks in pending:
-            self.context.checks.extend(checks)
-        self.context.update_progress()
-        return pending
+            self._resolve_checks(checks, permissions, _pat_verdict)
 
     def _resolve_checks(
         self,
-        kinds: tuple[str, ...],
         checks: list[ProbeCheck],
         permissions: dict[str, str] | None,
         verdict: Callable[[str, dict[str, str] | None], tuple[ProbeStatus, str]],
     ) -> None:
-        for kind, check in zip(kinds, checks):
-            check.status, check.message = verdict(kind, permissions)
+        for check in checks:
+            if check.kind is None:
+                continue
+            check.status, check.message = verdict(check.kind, permissions)
         self.context.update_progress()
 
     async def _get_pat_scopes(

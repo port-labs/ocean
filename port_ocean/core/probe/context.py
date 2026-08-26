@@ -24,6 +24,21 @@ class ProbeContext:
         self.ended_at = None
         self.checks = []
 
+    def add_scopes(self, *scopes: dict[str, str]) -> list[list[ProbeCheck]]:
+        """Publish a pending check for every available kind under each scope."""
+        pending = [
+            [
+                ProbeCheck(kind=kind, scopes=scope.copy())
+                for kind in self.available_kinds
+            ]
+            for scope in scopes
+        ]
+        for checks in pending:
+            self.checks.extend(checks)
+        if pending:
+            self.update_progress()
+        return pending
+
     def build_request_body(self) -> dict[str, Any]:
         return {
             "started_at": self.started_at.isoformat(),

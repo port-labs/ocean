@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -100,6 +101,42 @@ def test_build_request_body_serializes_timestamps_and_checks() -> None:
             "scopes": {"org": "port-team"},
         }
     ]
+
+
+def test_add_scopes_publishes_pending_checks_for_every_kind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    progress = MagicMock()
+    context = ProbeContext()
+    context.available_kinds = ["repository", "issue"]
+    monkeypatch.setattr(context, "update_progress", progress)
+
+    port_labs = {"org": "port-labs"}
+    pending = context.add_scopes(port_labs, {"org": "port-team"})
+    port_labs["org"] = "mutated"
+
+    assert [(check.kind, check.status, check.scopes) for check in context.checks] == [
+        ("repository", ProbeStatus.PENDING, {"org": "port-labs"}),
+        ("issue", ProbeStatus.PENDING, {"org": "port-labs"}),
+        ("repository", ProbeStatus.PENDING, {"org": "port-team"}),
+        ("issue", ProbeStatus.PENDING, {"org": "port-team"}),
+    ]
+    assert pending[0] == context.checks[:2]
+    assert pending[1] == context.checks[2:]
+    progress.assert_called_once()
+
+
+def test_add_scopes_with_no_arguments_adds_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    progress = MagicMock()
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+    monkeypatch.setattr(context, "update_progress", progress)
+
+    assert context.add_scopes() == []
+    assert context.checks == []
+    progress.assert_not_called()
 
 
 def test_initialize_loads_kinds_from_the_integration_spec(
