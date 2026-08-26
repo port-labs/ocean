@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 from loguru import logger
 
 from port_ocean.core.ocean_types import (
@@ -19,30 +17,16 @@ class EventsMixin:
     It provides methods for attaching listeners to various lifecycle events.
 
     Attributes:
-        event_strategy: A dictionary storing event callbacks for different event types.
+        event_strategy: Event callbacks for different event types.
     """
 
     def __init__(self) -> None:
-        self.event_strategy: IntegrationEventsCallbacks = {
-            "start": [],
-            "resync": defaultdict(list),
-            "resync_start": [],
-            "resync_complete": [],
-            "incremental": defaultdict(list),
-        }
-
-    @property
-    def available_resync_kinds(self) -> list[str]:
-        return list(self.event_strategy["resync"].keys())
-
-    @property
-    def available_incremental_kinds(self) -> list[str]:
-        return list(self.event_strategy["incremental"].keys())
+        self.event_strategy: IntegrationEventsCallbacks = IntegrationEventsCallbacks()
 
     def on_start(self, function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
         """Register a function as a listener for the "start" event."""
         logger.debug(f"Registering {function} as a start event listener")
-        self.event_strategy["start"].append(function)
+        self.event_strategy.start.append(function)
         return function
 
     def on_resync(
@@ -54,7 +38,7 @@ class EventsMixin:
                 logger.debug("Registering resync event listener any kind")
             else:
                 logger.info(f"Registering resync event listener for kind {kind}")
-            self.event_strategy["resync"][kind].append(function)
+            self.event_strategy.resync[kind].append(function)
         return function
 
     def on_resync_start(
@@ -63,7 +47,7 @@ class EventsMixin:
         """Register a function to be called when a resync operation starts."""
         if function is not None:
             logger.debug(f"Registering {function} as a resync_start event listener")
-            self.event_strategy["resync_start"].append(function)
+            self.event_strategy.resync_start.append(function)
         return function
 
     def on_resync_complete(
@@ -72,7 +56,7 @@ class EventsMixin:
         """Register a function to be called when a resync operation completes."""
         if function is not None:
             logger.debug(f"Registering {function} as a resync_complete event listener")
-            self.event_strategy["resync_complete"].append(function)
+            self.event_strategy.resync_complete.append(function)
         return function
 
     def on_incremental_resync(
@@ -86,5 +70,5 @@ class EventsMixin:
         """
         if function is not None:
             logger.info(f"Registering incremental resync listener for kind {kind}")
-            self.event_strategy["incremental"][kind].append(function)
+            self.event_strategy.incremental[kind].append(function)
         return function
