@@ -1,4 +1,4 @@
-from port_ocean.core.probe import ProbeCheck, ProbeStatus
+from port_ocean.core.probe import ProbeCheck, ProbeMode, ProbeStatus
 
 
 def test_probe_check_defaults_to_pending() -> None:
@@ -8,3 +8,8 @@ def test_probe_check_defaults_to_pending() -> None:
     assert check.message is None
     assert check.kind is None
     assert check.scopes == {}
+
+
+def test_probe_mode_starts_with_shallow() -> None:
+    assert ProbeMode.SHALLOW == "shallow"
+    assert list(ProbeMode) == [ProbeMode.SHALLOW]

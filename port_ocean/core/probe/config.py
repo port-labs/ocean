@@ -1,10 +1,7 @@
 from dataclasses import dataclass
-from enum import StrEnum
 from pathlib import Path
 
-
-class ProbeMode(StrEnum):
-    SHALLOW = "shallow"
+from port_ocean.core.probe.models import ProbeMode
 
 
 @dataclass

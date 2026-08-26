@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.result import ProbeCheck
+from port_ocean.core.probe.models import ProbeCheck
 from port_ocean.utils.misc import get_spec_kinds
 
 

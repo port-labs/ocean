@@ -2,6 +2,10 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 
+class ProbeMode(StrEnum):
+    SHALLOW = "shallow"
+
+
 class ProbeStatus(StrEnum):
     PENDING = "PENDING"
     SUCCESS = "SUCCESS"
