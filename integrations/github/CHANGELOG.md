@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.9.7 (2026-08-26)
+## 6.10.0 (2026-08-26)
 
 
 ### Features
 
-- Expanded user email enrichment by adding `includeVerifiedDomainEmails` selector, enabling customers on GitHub Enterprise Cloud with verified domains to include `organizationVerifiedDomainEmails` on exported users — a list of email addresses matching the org's verified domains. No N+1 API calls; the field is inlined into the existing member list query.
+- Add an `excludeArchived` selector to skip archived repositories during repository discovery for pull request, issue, workflow, release, file, folder, skill, and other per-repository kinds.
+
+
+## 6.9.7 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
 
 
 ## 6.9.6 (2026-08-26)

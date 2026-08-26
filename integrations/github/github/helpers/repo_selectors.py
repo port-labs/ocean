@@ -25,6 +25,7 @@ class RepoListSelector(Protocol):
     """Minimal selector interface exposing optional repos list."""
 
     repos: Optional[List["RepositoryBranchMapping"]]
+    exclude_archived: bool
 
 
 class RepositorySelectorStrategy(ABC):
@@ -63,7 +64,10 @@ class AllRepositorySelector(RepositorySelectorStrategy):
             f"Fetching all '{self.repo_type}' repositories from '{org_login}' of type '{org_type}'."
         )
         options = ListRepositoryOptions(
-            organization=org_login, organization_type=org_type, type=self.repo_type
+            organization=org_login,
+            organization_type=org_type,
+            type=self.repo_type,
+            exclude_archived=selector.exclude_archived,
         )
         async for batch in repo_exporter.get_paginated_resources(options):
             for repo in batch:
@@ -80,6 +84,10 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
 
     For each explicit repository, repository metadata is fetched to determine a
     branch fallback when the selector omits a branch.
+
+    Note: explicitly listed repos are always included regardless of
+    `exclude_archived` on the selector - the same precedent already applies to
+    `repo_search`/`search_params`, which are likewise never consulted here.
     """
 
     async def select_repos(

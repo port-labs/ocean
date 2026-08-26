@@ -29,9 +29,14 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def should_process_repo_search(
         self, payload: EventPayload, config: ResourceConfig
     ) -> bool:
-        repo_search = cast(RepoSearchSelector, config.selector).repo_search
+        selector = cast(RepoSearchSelector, config.selector)
+        if selector.exclude_archived and payload["repository"].get("archived"):
+            logger.info(
+                "Repository is archived and this kind excludes archived repositories, no actions will be performed."
+            )
+            return False
 
-        if repo_search is not None:
+        if selector.repo_search is not None:
             logger.info(
                 "search query is configured for this kind, checking if repository is in matched results."
             )

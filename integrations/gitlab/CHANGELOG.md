@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.2.329-post1 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
 ## 0.2.328-post1 (2026-08-26)
 
 
