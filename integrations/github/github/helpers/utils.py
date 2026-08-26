@@ -18,6 +18,7 @@ import httpx
 from loguru import logger
 
 from github.helpers.exceptions import GraphQLErrorGroup
+from port_ocean.context.ocean import ocean
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
@@ -334,8 +335,13 @@ async def _get_org_saml_identities(
 
 
 @cache_coroutine_result()
-async def _get_enterprise_slug(client: "AbstractGithubClient") -> str | None:
+async def _get_enterprise_slugs(client: "AbstractGithubClient") -> list[str]:
     from github.helpers.gql_queries import VIEWER_ENTERPRISES_GQL
+
+    configured_slug = ocean.integration_config.get("github_enterprise")
+    if configured_slug:
+        logger.info(f"Using configured enterprise slug: '{configured_slug}'")
+        return [configured_slug]
 
     try:
         response = await client.send_api_request(
@@ -345,15 +351,14 @@ async def _get_enterprise_slug(client: "AbstractGithubClient") -> str | None:
         )
         enterprises = response["data"]["viewer"]["enterprises"]["nodes"]
         if enterprises:
-            # A user typically belongs to one enterprise; use the first
-            slug = enterprises[0]["slug"]
-            logger.info(f"Auto-detected enterprise slug: '{slug}'")
-            return slug
+            slugs = [enterprise["slug"] for enterprise in enterprises]
+            logger.info(f"Auto-detected enterprise slugs: {slugs}")
+            return slugs
         logger.debug("No enterprise found for authenticated user")
     except (KeyError, httpx.HTTPStatusError, GraphQLErrorGroup) as exc:
-        logger.debug(f"Failed to detect enterprise slug: {exc}", exc_info=True)
+        logger.debug(f"Failed to detect enterprise slugs: {exc}", exc_info=True)
 
-    return None
+    return []
 
 
 async def _get_enterprise_saml_identities(
@@ -396,13 +401,15 @@ async def get_saml_identities(
     saml_users = await _get_org_saml_identities(client, organization)
 
     if not saml_users:
-        enterprise_slug = await _get_enterprise_slug(client)
-        if enterprise_slug:
+        enterprise_slugs = await _get_enterprise_slugs(client)
+        for enterprise_slug in enterprise_slugs:
             logger.info(
                 f"Org SAML empty for '{organization}', "
                 f"trying enterprise '{enterprise_slug}'"
             )
             saml_users = await _get_enterprise_saml_identities(client, enterprise_slug)
+            if saml_users:
+                break
 
     if saml_users:
         logger.info(

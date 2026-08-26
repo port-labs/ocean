@@ -169,10 +169,12 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
     }}
 """
 
+# A user rarely belongs to more than 1-2 enterprises; 10 covers any practical
+# scenario without pagination. Users with more should set githubEnterprise config.
 VIEWER_ENTERPRISES_GQL = """
     query {
       viewer {
-        enterprises(first: 1) {
+        enterprises(first: 10) {
           nodes {
             slug
           }
