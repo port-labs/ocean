@@ -90,7 +90,6 @@ class GitHubPermissionProbe:
     async def run(self) -> None:
         provider = get_auth_provider()
         authenticators = await provider.list_authenticators()
-        self.context.update_progress()
 
         if provider.is_app_auth():
             await self._probe_app(authenticators)
@@ -183,7 +182,6 @@ class GitHubPermissionProbe:
                 and isinstance(login := organization.get("login"), str)
                 and login not in organizations
             )
-            self.context.update_progress()
             next_link = response.links.get("next")
             url = next_link.get("url") if next_link else None
             params = None

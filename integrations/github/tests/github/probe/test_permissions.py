@@ -136,7 +136,7 @@ async def test_all_checks_are_published_as_pending_before_being_resolved(
 
     await GitHubPermissionProbe(context).run()
 
-    assert snapshots[1] == [ProbeStatus.PENDING] * 4
+    assert snapshots[0] == [ProbeStatus.PENDING] * 4
     assert snapshots[-1] == [
         ProbeStatus.SUCCESS,
         ProbeStatus.SUCCESS,
