@@ -48,10 +48,10 @@ def run(
         "app", default_app
     )
 
-    # Validate that the current integration's runtime matches the execution parameters
-    asyncio.get_event_loop().run_until_complete(
-        validate_integration_runtime(app.port_client, app.config.runtime)
-    )
+    # Validate that the current integration's runtime matches the execution parameters.
+    # asyncio.run() is required on Python 3.12+: get_event_loop() no longer creates
+    # a loop from a synchronous CLI entrypoint.
+    asyncio.run(validate_integration_runtime(app.port_client, app.config.runtime))
 
     # Override config with arguments
     if initialize_port_resources is not None:

@@ -1,4 +1,4 @@
-from asyncio import Task, get_event_loop
+from asyncio import Task, get_event_loop, CancelledError
 from typing import Any, Literal
 
 from loguru import logger
@@ -36,6 +36,9 @@ class PollingEventListener(BaseEventListener):
 
     The `PollingEventListener` periodically checks for changes in the integration and triggers the "on_resync" event if changes are detected.
 
+    Resyncs run in the background and don't block polling checks. If a new resync request arrives while one is already running,
+    the current resync is cancelled and a new one starts with the updated configuration.
+
     Parameters:
         events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
         event_listener_config (PollingEventListenerSettings): Configuration settings for the Polling event listener.
@@ -48,6 +51,7 @@ class PollingEventListener(BaseEventListener):
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
+        self._current_resync_task: Task[Any] | None = None
 
     def should_resync(self) -> bool:
         _last_updated_at = (
@@ -131,9 +135,17 @@ class PollingEventListener(BaseEventListener):
 
         return False, ""
 
-    async def _perform_resync(self, resync_request_updated_at: str) -> None:
-        logger.info("Performing resync")
+    async def _spawn_resync_task(self, resync_request_updated_at: str) -> None:
+        """
+        Spawn a resync task in the background. If a resync is already running, cancel it first and start a new one.
+        This allows the polling listener to continue checking for changes without waiting for the current resync to complete.
+        """
+        # If a resync is already running, cancel it
+        if self._current_resync_task and not self._current_resync_task.done():
+            logger.info("Cancelled running resync; starting new one with updated config from Port")
+            self._current_resync_task.cancel()
 
+        # Update state watermarks
         ocean.app.resync_state_updater.last_integration_state_updated_at = (
             resync_request_updated_at
         )
@@ -142,15 +154,51 @@ class PollingEventListener(BaseEventListener):
                 resync_request_updated_at
             )
 
-        running_task: Task[Any] = get_event_loop().create_task(self._resync({}))
-        signal_handler.register(running_task.cancel)
-        await running_task
+        logger.info("Spawning resync task in background")
+
+        # Create new resync task (fire-and-forget, don't await)
+        self._current_resync_task = get_event_loop().create_task(self._resync({}))
+        signal_handler.register(self._current_resync_task.cancel)
+
+        # Attach callback to handle task completion
+        self._current_resync_task.add_done_callback(self._on_resync_task_completed)
+
+    def _on_resync_task_completed(self, task: Task[Any]) -> None:
+        """
+        Handle resync task completion (success, failure, or cancellation).
+        Updates state and clears the task reference.
+        """
+        # Clear the task reference
+        if self._current_resync_task is task:
+            self._current_resync_task = None
+
+        # Check if task was cancelled
+        if task.cancelled():
+            logger.info("Resync task was cancelled")
+            return
+
+        # Check for exceptions
+        try:
+            task.result()
+        except CancelledError:
+            logger.info("Resync task was cancelled during completion")
+        except Exception as e:
+            logger.exception(f"Resync task failed with exception: {e}")
+
+    async def _perform_resync(self, resync_request_updated_at: str) -> None:
+        """
+        Perform resync by spawning a background task (non-blocking).
+        The polling loop will continue checking for changes while resync runs.
+        """
+        logger.info("Performing resync")
+        await self._spawn_resync_task(resync_request_updated_at)
 
     async def _start(self) -> None:
         """
         Starts the polling event listener.
-        It registers the "on_resync" event to be called every `interval` seconds specified in the `event_listener_config`.
-        The `on_resync` event is triggered if the integration has changed since the last update.
+        It registers the "on_resync" event to be checked every `interval` seconds specified in the `event_listener_config`.
+        The polling check is non-blocking and doesn't wait for ongoing resyncs to complete.
+        If a resync request arrives while another is running, the running resync is cancelled and restarted.
         """
         logger.info(
             f"Setting up Polling event listener with interval: {self.event_listener_config.interval}"
