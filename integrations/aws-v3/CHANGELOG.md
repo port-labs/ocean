@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.21.1-beta (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 2.21.0-beta (2026-08-26)
+
+
+### Features
+
+- Add CloudTrail live events support for DynamoDB tables and RDS DB instances.
+
+
 ## 2.20.16-beta (2026-08-26)
 
 
