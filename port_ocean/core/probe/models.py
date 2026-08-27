@@ -6,11 +6,17 @@ class ProbeMode(StrEnum):
     SHALLOW = "shallow"
 
 
-class ProbeStatus(StrEnum):
+class ProbeCheckStatus(StrEnum):
     PENDING = "PENDING"
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
     UNKNOWN = "UNKNOWN"
+
+
+class ProbeStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class ProbeReportStage(StrEnum):
@@ -26,5 +32,5 @@ class ProbeCheck:
 
     kind: str
     scopes: dict[str, str] = field(default_factory=dict)
-    status: ProbeStatus = ProbeStatus.PENDING
+    status: ProbeCheckStatus = ProbeCheckStatus.PENDING
     message: str | None = None

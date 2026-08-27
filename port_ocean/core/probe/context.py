@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.models import ProbeCheck, ProbeReportStage
+from port_ocean.core.probe.models import ProbeCheck, ProbeReportStage, ProbeStatus
 from port_ocean.utils.misc import get_spec_kinds
 
 
@@ -14,6 +14,7 @@ class ProbeContext:
     config: ProbeConfig
     started_at: datetime
     ended_at: datetime | None
+    status: ProbeStatus
     checks: list[ProbeCheck]
 
     def __init__(self, probe_id: str | None = None) -> None:
@@ -22,6 +23,7 @@ class ProbeContext:
         self.config = ProbeConfig()
         self.started_at = datetime.now(timezone.utc)
         self.ended_at = None
+        self.status = ProbeStatus.IN_PROGRESS
         self.checks = []
 
     def add_scopes(self, *scopes: dict[str, str]) -> list[list[ProbeCheck]]:
@@ -54,6 +56,7 @@ class ProbeContext:
     def initialize(self, config: ProbeConfig | None = None) -> None:
         self.config = config or ProbeConfig()
         self.available_kinds = get_spec_kinds(self.config.path)
+        self.status = ProbeStatus.IN_PROGRESS
         self.update_progress(ProbeReportStage.INIT)
 
     def update_progress(
@@ -73,8 +76,10 @@ class ProbeContext:
 
     def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
+        self.status = ProbeStatus.COMPLETED
         self.update_progress(ProbeReportStage.FINALIZE)
 
     def fail(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
+        self.status = ProbeStatus.FAILED
         self.update_progress(ProbeReportStage.FAIL)
