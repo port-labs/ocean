@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from typing import Dict, Any
 
 import uvicorn
@@ -6,6 +7,7 @@ import uvicorn
 from port_ocean.bootstrap import load_ocean_app
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
 from port_ocean.core.defaults.initialization.initialize import initialize_defaults
+from port_ocean.core.probe import ProbeMode, ProbeConfig
 from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.utils.signal import init_signal_handler
@@ -39,3 +41,27 @@ def run(
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
     uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
+
+
+def run_probe(
+    probe_id: str | None = None,
+    path: str = ".",
+    log_level: LogLevelType = "INFO",
+    kinds: list[str] | None = None,
+    mode: ProbeMode = ProbeMode.SHALLOW,
+) -> None:
+    application_settings = ApplicationSettings(log_level=log_level)
+
+    init_signal_handler()
+    setup_logger(
+        application_settings.log_level,
+        enable_http_handler=application_settings.enable_http_logging,
+    )
+
+    app = load_ocean_app(path)
+    asyncio.run(
+        app.integration.run_probe(
+            probe_id,
+            ProbeConfig(path=Path(path), kinds=kinds, mode=mode),
+        )
+    )
