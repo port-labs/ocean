@@ -84,6 +84,10 @@ class TestEcrRepositoryExporter:
                 }
             ],
             ["GetRepositoryPolicyAction"],
+            extra_context={
+                "AccountId": "123456789012",
+                "Region": "us-west-2",
+            },
         )
 
     @pytest.mark.asyncio
