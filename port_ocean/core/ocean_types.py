@@ -9,6 +9,7 @@ from typing import (
     NamedTuple,
 )
 from port_ocean.core.models import Entity
+from port_ocean.core.probe import ProbeContext
 
 RAW_ITEM = dict[Any, Any]
 RAW_RESULT = list[RAW_ITEM]
@@ -22,6 +23,8 @@ START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
 BEFORE_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
 AFTER_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
+
+ON_PROBE_EVENT_LISTENER = Callable[[ProbeContext], Awaitable[ProbeContext | None]]
 
 
 class RawEntityDiff(TypedDict):
@@ -64,3 +67,4 @@ class IntegrationEventsCallbacks:
     incremental: dict[str | None, list[INCREMENTAL_EVENT_LISTENER]] = field(
         default_factory=lambda: defaultdict(list)
     )
+    on_probe: ON_PROBE_EVENT_LISTENER | None = None
