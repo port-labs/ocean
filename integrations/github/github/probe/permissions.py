@@ -1,7 +1,7 @@
 from collections.abc import Callable, Sequence
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.probe import ProbeCheck, ProbeContext, ProbeStatus
+from port_ocean.core.probe import ProbeCheck, ProbeContext, ProbeCheckStatus
 
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -115,7 +115,7 @@ class GitHubPermissionProbe:
         authenticator: AbstractGitHubAuthenticator,
     ) -> None:
         organizations = await self._get_pat_organizations(authenticator)
-        pending = self.context.add_scopes(*_org_scopes(organizations))
+        checks = self.context.add_scopes(*_org_scopes(organizations))
 
         granted_scopes = await self._get_pat_scopes(authenticator)
         permissions = (
@@ -123,14 +123,14 @@ class GitHubPermissionProbe:
             if granted_scopes is not None
             else None
         )
-        for checks in pending:
-            self._resolve_checks(checks, permissions, _pat_verdict)
+
+        self._resolve_checks(checks, permissions, _pat_verdict)
 
     def _resolve_checks(
         self,
         checks: list[ProbeCheck],
         permissions: dict[str, str] | None,
-        verdict: Callable[[str, dict[str, str] | None], tuple[ProbeStatus, str]],
+        verdict: Callable[[str, dict[str, str] | None], tuple[ProbeCheckStatus, str]],
     ) -> None:
         for check in checks:
             if check.kind is None:
@@ -200,16 +200,16 @@ def _org_scopes(organizations: Sequence[str | None]) -> list[dict[str, str]]:
 
 def _app_verdict(
     kind: str, permissions: dict[str, str] | None
-) -> tuple[ProbeStatus, str]:
+) -> tuple[ProbeCheckStatus, str]:
     required_permissions = APP_KIND_PERMISSIONS.get(kind)
     if required_permissions is None:
         return (
-            ProbeStatus.UNKNOWN,
+            ProbeCheckStatus.UNKNOWN,
             f"No GitHub App permission mapping is defined for {kind}",
         )
     if permissions is None:
         return (
-            ProbeStatus.UNKNOWN,
+            ProbeCheckStatus.UNKNOWN,
             "GitHub did not return permissions for the installation token",
         )
 
@@ -217,34 +217,34 @@ def _app_verdict(
         actual = permissions.get(permission, "")
         if _PERMISSION_LEVELS.get(actual, 0) >= _PERMISSION_LEVELS["read"]:
             return (
-                ProbeStatus.SUCCESS,
+                ProbeCheckStatus.SUCCESS,
                 f"GitHub App has {actual} access for {permission}",
             )
     return (
-        ProbeStatus.FAILURE,
+        ProbeCheckStatus.FAILURE,
         "GitHub App requires read access for " + " or ".join(required_permissions),
     )
 
 
 def _pat_verdict(
     kind: str, permissions: dict[str, str] | None
-) -> tuple[ProbeStatus, str]:
+) -> tuple[ProbeCheckStatus, str]:
     required = PAT_KIND_SCOPES.get(kind)
     if permissions is None:
         return (
-            ProbeStatus.UNKNOWN,
+            ProbeCheckStatus.UNKNOWN,
             "GitHub does not expose granted scopes for this token; "
             "this is expected for fine-grained personal access tokens",
         )
     if required is None:
         return (
-            ProbeStatus.UNKNOWN,
+            ProbeCheckStatus.UNKNOWN,
             f"No personal access token scope mapping is defined for {kind}",
         )
     if required in permissions:
-        return (ProbeStatus.SUCCESS, f"Personal access token grants {required}")
+        return (ProbeCheckStatus.SUCCESS, f"Personal access token grants {required}")
     return (
-        ProbeStatus.FAILURE,
+        ProbeCheckStatus.FAILURE,
         f"Personal access token requires {required} for private resources",
     )
 
