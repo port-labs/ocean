@@ -52,8 +52,11 @@ def get_event_name(payload: EventBridgeCloudTrailPayload) -> str | None:
 
 
 def _resolve_event_mapping(detail: CloudTrailDetail) -> EventNameMapping | None:
+    event_name = detail.get("eventName")
+    if not event_name:
+        return None
     return EVENT_NAME_MAPPINGS.get(
-        cloudtrail_mapping_key(detail.get("eventName"), detail.get("eventSource"))
+        cloudtrail_mapping_key(event_name, detail.get("eventSource"))
     )
 
 
@@ -80,10 +83,6 @@ def parse_cloudtrail_event(
     if detail.get("errorCode"):
         return None
 
-    event_name = detail.get("eventName")
-    if not event_name:
-        return None
-
     mapping = _resolve_event_mapping(detail)
     if mapping is None:
         return None
@@ -101,5 +100,5 @@ def parse_cloudtrail_event(
         account_id=str(account_id),
         region=str(region),
         action=mapping.action,
-        event_name=event_name,
+        event_name=detail["eventName"],
     )

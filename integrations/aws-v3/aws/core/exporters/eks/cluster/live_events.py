@@ -21,9 +21,7 @@ def _cluster_arn(context: LiveEventContext) -> str:
 
 def _extract_cluster_name(detail: CloudTrailDetail) -> str | None:
     request_parameters = detail.get("requestParameters", {})
-    identifier = request_parameters.get("name") or request_parameters.get(
-        "clusterName"
-    )
+    identifier = request_parameters.get("name") or request_parameters.get("clusterName")
     return identifier if isinstance(identifier, str) else None
 
 
