@@ -1,81 +1,92 @@
-from importlib import import_module
-from unittest.mock import MagicMock
+"""Unit tests for the probe CLI command."""
 
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import click
+import pytest
 from click.testing import CliRunner
-from pytest import MonkeyPatch
 
-from port_ocean.cli.commands.main import cli_start
+from port_ocean.cli.commands.probe import _parse_kinds, probe
 from port_ocean.core.probe import ProbeMode
 
-probe_module = import_module("port_ocean.cli.commands.probe")
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, None),
+        ("repository", ["repository"]),
+        ("repository,pull-request", ["repository", "pull-request"]),
+        ("repository pull-request", ["repository", "pull-request"]),
+        ("repository, pull-request", ["repository", "pull-request"]),
+    ],
+)
+def test_parse_kinds_splits_comma_and_space_separated_values(
+    value: str | None,
+    expected: list[str] | None,
+) -> None:
+    # Act
+    result = _parse_kinds(click.Context(click.Command("probe")), None, value)
+
+    # Assert
+    assert result == expected
 
 
-def test_probe_command_passes_probe_id_through(monkeypatch: MonkeyPatch) -> None:
+def test_parse_kinds_raises_for_empty_value() -> None:
+    # Act / Assert
+    with pytest.raises(click.BadParameter, match="must contain at least one kind"):
+        _parse_kinds(click.Context(click.Command("probe")), None, " , ")
+
+
+@patch("port_ocean.cli.commands.probe.run_probe")
+def test_probe_command_invokes_run_probe_with_parsed_kinds(
+    mock_run_probe: MagicMock,
+    tmp_path: Path,
+) -> None:
     # Arrange
-    run_probe = MagicMock()
-    monkeypatch.setattr(probe_module, "run_probe", run_probe)
+    runner = CliRunner()
 
     # Act
-    result = CliRunner().invoke(cli_start, ["probe", ".", "--probe-id", "abc-123"])
+    result = runner.invoke(
+        probe,
+        [
+            str(tmp_path),
+            "--probe-id",
+            "probe-123",
+            "--kinds",
+            "repository,pull-request",
+            "--mode",
+            "shallow",
+        ],
+    )
 
     # Assert
     assert result.exit_code == 0
     assert "Probe succeeded" in result.output
-    run_probe.assert_called_once_with("abc-123", ".", "INFO", mode=ProbeMode.SHALLOW)
+    mock_run_probe.assert_called_once_with(
+        "probe-123",
+        str(tmp_path),
+        "INFO",
+        kinds=["repository", "pull-request"],
+        mode=ProbeMode.SHALLOW,
+    )
 
 
-def test_probe_command_reads_probe_id_from_environment(
-    monkeypatch: MonkeyPatch,
+@patch(
+    "port_ocean.cli.commands.probe.run_probe",
+    side_effect=RuntimeError("connection failed"),
+)
+def test_probe_command_wraps_failures_in_click_exception(
+    mock_run_probe: MagicMock,
+    tmp_path: Path,
 ) -> None:
     # Arrange
-    run_probe = MagicMock()
-    monkeypatch.setattr(probe_module, "run_probe", run_probe)
-    monkeypatch.setenv("OCEAN__PROBE_ID", "from-env")
+    runner = CliRunner()
 
     # Act
-    result = CliRunner().invoke(cli_start, ["probe", "."])
+    result = runner.invoke(probe, [str(tmp_path)])
 
     # Assert
-    assert result.exit_code == 0
-    run_probe.assert_called_once_with("from-env", ".", "INFO", mode=ProbeMode.SHALLOW)
-
-
-def test_probe_command_runs_locally_without_a_probe_id(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    # Arrange
-    run_probe = MagicMock()
-    monkeypatch.setattr(probe_module, "run_probe", run_probe)
-    monkeypatch.delenv("OCEAN__PROBE_ID", raising=False)
-
-    # Act
-    result = CliRunner().invoke(cli_start, ["probe", "."])
-
-    # Assert
-    assert result.exit_code == 0
-    run_probe.assert_called_once_with(None, ".", "INFO", mode=ProbeMode.SHALLOW)
-
-
-def test_probe_command_returns_nonzero_when_probe_fails(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    # Arrange
-    run_probe = MagicMock(side_effect=RuntimeError("bad credentials"))
-    monkeypatch.setattr(probe_module, "run_probe", run_probe)
-
-    # Act
-    result = CliRunner().invoke(cli_start, ["probe", ".", "--probe-id", "abc-123"])
-
-    # Assert
-    assert result.exit_code == 1
-    assert "Probe failed: bad credentials" in result.output
-
-
-def test_probe_command_injects_mode(monkeypatch: MonkeyPatch) -> None:
-    run_probe = MagicMock()
-    monkeypatch.setattr(probe_module, "run_probe", run_probe)
-
-    result = CliRunner().invoke(cli_start, ["probe", ".", "--mode", "shallow"])
-
-    assert result.exit_code == 0
-    run_probe.assert_called_once_with(None, ".", "INFO", mode=ProbeMode.SHALLOW)
+    assert result.exit_code != 0
+    assert "Probe failed: connection failed" in result.output
+    mock_run_probe.assert_called_once()

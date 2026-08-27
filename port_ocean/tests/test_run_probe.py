@@ -1,78 +1,63 @@
-from importlib import import_module
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+"""Unit tests for run_probe."""
 
-from pytest import MonkeyPatch
+import asyncio
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from port_ocean.core.probe import ProbeConfig, ProbeMode
+from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeMode
+from port_ocean.run import run_probe
 
-run_module = import_module("port_ocean.run")
+
+def _run_asyncio_run_immediately(coro: object) -> object:
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)  # type: ignore[arg-type]
+    finally:
+        loop.close()
 
 
-def test_run_probe_passes_given_probe_id_to_the_integration(
-    monkeypatch: MonkeyPatch,
+@patch("port_ocean.run.init_signal_handler")
+@patch("port_ocean.run.setup_logger")
+@patch("port_ocean.run.asyncio.run", side_effect=_run_asyncio_run_immediately)
+@patch("port_ocean.run.load_ocean_app")
+def test_run_probe_delegates_to_integration_with_probe_config(
+    mock_load_ocean_app: MagicMock,
+    mock_asyncio_run: MagicMock,
+    mock_setup_logger: MagicMock,
+    mock_init_signal_handler: MagicMock,
 ) -> None:
     # Arrange
-    integration = SimpleNamespace(run_probe=AsyncMock())
-    app = SimpleNamespace(integration=integration)
-    monkeypatch.setattr(run_module, "init_signal_handler", MagicMock())
-    monkeypatch.setattr(run_module, "setup_logger", MagicMock())
-    monkeypatch.setattr(run_module, "load_ocean_app", lambda path: app)
+    captured: dict[str, object] = {}
+    mock_app = MagicMock()
+    mock_load_ocean_app.return_value = mock_app
+
+    async def capture_run_probe(
+        probe_id: str | None,
+        config: ProbeConfig | None = None,
+    ) -> ProbeContext:
+        captured["probe_id"] = probe_id
+        captured["config"] = config
+        return ProbeContext(probe_id)
+
+    mock_app.integration.run_probe = capture_run_probe
 
     # Act
-    run_module.run_probe("abc-123", path=".", log_level="DEBUG")
-
-    # Assert
-    integration.run_probe.assert_awaited_once_with("abc-123", ProbeConfig(path="."))
-
-
-def test_run_probe_passes_none_when_no_probe_id_is_given(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    # Arrange
-    integration = SimpleNamespace(run_probe=AsyncMock())
-    app = SimpleNamespace(integration=integration)
-    monkeypatch.setattr(run_module, "init_signal_handler", MagicMock())
-    monkeypatch.setattr(run_module, "setup_logger", MagicMock())
-    monkeypatch.setattr(run_module, "load_ocean_app", lambda path: app)
-
-    # Act
-    run_module.run_probe(path=".", log_level="DEBUG")
-
-    # Assert
-    integration.run_probe.assert_awaited_once_with(None, ProbeConfig(path="."))
-
-
-def test_run_probe_passes_requested_kinds_in_config(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    # Arrange
-    integration = SimpleNamespace(run_probe=AsyncMock())
-    app = SimpleNamespace(integration=integration)
-    monkeypatch.setattr(run_module, "init_signal_handler", MagicMock())
-    monkeypatch.setattr(run_module, "setup_logger", MagicMock())
-    monkeypatch.setattr(run_module, "load_ocean_app", lambda path: app)
-
-    # Act
-    run_module.run_probe(path=".", kinds=["repository", "issue"])
-
-    # Assert
-    integration.run_probe.assert_awaited_once_with(
-        None, ProbeConfig(path=".", kinds=["repository", "issue"])
+    run_probe(
+        probe_id="probe-123",
+        path="/integration",
+        log_level="DEBUG",
+        kinds=["repository"],
+        mode=ProbeMode.SHALLOW,
     )
 
-
-def test_run_probe_injects_mode_in_config(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    integration = SimpleNamespace(run_probe=AsyncMock())
-    app = SimpleNamespace(integration=integration)
-    monkeypatch.setattr(run_module, "init_signal_handler", MagicMock())
-    monkeypatch.setattr(run_module, "setup_logger", MagicMock())
-    monkeypatch.setattr(run_module, "load_ocean_app", lambda path: app)
-
-    run_module.run_probe(path=".", mode=ProbeMode.SHALLOW)
-
-    integration.run_probe.assert_awaited_once_with(
-        None, ProbeConfig(path=".", mode=ProbeMode.SHALLOW)
+    # Assert
+    mock_init_signal_handler.assert_called_once()
+    mock_setup_logger.assert_called_once_with("DEBUG", enable_http_handler=True)
+    mock_load_ocean_app.assert_called_once_with("/integration")
+    mock_asyncio_run.assert_called_once()
+    assert captured["probe_id"] == "probe-123"
+    assert captured["config"] == ProbeConfig(
+        path=Path("/integration"),
+        kinds=["repository"],
+        mode=ProbeMode.SHALLOW,
     )

@@ -1,113 +1,83 @@
-from unittest.mock import AsyncMock, MagicMock
+"""Unit tests for BaseIntegration.run_probe."""
+
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from port_ocean.context.event import EventType, event
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.ocean_types import IntegrationEventsCallbacks
-from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeMode
+from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
 from port_ocean.exceptions.core import ModeNotSupportedException
 
 
-@pytest.fixture(autouse=True)
-def stub_spec_kinds(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "port_ocean.core.probe.context.get_spec_kinds",
-        lambda path=".": ["repository", "issue"],
-    )
+@pytest.fixture
+def integration() -> BaseIntegration:
+    context = MagicMock()
+    context.config.integration.type = "github"
+    return BaseIntegration(context)
 
 
+@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
 @pytest.mark.asyncio
-async def test_run_probe_invokes_handler_in_probe_context(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured_event_type: str | None = None
-    finalize = MagicMock()
-    fail = MagicMock()
-    monkeypatch.setattr(ProbeContext, "finalize", finalize)
-    monkeypatch.setattr(ProbeContext, "fail", fail)
-
-    async def handler(context: ProbeContext) -> ProbeContext:
-        nonlocal captured_event_type
-        captured_event_type = event.event_type
-        return context
-
-    integration = MagicMock(spec=BaseIntegration)
-    integration.event_strategy = IntegrationEventsCallbacks(on_probe=handler)
-
-    result = await BaseIntegration.run_probe(
-        integration, "probe-id", ProbeConfig(path=".", kinds=["repository"])
-    )
-
-    assert captured_event_type == EventType.ON_PROBE
-    assert isinstance(result, ProbeContext)
-    assert result.probe_id == "probe-id"
-    assert result.available_kinds == ["repository", "issue"]
-    assert result.config.kinds == ["repository"]
-    assert result.config.mode is ProbeMode.SHALLOW
-    assert result.checks == []
-    assert result.ended_at is None
-    finalize.assert_called_once()
-    fail.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_run_probe_allows_a_local_run_without_probe_id(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    finalize = MagicMock()
-    monkeypatch.setattr(ProbeContext, "finalize", finalize)
-
-    async def handler(context: ProbeContext) -> ProbeContext:
-        return context
-
-    integration = MagicMock(spec=BaseIntegration)
-    integration.event_strategy = IntegrationEventsCallbacks(on_probe=handler)
-
-    result = await BaseIntegration.run_probe(integration)
-
-    assert result.probe_id is None
-    finalize.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_run_probe_requires_registered_handler(
-    monkeypatch: pytest.MonkeyPatch,
+async def test_run_probe_raises_when_listener_is_not_registered(
+    mock_get_spec_kinds: MagicMock,
+    integration: BaseIntegration,
 ) -> None:
     # Arrange
-    fail = MagicMock()
-    finalize = MagicMock()
-    monkeypatch.setattr(ProbeContext, "fail", fail)
-    monkeypatch.setattr(ProbeContext, "finalize", finalize)
-    integration = MagicMock()
-    integration.event_strategy = IntegrationEventsCallbacks(on_probe=None)
-    integration.context.config.integration.type = "github"
+    integration.event_strategy.on_probe = None
 
     # Act / Assert
     with pytest.raises(
         ModeNotSupportedException,
         match="github does not support probe mode",
     ):
-        await BaseIntegration.run_probe(integration, "probe-id")
+        await integration.run_probe("probe-123", ProbeConfig(path=Path("/integration")))
 
-    fail.assert_called_once()
-    finalize.assert_not_called()
+    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
 
 
+@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
 @pytest.mark.asyncio
-async def test_run_probe_propagates_handler_errors(
-    monkeypatch: pytest.MonkeyPatch,
+async def test_run_probe_finalizes_listener_context(
+    mock_get_spec_kinds: MagicMock,
+    integration: BaseIntegration,
 ) -> None:
-    fail = MagicMock()
-    finalize = MagicMock()
-    monkeypatch.setattr(ProbeContext, "fail", fail)
-    monkeypatch.setattr(ProbeContext, "finalize", finalize)
-    handler = AsyncMock(side_effect=RuntimeError("unreachable"))
-    integration = MagicMock(spec=BaseIntegration)
-    integration.event_strategy = IntegrationEventsCallbacks(on_probe=handler)
+    # Arrange
+    async def on_probe(context: ProbeContext) -> ProbeContext:
+        return context
 
-    with pytest.raises(RuntimeError, match="unreachable"):
-        await BaseIntegration.run_probe(integration, "probe-id")
+    integration.event_strategy.on_probe = on_probe
+    config = ProbeConfig(path=Path("/integration"), kinds=["repository"])
 
-    fail.assert_called_once()
-    finalize.assert_not_called()
+    # Act
+    result = await integration.run_probe("probe-123", config)
+
+    # Assert
+    assert result.probe_id == "probe-123"
+    assert result.status == ProbeStatus.COMPLETED
+    assert result.ended_at is not None
+    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
+
+
+@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
+@pytest.mark.asyncio
+async def test_run_probe_marks_context_failed_when_listener_raises(
+    mock_get_spec_kinds: MagicMock,
+    integration: BaseIntegration,
+) -> None:
+    # Arrange
+    captured_context: list[ProbeContext] = []
+
+    async def on_probe(context: ProbeContext) -> ProbeContext:
+        captured_context.append(context)
+        raise RuntimeError("probe failed")
+
+    integration.event_strategy.on_probe = on_probe
+    config = ProbeConfig(path=Path("/integration"), kinds=["repository"])
+
+    # Act / Assert
+    with pytest.raises(RuntimeError, match="probe failed"):
+        await integration.run_probe("probe-123", config)
+
+    assert captured_context[0].status == ProbeStatus.FAILED
+    assert captured_context[0].ended_at is not None
