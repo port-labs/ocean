@@ -14,6 +14,7 @@ from port_ocean.core.probe.models import (
     ProbeReportStage,
     ProbeStatus,
 )
+from port_ocean.exceptions.probe import InvalidProbeKindsError
 
 
 def test_starts_with_empty_state() -> None:
@@ -135,6 +136,53 @@ def test_initialize_sets_config_and_available_kinds(
     assert context.status == ProbeStatus.IN_PROGRESS
     mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
     mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
+
+
+@patch(
+    "port_ocean.core.probe.context.get_spec_kinds",
+    return_value=["repository", "pull-request"],
+)
+def test_initialize_deduplicates_injected_kinds(
+    mock_get_spec_kinds: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext(probe_id="probe-1")
+    config = ProbeConfig(
+        path=Path("/integration"),
+        kinds=["repository", "repository", "pull-request", "repository"],
+    )
+
+    # Act
+    with patch.object(context, "update_progress"):
+        context.initialize(config)
+
+    # Assert
+    assert set(context.available_kinds) == {"repository", "pull-request"}
+    assert len(context.available_kinds) == 2
+    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
+
+
+@patch(
+    "port_ocean.core.probe.context.get_spec_kinds",
+    return_value=["repository", "pull-request"],
+)
+def test_initialize_raises_for_invalid_kinds(
+    mock_get_spec_kinds: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext(probe_id="probe-1")
+    config = ProbeConfig(
+        path=Path("/integration"),
+        kinds=["repository", "fake-kind"],
+    )
+
+    # Act / Assert
+    with pytest.raises(
+        InvalidProbeKindsError, match="Invalid probe kinds: \\['fake-kind'\\]"
+    ):
+        context.initialize(config)
+
+    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
 
 
 @patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
