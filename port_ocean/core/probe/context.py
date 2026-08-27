@@ -59,26 +59,17 @@ class ProbeContext:
     def update_progress(
         self, stage: ProbeReportStage = ProbeReportStage.UPDATE
     ) -> None:
-        local_messages = {
-            ProbeReportStage.INIT: "Local probe: skipping start report",
-            ProbeReportStage.UPDATE: "Local probe: skipping progress update",
-            ProbeReportStage.FINALIZE: "Local probe: skipping final result report",
-            ProbeReportStage.FAIL: "Local probe: skipping fatal error report",
-        }
-        remote_messages = {
+        message = {
             ProbeReportStage.INIT: "Reporting probe start to Port for probe {probe_id}",
             ProbeReportStage.UPDATE: "Reporting probe progress to Port for probe {probe_id}",
             ProbeReportStage.FINALIZE: "Reporting final probe result to Port for probe {probe_id}",
             ProbeReportStage.FAIL: "Reporting fatal probe error to Port for probe {probe_id}",
-        }
+        }[stage].format(probe_id=self.probe_id)
 
         if self.probe_id is None:
-            logger.info(
-                local_messages[stage],
-                request_body=self.build_request_body(),
-            )
+            logger.info(message, request_body=self.build_request_body())
             return
-        logger.debug(remote_messages[stage].format(probe_id=self.probe_id))
+        logger.debug(message)
 
     def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
