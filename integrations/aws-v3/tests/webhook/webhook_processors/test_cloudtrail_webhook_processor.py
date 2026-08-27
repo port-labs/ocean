@@ -47,6 +47,7 @@ def _create_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
         "region": "us-east-1",
         "detail": {
             "eventName": "CreateBucket",
+            "eventSource": "s3.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"bucketName": bucket_name},
@@ -60,6 +61,7 @@ def _lambda_create_event(function_name: str = "my-function") -> dict[str, Any]:
         "region": "us-east-1",
         "detail": {
             "eventName": "CreateFunction20150331",
+            "eventSource": "lambda.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"functionName": function_name},
@@ -73,6 +75,7 @@ def _lambda_delete_event(function_name: str = "my-function") -> dict[str, Any]:
         "region": "us-east-1",
         "detail": {
             "eventName": "DeleteFunction20150331",
+            "eventSource": "lambda.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"functionName": function_name},
@@ -86,6 +89,7 @@ def _dynamodb_create_event(table_name: str = "my-table") -> dict[str, Any]:
         "region": "us-east-1",
         "detail": {
             "eventName": "CreateTable",
+            "eventSource": "dynamodb.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"tableName": table_name},
@@ -99,6 +103,7 @@ def _dynamodb_delete_event(table_name: str = "my-table") -> dict[str, Any]:
         "region": "us-east-1",
         "detail": {
             "eventName": "DeleteTable",
+            "eventSource": "dynamodb.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"tableName": table_name},
@@ -112,6 +117,7 @@ def _rds_create_event(db_instance_identifier: str = "my-db-instance") -> dict[st
         "region": "us-east-1",
         "detail": {
             "eventName": "CreateDBInstance",
+            "eventSource": "rds.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"dbInstanceIdentifier": db_instance_identifier},
@@ -125,6 +131,7 @@ def _rds_delete_event(db_instance_identifier: str = "my-db-instance") -> dict[st
         "region": "us-east-1",
         "detail": {
             "eventName": "DeleteDBInstance",
+            "eventSource": "rds.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"dbInstanceIdentifier": db_instance_identifier},
@@ -222,6 +229,7 @@ def _delete_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
         "region": "us-east-1",
         "detail": {
             "eventName": "DeleteBucket",
+            "eventSource": "s3.amazonaws.com",
             "awsRegion": "us-east-1",
             "recipientAccountId": "111122223333",
             "requestParameters": {"bucketName": bucket_name},

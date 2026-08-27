@@ -8,6 +8,8 @@ from aws.core.helpers.metadata.types import (
 )
 from aws.utils import RegionHelper
 
+CLOUDTRAIL_EVENT_SOURCE = "ecr.amazonaws.com"
+
 
 def _repository_arn(context: LiveEventContext) -> str:
     partition = RegionHelper.get_partition()
@@ -47,12 +49,12 @@ ECR_REPOSITORY_LIVE_EVENTS = LiveEventFactories(
         "CreateRepository": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
             _extract_repository_name,
-            event_source="ecr.amazonaws.com",
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "DeleteRepository": CloudTrailEventMapping(
             CloudTrailEventAction.DELETE,
             _extract_repository_name,
-            event_source="ecr.amazonaws.com",
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
 )

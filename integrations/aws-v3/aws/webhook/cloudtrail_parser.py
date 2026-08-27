@@ -57,10 +57,7 @@ def _resolve_event_mapping(detail: CloudTrailDetail) -> EventNameMapping | None:
         return None
 
     event_source = detail.get("eventSource")
-    mapping = EVENT_NAME_MAPPINGS.get(cloudtrail_mapping_key(event_name, event_source))
-    if mapping is None:
-        mapping = EVENT_NAME_MAPPINGS.get(event_name)
-    return mapping
+    return EVENT_NAME_MAPPINGS.get(cloudtrail_mapping_key(event_name, event_source))
 
 
 def is_supported_cloudtrail_event(payload: EventBridgeCloudTrailPayload) -> bool:

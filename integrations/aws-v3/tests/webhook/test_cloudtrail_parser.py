@@ -16,7 +16,10 @@ def _eventbridge_envelope(
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {"eventName": event_name}
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "s3.amazonaws.com",
+    }
     if region is not None:
         detail["awsRegion"] = region
     if account is not None:
@@ -136,7 +139,10 @@ def _lambda_eventbridge_envelope(
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {"eventName": event_name}
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "lambda.amazonaws.com",
+    }
     if region is not None:
         detail["awsRegion"] = region
     if account is not None:
@@ -260,7 +266,10 @@ def _dynamodb_eventbridge_envelope(
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {"eventName": event_name}
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "dynamodb.amazonaws.com",
+    }
     if region is not None:
         detail["awsRegion"] = region
     if account is not None:
@@ -326,7 +335,10 @@ def _rds_db_instance_eventbridge_envelope(
     region: str | None = "us-east-1",
     identifier_key: str = "dbInstanceIdentifier",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {"eventName": event_name}
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "rds.amazonaws.com",
+    }
     if region is not None:
         detail["awsRegion"] = region
     if account is not None:

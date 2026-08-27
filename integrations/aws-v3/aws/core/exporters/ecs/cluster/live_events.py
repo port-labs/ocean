@@ -8,6 +8,8 @@ from aws.core.helpers.metadata.types import (
 )
 from aws.utils import RegionHelper
 
+CLOUDTRAIL_EVENT_SOURCE = "ecs.amazonaws.com"
+
 
 def _cluster_arn(context: LiveEventContext) -> str:
     partition = RegionHelper.get_partition()
@@ -53,17 +55,17 @@ ECS_CLUSTER_LIVE_EVENTS = LiveEventFactories(
         "CreateCluster": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
             _extract_cluster_name,
-            event_source="ecs.amazonaws.com",
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "PutClusterCapacityProviders": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
             _extract_cluster_name,
-            event_source="ecs.amazonaws.com",
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "DeleteCluster": CloudTrailEventMapping(
             CloudTrailEventAction.DELETE,
             _extract_cluster_name,
-            event_source="ecs.amazonaws.com",
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
 )
