@@ -148,12 +148,8 @@ class PortOceanContext:
 
         return wrapper
 
-    def on_probe(
-        self,
-    ) -> Callable[[ON_PROBE_EVENT_LISTENER], ON_PROBE_EVENT_LISTENER]:
-        def wrapper(
-            function: ON_PROBE_EVENT_LISTENER,
-        ) -> ON_PROBE_EVENT_LISTENER:
+    def on_probe(self) -> Callable[[ON_PROBE_EVENT_LISTENER], ON_PROBE_EVENT_LISTENER]:
+        def wrapper(function: ON_PROBE_EVENT_LISTENER) -> ON_PROBE_EVENT_LISTENER:
             return self.integration.on_probe(function)
 
         return wrapper
