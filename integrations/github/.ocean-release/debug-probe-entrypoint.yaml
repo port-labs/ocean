@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Rename debug.py to debug_resync.py and add debug_probe.py for local probe runs
