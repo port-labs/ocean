@@ -36,7 +36,7 @@ class CloudTrailEventAction(StrEnum):
 class CloudTrailEventMapping:
     action: CloudTrailEventAction
     extract_identifier: Callable[[CloudTrailDetail], str | None]
-    event_source: str | None = None
+    event_source: str
 
 
 @dataclass(frozen=True)

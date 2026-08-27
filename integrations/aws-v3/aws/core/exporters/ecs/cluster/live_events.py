@@ -21,13 +21,14 @@ def _cluster_arn(context: LiveEventContext) -> str:
 
 def _extract_cluster_name(detail: CloudTrailDetail) -> str | None:
     request_parameters = detail.get("requestParameters", {})
-    for key in ("clusterName", "cluster"):
-        identifier = request_parameters.get(key)
-        if isinstance(identifier, str):
-            if ":cluster/" in identifier:
-                return identifier.rsplit("/", 1)[-1]
-            return identifier
-    return None
+    identifier = request_parameters.get("clusterName") or request_parameters.get(
+        "cluster"
+    )
+    if not isinstance(identifier, str):
+        return None
+    if ":cluster/" in identifier:
+        return identifier.rsplit("/", 1)[-1]
+    return identifier
 
 
 def _request_factory(
