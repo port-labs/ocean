@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.models import ProbeCheck
+from port_ocean.core.probe.models import ProbeCheck, ProbeReportStage
 from port_ocean.utils.misc import get_spec_kinds
 
 
@@ -54,39 +54,36 @@ class ProbeContext:
     def initialize(self, config: ProbeConfig | None = None) -> None:
         self.config = config or ProbeConfig()
         self.available_kinds = get_spec_kinds(self.config.path)
-        if self.probe_id is None:
-            logger.info(
-                "Local probe: skipping start report",
-                request_body=self.build_request_body(),
-            )
-            return
-        logger.debug(f"Reporting probe start to Port for probe {self.probe_id}")
+        self.update_progress(ProbeReportStage.INIT)
 
-    def update_progress(self) -> None:
+    def update_progress(
+        self, stage: ProbeReportStage = ProbeReportStage.UPDATE
+    ) -> None:
+        local_messages = {
+            ProbeReportStage.INIT: "Local probe: skipping start report",
+            ProbeReportStage.UPDATE: "Local probe: skipping progress update",
+            ProbeReportStage.FINALIZE: "Local probe: skipping final result report",
+            ProbeReportStage.FAIL: "Local probe: skipping fatal error report",
+        }
+        remote_messages = {
+            ProbeReportStage.INIT: "Reporting probe start to Port for probe {probe_id}",
+            ProbeReportStage.UPDATE: "Reporting probe progress to Port for probe {probe_id}",
+            ProbeReportStage.FINALIZE: "Reporting final probe result to Port for probe {probe_id}",
+            ProbeReportStage.FAIL: "Reporting fatal probe error to Port for probe {probe_id}",
+        }
+
         if self.probe_id is None:
             logger.info(
-                "Local probe: skipping progress update",
+                local_messages[stage],
                 request_body=self.build_request_body(),
             )
             return
-        logger.debug(f"Reporting probe progress to Port for probe {self.probe_id}")
+        logger.debug(remote_messages[stage].format(probe_id=self.probe_id))
 
     def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
-        if self.probe_id is None:
-            logger.info(
-                "Local probe: skipping final result report",
-                request_body=self.build_request_body(),
-            )
-            return
-        logger.debug(f"Reporting final probe result to Port for probe {self.probe_id}")
+        self.update_progress(ProbeReportStage.FINALIZE)
 
     def fail(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
-        if self.probe_id is None:
-            logger.info(
-                "Local probe: skipping fatal error report",
-                request_body=self.build_request_body(),
-            )
-            return
-        logger.debug(f"Reporting fatal probe error to Port for probe {self.probe_id}")
+        self.update_progress(ProbeReportStage.FAIL)

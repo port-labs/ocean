@@ -13,6 +13,13 @@ class ProbeStatus(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class ProbeReportStage(StrEnum):
+    INIT = "init"
+    UPDATE = "update"
+    FINALIZE = "finalize"
+    FAIL = "fail"
+
+
 @dataclass
 class ProbeCheck:
     """Represents a singular probe check performed on a specific kind x scope."""
