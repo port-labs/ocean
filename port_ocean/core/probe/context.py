@@ -26,9 +26,9 @@ class ProbeContext:
         self.status = ProbeStatus.IN_PROGRESS
         self.checks = []
 
-    def add_scopes(self, *scopes: dict[str, str]) -> list[list[ProbeCheck]]:
+    def add_scopes(self, *scopes: dict[str, str]) -> list[ProbeCheck]:
         logger.debug("Registering additional scopes", scopes=scopes)
-        new_checks = []
+        new_checks: list[ProbeCheck] = []
         for scope in scopes:
             for kind in self.available_kinds:
                 check = ProbeCheck(kind=kind, scopes=scope.copy())
