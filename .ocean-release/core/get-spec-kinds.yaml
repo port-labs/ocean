@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Add get_spec_kinds utility to read resource kinds from an integration spec file
