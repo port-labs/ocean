@@ -11,7 +11,8 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
-from port_ocean.exceptions.core import IntegrationAlreadyStartedException
+from port_ocean.core.probe import ProbeConfig, ProbeContext
+from port_ocean.exceptions.core import IntegrationAlreadyStartedException, ModeNotSupportedException
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):
@@ -91,3 +92,32 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         logger.info("Initializing event listener")
         event_listener = await self.event_listener_factory.create_event_listener()
         await event_listener.start()
+
+    async def run_probe(
+        self,
+        probe_id: str | None = None,
+        config: ProbeConfig | None = None,
+    ) -> ProbeContext:
+        """Invoke the registered ``on_probe`` listener."""
+        context = ProbeContext(probe_id)
+        context.initialize(config)
+        listener = self.event_strategy.on_probe
+        if listener is None:
+            context.fail()
+            raise ModeNotSupportedException(
+                self.context.config.integration.type, "probe"
+            )
+
+        async with event_context(
+            EventType.ON_PROBE,
+            trigger_type="machine",
+        ):
+            try:
+                returned = await listener(context)
+            except Exception:
+                context.fail()
+                raise
+
+            final_context = returned or context
+            final_context.finalize()
+            return final_context
