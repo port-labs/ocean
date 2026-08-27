@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.models import ProbeCheck
+from port_ocean.core.probe.models import ProbeCheck, ProbeReportStage, ProbeStatus
 from port_ocean.utils.misc import get_spec_kinds
 
 
@@ -14,6 +14,7 @@ class ProbeContext:
     config: ProbeConfig
     started_at: datetime
     ended_at: datetime | None
+    status: ProbeStatus
     checks: list[ProbeCheck]
 
     def __init__(self, probe_id: str | None = None) -> None:
@@ -22,22 +23,20 @@ class ProbeContext:
         self.config = ProbeConfig()
         self.started_at = datetime.now(timezone.utc)
         self.ended_at = None
+        self.status = ProbeStatus.IN_PROGRESS
         self.checks = []
 
-    def add_scopes(self, *scopes: dict[str, str]) -> list[list[ProbeCheck]]:
-        """Publish a pending check for every available kind under each scope."""
-        pending = [
-            [
-                ProbeCheck(kind=kind, scopes=scope.copy())
-                for kind in self.available_kinds
-            ]
-            for scope in scopes
-        ]
-        for checks in pending:
-            self.checks.extend(checks)
-        if pending:
-            self.update_progress()
-        return pending
+    def add_scopes(self, *scopes: dict[str, str]) -> list[ProbeCheck]:
+        logger.debug("Registering additional scopes", scopes=scopes)
+        new_checks: list[ProbeCheck] = []
+        for scope in scopes:
+            for kind in self.available_kinds:
+                check = ProbeCheck(kind=kind, scopes=scope.copy())
+                new_checks.append(check)
+                self.checks.append(check)
+
+        self.update_progress()
+        return new_checks
 
     def build_request_body(self) -> dict[str, Any]:
         return {
@@ -57,39 +56,30 @@ class ProbeContext:
     def initialize(self, config: ProbeConfig | None = None) -> None:
         self.config = config or ProbeConfig()
         self.available_kinds = get_spec_kinds(self.config.path)
-        if self.probe_id is None:
-            logger.info(
-                "Local probe: skipping start report",
-                request_body=self.build_request_body(),
-            )
-            return
-        logger.debug(f"Reporting probe start to Port for probe {self.probe_id}")
+        self.status = ProbeStatus.IN_PROGRESS
+        self.update_progress(ProbeReportStage.INIT)
 
-    def update_progress(self) -> None:
+    def update_progress(
+        self, stage: ProbeReportStage = ProbeReportStage.UPDATE
+    ) -> None:
+        message = {
+            ProbeReportStage.INIT: "Reporting probe start to Port for probe {probe_id}",
+            ProbeReportStage.UPDATE: "Reporting probe progress to Port for probe {probe_id}",
+            ProbeReportStage.FINALIZE: "Reporting final probe result to Port for probe {probe_id}",
+            ProbeReportStage.FAIL: "Reporting fatal probe error to Port for probe {probe_id}",
+        }[stage].format(probe_id=self.probe_id)
+
         if self.probe_id is None:
-            logger.info(
-                "Local probe: skipping progress update",
-                request_body=self.build_request_body(),
-            )
+            logger.info(message, request_body=self.build_request_body())
             return
-        logger.debug(f"Reporting probe progress to Port for probe {self.probe_id}")
+        logger.debug(message)
 
     def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
-        if self.probe_id is None:
-            logger.info(
-                "Local probe: skipping final result report",
-                request_body=self.build_request_body(),
-            )
-            return
-        logger.debug(f"Reporting final probe result to Port for probe {self.probe_id}")
+        self.status = ProbeStatus.COMPLETED
+        self.update_progress(ProbeReportStage.FINALIZE)
 
     def fail(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
-        if self.probe_id is None:
-            logger.info(
-                "Local probe: skipping fatal error report",
-                request_body=self.build_request_body(),
-            )
-            return
-        logger.debug(f"Reporting fatal probe error to Port for probe {self.probe_id}")
+        self.status = ProbeStatus.FAILED
+        self.update_progress(ProbeReportStage.FAIL)

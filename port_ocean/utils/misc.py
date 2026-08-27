@@ -110,13 +110,12 @@ def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
     return None
 
 
-def get_spec_kinds(path: str | Path = Path(".")) -> list[str]:
+def get_spec_kinds(path: Path = Path(".")) -> list[str]:
     """Return the unique resource kinds declared by an integration spec."""
-    spec_path = Path(path)
-    spec = get_spec_file(spec_path)
+    spec = get_spec_file(path)
     if spec is None:
         raise SpecNotFoundError(
-            f"Failed to load spec from {spec_path / '.port'}: "
+            f"Failed to load spec from {path / '.port'}: "
             "expected spec.json, spec.yaml, or spec.yml"
         )
 
