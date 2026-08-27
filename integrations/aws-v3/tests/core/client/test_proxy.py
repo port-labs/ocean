@@ -1,8 +1,18 @@
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 
-from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.client.proxy import AWS_CLIENT_CONFIG, AioBaseClientProxy
 from aws.core.client.paginator import AsyncPaginator
+
+
+def assert_create_client_called_with(
+    mock_session: MagicMock, *, service_name: str, region_name: str
+) -> None:
+    mock_session.create_client.assert_called_with(
+        service_name=service_name,
+        region_name=region_name,
+        config=AWS_CLIENT_CONFIG,
+    )
 
 
 class TestAioBaseClientProxy:
@@ -63,9 +73,12 @@ class TestAioBaseClientProxy:
             assert proxy.client is mock_client
 
             # Verify create_client was called with correct parameters
-            isolated_mock_session.create_client.assert_called_once_with(
-                service_name="ec2", region_name="us-east-1"
+            assert_create_client_called_with(
+                isolated_mock_session,
+                service_name="ec2",
+                region_name="us-east-1",
             )
+            isolated_mock_session.create_client.assert_called_once()
             mock_client_cm.__aenter__.assert_called_once()
 
         # Test that __aexit__ was called on the client
@@ -215,8 +228,10 @@ class TestAioBaseClientProxy:
                 assert proxy.client is mock_client
 
                 # Verify create_client was called with the correct service
-                isolated_mock_session.create_client.assert_called_with(
-                    service_name=service, region_name="us-east-1"
+                assert_create_client_called_with(
+                    isolated_mock_session,
+                    service_name=service,
+                    region_name="us-east-1",
                 )
 
             # Reset the mock for next iteration

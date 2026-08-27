@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: "Fix: AWS v3 integration now properly handles throttled API calls with retry logic and bounded concurrency (max 10 concurrent operations) to prevent silent entity count divergence"
