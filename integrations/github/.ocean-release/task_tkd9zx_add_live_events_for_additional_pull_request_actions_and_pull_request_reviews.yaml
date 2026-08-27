@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Expanded pull request live events to cover all 22 GitHub webhook actions, added pull request review live events, automatic webhook event patching on startup, and refactored PR processor hierarchy to use abstract base class

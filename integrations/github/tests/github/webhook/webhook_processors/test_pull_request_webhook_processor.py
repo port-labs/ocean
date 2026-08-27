@@ -153,7 +153,7 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_webhook_processor.handle_event(
@@ -205,7 +205,7 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.GraphQLPullRequestExporter",
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.GraphQLPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_webhook_processor.handle_event(

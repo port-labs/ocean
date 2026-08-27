@@ -8,7 +8,6 @@ from github.clients.http.rest_client import GithubRestClient
 from github.webhook.registry import WEBHOOK_PATH
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 
-
 from dataclasses import dataclass
 
 
@@ -104,15 +103,6 @@ class BaseGithubWebhookClient(GithubRestClient):
             json_data=webhook_data,
         )
 
-    async def _patch_webhook_config(
-        self, webhook_id: str, webhook_url: str, target: HookTarget
-    ) -> None:
-        logger.info(
-            f"Patching webhook {webhook_id} with URL {webhook_url} to update secret"
-        )
-        config_data = self._build_webhook_config(webhook_url)
-        await self._patch_webhook(webhook_id, config_data, target)
-
     async def upsert_webhook(self, base_url: str) -> None:
         webhook_url = f"{base_url}/integration{WEBHOOK_PATH}"
 
@@ -147,19 +137,41 @@ class BaseGithubWebhookClient(GithubRestClient):
             existing_webhook_secret = existing_webhook["config"].get("secret")
 
             logger.info(
-                f"Found existing webhook ID: {existing_webhook_id} for {target.target_type} - {self._target_name(target)}"
+                f"Found existing webhook ID: {existing_webhook_id} for "
+                f"{target.target_type} {self._target_name(target)}"
             )
 
+            patch_data: dict[str, Any] = {}
+
+            desired_events = set(self.get_supported_events())
+            existing_events = set(existing_webhook["events"])
+            if desired_events != existing_events:
+                patch_data["events"] = self.get_supported_events()
+
             if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
+                patch_data["config"] = self._build_webhook_config(webhook_url)
+
+            if patch_data:
                 if self.skip_patching:
                     logger.info(
-                        "Webhook secret mismatch detected but patching is disabled"
+                        f"Webhook {existing_webhook_id} requires updates for "
+                        f"{target.target_type} {self._target_name(target)} "
+                        f"but patching is disabled"
                     )
                 else:
-                    await self._patch_webhook_config(
-                        existing_webhook_id, webhook_url, target
+                    logger.info(
+                        f"Patching webhook {existing_webhook_id} for "
+                        f"{target.target_type} {self._target_name(target)}"
                     )
-                    return
+                    await self.send_api_request(
+                        target.hook_url(existing_webhook_id),
+                        method="PATCH",
+                        json_data=patch_data,
+                    )
+                    logger.info(
+                        f"Webhook {existing_webhook_id} patched successfully"
+                    )
+                return
 
             logger.info("Webhook already exists with appropriate configuration")
 
