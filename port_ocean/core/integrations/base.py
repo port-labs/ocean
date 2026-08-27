@@ -38,6 +38,8 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             more than once.
         NotImplementedError: Raised if the `on_resync` method is not implemented, and the event
             strategy does not have a custom implementation for resync events.
+        ModeNotSupportedException: Raised if probe mode is invoked but no ``on_probe``
+            handler is registered.
     """
 
     def __init__(self, context: PortOceanContext):
