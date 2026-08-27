@@ -55,9 +55,6 @@ async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
     monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
-    monkeypatch.setattr(
-        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
-    )
 
     listener = PollingEventListener(
         events={"on_resync": AsyncMock(return_value=True)},
@@ -70,6 +67,10 @@ async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
 
     await listener._start()
 
+    # Give event loop time to execute task callback
+    import asyncio
+    await asyncio.sleep(0.01)
+
     # get_current_integration is called once by _check_port_app_config_changed()
     port_client.get_current_integration.assert_called_once()
     port_client.get_integration_resync_request.assert_called_once()
@@ -78,6 +79,7 @@ async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
         app.resync_state_updater.last_integration_state_updated_at
         == "2024-01-01T00:05:00Z"
     )
+    # Watermark updated only after task completes successfully
     assert (
         app.resync_state_updater.last_resync_request_updated_at
         == "2024-01-01T00:05:00Z"
@@ -105,9 +107,6 @@ async def test_polling_resyncs_on_integration_change_with_resync_request_lookup(
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
     monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
-    monkeypatch.setattr(
-        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
-    )
 
     listener = PollingEventListener(
         events={"on_resync": AsyncMock(return_value=True)},
@@ -189,9 +188,44 @@ def test_should_not_resync_old_request_when_request_watermark_is_missing(
 
 
 @pytest.mark.asyncio
+async def test_empty_port_app_config_does_not_clear_stored_hash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    port_client = MagicMock()
+    port_client.get_current_integration = AsyncMock(
+        side_effect=[
+            {"config": {"resources": [{"kind": "repository"}]}},
+            {"config": {}},
+            {"config": None},
+            {},
+        ]
+    )
+    app = SimpleNamespace(port_client=port_client)
+    monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
+
+    listener = PollingEventListener(
+        events={"on_resync": AsyncMock(return_value=True)},
+        event_listener_config=PollingEventListenerSettings(
+            type=EventListenerType.POLLING
+        ),
+    )
+
+    assert await listener._check_port_app_config_changed() is False
+    stored_hash = listener._last_port_app_config_hash
+    assert stored_hash is not None
+
+    assert await listener._check_port_app_config_changed() is False
+    assert await listener._check_port_app_config_changed() is False
+    assert await listener._check_port_app_config_changed() is False
+    assert listener._last_port_app_config_hash == stored_hash
+
+
+@pytest.mark.asyncio
 async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import asyncio
+
     port_client = MagicMock()
     port_client.get_current_integration = AsyncMock(
         return_value={"updatedAt": "2024-01-01T00:00:00Z"}
@@ -208,10 +242,7 @@ async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
         ),
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(2))
-    monkeypatch.setattr(
-        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
-    )
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
 
     listener = PollingEventListener(
         events={"on_resync": AsyncMock(return_value=True)},
@@ -223,6 +254,11 @@ async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
     monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
+    # Allow task callback to execute
+    await asyncio.sleep(0.05)
+
+    # Second polling check - should not trigger resync (watermark prevents it)
+    await listener._evaluate_resync_trigger()
 
     assert resync_mock.call_count == 1
 
@@ -248,9 +284,6 @@ async def test_polling_cancels_running_resync_when_new_request_arrives(
         ),
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(
-        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
-    )
 
     listener = PollingEventListener(
         events={"on_resync": AsyncMock(return_value=True)},
@@ -307,9 +340,6 @@ async def test_resync_task_completion_callback_clears_reference(
         ),
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(
-        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
-    )
 
     listener = PollingEventListener(
         events={"on_resync": AsyncMock(return_value=True)},

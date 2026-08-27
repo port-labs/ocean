@@ -1278,7 +1278,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             EventType.RESYNC,
             trigger_type=trigger_type,
             attributes={"resync_start_time": datetime.now(timezone.utc)},
-        ):
+        ) as resync_event, ocean.app.bind_polling_resync_event(resync_event):
             ocean.metrics.event_id = event.id
 
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version

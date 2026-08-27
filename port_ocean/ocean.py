@@ -16,6 +16,7 @@ from port_ocean.cache.memory import InMemoryCacheProvider
 from port_ocean.clients.dsp.lifecycle import LifecycleClient
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationConfiguration
+from port_ocean.context.event import EventContext
 from port_ocean.context.ocean import (
     PortOceanContext,
     initialize_port_ocean_context,
@@ -111,9 +112,22 @@ class Ocean:
         )
         self.app_initialized = False
         self._status_heartbeat_task: asyncio.Task[None] | None = None
+        self.polling_resync_event: EventContext | None = None
 
         signal_handler.register(self._report_resync_aborted, priority=100)
         signal_handler.register(self._stop_status_heartbeat, priority=90)
+
+    @asynccontextmanager
+    async def bind_polling_resync_event(
+        self, resync_event: EventContext
+    ) -> AsyncIterator[None]:
+        """Expose the in-flight RESYNC EventContext so POLLING can abort kind tasks."""
+        self.polling_resync_event = resync_event
+        try:
+            yield
+        finally:
+            if self.polling_resync_event is resync_event:
+                self.polling_resync_event = None
 
     def _warn_non_default_ssl_settings(self) -> None:
         for label, client_ssl in (

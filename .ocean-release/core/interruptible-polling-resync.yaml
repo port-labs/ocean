@@ -1,6 +1,5 @@
 bump: minor
 changelog-type: feature
 changelog: |
-  Polling event listener now runs resyncs in the background without blocking periodic checks for Port-side changes.
-  When a new resync request arrives while a resync is already running, the current resync is cancelled and restarted
-  with the updated configuration, enabling faster reaction to configuration changes, mapping updates, and manual resync requests.
+  Polling listener now cancels running resyncs when new requests arrive (config change, mapping update, resync button click).
+  Resyncs run in background, so polling checks continue every 60s regardless of resync duration.

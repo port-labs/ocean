@@ -13,9 +13,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerSettings,
 )
 from port_ocean.core.models import EventListenerType
-from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.utils.repeat import repeat_every
-from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.time import convert_str_to_utc_datetime
 
 
@@ -56,9 +54,10 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._current_resync_task: Task[Any] | None = None
+        self._pending_resync_timestamp: str = ""
         self._last_port_app_config_hash: str | None = None
 
-    async def _get_port_app_config_fresh(self) -> dict[str, Any]:
+    async def _get_port_app_config_fresh(self) -> dict[str, Any] | None:
         """
         Fetch fresh Port App Config from Port API.
 
@@ -71,15 +70,17 @@ class PollingEventListener(BaseEventListener):
         """
         try:
             integration = await ocean.app.port_client.get_current_integration()
-            return integration.get("config", {})
-        except EmptyPortAppConfigError:
-            logger.debug("Integration config is empty, skipping config check")
-            return {}
         except Exception as error:
             logger.debug(
-                f"Failed to fetch Port App Config: {type(error).__name__}: {str(error)}"
+                f"Failed to fetch Port App Config: {type(error).__name__}: {error}"
             )
-            return {}
+            return None
+
+        config = integration.get("config")
+        if not isinstance(config, dict) or not config:
+            logger.debug("Port App Config is empty, skipping config change check")
+            return None
+        return config
 
     @staticmethod
     def _hash_port_app_config(config: dict[str, Any]) -> str:
@@ -118,8 +119,7 @@ class PollingEventListener(BaseEventListener):
             bool: True if the config has changed, False otherwise or on error.
         """
         current_config = await self._get_port_app_config_fresh()
-
-        if not current_config:
+        if current_config is None:
             return False
 
         current_hash = self._hash_port_app_config(current_config)
@@ -129,7 +129,7 @@ class PollingEventListener(BaseEventListener):
             return False
 
         if current_hash != self._last_port_app_config_hash:
-            logger.warning(
+            logger.info(
                 f"Port App Config has changed (old hash: {self._last_port_app_config_hash}, new hash: {current_hash})"
             )
             self._last_port_app_config_hash = current_hash
@@ -219,76 +219,67 @@ class PollingEventListener(BaseEventListener):
 
         return False, ""
 
-    async def _spawn_resync_task(self, resync_request_updated_at: str) -> None:
-        """
-        Spawn a resync task in the background. If a resync is already running, cancel it first and start a new one.
-        This allows the polling listener to continue checking for changes without waiting for the current resync to complete.
-        """
-        # If a resync is already running, cancel it
-        if self._current_resync_task and not self._current_resync_task.done():
-            logger.info("Cancelled running resync; starting new one with updated config from Port")
-            self._current_resync_task.cancel()
+    async def _cancel_in_flight_resync(self) -> None:
+        task = self._current_resync_task
+        if task is None or task.done():
+            return
+        logger.info("Aborting in-flight resync before starting a new one")
+        # Default external_abort=False: kind on_abort callbacks cancel inner tasks.
+        # external_abort=True would swallow CancelledError in sync_raw_all.
+        resync_event = getattr(ocean.app, "polling_resync_event", None)
+        if resync_event is not None:
+            resync_event.abort()
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
-        # Update state watermarks
-        ocean.app.resync_state_updater.last_integration_state_updated_at = (
-            resync_request_updated_at
-        )
-        if resync_request_updated_at:
-            ocean.app.resync_state_updater.last_resync_request_updated_at = (
-                resync_request_updated_at
-            )
+    async def _spawn_resync_task(self, resync_request_updated_at: str) -> None:
+        """Spawn resync task. Cancel old one if running. Watermarks updated only after success."""
+        await self._cancel_in_flight_resync()
+
+        # Store timestamp for watermark update after task completes successfully
+        self._pending_resync_timestamp = resync_request_updated_at
 
         logger.info("Spawning resync task in background")
 
-        # Create new resync task (fire-and-forget, don't await)
+        # Create task without awaiting (fire-and-forget)
         self._current_resync_task = get_event_loop().create_task(self._resync({}))
-        signal_handler.register(self._current_resync_task.cancel)
-
-        # Attach callback to handle task completion
         self._current_resync_task.add_done_callback(self._on_resync_task_completed)
 
     def _on_resync_task_completed(self, task: Task[Any]) -> None:
-        """
-        Handle resync task completion (success, failure, or cancellation).
-        Updates state and clears the task reference.
-        """
-        # Clear the task reference
+        """Clear task reference. Update watermark only on success (allows retry if cancelled)."""
+        # Clear reference
         if self._current_resync_task is task:
             self._current_resync_task = None
 
-        # Check if task was cancelled
         if task.cancelled():
             logger.info("Resync task was cancelled")
             return
 
-        # Check for exceptions
+        # Update watermarks only if task succeeded
         try:
             task.result()
+            if self._pending_resync_timestamp:
+                # Update both watermarks on success
+                ocean.app.resync_state_updater.last_integration_state_updated_at = (
+                    self._pending_resync_timestamp
+                )
+                ocean.app.resync_state_updater.last_resync_request_updated_at = (
+                    self._pending_resync_timestamp
+                )
+            logger.info("Resync task completed successfully")
         except CancelledError:
-            logger.info("Resync task was cancelled during completion")
+            logger.debug("Resync task was cancelled")
         except Exception as e:
-            logger.exception(f"Resync task failed with exception: {e}")
-
-    async def _perform_resync(self, resync_request_updated_at: str) -> None:
-        """
-        Perform resync by spawning a background task (non-blocking).
-        The polling loop will continue checking for changes while resync runs.
-        """
-        logger.info("Performing resync")
-        await self._spawn_resync_task(resync_request_updated_at)
+            logger.error(
+                f"Resync task failed with {type(e).__name__}: {e}",
+                exc_info=True
+            )
 
     async def _start(self) -> None:
-        """
-        Start the polling event listener that periodically checks for changes.
-
-        Registers a polling task that runs every `interval` seconds to check for:
-        1. Port App Config (mapping) changes - detected via hash comparison
-        2. Integration resync requests - triggered by user or scheduled
-
-        The polling loop is non-blocking and spawns resync tasks in the background.
-        If Port App Config changes while a resync is running, the current resync
-        is cancelled and a new one starts with the updated configuration.
-        """
+        """Check for changes every N seconds. Spawn resyncs in background (don't wait)."""
         logger.info(
             f"Setting up Polling event listener with interval: {self.event_listener_config.interval}s"
         )
@@ -300,15 +291,6 @@ class PollingEventListener(BaseEventListener):
             )
 
             config_changed = await self._check_port_app_config_changed()
-
-            if config_changed and self._current_resync_task:
-                if not self._current_resync_task.done():
-                    logger.info(
-                        "Port App Config has changed during active resync, cancelling current resync to start fresh"
-                    )
-                    self._current_resync_task.cancel()
-                    # Brief sleep to allow task to process cancellation before new resync starts
-                    await asyncio.sleep(0.1)
 
             (
                 should_resync,
@@ -325,6 +307,6 @@ class PollingEventListener(BaseEventListener):
                 logger.info(
                     f"Triggering resync due to: {', '.join(resync_reasons)}"
                 )
-                await self._perform_resync(resync_request_updated_at)
+                await self._spawn_resync_task(resync_request_updated_at)
 
         await resync()
