@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional, Type, Literal
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, PackageType
 from github.core.exporters.skill_exporter.utils import DEFAULT_SKILL_PATHS
 from github.core.exporters.plugin_exporter.utils import (
     DEFAULT_PLUGIN_PROVIDERS,
@@ -47,7 +47,21 @@ from github.helpers.port_app_config import (
 FILE_PROPERTY_PREFIX = "file://"
 
 
-class RepoSearchSelector(Selector):
+class ExcludeArchivedSelector(BaseModel):
+    exclude_archived: bool = Field(
+        title="Exclude Archived Repositories",
+        alias="excludeArchived",
+        default=False,
+        description=(
+            "When enabled, archived repositories are excluded during repository "
+            "discovery for this kind, before any per-repository data is fetched. "
+            "Does not affect explicitly listed `repos` entries, which are always "
+            "included regardless of archived status."
+        ),
+    )
+
+
+class RepoSearchSelector(Selector, ExcludeArchivedSelector):
     repo_search: Optional[RepoSearchParams] = Field(
         title="Repositories",
         alias="repoSearch",
@@ -206,7 +220,7 @@ class RepositoryBranchMapping(BaseModel):
         extra = "forbid"
 
 
-class RepositorySourceModel(BaseModel):
+class RepositorySourceModel(ExcludeArchivedSelector):
     organization: Optional[str] = Field(
         title="Organization",
         default=None,
@@ -317,7 +331,8 @@ class GithubSkillSelector(Selector):
         def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
             default_paths = model.__fields__["paths"].default
             schema["properties"]["paths"]["default"] = [
-                path.dict(exclude_none=True) for path in default_paths
+                path.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+                for path in default_paths
             ]
 
 
@@ -755,6 +770,56 @@ class GithubOrganizationConfig(ResourceConfig):
     )
 
 
+class GithubPackageSelector(Selector):
+    package_types: list[PackageType] = Field(
+        title="Package Types",
+        alias="packageTypes",
+        default=[PackageType.CONTAINER],
+        min_items=1,
+        description="GitHub package types to ingest.",
+    )
+    visibility: Optional[Literal["public", "private", "internal"]] = Field(
+        title="Visibility",
+        default=None,
+        description=(
+            "Filter packages by visibility. When unset, packages of all "
+            "visibilities are ingested."
+        ),
+    )
+    include_versions: bool = Field(
+        title="Include Versions",
+        alias="includeVersions",
+        default=False,
+        description=(
+            "Fetch package versions (tags and digests) and attach them as "
+            "`__versions`. Enabling this consumes additional GitHub API rate "
+            "limit and may slow down the resync."
+        ),
+    )
+    max_versions: Optional[int] = Field(
+        title="Max Versions",
+        alias="maxVersions",
+        default=10,
+        ge=1,
+        description=(
+            "Maximum number of versions to fetch per package, newest first. "
+            "Only used when includeVersions is true. A larger version history "
+            "consumes additional GitHub API rate limit and may slow down the resync."
+        ),
+    )
+
+
+class GithubPackageConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PACKAGE] = Field(
+        title="Github Package",
+        description="GitHub package resource kind.",
+    )
+    selector: GithubPackageSelector = Field(
+        title="Package selector",
+        description="Selector for GitHub packages.",
+    )
+
+
 class GithubWorkflowConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW] = Field(
         title="Github Workflow",
@@ -922,6 +987,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTagConfig
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
+        | GithubPackageConfig
     ] = Field(
         title="Resources",
         default_factory=list,

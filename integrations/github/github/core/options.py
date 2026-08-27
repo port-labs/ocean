@@ -1,7 +1,9 @@
 from datetime import datetime
+from collections.abc import Sequence
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
+from github.helpers.utils import PackageType
 from pydantic.v1 import BaseModel, Field
 
 
@@ -24,6 +26,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
+    exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
@@ -308,3 +311,23 @@ class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
     """Options for listing secret scanning alerts."""
 
     state: Required[str]
+
+
+class SinglePackageOptions(SingleOrganizationOptions):
+    """Options for fetching a single GitHub package."""
+
+    package_name: Required[str]
+    package_type: Required[PackageType]
+    org_type: NotRequired[str]
+    include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]
+
+
+class ListPackageOptions(SingleOrganizationOptions):
+    """Options for listing GitHub packages."""
+
+    package_types: Required[Sequence[PackageType]]
+    org_type: NotRequired[str]
+    visibility: NotRequired[Optional[str]]
+    include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]

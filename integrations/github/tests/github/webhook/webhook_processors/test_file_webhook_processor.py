@@ -113,6 +113,45 @@ class TestFileWebhookProcessor:
         kinds = await file_webhook_processor.get_matching_kinds(mock_event)
         assert kinds == [ObjectKind.FILE]
 
+    async def test_get_matching_patterns_skips_archived_implicit_repository(
+        self, file_webhook_processor: FileWebhookProcessor
+    ) -> None:
+        pattern = GithubFilePattern(
+            organization="test-org",
+            path="*.yaml",
+            excludeArchived=True,
+        )
+
+        matches = file_webhook_processor._get_matching_patterns(
+            [pattern],
+            "test-org",
+            {"name": "test-repo", "archived": True},
+            "main",
+            "main",
+        )
+
+        assert matches == []
+
+    async def test_get_matching_patterns_keeps_archived_explicit_repository(
+        self, file_webhook_processor: FileWebhookProcessor
+    ) -> None:
+        pattern = GithubFilePattern(
+            organization="test-org",
+            path="*.yaml",
+            repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
+            excludeArchived=True,
+        )
+
+        matches = file_webhook_processor._get_matching_patterns(
+            [pattern],
+            "test-org",
+            {"name": "test-repo", "archived": True},
+            "main",
+            "main",
+        )
+
+        assert matches == [pattern]
+
     async def test_validate_payload_valid(
         self, file_webhook_processor: FileWebhookProcessor, payload: EventPayload
     ) -> None:
