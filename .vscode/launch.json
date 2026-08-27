@@ -7,7 +7,18 @@
       "envFile": "${workspaceFolder}/integrations/jira/.env",
       "justMyCode": true,
       "name": "Run jira integration",
-      "program": "${workspaceFolder}/integrations/jira/debug.py",
+      "program": "${workspaceFolder}/integrations/jira/debug_resync.py",
+      "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jira",
+      "envFile": "${workspaceFolder}/integrations/jira/.env",
+      "justMyCode": true,
+      "name": "Probe jira integration",
+      "program": "${workspaceFolder}/integrations/jira/debug_probe.py",
       "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
@@ -321,7 +332,18 @@
       "envFile": "${workspaceFolder}/integrations/github/.env",
       "justMyCode": true,
       "name": "Run Github integration",
-      "program": "${workspaceFolder}/integrations/github/debug.py",
+      "program": "${workspaceFolder}/integrations/github/debug_resync.py",
+      "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/github",
+      "envFile": "${workspaceFolder}/integrations/github/.env",
+      "justMyCode": true,
+      "name": "Probe Github integration",
+      "program": "${workspaceFolder}/integrations/github/debug_probe.py",
       "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
