@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from typing import Dict, Any
 
 import uvicorn
@@ -61,6 +62,6 @@ def run_probe(
     asyncio.run(
         app.integration.run_probe(
             probe_id,
-            ProbeConfig(path=path, kinds=kinds, mode=mode),
+            ProbeConfig(path=Path(path), kinds=kinds, mode=mode),
         )
     )
