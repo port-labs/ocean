@@ -26,7 +26,7 @@ def test_parse_kinds_splits_comma_and_space_separated_values(
     expected: list[str] | None,
 ) -> None:
     # Act
-    result = _parse_kinds(click.Context(click.Command("probe")), None, value)
+    result = _parse_kinds(click.Context(click.Command("probe")), MagicMock(), value)
 
     # Assert
     assert result == expected
@@ -35,7 +35,7 @@ def test_parse_kinds_splits_comma_and_space_separated_values(
 def test_parse_kinds_raises_for_empty_value() -> None:
     # Act / Assert
     with pytest.raises(click.BadParameter, match="must contain at least one kind"):
-        _parse_kinds(click.Context(click.Command("probe")), None, " , ")
+        _parse_kinds(click.Context(click.Command("probe")), MagicMock(), " , ")
 
 
 @patch("port_ocean.cli.commands.probe.run_probe")
