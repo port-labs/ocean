@@ -1,4 +1,4 @@
-from typing import Any, Optional, cast
+from typing import Any, NamedTuple, Optional, cast
 
 from loguru import logger
 
@@ -24,6 +24,21 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+
+
+class McpFileFetch(NamedTuple):
+    """Result of trying to read and JSON-parse an mcp.json/.mcp.json at a ref.
+
+    ``ok=False`` covers a missing file, a silently-swallowed 401/403/404 (GitHub's
+    default client behavior returns an empty response for those — indistinguishable
+    from "not found"), an oversized/non-file response, and unparsable JSON. Callers
+    must not treat ``ok=False`` as "the file has zero servers" — only a confirmed
+    fetch (``ok=True``) can be trusted for that.
+    """
+
+    ok: bool
+    servers: dict[str, dict[str, Any]]
+    blob_sha: Optional[str]
 
 
 class McpWebhookProcessor(FileWebhookProcessor):
@@ -83,27 +98,20 @@ class McpWebhookProcessor(FileWebhookProcessor):
 
         for file_info in updated_files:
             path = file_info["filename"]
-            old_servers = dict(
-                iter_mcp_servers(
-                    await self._fetch_parsed_content(
-                        exporter, organization, repo_name, path, before_sha, repository
-                    )
-                )
+            new_fetch = await self._fetch_mcp_servers(
+                exporter, organization, repo_name, path, current_branch, repository
             )
-            new_servers = dict(
-                iter_mcp_servers(
-                    await self._fetch_parsed_content(
-                        exporter,
-                        organization,
-                        repo_name,
-                        path,
-                        current_branch,
-                        repository,
-                    )
+            if not new_fetch.ok:
+                logger.warning(
+                    f"Skipping mcp reconciliation for {path} in "
+                    f"{organization}/{repo_name}: could not confirm its current "
+                    "content on this push (missing, forbidden, oversized, or "
+                    "unparsable) — it will be reconciled on the next full resync "
+                    "instead of being treated as having zero servers"
                 )
-            )
+                continue
 
-            for name, server_config in new_servers.items():
+            for name, server_config in new_fetch.servers.items():
                 updated_raw_results.append(
                     build_mcp_raw_item(
                         file_path=path,
@@ -112,9 +120,21 @@ class McpWebhookProcessor(FileWebhookProcessor):
                         repository=repository,
                         branch=current_branch,
                         organization=organization,
+                        blob_sha=new_fetch.blob_sha,
                     )
                 )
-            for name in old_servers.keys() - new_servers.keys():
+
+            old_fetch = await self._fetch_mcp_servers(
+                exporter, organization, repo_name, path, before_sha, repository
+            )
+            if not old_fetch.ok:
+                # We can't confirm what used to be there, so we can't safely tell
+                # a real removal apart from a fetch that merely failed. Skipping
+                # only means a removed server lags until the next full resync —
+                # it never causes an incorrect delete.
+                continue
+
+            for name in old_fetch.servers.keys() - new_fetch.servers.keys():
                 deleted_raw_results.append(
                     build_mcp_raw_item(
                         file_path=path,
@@ -123,19 +143,24 @@ class McpWebhookProcessor(FileWebhookProcessor):
                         repository=repository,
                         branch=current_branch,
                         organization=organization,
+                        blob_sha=old_fetch.blob_sha,
                     )
                 )
 
         for file_info in deleted_files:
             path = file_info["filename"]
-            old_servers = dict(
-                iter_mcp_servers(
-                    await self._fetch_parsed_content(
-                        exporter, organization, repo_name, path, before_sha, repository
-                    )
-                )
+            old_fetch = await self._fetch_mcp_servers(
+                exporter, organization, repo_name, path, before_sha, repository
             )
-            for name in old_servers:
+            if not old_fetch.ok:
+                logger.warning(
+                    f"Skipping delete reconciliation for removed file {path} in "
+                    f"{organization}/{repo_name}: could not confirm its prior "
+                    "content — it will be reconciled on the next full resync"
+                )
+                continue
+
+            for name in old_fetch.servers:
                 deleted_raw_results.append(
                     build_mcp_raw_item(
                         file_path=path,
@@ -144,6 +169,7 @@ class McpWebhookProcessor(FileWebhookProcessor):
                         repository=repository,
                         branch=current_branch,
                         organization=organization,
+                        blob_sha=old_fetch.blob_sha,
                     )
                 )
 
@@ -156,7 +182,7 @@ class McpWebhookProcessor(FileWebhookProcessor):
             deleted_raw_results=deleted_raw_results,
         )
 
-    async def _fetch_parsed_content(
+    async def _fetch_mcp_servers(
         self,
         exporter: RestFileExporter,
         organization: str,
@@ -164,12 +190,9 @@ class McpWebhookProcessor(FileWebhookProcessor):
         file_path: str,
         branch: Optional[str],
         repository: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Fetch and JSON-parse a file at a given ref (branch name or commit SHA).
-
-        Returns an empty dict when the file doesn't exist at that ref (e.g. it
-        was added after ``before_sha``, or removed before ``current_branch``),
-        or when its content isn't a valid JSON object.
+    ) -> McpFileFetch:
+        """Fetch and JSON-parse an mcp.json/.mcp.json file at a given ref
+        (branch name or commit SHA). See `McpFileFetch` for what `ok` means.
         """
         file_data = await exporter.get_resource(
             FileContentOptions(
@@ -180,10 +203,12 @@ class McpWebhookProcessor(FileWebhookProcessor):
             )
         )
         if not file_data:
-            return {}
+            return McpFileFetch(ok=False, servers={}, blob_sha=None)
+
         content = file_data.get("content")
         if not isinstance(content, str):
-            return {}
+            return McpFileFetch(ok=False, servers={}, blob_sha=file_data.get("sha"))
+
         file_obj = await exporter.file_processor.process_file(
             organization=organization,
             content=content,
@@ -194,4 +219,11 @@ class McpWebhookProcessor(FileWebhookProcessor):
             metadata=file_data,
         )
         parsed = file_obj.get("content")
-        return parsed if isinstance(parsed, dict) else {}
+        if not isinstance(parsed, dict):
+            return McpFileFetch(ok=False, servers={}, blob_sha=file_data.get("sha"))
+
+        return McpFileFetch(
+            ok=True,
+            servers=dict(iter_mcp_servers(parsed)),
+            blob_sha=file_data.get("sha"),
+        )
