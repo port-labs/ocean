@@ -9,6 +9,48 @@ DEFAULT_MCP_PATHS: list[str] = [
     ".mcp.json",
 ]
 
+REDACTED_VALUE = "***REDACTED***"
+
+_SENSITIVE_KEY_MARKERS = (
+    "token",
+    "secret",
+    "api_key",
+    "api-key",
+    "apiKey",
+    "password",
+    "passwd",
+    "key",
+    "auth",
+    "credential",
+)
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = key.lower()
+    return any(marker in normalized for marker in _SENSITIVE_KEY_MARKERS)
+
+
+def _redact_sensitive(value: Any) -> Any:
+    """Mask values whose key looks like a credential (token/secret/password/apiKey/...).
+
+    MCP server blocks routinely carry live credentials in `headers`/`env` (and
+    sometimes flat on the server object itself), so this is applied recursively
+    to everything we emit — including the raw `config` passthrough — rather
+    than trusting callers to opt in.
+    """
+    if isinstance(value, dict):
+        return {
+            k: (
+                REDACTED_VALUE
+                if isinstance(v, str) and _is_sensitive_key(k)
+                else _redact_sensitive(v)
+            )
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_sensitive(v) for v in value]
+    return value
+
 
 class McpServer(BaseModel):
     """Normalized MCP server entry parsed out of a single mcp.json/.mcp.json file."""
@@ -55,16 +97,27 @@ def _build_mcp_server(
     server_config: dict[str, Any],
     blob_sha: Optional[str] = None,
 ) -> McpServer:
-    url = server_config.get("url")
+    ## Build a normalized MCP server entry from the raw config.
+    raw_url = server_config.get("url")
+    url = raw_url if isinstance(raw_url, str) else None
+    raw_command = server_config.get("command")
+    command = raw_command if isinstance(raw_command, str) else None
+    raw_args = server_config.get("args")
+    args = raw_args if isinstance(raw_args, list) else []
+    raw_headers = server_config.get("headers")
+    headers = _redact_sensitive(raw_headers) if isinstance(raw_headers, dict) else {}
+    raw_env = server_config.get("env")
+    env = _redact_sensitive(raw_env) if isinstance(raw_env, dict) else {}
+
     return McpServer(
         name=server_name,
         transport="http" if url else "stdio",
         url=url,
-        command=server_config.get("command"),
-        args=server_config.get("args") or [],
-        headers=server_config.get("headers") or {},
-        env=server_config.get("env") or {},
-        config=server_config,
+        command=command,
+        args=args,
+        headers=headers,
+        env=env,
+        config=_redact_sensitive(server_config),
         path=file_path,
         blob_sha=blob_sha,
     )

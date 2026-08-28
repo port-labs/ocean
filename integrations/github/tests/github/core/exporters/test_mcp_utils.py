@@ -1,4 +1,5 @@
 from github.core.exporters.mcp_exporter.utils import (
+    REDACTED_VALUE,
     build_mcp_raw_item,
     iter_mcp_servers,
 )
@@ -89,3 +90,54 @@ class TestMcpUtils:
         assert upsert["mcp"]["path"] == delete_stub["mcp"]["path"]
         assert delete_stub["mcp"]["transport"] == "stdio"
         assert delete_stub["mcp"]["config"] == {}
+
+    def test_build_mcp_raw_item_redacts_sensitive_headers_and_env(self) -> None:
+        item = build_mcp_raw_item(
+            file_path=".mcp.json",
+            server_name="port",
+            server_config={
+                "url": "https://mcp.port.io/v1",
+                "headers": {
+                    "Authorization": "Bearer sk-live-abc123",
+                    "x-read-only-mode": "0",
+                },
+                "env": {
+                    "GITHUB_TOKEN": "ghp_supersecret",
+                    "API_KEY": "sk-another-secret",
+                    "NODE_ENV": "development",
+                },
+            },
+            repository=REPOSITORY,
+            branch="main",
+        )
+        mcp = item["mcp"]
+        assert mcp["headers"]["Authorization"] == REDACTED_VALUE
+        assert mcp["headers"]["x-read-only-mode"] == "0"
+        assert mcp["env"]["GITHUB_TOKEN"] == REDACTED_VALUE
+        assert mcp["env"]["API_KEY"] == REDACTED_VALUE
+        assert mcp["env"]["NODE_ENV"] == "development"
+
+    def test_build_mcp_raw_item_redacts_sensitive_keys_nested_in_config(self) -> None:
+        item = build_mcp_raw_item(
+            file_path="mcp.json",
+            server_name="filesystem",
+            server_config={
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+                "apiKey": "sk-flat-secret",
+                "nested": {"password": "hunter2", "region": "us-east-1"},
+            },
+            repository=REPOSITORY,
+            branch="main",
+        )
+        config = item["mcp"]["config"]
+        assert config["apiKey"] == REDACTED_VALUE
+        assert config["nested"]["password"] == REDACTED_VALUE
+        assert config["nested"]["region"] == "us-east-1"
+        # Non-dict fields (command/args) are passed through untouched.
+        assert config["command"] == "npx"
+        assert config["args"] == [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp",
+        ]

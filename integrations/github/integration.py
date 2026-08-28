@@ -400,7 +400,7 @@ class GithubMcpSelector(Selector):
         description=(
             "Paths for MCP server config discovery. Each entry can set organization "
             "and repos (same shape as the file kind). Multiple entries enable "
-            "multi-org filtration."
+            "multi-org filtering."
         ),
     )
 
