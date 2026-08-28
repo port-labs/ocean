@@ -159,12 +159,6 @@
       "description": "Optional GitHub organization name for GitHub App or Fine-grained PAT authentication."
     },
     {
-      "name": "githubEnterprise",
-      "required": false,
-      "type": "string",
-      "description": "Optional GitHub Enterprise slug for enterprise-level SAML email enrichment. When provided, the integration uses this enterprise directly instead of auto-detecting via the PAT. Required only when includeSAMLEmail is enabled and SAML is configured at the enterprise level."
-    },
-    {
       "name": "webhookSecret",
       "type": "string",
       "description": "Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.",

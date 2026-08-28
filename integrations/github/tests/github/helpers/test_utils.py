@@ -1,6 +1,6 @@
 import pytest
 from typing import Any, AsyncGenerator, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from github.helpers.utils import (
     enrich_with_organization,
@@ -218,8 +218,6 @@ async def test_enrich_user_with_primary_email_handles_empty_response() -> None:
 class TestEnterpriseSamlFallback:
     """Tests for enterprise SAML fallback in get_saml_identities."""
 
-    MOCK_CONFIG_PATH = "github.helpers.utils.ocean"
-
     @staticmethod
     def _make_saml_edges(
         identities: list[tuple[str, str]],
@@ -241,12 +239,6 @@ class TestEnterpriseSamlFallback:
         client.send_api_request = AsyncMock()
         client.send_paginated_request = MagicMock()
         return client
-
-    @staticmethod
-    def _mock_ocean_config(github_enterprise: Any = None) -> MagicMock:
-        mock_ocean = MagicMock()
-        mock_ocean.integration_config.get.return_value = github_enterprise
-        return mock_ocean
 
     @staticmethod
     async def _null_saml_generator(
@@ -306,8 +298,7 @@ class TestEnterpriseSamlFallback:
             }
         }
 
-        with patch(self.MOCK_CONFIG_PATH, self._mock_ocean_config()):
-            result = await get_saml_identities(client, "test-org")
+        result = await get_saml_identities(client, "test-org")
 
         assert result == {
             "user1": "user1@enterprise.com",
@@ -325,8 +316,7 @@ class TestEnterpriseSamlFallback:
             "data": {"viewer": {"enterprises": {"nodes": []}}}
         }
 
-        with patch(self.MOCK_CONFIG_PATH, self._mock_ocean_config()):
-            result = await get_saml_identities(client, "test-org")
+        result = await get_saml_identities(client, "test-org")
 
         assert result == {}
 
@@ -349,8 +339,7 @@ class TestEnterpriseSamlFallback:
             }
         }
 
-        with patch(self.MOCK_CONFIG_PATH, self._mock_ocean_config()):
-            result = await get_saml_identities(client, "test-org")
+        result = await get_saml_identities(client, "test-org")
 
         assert result == {}
 
@@ -362,8 +351,7 @@ class TestEnterpriseSamlFallback:
         client.send_paginated_request.return_value = self._null_saml_generator()
         client.send_api_request.side_effect = KeyError("data")
 
-        with patch(self.MOCK_CONFIG_PATH, self._mock_ocean_config()):
-            result = await get_saml_identities(client, "test-org")
+        result = await get_saml_identities(client, "test-org")
 
         assert result == {}
 
@@ -402,36 +390,6 @@ class TestEnterpriseSamlFallback:
             }
         }
 
-        with patch(self.MOCK_CONFIG_PATH, self._mock_ocean_config()):
-            result = await get_saml_identities(client, "test-org")
+        result = await get_saml_identities(client, "test-org")
 
         assert result == {"user1": "user1@saml-ent.com"}
-
-    @pytest.mark.asyncio
-    async def test_configured_enterprise_slug_skips_auto_detect(self) -> None:
-        """When githubEnterprise config is set, uses that slug directly."""
-        client = self._make_client()
-        ent_edges = self._make_saml_edges([("user1", "user1@configured.com")])
-
-        async def mock_ent_paginated(
-            *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield ent_edges
-
-        call_count = 0
-
-        def paginated_side_effect(*args: Any, **kwargs: Any) -> Any:
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return self._null_saml_generator()
-            return mock_ent_paginated()
-
-        client.send_paginated_request.side_effect = paginated_side_effect
-
-        with patch(self.MOCK_CONFIG_PATH, self._mock_ocean_config("my-enterprise")):
-            result = await get_saml_identities(client, "test-org")
-
-        assert result == {"user1": "user1@configured.com"}
-        # Should NOT have called send_api_request (no viewer.enterprises query)
-        client.send_api_request.assert_not_awaited()

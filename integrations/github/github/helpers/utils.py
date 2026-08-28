@@ -17,8 +17,7 @@ from typing import (
 import httpx
 from loguru import logger
 
-from github.helpers.exceptions import GraphQLErrorGroup
-from port_ocean.context.ocean import ocean
+from github.helpers.exceptions import GraphQLErrorGroup, GraphQLForbiddenFieldError
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
@@ -328,8 +327,8 @@ async def _get_org_saml_identities(
             variables,
         ):
             saml_users.update(_parse_saml_edges(identity_batch))
-    except TypeError:
-        logger.info(f"Org-level SAML not configured for '{organization}'")
+    except (TypeError, GraphQLForbiddenFieldError):
+        logger.info(f"Org-level SAML not configured or not accessible for '{organization}'")
 
     return saml_users
 
@@ -337,11 +336,6 @@ async def _get_org_saml_identities(
 @cache_coroutine_result()
 async def _get_enterprise_slugs(client: "AbstractGithubClient") -> list[str]:
     from github.helpers.gql_queries import VIEWER_ENTERPRISES_GQL
-
-    configured_slug = ocean.integration_config.get("github_enterprise")
-    if configured_slug:
-        logger.info(f"Using configured enterprise slug: '{configured_slug}'")
-        return [configured_slug]
 
     try:
         response = await client.send_api_request(
@@ -381,8 +375,8 @@ async def _get_enterprise_saml_identities(
             variables,
         ):
             saml_users.update(_parse_saml_edges(identity_batch))
-    except TypeError:
-        logger.info(f"Enterprise-level SAML not configured for '{enterprise_slug}'")
+    except (TypeError, GraphQLForbiddenFieldError):
+        logger.info(f"Enterprise-level SAML not configured or not accessible for '{enterprise_slug}'")
 
     return saml_users
 
