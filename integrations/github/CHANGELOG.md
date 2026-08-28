@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.2 (2026-08-28)
+
+
+### Bug Fixes
+
+- Fixed user sync abort when SAML identity query returns FORBIDDEN by handling GraphQLForbiddenFieldError gracefully, restoring pre-6.9.6 behavior of continuing with empty SAML map
+
+
 ## 6.10.1 (2026-08-27)
 
 
