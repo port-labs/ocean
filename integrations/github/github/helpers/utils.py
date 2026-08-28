@@ -328,7 +328,9 @@ async def _get_org_saml_identities(
         ):
             saml_users.update(_parse_saml_edges(identity_batch))
     except (TypeError, GraphQLForbiddenFieldError):
-        logger.info(f"Org-level SAML not configured or not accessible for '{organization}'")
+        logger.info(
+            f"Org-level SAML not configured or not accessible for '{organization}'"
+        )
 
     return saml_users
 
@@ -376,7 +378,9 @@ async def _get_enterprise_saml_identities(
         ):
             saml_users.update(_parse_saml_edges(identity_batch))
     except (TypeError, GraphQLForbiddenFieldError):
-        logger.info(f"Enterprise-level SAML not configured or not accessible for '{enterprise_slug}'")
+        logger.info(
+            f"Enterprise-level SAML not configured or not accessible for '{enterprise_slug}'"
+        )
 
     return saml_users
 
