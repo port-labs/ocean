@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.2 (2026-08-27)
+
+
+### Features
+
+- Add get_spec_kinds utility to read resource kinds from an integration spec file
+
+
 ## 0.50.1 (2026-08-26)
 
 
