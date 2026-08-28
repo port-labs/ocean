@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed user sync abort when SAML identity query returns FORBIDDEN by handling GraphQLForbiddenFieldError gracefully, restoring pre-6.9.6 behavior of continuing with empty SAML map
