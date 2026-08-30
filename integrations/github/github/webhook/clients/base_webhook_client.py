@@ -168,9 +168,7 @@ class BaseGithubWebhookClient(GithubRestClient):
                         method="PATCH",
                         json_data=patch_data,
                     )
-                    logger.info(
-                        f"Webhook {existing_webhook_id} patched successfully"
-                    )
+                    logger.info(f"Webhook {existing_webhook_id} patched successfully")
                 return
 
             logger.info("Webhook already exists with appropriate configuration")
