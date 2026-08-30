@@ -1,10 +1,19 @@
 from collections.abc import Callable, Sequence
 
+import httpx
+
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import ProbeCheck, ProbeContext, ProbeCheckStatus
+from port_ocean.exceptions.probe import ProbeFailedError
 
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.helpers.exceptions import AuthenticationException
+
+UNAUTHORIZED_STATUS_CODES = (
+    httpx.codes.UNAUTHORIZED,
+    httpx.codes.FORBIDDEN,
+)
 
 APP_KIND_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "organization": ("metadata",),
@@ -88,14 +97,22 @@ class GitHubPermissionProbe:
         self.context = context
 
     async def run(self) -> None:
-        provider = get_auth_provider()
-        authenticators = await provider.list_authenticators()
+        try:
+            provider = get_auth_provider()
+            authenticators = await provider.list_authenticators()
 
-        if provider.is_app_auth():
-            await self._probe_app(authenticators)
-            return
+            if provider.is_app_auth():
+                await self._probe_app(authenticators)
+                return
 
-        await self._probe_pat(authenticators[0])
+            await self._probe_pat(authenticators[0])
+        except (httpx.HTTPStatusError, httpx.RequestError) as error:
+            raise ProbeFailedError(_lookup_failure_message(error)) from error
+        except AuthenticationException as error:
+            cause = error.__cause__
+            if isinstance(cause, (httpx.HTTPStatusError, httpx.RequestError)):
+                raise ProbeFailedError(_lookup_failure_message(cause)) from error
+            raise ProbeFailedError(str(error)) from error
 
     async def _probe_app(
         self,
@@ -106,7 +123,9 @@ class GitHubPermissionProbe:
                 [authenticator.organization for authenticator in authenticators]
             )
         )
-        for authenticator, checks in zip(authenticators, pending):
+        kind_count = len(self.context.available_kinds)
+        for index, authenticator in enumerate(authenticators):
+            checks = pending[index * kind_count : (index + 1) * kind_count]
             token = await authenticator.get_token()
             self._resolve_checks(checks, token.permissions, _app_verdict)
 
@@ -188,6 +207,18 @@ class GitHubPermissionProbe:
         if organizations:
             return organizations
         return [None]
+
+
+def _lookup_failure_message(
+    error: httpx.HTTPStatusError | httpx.RequestError,
+) -> str:
+    if isinstance(error, httpx.HTTPStatusError):
+        status_code = error.response.status_code
+        if status_code in UNAUTHORIZED_STATUS_CODES:
+            return f"GitHub rejected the configured credentials with HTTP {status_code}"
+        return f"GitHub returned HTTP {status_code} while probing permissions"
+
+    return f"GitHub could not be reached while probing permissions: {error}"
 
 
 def _org_scopes(organizations: Sequence[str | None]) -> list[dict[str, str]]:
