@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.models import ProbeReportingMode, ProbeReportStage
+from port_ocean.core.probe.models import ProbeReportingMode
 from port_ocean.core.probe.reporters.file import (
     PROBE_REPORTS_DIRECTORY,
     FileProbeReporter,
@@ -19,7 +19,6 @@ def test_file_probe_reporter_writes_report_to_configured_path(tmp_path: Path) ->
         ProbeConfig(path=tmp_path, reporting_mode=ProbeReportingMode.FILE)
     )
     report = {
-        "stage": ProbeReportStage.UPDATE,
         "probe_id": "probe-1",
         "status": "IN_PROGRESS",
     }
@@ -49,7 +48,7 @@ def test_file_probe_reporter_creates_reports_directory(tmp_path: Path) -> None:
     reports_directory = tmp_path / PROBE_REPORTS_DIRECTORY
 
     # Act
-    reporter.report({"stage": ProbeReportStage.FINALIZE})
+    reporter.report({"stage": "some_value"})
 
     # Assert
     assert reports_directory.is_dir()

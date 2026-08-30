@@ -6,5 +6,4 @@ from port_ocean.core.probe.models import (
     ProbeMode,
     ProbeStatus,
     ProbeCheckStatus,
-    ProbeReportStage,
 )

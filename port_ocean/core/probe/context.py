@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.models import ProbeCheck, ProbeReportStage, ProbeStatus
+from port_ocean.core.probe.models import ProbeCheck, ProbeStatus
 from port_ocean.core.probe.reporters import ProbeReporter, REPORTER_MODES
 from port_ocean.exceptions.probe import InvalidProbeKindsError
 from port_ocean.utils.misc import get_spec_kinds
@@ -71,28 +71,21 @@ class ProbeContext:
 
         self.reporter = REPORTER_MODES[self.config.reporting_mode](self.config)
         self.status = ProbeStatus.IN_PROGRESS
-        self.update_progress(ProbeReportStage.INIT)
+        self.update_progress()
 
-    def update_progress(
-        self, stage: ProbeReportStage = ProbeReportStage.UPDATE
-    ) -> None:
+    def update_progress(self) -> None:
         if not self.reporter:
             raise ValueError("Reporter is not initialized")
 
-        self.reporter.report(
-            {
-                "stage": stage,
-                **self.build_request_body(),
-            }
-        )
+        self.reporter.report(self.build_request_body())
 
     def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.COMPLETED
-        self.update_progress(ProbeReportStage.FINALIZE)
+        self.update_progress()
 
     def fail(self, message: str) -> None:
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.FAILED
         self.message = message
-        self.update_progress(ProbeReportStage.FAIL)
+        self.update_progress()

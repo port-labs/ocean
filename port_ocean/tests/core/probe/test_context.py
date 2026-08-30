@@ -12,7 +12,6 @@ from port_ocean.core.probe.models import (
     ProbeCheck,
     ProbeCheckStatus,
     ProbeMode,
-    ProbeReportStage,
     ProbeReportingMode,
     ProbeStatus,
 )
@@ -165,7 +164,7 @@ def test_initialize_sets_config_and_available_kinds(
     assert context.available_kinds == ["repository"]
     assert context.status == ProbeStatus.IN_PROGRESS
     mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
-    mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
+    mock_update_progress.assert_called_once_with()
 
 
 @patch(
@@ -230,7 +229,7 @@ def test_initialize_uses_default_config_when_none(
     assert context.config == ProbeConfig()
     assert context.status == ProbeStatus.IN_PROGRESS
     mock_get_spec_kinds.assert_called_once_with(Path("."))
-    mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
+    mock_update_progress.assert_called_once_with()
 
 
 @pytest.mark.parametrize(
@@ -266,22 +265,16 @@ def test_update_progress_raises_when_reporter_not_initialized() -> None:
         ProbeContext().update_progress()
 
 
-@pytest.mark.parametrize("stage", list(ProbeReportStage))
-def test_update_progress_reports_merged_payload(stage: ProbeReportStage) -> None:
+def test_update_progress_reports_merged_payload() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-123")
     context.reporter = MagicMock()
 
     # Act
-    context.update_progress(stage)
+    context.update_progress()
 
     # Assert
-    context.reporter.report.assert_called_once_with(
-        {
-            "stage": stage,
-            **context.build_request_body(),
-        }
-    )
+    context.reporter.report.assert_called_once_with(context.build_request_body())
 
 
 def test_finalize() -> None:
@@ -297,7 +290,7 @@ def test_finalize() -> None:
     assert context.ended_at is not None
     assert context.ended_at >= started_before
     assert context.status == ProbeStatus.COMPLETED
-    mock_update_progress.assert_called_once_with(ProbeReportStage.FINALIZE)
+    mock_update_progress.assert_called_once_with()
 
 
 def test_fail() -> None:
@@ -315,4 +308,4 @@ def test_fail() -> None:
     assert context.ended_at >= started_before
     assert context.status == ProbeStatus.FAILED
     assert context.message == failure_message
-    mock_update_progress.assert_called_once_with(ProbeReportStage.FAIL)
+    mock_update_progress.assert_called_once_with()

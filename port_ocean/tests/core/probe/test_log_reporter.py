@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.models import ProbeReportStage
 from port_ocean.core.probe.reporters.log import LogProbeReporter
 
 
@@ -12,7 +11,6 @@ def test_log_probe_reporter_logs_report(mock_logger: MagicMock) -> None:
     # Arrange
     reporter = LogProbeReporter(ProbeConfig())
     report = {
-        "stage": ProbeReportStage.INIT,
         "probe_id": "probe-1",
         "status": "IN_PROGRESS",
     }
