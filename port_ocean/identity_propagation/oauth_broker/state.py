@@ -31,9 +31,7 @@ class OAuthState(BaseModel):
 def _signing_key() -> bytes:
     custom = ocean.config.identity_propagation.oauth.state_signing_secret
     raw_secret = custom if custom else ocean.config.port.client_secret
-    return hmac.new(
-        raw_secret.encode(), _HMAC_KEY_INFO, hashlib.sha256
-    ).digest()
+    return hmac.new(raw_secret.encode(), _HMAC_KEY_INFO, hashlib.sha256).digest()
 
 
 def _b64encode(raw: bytes) -> str:

@@ -46,7 +46,9 @@ def build_vault_client(settings: "VaultSettings") -> "VaultClient | None":
     from port_ocean.config.settings import AWSSecretsManagerVaultSettings, VaultType
 
     if settings.type == VaultType.aws_secrets_manager:
-        from port_ocean.identity_propagation.vault.aws_secrets_manager import AWSSecretsManagerVaultClient
+        from port_ocean.identity_propagation.vault.aws_secrets_manager import (
+            AWSSecretsManagerVaultClient,
+        )
 
         # `vault`'s declared field type is the base VaultSettings, so env-parsed values land as
         # a plain VaultSettings instance even when they include AWS-specific keys (kept as extra
