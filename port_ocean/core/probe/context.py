@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -9,25 +10,16 @@ from port_ocean.exceptions.probe import InvalidProbeKindsError
 from port_ocean.utils.misc import get_spec_kinds
 
 
+@dataclass
 class ProbeContext:
-    probe_id: str | None
-    available_kinds: list[str]
-    config: ProbeConfig
-    started_at: datetime
-    ended_at: datetime | None
-    status: ProbeStatus
-    message: str | None
-    checks: list[ProbeCheck]
-
-    def __init__(self, probe_id: str | None = None) -> None:
-        self.probe_id = probe_id
-        self.available_kinds = []
-        self.config = ProbeConfig()
-        self.started_at = datetime.now(timezone.utc)
-        self.ended_at = None
-        self.status = ProbeStatus.IN_PROGRESS
-        self.message = None
-        self.checks = []
+    probe_id: str | None = None
+    available_kinds: list[str] = field(default_factory=list)
+    config: ProbeConfig = field(default_factory=ProbeConfig)
+    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    ended_at: datetime | None = None
+    status: ProbeStatus = ProbeStatus.IN_PROGRESS
+    message: str | None = None
+    checks: list[ProbeCheck] = field(default_factory=list)
 
     def add_scopes(self, *scopes: dict[str, str]) -> list[ProbeCheck]:
         logger.debug("Registering additional scopes", scopes=scopes)
