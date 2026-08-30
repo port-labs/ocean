@@ -54,7 +54,7 @@ class ProbeContext:
 
     def initialize(self, config: ProbeConfig | None = None) -> None:
         self.config = config or ProbeConfig()
-        if self.config.kinds:
+        if self.config.kinds is not None:
             configured_kinds_set = set(self.config.kinds)
             supported_kinds_set = set(get_spec_kinds(self.config.path))
             if not configured_kinds_set.issubset(supported_kinds_set):
