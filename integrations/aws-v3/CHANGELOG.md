@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.22.0-beta (2026-08-30)
+
+
+### Features
+
+- Add CloudTrail live events for ECR repositories, ECS clusters, and EKS clusters
+
+
 ## 2.21.1-beta (2026-08-27)
 
 
