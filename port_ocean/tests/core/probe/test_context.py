@@ -66,7 +66,7 @@ def test_add_scopes_copies_scope_dict(mock_update_progress: MagicMock) -> None:
     # Arrange
     context = ProbeContext()
     context.available_kinds = ["repository"]
-    scope = {"org": "acme"}
+    scope: dict[str, str | int] = {"org": "acme"}
 
     # Act
     new_checks = context.add_scopes(scope)
