@@ -57,9 +57,7 @@ def mock_verifier() -> MagicMock:
 @pytest.fixture
 def mock_http_client() -> MagicMock:
     mock = MagicMock()
-    mock.post = AsyncMock(
-        return_value=MagicMock(spec=httpx.Response, status_code=200)
-    )
+    mock.post = AsyncMock(return_value=MagicMock(spec=httpx.Response, status_code=200))
     return mock
 
 
@@ -74,7 +72,9 @@ def mock_ocean(
     mock.app.vault_client = mock_vault
     mock.app.identity_verifier = mock_verifier
     mock.port_client.api_url = "https://api.getport.io/v1"
-    mock.port_client.auth.headers = AsyncMock(return_value={"Authorization": "Bearer token"})
+    mock.port_client.auth.headers = AsyncMock(
+        return_value={"Authorization": "Bearer token"}
+    )
     mock.config.port.client_secret = "test-client-secret"
     mock.config.port.app_url = None  # exercise the api_url-derived fallback
     mock.config.identity_propagation.oauth.state_signing_secret = None

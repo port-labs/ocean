@@ -74,7 +74,9 @@ async def resolve_user_token(run: IntegrationRun) -> str | None:
         raise UserAuthRequiredError()
 
     if record.is_expired():
-        logger.debug("Stored token expired, refreshing", actor=claims.sub, target=target)
+        logger.debug(
+            "Stored token expired, refreshing", actor=claims.sub, target=target
+        )
         record = await _refresh(vault, claims, target, record)
 
     return record.access_token

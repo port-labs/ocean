@@ -25,6 +25,7 @@ GLOBAL_SOURCE = "__global__"
 DEFAULT_FAILURE_STATUS_LABEL = "Execution failed"
 RATE_LIMITED_STATUS_LABEL = "Rate limited"
 
+
 class ExecutionManager:
     """
     Orchestrates action executors, polling, and webhook handlers for integration actions.

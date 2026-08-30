@@ -30,7 +30,9 @@ def require_provider() -> "OAuth2Provider":
     there's exactly one provider to have registered, set once at startup via
     `ocean.register_oauth_provider`. See `context/ocean.py`.
     """
-    from port_ocean.context.ocean import ocean  # deferred: avoid a circular import with context/ocean.py
+    from port_ocean.context.ocean import (
+        ocean,
+    )  # deferred: avoid a circular import with context/ocean.py
 
     provider = ocean.app.oauth_provider
     if provider is None:
@@ -45,8 +47,13 @@ class OAuth2Provider:
     def __init__(
         self, target: str, defaults: ProviderDefaults, settings: OAuthProviderSettings
     ) -> None:
-        host = (getattr(settings, "host", None) or defaults.default_host or "").rstrip("/")
-        placeholders = {"host": host, "tenant_id": getattr(settings, "tenant_id", "") or ""}
+        host = (getattr(settings, "host", None) or defaults.default_host or "").rstrip(
+            "/"
+        )
+        placeholders = {
+            "host": host,
+            "tenant_id": getattr(settings, "tenant_id", "") or "",
+        }
 
         self.target = target
         self._settings = settings

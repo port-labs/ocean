@@ -24,7 +24,10 @@ from port_ocean.exceptions.context import (
 )
 
 if TYPE_CHECKING:
-    from port_ocean.config.settings import IntegrationConfiguration, OAuthProviderSettings
+    from port_ocean.config.settings import (
+        IntegrationConfiguration,
+        OAuthProviderSettings,
+    )
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient
@@ -247,8 +250,12 @@ class PortOceanContext:
         `integration.type`. Call once at startup, e.g. from the integration's own
         `oauth/registry.py`, alongside `register_action_executor`.
         """
-        from port_ocean.exceptions.identity_propagation import DuplicateOAuthProviderError
-        from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
+        from port_ocean.exceptions.identity_propagation import (
+            DuplicateOAuthProviderError,
+        )
+        from port_ocean.identity_propagation.oauth_broker.providers import (
+            OAuth2Provider,
+        )
 
         if not self.app.config.identity_propagation.enabled:
             logger.debug(
