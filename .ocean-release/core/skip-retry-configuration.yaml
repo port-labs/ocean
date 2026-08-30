@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Allow individual HTTP requests to opt out of retries via the skip_retry request extension
