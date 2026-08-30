@@ -204,81 +204,28 @@ def test_initialize_uses_default_config_when_none(
     mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
 
 
-@pytest.mark.parametrize(
-    ("stage", "expected_message"),
-    [
-        (
-            ProbeReportStage.INIT,
-            "Reporting probe start to Port for probe None",
-        ),
-        (
-            ProbeReportStage.UPDATE,
-            "Reporting probe progress to Port for probe None",
-        ),
-        (
-            ProbeReportStage.FINALIZE,
-            "Reporting final probe result to Port for probe None",
-        ),
-        (
-            ProbeReportStage.FAIL,
-            "Reporting fatal probe error to Port for probe None",
-        ),
-    ],
-)
-@patch("port_ocean.core.probe.context.logger")
-def test_local_probe_logs_info_on_update_progress(
-    mock_logger: MagicMock,
-    stage: ProbeReportStage,
-    expected_message: str,
-) -> None:
-    # Arrange
-    context = ProbeContext()
-
-    # Act
-    context.update_progress(stage)
-
-    # Assert
-    mock_logger.info.assert_called_once()
-    assert mock_logger.info.call_args.args[0] == expected_message
-    mock_logger.debug.assert_not_called()
+def test_update_progress_raises_when_reporter_not_initialized() -> None:
+    # Act / Assert
+    with pytest.raises(ValueError, match="Reporter is not initialized"):
+        ProbeContext().update_progress()
 
 
-@pytest.mark.parametrize(
-    ("stage", "expected_message"),
-    [
-        (
-            ProbeReportStage.INIT,
-            "Reporting probe start to Port for probe probe-123",
-        ),
-        (
-            ProbeReportStage.UPDATE,
-            "Reporting probe progress to Port for probe probe-123",
-        ),
-        (
-            ProbeReportStage.FINALIZE,
-            "Reporting final probe result to Port for probe probe-123",
-        ),
-        (
-            ProbeReportStage.FAIL,
-            "Reporting fatal probe error to Port for probe probe-123",
-        ),
-    ],
-)
-@patch("port_ocean.core.probe.context.logger")
-def test_remote_probe_logs_debug_on_update_progress(
-    mock_logger: MagicMock,
-    stage: ProbeReportStage,
-    expected_message: str,
-) -> None:
+@pytest.mark.parametrize("stage", list(ProbeReportStage))
+def test_update_progress_reports_merged_payload(stage: ProbeReportStage) -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-123")
+    context.reporter = MagicMock()
 
     # Act
     context.update_progress(stage)
 
     # Assert
-    mock_logger.debug.assert_called_once_with(expected_message)
-    mock_logger.info.assert_not_called()
+    context.reporter.report.assert_called_once_with(
+        {
+            "stage": stage,
+            **context.build_request_body(),
+        }
+    )
 
 
 def test_finalize() -> None:
