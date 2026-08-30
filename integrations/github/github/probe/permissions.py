@@ -4,10 +4,15 @@ import httpx
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import ProbeCheck, ProbeContext, ProbeCheckStatus
+from port_ocean.helpers.retry import SHOULD_RETRY_EXTENSION
 
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.helpers.exceptions import AuthenticationException
+
+# A probe is diagnosing the credentials, so a rejected token is its answer rather
+# than a transient fault worth waiting out.
+NO_RETRY = {SHOULD_RETRY_EXTENSION: False}
 
 UNAUTHORIZED_STATUS_CODES = (
     httpx.codes.UNAUTHORIZED,
@@ -164,6 +169,7 @@ class GitHubPermissionProbe:
         response = await authenticator.client.get(
             f"{ocean.integration_config['github_host'].rstrip('/')}/user",
             headers=(await authenticator.get_headers()).as_dict(),
+            extensions=NO_RETRY,
         )
         response.raise_for_status()
         if "x-oauth-scopes" not in response.headers:
@@ -192,6 +198,7 @@ class GitHubPermissionProbe:
                 url,
                 headers=headers,
                 params=params,
+                extensions=NO_RETRY,
             )
             response.raise_for_status()
             organizations.extend(

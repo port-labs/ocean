@@ -16,6 +16,7 @@ from jira.overrides import (
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import SHOULD_RETRY_EXTENSION
 from .rate_limiter import JiraRateLimiter
 from .retry_transport import JiraRetryTransport
 
@@ -233,8 +234,14 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         retryable: bool = False,
+        should_retry: bool | None = None,
     ) -> Any:
-        response: httpx.Response | None = None
+        extensions: dict[str, Any] = {}
+        if retryable:
+            extensions["retryable"] = True
+        if should_retry is not None:
+            extensions[SHOULD_RETRY_EXTENSION] = should_retry
+
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
@@ -243,7 +250,7 @@ class JiraClient(OAuthClient):
                     params=params,
                     json=json,
                     headers=headers,
-                    extensions={"retryable": retryable} if retryable else None,
+                    extensions=extensions or None,
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
@@ -472,8 +479,14 @@ class JiraClient(OAuthClient):
     async def get_current_user_permissions(
         self, permission_keys: Sequence[str]
     ) -> dict[str, bool]:
-        """Verify authentication and return the current user's effective permissions."""
-        await self._send_api_request("GET", f"{self.api_url}/myself")
+        """Verify authentication and return the current user's effective permissions.
+
+        Retries are disabled so a probe reports a rejected token immediately instead
+        of waiting out the backoff budget on credentials that cannot start working.
+        """
+        await self._send_api_request(
+            "GET", f"{self.api_url}/myself", should_retry=False
+        )
         if not permission_keys:
             return {}
 
@@ -481,6 +494,7 @@ class JiraClient(OAuthClient):
             "GET",
             f"{self.api_url}/mypermissions",
             params={"permissions": ",".join(permission_keys)},
+            should_retry=False,
         )
         return {
             key: bool(permission.get("havePermission"))
