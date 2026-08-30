@@ -12,10 +12,7 @@ from port_ocean.core.event_listener.factory import (
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
 from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
-from port_ocean.exceptions.core import (
-    IntegrationAlreadyStartedException,
-    ModeNotSupportedException,
-)
+from port_ocean.exceptions.core import IntegrationAlreadyStartedException, ModeNotSupportedException
 from port_ocean.exceptions.probe import ProbeFailedError
 
 

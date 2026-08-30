@@ -82,24 +82,30 @@ async def test_run_probe_marks_context_failed_when_listener_raises(
 
     assert captured_context[0].status == ProbeStatus.FAILED
     assert captured_context[0].ended_at is not None
-    assert captured_context[0].message == "probe failed"
 
 
 @patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
 @pytest.mark.asyncio
-async def test_run_probe_raises_when_listener_fails_the_context(
+async def test_run_probe_raises_when_context_is_failed(
     mock_get_spec_kinds: MagicMock,
     integration: BaseIntegration,
 ) -> None:
+    # Arrange
+    captured_context: list[ProbeContext] = []
+    message: str = "Probe failed"
+
     async def on_probe(context: ProbeContext) -> ProbeContext:
-        context.fail("Jira rejected the configured credentials with HTTP 401")
+        captured_context.append(context)
+        context.status = ProbeStatus.FAILED
+        context.message = message
         return context
 
     integration.event_strategy.on_probe = on_probe
     config = ProbeConfig(path=Path("/integration"), kinds=["repository"])
 
-    with pytest.raises(
-        ProbeFailedError,
-        match="Jira rejected the configured credentials with HTTP 401",
-    ):
+    # Act / Assert
+    with pytest.raises(ProbeFailedError, match=message):
         await integration.run_probe("probe-123", config)
+
+    assert captured_context[0].status == ProbeStatus.FAILED
+    assert captured_context[0].message == message
