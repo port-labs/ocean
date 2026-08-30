@@ -1,6 +1,8 @@
+import asyncio
 from abc import abstractmethod
 from typing import TypedDict, Callable, Any, Awaitable
 
+from loguru import logger
 from pydantic import ConfigDict
 
 from port_ocean.config.base import BaseOceanModel
@@ -73,6 +75,17 @@ class BaseEventListener:
                 await self._after_resync()
             else:
                 await self._on_resync_failure(Exception("Resync failed"))
+        except asyncio.CancelledError:
+            if ocean.app.resync_state_updater.supersede_in_progress:
+                logger.info("Resync superseded by a newer resync request")
+            else:
+                logger.info(
+                    "Resync was cancelled, updating state to Aborted",
+                )
+                await ocean.app.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Aborted
+                )
+            raise
         except Exception as e:
             await self._on_resync_failure(e)
             raise e
