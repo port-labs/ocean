@@ -17,7 +17,7 @@ from typing import (
 import httpx
 from loguru import logger
 
-from github.helpers.exceptions import GraphQLErrorGroup, GraphQLForbiddenFieldError
+from github.helpers.exceptions import GraphQLForbiddenFieldError
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
@@ -418,6 +418,13 @@ async def get_saml_identities(
         logger.info(
             f"No SAML identities found for organization '{organization}' "
             f"(checked org-level and enterprise-level)"
+        )
+    except TypeError:
+        logger.info(f"SAML not enabled for organization '{organization}'")
+    except GraphQLForbiddenFieldError:
+        logger.warning(
+            f"SAML identity query returned FORBIDDEN for organization '{organization}', "
+            "skipping SAML enrichment"
         )
 
     return saml_users
