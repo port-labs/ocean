@@ -8,6 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
+from port_ocean.core.probe import ProbeContext
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
@@ -22,6 +23,7 @@ from jira.overrides import (
     JiraEpicResourceConfig,
     JiraComponentResourceConfig,
 )
+from jira.probe import JiraPermissionProbe
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
@@ -36,6 +38,15 @@ async def setup_application() -> None:
 
     client = get_or_create_jira_client()
     await client.create_webhooks(base_url)
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing Jira permissions for {len(context.available_kinds)} resource kinds"
+    )
+    await JiraPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_resync(Kinds.PROJECT)
