@@ -1,4 +1,3 @@
-from typing import Literal
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (

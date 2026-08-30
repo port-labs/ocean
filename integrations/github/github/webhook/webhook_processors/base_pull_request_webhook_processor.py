@@ -88,6 +88,10 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
         )
         if not data_to_upsert:
+            logger.warning(
+                f"No data returned from exporter for pull request {repo_name}/{number} "
+                f"in {organization}, skipping upsert"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
