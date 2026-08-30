@@ -7,7 +7,7 @@ from loguru import logger
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.models import ProbeCheck, ProbeStatus
 from port_ocean.core.probe.reporters import ProbeReporter, REPORTER_MODES
-from port_ocean.exceptions.probe import InvalidProbeKindsError
+from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
 from port_ocean.utils.misc import get_spec_kinds
 
 
@@ -75,7 +75,7 @@ class ProbeContext:
 
     def update_progress(self) -> None:
         if not self.reporter:
-            raise ValueError("Reporter is not initialized")
+            raise ProbeNotInitializedError("Reporter is not initialized")
 
         self.reporter.report(self.build_request_body())
 

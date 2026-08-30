@@ -6,3 +6,7 @@ class InvalidProbeKindsError(BaseOceanException):
         super().__init__(
             f"Invalid probe kinds: {kinds}\nSupported kinds: {supported_kinds}"
         )
+
+
+class ProbeNotInitializedError(BaseOceanException):
+    pass
