@@ -4,7 +4,6 @@ import httpx
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import ProbeCheck, ProbeContext, ProbeCheckStatus
-from port_ocean.exceptions.probe import ProbeFailedError
 
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -107,12 +106,13 @@ class GitHubPermissionProbe:
 
             await self._probe_pat(authenticators[0])
         except (httpx.HTTPStatusError, httpx.RequestError) as error:
-            raise ProbeFailedError(_lookup_failure_message(error)) from error
+            self.context.fail(_lookup_failure_message(error))
         except AuthenticationException as error:
             cause = error.__cause__
             if isinstance(cause, (httpx.HTTPStatusError, httpx.RequestError)):
-                raise ProbeFailedError(_lookup_failure_message(cause)) from error
-            raise ProbeFailedError(str(error)) from error
+                self.context.fail(_lookup_failure_message(cause))
+            else:
+                self.context.fail(str(error))
 
     async def _probe_app(
         self,

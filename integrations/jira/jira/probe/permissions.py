@@ -3,7 +3,6 @@ from collections.abc import Sequence
 import httpx
 
 from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
-from port_ocean.exceptions.probe import ProbeFailedError
 
 from initialize_client import get_or_create_jira_client
 
@@ -43,7 +42,8 @@ class JiraPermissionProbe:
         try:
             permissions = await client.get_current_user_permissions(permission_keys)
         except (httpx.HTTPStatusError, httpx.RequestError) as error:
-            raise ProbeFailedError(_lookup_failure_message(error)) from error
+            self.context.fail(_lookup_failure_message(error))
+            return
 
         self._resolve_checks(checks, permissions)
 
