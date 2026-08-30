@@ -7,7 +7,7 @@ import pytest
 from github.clients.auth.abstract_authenticator import GitHubHeaders, GitHubToken
 from github.helpers.exceptions import AuthenticationException
 from github.probe import GitHubPermissionProbe
-from github.probe import permissions
+from github.probe.permissions import runner as permissions
 from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 

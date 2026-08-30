@@ -15,6 +15,11 @@ from port_ocean.core.probe.models import (
     ProbeReportStage,
     ProbeStatus,
 )
+from port_ocean.core.probe.reporters import (
+    FileProbeReporter,
+    LogProbeReporter,
+    PortProbeReporter,
+)
 from port_ocean.exceptions.probe import InvalidProbeKindsError
 
 
@@ -208,55 +213,42 @@ def test_initialize_uses_default_config_when_none(
     mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
 
 
-@patch("port_ocean.core.probe.context.logger")
-def test_log_reporting_mode_logs_full_probe_status(
-    mock_logger: MagicMock,
-) -> None:
+def test_update_progress_delegates_full_status_to_reporter() -> None:
     context = ProbeContext(probe_id="probe-123")
     context.checks = [ProbeCheck(kind="repository")]
+    context.reporter = MagicMock()
 
     context.update_progress(ProbeReportStage.UPDATE)
 
-    mock_logger.info.assert_called_once_with(
-        "Probe status report",
-        probe_report={
-            "stage": ProbeReportStage.UPDATE,
-            "probe_id": "probe-123",
-            **context.build_request_body(),
-        },
-    )
-
-
-def test_file_reporting_mode_writes_timestamped_json_report(tmp_path: Path) -> None:
-    context = ProbeContext(probe_id="probe-123")
-    context.config = ProbeConfig(
-        path=tmp_path,
-        reporting_mode=ProbeReportingMode.FILE,
-    )
-
-    context.update_progress(ProbeReportStage.INIT)
-
-    reports = list((tmp_path / "probe_reports").glob("probe_report_*.json"))
-    assert len(reports) == 1
-    assert '"stage": "init"' in reports[0].read_text(encoding="utf-8")
-    assert '"probe_id": "probe-123"' in reports[0].read_text(encoding="utf-8")
-    assert '"status": "IN_PROGRESS"' in reports[0].read_text(encoding="utf-8")
-
-
-def test_port_reporting_mode_calls_stub() -> None:
-    context = ProbeContext(probe_id="probe-123")
-    context.config = ProbeConfig(reporting_mode=ProbeReportingMode.PORT)
-
-    with patch.object(context, "_report_to_port") as report_to_port:
-        context.update_progress(ProbeReportStage.UPDATE)
-
-    report_to_port.assert_called_once_with(
+    context.reporter.report.assert_called_once_with(
         {
             "stage": ProbeReportStage.UPDATE,
             "probe_id": "probe-123",
             **context.build_request_body(),
         }
     )
+
+
+@pytest.mark.parametrize(
+    ("mode", "reporter_type"),
+    [
+        (ProbeReportingMode.LOG, LogProbeReporter),
+        (ProbeReportingMode.FILE, FileProbeReporter),
+        (ProbeReportingMode.PORT, PortProbeReporter),
+    ],
+)
+@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
+def test_initialize_selects_reporter_for_mode(
+    mock_get_spec_kinds: MagicMock,
+    mode: ProbeReportingMode,
+    reporter_type: type[object],
+) -> None:
+    context = ProbeContext()
+
+    with patch.object(reporter_type, "report"):
+        context.initialize(ProbeConfig(reporting_mode=mode))
+
+    assert isinstance(context.reporter, reporter_type)
 
 
 def test_finalize() -> None:
