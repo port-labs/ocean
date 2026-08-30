@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from port_ocean.identity_propagation.vault.aws_secrets_manager import AWSSecretsManagerVaultClient
+from port_ocean.identity_propagation.vault.aws_secrets_manager import (
+    AWSSecretsManagerVaultClient,
+)
 from port_ocean.identity_propagation.vault.base import TokenRecord
 from port_ocean.exceptions.identity_propagation import VaultError
 
