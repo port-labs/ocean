@@ -7,4 +7,4 @@ class InvalidProbeKindsError(BaseOceanException):
 
 
 class ProbeFailedError(BaseOceanException):
-    """Raised by a probe when it cannot reach a verdict, carrying the reason to report."""
+    """Raised when a probe fails due to a global-level error rather than a per-check verdict."""
