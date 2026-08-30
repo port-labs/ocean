@@ -169,6 +169,7 @@ class PollingEventListener(BaseEventListener):
             logger.info(
                 "Detected new resync request during active resync, cancelling current resync"
             )
+            await self._cancel_current_resync()
         elif resync_request_updated_at:
             logger.info("Performing resync from integration resync request")
         else:
@@ -181,8 +182,6 @@ class PollingEventListener(BaseEventListener):
             ocean.app.resync_state_updater.last_resync_request_updated_at = (
                 resync_request_updated_at
             )
-
-        await self._cancel_current_resync()
 
         running_task = asyncio.create_task(self._run_resync_task())
         signal_handler.register(running_task.cancel)
