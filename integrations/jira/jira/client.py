@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Sequence
 import uuid
 from typing import Any, AsyncGenerator, Generator, Literal
 
@@ -467,6 +468,24 @@ class JiraClient(OAuthClient):
         has_permission = response["permissions"]["ADMINISTER"]["havePermission"]
 
         return has_permission
+
+    async def get_current_user_permissions(
+        self, permission_keys: Sequence[str]
+    ) -> dict[str, bool]:
+        """Verify authentication and return the current user's effective permissions."""
+        await self._send_api_request("GET", f"{self.api_url}/myself")
+        if not permission_keys:
+            return {}
+
+        response = await self._send_api_request(
+            "GET",
+            f"{self.api_url}/mypermissions",
+            params={"permissions": ",".join(permission_keys)},
+        )
+        return {
+            key: bool(permission.get("havePermission"))
+            for key, permission in response.get("permissions", {}).items()
+        }
 
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
