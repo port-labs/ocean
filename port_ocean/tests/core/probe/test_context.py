@@ -11,10 +11,13 @@ from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import (
     ProbeCheck,
     ProbeCheckStatus,
-    ProbeReportStage,
+    ProbeMode,
+    ProbeReportingMode,
     ProbeStatus,
 )
-from port_ocean.exceptions.probe import InvalidProbeKindsError
+from port_ocean.core.probe.reporters.file import FileProbeReporter
+from port_ocean.core.probe.reporters.log import LogProbeReporter
+from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
 
 
 def test_starts_with_empty_state() -> None:
@@ -31,6 +34,8 @@ def test_starts_with_empty_state() -> None:
     assert context.started_at >= started_before
     assert context.ended_at is None
     assert context.status == ProbeStatus.IN_PROGRESS
+    assert context.message is None
+    assert context.reporter is None
     assert context.checks == []
 
 
@@ -61,7 +66,7 @@ def test_add_scopes_copies_scope_dict(mock_update_progress: MagicMock) -> None:
     # Arrange
     context = ProbeContext()
     context.available_kinds = ["repository"]
-    scope = {"org": "acme"}
+    scope: dict[str, str | int] = {"org": "acme"}
 
     # Act
     new_checks = context.add_scopes(scope)
@@ -92,6 +97,8 @@ def test_build_request_body() -> None:
     context = ProbeContext(probe_id="probe-1")
     ended_at = datetime(2026, 8, 27, 12, 0, 0, tzinfo=timezone.utc)
     context.ended_at = ended_at
+    context.status = ProbeStatus.COMPLETED
+    context.message = "probe finished"
     context.checks = [
         ProbeCheck(
             kind="repository",
@@ -105,16 +112,38 @@ def test_build_request_body() -> None:
     body = context.build_request_body()
 
     # Assert
-    assert body["started_at"] == context.started_at.isoformat()
-    assert body["ended_at"] == ended_at.isoformat()
-    assert body["checks"] == [
-        {
-            "status": ProbeCheckStatus.SUCCESS,
-            "message": "ok",
-            "kind": "repository",
-            "scopes": {"org": "acme"},
-        }
-    ]
+    assert body == {
+        "probe_id": "probe-1",
+        "status": ProbeStatus.COMPLETED,
+        "mode": ProbeMode.SHALLOW,
+        "started_at": context.started_at.isoformat(),
+        "ended_at": ended_at.isoformat(),
+        "message": "probe finished",
+        "checks": [
+            {
+                "status": ProbeCheckStatus.SUCCESS,
+                "message": "ok",
+                "kind": "repository",
+                "scopes": {"org": "acme"},
+            }
+        ],
+    }
+
+
+def test_build_request_body_when_probe_in_progress() -> None:
+    # Arrange
+    context = ProbeContext(probe_id="probe-1")
+
+    # Act
+    body = context.build_request_body()
+
+    # Assert
+    assert body["probe_id"] == "probe-1"
+    assert body["status"] == ProbeStatus.IN_PROGRESS
+    assert body["mode"] == ProbeMode.SHALLOW
+    assert body["ended_at"] is None
+    assert body["message"] is None
+    assert body["checks"] == []
 
 
 @patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
@@ -135,7 +164,7 @@ def test_initialize_sets_config_and_available_kinds(
     assert context.available_kinds == ["repository"]
     assert context.status == ProbeStatus.IN_PROGRESS
     mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
-    mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
+    mock_update_progress.assert_called_once_with()
 
 
 @patch(
@@ -157,8 +186,7 @@ def test_initialize_deduplicates_injected_kinds(
         context.initialize(config)
 
     # Assert
-    assert set(context.available_kinds) == {"repository", "pull-request"}
-    assert len(context.available_kinds) == 2
+    assert context.available_kinds == ["pull-request", "repository"]
     mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
 
 
@@ -201,31 +229,52 @@ def test_initialize_uses_default_config_when_none(
     assert context.config == ProbeConfig()
     assert context.status == ProbeStatus.IN_PROGRESS
     mock_get_spec_kinds.assert_called_once_with(Path("."))
-    mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
+    mock_update_progress.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    ("reporting_mode", "expected_reporter_type"),
+    [
+        (ProbeReportingMode.LOG, LogProbeReporter),
+        (ProbeReportingMode.FILE, FileProbeReporter),
+    ],
+)
+@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
+def test_initialize_creates_reporter_for_reporting_mode(
+    mock_get_spec_kinds: MagicMock,
+    reporting_mode: ProbeReportingMode,
+    expected_reporter_type: type[LogProbeReporter] | type[FileProbeReporter],
+) -> None:
+    # Arrange
+    context = ProbeContext(probe_id="probe-1")
+    config = ProbeConfig(reporting_mode=reporting_mode)
+
+    # Act
+    with patch.object(context, "update_progress"):
+        context.initialize(config)
+
+    # Assert
+    assert isinstance(context.reporter, expected_reporter_type)
+    assert context.reporter.config is config
+    mock_get_spec_kinds.assert_called_once_with(Path("."))
 
 
 def test_update_progress_raises_when_reporter_not_initialized() -> None:
     # Act / Assert
-    with pytest.raises(ValueError, match="Reporter is not initialized"):
+    with pytest.raises(ProbeNotInitializedError, match="Reporter is not initialized"):
         ProbeContext().update_progress()
 
 
-@pytest.mark.parametrize("stage", list(ProbeReportStage))
-def test_update_progress_reports_merged_payload(stage: ProbeReportStage) -> None:
+def test_update_progress_reports_merged_payload() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-123")
     context.reporter = MagicMock()
 
     # Act
-    context.update_progress(stage)
+    context.update_progress()
 
     # Assert
-    context.reporter.report.assert_called_once_with(
-        {
-            "stage": stage,
-            **context.build_request_body(),
-        }
-    )
+    context.reporter.report.assert_called_once_with(context.build_request_body())
 
 
 def test_finalize() -> None:
@@ -241,20 +290,22 @@ def test_finalize() -> None:
     assert context.ended_at is not None
     assert context.ended_at >= started_before
     assert context.status == ProbeStatus.COMPLETED
-    mock_update_progress.assert_called_once_with(ProbeReportStage.FINALIZE)
+    mock_update_progress.assert_called_once_with()
 
 
 def test_fail() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     started_before = datetime.now(timezone.utc)
+    failure_message = "connection timed out"
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.fail()
+        context.fail(failure_message)
 
     # Assert
     assert context.ended_at is not None
     assert context.ended_at >= started_before
     assert context.status == ProbeStatus.FAILED
-    mock_update_progress.assert_called_once_with(ProbeReportStage.FAIL)
+    assert context.message == failure_message
+    mock_update_progress.assert_called_once_with()
