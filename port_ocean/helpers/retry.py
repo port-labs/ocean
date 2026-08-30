@@ -23,6 +23,13 @@ from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.context.ocean import ocean
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
+
+
+SHOULD_RETRY_EXTENSION = "should_retry"
+"""
+Request extension that overrides the retry decision for a single request.
+Set it to False to opt a request out of retries entirely.
+"""
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
 _RETRY_CONFIG_CALLBACK: Callable[[], "RetryConfig"] | None = None
 
@@ -409,6 +416,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         transport.close()
 
     def _is_retryable_method(self, request: httpx.Request) -> bool:
+        should_retry = request.extensions.get(SHOULD_RETRY_EXTENSION)
+        if should_retry is not None:
+            return bool(should_retry)
         return (
             request.method in self._retry_config.retryable_methods
             or request.extensions.get("retryable", False)
