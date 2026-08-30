@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from port_ocean.core.probe.models import ProbeMode
+from port_ocean.core.probe.models import ProbeMode, ProbeReportingMode
 
 
 @dataclass
@@ -11,3 +11,4 @@ class ProbeConfig:
     kinds: list[str] | None = None
     """A list of specific kinds to probe. If not supplied, the probe will run on all supported kinds."""
     mode: ProbeMode = ProbeMode.SHALLOW
+    reporting_mode: ProbeReportingMode = ProbeReportingMode.LOG
