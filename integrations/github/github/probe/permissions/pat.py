@@ -1,11 +1,11 @@
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import ProbeCheckStatus
-from port_ocean.helpers.retry import SHOULD_RETRY_EXTENSION
+from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.probe.permissions.base import GitHubPermissionProbeFlow, org_scopes
 
-NO_RETRY = {SHOULD_RETRY_EXTENSION: False}
+NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
 
 PAT_KIND_SCOPES: dict[str, str] = {
     "organization": "read:org",

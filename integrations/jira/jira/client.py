@@ -16,7 +16,7 @@ from jira.overrides import (
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.helpers.retry import SHOULD_RETRY_EXTENSION
+from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 from .rate_limiter import JiraRateLimiter
 from .retry_transport import JiraRetryTransport
 
@@ -234,13 +234,13 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         retryable: bool = False,
-        should_retry: bool | None = None,
+        skip_retry: bool | None = None,
     ) -> Any:
         extensions: dict[str, Any] = {}
         if retryable:
             extensions["retryable"] = True
-        if should_retry is not None:
-            extensions[SHOULD_RETRY_EXTENSION] = should_retry
+        if skip_retry is not None:
+            extensions[SKIP_RETRY_EXTENSION_KEY] = skip_retry
 
         try:
             async with self._rate_limiter:
@@ -485,7 +485,7 @@ class JiraClient(OAuthClient):
         of waiting out the backoff budget on credentials that cannot start working.
         """
         await self._send_api_request(
-            "GET", f"{self.api_url}/myself", should_retry=False
+            "GET", f"{self.api_url}/myself", skip_retry=True
         )
         if not permission_keys:
             return {}
@@ -494,7 +494,7 @@ class JiraClient(OAuthClient):
             "GET",
             f"{self.api_url}/mypermissions",
             params={"permissions": ",".join(permission_keys)},
-            should_retry=False,
+            skip_retry=True,
         )
         return {
             key: bool(permission.get("havePermission"))
