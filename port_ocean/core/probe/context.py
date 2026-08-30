@@ -91,7 +91,8 @@ class ProbeContext:
         self.status = ProbeStatus.COMPLETED
         self.update_progress(ProbeReportStage.FINALIZE)
 
-    def fail(self) -> None:
+    def fail(self, message: str) -> None:
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.FAILED
+        self.message = message
         self.update_progress(ProbeReportStage.FAIL)
