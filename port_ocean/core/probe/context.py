@@ -43,6 +43,7 @@ class ProbeContext:
 
     def build_request_body(self) -> dict[str, Any]:
         return {
+            "status": self.status,
             "started_at": self.started_at.isoformat(),
             "ended_at": self.ended_at.isoformat() if self.ended_at else None,
             "message": self.message,
