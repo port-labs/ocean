@@ -23,6 +23,7 @@ RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
 QUEUE_GET_TIMEOUT_SECONDS = 1
 GLOBAL_SOURCE = "__global__"
 
+
 class ExecutionManager:
     """
     Orchestrates action executors, polling, and webhook handlers for integration actions.

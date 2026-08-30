@@ -70,7 +70,9 @@ def register_oauth_broker() -> None:
         resolved_org_id = await _verify_actor(run_id, actor_id, org_id)
         state = sign_state(run_id, node_run_id, actor_id, resolved_org_id)
 
-        logger.info("Starting OAuth authorization", run_id=run_id, target=provider.target)
+        logger.info(
+            "Starting OAuth authorization", run_id=run_id, target=provider.target
+        )
         return RedirectResponse(
             provider.authorization_url(_redirect_uri(), state), status_code=302
         )

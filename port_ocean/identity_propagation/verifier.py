@@ -1,6 +1,7 @@
 import asyncio
 import time
 from abc import ABC, abstractmethod
+from urllib.parse import urlparse
 
 import jwt
 from jwt import PyJWKClient
@@ -16,6 +17,10 @@ from port_ocean.utils import http_async_client
 
 VERIFY_RUN_PATH = "/workflows/identity/verify-run"
 DISCOVERY_PATH = "/.well-known/openid-configuration"
+# `iss` is read off the token before its signature is checked, so it decides which JWKS is
+# allowed to vouch for the token. Anything outside Port's own domains is rejected: otherwise a
+# token pointing at an attacker-hosted JWKS would verify against the attacker's own key.
+TRUSTED_ISSUER_HOST_SUFFIXES = (".getport.io", ".port.io")
 # How long to trust a resolved JWKS URI before re-running discovery. Key rotation within
 # the JWKS itself is handled separately by PyJWKClient's own cache.
 DISCOVERY_CACHE_TTL_SECONDS = 3600
@@ -58,7 +63,7 @@ class UnavailableIdentityTokenVerifier(IdentityTokenVerifier):
 
 
 class PortIdentityTokenVerifier(IdentityTokenVerifier):
-    """Verifies identity tokens via OIDC discovery against ocean.port_client.api_url."""
+    """Verifies identity tokens via OIDC discovery against the issuer named in the token."""
 
     def __init__(self) -> None:
         self._jwks_client: PyJWKClient | None = None
@@ -69,10 +74,13 @@ class PortIdentityTokenVerifier(IdentityTokenVerifier):
         is_stale = (
             self._jwks_client is None
             or self._resolved_issuer != issuer_url
-            or time.monotonic() - self._jwks_client_resolved_at > DISCOVERY_CACHE_TTL_SECONDS
+            or time.monotonic() - self._jwks_client_resolved_at
+            > DISCOVERY_CACHE_TTL_SECONDS
         )
         if is_stale:
-            response = await http_async_client.get(f"{issuer_url.rstrip('/')}{DISCOVERY_PATH}")
+            response = await http_async_client.get(
+                f"{issuer_url.rstrip('/')}{DISCOVERY_PATH}"
+            )
             response.raise_for_status()
             jwks_uri = response.json()["jwks_uri"]
             self._jwks_client = PyJWKClient(jwks_uri)
@@ -81,13 +89,47 @@ class PortIdentityTokenVerifier(IdentityTokenVerifier):
         assert self._jwks_client is not None
         return self._jwks_client
 
+    @staticmethod
+    def _read_unverified_issuer(token: str) -> str:
+        # A JWT payload is base64, not encrypted, so `iss` is readable without a key. The
+        # signature is checked below against the JWKS that this issuer publishes.
+        try:
+            issuer = jwt.decode(token, options={"verify_signature": False}).get("iss")
+        except jwt.PyJWTError as e:
+            raise IdentityVerificationError(
+                f"Could not read the identity token: {e}"
+            ) from e
+
+        if not issuer:
+            raise IdentityVerificationError("Identity token has no iss claim")
+        return issuer
+
+    @staticmethod
+    def _assert_trusted_issuer(issuer_url: str) -> None:
+        host = urlparse(issuer_url).hostname or ""
+        # The configured Port API host is trusted too, which covers deployments that serve the
+        # JWKS from the API domain and local setups where both run on localhost.
+        api_host = urlparse(ocean.port_client.api_url).hostname or ""
+        if host and (host == api_host or host.endswith(TRUSTED_ISSUER_HOST_SUFFIXES)):
+            return
+
+        logger.warning(
+            "Rejected an identity token from an untrusted issuer", issuer=issuer_url
+        )
+        raise IdentityVerificationError(
+            f"Identity token issuer {issuer_url} is not a Port issuer"
+        )
+
     async def verify(self, token: str, expected_target: str) -> IdentityClaims:
-        issuer_url = ocean.port_client.api_url
+        issuer_url = self._read_unverified_issuer(token)
+        self._assert_trusted_issuer(issuer_url)
 
         try:
             jwks_client = await self._resolve_jwks_client(issuer_url)
             # PyJWKClient does its own blocking HTTP + key-cache lookup by kid.
-            signing_key = await asyncio.to_thread(jwks_client.get_signing_key_from_jwt, token)
+            signing_key = await asyncio.to_thread(
+                jwks_client.get_signing_key_from_jwt, token
+            )
             payload = jwt.decode(
                 token,
                 signing_key.key,
@@ -96,9 +138,13 @@ class PortIdentityTokenVerifier(IdentityTokenVerifier):
                 issuer=issuer_url,
             )
         except jwt.PyJWTError as e:
-            raise IdentityVerificationError(f"Identity token verification failed: {e}") from e
+            raise IdentityVerificationError(
+                f"Identity token verification failed: {e}"
+            ) from e
         except Exception as e:
-            raise IdentityVerificationError(f"Could not verify identity token: {e}") from e
+            raise IdentityVerificationError(
+                f"Could not verify identity token: {e}"
+            ) from e
 
         try:
             return IdentityClaims(
@@ -109,7 +155,9 @@ class PortIdentityTokenVerifier(IdentityTokenVerifier):
                 actor_email=payload.get("actor_email"),
             )
         except (KeyError, ValidationError) as e:
-            raise IdentityVerificationError(f"Malformed identity token payload: {e}") from e
+            raise IdentityVerificationError(
+                f"Malformed identity token payload: {e}"
+            ) from e
 
     async def verify_run_actor(
         self, run_id: str, actor_id: str, org_id: str | None = None

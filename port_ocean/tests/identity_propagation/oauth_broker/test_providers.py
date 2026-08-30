@@ -57,12 +57,16 @@ def test_github_authorization_url_carries_the_state_and_scopes() -> None:
 
     assert url.startswith("https://github.com/login/oauth/authorize?")
     assert "state=signed-state" in url
-    assert "scope=" in url  # empty for GitHub Apps; permissions come from the App Manifest
+    assert (
+        "scope=" in url
+    )  # empty for GitHub Apps; permissions come from the App Manifest
     assert "response_type=code" in url
 
 
 def test_gitlab_endpoints_follow_the_configured_host() -> None:
-    provider = OAuth2Provider("gitlab-v2", GITLAB_DEFAULTS, settings(host="https://gitlab.acme.com/"))
+    provider = OAuth2Provider(
+        "gitlab-v2", GITLAB_DEFAULTS, settings(host="https://gitlab.acme.com/")
+    )
 
     assert provider.authorization_url("https://cb", "s").startswith(
         "https://gitlab.acme.com/oauth/authorize?"
@@ -89,9 +93,9 @@ async def test_exchange_code_returns_the_full_record(
         }
     )
 
-    record = await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).exchange_code(
-        "auth-code", "https://cb"
-    )
+    record = await OAuth2Provider(
+        "github-ocean", GITHUB_DEFAULTS, settings()
+    ).exchange_code("auth-code", "https://cb")
 
     assert record.access_token == "gho_token"
     assert record.refresh_token == "ghr_token"
@@ -107,7 +111,9 @@ async def test_refresh_uses_the_refresh_grant(mock_http_client: MagicMock) -> No
         {"access_token": "gho_new", "refresh_token": "ghr_rotated"}
     )
 
-    record = await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh("ghr_old")
+    record = await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh(
+        "ghr_old"
+    )
 
     assert record.access_token == "gho_new"
     assert record.refresh_token == "ghr_rotated"
@@ -121,7 +127,11 @@ async def test_azure_exchange_code_includes_scope(
     mock_http_client: MagicMock,
 ) -> None:
     mock_http_client.post.return_value = token_response(
-        {"access_token": "ado_token", "refresh_token": "ado_refresh", "expires_in": 3600}
+        {
+            "access_token": "ado_token",
+            "refresh_token": "ado_refresh",
+            "expires_in": 3600,
+        }
     )
 
     await OAuth2Provider(
@@ -142,18 +152,24 @@ async def test_an_error_body_with_a_200_is_still_a_failure(
     )
 
     with pytest.raises(OAuthError):
-        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).exchange_code("code", "https://cb")
+        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).exchange_code(
+            "code", "https://cb"
+        )
 
 
 async def test_an_error_status_is_a_failure(mock_http_client: MagicMock) -> None:
     mock_http_client.post.return_value = token_response({}, status_code=401)
 
     with pytest.raises(OAuthError):
-        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh("ghr_revoked")
+        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh(
+            "ghr_revoked"
+        )
 
 
 async def test_a_transport_failure_is_a_failure(mock_http_client: MagicMock) -> None:
     mock_http_client.post.side_effect = Exception("connection reset")
 
     with pytest.raises(OAuthError):
-        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh("ghr_old")
+        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh(
+            "ghr_old"
+        )

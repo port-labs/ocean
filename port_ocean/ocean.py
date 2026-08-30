@@ -116,11 +116,15 @@ class Ocean:
             auth=self.port_client.auth,
         )
         if self.config.identity_propagation.enabled:
-            self.vault_client: VaultClient | None = build_vault_client(self.config.identity_propagation.vault)
+            self.vault_client: VaultClient | None = build_vault_client(
+                self.config.identity_propagation.vault
+            )
             self.identity_verifier: IdentityTokenVerifier = PortIdentityTokenVerifier()
             self.oauth_provider: OAuth2Provider | None = None
             if self.vault_client is None:
-                raise ValueError("Identity propagation enabled but no vault client configured.")
+                raise ValueError(
+                    "Identity propagation enabled but no vault client configured."
+                )
 
         self.app_initialized = False
         self._status_heartbeat_task: asyncio.Task[None] | None = None
