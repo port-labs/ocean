@@ -82,7 +82,6 @@ class ProbeContext:
         self.reporter.report(
             {
                 "stage": stage,
-                "probe_id": self.probe_id,
                 **self.build_request_body(),
             }
         )
