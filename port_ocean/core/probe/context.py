@@ -23,7 +23,7 @@ class ProbeContext:
     checks: list[ProbeCheck] = field(default_factory=list)
     reporter: ProbeReporter | None = None
 
-    def add_scopes(self, *scopes: dict[str, str]) -> list[ProbeCheck]:
+    def add_scopes(self, *scopes: dict[str, str | int]) -> list[ProbeCheck]:
         logger.debug("Registering additional scopes", scopes=scopes)
         new_checks: list[ProbeCheck] = []
         for scope in scopes:
