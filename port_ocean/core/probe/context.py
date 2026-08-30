@@ -56,10 +56,11 @@ class ProbeContext:
         self.config = config or ProbeConfig()
         if self.config.kinds is not None:
             configured_kinds_set = set(self.config.kinds)
-            supported_kinds_set = set(get_spec_kinds(self.config.path))
+            supported_kinds = get_spec_kinds(self.config.path)
+            supported_kinds_set = set(supported_kinds)
             if not configured_kinds_set.issubset(supported_kinds_set):
                 raise InvalidProbeKindsError(
-                    list(configured_kinds_set - supported_kinds_set)
+                    list(configured_kinds_set - supported_kinds_set), supported_kinds
                 )
 
             self.available_kinds = list(configured_kinds_set)
