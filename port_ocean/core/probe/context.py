@@ -1,40 +1,27 @@
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
 from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
-from port_ocean.core.probe.models import (
-    ProbeCheck,
-    ProbeReportStage,
-    ProbeStatus,
-)
+from port_ocean.core.probe.models import ProbeCheck, ProbeReportStage, ProbeStatus
 from port_ocean.core.probe.reporters import ProbeReporter
 from port_ocean.exceptions.probe import InvalidProbeKindsError
 from port_ocean.utils.misc import get_spec_kinds
 
 
+@dataclass
 class ProbeContext:
-    probe_id: str | None
-    available_kinds: list[str]
-    config: ProbeConfig
-    started_at: datetime
-    ended_at: datetime | None
-    status: ProbeStatus
-    message: str | None
-    checks: list[ProbeCheck]
-    reporter: ProbeReporter
-
-    def __init__(self, probe_id: str | None = None) -> None:
-        self.probe_id = probe_id
-        self.available_kinds = []
-        self.config = ProbeConfig()
-        self.started_at = datetime.now(timezone.utc)
-        self.ended_at = None
-        self.status = ProbeStatus.IN_PROGRESS
-        self.message = None
-        self.checks = []
-        self.reporter = ProbeReporter.BY_MODE[self.config.reporting_mode](self.config)
+    probe_id: str | None = None
+    available_kinds: list[str] = field(default_factory=list)
+    config: ProbeConfig = field(default_factory=ProbeConfig)
+    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    ended_at: datetime | None = None
+    status: ProbeStatus = ProbeStatus.IN_PROGRESS
+    message: str | None = None
+    checks: list[ProbeCheck] = field(default_factory=list)
+    reporter: ProbeReporter | None = None
 
     def add_scopes(self, *scopes: dict[str, str]) -> list[ProbeCheck]:
         logger.debug("Registering additional scopes", scopes=scopes)
@@ -50,7 +37,9 @@ class ProbeContext:
 
     def build_request_body(self) -> dict[str, Any]:
         return {
+            "probe_id": self.probe_id,
             "status": self.status,
+            "mode": self.config.mode,
             "started_at": self.started_at.isoformat(),
             "ended_at": self.ended_at.isoformat() if self.ended_at else None,
             "message": self.message,
@@ -67,29 +56,32 @@ class ProbeContext:
 
     def initialize(self, config: ProbeConfig | None = None) -> None:
         self.config = config or ProbeConfig()
-        self.reporter = ProbeReporter.BY_MODE[self.config.reporting_mode](self.config)
-        if self.config.kinds:
+        if self.config.kinds is not None:
             configured_kinds_set = set(self.config.kinds)
-            supported_kinds_set = set(get_spec_kinds(self.config.path))
+            supported_kinds = get_spec_kinds(self.config.path)
+            supported_kinds_set = set(supported_kinds)
             if not configured_kinds_set.issubset(supported_kinds_set):
                 raise InvalidProbeKindsError(
-                    list(configured_kinds_set - supported_kinds_set)
+                    list(configured_kinds_set - supported_kinds_set), supported_kinds
                 )
 
-            self.available_kinds = list(configured_kinds_set)
+            self.available_kinds = sorted(list(configured_kinds_set))
         else:
             self.available_kinds = get_spec_kinds(self.config.path)
 
+        self.reporter = ProbeReporter.BY_MODE[self.config.reporting_mode](self.config)
         self.status = ProbeStatus.IN_PROGRESS
         self.update_progress(ProbeReportStage.INIT)
 
     def update_progress(
         self, stage: ProbeReportStage = ProbeReportStage.UPDATE
     ) -> None:
+        if not self.reporter:
+            raise ValueError("Reporter is not initialized")
+
         self.reporter.report(
             {
                 "stage": stage,
-                "probe_id": self.probe_id,
                 **self.build_request_body(),
             }
         )

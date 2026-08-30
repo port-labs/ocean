@@ -37,6 +37,6 @@ class ProbeCheck:
     """Represents a singular probe check performed on a specific kind x scope."""
 
     kind: str
-    scopes: dict[str, str] = field(default_factory=dict)
+    scopes: dict[str, str | int] = field(default_factory=dict)
     status: ProbeCheckStatus = ProbeCheckStatus.PENDING
     message: str | None = None

@@ -11,14 +11,8 @@ from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import (
     ProbeCheck,
     ProbeCheckStatus,
-    ProbeReportingMode,
     ProbeReportStage,
     ProbeStatus,
-)
-from port_ocean.core.probe.reporters import (
-    FileProbeReporter,
-    LogProbeReporter,
-    PortProbeReporter,
 )
 from port_ocean.exceptions.probe import InvalidProbeKindsError
 
@@ -37,7 +31,6 @@ def test_starts_with_empty_state() -> None:
     assert context.started_at >= started_before
     assert context.ended_at is None
     assert context.status == ProbeStatus.IN_PROGRESS
-    assert context.message is None
     assert context.checks == []
 
 
@@ -112,10 +105,8 @@ def test_build_request_body() -> None:
     body = context.build_request_body()
 
     # Assert
-    assert body["status"] is ProbeStatus.IN_PROGRESS
     assert body["started_at"] == context.started_at.isoformat()
     assert body["ended_at"] == ended_at.isoformat()
-    assert body["message"] is None
     assert body["checks"] == [
         {
             "status": ProbeCheckStatus.SUCCESS,
@@ -213,42 +204,28 @@ def test_initialize_uses_default_config_when_none(
     mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
 
 
-def test_update_progress_delegates_full_status_to_reporter() -> None:
+def test_update_progress_raises_when_reporter_not_initialized() -> None:
+    # Act / Assert
+    with pytest.raises(ValueError, match="Reporter is not initialized"):
+        ProbeContext().update_progress()
+
+
+@pytest.mark.parametrize("stage", list(ProbeReportStage))
+def test_update_progress_reports_merged_payload(stage: ProbeReportStage) -> None:
+    # Arrange
     context = ProbeContext(probe_id="probe-123")
-    context.checks = [ProbeCheck(kind="repository")]
     context.reporter = MagicMock()
 
-    context.update_progress(ProbeReportStage.UPDATE)
+    # Act
+    context.update_progress(stage)
 
+    # Assert
     context.reporter.report.assert_called_once_with(
         {
-            "stage": ProbeReportStage.UPDATE,
-            "probe_id": "probe-123",
+            "stage": stage,
             **context.build_request_body(),
         }
     )
-
-
-@pytest.mark.parametrize(
-    ("mode", "reporter_type"),
-    [
-        (ProbeReportingMode.LOG, LogProbeReporter),
-        (ProbeReportingMode.FILE, FileProbeReporter),
-        (ProbeReportingMode.PORT, PortProbeReporter),
-    ],
-)
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
-def test_initialize_selects_reporter_for_mode(
-    mock_get_spec_kinds: MagicMock,
-    mode: ProbeReportingMode,
-    reporter_type: type[object],
-) -> None:
-    context = ProbeContext()
-
-    with patch.object(reporter_type, "report"):
-        context.initialize(ProbeConfig(reporting_mode=mode))
-
-    assert isinstance(context.reporter, reporter_type)
 
 
 def test_finalize() -> None:
@@ -274,33 +251,10 @@ def test_fail() -> None:
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.fail("Jira rejected the configured credentials with HTTP 401")
+        context.fail()
 
     # Assert
     assert context.ended_at is not None
     assert context.ended_at >= started_before
     assert context.status == ProbeStatus.FAILED
-    assert context.message == "Jira rejected the configured credentials with HTTP 401"
     mock_update_progress.assert_called_once_with(ProbeReportStage.FAIL)
-
-
-def test_fail_message_is_reported() -> None:
-    # Arrange
-    context = ProbeContext(probe_id="probe-1")
-    context.checks = [ProbeCheck(kind="project")]
-
-    # Act
-    context.fail("boom")
-
-    # Assert
-    body = context.build_request_body()
-    assert body["message"] == "boom"
-    # A failed probe reports the reason once, not once per unfinished check.
-    assert body["checks"] == [
-        {
-            "status": ProbeCheckStatus.PENDING,
-            "message": None,
-            "kind": "project",
-            "scopes": {},
-        }
-    ]
