@@ -6,7 +6,7 @@ from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.models import ProbeCheck, ProbeReportStage, ProbeStatus
-from port_ocean.core.probe.reporters import ProbeReporter
+from port_ocean.core.probe.reporters import ProbeReporter, REPORTER_MODES
 from port_ocean.exceptions.probe import InvalidProbeKindsError
 from port_ocean.utils.misc import get_spec_kinds
 
@@ -69,7 +69,7 @@ class ProbeContext:
         else:
             self.available_kinds = sorted(get_spec_kinds(self.config.path))
 
-        self.reporter = ProbeReporter.BY_MODE[self.config.reporting_mode](self.config)
+        self.reporter = REPORTER_MODES[self.config.reporting_mode](self.config)
         self.status = ProbeStatus.IN_PROGRESS
         self.update_progress(ProbeReportStage.INIT)
 
