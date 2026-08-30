@@ -4,7 +4,7 @@ import click
 
 from port_ocean.cli.commands.main import cli_start, console
 from port_ocean.config.settings import LogLevelType
-from port_ocean.core.probe import ProbeMode
+from port_ocean.core.probe import ProbeMode, ProbeReportingMode
 from port_ocean.run import run_probe
 
 
@@ -50,12 +50,24 @@ def _parse_kinds(
             (e.g. `--kinds repository,pull-request` or `--kinds repository pull-request`).
             If omitted, all kinds from the integration spec are probed.""",
 )
+@click.option(
+    "--reporting-mode",
+    type=click.Choice(
+        [mode.value for mode in ProbeReportingMode],
+        case_sensitive=False,
+    ),
+    default=ProbeReportingMode.LOG.value,
+    envvar="OCEAN__PROBE_REPORTING_MODE",
+    show_default=True,
+    help="Where probe status reports are written.",
+)
 def probe(
     path: str,
     probe_id: str | None,
     log_level: LogLevelType,
     mode: str,
     kinds: list[str] | None,
+    reporting_mode: str,
 ) -> None:
     """Run an integration's connection probe and exit."""
     try:
@@ -65,6 +77,7 @@ def probe(
             log_level,
             kinds=kinds,
             mode=ProbeMode(mode),
+            reporting_mode=ProbeReportingMode(reporting_mode),
         )
     except Exception as error:
         raise click.ClickException(f"Probe failed: {error}") from error
