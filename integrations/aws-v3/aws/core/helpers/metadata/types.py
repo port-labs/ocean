@@ -11,6 +11,7 @@ class CloudTrailDetail(TypedDict, total=False):
     """CloudTrail record nested inside an EventBridge envelope."""
 
     eventName: str
+    eventSource: str
     errorCode: str
     errorMessage: str
     awsRegion: str
@@ -35,6 +36,7 @@ class CloudTrailEventAction(StrEnum):
 class CloudTrailEventMapping:
     action: CloudTrailEventAction
     extract_identifier: Callable[[CloudTrailDetail], str | None]
+    event_source: str
 
 
 @dataclass(frozen=True)
