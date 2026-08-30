@@ -1,4 +1,4 @@
-from aws.core.exporters.rds.db_instance.models import SingleDbInstanceRequest
+from aws.core.exporters.eks.cluster.models import SingleEksClusterRequest
 from aws.core.helpers.metadata.types import (
     CloudTrailDetail,
     CloudTrailEventAction,
@@ -8,31 +8,28 @@ from aws.core.helpers.metadata.types import (
 )
 from aws.utils import RegionHelper
 
-CLOUDTRAIL_EVENT_SOURCE = "rds.amazonaws.com"
+CLOUDTRAIL_EVENT_SOURCE = "eks.amazonaws.com"
 
 
-def _db_instance_arn(context: LiveEventContext) -> str:
+def _cluster_arn(context: LiveEventContext) -> str:
     partition = RegionHelper.get_partition()
     return (
-        f"arn:{partition}:rds:{context.region}:{context.account_id}:db:"
-        f"{context.identifier}"
+        f"arn:{partition}:eks:{context.region}:{context.account_id}:"
+        f"cluster/{context.identifier}"
     )
 
 
-def _extract_db_instance_identifier(detail: CloudTrailDetail) -> str | None:
+def _extract_cluster_name(detail: CloudTrailDetail) -> str | None:
     request_parameters = detail.get("requestParameters", {})
-    identifier = request_parameters.get("dbInstanceIdentifier")
-    if isinstance(identifier, str):
-        return identifier
-    identifier = request_parameters.get("dBInstanceIdentifier")
+    identifier = request_parameters.get("name") or request_parameters.get("clusterName")
     return identifier if isinstance(identifier, str) else None
 
 
 def _request_factory(
     context: LiveEventContext, include_actions: list[str]
-) -> SingleDbInstanceRequest:
-    return SingleDbInstanceRequest(
-        db_instance_identifier=context.identifier,
+) -> SingleEksClusterRequest:
+    return SingleEksClusterRequest(
+        cluster_name=context.identifier,
         region=context.region,
         account_id=context.account_id,
         include=include_actions,
@@ -41,28 +38,33 @@ def _request_factory(
 
 def _deletion_identifier_properties(context: LiveEventContext) -> dict[str, str]:
     return {
-        "DBInstanceArn": _db_instance_arn(context),
-        "DBInstanceIdentifier": context.identifier,
+        "Arn": _cluster_arn(context),
+        "Name": context.identifier,
     }
 
 
-RDS_DB_INSTANCE_LIVE_EVENTS = LiveEventFactories(
+EKS_CLUSTER_LIVE_EVENTS = LiveEventFactories(
     request_factory=_request_factory,
     deletion_identifier_properties_factory=_deletion_identifier_properties,
     cloudtrail_mappings={
-        "CreateDBInstance": CloudTrailEventMapping(
+        "CreateCluster": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_db_instance_identifier,
+            _extract_cluster_name,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
-        "ModifyDBInstance": CloudTrailEventMapping(
+        "UpdateClusterConfig": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_db_instance_identifier,
+            _extract_cluster_name,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
-        "DeleteDBInstance": CloudTrailEventMapping(
+        "UpdateClusterVersion": CloudTrailEventMapping(
+            CloudTrailEventAction.UPSERT,
+            _extract_cluster_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
+        ),
+        "DeleteCluster": CloudTrailEventMapping(
             CloudTrailEventAction.DELETE,
-            _extract_db_instance_identifier,
+            _extract_cluster_name,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },

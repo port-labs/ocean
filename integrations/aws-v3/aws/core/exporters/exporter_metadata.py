@@ -41,14 +41,17 @@ from aws.core.exporters.ec2.instance import (
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.exporters.ecr import EcrRepositoryExporter
+from aws.core.exporters.ecr.repository.live_events import ECR_REPOSITORY_LIVE_EVENTS
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
 from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
+from aws.core.exporters.ecs.cluster.live_events import ECS_CLUSTER_LIVE_EVENTS
 from aws.core.exporters.ecs.cluster.models import PaginatedClusterRequest
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
 from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
 from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
 from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitionRequest
 from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
+from aws.core.exporters.eks.cluster.live_events import EKS_CLUSTER_LIVE_EVENTS
 from aws.core.exporters.eks.cluster.models import PaginatedEksClusterRequest
 from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
@@ -89,10 +92,14 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         EC2InstanceExporter, PaginatedEC2InstanceRequest
     ),
     ObjectKind.ECS_CLUSTER: ExporterMetadata(
-        EcsClusterExporter, PaginatedClusterRequest
+        EcsClusterExporter,
+        PaginatedClusterRequest,
+        live_events=ECS_CLUSTER_LIVE_EVENTS,
     ),
     ObjectKind.EKS_CLUSTER: ExporterMetadata(
-        EksClusterExporter, PaginatedEksClusterRequest
+        EksClusterExporter,
+        PaginatedEksClusterRequest,
+        live_events=EKS_CLUSTER_LIVE_EVENTS,
     ),
     ObjectKind.RDS_DB_INSTANCE: ExporterMetadata(
         RdsDbInstanceExporter,
@@ -115,7 +122,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
     ),
     ObjectKind.SQS_QUEUE: ExporterMetadata(SqsQueueExporter, PaginatedQueueRequest),
     ObjectKind.ECR_REPOSITORY: ExporterMetadata(
-        EcrRepositoryExporter, PaginatedRepositoryRequest
+        EcrRepositoryExporter,
+        PaginatedRepositoryRequest,
+        live_events=ECR_REPOSITORY_LIVE_EVENTS,
     ),
     ObjectKind.MSK_SERVERLESS_CLUSTER: ExporterMetadata(
         MskServerlessClusterExporter, PaginatedMskServerlessClusterRequest
