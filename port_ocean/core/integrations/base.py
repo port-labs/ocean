@@ -105,10 +105,11 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         context.initialize(config)
         listener = self.event_strategy.on_probe
         if listener is None:
-            context.fail()
-            raise ModeNotSupportedException(
+            error = ModeNotSupportedException(
                 self.context.config.integration.type, "probe"
             )
+            context.fail(str(error))
+            raise error
 
         async with event_context(
             EventType.ON_PROBE,
@@ -116,8 +117,8 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         ):
             try:
                 returned = await listener(context)
-            except Exception:
-                context.fail()
+            except Exception as error:
+                context.fail(str(error))
                 raise
 
             final_context = returned or context
