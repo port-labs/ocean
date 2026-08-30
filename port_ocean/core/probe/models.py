@@ -6,6 +6,12 @@ class ProbeMode(StrEnum):
     SHALLOW = "shallow"
 
 
+class ProbeReportingMode(StrEnum):
+    LOG = "log"
+    FILE = "file"
+    PORT = "port"
+
+
 class ProbeCheckStatus(StrEnum):
     PENDING = "PENDING"
     SUCCESS = "SUCCESS"
