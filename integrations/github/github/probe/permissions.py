@@ -118,15 +118,15 @@ class GitHubPermissionProbe:
         self,
         authenticators: Sequence[AbstractGitHubAuthenticator],
     ) -> None:
+        tokens = [await authenticator.get_token() for authenticator in authenticators]
         pending = self.context.add_scopes(
             *_org_scopes(
                 [authenticator.organization for authenticator in authenticators]
             )
         )
         kind_count = len(self.context.available_kinds)
-        for index, authenticator in enumerate(authenticators):
+        for index, token in enumerate(tokens):
             checks = pending[index * kind_count : (index + 1) * kind_count]
-            token = await authenticator.get_token()
             self._resolve_checks(checks, token.permissions, _app_verdict)
 
     async def _probe_pat(
@@ -134,9 +134,9 @@ class GitHubPermissionProbe:
         authenticator: AbstractGitHubAuthenticator,
     ) -> None:
         organizations = await self._get_pat_organizations(authenticator)
+        granted_scopes = await self._get_pat_scopes(authenticator)
         checks = self.context.add_scopes(*_org_scopes(organizations))
 
-        granted_scopes = await self._get_pat_scopes(authenticator)
         permissions = (
             {scope: "granted" for scope in _expand_pat_scopes(granted_scopes)}
             if granted_scopes is not None

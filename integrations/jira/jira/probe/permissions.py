@@ -30,12 +30,11 @@ class JiraPermissionProbe:
         self.context = context
 
     async def run(self) -> None:
-        checks = self.context.add_scopes({})
         permission_keys = tuple(
             dict.fromkeys(
                 permission
-                for check in checks
-                for permission in KIND_PERMISSIONS.get(check.kind, ())
+                for kind in self.context.available_kinds
+                for permission in KIND_PERMISSIONS.get(kind, ())
             )
         )
         client = get_or_create_jira_client()
@@ -45,6 +44,7 @@ class JiraPermissionProbe:
             self.context.fail(_lookup_failure_message(error))
             return
 
+        checks = self.context.add_scopes({})
         self._resolve_checks(checks, permissions)
 
     def _resolve_checks(
