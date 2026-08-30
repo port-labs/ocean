@@ -16,6 +16,7 @@ class ProbeContext:
     started_at: datetime
     ended_at: datetime | None
     status: ProbeStatus
+    message: str | None
     checks: list[ProbeCheck]
 
     def __init__(self, probe_id: str | None = None) -> None:
@@ -25,6 +26,7 @@ class ProbeContext:
         self.started_at = datetime.now(timezone.utc)
         self.ended_at = None
         self.status = ProbeStatus.IN_PROGRESS
+        self.message = None
         self.checks = []
 
     def add_scopes(self, *scopes: dict[str, str]) -> list[ProbeCheck]:
@@ -41,8 +43,10 @@ class ProbeContext:
 
     def build_request_body(self) -> dict[str, Any]:
         return {
+            "status": self.status,
             "started_at": self.started_at.isoformat(),
             "ended_at": self.ended_at.isoformat() if self.ended_at else None,
+            "message": self.message,
             "checks": [
                 {
                     "status": check.status,
