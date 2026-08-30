@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Cancel in-flight polling resyncs when a newer resync request arrives, without blocking the polling loop
