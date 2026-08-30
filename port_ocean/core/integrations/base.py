@@ -11,8 +11,9 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
-from port_ocean.core.probe import ProbeConfig, ProbeContext
+from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
 from port_ocean.exceptions.core import IntegrationAlreadyStartedException, ModeNotSupportedException
+from port_ocean.exceptions.probe import ProbeFailedError
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):
@@ -105,10 +106,11 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         context.initialize(config)
         listener = self.event_strategy.on_probe
         if listener is None:
-            context.fail()
-            raise ModeNotSupportedException(
+            error = ModeNotSupportedException(
                 self.context.config.integration.type, "probe"
             )
+            context.fail(str(error))
+            raise error
 
         async with event_context(
             EventType.ON_PROBE,
@@ -116,10 +118,12 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         ):
             try:
                 returned = await listener(context)
-            except Exception:
-                context.fail()
+            except Exception as error:
+                context.fail(str(error))
                 raise
 
             final_context = returned or context
+            if final_context.status is ProbeStatus.FAILED:
+                raise ProbeFailedError(final_context.message or "Probe failed")
             final_context.finalize()
             return final_context
