@@ -11,8 +11,12 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
-from port_ocean.core.probe import ProbeConfig, ProbeContext
-from port_ocean.exceptions.core import IntegrationAlreadyStartedException, ModeNotSupportedException
+from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
+from port_ocean.exceptions.core import (
+    IntegrationAlreadyStartedException,
+    ModeNotSupportedException,
+)
+from port_ocean.exceptions.probe import ProbeFailedError
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):
@@ -122,5 +126,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                 raise
 
             final_context = returned or context
+            if final_context.status is ProbeStatus.FAILED:
+                raise ProbeFailedError(final_context.message or "Probe failed")
             final_context.finalize()
             return final_context
