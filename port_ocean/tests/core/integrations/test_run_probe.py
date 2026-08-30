@@ -81,3 +81,4 @@ async def test_run_probe_marks_context_failed_when_listener_raises(
 
     assert captured_context[0].status == ProbeStatus.FAILED
     assert captured_context[0].ended_at is not None
+    assert captured_context[0].message == "probe failed"

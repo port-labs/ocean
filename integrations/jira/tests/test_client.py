@@ -405,6 +405,59 @@ async def test_send_api_request_failure(mock_jira_client: JiraClient) -> None:
             await mock_jira_client._send_api_request("GET", "http://example.com")
 
 
+@pytest.mark.asyncio
+async def test_get_current_user_permissions_verifies_authentication(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            {"accountId": "account-id"},
+            {
+                "permissions": {
+                    "BROWSE_PROJECTS": {"havePermission": True},
+                    "USER_PICKER": {"havePermission": False},
+                }
+            },
+        ]
+
+        permissions = await mock_jira_client.get_current_user_permissions(
+            ["BROWSE_PROJECTS", "USER_PICKER"]
+        )
+
+    assert permissions == {
+        "BROWSE_PROJECTS": True,
+        "USER_PICKER": False,
+    }
+    assert mock_request.await_args_list[0].args == (
+        "GET",
+        f"{mock_jira_client.api_url}/myself",
+    )
+    assert mock_request.await_args_list[1].args == (
+        "GET",
+        f"{mock_jira_client.api_url}/mypermissions",
+    )
+    assert mock_request.await_args_list[1].kwargs == {
+        "params": {"permissions": "BROWSE_PROJECTS,USER_PICKER"}
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_permissions_only_verifies_auth_when_no_keys(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"accountId": "account-id"}
+
+        permissions = await mock_jira_client.get_current_user_permissions(())
+
+    assert permissions == {}
+    mock_request.assert_awaited_once_with("GET", f"{mock_jira_client.api_url}/myself")
+
+
 def test_refresh_request_auth_creds_updates_global_auth(
     mock_jira_client: JiraClient,
 ) -> None:

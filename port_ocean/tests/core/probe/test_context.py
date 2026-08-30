@@ -31,6 +31,7 @@ def test_starts_with_empty_state() -> None:
     assert context.started_at >= started_before
     assert context.ended_at is None
     assert context.status == ProbeStatus.IN_PROGRESS
+    assert context.message is None
     assert context.checks == []
 
 
@@ -107,6 +108,7 @@ def test_build_request_body() -> None:
     # Assert
     assert body["started_at"] == context.started_at.isoformat()
     assert body["ended_at"] == ended_at.isoformat()
+    assert body["message"] is None
     assert body["checks"] == [
         {
             "status": ProbeCheckStatus.SUCCESS,
@@ -304,10 +306,33 @@ def test_fail() -> None:
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.fail()
+        context.fail("Jira rejected the configured credentials with HTTP 401")
 
     # Assert
     assert context.ended_at is not None
     assert context.ended_at >= started_before
     assert context.status == ProbeStatus.FAILED
+    assert context.message == "Jira rejected the configured credentials with HTTP 401"
     mock_update_progress.assert_called_once_with(ProbeReportStage.FAIL)
+
+
+def test_fail_message_is_reported() -> None:
+    # Arrange
+    context = ProbeContext(probe_id="probe-1")
+    context.checks = [ProbeCheck(kind="project")]
+
+    # Act
+    context.fail("boom")
+
+    # Assert
+    body = context.build_request_body()
+    assert body["message"] == "boom"
+    # A failed probe reports the reason once, not once per unfinished check.
+    assert body["checks"] == [
+        {
+            "status": ProbeCheckStatus.PENDING,
+            "message": None,
+            "kind": "project",
+            "scopes": {},
+        }
+    ]
