@@ -248,13 +248,15 @@ def test_fail() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     started_before = datetime.now(timezone.utc)
+    failure_message = "connection timed out"
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.fail()
+        context.fail(failure_message)
 
     # Assert
     assert context.ended_at is not None
     assert context.ended_at >= started_before
     assert context.status == ProbeStatus.FAILED
+    assert context.message == failure_message
     mock_update_progress.assert_called_once_with(ProbeReportStage.FAIL)
