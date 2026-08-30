@@ -117,7 +117,7 @@ def test_setTimestamp_setsTimestampCorrectly(
 def test_setTimestamp_logsTraceIdAtTopLevelExtra(
     sample_payload: EventPayload, sample_headers: EventHeaders
 ) -> None:
-    """Timestamp logs should bind trace_id at the top level of extra, not nested under extra.extra."""
+    """Added To Queue logs should split payload and headers into separate entries."""
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload=sample_payload,
@@ -137,16 +137,27 @@ def test_setTimestamp_logsTraceIdAtTopLevelExtra(
     try:
         event.set_timestamp(LiveEventTimestamp.AddedToQueue)
         logger.complete()
-        record = queue.get()
+        payload_record = queue.get()
+        headers_record = queue.get()
     finally:
         logger.remove(logger_id)
 
-    serialized = _serialize_record(record)
-    extra = serialized["extra"]
+    payload_extra = _serialize_record(payload_record)["extra"]
+    headers_extra = _serialize_record(headers_record)["extra"]
 
-    assert extra["trace_id"] == "test-trace-id"
-    assert extra["timestamp_type"] == "Added To Queue"
-    assert extra.get("extra") is None
+    assert payload_extra["trace_id"] == "test-trace-id"
+    assert payload_extra["timestamp_type"] == "Added To Queue"
+    assert payload_extra["event_context"] == "payload"
+    assert payload_extra["payload"] == sample_payload
+    assert "headers" not in payload_extra
+    assert payload_extra.get("extra") is None
+
+    assert headers_extra["trace_id"] == "test-trace-id"
+    assert headers_extra["timestamp_type"] == "Added To Queue"
+    assert headers_extra["event_context"] == "headers"
+    assert headers_extra["headers"] == sample_headers
+    assert "payload" not in headers_extra
+    assert headers_extra.get("extra") is None
 
 
 class TestWebhookRequestAdapter:
