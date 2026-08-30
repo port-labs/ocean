@@ -76,9 +76,7 @@ class BaseEventListener:
             else:
                 await self._on_resync_failure(Exception("Resync failed"))
         except asyncio.CancelledError:
-            if ocean.app.resync_state_updater.supersede_in_progress:
-                logger.info("Resync superseded by a newer resync request")
-            else:
+            if not ocean.app.resync_state_updater.supersede_in_progress:
                 logger.info(
                     "Resync was cancelled, updating state to Aborted",
                 )

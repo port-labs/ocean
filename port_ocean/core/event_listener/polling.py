@@ -112,7 +112,6 @@ class PollingEventListener(BaseEventListener):
             A tuple of (should_resync, resync_request_updated_at).
         """
         if self.should_resync():
-            logger.info("First polling iteration, resyncing")
             return True, ""
 
         try:
@@ -121,7 +120,6 @@ class PollingEventListener(BaseEventListener):
             )
             resync_request_updated_at = resync_request.get("updatedAt", "")
             if self.should_resync_from_resync_request(resync_request_updated_at):
-                logger.info("Detected integration resync request")
                 return True, resync_request_updated_at
         except Exception as error:
             logger.exception(
@@ -139,9 +137,6 @@ class PollingEventListener(BaseEventListener):
         if not self._current_resync_task or self._current_resync_task.done():
             return
 
-        logger.info(
-            "Detected new resync request during active resync, cancelling current resync"
-        )
         ocean.app.resync_state_updater.supersede_in_progress = True
         try:
             self._current_resync_task.cancel()
@@ -166,7 +161,18 @@ class PollingEventListener(BaseEventListener):
             )
 
     async def _perform_resync(self, resync_request_updated_at: str) -> None:
-        logger.info("Performing resync")
+        is_superseding = (
+            self._current_resync_task is not None
+            and not self._current_resync_task.done()
+        )
+        if is_superseding:
+            logger.info(
+                "Detected new resync request during active resync, cancelling current resync"
+            )
+        elif resync_request_updated_at:
+            logger.info("Performing resync from integration resync request")
+        else:
+            logger.info("First polling iteration, resyncing")
 
         ocean.app.resync_state_updater.last_integration_state_updated_at = (
             resync_request_updated_at
