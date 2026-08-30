@@ -4,7 +4,12 @@ import asyncio
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeMode
+from port_ocean.core.probe import (
+    ProbeConfig,
+    ProbeContext,
+    ProbeMode,
+    ProbeReportingMode,
+)
 from port_ocean.run import run_probe
 
 
@@ -48,6 +53,7 @@ def test_run_probe_delegates_to_integration_with_probe_config(
         log_level="DEBUG",
         kinds=["repository"],
         mode=ProbeMode.SHALLOW,
+        reporting_mode=ProbeReportingMode.FILE,
     )
 
     # Assert
@@ -60,4 +66,5 @@ def test_run_probe_delegates_to_integration_with_probe_config(
         path=Path("/integration"),
         kinds=["repository"],
         mode=ProbeMode.SHALLOW,
+        reporting_mode=ProbeReportingMode.FILE,
     )
