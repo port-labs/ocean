@@ -8,7 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from port_ocean.cli.commands.probe import _parse_kinds, probe
-from port_ocean.core.probe import ProbeMode
+from port_ocean.core.probe import ProbeMode, ProbeReportingMode
 
 
 @pytest.mark.parametrize(
@@ -57,6 +57,8 @@ def test_probe_command_invokes_run_probe_with_parsed_kinds(
             "repository,pull-request",
             "--mode",
             "shallow",
+            "--reporting-mode",
+            "file",
         ],
     )
 
@@ -69,7 +71,21 @@ def test_probe_command_invokes_run_probe_with_parsed_kinds(
         "INFO",
         kinds=["repository", "pull-request"],
         mode=ProbeMode.SHALLOW,
+        reporting_mode=ProbeReportingMode.FILE,
     )
+
+
+@patch("port_ocean.cli.commands.probe.run_probe")
+def test_probe_command_defaults_to_log_reporting(
+    mock_run_probe: MagicMock,
+    tmp_path: Path,
+) -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(probe, [str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert mock_run_probe.call_args.kwargs["reporting_mode"] is ProbeReportingMode.LOG
 
 
 @patch(

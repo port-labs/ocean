@@ -11,6 +11,7 @@ from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import (
     ProbeCheck,
     ProbeCheckStatus,
+    ProbeReportingMode,
     ProbeReportStage,
     ProbeStatus,
 )
@@ -106,6 +107,7 @@ def test_build_request_body() -> None:
     body = context.build_request_body()
 
     # Assert
+    assert body["status"] is ProbeStatus.IN_PROGRESS
     assert body["started_at"] == context.started_at.isoformat()
     assert body["ended_at"] == ended_at.isoformat()
     assert body["message"] is None
@@ -206,81 +208,55 @@ def test_initialize_uses_default_config_when_none(
     mock_update_progress.assert_called_once_with(ProbeReportStage.INIT)
 
 
-@pytest.mark.parametrize(
-    ("stage", "expected_message"),
-    [
-        (
-            ProbeReportStage.INIT,
-            "Reporting probe start to Port for probe None",
-        ),
-        (
-            ProbeReportStage.UPDATE,
-            "Reporting probe progress to Port for probe None",
-        ),
-        (
-            ProbeReportStage.FINALIZE,
-            "Reporting final probe result to Port for probe None",
-        ),
-        (
-            ProbeReportStage.FAIL,
-            "Reporting fatal probe error to Port for probe None",
-        ),
-    ],
-)
 @patch("port_ocean.core.probe.context.logger")
-def test_local_probe_logs_info_on_update_progress(
+def test_log_reporting_mode_logs_full_probe_status(
     mock_logger: MagicMock,
-    stage: ProbeReportStage,
-    expected_message: str,
 ) -> None:
-    # Arrange
-    context = ProbeContext()
-
-    # Act
-    context.update_progress(stage)
-
-    # Assert
-    mock_logger.info.assert_called_once()
-    assert mock_logger.info.call_args.args[0] == expected_message
-    mock_logger.debug.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    ("stage", "expected_message"),
-    [
-        (
-            ProbeReportStage.INIT,
-            "Reporting probe start to Port for probe probe-123",
-        ),
-        (
-            ProbeReportStage.UPDATE,
-            "Reporting probe progress to Port for probe probe-123",
-        ),
-        (
-            ProbeReportStage.FINALIZE,
-            "Reporting final probe result to Port for probe probe-123",
-        ),
-        (
-            ProbeReportStage.FAIL,
-            "Reporting fatal probe error to Port for probe probe-123",
-        ),
-    ],
-)
-@patch("port_ocean.core.probe.context.logger")
-def test_remote_probe_logs_debug_on_update_progress(
-    mock_logger: MagicMock,
-    stage: ProbeReportStage,
-    expected_message: str,
-) -> None:
-    # Arrange
     context = ProbeContext(probe_id="probe-123")
+    context.checks = [ProbeCheck(kind="repository")]
 
-    # Act
-    context.update_progress(stage)
+    context.update_progress(ProbeReportStage.UPDATE)
 
-    # Assert
-    mock_logger.debug.assert_called_once_with(expected_message)
-    mock_logger.info.assert_not_called()
+    mock_logger.info.assert_called_once_with(
+        "Probe status report",
+        probe_report={
+            "stage": ProbeReportStage.UPDATE,
+            "probe_id": "probe-123",
+            **context.build_request_body(),
+        },
+    )
+
+
+def test_file_reporting_mode_writes_timestamped_json_report(tmp_path: Path) -> None:
+    context = ProbeContext(probe_id="probe-123")
+    context.config = ProbeConfig(
+        path=tmp_path,
+        reporting_mode=ProbeReportingMode.FILE,
+    )
+
+    context.update_progress(ProbeReportStage.INIT)
+
+    reports = list((tmp_path / "probe_reports").glob("probe_report_*.json"))
+    assert len(reports) == 1
+    assert '"stage": "init"' in reports[0].read_text(encoding="utf-8")
+    assert '"probe_id": "probe-123"' in reports[0].read_text(encoding="utf-8")
+    assert '"status": "IN_PROGRESS"' in reports[0].read_text(encoding="utf-8")
+
+
+def test_port_reporting_mode_calls_stub() -> None:
+    context = ProbeContext(probe_id="probe-123")
+    context.config = ProbeConfig(reporting_mode=ProbeReportingMode.PORT)
+
+    with patch.object(context, "_report_to_port") as report_to_port:
+        context.update_progress(ProbeReportStage.UPDATE)
+
+    report_to_port.assert_called_once_with(
+        {
+            "stage": ProbeReportStage.UPDATE,
+            "probe_id": "probe-123",
+            **context.build_request_body(),
+        }
+    )
 
 
 def test_finalize() -> None:
