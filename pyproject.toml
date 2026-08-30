@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.50.2"
+version = "0.50.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -177,6 +177,10 @@ ignore_missing_imports = true
 ignore = ["E501"]
 exclude = ['venv', '.venv', 'integrations', 'port_ocean/cli/cookiecutter']
 target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore unused imports in __init__ files
+"**/__init__.py" = ["F401"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
