@@ -37,6 +37,7 @@ class ProbeContext:
         return {
             "probe_id": self.probe_id,
             "status": self.status,
+            "mode": self.config.mode,
             "started_at": self.started_at.isoformat(),
             "ended_at": self.ended_at.isoformat() if self.ended_at else None,
             "message": self.message,
