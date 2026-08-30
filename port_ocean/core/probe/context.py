@@ -63,7 +63,7 @@ class ProbeContext:
                     list(configured_kinds_set - supported_kinds_set), supported_kinds
                 )
 
-            self.available_kinds = list(configured_kinds_set)
+            self.available_kinds = sorted(list(configured_kinds_set))
         else:
             self.available_kinds = get_spec_kinds(self.config.path)
 
