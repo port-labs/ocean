@@ -17,7 +17,7 @@ from port_ocean.core.probe.models import (
 )
 from port_ocean.core.probe.reporters.file import FileProbeReporter
 from port_ocean.core.probe.reporters.log import LogProbeReporter
-from port_ocean.exceptions.probe import InvalidProbeKindsError
+from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
 
 
 def test_starts_with_empty_state() -> None:
@@ -261,7 +261,7 @@ def test_initialize_creates_reporter_for_reporting_mode(
 
 def test_update_progress_raises_when_reporter_not_initialized() -> None:
     # Act / Assert
-    with pytest.raises(ValueError, match="Reporter is not initialized"):
+    with pytest.raises(ProbeNotInitializedError, match="Reporter is not initialized"):
         ProbeContext().update_progress()
 
 

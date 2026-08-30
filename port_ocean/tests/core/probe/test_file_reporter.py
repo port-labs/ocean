@@ -15,9 +15,6 @@ from port_ocean.core.probe.reporters.file import (
 
 def test_file_probe_reporter_writes_report_to_configured_path(tmp_path: Path) -> None:
     # Arrange
-    reporter = FileProbeReporter(
-        ProbeConfig(path=tmp_path, reporting_mode=ProbeReportingMode.FILE)
-    )
     report = {
         "probe_id": "probe-1",
         "status": "IN_PROGRESS",
@@ -30,7 +27,9 @@ def test_file_probe_reporter_writes_report_to_configured_path(tmp_path: Path) ->
         wraps=datetime,
     ) as mock_datetime:
         mock_datetime.now.return_value = fixed_time
-        reporter.report(report)
+        FileProbeReporter(
+            ProbeConfig(path=tmp_path, reporting_mode=ProbeReportingMode.FILE)
+        ).report(report)
 
     # Assert
     report_path = (
