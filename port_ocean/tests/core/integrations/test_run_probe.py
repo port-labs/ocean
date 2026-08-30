@@ -8,6 +8,7 @@ import pytest
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
 from port_ocean.exceptions.core import ModeNotSupportedException
+from port_ocean.exceptions.probe import ProbeFailedError
 
 
 @pytest.fixture
@@ -82,3 +83,23 @@ async def test_run_probe_marks_context_failed_when_listener_raises(
     assert captured_context[0].status == ProbeStatus.FAILED
     assert captured_context[0].ended_at is not None
     assert captured_context[0].message == "probe failed"
+
+
+@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
+@pytest.mark.asyncio
+async def test_run_probe_raises_when_listener_fails_the_context(
+    mock_get_spec_kinds: MagicMock,
+    integration: BaseIntegration,
+) -> None:
+    async def on_probe(context: ProbeContext) -> ProbeContext:
+        context.fail("Jira rejected the configured credentials with HTTP 401")
+        return context
+
+    integration.event_strategy.on_probe = on_probe
+    config = ProbeConfig(path=Path("/integration"), kinds=["repository"])
+
+    with pytest.raises(
+        ProbeFailedError,
+        match="Jira rejected the configured credentials with HTTP 401",
+    ):
+        await integration.run_probe("probe-123", config)

@@ -10,6 +10,7 @@ import pytest
 from httpx import BasicAuth, Request, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from port_ocean.helpers.retry import SHOULD_RETRY_EXTENSION
 
 from jira.client import (
     PAGE_SIZE,
@@ -406,6 +407,37 @@ async def test_send_api_request_failure(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "kwargs, expected_extensions",
+    [
+        ({}, None),
+        ({"retryable": True}, {"retryable": True}),
+        ({"should_retry": False}, {SHOULD_RETRY_EXTENSION: False}),
+        (
+            {"retryable": True, "should_retry": False},
+            {"retryable": True, SHOULD_RETRY_EXTENSION: False},
+        ),
+    ],
+)
+async def test_send_api_request_forwards_retry_extensions(
+    mock_jira_client: JiraClient,
+    kwargs: dict[str, bool],
+    expected_extensions: dict[str, bool] | None,
+) -> None:
+    with patch.object(
+        mock_jira_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = Response(
+            200, request=Request("GET", "http://example.com"), json={}
+        )
+        await mock_jira_client._send_api_request(
+            "GET", "http://example.com", **kwargs  # type: ignore[arg-type]
+        )
+
+    assert mock_request.await_args.kwargs["extensions"] == expected_extensions
+
+
+@pytest.mark.asyncio
 async def test_get_current_user_permissions_verifies_authentication(
     mock_jira_client: JiraClient,
 ) -> None:
@@ -434,12 +466,14 @@ async def test_get_current_user_permissions_verifies_authentication(
         "GET",
         f"{mock_jira_client.api_url}/myself",
     )
+    assert mock_request.await_args_list[0].kwargs == {"should_retry": False}
     assert mock_request.await_args_list[1].args == (
         "GET",
         f"{mock_jira_client.api_url}/mypermissions",
     )
     assert mock_request.await_args_list[1].kwargs == {
-        "params": {"permissions": "BROWSE_PROJECTS,USER_PICKER"}
+        "params": {"permissions": "BROWSE_PROJECTS,USER_PICKER"},
+        "should_retry": False,
     }
 
 
@@ -455,7 +489,9 @@ async def test_get_current_user_permissions_only_verifies_auth_when_no_keys(
         permissions = await mock_jira_client.get_current_user_permissions(())
 
     assert permissions == {}
-    mock_request.assert_awaited_once_with("GET", f"{mock_jira_client.api_url}/myself")
+    mock_request.assert_awaited_once_with(
+        "GET", f"{mock_jira_client.api_url}/myself", should_retry=False
+    )
 
 
 def test_refresh_request_auth_creds_updates_global_auth(

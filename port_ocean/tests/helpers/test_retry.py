@@ -8,6 +8,7 @@ import httpx
 from port_ocean.helpers.retry import (
     RetryConfig,
     RetryTransport,
+    SHOULD_RETRY_EXTENSION,
     register_retry_config_callback,
     register_on_retry_callback,
 )
@@ -257,6 +258,15 @@ class TestRetryTransport:
         mock_request.extensions = {"retryable": True}
         assert transport._is_retryable_method(mock_request) is True
 
+        # The should_retry extension overrides the method decision either way
+        mock_request.method = "GET"
+        mock_request.extensions = {SHOULD_RETRY_EXTENSION: False}
+        assert transport._is_retryable_method(mock_request) is False
+
+        mock_request.method = "POST"
+        mock_request.extensions = {SHOULD_RETRY_EXTENSION: True}
+        assert transport._is_retryable_method(mock_request) is True
+
     def test_should_retry(self) -> None:
         """Test _should_retry functionality."""
         mock_transport = Mock()
@@ -268,6 +278,44 @@ class TestRetryTransport:
 
         mock_response.status_code = 200
         assert transport._should_retry(mock_response) is False
+
+    @pytest.mark.parametrize(
+        "extensions, expected_attempts",
+        [
+            ({SHOULD_RETRY_EXTENSION: False}, 1),
+            ({}, 3),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_should_retry_extension_opts_a_request_out_of_retries(
+        self, extensions: dict[str, bool], expected_attempts: int
+    ) -> None:
+        """A caller diagnosing credentials wants the failure reported, not waited out."""
+
+        class Unauthorized(httpx.AsyncBaseTransport):
+            def __init__(self) -> None:
+                self.attempts = 0
+
+            async def handle_async_request(
+                self, request: httpx.Request
+            ) -> httpx.Response:
+                self.attempts += 1
+                return httpx.Response(HTTPStatus.UNAUTHORIZED, request=request)
+
+        wrapped = Unauthorized()
+        transport = RetryTransport(
+            wrapped_transport=wrapped,
+            retry_config=RetryConfig(max_attempts=2, base_delay=0.01),
+        )
+
+        response = await transport.handle_async_request(
+            httpx.Request(
+                "GET", "https://example.com/user", extensions=dict(extensions)
+            )
+        )
+
+        assert response.status_code == HTTPStatus.UNAUTHORIZED
+        assert wrapped.attempts == expected_attempts
 
     def test_parse_retry_header(self) -> None:
         """Test _parse_retry_header functionality."""

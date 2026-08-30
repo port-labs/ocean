@@ -6,8 +6,7 @@ import pytest
 
 from jira.probe import JiraPermissionProbe
 from jira.probe import permissions as probe_permissions
-from port_ocean.core.probe import ProbeCheckStatus, ProbeContext
-from port_ocean.exceptions.probe import ProbeFailedError
+from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 
 @pytest.mark.asyncio
@@ -126,8 +125,8 @@ async def test_failed_permission_lookup_fails_the_probe_with_a_reason(
     context = ProbeContext()
     context.available_kinds = ["project", "user"]
 
-    with pytest.raises(ProbeFailedError) as raised:
-        await JiraPermissionProbe(context).run()
+    await JiraPermissionProbe(context).run()
 
-    assert str(raised.value) == expected_message
-    assert [check.status for check in context.checks] == [ProbeCheckStatus.PENDING] * 2
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == expected_message
+    assert context.checks == []

@@ -8,8 +8,7 @@ from github.clients.auth.abstract_authenticator import GitHubHeaders, GitHubToke
 from github.helpers.exceptions import AuthenticationException
 from github.probe import GitHubPermissionProbe
 from github.probe import permissions
-from port_ocean.core.probe import ProbeCheckStatus, ProbeContext
-from port_ocean.exceptions.probe import ProbeFailedError
+from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 
 async def _run_probe(
@@ -426,11 +425,11 @@ async def test_failed_pat_lookup_fails_the_probe_with_a_reason(
     context = ProbeContext()
     context.available_kinds = ["repository", "issue"]
 
-    with pytest.raises(ProbeFailedError) as raised:
-        await GitHubPermissionProbe(context).run()
+    await GitHubPermissionProbe(context).run()
 
-    assert str(raised.value) == expected_message
-    assert [check.status for check in context.checks] == [ProbeCheckStatus.PENDING] * 2
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == expected_message
+    assert context.checks == []
 
 
 @pytest.mark.asyncio
@@ -456,10 +455,8 @@ async def test_failed_app_token_fetch_fails_the_probe_with_a_reason(
     context = ProbeContext()
     context.available_kinds = ["repository"]
 
-    with pytest.raises(ProbeFailedError) as raised:
-        await GitHubPermissionProbe(context).run()
+    await GitHubPermissionProbe(context).run()
 
-    assert (
-        str(raised.value) == "GitHub rejected the configured credentials with HTTP 401"
-    )
-    assert context.checks[0].status is ProbeCheckStatus.PENDING
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == "GitHub rejected the configured credentials with HTTP 401"
+    assert context.checks == []
