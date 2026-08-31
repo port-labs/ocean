@@ -9,9 +9,27 @@ from jira.probe import permissions as probe_permissions
 from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 
+def _http_status_error(status_code: int) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", "https://example.atlassian.net/rest/api/3/myself")
+    return httpx.HTTPStatusError(
+        f"HTTP {status_code}",
+        request=request,
+        response=httpx.Response(status_code, request=request),
+    )
+
+
+@pytest.fixture
+def mock_ocean_integration_config(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"atlassian_organization_id": "test-org-id"}
+    monkeypatch.setattr(probe_permissions, "ocean", mock_ocean)
+    return mock_ocean
+
+
 @pytest.mark.asyncio
 async def test_jira_permissions_are_mapped_to_available_kinds(
     monkeypatch: pytest.MonkeyPatch,
+    mock_ocean_integration_config: MagicMock,
 ) -> None:
     client = SimpleNamespace(
         get_current_user_permissions=AsyncMock(
@@ -19,7 +37,8 @@ async def test_jira_permissions_are_mapped_to_available_kinds(
                 "BROWSE_PROJECTS": True,
                 "USER_PICKER": False,
             }
-        )
+        ),
+        verify_teams_access=AsyncMock(),
     )
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
     context = ProbeContext()
@@ -40,16 +59,17 @@ async def test_jira_permissions_are_mapped_to_available_kinds(
     client.get_current_user_permissions.assert_awaited_once_with(
         ("BROWSE_PROJECTS", "USER_PICKER")
     )
+    client.verify_teams_access.assert_awaited_once_with("test-org-id")
     assert snapshots[0] == [ProbeCheckStatus.PENDING] * 3
     assert snapshots[-1] == [
         ProbeCheckStatus.SUCCESS,
         ProbeCheckStatus.FAILURE,
-        ProbeCheckStatus.UNKNOWN,
+        ProbeCheckStatus.SUCCESS,
     ]
     assert [check.scopes for check in context.checks] == [{}, {}, {}]
     assert context.checks[0].message == "Jira grants BROWSE_PROJECTS"
     assert context.checks[1].message == "Jira requires USER_PICKER"
-    assert context.checks[2].message == "No Jira permission mapping is defined for team"
+    assert context.checks[2].message == "Atlassian Teams API access verified"
 
 
 @pytest.mark.asyncio
@@ -71,10 +91,14 @@ async def test_missing_jira_permission_information_is_unknown(
 
 
 @pytest.mark.asyncio
-async def test_kind_without_permission_mapping_still_verifies_authentication(
+async def test_team_probe_verifies_authentication_without_jira_permissions(
     monkeypatch: pytest.MonkeyPatch,
+    mock_ocean_integration_config: MagicMock,
 ) -> None:
-    client = SimpleNamespace(get_current_user_permissions=AsyncMock(return_value={}))
+    client = SimpleNamespace(
+        get_current_user_permissions=AsyncMock(return_value={}),
+        verify_teams_access=AsyncMock(),
+    )
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
     context = ProbeContext()
     context.available_kinds = ["team"]
@@ -82,15 +106,83 @@ async def test_kind_without_permission_mapping_still_verifies_authentication(
     await JiraPermissionProbe(context).run()
 
     client.get_current_user_permissions.assert_awaited_once_with(())
-    assert context.checks[0].status is ProbeCheckStatus.UNKNOWN
+    client.verify_teams_access.assert_awaited_once_with("test-org-id")
+    assert context.checks[0].status is ProbeCheckStatus.SUCCESS
+    assert context.checks[0].message == "Atlassian Teams API access verified"
 
 
-def _http_status_error(status_code: int) -> httpx.HTTPStatusError:
-    request = httpx.Request("GET", "https://example.atlassian.net/rest/api/3/myself")
-    return httpx.HTTPStatusError(
-        f"HTTP {status_code}",
-        request=request,
-        response=httpx.Response(status_code, request=request),
+@pytest.mark.asyncio
+async def test_team_probe_fails_when_organization_id_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {}
+    monkeypatch.setattr(probe_permissions, "ocean", mock_ocean)
+    client = SimpleNamespace(
+        get_current_user_permissions=AsyncMock(return_value={}),
+        verify_teams_access=AsyncMock(),
+    )
+    monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
+    context = ProbeContext()
+    context.available_kinds = ["team"]
+
+    await JiraPermissionProbe(context).run()
+
+    client.verify_teams_access.assert_not_called()
+    assert context.checks[0].status is ProbeCheckStatus.FAILURE
+    assert (
+        context.checks[0].message
+        == probe_permissions.TEAM_ORG_ID_MISSING_MESSAGE
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status_code",
+    [401, 403, 500],
+)
+async def test_team_probe_reports_teams_api_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_ocean_integration_config: MagicMock,
+    status_code: int,
+) -> None:
+    client = SimpleNamespace(
+        get_current_user_permissions=AsyncMock(return_value={}),
+        verify_teams_access=AsyncMock(side_effect=_http_status_error(status_code)),
+    )
+    monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
+    context = ProbeContext()
+    context.available_kinds = ["team"]
+
+    await JiraPermissionProbe(context).run()
+
+    assert context.checks[0].status is ProbeCheckStatus.FAILURE
+    assert (
+        context.checks[0].message
+        == f"Jira returned HTTP {status_code} while verifying teams access"
+    )
+
+
+@pytest.mark.asyncio
+async def test_team_probe_reports_teams_api_connection_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_ocean_integration_config: MagicMock,
+) -> None:
+    error = httpx.ConnectError("nodename nor servname provided")
+    client = SimpleNamespace(
+        get_current_user_permissions=AsyncMock(return_value={}),
+        verify_teams_access=AsyncMock(side_effect=error),
+    )
+    monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
+    context = ProbeContext()
+    context.available_kinds = ["team"]
+
+    await JiraPermissionProbe(context).run()
+
+    assert context.checks[0].status is ProbeCheckStatus.FAILURE
+    assert context.checks[0].message == (
+        "Jira could not be reached while verifying teams access: "
+        "nodename nor servname provided"
     )
 
 

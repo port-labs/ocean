@@ -2,14 +2,18 @@ from collections.abc import Mapping, Sequence
 
 import httpx
 
+from kinds import Kinds
+from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import (
     KindPermissionVerdict,
     PermissionCombination,
     ProbeCheck,
+    ProbeCheckStatus,
     ProbeContext,
 )
 
 from initialize_client import get_or_create_jira_client
+from jira.client import JiraClient
 
 UNAUTHORIZED_STATUS_CODES = (
     httpx.codes.UNAUTHORIZED,
@@ -28,6 +32,12 @@ KIND_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "worklog": ("BROWSE_PROJECTS",),
     "component": ("BROWSE_PROJECTS",),
 }
+
+TEAM_ORG_ID_MISSING_MESSAGE = (
+    "Atlassian organization ID is required to sync teams; "
+    "configure atlassianOrganizationId in the integration settings"
+)
+TEAM_ACCESS_SUCCESS_MESSAGE = "Atlassian Teams API access verified"
 
 
 class JiraKindPermissionVerdict(KindPermissionVerdict):
@@ -61,7 +71,11 @@ class JiraPermissionProbe:
 
     async def run(self) -> None:
         permission_keys = _collect_required_permissions(
-            self.context.available_kinds,
+            [
+                kind
+                for kind in self.context.available_kinds
+                if kind != Kinds.TEAM
+            ],
             KIND_PERMISSIONS,
         )
         client = get_or_create_jira_client()
@@ -72,18 +86,61 @@ class JiraPermissionProbe:
             return
 
         checks = self.context.add_scopes({})
-        self._resolve_checks(checks, permissions)
+        self._resolve_permission_checks(checks, permissions)
+        team_check = next(
+            (check for check in checks if check.kind == Kinds.TEAM),
+            None,
+        )
+        if team_check is not None:
+            await self._resolve_team_check(team_check, client)
 
-    def _resolve_checks(
+    def _resolve_permission_checks(
         self,
         checks: Sequence[ProbeCheck],
         permissions: dict[str, bool],
     ) -> None:
         for check in checks:
+            if check.kind == Kinds.TEAM:
+                continue
             check.status, check.message = _JIRA_KIND_PERMISSION_VERDICT.verdict(
                 check.kind,
                 permissions,
             )
+        self.context.update_progress()
+
+    async def _resolve_team_check(
+        self,
+        check: ProbeCheck,
+        client: JiraClient,
+    ) -> None:
+        org_id = ocean.integration_config.get("atlassian_organization_id")
+        if not org_id:
+            check.status = ProbeCheckStatus.FAILURE
+            check.message = TEAM_ORG_ID_MISSING_MESSAGE
+            self.context.update_progress()
+            return
+
+        try:
+            await client.verify_teams_access(org_id)
+        except httpx.HTTPStatusError as error:
+            check.status = ProbeCheckStatus.FAILURE
+            check.message = (
+                f"Jira returned HTTP {error.response.status_code} "
+                "while verifying teams access"
+            )
+            self.context.update_progress()
+            return
+        except httpx.RequestError as error:
+            check.status = ProbeCheckStatus.FAILURE
+            check.message = (
+                "Jira could not be reached while verifying teams access: "
+                f"{error}"
+            )
+            self.context.update_progress()
+            return
+
+        check.status = ProbeCheckStatus.SUCCESS
+        check.message = TEAM_ACCESS_SUCCESS_MESSAGE
         self.context.update_progress()
 
 
