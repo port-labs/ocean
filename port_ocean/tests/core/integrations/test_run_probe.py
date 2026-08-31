@@ -34,7 +34,7 @@ async def test_run_probe_raises_when_listener_is_not_registered(
     ):
         await integration.run_probe("probe-123", ProbeConfig(path=Path("/integration")))
 
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
+    mock_get_spec_kinds.assert_not_called()
 
 
 @patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])

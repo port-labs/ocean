@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import typing
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import (
@@ -12,9 +11,7 @@ from typing import (
     NamedTuple,
 )
 from port_ocean.core.models import Entity
-
-if typing.TYPE_CHECKING:
-    from port_ocean.core.probe import ProbeContext
+from port_ocean.core.probe import ProbeContext
 
 RAW_ITEM = dict[Any, Any]
 RAW_RESULT = list[RAW_ITEM]
