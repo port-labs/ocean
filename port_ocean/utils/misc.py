@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 from time import time
 from types import ModuleType
-from typing import Any, Callable, Type, TYPE_CHECKING, TypeVar
+from typing import Any, Callable, Type, TYPE_CHECKING, TypeVar, cast
 from uuid import uuid4
 
 import tomli
@@ -160,7 +160,7 @@ def get_subclass_class_from_module(
             and issubclass(obj, base_class)
             and obj != base_class
         ):
-            return obj
+            return cast(Type[GenericClass], obj)
 
     return None
 
