@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Type
+from typing import Any
 
 from loguru import logger
 
@@ -15,7 +15,7 @@ class BaseSetup(ABC):
         self,
         port_client: PortClient,
         integration_config: IntegrationConfiguration,
-        config_class: Type[PortAppConfig],
+        config_class: type[PortAppConfig],
     ):
         self.port_client = port_client
         self.integration_config = integration_config

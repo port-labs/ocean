@@ -1,8 +1,8 @@
 import asyncio
-from collections import defaultdict, deque
 import time
-from typing import Deque, Dict, Optional, Set, TypeVar, Any
+from collections import defaultdict, deque
 from contextvars import ContextVar
+from typing import Any, TypeVar
 
 from loguru import logger
 
@@ -26,12 +26,12 @@ class GroupQueue(AbstractQueue[T]):
     ):
         super().__init__(name)
         self.group_key = group_key
-        self._queues: Dict[MaybeStr, Deque[T]] = defaultdict(deque)
-        self._locked: Set[MaybeStr] = set()
+        self._queues: dict[MaybeStr, deque[T]] = defaultdict(deque)
+        self._locked: set[MaybeStr] = set()
         self._queue_not_empty = asyncio.Condition()
         self.lock_timeout = lock_timeout
-        self._lock_timestamps: Dict[MaybeStr, float] = {}
-        self._timeout_task: Optional[asyncio.Task[None]] = None
+        self._lock_timestamps: dict[MaybeStr, float] = {}
+        self._timeout_task: asyncio.Task[None] | None = None
 
     async def _background_timeout_check(self) -> None:
         """Periodically release locks that have timed out."""

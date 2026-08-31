@@ -1,7 +1,7 @@
 import asyncio
 import json
 import sys
-from asyncio import ensure_future, Task
+from asyncio import Task, ensure_future
 from typing import Any, Literal
 
 from confluent_kafka import Message
@@ -9,9 +9,9 @@ from loguru import logger
 from pydantic import field_validator
 
 from port_ocean.consumers.kafka_consumer import (
+    IntegrationResyncRequestsKafkaConsumer,
     KafkaConsumer,
     KafkaConsumerConfig,
-    IntegrationResyncRequestsKafkaConsumer,
 )
 from port_ocean.context.ocean import (
     ocean,
@@ -199,7 +199,7 @@ class KafkaEventListener(BaseEventListener):
         except Exception as e:
             _type, _, tb = sys.exc_info()
             logger.opt(exception=(_type, None, tb)).error(
-                f"Failed to process message: {str(e)}"
+                f"Failed to process message: {e!s}"
             )
 
     async def _start(self) -> None:

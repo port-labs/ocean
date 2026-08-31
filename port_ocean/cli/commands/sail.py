@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 
 import click
 
-from port_ocean import __version__, __integration_version__
-from port_ocean.cli.commands.main import cli_start, print_logo, console
+from port_ocean import __integration_version__, __version__
+from port_ocean.cli.commands.main import cli_start, console, print_logo
 from port_ocean.config.settings import LogLevelType
 
 

@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.exceptions.api import EmptyPortAppConfigError

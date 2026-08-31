@@ -1,11 +1,11 @@
 import logging
-from pathlib import PosixPath
 import sys
 import threading
 import time
 from copy import deepcopy
 from datetime import datetime
 from logging.handlers import MemoryHandler
+from pathlib import PosixPath
 from traceback import format_exception
 from typing import Any
 
@@ -88,7 +88,7 @@ class HTTPMemoryHandler(MemoryHandler):
         Extending shouldFlush to include size and time validation as part of the decision whether to flush
         """
         if bool(self.buffer) and (
-            super(HTTPMemoryHandler, self).shouldFlush(record)
+            super().shouldFlush(record)
             or sys.getsizeof(self.buffer) >= self.flush_size
             or time.time() - self.last_flush_time >= self.flush_interval
         ):

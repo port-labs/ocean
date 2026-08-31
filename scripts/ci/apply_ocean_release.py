@@ -13,8 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(CI_DIR))
 
-from ocean_release.applier import apply  # noqa: E402
-from ocean_release.git_context import GitContext  # noqa: E402
+from ocean_release.applier import apply
+from ocean_release.git_context import GitContext
 
 
 def main() -> int:

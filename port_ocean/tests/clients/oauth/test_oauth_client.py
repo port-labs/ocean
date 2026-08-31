@@ -1,10 +1,11 @@
-import pytest
-import httpx
 from unittest.mock import MagicMock, patch
-from port_ocean.ocean import Ocean
+
+import httpx
+import pytest
 
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.config.settings import IntegrationConfiguration
+from port_ocean.ocean import Ocean
 
 
 @pytest.fixture

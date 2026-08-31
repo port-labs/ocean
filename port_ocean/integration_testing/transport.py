@@ -1,7 +1,8 @@
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Union, cast
+from typing import Any, cast
 
 import httpx
 
@@ -46,12 +47,8 @@ class RequestLog:
 @dataclass
 class Route:
     method: str | None
-    url_pattern: Union[str, re.Pattern[str], Callable[[httpx.Request], bool]]
-    response_factory: Union[
-        httpx.Response,
-        dict[str, Any],
-        Callable[[httpx.Request], Union[httpx.Response, dict[str, Any]]],
-    ]
+    url_pattern: str | re.Pattern[str] | Callable[[httpx.Request], bool]
+    response_factory: httpx.Response | dict[str, Any] | Callable[[httpx.Request], httpx.Response | dict[str, Any]]
     times: int | None = None
     _call_count: int = field(default=0, init=False)
 
@@ -149,12 +146,8 @@ class InterceptTransport(httpx.AsyncBaseTransport):
     def add_route(
         self,
         method: str | None,
-        url_pattern: Union[str, re.Pattern[str], Callable[[httpx.Request], bool]],
-        response: Union[
-            httpx.Response,
-            dict[str, Any],
-            Callable[[httpx.Request], Union[httpx.Response, dict[str, Any]]],
-        ],
+        url_pattern: str | re.Pattern[str] | Callable[[httpx.Request], bool],
+        response: httpx.Response | dict[str, Any] | Callable[[httpx.Request], httpx.Response | dict[str, Any]],
         *,
         times: int | None = None,
     ) -> "InterceptTransport":

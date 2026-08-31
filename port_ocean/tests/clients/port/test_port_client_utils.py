@@ -1,8 +1,8 @@
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
-import pytest
 import httpx
+import pytest
 from loguru import logger
 
 from port_ocean.clients.port.utils import (

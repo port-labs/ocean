@@ -1,8 +1,10 @@
 import asyncio
-import pytest
 from dataclasses import dataclass
-from port_ocean.core.handlers.queue.group_queue import GroupQueue
 from typing import Any
+
+import pytest
+
+from port_ocean.core.handlers.queue.group_queue import GroupQueue
 
 
 @dataclass
@@ -452,7 +454,7 @@ class TestGroupQueue:
                     await asyncio.sleep(0.01 + (worker_id % 3) * 0.01)
 
                     await queue.commit()
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     break
                 except Exception as e:
                     print(f"Worker {worker_id} error: {e}")

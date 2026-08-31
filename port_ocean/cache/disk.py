@@ -1,6 +1,6 @@
 import pickle
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
@@ -27,7 +27,7 @@ class DiskCacheProvider(CacheProvider):
     def _get_cache_path(self, key: str) -> Path:
         return self._cache_dir / f"{key}.pkl"
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         cache_path = self._get_cache_path(key)
         if not cache_path.exists():
             return None
@@ -37,7 +37,7 @@ class DiskCacheProvider(CacheProvider):
                 return pickle.load(f)
         except (pickle.PickleError, EOFError) as e:
             raise FailedToReadCacheFileError(
-                f"Failed to read cache file: {cache_path}: {str(e)}"
+                f"Failed to read cache file: {cache_path}: {e!s}"
             )
 
     async def set(self, key: str, value: Any) -> None:
@@ -45,9 +45,9 @@ class DiskCacheProvider(CacheProvider):
         try:
             with open(cache_path, "wb") as f:
                 pickle.dump(value, f)
-        except (pickle.PickleError, IOError) as e:
+        except (OSError, pickle.PickleError) as e:
             raise FailedToWriteCacheFileError(
-                f"Failed to write cache file: {cache_path}: {str(e)}"
+                f"Failed to write cache file: {cache_path}: {e!s}"
             )
 
     async def clear(self) -> None:

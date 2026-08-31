@@ -1,7 +1,8 @@
-import pytest
+from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock
-from typing import Any, AsyncGenerator
 
+import pytest
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.helpers.stream import Stream

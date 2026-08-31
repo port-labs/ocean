@@ -23,10 +23,7 @@ def read_yaml_config_settings_source(settings: "BaseOceanSettings") -> dict[str,
 
     assert yaml_file, "Settings.yaml_file not properly configured"
     path = Path(
-        getattr(
-            settings,
-            "_base_path",
-        ),
+        settings._base_path,
         yaml_file,
     )
 

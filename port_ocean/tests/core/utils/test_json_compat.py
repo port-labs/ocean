@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from port_ocean.core.utils.json_compat import (
     JQInputNotJsonSerializableError,
@@ -8,14 +8,14 @@ from port_ocean.core.utils.json_compat import (
 
 
 def test_make_json_compatible_converts_datetime_and_date() -> None:
-    dt = datetime(2026, 3, 26, 9, 30, 56, tzinfo=timezone.utc)
+    dt = datetime(2026, 3, 26, 9, 30, 56, tzinfo=UTC)
     d = date(2026, 3, 26)
     out = make_json_compatible({"dt": dt, "d": d})
     assert out == {"dt": dt.isoformat(), "d": d.isoformat()}
 
 
 def test_make_json_compatible_recurses_list_and_dict() -> None:
-    dt = datetime(2026, 3, 26, 9, 30, 56, tzinfo=timezone.utc)
+    dt = datetime(2026, 3, 26, 9, 30, 56, tzinfo=UTC)
     out = make_json_compatible({"a": [{"b": dt}]})
     assert out == {"a": [{"b": dt.isoformat()}]}
 

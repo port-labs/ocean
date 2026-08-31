@@ -1,17 +1,19 @@
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 import pytest
+
+from port_ocean.clients.port.types import UserAgentType
+from port_ocean.context.event import EventType, event_context
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
 )
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import EntityDiff
-from port_ocean.clients.port.types import UserAgentType
 from port_ocean.ocean import Ocean
-from port_ocean.context.ocean import PortOceanContext
 from port_ocean.tests.core.conftest import create_entity
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.context.event import event_context, EventType
 
 
 @pytest.fixture
@@ -144,13 +146,13 @@ async def test_applier_with_mock_context(
         mock_blueprint.identifier = "test_blueprint"
         mock_blueprint.relations = {}
         mock_get_blueprint = AsyncMock(return_value=mock_blueprint)
-        setattr(mock_ocean.port_client, "get_blueprint", mock_get_blueprint)
+        mock_ocean.port_client.get_blueprint = mock_get_blueprint
 
         mock_ocean.config.upsert_entities_batch_max_length = 100
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(True, entity)])
-        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
+        mock_ocean.port_client.upsert_entities_bulk = mock_upsert
 
         result = await applier.upsert([entity], UserAgentType.exporter)
         mock_upsert.assert_called_once()
@@ -175,7 +177,7 @@ async def test_applier_one_not_upserted(
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(False, entity)])
-        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
+        mock_ocean.port_client.upsert_entities_bulk = mock_upsert
 
         result = await applier.upsert([entity], UserAgentType.exporter)
 
@@ -201,7 +203,7 @@ async def test_applier_error_upserting(
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(False, entity)])
-        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
+        mock_ocean.port_client.upsert_entities_bulk = mock_upsert
 
         result = await applier.upsert([entity], UserAgentType.exporter)
         mock_upsert.assert_called_once()
@@ -230,7 +232,7 @@ async def test_using_create_entity_helper(
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
 
         mock_upsert = AsyncMock(return_value=[(True, entity1)])
-        setattr(mock_ocean.port_client, "upsert_entities_bulk", mock_upsert)
+        mock_ocean.port_client.upsert_entities_bulk = mock_upsert
 
         result = await applier.upsert([entity1], UserAgentType.exporter)
 
@@ -271,7 +273,7 @@ async def test_upsert_groups_entities_by_blueprint(
             [(True, deployment_entity)],  # Second call for "deployment" blueprint
             [(True, user_entity)],  # Third call for "user" blueprint
         ]
-        setattr(mock_ocean.port_client, "upsert_entities_in_batches", mock_upsert)
+        mock_ocean.port_client.upsert_entities_in_batches = mock_upsert
 
         result = await applier.upsert(entities, UserAgentType.exporter)
 
@@ -304,7 +306,7 @@ async def test_delete_empty_list_makes_no_client_calls(
 ) -> None:
     applier = HttpEntitiesStateApplier(mock_context)
     mock_bulk_delete = AsyncMock(return_value=[])
-    setattr(mock_ocean.port_client, "bulk_delete_entities", mock_bulk_delete)
+    mock_ocean.port_client.bulk_delete_entities = mock_bulk_delete
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config
@@ -326,7 +328,7 @@ async def test_delete_groups_entities_by_blueprint(
         Entity(identifier="dep_1", blueprint="deployment"),
     ]
     mock_bulk_delete = AsyncMock(return_value=[])
-    setattr(mock_ocean.port_client, "bulk_delete_entities", mock_bulk_delete)
+    mock_ocean.port_client.bulk_delete_entities = mock_bulk_delete
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
@@ -353,7 +355,7 @@ async def test_delete_with_dependents_calls_bulk_delete_per_blueprint(
         Entity(identifier="dep_2", blueprint="deployment"),
     ]
     mock_bulk_delete = AsyncMock(return_value=[])
-    setattr(mock_ocean.port_client, "bulk_delete_entities", mock_bulk_delete)
+    mock_ocean.port_client.bulk_delete_entities = mock_bulk_delete
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
@@ -383,7 +385,7 @@ async def test_delete_without_dependents_processes_blueprints_sequentially(
         call_order.append(blueprint)
         return []
 
-    setattr(mock_ocean.port_client, "bulk_delete_entities", track_blueprint_calls)
+    mock_ocean.port_client.bulk_delete_entities = track_blueprint_calls
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = port_app_config_no_dependents
@@ -400,8 +402,8 @@ async def test_delete_with_dependents_never_calls_single_delete_entity(
 ) -> None:
     applier = HttpEntitiesStateApplier(mock_context)
     mock_single_delete = AsyncMock()
-    setattr(mock_ocean.port_client, "delete_entity", mock_single_delete)
-    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+    mock_ocean.port_client.delete_entity = mock_single_delete
+    mock_ocean.port_client.bulk_delete_entities = AsyncMock(return_value=[])
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
@@ -420,8 +422,8 @@ async def test_delete_without_dependents_never_calls_single_delete_entity(
 ) -> None:
     applier = HttpEntitiesStateApplier(mock_context)
     mock_single_delete = AsyncMock()
-    setattr(mock_ocean.port_client, "delete_entity", mock_single_delete)
-    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+    mock_ocean.port_client.delete_entity = mock_single_delete
+    mock_ocean.port_client.bulk_delete_entities = AsyncMock(return_value=[])
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = port_app_config_no_dependents
@@ -440,8 +442,8 @@ async def test_delete_with_dependents_never_calls_batch_delete_entities(
 ) -> None:
     applier = HttpEntitiesStateApplier(mock_context)
     mock_batch_delete = AsyncMock()
-    setattr(mock_ocean.port_client, "batch_delete_entities", mock_batch_delete)
-    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+    mock_ocean.port_client.batch_delete_entities = mock_batch_delete
+    mock_ocean.port_client.bulk_delete_entities = AsyncMock(return_value=[])
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = mock_port_app_config  # delete_dependent_entities=True
@@ -460,8 +462,8 @@ async def test_delete_without_dependents_never_calls_batch_delete_entities(
 ) -> None:
     applier = HttpEntitiesStateApplier(mock_context)
     mock_batch_delete = AsyncMock()
-    setattr(mock_ocean.port_client, "batch_delete_entities", mock_batch_delete)
-    setattr(mock_ocean.port_client, "bulk_delete_entities", AsyncMock(return_value=[]))
+    mock_ocean.port_client.batch_delete_entities = mock_batch_delete
+    mock_ocean.port_client.bulk_delete_entities = AsyncMock(return_value=[])
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         event.port_app_config = port_app_config_no_dependents

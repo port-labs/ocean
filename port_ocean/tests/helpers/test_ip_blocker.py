@@ -1,9 +1,9 @@
 """Tests for IP blocker: SSRF protection, DNS rebinding prevention, port.io bypass."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
 import httpx
+import pytest
 
 from port_ocean.exceptions.clients import BlockedIPError
 from port_ocean.helpers.ip_blocker import (

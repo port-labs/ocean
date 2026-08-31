@@ -1,8 +1,8 @@
 from typing import Any
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 import httpx
+import pytest
 
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig

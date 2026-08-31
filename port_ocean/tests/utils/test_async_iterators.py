@@ -108,8 +108,7 @@ async def test_semaphore_async_iterator() -> None:
 
         async with lock:
             concurrent_tasks += 1
-            if concurrent_tasks > max_concurrent_tasks:
-                max_concurrent_tasks = concurrent_tasks
+            max_concurrent_tasks = max(max_concurrent_tasks, concurrent_tasks)
 
         await asyncio.sleep(0.1)
         yield "result"

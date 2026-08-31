@@ -6,7 +6,7 @@ import socket
 import tempfile
 import time
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
@@ -14,26 +14,26 @@ from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
+from port_ocean.consumers.abstract_live_events_consumer import (
+    AbstractLiveEventsConsumer,
+)
 from port_ocean.consumers.redis_client import (
     RedisClient,
     create_redis_client_with_retry,
 )
-from port_ocean.consumers.abstract_live_events_consumer import (
-    AbstractLiveEventsConsumer,
-)
-from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
 from port_ocean.consumers.redis_stream_utils import (
     ack_and_finalize_stream_entry,
     ensure_consumer_group,
     is_missing_stream_or_group_error,
     is_redis_connection_error,
 )
+from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
 from port_ocean.context.ocean import ocean
-from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookRequestAdapter,
 )
+from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 
 _INTEGRATION_PATH_PREFIX = "/integration/"
 
@@ -350,7 +350,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
 
         try:
             return datetime.fromtimestamp(
-                float(queued_at) / 1_000_000_000, tz=timezone.utc
+                float(queued_at) / 1_000_000_000, tz=UTC
             )
         except (ValueError, OSError, OverflowError):
             logger.warning(
@@ -369,7 +369,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         if queued_time is None:
             return None
 
-        reference_time = now or datetime.now(timezone.utc)
+        reference_time = now or datetime.now(UTC)
         delta_ms = (reference_time - queued_time).total_seconds() * 1000
         if delta_ms < 0:
             logger.warning(

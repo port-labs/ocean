@@ -1,4 +1,5 @@
-from typing import Any, Generator, List
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,12 +14,12 @@ pytestmark = pytest.mark.usefixtures("mock_ocean")
 
 
 errored_entity_identifier: str = "a"
-expected_result_entities: List[Entity] = [
+expected_result_entities: list[Entity] = [
     Entity(identifier="b", blueprint="b"),
     Entity(identifier="c", blueprint="c"),
 ]
-expected_result_entities_with_exception: List[Entity] = []
-all_entities: List[Entity] = [
+expected_result_entities_with_exception: list[Entity] = []
+all_entities: list[Entity] = [
     Entity(identifier=errored_entity_identifier, blueprint="a")
 ] + expected_result_entities
 

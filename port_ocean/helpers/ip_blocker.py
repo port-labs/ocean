@@ -148,13 +148,13 @@ class IPBlockerTransport(httpx.AsyncBaseTransport):
         ]
         if blocked_ip_addresses:
             raise BlockedIPError(
-                f"Request to {hostname} was blocked: Host IP address {str(blocked_ip_addresses)} is not within the allowed ranges"
+                f"Request to {hostname} was blocked: Host IP address {blocked_ip_addresses!s} is not within the allowed ranges"
             )
         request.url = request.url.copy_with(host=ip_addresses[0])
         request.headers["Host"] = hostname
         request.extensions = {**request.extensions, "sni_hostname": hostname}
         logger.debug(
-            f"Request to {hostname} was allowed: Host IP address {str(ip_addresses)} is within the allowed ranges"
+            f"Request to {hostname} was allowed: Host IP address {ip_addresses!s} is within the allowed ranges"
         )
         return await self._wrapped.handle_async_request(request)
 

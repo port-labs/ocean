@@ -1,33 +1,33 @@
-from typing import Callable, TYPE_CHECKING, Any, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Union
 
 from fastapi import APIRouter
-from port_ocean.helpers.metric.metric import Metrics
 from pydantic import BaseModel
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
-
 from port_ocean.core.models import Entity, EventListenerType
 from port_ocean.core.ocean_types import (
+    AFTER_RESYNC_EVENT_LISTENER,
+    BEFORE_RESYNC_EVENT_LISTENER,
+    INCREMENTAL_EVENT_LISTENER,
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
-    RawEntityDiff,
     EntityDiff,
-    BEFORE_RESYNC_EVENT_LISTENER,
-    AFTER_RESYNC_EVENT_LISTENER,
-    INCREMENTAL_EVENT_LISTENER,
+    RawEntityDiff,
 )
 from port_ocean.exceptions.context import (
-    PortOceanContextNotFoundError,
     PortOceanContextAlreadyInitializedError,
+    PortOceanContextNotFoundError,
 )
+from port_ocean.helpers.metric.metric import Metrics
 
 if TYPE_CHECKING:
+    from port_ocean.clients.port.client import PortClient
     from port_ocean.config.settings import IntegrationConfiguration
+    from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
-    from port_ocean.clients.port.client import PortClient
-    from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 
 from loguru import logger
 

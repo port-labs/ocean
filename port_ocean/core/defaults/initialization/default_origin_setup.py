@@ -1,5 +1,5 @@
 import asyncio
-from typing import Type, Any
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -22,7 +22,7 @@ class DefaultOriginSetup(BaseSetup):
         self,
         port_client: PortClient,
         integration_config: IntegrationConfiguration,
-        config_class: Type[PortAppConfig],
+        config_class: type[PortAppConfig],
     ):
         super().__init__(port_client, integration_config, config_class)
         defaults: Defaults | None = get_port_integration_defaults(
@@ -101,12 +101,12 @@ class DefaultOriginSetup(BaseSetup):
 
         created_blueprints, blueprint_errors = (
             await gather_and_split_errors_from_results(
-                (
+                
                     self.port_client.create_blueprint(
                         blueprint, user_agent_type=UserAgentType.exporter
                     )
                     for blueprint in creation_stage
-                )
+                
             )
         )
 
@@ -144,27 +144,27 @@ class DefaultOriginSetup(BaseSetup):
 
         try:
             _, actions_errors = await gather_and_split_errors_from_results(
-                (
+                
                     self.port_client.create_action(action, should_log=False)
                     for action in defaults.actions
-                )
+                
             )
 
             _, scorecards_errors = await gather_and_split_errors_from_results(
-                (
+                
                     self.port_client.create_scorecard(
                         blueprint_scorecards["blueprint"], action, should_log=False
                     )
                     for blueprint_scorecards in defaults.scorecards
                     for action in blueprint_scorecards["data"]
-                )
+                
             )
 
             _, pages_errors = await gather_and_split_errors_from_results(
-                (
+                
                     self.port_client.create_page(page, should_log=False)
                     for page in defaults.pages
-                )
+                
             )
 
             errors = actions_errors + scorecards_errors + pages_errors

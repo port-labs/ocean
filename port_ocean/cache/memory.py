@@ -1,4 +1,5 @@
-from typing import Any, Optional
+from typing import Any
+
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
 from port_ocean.core.models import CachingStorageMode
@@ -20,17 +21,17 @@ class InMemoryCacheProvider(CacheProvider):
         self._storage = caching_storage or {}
         self._storage[self.CACHE_KEY] = self._storage.get(self.CACHE_KEY, {})
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         try:
             return self._storage.get(self.CACHE_KEY, {}).get(key)
         except KeyError as e:
-            raise FailedToReadCacheMemoryError(f"Failed to read cache: {str(e)}")
+            raise FailedToReadCacheMemoryError(f"Failed to read cache: {e!s}")
 
     async def set(self, key: str, value: Any) -> None:
         try:
             self._storage[self.CACHE_KEY][key] = value
         except KeyError as e:
-            raise FailedToWriteCacheMemoryError(f"Failed to write cache: {str(e)}")
+            raise FailedToWriteCacheMemoryError(f"Failed to write cache: {e!s}")
 
     async def clear(self) -> None:
         self._storage[self.CACHE_KEY].clear()

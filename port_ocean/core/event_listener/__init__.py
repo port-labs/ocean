@@ -1,28 +1,26 @@
-from port_ocean.core.event_listener.http import (
-    HttpEventListenerSettings,
-    HttpEventListener,
-)
-from port_ocean.core.event_listener.kafka import (
-    KafkaEventListenerSettings,
-    KafkaEventListener,
-)
-from port_ocean.core.event_listener.polling import (
-    PollingEventListenerSettings,
-    PollingEventListener,
-)
-
-from port_ocean.core.event_listener.once import (
-    OnceEventListenerSettings,
-    OnceEventListener,
-)
-
-from port_ocean.core.event_listener.webhooks_only import (
-    WebhooksOnlyEventListener,
-    WebhooksOnlyEventListenerSettings,
-)
 from port_ocean.core.event_listener.actions_only import (
     ActionsOnlyEventListener,
     ActionsOnlyEventListenerSettings,
+)
+from port_ocean.core.event_listener.http import (
+    HttpEventListener,
+    HttpEventListenerSettings,
+)
+from port_ocean.core.event_listener.kafka import (
+    KafkaEventListener,
+    KafkaEventListenerSettings,
+)
+from port_ocean.core.event_listener.once import (
+    OnceEventListener,
+    OnceEventListenerSettings,
+)
+from port_ocean.core.event_listener.polling import (
+    PollingEventListener,
+    PollingEventListenerSettings,
+)
+from port_ocean.core.event_listener.webhooks_only import (
+    WebhooksOnlyEventListener,
+    WebhooksOnlyEventListenerSettings,
 )
 
 EventListenerSettingsType = (
@@ -35,17 +33,17 @@ EventListenerSettingsType = (
 )
 
 __all__ = [
+    "ActionsOnlyEventListener",
+    "ActionsOnlyEventListenerSettings",
     "EventListenerSettingsType",
     "HttpEventListener",
     "HttpEventListenerSettings",
     "KafkaEventListener",
     "KafkaEventListenerSettings",
-    "PollingEventListener",
-    "PollingEventListenerSettings",
     "OnceEventListener",
     "OnceEventListenerSettings",
+    "PollingEventListener",
+    "PollingEventListenerSettings",
     "WebhooksOnlyEventListener",
     "WebhooksOnlyEventListenerSettings",
-    "ActionsOnlyEventListener",
-    "ActionsOnlyEventListenerSettings",
 ]

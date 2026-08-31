@@ -1,4 +1,4 @@
-from typing import Any, Type
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -87,7 +87,7 @@ def _validate_integration_version() -> None:
 
 
 async def _initialize_defaults(
-    config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
+    config_class: type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     """Initialize Port defaults based on integration configuration.
 
@@ -158,7 +158,7 @@ async def _initialize_defaults(
 
 
 def initialize_defaults(
-    config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
+    config_class: type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     """Entry point for initializing Port defaults.
 

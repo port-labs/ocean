@@ -12,7 +12,7 @@ from port_ocean.utils.time import get_next_occurrence
 class ResyncStateUpdater:
     def __init__(self, port_client: PortClient, scheduled_resync_interval: int | None):
         self.port_client = port_client
-        self.initiated_at = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.initiated_at = datetime.datetime.now(tz=datetime.UTC)
         self.scheduled_resync_interval = scheduled_resync_interval
 
         # This is used to differ between integration changes that require a full resync and state changes
@@ -45,7 +45,7 @@ class ResyncStateUpdater:
             "status": IntegrationStateStatus.Running.value,
             "lastResyncEnd": None,
             "lastResyncStart": datetime.datetime.now(
-                tz=datetime.timezone.utc
+                tz=datetime.UTC
             ).isoformat(),
             "nextResync": nest_resync,
             "intervalInMinuets": _interval,
@@ -76,7 +76,7 @@ class ResyncStateUpdater:
         state: dict[str, Any] = {
             "status": status.value,
             "lastResyncEnd": datetime.datetime.now(
-                tz=datetime.timezone.utc
+                tz=datetime.UTC
             ).isoformat(),
             "nextResync": nest_resync,
             "intervalInMinuets": _interval,

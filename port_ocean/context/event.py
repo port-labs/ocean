@@ -1,16 +1,13 @@
 import asyncio
 import traceback
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
     Literal,
     Optional,
-    Union,
 )
 from uuid import uuid4
 
@@ -35,7 +32,7 @@ if TYPE_CHECKING:
     )
 
 TriggerType = Literal["manual", "machine", "request"]
-AbortCallbackFunction = Callable[[], Union[Any, Awaitable[Any]]]
+AbortCallbackFunction = Callable[[], Any | Awaitable[Any]]
 
 
 class EventType:
@@ -102,7 +99,7 @@ class EventContext:
         return self._parent_event
 
     @property
-    def parent_id(self) -> Optional[str]:
+    def parent_id(self) -> str | None:
         return self._parent_event.id if self._parent_event else None
 
     @property
@@ -190,13 +187,13 @@ async def event_context(
         except EmptyPortAppConfigError as e:
             success = False
             logger.bind(traceback=traceback.format_exc()).error(
-                f"Skipping resync due to empty mapping: {str(e)}"
+                f"Skipping resync due to empty mapping: {e!s}"
             )
             raise
         except WebhookEventNotSupportedError as e:
             success = False
             logger.bind(traceback=traceback.format_exc()).warning(
-                f"Webhook event not supported: {str(e)}"
+                f"Webhook event not supported: {e!s}"
             )
         except BaseException as e:
             success = False
@@ -210,7 +207,7 @@ async def event_context(
                 )
             else:
                 logger.bind(traceback=traceback.format_exc()).error(
-                    f"Event failed with error: {str(e)}"
+                    f"Event failed with error: {e!s}"
                 )
             raise
         else:

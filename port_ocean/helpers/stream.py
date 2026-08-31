@@ -1,6 +1,7 @@
 import os
-from typing import Any, AsyncGenerator
 import uuid
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import aiofiles
 import httpx

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +12,9 @@ from port_ocean import Ocean
 from port_ocean.clients.port.client import PortClient
 from port_ocean.context.event import EventContext, EventType, event_context
 from port_ocean.context.ocean import PortOceanContext, ocean
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
@@ -19,9 +22,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
     ResourceConfig,
     Selector,
-)
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
-    JQEntityProcessor,
 )
 from port_ocean.core.handlers.queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -49,11 +49,11 @@ from port_ocean.utils.signal import SignalHandler
 
 class MockProcessor(AbstractWebhookProcessor):
     async def authenticate(
-        self, payload: Dict[str, Any], headers: Dict[str, str]
+        self, payload: dict[str, Any], headers: dict[str, str]
     ) -> bool:
         return True
 
-    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+    async def validate_payload(self, payload: dict[str, Any]) -> bool:
         return True
 
     async def handle_event(
@@ -70,11 +70,11 @@ class MockProcessor(AbstractWebhookProcessor):
 
 class MockProcessorFalse(AbstractWebhookProcessor):
     async def authenticate(
-        self, payload: Dict[str, Any], headers: Dict[str, str]
+        self, payload: dict[str, Any], headers: dict[str, str]
     ) -> bool:
         return True
 
-    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+    async def validate_payload(self, payload: dict[str, Any]) -> bool:
         return True
 
     async def handle_event(
@@ -99,11 +99,11 @@ class MockWebhookProcessor(AbstractWebhookProcessor):
         self.max_retries = 3
 
     async def authenticate(
-        self, payload: Dict[str, Any], headers: Dict[str, str]
+        self, payload: dict[str, Any], headers: dict[str, str]
     ) -> bool:
         return True
 
-    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+    async def validate_payload(self, payload: dict[str, Any]) -> bool:
         return True
 
     async def handle_event(
@@ -477,11 +477,11 @@ async def test_extractMatchingProcessors_processorsAvailableButKindsNotConfigure
     # Create a mock processor that will match the event but return a kind not in the port app config
     class MockProcessorWithUnmappedKind(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -813,11 +813,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
             super().__init__(event)
 
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -899,7 +899,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
 
     try:
         await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 1
@@ -937,11 +937,11 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
 
     class TestProcessor(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1021,7 +1021,7 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
 
     try:
         await asyncio.wait_for(processing_complete.wait(), timeout=100.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert isinstance(test_state["exception_thrown"], asyncio.TimeoutError) is True
@@ -1058,11 +1058,11 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
 
     class TestProcessor(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1142,7 +1142,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
 
     try:
         await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert (
@@ -1188,11 +1188,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
 
     class TestProcessorA(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1219,11 +1219,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
 
     class TestProcessorB(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1250,11 +1250,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
 
     class TestProcessorFiltersOut(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1340,7 +1340,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
 
     try:
         await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 2
@@ -1387,11 +1387,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             self.tries = 0
 
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1477,7 +1477,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
 
     try:
         await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 1
@@ -1525,11 +1525,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             self.tries = 0
 
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1620,7 +1620,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
 
     try:
         await asyncio.wait_for(processing_complete.wait(), timeout=30.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 0
@@ -1664,11 +1664,11 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
 
     class SuccessfulProcessor(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1695,11 +1695,11 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
 
     class FailingProcessor(AbstractWebhookProcessor):
         async def authenticate(
-            self, payload: Dict[str, Any], headers: Dict[str, str]
+            self, payload: dict[str, Any], headers: dict[str, str]
         ) -> bool:
             return True
 
-        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        async def validate_payload(self, payload: dict[str, Any]) -> bool:
             return True
 
         async def handle_event(
@@ -1772,7 +1772,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
 
     try:
         await asyncio.wait_for(processing_complete.wait(), timeout=10.0)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 1

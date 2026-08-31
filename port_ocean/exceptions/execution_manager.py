@@ -3,7 +3,6 @@ class DuplicateActionExecutorError(Exception):
     Raised when attempting to register an executor for an action that already has an existing executor.
     """
 
-    pass
 
 
 class RunAlreadyAcknowledgedError(Exception):
@@ -11,7 +10,6 @@ class RunAlreadyAcknowledgedError(Exception):
     Raised when attempting to acknowledge a run that has already been acknowledged.
     """
 
-    pass
 
 
 class ActionExecutionError(Exception):
@@ -21,4 +19,3 @@ class ActionExecutionError(Exception):
     stack trace and reports the message directly to Port.
     """
 
-    pass

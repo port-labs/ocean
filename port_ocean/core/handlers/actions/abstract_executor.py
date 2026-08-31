@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Type
-
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -55,7 +53,7 @@ class AbstractExecutor(ABC):
     """
 
     ACTION_NAME: str
-    WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
+    WEBHOOK_PROCESSOR_CLASS: type[AbstractWebhookProcessor] | None
     WEBHOOK_PATH: str
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
@@ -87,7 +85,6 @@ class AbstractExecutor(ABC):
                 return rate_info.remaining / rate_info.limit < 0.1  # 10% threshold
             ```
         """
-        pass
 
     @abstractmethod
     async def get_remaining_seconds_until_rate_limit(
@@ -115,7 +112,6 @@ class AbstractExecutor(ABC):
                 return 0.0
             ```
         """
-        pass
 
     @abstractmethod
     async def execute(self, run: IntegrationRun) -> None:
@@ -153,4 +149,3 @@ class AbstractExecutor(ABC):
                     raise Exception(f"Failed to update resource: {str(e)}")
             ```
         """
-        pass

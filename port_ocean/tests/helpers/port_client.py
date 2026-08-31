@@ -1,4 +1,3 @@
-from typing import Union
 from unittest.mock import MagicMock
 
 from port_ocean.clients.port.client import PortClient
@@ -30,7 +29,7 @@ def get_port_client_for_integration(
     integration_identifier: str,
     integration_type: str,
     integration_version: str,
-    base_url: Union[str, None],
+    base_url: str | None,
 ) -> PortClient:
     ensure_ocean_context_for_standalone_port_client()
 

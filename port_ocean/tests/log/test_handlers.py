@@ -1,13 +1,15 @@
 import sys
 from collections import namedtuple
+from collections.abc import Callable
+from logging import LogRecord
+from logging.handlers import QueueHandler
+from queue import Queue
+from typing import Any
+
+from loguru import logger
 
 from port_ocean.log.handlers import _serialize_record
 from port_ocean.log.logger_setup import _extract_traceback
-from loguru import logger
-from logging import LogRecord
-from queue import Queue
-from logging.handlers import QueueHandler
-from typing import Callable, Any
 
 # Matches the shape of loguru's internal RecordException namedtuple
 _RecordException = namedtuple("_RecordException", ["type", "value", "traceback"])

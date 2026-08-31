@@ -1,9 +1,10 @@
 from abc import ABC
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Protocol
 from uuid import uuid4
+
 from fastapi import Request
 from loguru import logger
 
@@ -86,13 +87,13 @@ class WebhookEvent(LiveEvent):
         self.headers = headers
         self._original_request = original_request
         self.group_id = group_id
-        self.created_at = created_at or datetime.now(timezone.utc)
+        self.created_at = created_at or datetime.now(UTC)
 
     @classmethod
     async def from_request(cls, request: Request) -> "WebhookEvent":
         trace_id = str(uuid4())
         payload = await request.json()
-        created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(UTC)
 
         return cls(
             trace_id=trace_id,
@@ -157,7 +158,7 @@ class WebhookEventRawResults:
         self._webhook_trace_id = webhook_trace_id
         self._original_webhook: EventPayload | None = None
         self._original_headers: EventHeaders | None = None
-        self._created_at = created_at or datetime.now(timezone.utc)
+        self._created_at = created_at or datetime.now(UTC)
 
     @property
     def original_webhook(self) -> EventPayload | None:

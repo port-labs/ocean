@@ -1,12 +1,12 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
 
-import port_ocean.utils.relative_time as relative_time
+from port_ocean.utils import relative_time
 from port_ocean.utils.relative_time import days_ago, months_ago, to_rfc3339
 
-FROZEN_NOW = datetime(2026, 7, 21, 12, 30, 45, 123456, tzinfo=timezone.utc)
+FROZEN_NOW = datetime(2026, 7, 21, 12, 30, 45, 123456, tzinfo=UTC)
 
 
 def _freeze_clock(monkeypatch: pytest.MonkeyPatch, frozen: datetime) -> None:
@@ -24,18 +24,18 @@ def freeze_now(monkeypatch: pytest.MonkeyPatch) -> datetime:
 
 
 def test_days_ago(freeze_now: datetime) -> None:
-    assert days_ago(7) == datetime(2026, 7, 14, 12, 30, 45, 123456, tzinfo=timezone.utc)
+    assert days_ago(7) == datetime(2026, 7, 14, 12, 30, 45, 123456, tzinfo=UTC)
 
 
 def test_days_ago_negative_is_future(freeze_now: datetime) -> None:
     assert days_ago(-3) == datetime(
-        2026, 7, 24, 12, 30, 45, 123456, tzinfo=timezone.utc
+        2026, 7, 24, 12, 30, 45, 123456, tzinfo=UTC
     )
 
 
 def test_months_ago_calendar(monkeypatch: pytest.MonkeyPatch) -> None:
-    _freeze_clock(monkeypatch, datetime(2026, 1, 31, 12, 0, 0, tzinfo=timezone.utc))
-    assert months_ago(1) == datetime(2025, 12, 31, 12, 0, 0, tzinfo=timezone.utc)
+    _freeze_clock(monkeypatch, datetime(2026, 1, 31, 12, 0, 0, tzinfo=UTC))
+    assert months_ago(1) == datetime(2025, 12, 31, 12, 0, 0, tzinfo=UTC)
 
 
 def test_to_rfc3339_seconds() -> None:

@@ -2,23 +2,24 @@ from __future__ import annotations
 
 import inspect
 import json
+import multiprocessing
+import sys
+from collections.abc import Callable
 from enum import Enum
 from importlib.util import module_from_spec, spec_from_file_location
-import multiprocessing
 from pathlib import Path
-import sys
 from time import time
 from types import ModuleType
-from typing import Any, Callable, Type, TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 from uuid import uuid4
 
 import tomli
 import yaml
 
 from port_ocean.exceptions.spec import (
+    MalformedSpecError,
     SpecFileError,
     SpecNotFoundError,
-    MalformedSpecError,
 )
 
 if TYPE_CHECKING:
@@ -150,8 +151,8 @@ GenericClass = TypeVar("GenericClass", bound=Any)
 
 def get_subclass_class_from_module(
     module: ModuleType,
-    base_class: Type[GenericClass],
-) -> Type[GenericClass] | None:
+    base_class: type[GenericClass],
+) -> type[GenericClass] | None:
 
     for name, obj in inspect.getmembers(module):
         if (
@@ -160,7 +161,7 @@ def get_subclass_class_from_module(
             and issubclass(obj, base_class)
             and obj != base_class
         ):
-            return cast(Type[GenericClass], obj)
+            return cast(type[GenericClass], obj)
 
     return None
 
@@ -170,12 +171,12 @@ def get_subclass_class_from_module(
 # raises a "duplicate validator" error. Production calls this once per process,
 # so the cache is a safe no-op there; it matters for the integration test
 # harness, which boots integrations repeatedly in one process.
-_integration_class_cache: dict[str, Type["BaseIntegration"] | None] = {}
+_integration_class_cache: dict[str, type[BaseIntegration] | None] = {}
 
 
 def get_integration_class(
     path: str,
-) -> Type["BaseIntegration"] | None:
+) -> type[BaseIntegration] | None:
     from port_ocean.core.integrations.base import BaseIntegration
 
     sys.path.append(".")

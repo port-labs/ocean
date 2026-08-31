@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
 from enum import StrEnum
+
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.exceptions.webhook_processor import RetryableError
 
 from .webhook_event import (
-    WebhookEvent,
-    EventPayload,
     EventHeaders,
+    EventPayload,
+    WebhookEvent,
     WebhookEventRawResults,
 )
 
@@ -69,12 +70,11 @@ class AbstractWebhookProcessor(ABC):
 
         logger.error(
             f"Attempt {self.retry_count}/{self.max_retries} failed. "
-            f"Retrying in {delay:.2f} seconds. Error: {str(error)}"
+            f"Retrying in {delay:.2f} seconds. Error: {error!s}"
         )
 
     async def cancel(self) -> None:
         """Handle cancellation of the request. Override if needed"""
-        pass
 
     def validate_webhook_setup(self) -> bool:
         """Validate webhook configuration. Override if needed"""
@@ -101,28 +101,23 @@ class AbstractWebhookProcessor(ABC):
 
     async def before_processing(self) -> None:
         """Hook to run before processing the event"""
-        pass
 
     async def after_processing(self) -> None:
         """Hook to run after processing the event"""
-        pass
 
     @abstractmethod
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """Authenticate the request."""
-        pass
 
     @abstractmethod
     async def validate_payload(self, payload: EventPayload) -> bool:
         """Validate the payload structure and content."""
-        pass
 
     @abstractmethod
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
         """Process the event."""
-        pass
 
     @abstractmethod
     async def should_process_event(self, event: WebhookEvent) -> bool:

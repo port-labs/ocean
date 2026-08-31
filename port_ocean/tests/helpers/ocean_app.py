@@ -1,7 +1,7 @@
 import sys
 from inspect import getmembers
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 
 from yaml import safe_load
 
@@ -16,7 +16,7 @@ from port_ocean.utils.signal import init_signal_handler
 
 
 def get_integration_ocean_app(
-    integration_path: str, config_overrides: Union[Dict[str, Any], None] = None
+    integration_path: str, config_overrides: dict[str, Any] | None = None
 ) -> Ocean:
     spec_file = get_spec_file(Path(integration_path))
     config_factory = None
@@ -29,12 +29,12 @@ def get_integration_ocean_app(
         config_factory,
         {
             **(config_overrides or {}),
-            **{
+            
                 "port": {
                     "client_id": "bla",
                     "client_secret": "bla",
-                },
-            },
+                }
+            ,
         },
     )
 
@@ -48,7 +48,7 @@ def get_integration_ocean_app(
     return app
 
 
-def get_integation_resource_configs(integration_path: str) -> List[ResourceConfig]:
+def get_integation_resource_configs(integration_path: str) -> list[ResourceConfig]:
     config_file_path = f"{integration_path}/.port/resources/port-app-config."
     if not Path(f"{config_file_path}yml").exists():
         config_file_path = f"{config_file_path}yaml"
@@ -65,6 +65,6 @@ async def get_raw_result_on_integration_sync_resource_config(
     app: Ocean,
     resource_config: ResourceConfig,
     event_type: str = EventType.RESYNC,
-) -> Tuple[RESYNC_RESULT, List[Exception]]:
+) -> tuple[RESYNC_RESULT, list[Exception]]:
     async with event_context(event_type, trigger_type="machine"):
         return await app.integration._get_resource_raw_results(resource_config)

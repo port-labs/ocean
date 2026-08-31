@@ -1,6 +1,7 @@
 import asyncio
-import pytest
 from dataclasses import dataclass
+
+import pytest
 
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
 
@@ -71,7 +72,7 @@ class TestLocalQueue:
                     await asyncio.sleep(0.1)
                     processed_count += 1
                     await queue.commit()
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     break
 
         # Add messages

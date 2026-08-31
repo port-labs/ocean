@@ -6,7 +6,8 @@ and get full resync testing with minimal boilerplate.
 
 import inspect
 import os
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
 

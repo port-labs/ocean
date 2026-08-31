@@ -1,19 +1,19 @@
-from datetime import datetime, timezone
 from collections.abc import Generator
+from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
+from port_ocean.context.event import EventType, event_context
 from port_ocean.core.models import (
     LakehouseDataEntryBatch,
     LakehouseEventType,
     LakehouseOperation,
 )
-from port_ocean.context.event import EventType, event_context
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse_batch
@@ -560,7 +560,7 @@ async def test_post_integration_raw_data_batch_serializes_datetime_values(
     lakehouse_integration_client: IntegrationClientMixin,
 ) -> None:
     """Datetime values in items/request/response are ISO-formatted in the POST body."""
-    created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    created_at = datetime(2024, 1, 1, tzinfo=UTC)
     raw_data = [{"id": "1", "created_at": created_at}]
     sync_id = "test-sync-123"
     kind = "file"

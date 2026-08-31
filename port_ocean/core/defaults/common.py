@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
-from typing import Type, Any, TypedDict, Optional
+from typing import Any, TypedDict
 
 import httpx
-from loguru import logger
 import yaml
+from loguru import logger
 from pydantic.v1 import BaseModel, Field
 from starlette import status
 
@@ -52,8 +52,8 @@ def is_valid_dir(path: Path) -> bool:
 
 
 def get_port_integration_defaults(
-    port_app_config_class: Type[PortAppConfig],
-    custom_defaults_dir: Optional[str] = None,
+    port_app_config_class: type[PortAppConfig],
+    custom_defaults_dir: str | None = None,
     base_path: Path = Path("."),
 ) -> Defaults | None:
     fallback_dir = base_path / ".port/resources"

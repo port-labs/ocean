@@ -9,13 +9,13 @@ from loguru import logger
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
-from port_ocean.ocean import Ocean
 from port_ocean.helpers.retry import RetryTransport
 from port_ocean.integration_testing.port_mock import PortMockResponder
 from port_ocean.integration_testing.transport import (
     InterceptTransport,
     RecordingTransport,
 )
+from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
 
 # Cache config factories by integration path to avoid pydantic
@@ -307,8 +307,8 @@ class IntegrationTestHarness:
         self._patches.clear()
 
         # Pop our clients from the LocalStacks
-        import port_ocean.utils.async_http as http_module
         import port_ocean.clients.port.utils as port_utils_module
+        import port_ocean.utils.async_http as http_module
 
         try:
             http_module._http_client.pop()

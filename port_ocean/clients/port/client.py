@@ -3,14 +3,14 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.mixins.actions_and_workflow_runs import (
+    ActionsAndWorkflowRunsClientMixin,
+)
 from port_ocean.clients.port.mixins.blueprints import BlueprintClientMixin
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.mixins.migrations import MigrationClientMixin
 from port_ocean.clients.port.mixins.organization import OrganizationClientMixin
-from port_ocean.clients.port.mixins.actions_and_workflow_runs import (
-    ActionsAndWorkflowRunsClientMixin,
-)
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )

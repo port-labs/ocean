@@ -1,6 +1,7 @@
 import asyncio
 from asyncio import Queue, Task
-from typing import Any, TypeVar, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any, TypeVar
 
 from loguru import logger
 

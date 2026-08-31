@@ -18,7 +18,7 @@ def _create_no_x509_strict_context() -> ssl.SSLContext:
     return context
 
 
-def resolve_verify_param(settings: "SslClientSettings") -> bool | ssl.SSLContext:
+def resolve_verify_param(settings: SslClientSettings) -> bool | ssl.SSLContext:
     if not settings.verify:
         return False
 

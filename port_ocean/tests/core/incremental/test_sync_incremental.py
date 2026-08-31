@@ -1,6 +1,6 @@
 """Unit tests for SyncRawMixin.sync_incremental."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -145,11 +145,11 @@ class TestSyncIncrementalCursorSeeding:
         register_incremental_handler(mock_mixin, kind="issue")
         mock_port_client.get_integration_cursor.return_value = None
 
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
             _configure_ocean_for_incremental(mock_ocean, mock_port_client)
             await mock_mixin.sync_incremental(interval_seconds=900)
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         mock_port_client.upsert_integration_cursor.assert_called_once()
         # The persisted cursor is run_started_at (snapshotted before the fetch).
@@ -161,7 +161,7 @@ class TestSyncIncrementalCursorSeeding:
     async def test_uses_stored_cursor_when_available(
         self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
     ) -> None:
-        stored = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+        stored = datetime(2026, 6, 1, 0, 0, 0, tzinfo=UTC)
         mock_port_client.get_integration_cursor.return_value = stored
         configure_app_config(mock_mixin, ["issue"])
         register_incremental_handler(mock_mixin, kind="issue")

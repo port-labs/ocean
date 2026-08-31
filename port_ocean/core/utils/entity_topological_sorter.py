@@ -1,16 +1,15 @@
-from typing import Any, Generator
+from collections.abc import Generator
+from graphlib import CycleError, TopologicalSorter
+from typing import Any
+
+from loguru import logger
+
 from port_ocean.context import event
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.entity_identifier import (
     normalize_identifier,
     relation_target_identifier_keys,
 )
-
-from loguru import logger
-
-from graphlib import TopologicalSorter, CycleError
-from typing import Set
-
 from port_ocean.exceptions.core import OceanAbortException
 
 Node = tuple[str, str]
@@ -56,7 +55,7 @@ class EntityTopologicalSorter:
 
     @staticmethod
     def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
-        nodes: dict[Node, Set[Node]] = {}
+        nodes: dict[Node, set[Node]] = {}
         entities_map = {}
         for entity in entities:
             nodes[EntityTopologicalSorter.node(entity)] = set()

@@ -1,9 +1,9 @@
 import asyncio
-from asyncio.tasks import Task
-from functools import lru_cache
 import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
 import re
+from asyncio.tasks import Task
+from concurrent.futures import ProcessPoolExecutor
+from functools import lru_cache
 from typing import Any, cast
 
 import jq  # type: ignore

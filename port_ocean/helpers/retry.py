@@ -1,26 +1,22 @@
 import asyncio
 import contextlib
+import logging
 import random
 import time
+from collections.abc import Callable, Coroutine, Iterable, Mapping
 from datetime import datetime
 from functools import partial
 from http import HTTPStatus
 from typing import (
     Any,
-    Callable,
-    Coroutine,
-    Iterable,
-    Mapping,
-    Union,
     cast,
-    Optional,
-    List,
 )
+
 import httpx
 from dateutil.parser import isoparse
-import logging
-from port_ocean.helpers.monitor.monitor import get_monitor
+
 from port_ocean.context.ocean import ocean
+from port_ocean.helpers.monitor.monitor import get_monitor
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
@@ -63,11 +59,11 @@ class RetryConfig:
         base_delay: float = 0.1,
         jitter_ratio: float = 0.1,
         respect_retry_after_header: bool = True,
-        retryable_methods: Optional[Iterable[str]] = None,
-        retry_status_codes: Optional[Iterable[int]] = None,
-        retry_after_headers: Optional[List[str]] = None,
-        additional_retry_status_codes: Optional[Iterable[int]] = None,
-        ignore_retry_after_status_codes: Optional[Iterable[int]] = None,
+        retryable_methods: Iterable[str] | None = None,
+        retry_status_codes: Iterable[int] | None = None,
+        retry_after_headers: list[str] | None = None,
+        additional_retry_status_codes: Iterable[int] | None = None,
+        ignore_retry_after_status_codes: Iterable[int] | None = None,
     ):
         """
         Initialize retry configuration.
@@ -172,7 +168,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
     def __init__(
         self,
-        wrapped_transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport],
+        wrapped_transport: httpx.BaseTransport | httpx.AsyncBaseTransport,
         max_attempts: int = 10,
         max_backoff_wait: float = MAX_BACKOFF_WAIT_IN_SECONDS,
         base_delay: float = 0.1,
@@ -180,9 +176,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
-        retry_config: Optional[RetryConfig] = None,
+        retry_config: RetryConfig | None = None,
         logger: Any | None = None,
-        retry_after_headers: Optional[List[str]] = None,
+        retry_after_headers: list[str] | None = None,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -299,7 +295,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             response: The response received.
             attempt: The attempt number (1-based).
         """
-        pass
 
     def _before_retry(
         self,
@@ -337,7 +332,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         Sync lifecycle hook for after_retry. Used in sync retry path.
         Override in subclasses if sync retry needs response handling.
         """
-        pass
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -363,7 +357,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             return response
         except Exception as e:
             if not self._is_retryable_method(request) and self._logger is not None:
-                self._logger.exception(f"{repr(e)} - {request.url}", exc_info=e)
+                self._logger.exception(f"{e!r} - {request.url}", exc_info=e)
             raise e
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -390,7 +384,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         except Exception as e:
             # Retyable methods are logged via _log_error
             if not self._is_retryable_method(request) and self._logger is not None:
-                self._logger.exception(f"{repr(e)} - {request.url}", exc_info=e)
+                self._logger.exception(f"{e!r} - {request.url}", exc_info=e)
             raise e
 
     async def aclose(self) -> None:
@@ -436,15 +430,15 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
         if isinstance(error, httpx.ConnectTimeout):
             self._logger.error(
-                f"Request {request.method} {request.url} failed to connect: {str(error)}"
+                f"Request {request.method} {request.url} failed to connect: {error!s}"
             )
         elif isinstance(error, httpx.TimeoutException):
             self._logger.error(
-                f"Request {request.method} {request.url} failed with a timeout exception: {str(error)}"
+                f"Request {request.method} {request.url} failed with a timeout exception: {error!s}"
             )
         elif isinstance(error, httpx.HTTPError):
             self._logger.error(
-                f"Request {request.method} {request.url} failed with an HTTP error: {str(error)}"
+                f"Request {request.method} {request.url} failed with an HTTP error: {error!s}"
             )
 
     def _log_before_retry(
@@ -457,7 +451,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if self._logger and response:
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with status code:"
-                f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
+                f" {response.status_code}, retrying in {sleep_time} seconds."
             )
         elif self._logger and error:
             self._logger.warning(
@@ -606,8 +600,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     def _calculate_sleep(
         self,
         attempts_made: int,
-        headers: Union[httpx.Headers, Mapping[str, str]],
-        status_code: Optional[int] = None,
+        headers: httpx.Headers | Mapping[str, str],
+        status_code: int | None = None,
     ) -> float:
 
         should_ignore_retry_after_headers = (
@@ -633,7 +627,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         total_backoff = backoff + jitter
         return min(total_backoff, self._retry_config.max_backoff_wait)
 
-    def _parse_retry_header(self, header_value: str) -> Optional[float]:
+    def _parse_retry_header(self, header_value: str) -> float | None:
         """Parse retry header value and return sleep time in seconds.
 
         Args:

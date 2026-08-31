@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import MagicMock, mock_open, patch
-from port_ocean.ocean import Ocean
+
+import pytest
+
 from port_ocean.config.settings import IntegrationConfiguration
+from port_ocean.ocean import Ocean
 
 
 @pytest.fixture

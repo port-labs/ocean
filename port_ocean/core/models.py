@@ -1,8 +1,9 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
-from abc import ABC, abstractmethod
 from typing import Any, Literal, NotRequired, TypedDict
+
 from pydantic.v1 import BaseModel, Extra, root_validator
 from pydantic.v1.fields import Field
 

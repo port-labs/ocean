@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
 
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.models import ProbeCheck, ProbeStatus
-from port_ocean.core.probe.reporters import ProbeReporter, REPORTER_MODES
+from port_ocean.core.probe.reporters import REPORTER_MODES, ProbeReporter
 from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
 from port_ocean.utils.misc import get_spec_kinds
 
@@ -16,7 +16,7 @@ class ProbeContext:
     probe_id: str | None = None
     available_kinds: list[str] = field(default_factory=list)
     config: ProbeConfig = field(default_factory=ProbeConfig)
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     ended_at: datetime | None = None
     status: ProbeStatus = ProbeStatus.IN_PROGRESS
     message: str | None = None
@@ -80,12 +80,12 @@ class ProbeContext:
         self.reporter.report(self.build_request_body())
 
     def finalize(self) -> None:
-        self.ended_at = datetime.now(timezone.utc)
+        self.ended_at = datetime.now(UTC)
         self.status = ProbeStatus.COMPLETED
         self.update_progress()
 
     def fail(self, message: str) -> None:
-        self.ended_at = datetime.now(timezone.utc)
+        self.ended_at = datetime.now(UTC)
         self.status = ProbeStatus.FAILED
         self.message = message
         self.update_progress()

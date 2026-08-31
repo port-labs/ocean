@@ -1,4 +1,4 @@
-from typing import Type, Any, Dict
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -8,8 +8,8 @@ from port_ocean.utils.misc import get_integration_class
 
 def create_default_app(
     path: str,
-    config_factory: Type[BaseModel] | None = None,
-    config_override: Dict[str, Any] | None = None,
+    config_factory: type[BaseModel] | None = None,
+    config_override: dict[str, Any] | None = None,
 ) -> Ocean:
 
     try:

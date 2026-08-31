@@ -1,7 +1,8 @@
+from loguru import logger
+
 from port_ocean.clients.auth.auth_client import AuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import register_on_retry_callback
-from loguru import logger
 
 
 class OAuthClient(AuthClient):

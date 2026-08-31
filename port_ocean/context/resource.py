@@ -1,9 +1,10 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import AsyncIterator, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from loguru import logger
-from werkzeug.local import LocalStack, LocalProxy
+from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.exceptions.context import (
     ResourceContextNotFoundError,

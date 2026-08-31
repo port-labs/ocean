@@ -1,9 +1,9 @@
 from typing import Any
-
-from port_ocean.core.models import Entity
-from port_ocean.core.handlers.port_app_config.models import IngestSearchQuery, Rule
-from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from unittest.mock import MagicMock
+
+from port_ocean.core.handlers.port_app_config.models import IngestSearchQuery, Rule
+from port_ocean.core.models import Entity
+from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from port_ocean.exceptions.core import (
     OceanAbortException,
 )

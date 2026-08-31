@@ -1,12 +1,13 @@
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from loguru import logger
 
 from port_ocean.exceptions.api import BaseAPIException, InternalServerException
-from .context.event import event_context, EventType
+
+from .context.event import EventType, event_context
 from .context.ocean import ocean
-from .utils.misc import get_time, generate_uuid
+from .utils.misc import generate_uuid, get_time
 
 
 async def _handle_silently(

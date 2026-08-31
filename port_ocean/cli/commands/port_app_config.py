@@ -1,33 +1,32 @@
-# -*- coding: utf-8 -*-
 """CLI commands for port-app-config"""
 
 import json
 import sys
 from pathlib import Path
-from typing import Any, Type
+from typing import Any
 
 import click
 from jsonref import replace_refs  # type: ignore[import-untyped]
 
 from port_ocean.cli.commands.main import cli_start
 from port_ocean.core.handlers import BasePortAppConfig
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig, Selector
 from port_ocean.core.handlers.port_app_config.validators import (
     validate_and_get_config_schema,
 )
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig, Selector
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.utils.misc import get_integration_class
 
 
 def _get_config_class(
-    integration_class: Type[BaseIntegration],
-) -> Type[PortAppConfig]:
+    integration_class: type[BaseIntegration],
+) -> type[PortAppConfig]:
     """Extract CONFIG_CLASS from the integration's AppConfigHandlerClass."""
-    handler_class: Type[BasePortAppConfig] = integration_class.AppConfigHandlerClass
+    handler_class: type[BasePortAppConfig] = integration_class.AppConfigHandlerClass
     return handler_class.CONFIG_CLASS
 
 
-def _load_integration_class(path: str) -> Type[BaseIntegration]:
+def _load_integration_class(path: str) -> type[BaseIntegration]:
     """Load the integration class from *path*, handling errors."""
     should_cleanup_sys_path = False
     if path not in sys.path:
@@ -118,7 +117,6 @@ def _write_json_output(
 @cli_start.group("port-app-config")
 def port_app_config() -> None:
     """Commands related to port-app-config"""
-    pass
 
 
 @port_app_config.command("schema")

@@ -14,7 +14,7 @@ import asyncio
 import statistics
 import time
 from dataclasses import asdict
-from typing import Any, Optional
+from typing import Any
 
 import psutil
 from loguru import logger
@@ -22,13 +22,13 @@ from loguru import logger
 from port_ocean.helpers.monitor.utils import measure_event_loop_latency
 
 from .models import (
-    ProcessNode,
-    SystemSnapshot,
-    ResourceUsageStats,
     CPUStats,
-    MemoryStats,
     LatencyStats,
+    MemoryStats,
+    ProcessNode,
+    ResourceUsageStats,
     ResponseSizeStats,
+    SystemSnapshot,
 )
 
 
@@ -48,7 +48,7 @@ class PerformanceMonitor:
     def __init__(self, interval: float = 0.5):
         self.interval = interval
         self._running = False
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
         self._process = psutil.Process()
         self._start_time = time.time()
 
@@ -60,7 +60,7 @@ class PerformanceMonitor:
 
         # Per-kind resource tracking
         self._kind_tracking: dict[str, dict[str, Any]] = {}
-        self._current_tracking_kind: Optional[str] = None
+        self._current_tracking_kind: str | None = None
 
     def _init_cpu_baseline(self) -> None:
         """Initialize CPU measurement baseline for main process and all children."""
@@ -73,7 +73,7 @@ class PerformanceMonitor:
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
-    def _build_process_node(self, proc: psutil.Process) -> Optional[ProcessNode]:
+    def _build_process_node(self, proc: psutil.Process) -> ProcessNode | None:
         """
         Build a process tree node recursively.
 
@@ -112,7 +112,7 @@ class PerformanceMonitor:
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             return None
 
-    def _collect_process_tree(self) -> Optional[ProcessNode]:
+    def _collect_process_tree(self) -> ProcessNode | None:
         """
         Collect the full process tree starting from the main process.
 
@@ -226,7 +226,7 @@ class PerformanceMonitor:
         logger.debug(f"[Monitor] Stopped tracking kind: {kind}")
 
     @property
-    def current_tracking_kind(self) -> Optional[str]:
+    def current_tracking_kind(self) -> str | None:
         """Get the currently tracked kind, if any."""
         return self._current_tracking_kind
 
@@ -369,7 +369,7 @@ class PerformanceMonitor:
         return summary
 
 
-_monitor: Optional[PerformanceMonitor] = None
+_monitor: PerformanceMonitor | None = None
 
 
 def get_monitor() -> PerformanceMonitor:

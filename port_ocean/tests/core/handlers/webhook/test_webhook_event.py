@@ -1,8 +1,8 @@
-import pytest
 from logging import LogRecord
 from logging.handlers import QueueHandler
 from queue import Queue
 
+import pytest
 from fastapi import Request
 from loguru import logger
 

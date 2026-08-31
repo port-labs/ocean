@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, TypedDict
 from urllib.parse import quote_plus
 
 import httpx
@@ -93,7 +93,7 @@ class IntegrationClientMixin:
 
     async def get_provision_enabled_integrations(
         self, should_raise: bool = True, should_log: bool = True
-    ) -> List[str]:
+    ) -> list[str]:
         logger.info("Fetching provision enabled integrations")
         response = await self.client.get(
             f"{self.auth.api_url}/integration/provision-enabled",
@@ -165,7 +165,7 @@ class IntegrationClientMixin:
 
     async def poll_integration_until_default_provisioning_is_complete(
         self,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         attempts = 0
         current_interval_seconds = INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS
 
@@ -195,11 +195,11 @@ class IntegrationClientMixin:
         self,
         _type: str,
         changelog_destination: dict[str, Any],
-        port_app_config: Optional["PortAppConfig"] = None,
+        port_app_config: PortAppConfig | None = None,
         create_port_resources_origin: CreatePortResourcesOrigin = CreatePortResourcesOrigin.Ocean,
-        actions_processing_enabled: Optional[bool] = False,
-        incremental_sync_enabled: Optional[bool] = False,
-    ) -> Dict[str, Any]:
+        actions_processing_enabled: bool | None = False,
+        incremental_sync_enabled: bool | None = False,
+    ) -> dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json = {
@@ -238,10 +238,10 @@ class IntegrationClientMixin:
         self,
         _type: str | None = None,
         changelog_destination: dict[str, Any] | None = None,
-        port_app_config: Optional["PortAppConfig"] = None,
-        actions_processing_enabled: Optional[bool] = None,
-        incremental_sync_enabled: Optional[bool] = None,
-        are_port_resources_initialized: Optional[bool] = None,
+        port_app_config: PortAppConfig | None = None,
+        actions_processing_enabled: bool | None = None,
+        incremental_sync_enabled: bool | None = None,
+        are_port_resources_initialized: bool | None = None,
         processing_mode: ProcessingMode | None = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
@@ -397,11 +397,11 @@ class IntegrationClientMixin:
             # Normalize both timestamps to UTC for comparison
             # If resync_start_time is naive, treat it as UTC
             if resync_start_time.tzinfo is None:
-                resync_time_utc = resync_start_time.replace(tzinfo=timezone.utc)
+                resync_time_utc = resync_start_time.replace(tzinfo=UTC)
             else:
                 resync_time_utc = resync_start_time
 
-            now_utc = datetime.now(timezone.utc)
+            now_utc = datetime.now(UTC)
             if resync_time_utc > now_utc:
                 raise ValueError(
                     f"resync_start_time cannot be in the future: {resync_start_time}"
@@ -482,7 +482,7 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_raise=True, should_log=True)
         logger.debug("Finished POST raw data batch request")
 
-    async def get_integration_cursor(self, kind: str, index: int) -> Optional[datetime]:
+    async def get_integration_cursor(self, kind: str, index: int) -> datetime | None:
         """Return the stored cursor for a (kind, index) pair, or None if not yet created."""
         logger.debug("Fetching incremental cursor", kind=kind, index=index)
         response = await self.client.get(

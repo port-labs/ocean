@@ -1,11 +1,10 @@
-from typing import List
 
 from loguru import logger
 
 from port_ocean.clients.port.client import PortClient
 
 
-async def cleanup_integration(client: PortClient, blueprints: List[str]) -> None:
+async def cleanup_integration(client: PortClient, blueprints: list[str]) -> None:
     for blueprint in blueprints:
         try:
             bp = await client.get_blueprint(blueprint)

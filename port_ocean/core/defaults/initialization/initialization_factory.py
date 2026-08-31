@@ -1,14 +1,13 @@
 """Factory for creating appropriate initialization setup based on configuration."""
 
-from typing import Type
 
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
 from port_ocean.core.defaults.initialization.base_setup import BaseSetup
-from port_ocean.core.defaults.initialization.empty_setup import EmptySetup
 from port_ocean.core.defaults.initialization.default_origin_setup import (
     DefaultOriginSetup,
 )
+from port_ocean.core.defaults.initialization.empty_setup import EmptySetup
 from port_ocean.core.defaults.initialization.port_origin_setup import PortOriginSetup
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import CreatePortResourcesOrigin
@@ -17,7 +16,7 @@ from port_ocean.core.models import CreatePortResourcesOrigin
 class InitializationFactory:
     """Factory for creating appropriate initialization strategy."""
 
-    _SETUP_CLASSES: dict[CreatePortResourcesOrigin, Type[BaseSetup]] = {
+    _SETUP_CLASSES: dict[CreatePortResourcesOrigin, type[BaseSetup]] = {
         CreatePortResourcesOrigin.Empty: EmptySetup,
         CreatePortResourcesOrigin.Port: PortOriginSetup,
         CreatePortResourcesOrigin.Ocean: DefaultOriginSetup,
@@ -28,7 +27,7 @@ class InitializationFactory:
     async def create_setup(
         origin: CreatePortResourcesOrigin,
         integration_config: IntegrationConfiguration,
-        config_class: Type[PortAppConfig],
+        config_class: type[PortAppConfig],
     ) -> BaseSetup:
         """Create appropriate setup based on configuration and feature flags.
 

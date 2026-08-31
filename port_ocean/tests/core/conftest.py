@@ -1,5 +1,6 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -56,13 +57,13 @@ def mock_http_client() -> MagicMock:
                         f"{entity.get('identifier')}-{entity.get('blueprint')}"
                     )
                     success_entities.append(
-                        (
+                        
                             {
                                 "identifier": entity.get("identifier"),
                                 "index": index,
                                 "created": True,
                             }
-                        )
+                        
                     )
 
             return Response(

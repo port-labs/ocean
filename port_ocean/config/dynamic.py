@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, Any, Optional, Type
+from typing import Annotated, Any
 
 from humps import decamelize
 from pydantic import (
@@ -44,7 +44,7 @@ class Configuration(BaseModel):
     name: str
     type: str
     required: bool = False
-    default: Optional[Any] = None
+    default: Any | None = None
     sensitive: bool = False
 
 
@@ -60,7 +60,7 @@ def dynamic_parse(value: Any, field: FieldInfo) -> Any:
     return value
 
 
-def default_config_factory(configurations: Any) -> Type[BaseModel]:
+def default_config_factory(configurations: Any) -> type[BaseModel]:
     configurations = TypeAdapter(list[Configuration]).validate_python(configurations)
     fields: dict[str, tuple[Any, Any]] = {}
 

@@ -1,16 +1,17 @@
-import time
-from typing import Dict, Set
-from loguru import logger
-from port_ocean.core.models import IntegrationRun, RunKind
 import asyncio
+import time
+
+from loguru import logger
+
+from port_ocean.context.event import EventType, event_context
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from port_ocean.context.event import EventType, event_context
-from port_ocean.context.ocean import ocean
+from port_ocean.core.models import IntegrationRun, RunKind
 from port_ocean.exceptions.execution_manager import (
     ActionExecutionError,
     DuplicateActionExecutorError,
@@ -90,16 +91,16 @@ class ExecutionManager:
         self._webhook_manager = webhook_manager
         self._polling_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set[asyncio.Task[None]]()
-        self._actions_executors: Dict[str, AbstractExecutor] = {}
+        self._actions_executors: dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
         self._global_queue: LocalQueue[IntegrationRun] = LocalQueue()
-        self._partition_queues: Dict[str, AbstractQueue[IntegrationRun]] = {}
-        self._deduplication_set: Set[str] = set[str]()
+        self._partition_queues: dict[str, AbstractQueue[IntegrationRun]] = {}
+        self._deduplication_set: set[str] = set[str]()
         self._buffer_queue_counts: dict[RunKind, dict[str, int]] = {
             RunKind.ACTION: {},
             RunKind.WORKFLOW_NODE: {},
         }
-        self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
+        self._queues_locks: dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
         self._workers_count: int = workers_count
         self._high_watermark: int = runs_buffer_high_watermark
@@ -411,7 +412,7 @@ class ExecutionManager:
                             f"Processing run from {source} queue",
                             queue_size=await self._get_queues_size(),
                         )
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         continue
 
                     if source == GLOBAL_SOURCE:
@@ -436,7 +437,7 @@ class ExecutionManager:
                         self._global_queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
                     )
                     got_run = True
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.debug("Global queue is empty, skipping")
                     return
 
@@ -463,7 +464,7 @@ class ExecutionManager:
                     )
                     got_run = True
                     self._track_buffer_dequeue(run)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.debug(f"Partition queue {partition_name} is empty, skipping")
                     return
 
@@ -541,7 +542,7 @@ class ExecutionManager:
                     error_summary = str(e)
                 except Exception as e:
                     logger.exception("Error executing run", error=str(e))
-                    error_summary = f"Failed to execute run: {str(e)}"
+                    error_summary = f"Failed to execute run: {e!s}"
 
                 if error_summary:
                     await ocean.port_client.report_run_completed(
@@ -577,5 +578,5 @@ class ExecutionManager:
                 timeout=self._max_wait_seconds_before_shutdown,
             )
             logger.info("All workers completed gracefully")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Shutdown timed out waiting for workers to complete")

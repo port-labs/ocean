@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Type, Any
+from typing import Any
 
 from loguru import logger
 from pydantic.v1 import ValidationError
@@ -48,7 +48,7 @@ class BasePortAppConfig(BaseHandler):
         CONFIG_CLASS (Type[PortAppConfig]): The class used for defining port application configuration settings.
     """
 
-    CONFIG_CLASS: Type[PortAppConfig] = PortAppConfig
+    CONFIG_CLASS: type[PortAppConfig] = PortAppConfig
 
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
@@ -74,7 +74,7 @@ class BasePortAppConfig(BaseHandler):
                     raw_config
                 )
             except ValidationError as e:
-                logger.error(f"Invalid port app config found: {str(e)}")
+                logger.error(f"Invalid port app config found: {e!s}")
                 logger.warning(f"Invalid port app config: {raw_config}")
                 raise
 

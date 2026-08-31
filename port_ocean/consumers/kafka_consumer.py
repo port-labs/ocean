@@ -1,7 +1,8 @@
 import functools
 import signal
-from asyncio import get_running_loop, ensure_future
-from typing import Any, Callable, Awaitable
+from asyncio import ensure_future, get_running_loop
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from confluent_kafka import Consumer, KafkaException, Message, TopicPartition
 from loguru import logger
@@ -108,7 +109,7 @@ class KafkaConsumer:
                         except Exception as process_error:
                             logger.exception(
                                 "Failed process message"
-                                f" from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}: {str(process_error)}"
+                                f" from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}: {process_error!s}"
                             )
                         finally:
                             self.consumer.commit(asynchronous=False)

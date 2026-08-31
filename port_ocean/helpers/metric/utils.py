@@ -1,6 +1,7 @@
-from functools import wraps
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from functools import wraps
+from typing import Any
 
 from port_ocean.context.metric_resource import metric_resource_context
 from port_ocean.context.ocean import ocean

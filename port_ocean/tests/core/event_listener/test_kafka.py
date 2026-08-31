@@ -3,8 +3,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import ValidationError
 
-from port_ocean.core.event_listener.kafka import KafkaEventListener
-from port_ocean.core.event_listener.kafka import KafkaEventListenerSettings
+from port_ocean.core.event_listener.kafka import (
+    KafkaEventListener,
+    KafkaEventListenerSettings,
+)
 from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 

@@ -1,8 +1,9 @@
 import asyncio
 from asyncio import ensure_future
+from collections.abc import Callable, Coroutine
 from functools import wraps
 from traceback import format_exception
-from typing import Callable, Coroutine, Any
+from typing import Any
 
 from loguru import logger
 from starlette.concurrency import run_in_threadpool
@@ -69,7 +70,7 @@ def repeat_every(
                             format_exception(type(exc), exc, exc.__traceback__)
                         )
                         logger.bind(traceback=formatted_exception).error(
-                            f"Repeated task failed: {str(exc)}"
+                            f"Repeated task failed: {exc!s}"
                         )
                         if raise_exceptions:
                             raise exc
