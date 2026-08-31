@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: feature
-changelog: "Expanded user email enrichment by adding includeVerifiedDomainEmails selector, enabling customers on GitHub Enterprise Cloud with verified domains to include organizationVerifiedDomainEmails on exported users. No N+1 API calls; the field is inlined into the existing member list query."
