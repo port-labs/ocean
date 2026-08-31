@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.6 (2026-08-31)
+
+
+### Features
+
+- Expanded user email enrichment by adding includeVerifiedDomainEmails selector, enabling customers on GitHub Enterprise Cloud with verified domains to include organizationVerifiedDomainEmails on exported users. No N+1 API calls; the field is inlined into the existing member list query.
+
+
+## 6.10.5 (2026-08-31)
+
+
+### Bug Fixes
+
+- Added retry with exponential backoff for GraphQL errors during team member enrichment. GitHub server-side errors like "Something went wrong while executing your query" are retried up to 3 times before failing, preventing a single error from aborting the entire team resync.
+
+
+## 6.10.4 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 6.10.3 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
 ## 6.10.2 (2026-08-28)
 
 
