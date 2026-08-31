@@ -11,10 +11,17 @@ class PermissionCombination(StrEnum):
 
 
 class KindPermissionVerdict(ABC):
-    @property
+    _kind_permissions: Mapping[str, tuple[str, ...]] | None = None
+
     @abstractmethod
-    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
+    def load_kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
         """Maps probe kinds to the permissions required to sync them."""
+
+    @property
+    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
+        if self._kind_permissions is None:
+            self._kind_permissions = self.load_kind_permissions()
+        return self._kind_permissions
 
     @property
     @abstractmethod
