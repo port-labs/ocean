@@ -301,6 +301,7 @@ async def resync_users(
                         options=ListUserOptions(
                             organization=org["login"],
                             include_saml_email=config.selector.include_saml_email,
+                            include_verified_domain_emails=config.selector.include_verified_domain_emails,
                         )
                     )
                 )
