@@ -39,6 +39,9 @@
     "sass": "^1.102.0",
     "xml2js": "^0.6.2"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.6.2",
     "@docusaurus/tsconfig": "^3.6.2",
