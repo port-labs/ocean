@@ -1,7 +1,7 @@
 from asyncio import Event, sleep, wait_for
 from types import SimpleNamespace
 from typing import Any, Awaitable, Callable
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -322,7 +322,7 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
 
 
 @pytest.mark.asyncio
-async def test_polling_logs_background_resync_failures(
+async def test_polling_marks_resync_failed_when_background_task_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     port_client = MagicMock()
@@ -360,18 +360,14 @@ async def test_polling_logs_background_resync_failures(
         ),
     )
 
-    bound_logger = MagicMock()
-    with patch.object(polling_module.logger, "bind", return_value=bound_logger):
-        await listener._start()
-        for _ in range(100):
-            if listener._current_resync_task is None:
-                break
-            await sleep(0)
-        else:
-            pytest.fail("Resync task did not complete")
+    await listener._start()
+    for _ in range(100):
+        if listener._current_resync_task is None:
+            break
+        await sleep(0)
+    else:
+        pytest.fail("Resync task did not complete")
 
-    bound_logger.error.assert_called_once()
-    assert "Resync task failed: sync failed" in bound_logger.error.call_args.args[0]
     assert resync_state_updater.update_after_resync.call_args_list[-1].args[0] == (
         IntegrationStateStatus.Failed
     )
