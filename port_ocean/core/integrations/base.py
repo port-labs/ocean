@@ -12,6 +12,7 @@ from port_ocean.core.event_listener.factory import (
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
 from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
+from port_ocean.core.probe.reporters import REPORTER_MODES
 from port_ocean.exceptions.core import IntegrationAlreadyStartedException, ModeNotSupportedException
 from port_ocean.exceptions.probe import ProbeFailedError
 
@@ -103,12 +104,10 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
     ) -> ProbeContext:
         """Invoke the registered ``on_probe`` listener."""
         context = ProbeContext(probe_id)
-        await context.initialize(
-            config,
-            port_app_config_class=self.AppConfigHandlerClass.CONFIG_CLASS,
-        )
         listener = self.event_strategy.on_probe
         if listener is None:
+            config = config or ProbeConfig()
+            context.reporter = REPORTER_MODES[config.reporting_mode](config)
             error = ModeNotSupportedException(
                 self.context.config.integration.type, "probe"
             )
@@ -119,6 +118,11 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             EventType.ON_PROBE,
             trigger_type="machine",
         ):
+            await context.initialize(
+                config,
+                port_app_config_class=self.AppConfigHandlerClass.CONFIG_CLASS,
+            )
+
             try:
                 returned = await listener(context)
             except Exception as error:
