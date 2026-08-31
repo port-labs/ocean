@@ -169,12 +169,10 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
     }}
 """
 
-# A user rarely belongs to more than 1-2 enterprises; 10 covers any practical
-# scenario without pagination.
-VIEWER_ENTERPRISES_GQL = """
+VIEWER_ENTERPRISE_GQL = """
     query {
       viewer {
-        enterprises(first: 10) {
+        enterprises(first: 1) {
           nodes {
             slug
           }

@@ -17,7 +17,7 @@ from typing import (
 import httpx
 from loguru import logger
 
-from github.helpers.exceptions import GraphQLForbiddenFieldError
+from github.helpers.exceptions import GraphQLErrorGroup, GraphQLForbiddenFieldError
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
@@ -336,25 +336,25 @@ async def _get_org_saml_identities(
 
 
 @cache_coroutine_result()
-async def _get_enterprise_slugs(client: "AbstractGithubClient") -> list[str]:
-    from github.helpers.gql_queries import VIEWER_ENTERPRISES_GQL
+async def _get_enterprise_slug(client: "AbstractGithubClient") -> str | None:
+    from github.helpers.gql_queries import VIEWER_ENTERPRISE_GQL
 
     try:
         response = await client.send_api_request(
             client.base_url,
             method="POST",
-            json_data={"query": VIEWER_ENTERPRISES_GQL},
+            json_data={"query": VIEWER_ENTERPRISE_GQL},
         )
         enterprises = response["data"]["viewer"]["enterprises"]["nodes"]
         if enterprises:
-            slugs = [enterprise["slug"] for enterprise in enterprises]
-            logger.info(f"Auto-detected enterprise slugs: {slugs}")
-            return slugs
+            slug = enterprises[0]["slug"]
+            logger.info(f"Auto-detected enterprise slug: {slug}")
+            return slug
         logger.debug("No enterprise found for authenticated user")
     except (KeyError, httpx.HTTPStatusError, GraphQLErrorGroup) as exc:
-        logger.debug(f"Failed to detect enterprise slugs: {exc}", exc_info=True)
+        logger.debug(f"Failed to detect enterprise slug: {exc}", exc_info=True)
 
-    return []
+    return None
 
 
 async def _get_enterprise_saml_identities(
@@ -399,15 +399,13 @@ async def get_saml_identities(
     saml_users = await _get_org_saml_identities(client, organization)
 
     if not saml_users:
-        enterprise_slugs = await _get_enterprise_slugs(client)
-        for enterprise_slug in enterprise_slugs:
+        enterprise_slug = await _get_enterprise_slug(client)
+        if enterprise_slug:
             logger.info(
                 f"Org SAML empty for '{organization}', "
                 f"trying enterprise '{enterprise_slug}'"
             )
             saml_users = await _get_enterprise_saml_identities(client, enterprise_slug)
-            if saml_users:
-                break
 
     if saml_users:
         logger.info(
@@ -418,13 +416,6 @@ async def get_saml_identities(
         logger.info(
             f"No SAML identities found for organization '{organization}' "
             f"(checked org-level and enterprise-level)"
-        )
-    except TypeError:
-        logger.info(f"SAML not enabled for organization '{organization}'")
-    except GraphQLForbiddenFieldError:
-        logger.warning(
-            f"SAML identity query returned FORBIDDEN for organization '{organization}', "
-            "skipping SAML enrichment"
         )
 
     return saml_users
