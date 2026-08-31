@@ -16,6 +16,7 @@ from typing import (
 
 from loguru import logger
 
+from github.helpers.exceptions import GraphQLForbiddenFieldError
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
@@ -327,6 +328,11 @@ async def get_saml_identities(
         )
     except TypeError:
         logger.info(f"SAML not enabled for organization '{organization}'")
+    except GraphQLForbiddenFieldError:
+        logger.warning(
+            f"SAML identity query returned FORBIDDEN for organization '{organization}', "
+            "skipping SAML enrichment"
+        )
 
     return saml_users
 
