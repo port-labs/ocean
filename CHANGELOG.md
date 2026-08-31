@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.4 (2026-08-30)
+
+
+### Features
+
+- Allow individual HTTP requests to opt out of retries via the skip_retry request extension (#74233718)
+
+
+## 0.50.3 (2026-08-30)
+
+
+### Features
+
+- Add probe context, config, and result models for integration probing
+
+
 ## 0.50.2 (2026-08-27)
 
 
