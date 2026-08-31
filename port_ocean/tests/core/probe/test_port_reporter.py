@@ -40,8 +40,6 @@ async def test_port_probe_reporter_patches_health_result(mock_ocean: MagicMock) 
             "status": "IN_PROGRESS",
             "probeMode": "shallow",
             "startedAt": context.started_at.isoformat(),
-            "endedAt": None,
-            "message": None,
             "checks": [
                 {
                     "kind": "repository",

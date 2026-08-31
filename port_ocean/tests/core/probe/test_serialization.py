@@ -23,6 +23,19 @@ def test_serialize_probe_check_serializes_enums() -> None:
     }
 
 
+def test_serialize_probe_value_omits_none_fields() -> None:
+    assert serialize_probe_value(
+        {
+            "message": None,
+            "status": "IN_PROGRESS",
+            "checks": [{"kind": "repository", "message": None, "status": "SUCCESS"}],
+        }
+    ) == {
+        "status": "IN_PROGRESS",
+        "checks": [{"kind": "repository", "status": "SUCCESS"}],
+    }
+
+
 def test_serialize_probe_value_serializes_datetimes() -> None:
     # Arrange
     timestamp = datetime(2026, 8, 30, 12, 0, 0, tzinfo=timezone.utc)
@@ -39,6 +52,5 @@ def test_serialize_probe_value_serializes_datetimes() -> None:
     # Assert
     assert serialized == {
         "startedAt": "2026-08-30T12:00:00+00:00",
-        "endedAt": None,
         "checks": [],
     }

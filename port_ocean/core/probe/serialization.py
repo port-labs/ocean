@@ -9,7 +9,11 @@ def serialize_probe_value(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, dict):
-        return {key: serialize_probe_value(item) for key, item in value.items()}
+        return {
+            key: serialize_probe_value(item)
+            for key, item in value.items()
+            if item is not None
+        }
     if isinstance(value, list):
         return [serialize_probe_value(item) for item in value]
     return value

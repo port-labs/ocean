@@ -143,8 +143,8 @@ def test_build_request_body_when_probe_in_progress() -> None:
     assert body["probeId"] == "probe-1"
     assert body["status"] == "IN_PROGRESS"
     assert body["probeMode"] == "shallow"
-    assert body["endedAt"] is None
-    assert body["message"] is None
+    assert "endedAt" not in body
+    assert "message" not in body
     assert body["checks"] == []
 
 
