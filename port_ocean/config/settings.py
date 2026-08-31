@@ -1,7 +1,6 @@
-from typing import Any, Literal, Optional, Self, Type
-from urllib.parse import urlparse
-
 import os
+from typing import Any, Literal, Self
+from urllib.parse import urlparse
 
 from loguru import logger
 from pydantic import (
@@ -373,7 +372,7 @@ LiveEventsSettingsType = RedisLiveEventsSettings
 class IntegrationConfiguration(BaseOceanSettings):
     model_config = SettingsConfigDict(extra="allow")
 
-    integration_config_model: Type[BaseModel] | None = Field(default=None, exclude=True)
+    integration_config_model: type[BaseModel] | None = Field(default=None, exclude=True)
 
     allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
@@ -407,7 +406,7 @@ class IntegrationConfiguration(BaseOceanSettings):
     )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
-    caching_storage_mode: Optional[CachingStorageMode] = Field(
+    caching_storage_mode: CachingStorageMode | None = Field(
         default=CachingStorageMode.disk
     )
 
@@ -470,7 +469,7 @@ class IntegrationConfiguration(BaseOceanSettings):
             return self
 
         # Using the integration dynamic config model to parse the config
-        def parse_config(model: Type[BaseModel], config: Any) -> BaseModel:
+        def parse_config(model: type[BaseModel], config: Any) -> BaseModel:
             # In some cases, the config is parsed as a string so we need to handle it
             # Example: when the config is loaded from the environment variables and there is an object inside the config
             if isinstance(config, str):

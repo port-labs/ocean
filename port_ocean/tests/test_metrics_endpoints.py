@@ -1,6 +1,8 @@
+from unittest.mock import Mock
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import Mock
+
 from port_ocean.helpers.metric.metric import Metrics
 
 

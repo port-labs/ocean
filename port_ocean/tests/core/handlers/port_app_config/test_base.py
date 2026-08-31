@@ -1,8 +1,10 @@
-import pytest
+from typing import Any
 from unittest.mock import MagicMock, patch
-from pydantic.v1 import ValidationError
-from typing import Any, Dict
 
+import pytest
+from pydantic.v1 import ValidationError
+
+from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.base import BasePortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -13,14 +15,13 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from port_ocean.context.event import EventType, event_context
 from port_ocean.exceptions.api import EmptyPortAppConfigError
 
 
 class MockPortAppConfig(BasePortAppConfig):
     mock_get_port_app_config: Any
 
-    async def _get_port_app_config(self) -> Dict[str, Any]:
+    async def _get_port_app_config(self) -> dict[str, Any]:
         return self.mock_get_port_app_config()
 
 

@@ -131,7 +131,7 @@ class JQEntityProcessorSync:
                         if search_result is None and misconfigurations is not None:
                             # Use full dot-path as the key so callers can distinguish
                             # e.g. "properties.labels" from "relations.labels".
-                            misconfigurations[current_path] = obj[key]
+                            misconfigurations[current_path] = value
 
                 elif isinstance(value, dict):
                     search_result = JQEntityProcessorSync._search_as_object(
@@ -142,7 +142,7 @@ class JQEntityProcessorSync:
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
-                        misconfigurations[current_path] = obj[key]
+                        misconfigurations[current_path] = value
 
                 else:
                     search_result = JQEntityProcessorSync._search(

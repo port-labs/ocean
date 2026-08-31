@@ -1,20 +1,22 @@
 import asyncio
-from typing import Any
 import uuid
 from datetime import datetime, timedelta
+from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
+
+import httpx
+import pytest
 from fastapi import APIRouter, FastAPI
 from loguru import logger
 from pydantic.v1 import BaseModel
-import pytest
-import httpx
+
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
-    ExecutionManager,
     GLOBAL_SOURCE,
+    ExecutionManager,
 )
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -25,9 +27,9 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.models import (
     ActionRun,
+    ActionRunStatus,
     IntegrationActionInvocationPayload,
     RunKind,
-    ActionRunStatus,
     WorkflowIntegrationActionConfig,
     WorkflowNodeRun,
     WorkflowNodeRunStatus,
@@ -709,7 +711,6 @@ class TestExecutionManager:
             run: ActionRun,
         ) -> None:
             await asyncio.sleep(0.1)
-            return None
 
         mock_test_executor.execute.side_effect = mock_execute
         mock_test_partition_executor.execute.side_effect = mock_execute
@@ -746,16 +747,8 @@ class TestExecutionManager:
             except Exception as e:
                 logger.error(f"Error recording run measurement: {e}")
 
-        setattr(
-            execution_manager_without_executors,
-            "_handle_global_queue_once",
-            wrapped_handle_global_queue_once,
-        )
-        setattr(
-            execution_manager_without_executors,
-            "_handle_partition_queue_once",
-            wrapped_handle_partition_queue_once,
-        )
+        execution_manager_without_executors._handle_global_queue_once = wrapped_handle_global_queue_once
+        execution_manager_without_executors._handle_partition_queue_once = wrapped_handle_partition_queue_once
         mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_wf_nodes_uid=None: [
             *[
                 generate_mock_action_run(

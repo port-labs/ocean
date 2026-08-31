@@ -2,6 +2,7 @@ from typing import Any, Literal
 
 import httpx
 from loguru import logger
+
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.mixins.actions import ActionsClientMixin
 from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMixin

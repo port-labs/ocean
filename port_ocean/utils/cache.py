@@ -1,12 +1,15 @@
+import asyncio
+import base64
 import functools
 import hashlib
-import base64
-import asyncio
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any
 from weakref import WeakValueDictionary
-from typing import Callable, AsyncIterator, Awaitable, Any
+
+from loguru import logger
+
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
 from port_ocean.context.ocean import ocean
-from loguru import logger
 
 AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 AsyncCallable = Callable[..., Awaitable[Any]]
@@ -96,7 +99,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                         yield chunk
                     return
             except FailedToReadCacheError as e:
-                logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
+                logger.warning(f"Failed to read cache for {cache_key}: {e!s}")
 
             async with _key_locks_guard:
                 lock = _locks.setdefault(cache_key, asyncio.Lock())
@@ -110,7 +113,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                             yield chunk
                         return
                 except FailedToReadCacheError as e:
-                    logger.debug(f"Failed to read cache for {cache_key}: {str(e)}")
+                    logger.debug(f"Failed to read cache for {cache_key}: {e!s}")
 
                 cached_results = list()
                 async for result in func(*args, **kwargs):
@@ -123,7 +126,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                         cached_results,
                     )
                 except FailedToWriteCacheError as e:
-                    logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
+                    logger.warning(f"Failed to write cache for {cache_key}: {e!s}")
             return
 
         return wrapper
@@ -180,7 +183,7 @@ def cache_coroutine_result(
                 if cache := await ocean.app.cache_provider.get(cache_key):
                     return cache
             except FailedToReadCacheError as e:
-                logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
+                logger.warning(f"Failed to read cache for {cache_key}: {e!s}")
 
             async with _key_locks_guard:
                 lock = _locks.setdefault(cache_key, asyncio.Lock())
@@ -190,7 +193,7 @@ def cache_coroutine_result(
                     if cache := await ocean.app.cache_provider.get(cache_key):
                         return cache
                 except FailedToReadCacheError as e:
-                    logger.debug(f"Failed to read cache for {cache_key}: {str(e)}")
+                    logger.debug(f"Failed to read cache for {cache_key}: {e!s}")
 
                 result = await func(*args, **kwargs)
                 try:
@@ -199,7 +202,7 @@ def cache_coroutine_result(
                         result,
                     )
                 except FailedToWriteCacheError as e:
-                    logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
+                    logger.warning(f"Failed to write cache for {cache_key}: {e!s}")
             return result
 
         return wrapper

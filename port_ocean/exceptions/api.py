@@ -1,6 +1,7 @@
 import abc
 
-from fastapi.responses import Response, PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
+
 from port_ocean.exceptions.base import BaseOceanException
 
 

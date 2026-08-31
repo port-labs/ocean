@@ -1,10 +1,10 @@
 from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
     InputClassifyingResult,
-    can_expression_run_with_no_input,
     _can_expression_run_on_single_item,
-    classify_input,
-    _mask_strings,
     _mask_numbers,
+    _mask_strings,
+    can_expression_run_with_no_input,
+    classify_input,
 )
 
 

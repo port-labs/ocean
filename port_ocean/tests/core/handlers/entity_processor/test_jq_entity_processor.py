@@ -1149,6 +1149,7 @@ class TestJQEntityProcessor:
         - Verifies the original is NOT mutated
         """
         from copy import deepcopy
+
         from port_ocean.log.sensetive import SensitiveLogFilter, sensitive_log_filter
 
         # Save original patterns to restore after test (compiled_patterns is class-level)

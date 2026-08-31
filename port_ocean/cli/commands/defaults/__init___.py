@@ -1,7 +1,7 @@
-from .dock import dock
 from .clean import clean
+from .dock import dock
 
 __all__ = [
-    "dock",
     "clean",
+    "dock",
 ]

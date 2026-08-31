@@ -1,6 +1,6 @@
 """Unit tests for CursorStore."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -23,7 +23,7 @@ def cursor_store(mock_port_client: MagicMock) -> CursorStore:
 
 @pytest.fixture
 def cursor() -> datetime:
-    return datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+    return datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
 
 
 class TestCursorStoreGet:

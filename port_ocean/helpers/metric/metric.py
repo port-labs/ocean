@@ -1,6 +1,5 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
-
 import os
+from typing import TYPE_CHECKING, Any
 
 import prometheus_client
 import prometheus_client.openmetrics
@@ -105,7 +104,7 @@ class MetricResourceKind:
 
 
 # Registry for core and custom metrics
-_metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
+_metrics_registry: dict[str, tuple[str, str, list[str]]] = {
     MetricType.DURATION_NAME: (
         MetricType.DURATION_NAME,
         "duration description",
@@ -193,7 +192,7 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
 }
 
 
-def register_metric(name: str, description: str, labels: List[str]) -> None:
+def register_metric(name: str, description: str, labels: list[str]) -> None:
     """Register a custom metric that will be available for use.
 
     Args:
@@ -230,8 +229,8 @@ class Metrics:
         self.registry = prometheus_client.CollectorRegistry()
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
-        self._integration_version: Optional[str] = None
-        self._ocean_version: Optional[str] = None
+        self._integration_version: str | None = None
+        self._ocean_version: str | None = None
         self._installation_type: str = "Unknown"
         self._execution_mode: str = "Unknown"
         self._event_id = ""
@@ -397,13 +396,13 @@ class Metrics:
 
     async def report_sync_metrics(
         self,
-        metric_name: Optional[str] = None,
-        kinds: Optional[list[str]] = None,
-        blueprints: Optional[list[Optional[str]]] = None,
+        metric_name: str | None = None,
+        kinds: list[str] | None = None,
+        blueprints: list[str | None] | None = None,
         dsp_enabled: bool = False,
     ) -> None:
         if dsp_enabled or kinds is None:
-            return None
+            return
 
         metrics = []
 
@@ -430,16 +429,16 @@ class Metrics:
 
     async def report_kind_sync_metrics(
         self,
-        metric_name: Optional[str] = None,
-        kind: Optional[str] = None,
-        blueprint: Optional[str] = None,
+        metric_name: str | None = None,
+        kind: str | None = None,
+        blueprint: str | None = None,
         dsp_enabled: bool = False,
     ) -> None:
         if dsp_enabled:
-            return None
+            return
         metrics = self.generate_metrics(metric_name, kind, blueprint)
         if not metrics:
-            return None
+            return
         try:
             for metric in metrics:
                 await self.port_client.put_integration_sync_metrics(metric)
@@ -448,9 +447,9 @@ class Metrics:
 
     def generate_metrics(
         self,
-        metric_name: Optional[str] = None,
-        kind: Optional[str] = None,
-        blueprint: Optional[str] = None,
+        metric_name: str | None = None,
+        kind: str | None = None,
+        blueprint: str | None = None,
     ) -> list[dict[str, Any]]:
         try:
             latest_raw = self.generate_latest()
@@ -524,18 +523,18 @@ class Metrics:
             return []
 
     async def send_metrics_to_webhook(
-        self, metric_name: Optional[str] = None, kind: Optional[str] = None
+        self, metric_name: str | None = None, kind: str | None = None
     ) -> None:
         try:
             if not self.enabled:
-                return None
+                return
 
             if not self.metrics_settings.webhook_url:
-                return None
+                return
 
             metrics = self.generate_metrics(metric_name, kind)
             if not metrics:
-                return None
+                return
 
             for metric in metrics:
                 logger.info(f"Sending metrics to webhook {metric['kind']}: {metric}")

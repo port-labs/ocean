@@ -1,11 +1,13 @@
-from typing import Any
 import asyncio
-from port_ocean.utils import cache
-import pytest
-from typing import AsyncGenerator, AsyncIterator, List, TypeVar
+from collections.abc import AsyncGenerator, AsyncIterator
+from typing import Any, TypeVar
 from unittest.mock import AsyncMock
+
+import pytest
+
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
 from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.utils import cache
 
 
 @pytest.fixture
@@ -25,7 +27,7 @@ def mock_ocean(memory_cache: InMemoryCacheProvider) -> Any:
 T = TypeVar("T")
 
 
-async def collect_iterator_results(iterator: AsyncIterator[List[T]]) -> List[T]:
+async def collect_iterator_results(iterator: AsyncIterator[list[T]]) -> list[T]:
     results = []
     async for item in iterator:
         results.extend(item)
@@ -46,7 +48,7 @@ async def test_cache_iterator_result(mock_ocean: Any, monkeypatch: Any) -> None:
     call_count = 0
 
     @cache.cache_iterator_result()
-    async def sample_iterator(x: int) -> AsyncGenerator[List[int], None]:
+    async def sample_iterator(x: int) -> AsyncGenerator[list[int], None]:
         nonlocal call_count
         call_count += 1
         for i in range(x):
@@ -75,7 +77,7 @@ async def test_cache_iterator_result_with_kwargs(
     call_count = 0
 
     @cache.cache_iterator_result()
-    async def sample_iterator(x: int, y: int = 1) -> AsyncGenerator[List[int], None]:
+    async def sample_iterator(x: int, y: int = 1) -> AsyncGenerator[list[int], None]:
         nonlocal call_count
         call_count += 1
         for i in range(x * y):
@@ -110,7 +112,7 @@ async def test_cache_iterator_result_cache_errors(
     call_count = 0
 
     @cache.cache_iterator_result()
-    async def sample_iterator(x: int) -> AsyncGenerator[List[int], None]:
+    async def sample_iterator(x: int) -> AsyncGenerator[list[int], None]:
         nonlocal call_count
         call_count += 1
         for i in range(x):
@@ -266,7 +268,7 @@ async def test_cache_failures_dont_affect_execution(
     coroutine_call_count = 0
 
     @cache.cache_iterator_result()
-    async def sample_iterator(x: int) -> AsyncGenerator[List[int], None]:
+    async def sample_iterator(x: int) -> AsyncGenerator[list[int], None]:
         nonlocal iterator_call_count
         iterator_call_count += 1
         for i in range(x):
@@ -327,7 +329,7 @@ async def test_cache_iterator_result_on_instance_method(
             self.calls = 0
 
         @cache.cache_iterator_result()
-        async def inst_method(self, x: int) -> AsyncGenerator[List[int], None]:
+        async def inst_method(self, x: int) -> AsyncGenerator[list[int], None]:
             self.calls += 1
             for i in range(x):
                 await asyncio.sleep(0.01)
@@ -362,7 +364,7 @@ async def test_cache_iterator_result_on_class_method(
 
         @classmethod
         @cache.cache_iterator_result()
-        async def cls_method(cls, x: int) -> AsyncGenerator[List[int], None]:
+        async def cls_method(cls, x: int) -> AsyncGenerator[list[int], None]:
             cls.calls += 1
             for i in range(x):
                 await asyncio.sleep(0.01)
@@ -395,7 +397,7 @@ async def test_cache_iterator_result_on_static_method(
 
         @staticmethod
         @cache.cache_iterator_result()
-        async def static_method(x: int) -> AsyncGenerator[List[int], None]:
+        async def static_method(x: int) -> AsyncGenerator[list[int], None]:
             Sample.calls += 1
             for i in range(x):
                 await asyncio.sleep(0.01)
@@ -426,7 +428,7 @@ async def test_regular_iterator_with_self_param_not_filtered(
 
     async def regular_function_with_self(
         self: int, y: int
-    ) -> AsyncGenerator[List[int], None]:
+    ) -> AsyncGenerator[list[int], None]:
         for i in range(self + y):
             await asyncio.sleep(0.01)
             yield [i]
@@ -565,7 +567,7 @@ async def test_cache_iterator_maintains_chunks(
     call_count = 0
 
     @cache.cache_iterator_result()
-    async def chunked_iterator() -> AsyncGenerator[List[int], None]:
+    async def chunked_iterator() -> AsyncGenerator[list[int], None]:
         nonlocal call_count
         call_count += 1
         yield [1, 2]
@@ -598,7 +600,7 @@ async def test_cache_iterator_result_concurrency(
     execution_count = 0
 
     @cache.cache_iterator_result()
-    async def slow_iterator(x: int) -> AsyncGenerator[List[int], None]:
+    async def slow_iterator(x: int) -> AsyncGenerator[list[int], None]:
         nonlocal execution_count
         execution_count += 1
         await asyncio.sleep(0.1)

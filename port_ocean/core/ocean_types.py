@@ -1,13 +1,12 @@
 from collections import defaultdict
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import (
-    TypedDict,
     Any,
-    AsyncIterator,
-    Callable,
-    Awaitable,
     NamedTuple,
+    TypedDict,
 )
+
 from port_ocean.core.models import Entity
 
 RAW_ITEM = dict[Any, Any]

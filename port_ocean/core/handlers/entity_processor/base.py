@@ -1,6 +1,7 @@
 from abc import abstractmethod
 
 from loguru import logger
+
 from port_ocean.core.handlers.base import BaseHandler
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (

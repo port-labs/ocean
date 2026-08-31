@@ -1,7 +1,7 @@
 """Unit tests for incremental sync strategy utilities."""
 
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -15,7 +15,7 @@ from port_ocean.core.incremental.strategies import (
 
 @pytest.fixture
 def cursor() -> datetime:
-    return datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+    return datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
 
 
 class TestServerSideTimestampStrategy:

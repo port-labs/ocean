@@ -1,6 +1,7 @@
 import os
-import pytest
 from pathlib import Path
+
+import pytest
 
 from port_ocean.cache.disk import (
     DiskCacheProvider,

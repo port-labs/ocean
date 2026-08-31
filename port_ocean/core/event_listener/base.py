@@ -1,13 +1,14 @@
 from abc import abstractmethod
-from typing import TypedDict, Callable, Any, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any, TypedDict
 
 from pydantic import ConfigDict
 
 from port_ocean.config.base import BaseOceanModel
-from port_ocean.core.models import EventListenerType
-from port_ocean.utils.signal import signal_handler
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import EventListenerType
 from port_ocean.utils.misc import IntegrationStateStatus
+from port_ocean.utils.signal import signal_handler
 
 
 class EventListenerEvents(TypedDict):
@@ -37,7 +38,6 @@ class BaseEventListener:
         """
         Can be used for event listeners that need cleanup before exiting.
         """
-        pass
 
     async def _before_resync(self) -> None:
         """

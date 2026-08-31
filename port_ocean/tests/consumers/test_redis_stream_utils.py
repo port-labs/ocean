@@ -1,4 +1,3 @@
-import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
@@ -288,7 +287,7 @@ class TestIsRedisConnectionError:
         [
             RedisConnectionError("connection refused"),
             RedisTimeoutError("timed out"),
-            asyncio.TimeoutError(),
+            TimeoutError(),
             ConnectionError("broken pipe"),
             OSError("network unreachable"),
         ],

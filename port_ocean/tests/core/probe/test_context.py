@@ -1,6 +1,6 @@
 """Unit tests for probe context."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -22,7 +22,7 @@ from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitiali
 
 def test_starts_with_empty_state() -> None:
     # Arrange
-    started_before = datetime.now(timezone.utc)
+    started_before = datetime.now(UTC)
 
     # Act
     context = ProbeContext()
@@ -95,7 +95,7 @@ def test_add_scopes_returns_only_new_checks(mock_update_progress: MagicMock) -> 
 def test_build_request_body() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
-    ended_at = datetime(2026, 8, 27, 12, 0, 0, tzinfo=timezone.utc)
+    ended_at = datetime(2026, 8, 27, 12, 0, 0, tzinfo=UTC)
     context.ended_at = ended_at
     context.status = ProbeStatus.COMPLETED
     context.message = "probe finished"
@@ -280,7 +280,7 @@ def test_update_progress_reports_merged_payload() -> None:
 def test_finalize() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
-    started_before = datetime.now(timezone.utc)
+    started_before = datetime.now(UTC)
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
@@ -296,7 +296,7 @@ def test_finalize() -> None:
 def test_fail() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
-    started_before = datetime.now(timezone.utc)
+    started_before = datetime.now(UTC)
     failure_message = "connection timed out"
 
     # Act

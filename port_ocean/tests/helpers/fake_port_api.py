@@ -1,6 +1,7 @@
-import uvicorn
 import os
-from typing import Dict, Any
+from typing import Any
+
+import uvicorn
 from fastapi import FastAPI, Request
 
 SMOKE_TEST_SUFFIX = os.environ.get("SMOKE_TEST_SUFFIX", "smoke")
@@ -45,7 +46,7 @@ FAKE_PERSON_BLUEPRINT = {
 
 @app.router.get("/v1/blueprints/{blueprint_id}")
 @app.router.patch("/v1/blueprints/{blueprint_id}")
-async def get_blueprint(blueprint_id: str) -> Dict[str, Any]:
+async def get_blueprint(blueprint_id: str) -> dict[str, Any]:
     return {
         "blueprint": (
             FAKE_PERSON_BLUEPRINT
@@ -56,19 +57,19 @@ async def get_blueprint(blueprint_id: str) -> Dict[str, Any]:
 
 
 @app.router.post("/v1/entities/search")
-async def search_entities() -> Dict[str, Any]:
+async def search_entities() -> dict[str, Any]:
     return {"ok": True, "entities": []}
 
 
 @app.router.post("/v1/blueprints/entities/datasource-entities")
-async def datasource_entities() -> Dict[str, Any]:
+async def datasource_entities() -> dict[str, Any]:
     return {"ok": True, "entities": [], "next": None}
 
 
 @app.router.get("/v1/integration/{integration_id}")
 @app.router.patch("/v1/integration/{integration_id}")
 @app.router.patch("/v1/integration/{integration_id}/resync-state")
-async def get_integration(integration_id: str) -> Dict[str, Any]:
+async def get_integration(integration_id: str) -> dict[str, Any]:
     return {
         "integration": {
             "identifer": integration_id,
@@ -144,7 +145,7 @@ async def get_integration(integration_id: str) -> Dict[str, Any]:
 
 
 @app.router.post("/v1/blueprints/{blueprint_id}/entities")
-async def upsert_entities(blueprint_id: str, request: Request) -> Dict[str, Any]:
+async def upsert_entities(blueprint_id: str, request: Request) -> dict[str, Any]:
     json = await request.json()
 
     return {
@@ -154,7 +155,7 @@ async def upsert_entities(blueprint_id: str, request: Request) -> Dict[str, Any]
 
 
 @app.router.post("/v1/auth/access_token")
-async def auth_token() -> Dict[str, Any]:
+async def auth_token() -> dict[str, Any]:
     return {
         "accessToken": "ZOMG",
         "expiresIn": 1232131231,
@@ -163,12 +164,12 @@ async def auth_token() -> Dict[str, Any]:
 
 
 @app.router.delete("/v1/blueprints/{blueprint_id}/all-entities")
-async def delete_blueprint(blueprint_id: str, request: Request) -> Dict[str, Any]:
+async def delete_blueprint(blueprint_id: str, request: Request) -> dict[str, Any]:
     return {"migrationId": "ZOMG"}
 
 
 @app.router.get("/v1/migrations/{migration_id}")
-async def migration(migration_id: str, request: Request) -> Dict[str, Any]:
+async def migration(migration_id: str, request: Request) -> dict[str, Any]:
     return {
         "migration": {
             "id": migration_id,
@@ -181,7 +182,7 @@ async def migration(migration_id: str, request: Request) -> Dict[str, Any]:
 
 
 @app.router.get("/v1/integration/{integration_id}/resync-request")
-async def get_integration_resync_request(integration_id: str) -> Dict[str, Any]:
+async def get_integration_resync_request(integration_id: str) -> dict[str, Any]:
     return {
         "request": {
             "id": f"resync-{integration_id}",

@@ -1,8 +1,8 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastapi import APIRouter, FastAPI
 import pytest
+from fastapi import APIRouter, FastAPI
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType

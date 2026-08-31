@@ -1,12 +1,14 @@
-import pytest
 import json
-from unittest.mock import patch
 from pathlib import Path
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from unittest.mock import patch
+
+import pytest
+
 from port_ocean.core.defaults.common import (
-    get_port_integration_defaults,
     Defaults,
+    get_port_integration_defaults,
 )
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
 @pytest.fixture

@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 from port_ocean.helpers.metric.metric import (
     MetricPhase,
-    MetricType,
     Metrics,
+    MetricType,
 )
 
 

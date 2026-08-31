@@ -1,8 +1,8 @@
 import re
-import jwt
 from typing import Any
 
 import httpx
+import jwt
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic.alias_generators import to_camel

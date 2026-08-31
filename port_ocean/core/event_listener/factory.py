@@ -3,14 +3,12 @@ from loguru import logger
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.event_listener import (
     HttpEventListener,
-    KafkaEventListener,
-    PollingEventListener,
-    OnceEventListenerSettings,
-    OnceEventListener,
-)
-from port_ocean.core.event_listener import (
     HttpEventListenerSettings,
+    KafkaEventListener,
     KafkaEventListenerSettings,
+    OnceEventListener,
+    OnceEventListenerSettings,
+    PollingEventListener,
     PollingEventListenerSettings,
 )
 from port_ocean.core.event_listener.actions_only import (

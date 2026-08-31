@@ -1,5 +1,5 @@
 from os import environ
-from typing import Tuple
+
 import pytest
 
 from port_ocean.clients.port.client import PortClient
@@ -14,7 +14,7 @@ pytestmark = pytest.mark.smoke
     reason="You need to run the fake integration once",
 )
 async def test_valid_fake_integration(
-    port_client_for_fake_integration: Tuple[SmokeTestDetails, PortClient],
+    port_client_for_fake_integration: tuple[SmokeTestDetails, PortClient],
 ) -> None:
     _, port_client = port_client_for_fake_integration
     current_integration = await port_client.get_current_integration()
@@ -28,7 +28,7 @@ async def test_valid_fake_integration(
     reason="You need to run the fake integration once",
 )
 async def test_valid_fake_departments(
-    port_client_for_fake_integration: Tuple[SmokeTestDetails, PortClient],
+    port_client_for_fake_integration: tuple[SmokeTestDetails, PortClient],
 ) -> None:
     details, port_client = port_client_for_fake_integration
     entities = await port_client.search_entities(user_agent_type=UserAgentType.exporter)
@@ -44,7 +44,7 @@ async def test_valid_fake_departments(
     reason="You need to run the fake integration once",
 )
 async def test_valid_fake_persons(
-    port_client_for_fake_integration: Tuple[SmokeTestDetails, PortClient],
+    port_client_for_fake_integration: tuple[SmokeTestDetails, PortClient],
 ) -> None:
     details, port_client = port_client_for_fake_integration
     headers = await port_client.auth.headers()

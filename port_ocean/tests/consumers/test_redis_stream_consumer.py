@@ -2,7 +2,7 @@ import asyncio
 import base64
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,19 +13,19 @@ from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.live_events_stream_key import (
     resolve_live_events_stream_key_from_base_url,
 )
-from port_ocean.exceptions.live_events import (
-    InvalidLiveEventsRedisStreamFieldError,
-    LiveEventsUuidNotFoundError,
-    MissingLiveEventsBaseUrlError,
-)
-from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
 from port_ocean.consumers.redis_stream_utils import (
     ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
     REQUEUE_STREAM_ENTRY_SCRIPT,
     ensure_consumer_group,
 )
+from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
 from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
+from port_ocean.exceptions.live_events import (
+    InvalidLiveEventsRedisStreamFieldError,
+    LiveEventsUuidNotFoundError,
+    MissingLiveEventsBaseUrlError,
+)
 
 
 class TestResolveLiveEventsStreamKey:
@@ -875,14 +875,14 @@ class TestRedisStreamConsumer:
 
         assert RedisStreamConsumer._parse_queued_at(
             queued_at
-        ) == datetime.fromtimestamp(1700000000, tz=timezone.utc)
+        ) == datetime.fromtimestamp(1700000000, tz=UTC)
 
     def test_parse_queued_at_from_unix_nanoseconds_with_fraction(self) -> None:
         queued_at = "1700000000500000000"
 
         assert RedisStreamConsumer._parse_queued_at(
             queued_at
-        ) == datetime.fromtimestamp(1700000000.5, tz=timezone.utc)
+        ) == datetime.fromtimestamp(1700000000.5, tz=UTC)
 
     def test_parse_queued_at_returns_none_when_missing(self) -> None:
         assert RedisStreamConsumer._parse_queued_at(None) is None
@@ -892,8 +892,8 @@ class TestRedisStreamConsumer:
         assert RedisStreamConsumer._parse_queued_at("not-a-timestamp") is None
 
     def test_time_since_queued_ms(self) -> None:
-        queued_time = datetime.fromtimestamp(1700000000, tz=timezone.utc)
-        consumed_at = datetime.fromtimestamp(1700000001.5, tz=timezone.utc)
+        queued_time = datetime.fromtimestamp(1700000000, tz=UTC)
+        consumed_at = datetime.fromtimestamp(1700000001.5, tz=UTC)
 
         assert (
             RedisStreamConsumer._time_since_queued_ms(queued_time, now=consumed_at)
@@ -901,8 +901,8 @@ class TestRedisStreamConsumer:
         )
 
     def test_time_since_queued_ms_clamps_negative_delta_to_zero(self) -> None:
-        queued_time = datetime.fromtimestamp(1700000001.5, tz=timezone.utc)
-        consumed_at = datetime.fromtimestamp(1700000000, tz=timezone.utc)
+        queued_time = datetime.fromtimestamp(1700000001.5, tz=UTC)
+        consumed_at = datetime.fromtimestamp(1700000000, tz=UTC)
 
         with patch(
             "port_ocean.consumers.redis_stream_consumer.logger.warning"
@@ -951,7 +951,7 @@ class TestRedisStreamConsumer:
                 patch.object(
                     RedisStreamConsumer,
                     "_parse_queued_at",
-                    return_value=datetime.fromtimestamp(1700000000, tz=timezone.utc),
+                    return_value=datetime.fromtimestamp(1700000000, tz=UTC),
                 ),
                 patch.object(
                     RedisStreamConsumer,

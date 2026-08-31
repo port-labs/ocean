@@ -8,13 +8,13 @@ import pytest
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
-from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
-from port_ocean.consumers.stream_maintenance.settings import (
-    STREAM_MAINTENANCE_CONSUMER_NAME,
-)
 from port_ocean.consumers.redis_stream_utils import (
     ACK_AND_FINALIZE_STREAM_ENTRY_SCRIPT,
     REQUEUE_STREAM_ENTRY_SCRIPT,
+)
+from port_ocean.consumers.stream_maintenance import RedisStreamMaintenanceWorker
+from port_ocean.consumers.stream_maintenance.settings import (
+    STREAM_MAINTENANCE_CONSUMER_NAME,
 )
 
 # ---------------------------------------------------------------------------

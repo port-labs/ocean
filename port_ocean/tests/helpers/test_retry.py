@@ -1,18 +1,20 @@
-import pytest
-from typing import Any, AsyncIterator
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from collections.abc import AsyncIterator
 from http import HTTPStatus
-import httpx
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
 
+import httpx
+import pytest
+
+import port_ocean.helpers.retry as retry_module
 from port_ocean.helpers.retry import (
+    SKIP_RETRY_EXTENSION_KEY,
     RetryConfig,
     RetryTransport,
-    SKIP_RETRY_EXTENSION_KEY,
-    register_retry_config_callback,
     register_on_retry_callback,
+    register_retry_config_callback,
 )
-import port_ocean.helpers.retry as retry_module
 
 
 class TestRetryConfig:
@@ -342,9 +344,8 @@ class TestRetryTransport:
 
         with patch.object(
             transport, "_calculate_sleep", return_value=0.0
-        ) as calc_sleep:
-            with patch("port_ocean.helpers.retry.time.sleep") as sleep:
-                transport._retry_operation(request, send_method)
+        ) as calc_sleep, patch("port_ocean.helpers.retry.time.sleep") as sleep:
+            transport._retry_operation(request, send_method)
 
         # Called exactly once: before second attempt
         assert calc_sleep.call_count == 1
@@ -382,12 +383,11 @@ class TestRetryTransport:
 
         with patch.object(
             transport, "_calculate_sleep", return_value=0.0
-        ) as calc_sleep:
-            with patch(
-                "port_ocean.helpers.retry.asyncio.sleep",
-                new=AsyncMock(return_value=None),
-            ):
-                await transport._retry_operation_async(request, send_method_iter)
+        ) as calc_sleep, patch(
+            "port_ocean.helpers.retry.asyncio.sleep",
+            new=AsyncMock(return_value=None),
+        ):
+            await transport._retry_operation_async(request, send_method_iter)
 
         assert calc_sleep.call_count == 1
         _, headers_arg, status_code_arg = calc_sleep.call_args.args

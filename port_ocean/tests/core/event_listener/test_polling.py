@@ -1,5 +1,6 @@
+from collections.abc import Awaitable, Callable
 from types import SimpleNamespace
-from typing import Any, Awaitable, Callable
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

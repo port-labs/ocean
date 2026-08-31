@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
 
 from port_ocean.clients.port.mixins.organization import OrganizationClientMixin
 

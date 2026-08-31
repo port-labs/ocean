@@ -49,12 +49,11 @@ async def test_request_handler_log_level(
 
     with patch("port_ocean.middlewares.logger") as mock_logger:
         mock_logger.bind.return_value = mock_bind
-        with patch.object(middlewares, "ocean", mock_ocean):
-            with patch(
-                "port_ocean.middlewares._handle_silently",
-                new=AsyncMock(return_value=mock_response),
-            ):
-                await request_handler(request, AsyncMock())
+        with patch.object(middlewares, "ocean", mock_ocean), patch(
+            "port_ocean.middlewares._handle_silently",
+            new=AsyncMock(return_value=mock_response),
+        ):
+            await request_handler(request, AsyncMock())
 
     levels = [c.args[0] for c in mock_bind.log.call_args_list if c.args]
     assert levels == [expected_level, expected_level]

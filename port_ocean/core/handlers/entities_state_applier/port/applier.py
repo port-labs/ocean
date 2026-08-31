@@ -1,22 +1,23 @@
 import asyncio
 from collections import defaultdict
+
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entities_state_applier.base import (
     BaseEntitiesStateApplier,
 )
 from port_ocean.core.handlers.entities_state_applier.port.get_related_entities import (
     get_related_entities,
 )
-from port_ocean.context.ocean import ocean
-from port_ocean.helpers.metric.metric import MetricType, MetricPhase
-from port_ocean.helpers.metric.utils import TimeMetric
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import EntityDiff
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from port_ocean.core.utils.utils import _get_entity_key, get_port_diff
+from port_ocean.helpers.metric.metric import MetricPhase, MetricType
+from port_ocean.helpers.metric.utils import TimeMetric
 
 
 class HttpEntitiesStateApplier(BaseEntitiesStateApplier):

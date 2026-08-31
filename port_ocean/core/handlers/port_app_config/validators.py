@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import types
-from typing import Any, Literal, Type, Union, get_args, get_origin
+from typing import Any, Literal, Union, get_args, get_origin
 
 from pydantic.v1 import BaseModel
 
@@ -17,7 +17,7 @@ from port_ocean.utils.misc import get_subclass_class_from_module
 
 
 def validate_and_get_config_schema(
-    config_class: Type[PortAppConfig],
+    config_class: type[PortAppConfig],
 ) -> dict[str, Any]:
     """Validate config definitions and return UI schema (kinds + advancedConfig)."""
     _enforce_field_metadata(config_class)
@@ -64,7 +64,7 @@ def _nested_types(annotation: Any) -> list[type]:
     return [t for t in _unwrap_union(annotation) if isinstance(t, type)]
 
 
-def _enforce_field_metadata(config_class: Type[PortAppConfig]) -> None:
+def _enforce_field_metadata(config_class: type[PortAppConfig]) -> None:
     """Require title/description on every field in the PortAppConfig tree.
 
     ``Selector`` and ``list[ResourceConfig]`` may omit Field metadata so
@@ -138,7 +138,7 @@ def _validate_kind_discriminator(models: list[type]) -> None:
         seen_literal_kinds[kind_value] = model.__name__
 
 
-def _get_resource_config_models(config_class: Type[PortAppConfig]) -> list[type]:
+def _get_resource_config_models(config_class: type[PortAppConfig]) -> list[type]:
     """Return ``ResourceConfig`` types from the ``resources`` field annotation.
 
     Handles both ``list[SingleModel]`` and ``list[Union[A | B | …]]``.
@@ -164,7 +164,7 @@ def _unwrap_union(annotation: Any) -> list[type]:
     return [annotation]
 
 
-def _get_advanced_config(config_class: Type[PortAppConfig]) -> dict[str, Any]:
+def _get_advanced_config(config_class: type[PortAppConfig]) -> dict[str, Any]:
     """Root PortAppConfig field metadata (everything except ``resources``)."""
     schema = config_class.schema()
     return {k: v for k, v in schema.get("properties", {}).items() if k != "resources"}

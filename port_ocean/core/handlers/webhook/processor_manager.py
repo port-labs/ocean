@@ -1,48 +1,47 @@
 import copy
-from typing import TYPE_CHECKING, Dict, Tuple, Type, Set, List
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import IntegrationConfiguration
 
-from fastapi import APIRouter, Request
-from loguru import logger
-from starlette.requests import ClientDisconnect
 import asyncio
 import base64
 import json
 
-from port_ocean.context.ocean import ocean
-from port_ocean.context.event import EventType, event_context
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
-from port_ocean.core.integrations.mixins.events import EventsMixin
-from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
-from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
-from port_ocean.core.handlers.webhook.webhook_event import (
-    WebhookEvent,
-    WebhookEventRawResults,
-    LiveEventTimestamp,
-)
-from port_ocean.context.event import event
-from port_ocean.log.sensetive import sensitive_log_filter
+from fastapi import APIRouter, Request
+from loguru import logger
+from starlette.requests import ClientDisconnect
 
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
-    WebhookProcessorType,
-)
-from port_ocean.utils.signal import SignalHandler
-from port_ocean.core.handlers.queue import LocalQueue
+from port_ocean.config.settings import RedisLiveEventsSettings
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
-from port_ocean.core.integrations.mixins.utils import is_redis_live_events_enabled
 from port_ocean.consumers.live_events_stream_key import (
     resolve_live_events_stream_key_from_base_url,
 )
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
+from port_ocean.context.event import EventType, event, event_context
+from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.queue import LocalQueue
+from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+    WebhookProcessorType,
+)
+from port_ocean.core.handlers.webhook.webhook_event import (
+    LiveEventTimestamp,
+    WebhookEvent,
+    WebhookEventRawResults,
+)
+from port_ocean.core.integrations.mixins.events import EventsMixin
+from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
+from port_ocean.core.integrations.mixins.utils import is_redis_live_events_enabled
 from port_ocean.core.models import LiveEventsConsumerType
-from port_ocean.config.settings import RedisLiveEventsSettings
 from port_ocean.exceptions.core import UnsupportedLiveEventsConsumerTypeException
+from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
+from port_ocean.log.sensetive import sensitive_log_filter
+from port_ocean.utils.signal import SignalHandler
 
 # Cap JSON UTF-8 size before base64 when logging under events_debug_logging (1 MiB).
 _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES = 1024 * 1024
@@ -69,9 +68,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         max_wait_seconds_before_shutdown: float,
     ) -> None:
         self._router = router
-        self._processors_classes: Dict[str, list[Type[AbstractWebhookProcessor]]] = {}
-        self._event_queues: Dict[str, AbstractQueue[WebhookEvent]] = {}
-        self._event_processor_tasks: Set[asyncio.Task[None]] = set()
+        self._processors_classes: dict[str, list[type[AbstractWebhookProcessor]]] = {}
+        self._event_queues: dict[str, AbstractQueue[WebhookEvent]] = {}
+        self._event_processor_tasks: set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
         self._live_events_consumer: AbstractLiveEventsConsumer | None = None
@@ -90,7 +89,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             return
 
         for path in self._event_queues.keys():
-            for worker_id in range(0, config.event_workers_count):
+            for worker_id in range(config.event_workers_count):
                 task = loop.create_task(self._process_webhook_events(path, worker_id))
                 self._event_processor_tasks.add(task)
                 task.add_done_callback(self._event_processor_tasks.discard)
@@ -133,8 +132,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     async def _process_webhook_event(
         self, path: str, worker_id: int, event: WebhookEvent
     ) -> None:
-        matching_processors: List[
-            Tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
+        matching_processors: list[
+            tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
         ] = []
         try:
             with logger.contextualize(
@@ -162,8 +161,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                         return_exceptions=True,
                     )
 
-                    successful_results: List[WebhookEventRawResults] = []
-                    failed_exceptions: List[Exception] = []
+                    successful_results: list[WebhookEventRawResults] = []
+                    failed_exceptions: list[Exception] = []
 
                     for result in processing_results:
                         if isinstance(result, WebhookEventRawResults):
@@ -295,7 +294,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             )
             return webhook_event_raw_results
         except Exception as e:
-            logger.exception(f"Error processing queued webhook for {path}: {str(e)}")
+            logger.exception(f"Error processing queued webhook for {path}: {e!s}")
             self._timestamp_event_error(processor.event)
             raise
 
@@ -311,8 +310,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 self._process_webhook_request(processor, resource, resource_index),
                 timeout=self._max_event_processing_seconds,
             )
-        except asyncio.TimeoutError:
-            raise asyncio.TimeoutError(
+        except TimeoutError:
+            raise TimeoutError(
                 f"Processor processing timed out after {self._max_event_processing_seconds} seconds"
             )
 
@@ -375,7 +374,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     def register_processor(
         self,
         path: str,
-        processor: Type[AbstractWebhookProcessor],
+        processor: type[AbstractWebhookProcessor],
     ) -> None:
         """Register a webhook processor for a specific path with optional filter
 
@@ -398,7 +397,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     def _register_route(self, path: str) -> None:
         """Register a route for a specific path"""
 
-        async def handle_webhook(request: Request) -> Dict[str, str]:
+        async def handle_webhook(request: Request) -> dict[str, str]:
             """Handle incoming webhook requests for a specific path."""
             try:
                 webhook_event = await WebhookEvent.from_request(request)
@@ -411,7 +410,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 logger.warning("Webhook client disconnected before event was queued")
                 raise
             except Exception as e:
-                logger.exception(f"Error processing webhook: {str(e)}")
+                logger.exception(f"Error processing webhook: {e!s}")
                 return {"status": "error", "message": str(e)}
 
         self._router.add_api_route(
@@ -432,7 +431,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 json_bytes, _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES
             )
             base64_payload = base64.b64encode(json_bytes).decode("utf-8")
-            log_kwargs: Dict[str, str | bool] = {
+            log_kwargs: dict[str, str | bool] = {
                 "base64_masked_webhook_debug_payload": base64_payload,
                 "trace_id": webhook_event.trace_id,
             }
@@ -466,5 +465,5 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 ),
                 timeout=self._max_wait_seconds_before_shutdown,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Shutdown timed out waiting for queues to empty")

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, TypedDict
 
@@ -59,7 +59,7 @@ class LifecycleClient:
         mapping: dict[str, Any] | None = None,
         kind_identifiers: list[str] | None = None,
     ) -> None:
-        started_at = started_at or datetime.now(tz=timezone.utc)
+        started_at = started_at or datetime.now(tz=UTC)
         extra = {"mapping": mapping} if mapping else {}
         body = self._build_body(
             "started",
@@ -148,7 +148,7 @@ class LifecycleClient:
         started_at: datetime | None = None,
         kind_identifier: str | None = None,
     ) -> None:
-        started_at = started_at or datetime.now(tz=timezone.utc)
+        started_at = started_at or datetime.now(tz=UTC)
         body = self._build_granular_body(
             "started",
             kind_identifier,

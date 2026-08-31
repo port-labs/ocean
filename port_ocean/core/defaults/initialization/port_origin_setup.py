@@ -1,4 +1,5 @@
 from typing import Any
+
 from port_ocean.core.defaults.initialization.base_setup import BaseSetup
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 

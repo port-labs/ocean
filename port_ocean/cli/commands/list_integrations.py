@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import httpx
 
 from port_ocean.cli.commands.main import cli_start, console

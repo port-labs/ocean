@@ -1,8 +1,9 @@
 import asyncio
 import sys
 import threading
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Callable, Dict, Type
+from typing import Any
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
@@ -43,8 +44,8 @@ class Ocean:
         app: FastAPI | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
-        config_factory: Type[BaseModel] | None = None,
-        config_override: Dict[str, Any] | None = None,
+        config_factory: type[BaseModel] | None = None,
+        config_override: dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()

@@ -6,10 +6,10 @@ The cursor is set for the duration of ``process_resource`` during
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime
-from typing import Iterator
 
 _incremental_cursor: ContextVar[datetime | None] = ContextVar(
     "incremental_cursor", default=None

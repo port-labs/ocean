@@ -1,6 +1,6 @@
 """Unit tests for incremental cursor context."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from port_ocean.core.incremental.cursor_context import (
     active_incremental_cursor,
@@ -13,7 +13,7 @@ class TestIncrementalCursorContext:
         assert active_incremental_cursor() is None
 
     def test_with_active_cursor_sets_and_clears(self) -> None:
-        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
         assert active_incremental_cursor() is None
 
         with with_active_incremental_cursor(cursor):
@@ -22,8 +22,8 @@ class TestIncrementalCursorContext:
         assert active_incremental_cursor() is None
 
     def test_nested_scopes_restore_outer_cursor(self) -> None:
-        outer = datetime(2026, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
-        inner = datetime(2026, 6, 1, 11, 0, 0, tzinfo=timezone.utc)
+        outer = datetime(2026, 6, 1, 10, 0, 0, tzinfo=UTC)
+        inner = datetime(2026, 6, 1, 11, 0, 0, tzinfo=UTC)
 
         with with_active_incremental_cursor(outer):
             assert active_incremental_cursor() == outer

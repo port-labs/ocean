@@ -11,7 +11,7 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-_lifecycle_http_client: LocalStack["OceanResyncHttpClient"] = LocalStack()
+_lifecycle_http_client: LocalStack[OceanResyncHttpClient] = LocalStack()
 
 
 def _truncate(text: str, max_len: int = 256) -> str:

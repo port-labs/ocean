@@ -1,4 +1,5 @@
-from typing import Any, AsyncGenerator, Dict, List, Type
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -20,7 +21,7 @@ class OceanAsyncClient(httpx.AsyncClient):
 
     def __init__(
         self,
-        transport_class: Type[RetryTransport] = RetryTransport,
+        transport_class: type[RetryTransport] = RetryTransport,
         transport_kwargs: dict[str, Any] | None = None,
         retry_config: RetryConfig | None = None,
         **kwargs: Any,
@@ -83,7 +84,7 @@ class StreamingClientWrapper:
         url: str,
         target_items_path: str,
         **kwargs: Any,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         A wrapper that provides a unified async generator interface for both streaming
         and non-streaming HTTP GET requests.

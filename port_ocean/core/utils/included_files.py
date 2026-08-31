@@ -1,22 +1,23 @@
 """Utilities for resolving included-files paths and repo/branch matching."""
 
 import posixpath
-from typing import Optional, Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
 
 class RepoBranchMappingLike(Protocol):
     """Protocol for repo/branch mapping (e.g. selector.repos items)."""
 
     name: str
-    branch: Optional[str]
+    branch: str | None
 
 
 def repo_branch_matches(
     *,
-    repos: Optional[Sequence[RepoBranchMappingLike]],
+    repos: Sequence[RepoBranchMappingLike] | None,
     repo_name: str,
-    branch: Optional[str],
-    default_branch: Optional[str],
+    branch: str | None,
+    default_branch: str | None,
 ) -> bool:
     """
     Return True if the given repo/branch is allowed by the repos mapping.

@@ -3,9 +3,10 @@ Comprehensive tests for resync and webhook timestamp and event type tracking.
 Tests verify the implementation of resync_start_time and event_type columns.
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.core.models import LakehouseEventType, LakehouseOperation
@@ -84,7 +85,7 @@ class TestPostIntegrationRawDataInputValidation:
             auth=MagicMock(),
             client=MagicMock(),
         )
-        future_time = datetime.now(timezone.utc) + timedelta(hours=1)
+        future_time = datetime.now(UTC) + timedelta(hours=1)
 
         event = make_single_entry_lakehouse_batch(
             [{"test": "data"}],
@@ -112,7 +113,7 @@ class TestPostIntegrationRawDataInputValidation:
             client=mock_client,
         )
 
-        past_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        past_time = datetime.now(UTC) - timedelta(hours=1)
 
         # Should not raise
         event = make_single_entry_lakehouse_batch(
@@ -220,7 +221,7 @@ class TestPostIntegrationRawDataRequestBody:
             client=mock_client,
         )
 
-        resync_time = datetime(2024, 3, 29, 10, 0, 0, tzinfo=timezone.utc)
+        resync_time = datetime(2024, 3, 29, 10, 0, 0, tzinfo=UTC)
         raw_data = [{"name": "test-repo", "stars": 100}]
         fixed_ts = 1711706400000
 
@@ -280,7 +281,7 @@ class TestPostIntegrationRawDataRequestBody:
             client=mock_client,
         )
 
-        webhook_time = datetime(2024, 3, 29, 10, 30, 0, tzinfo=timezone.utc)
+        webhook_time = datetime(2024, 3, 29, 10, 30, 0, tzinfo=UTC)
         raw_data = [{"name": "updated-repo", "stars": 150}]
         fixed_ts = 1711708200000
 
@@ -383,22 +384,23 @@ class TestWebhookEventTimestampTracking:
     @pytest.mark.asyncio
     async def test_webhook_event_from_request_sets_created_at(self) -> None:
         """Verify WebhookEvent.from_request() sets created_at"""
-        from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
         from fastapi import Request
+
+        from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
         mock_request = MagicMock(spec=Request)
         mock_request.json = AsyncMock(return_value={"event": "push", "repo": "test"})
         mock_request.headers = {"x-github-event": "push"}
 
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         webhook_event = await WebhookEvent.from_request(mock_request)
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         # Verify created_at is set and within expected range
         assert webhook_event.created_at is not None
         assert isinstance(webhook_event.created_at, datetime)
         assert before <= webhook_event.created_at <= after
-        assert webhook_event.created_at.tzinfo == timezone.utc
+        assert webhook_event.created_at.tzinfo == UTC
 
     def test_webhook_event_from_dict_parses_created_at(self) -> None:
         """Verify WebhookEvent.from_dict() parses created_at from ISO string"""
@@ -428,9 +430,9 @@ class TestWebhookEventTimestampTracking:
             # No created_at field
         }
 
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         webhook_event = WebhookEvent.from_dict(data)
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         # Should generate a timestamp
         assert webhook_event.created_at is not None
@@ -440,7 +442,7 @@ class TestWebhookEventTimestampTracking:
         """Verify WebhookEvent.clone() preserves created_at"""
         from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-        original_time = datetime(2024, 3, 29, 10, 0, 0, tzinfo=timezone.utc)
+        original_time = datetime(2024, 3, 29, 10, 0, 0, tzinfo=UTC)
         original = WebhookEvent(
             trace_id="test-123",
             payload={"event": "push"},
@@ -459,7 +461,7 @@ class TestWebhookEventTimestampTracking:
             WebhookEventRawResults,
         )
 
-        timestamp = datetime(2024, 3, 29, 11, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2024, 3, 29, 11, 0, 0, tzinfo=UTC)
         results = WebhookEventRawResults(
             updated_raw_results=[{"name": "repo"}],
             deleted_raw_results=[],
@@ -474,13 +476,13 @@ class TestWebhookEventTimestampTracking:
             WebhookEventRawResults,
         )
 
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         results = WebhookEventRawResults(
             updated_raw_results=[{"name": "repo"}],
             deleted_raw_results=[],
             # No created_at provided
         )
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         assert results.created_at is not None
         assert before <= results.created_at <= after
@@ -491,7 +493,7 @@ class TestTimestampConversionToMilliseconds:
 
     def test_converts_datetime_to_unix_milliseconds(self) -> None:
         """Verify datetime converts to unix milliseconds correctly"""
-        dt = datetime(2024, 3, 29, 10, 30, 45, 123456, tzinfo=timezone.utc)
+        dt = datetime(2024, 3, 29, 10, 30, 45, 123456, tzinfo=UTC)
         timestamp_ms = int(dt.timestamp() * 1000)
 
         # Verify it's a reasonable timestamp
@@ -503,7 +505,7 @@ class TestTimestampConversionToMilliseconds:
     def test_milliseconds_precision_preserved(self) -> None:
         """Verify microseconds are converted to milliseconds correctly"""
         # 123456 microseconds = 123.456 milliseconds = 123 ms (truncated)
-        dt = datetime(2026, 1, 1, 0, 0, 0, 123456, tzinfo=timezone.utc)
+        dt = datetime(2026, 1, 1, 0, 0, 0, 123456, tzinfo=UTC)
         timestamp_ms = int(dt.timestamp() * 1000)
 
         # Verify milliseconds component

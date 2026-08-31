@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -59,8 +59,7 @@ def _patch_lifecycle_ingest_url(
     client: LifecycleClient, ingest_url: str = TEST_LIFECYCLE_INGEST_URL
 ) -> None:
     base_api_url = ingest_url.rstrip("/")
-    if base_api_url.endswith("/lifecycle"):
-        base_api_url = base_api_url[: -len("/lifecycle")]
+    base_api_url = base_api_url.removesuffix("/lifecycle")
     client._lifecycle_auth.api_url = base_api_url
 
 
@@ -134,7 +133,7 @@ class TestNotifyResyncStarted:
     async def test_sends_to_resync_url(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
-        started_at = datetime(2026, 4, 14, 12, 0, 0, tzinfo=timezone.utc)
+        started_at = datetime(2026, 4, 14, 12, 0, 0, tzinfo=UTC)
         await lifecycle_client.notify_resync_started(
             resync_id="r1",
             integration_id="i1",
@@ -149,7 +148,7 @@ class TestNotifyResyncStarted:
     async def test_body_has_integration_id_and_versions(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
-        started_at = datetime(2026, 4, 14, 12, 0, 0, tzinfo=timezone.utc)
+        started_at = datetime(2026, 4, 14, 12, 0, 0, tzinfo=UTC)
         await lifecycle_client.notify_resync_started(
             resync_id="r1",
             integration_id="i1",
@@ -211,14 +210,14 @@ class TestNotifyResyncStarted:
     async def test_defaults_started_at(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
-        before = datetime.now(tz=timezone.utc)
+        before = datetime.now(tz=UTC)
         await lifecycle_client.notify_resync_started(
             resync_id="r1",
             integration_id="i1",
             integration_type="github",
             sync_type=SyncType.FULL_SYNC.value,
         )
-        after = datetime.now(tz=timezone.utc)
+        after = datetime.now(tz=UTC)
 
         body = mock_post.call_args[1]["json"]
         started_at = datetime.fromisoformat(body["started_at"])
@@ -376,7 +375,7 @@ class TestNotifyGranularStarted:
     async def test_sends_to_granular_url(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
-        started_at = datetime(2026, 4, 14, 12, 0, 0, tzinfo=timezone.utc)
+        started_at = datetime(2026, 4, 14, 12, 0, 0, tzinfo=UTC)
         await lifecycle_client.notify_started(
             event_id="r1",
             integration_id="i1",
@@ -425,14 +424,14 @@ class TestLifecycleClientIntegration:
     async def test_granular_started_at_defaults(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
-        before = datetime.now(tz=timezone.utc)
+        before = datetime.now(tz=UTC)
         await lifecycle_client.notify_started(
             event_id="e1",
             integration_id="i1",
             integration_type="github",
             granularity=GranularityType.BATCH,
         )
-        after = datetime.now(tz=timezone.utc)
+        after = datetime.now(tz=UTC)
 
         body = mock_post.call_args[1]["json"]
         started_at = datetime.fromisoformat(body["started_at"])

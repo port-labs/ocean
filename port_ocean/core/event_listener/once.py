@@ -4,19 +4,19 @@ from typing import Any, Literal
 
 from loguru import logger
 
+from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
     EventListenerSettings,
 )
 from port_ocean.core.models import EventListenerType
-from port_ocean.utils.repeat import repeat_every
-from port_ocean.context.ocean import ocean
 from port_ocean.utils.integration import (
     read_app_spec_interval,
     resolve_app_spec_interval_minutes,
 )
 from port_ocean.utils.misc import IntegrationStateStatus
+from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.time import convert_str_to_utc_datetime, parse_interval_to_minutes
 
 

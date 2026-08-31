@@ -1,16 +1,19 @@
 """Tests for the performance monitor module."""
 
 import asyncio
+
 import pytest
 
+import port_ocean.helpers.monitor.monitor as monitor_module
+from port_ocean.helpers.metric.metric import MetricType, _metrics_registry
 from port_ocean.helpers.monitor.models import (
-    ResourceUsageStats,
-    ProcessNode,
-    SystemSnapshot,
     CPUStats,
-    MemoryStats,
     LatencyStats,
+    MemoryStats,
+    ProcessNode,
+    ResourceUsageStats,
     ResponseSizeStats,
+    SystemSnapshot,
 )
 from port_ocean.helpers.monitor.monitor import (
     PerformanceMonitor,
@@ -19,8 +22,6 @@ from port_ocean.helpers.monitor.monitor import (
     stop_monitoring,
 )
 from port_ocean.helpers.monitor.utils import measure_event_loop_latency
-from port_ocean.helpers.metric.metric import MetricType, _metrics_registry
-import port_ocean.helpers.monitor.monitor as monitor_module
 
 
 class TestResourceUsageStats:

@@ -21,17 +21,18 @@ import asyncio
 
 from loguru import logger
 from redis.exceptions import ResponseError
+
 from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.redis_client import RedisClient
-from port_ocean.consumers.stream_maintenance.settings import (
-    STREAM_MAINTENANCE_CONSUMER_NAME,
-)
 from port_ocean.consumers.redis_stream_utils import (
     ack_and_finalize_stream_entry,
     cleanup_idle_consumers_from_group,
     ensure_consumer_group,
     is_missing_stream_or_group_error,
     requeue_stream_entry,
+)
+from port_ocean.consumers.stream_maintenance.settings import (
+    STREAM_MAINTENANCE_CONSUMER_NAME,
 )
 
 

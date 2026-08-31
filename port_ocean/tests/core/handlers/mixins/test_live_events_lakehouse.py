@@ -21,7 +21,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.integrations.mixins.utils import selector_hash_from_resource
-from port_ocean.core.models import LakehouseOperation, LakehouseEventType
+from port_ocean.core.models import LakehouseEventType, LakehouseOperation
 from port_ocean.ocean import Ocean
 
 one_webhook_event_raw_results_for_creation = WebhookEventRawResults(
@@ -180,6 +180,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
 ) -> None:
     """Test lakehouse send when enabled - upsert-only event makes exactly one call."""
     from unittest.mock import MagicMock
+
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
     mock_batch = AsyncMock()
@@ -231,6 +232,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
 ) -> None:
     """Test lakehouse send when enabled - delete-only event makes exactly one call."""
     from unittest.mock import MagicMock
+
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
     mock_batch = AsyncMock()
@@ -279,6 +281,7 @@ async def test_send_webhook_raw_data_to_lakehouse_api_failure(
 ) -> None:
     """Test that lakehouse API failure doesn't break webhook processing."""
     from unittest.mock import MagicMock
+
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
     mock_batch = AsyncMock(side_effect=Exception("Lakehouse API error"))
@@ -340,6 +343,7 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
 ) -> None:
     """Test lakehouse send with both UPSERT and DELETE — exactly ONE call with two data entries."""
     from unittest.mock import MagicMock
+
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
     mock_batch = AsyncMock()

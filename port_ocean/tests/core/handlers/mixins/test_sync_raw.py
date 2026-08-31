@@ -1,15 +1,28 @@
 import asyncio
-from graphlib import CycleError
-from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from graphlib import CycleError
+from typing import (
+    Any,
+    cast,
+)
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from loguru import logger
-from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
-from port_ocean.exceptions.core import KindNotImplementedException, OceanAbortException
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from port_ocean.ocean import Ocean
+from loguru import logger
+
+from port_ocean.clients.dsp.lifecycle import GranularityType
+from port_ocean.clients.port.types import UserAgentType
+from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.handlers.entities_state_applier.port.applier import (
+    HttpEntitiesStateApplier,
+)
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
@@ -19,21 +32,12 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin
-from port_ocean.core.handlers.entities_state_applier.port.applier import (
-    HttpEntitiesStateApplier,
-)
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
-    JQEntityProcessor,
-)
 from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import ETLPhase, RAW_RESULT
-from port_ocean.context.event import event_context, EventType
-from port_ocean.clients.port.types import UserAgentType
-from port_ocean.clients.dsp.lifecycle import GranularityType
+from port_ocean.core.ocean_types import RAW_RESULT, ETLPhase
+from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
+from port_ocean.exceptions.core import KindNotImplementedException, OceanAbortException
 from port_ocean.helpers.metric.metric import SyncState
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import List, Optional
+from port_ocean.ocean import Ocean
 from port_ocean.tests.core.conftest import create_entity, no_op_event_context
 
 
@@ -166,7 +170,7 @@ async def test_sync_raw_mixin_self_dependency(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
@@ -291,7 +295,7 @@ async def test_sync_raw_mixin_circular_dependency(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
@@ -440,7 +444,7 @@ async def test_sync_raw_mixin_dependency(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
@@ -821,24 +825,21 @@ async def test_map_entities_compared_with_port_with_multiple_batches_all_batches
 
 @dataclass
 class EntitySelectorDiff:
-    passed: List[Entity]
-    failed: List[Entity]
+    passed: list[Entity]
+    failed: list[Entity]
 
     def _replace(self, **kwargs: Any) -> "EntitySelectorDiff":
         return EntitySelectorDiff(
-            **{
-                "passed": kwargs.get("passed", self.passed),
-                "failed": kwargs.get("failed", self.failed),
-            }
+            passed=kwargs.get("passed", self.passed), failed=kwargs.get("failed", self.failed)
         )
 
 
 @dataclass
 class CalculationResult:
     entity_selector_diff: EntitySelectorDiff
-    errors: List[Any]
-    misconfigurations: List[Any]
-    misconfigured_entity_keys: Optional[List[Any]] = None
+    errors: list[Any]
+    misconfigurations: list[Any]
+    misconfigured_entity_keys: list[Any] | None = None
 
 
 @pytest.mark.asyncio
@@ -854,7 +855,7 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
 
@@ -885,7 +886,7 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
 
@@ -916,7 +917,7 @@ async def test_register_resource_raw_with_errors(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
 
@@ -996,7 +997,7 @@ async def test_on_resync_start_hooks_are_called(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
@@ -1024,7 +1025,7 @@ async def test_sync_raw_all_clears_blueprint_cache_on_start_and_finish(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
@@ -1059,7 +1060,7 @@ async def test_on_resync_complete_hooks_are_called_on_success(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
@@ -1090,7 +1091,7 @@ async def test_on_resync_complete_hooks_not_called_on_error(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
         result = await mock_sync_raw_mixin.sync_raw_all(
@@ -1140,7 +1141,7 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
@@ -1215,7 +1216,7 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = broken_app_config
 
@@ -1294,7 +1295,7 @@ async def test_on_resync_start_hook_error_prevents_resync(
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
-        attributes={"resync_start_time": datetime.now(timezone.utc)},
+        attributes={"resync_start_time": datetime.now(UTC)},
     ) as event:
         event.port_app_config = mock_port_app_config
         with pytest.raises(Exception, match="Before resync error"):
@@ -1329,7 +1330,7 @@ async def test_reconciliation_search_entities_uses_resync_start_time_filter(
         def now(cls, tz: Any = None) -> "FixedDatetime":
             return cls(2026, 3, 3, 12, 0, 0, tzinfo=tz)
 
-    resync_start_time = FixedDatetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc)
+    resync_start_time = FixedDatetime(2026, 3, 3, 12, 0, 0, tzinfo=UTC)
     mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
     mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
 
@@ -1745,7 +1746,7 @@ async def test_process_resource_unexpected_exception_marks_kind_failed(
         async with event_context(
             EventType.RESYNC,
             trigger_type="machine",
-            attributes={"resync_start_time": datetime.now(timezone.utc)},
+            attributes={"resync_start_time": datetime.now(UTC)},
         ) as event:
             event.port_app_config = mock_port_app_config
             await mock_sync_raw_mixin.sync_raw_all(
@@ -1783,7 +1784,7 @@ async def test_process_resource_unexpected_exception_returns_error_in_results(
         async with event_context(
             EventType.RESYNC,
             trigger_type="machine",
-            attributes={"resync_start_time": datetime.now(timezone.utc)},
+            attributes={"resync_start_time": datetime.now(UTC)},
         ) as event:
             event.port_app_config = mock_port_app_config
             entities, errors = await mock_sync_raw_mixin._process_resource(
@@ -1826,7 +1827,7 @@ async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
         async with event_context(
             EventType.RESYNC,
             trigger_type="machine",
-            attributes={"resync_start_time": datetime.now(timezone.utc)},
+            attributes={"resync_start_time": datetime.now(UTC)},
         ):
             entities, errors = await mock_sync_raw_mixin._process_resource(
                 mock_resource_config,
@@ -2011,7 +2012,7 @@ async def test_poll_for_lifecycle_abort_aborts_event(
         async with event_context(
             EventType.RESYNC,
             trigger_type="machine",
-            attributes={"resync_start_time": datetime.now(timezone.utc)},
+            attributes={"resync_start_time": datetime.now(UTC)},
         ) as current_event:
             assert not current_event.aborted
             await mock_sync_raw_mixin._poll_for_lifecycle_abort("resync-1")
@@ -2052,7 +2053,7 @@ async def test_sync_raw_all_ignores_poll_task_failure_and_completes_cleanup(
         async with event_context(
             EventType.RESYNC,
             trigger_type="machine",
-            attributes={"resync_start_time": datetime.now(timezone.utc)},
+            attributes={"resync_start_time": datetime.now(UTC)},
         ) as event:
             event.port_app_config = mock_port_app_config
             result = await mock_sync_raw_mixin.sync_raw_all(

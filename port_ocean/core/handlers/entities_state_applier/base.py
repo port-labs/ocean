@@ -28,7 +28,6 @@ class BaseEntitiesStateApplier(BaseHandler):
             entities (EntityDiff): The differences to be applied.
             user_agent (UserAgentType): The user agent responsible for the changes.
         """
-        pass
 
     @abstractmethod
     async def delete_diff(
@@ -43,7 +42,6 @@ class BaseEntitiesStateApplier(BaseHandler):
             entities (EntityDiff): The differences to be deleted.
             user_agent (UserAgentType): The user agent responsible for the deletion.
         """
-        pass
 
     @abstractmethod
     async def upsert(
@@ -58,7 +56,6 @@ class BaseEntitiesStateApplier(BaseHandler):
         Returns:
             list[Entity]: The upserted entities.
         """
-        pass
 
     @abstractmethod
     async def delete(

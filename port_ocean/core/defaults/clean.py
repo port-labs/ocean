@@ -1,6 +1,5 @@
-from typing import Type
-
 import asyncio
+
 import httpx
 from loguru import logger
 
@@ -15,7 +14,7 @@ from port_ocean.utils.misc import run_async_in_new_event_loop
 
 
 def clean_defaults(
-    config_class: Type[PortAppConfig],
+    config_class: type[PortAppConfig],
     integration_config: IntegrationConfiguration,
     force: bool,
     wait: bool,
@@ -30,7 +29,7 @@ def clean_defaults(
 
 
 async def _clean_defaults(
-    config_class: Type[PortAppConfig],
+    config_class: type[PortAppConfig],
     integration_config: IntegrationConfiguration,
     force: bool,
     wait: bool,
@@ -39,12 +38,12 @@ async def _clean_defaults(
     port_client = ocean.port_client
     is_exists = await is_integration_exists(port_client)
     if not is_exists:
-        return None
+        return
     defaults = get_port_integration_defaults(
         config_class, integration_config.resources_path
     )
     if not defaults:
-        return None
+        return
 
     try:
         delete_result = await asyncio.gather(
@@ -60,7 +59,7 @@ async def _clean_defaults(
             logger.info(
                 "Finished deleting blueprints! ⚓️",
             )
-            return None
+            return
 
         migration_ids = [migration_id for migration_id in delete_result if migration_id]
 
@@ -79,14 +78,14 @@ async def _clean_defaults(
             logger.info(
                 "Migrations completed successfully! ⚓️",
             )
-            return None
+            return
 
         result = await ocean.port_client.delete_current_integration()
         if result.get("ok"):
             logger.info(
                 "Blueprints deleted, migrations completed, and integration destroyed successfully! ⚓️",
             )
-            return None
+            return
 
     except httpx.HTTPStatusError as e:
         logger.error(f"Failed to delete blueprints: {e.response.text}.")

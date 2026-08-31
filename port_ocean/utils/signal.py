@@ -1,5 +1,6 @@
 from asyncio import iscoroutinefunction
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from werkzeug.local import LocalProxy, LocalStack
 

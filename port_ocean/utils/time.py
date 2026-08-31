@@ -1,4 +1,5 @@
 import datetime
+
 from loguru import logger
 
 
@@ -10,7 +11,7 @@ def convert_str_to_utc_datetime(time_str: str) -> datetime.datetime:
     aware_date = datetime.datetime.fromisoformat(time_str)
     if time_str.endswith("Z"):
         aware_date = datetime.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
-    return aware_date.astimezone(datetime.timezone.utc)
+    return aware_date.astimezone(datetime.UTC)
 
 
 def convert_to_minutes(s: str) -> int:
@@ -50,7 +51,7 @@ def get_next_occurrence(
     """
 
     if now is None:
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
     # Calculate the total seconds elapsed since the start time
     elapsed_seconds = (now - start_time).total_seconds()
 

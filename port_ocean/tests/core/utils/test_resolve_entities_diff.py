@@ -1,11 +1,13 @@
+from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import patch
+
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.utils import (
     are_entities_different,
-    resolve_entities_diff,
     are_entities_fields_equal,
+    resolve_entities_diff,
 )
-from typing import Any, AsyncGenerator
 
 
 def create_test_entity(

@@ -6,7 +6,7 @@ Keep vendor-specific behavior local (start-of-day/month snaps, ``30d`` strings,
 search prefixes like ``>=...``, window partitioning, API clamps).
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from dateutil.relativedelta import relativedelta
@@ -16,18 +16,18 @@ Rfc3339Timespec = Literal["seconds", "microseconds"]
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def days_ago(days: int) -> datetime:
     """UTC datetime ``days`` ago (negative ``days`` = in the future)."""
-    return datetime.now(timezone.utc) - timedelta(days=days)
+    return datetime.now(UTC) - timedelta(days=days)
 
 
 def months_ago(months: int) -> datetime:
     """UTC datetime ``months`` calendar months ago (negative = in the future)."""
-    return datetime.now(timezone.utc) - relativedelta(months=months)
+    return datetime.now(UTC) - relativedelta(months=months)
 
 
 def to_rfc3339(

@@ -1,7 +1,7 @@
 """Unit tests for the file probe reporter."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,7 +19,7 @@ def test_file_probe_reporter_writes_report_to_configured_path(tmp_path: Path) ->
         "probe_id": "probe-1",
         "status": "IN_PROGRESS",
     }
-    fixed_time = datetime(2026, 8, 30, 12, 0, 0, tzinfo=timezone.utc)
+    fixed_time = datetime(2026, 8, 30, 12, 0, 0, tzinfo=UTC)
 
     # Act
     with patch(

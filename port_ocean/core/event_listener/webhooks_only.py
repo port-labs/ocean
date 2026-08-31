@@ -1,4 +1,5 @@
 from typing import Literal
+
 from loguru import logger
 
 from port_ocean.core.event_listener.base import (

@@ -1,6 +1,6 @@
 import asyncio
 from inspect import getmembers
-from typing import Dict, Any, Type
+from typing import Any
 
 import uvicorn
 from pydantic import BaseModel
@@ -16,7 +16,7 @@ from port_ocean.utils.misc import get_spec_file, load_module
 from port_ocean.utils.signal import init_signal_handler
 
 
-def _get_default_config_factory() -> None | Type[BaseModel]:
+def _get_default_config_factory() -> None | type[BaseModel]:
     spec = get_spec_file()
     config_factory = None
     if spec is not None:
@@ -29,7 +29,7 @@ def run(
     log_level: LogLevelType = "INFO",
     port: int = 8000,
     initialize_port_resources: bool | None = None,
-    config_override: Dict[str, Any] | None = None,
+    config_override: dict[str, Any] | None = None,
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from port_ocean.core.probe import ProbeConfig
@@ -14,7 +14,7 @@ class FileProbeReporter(ProbeReporter):
 
     def __init__(self, config: ProbeConfig):
         super().__init__(config)
-        self.timestamp: str = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
+        self.timestamp: str = datetime.now(UTC).strftime("%Y%m%dT%H%M%S_%fZ")
 
     def report(self, report: dict[str, Any]) -> None:
         reports_directory = self.config.path / PROBE_REPORTS_DIRECTORY

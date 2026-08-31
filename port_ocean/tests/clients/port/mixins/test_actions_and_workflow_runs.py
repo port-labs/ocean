@@ -1,8 +1,8 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from typing import Any
-
 import pytest
+
 from port_ocean.clients.port.mixins.actions_and_workflow_runs import (
     ActionsAndWorkflowRunsClientMixin,
 )
