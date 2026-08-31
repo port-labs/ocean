@@ -2,12 +2,14 @@ import pytest
 from typing import Any, AsyncGenerator, Dict
 from unittest.mock import AsyncMock, MagicMock
 
+from github.helpers.exceptions import GraphQLForbiddenFieldError
 from github.helpers.utils import (
     enrich_with_organization,
     enrich_with_repository,
     parse_github_options,
     enrich_user_with_primary_email,
     get_saml_identities,
+    _parse_saml_edges,
 )
 
 
@@ -354,3 +356,176 @@ class TestEnterpriseSamlFallback:
         result = await get_saml_identities(client, "test-org")
 
         assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_org_saml_forbidden_returns_empty_and_falls_back(self) -> None:
+        """When org SAML returns FORBIDDEN, falls back to enterprise."""
+        client = self._make_client()
+        ent_edges = self._make_saml_edges([("user1", "user1@enterprise.com")])
+
+        async def mock_forbidden_generator(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            raise GraphQLForbiddenFieldError({"samlIdentityProvider"})
+            yield  # noqa: unreachable
+
+        async def mock_ent_paginated(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield ent_edges
+
+        call_count = 0
+
+        def paginated_side_effect(*args: Any, **kwargs: Any) -> Any:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return mock_forbidden_generator()
+            return mock_ent_paginated()
+
+        client.send_paginated_request.side_effect = paginated_side_effect
+        client.send_api_request.return_value = {
+            "data": {
+                "viewer": {"enterprises": {"nodes": [{"slug": "test-enterprise"}]}}
+            }
+        }
+
+        result = await get_saml_identities(client, "test-org")
+
+        assert result == {"user1": "user1@enterprise.com"}
+
+    @pytest.mark.asyncio
+    async def test_enterprise_saml_forbidden_returns_empty(self) -> None:
+        """When both org and enterprise SAML return FORBIDDEN, returns empty."""
+        client = self._make_client()
+
+        async def mock_forbidden_generator(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            raise GraphQLForbiddenFieldError({"samlIdentityProvider"})
+            yield  # noqa: unreachable
+
+        client.send_paginated_request.side_effect = (
+            lambda *args, **kwargs: mock_forbidden_generator()
+        )
+        client.send_api_request.return_value = {
+            "data": {
+                "viewer": {"enterprises": {"nodes": [{"slug": "test-enterprise"}]}}
+            }
+        }
+
+        result = await get_saml_identities(client, "test-org")
+
+        assert result == {}
+
+
+class TestParseSamlEdges:
+    """Tests for _parse_saml_edges edge parsing and error handling."""
+
+    def test_valid_edges(self) -> None:
+        edges = [
+            {
+                "node": {
+                    "guid": "abc-123",
+                    "user": {"login": "user1"},
+                    "samlIdentity": {"nameId": "user1@corp.com"},
+                }
+            },
+            {
+                "node": {
+                    "guid": "def-456",
+                    "user": {"login": "user2"},
+                    "samlIdentity": {"nameId": "user2@corp.com"},
+                }
+            },
+        ]
+        result = _parse_saml_edges(edges)
+        assert result == {"user1": "user1@corp.com", "user2": "user2@corp.com"}
+
+    def test_edge_with_null_user_is_skipped(self) -> None:
+        edges: list[dict[str, Any]] = [
+            {
+                "node": {
+                    "guid": "abc-123",
+                    "user": None,
+                    "samlIdentity": {"nameId": "bot@corp.com"},
+                }
+            },
+            {
+                "node": {
+                    "guid": "def-456",
+                    "user": {"login": "user1"},
+                    "samlIdentity": {"nameId": "user1@corp.com"},
+                }
+            },
+        ]
+        result = _parse_saml_edges(edges)
+        assert result == {"user1": "user1@corp.com"}
+
+    def test_edge_missing_saml_identity_is_skipped(self) -> None:
+        edges = [
+            {
+                "node": {
+                    "guid": "abc-123",
+                    "user": {"login": "user1"},
+                }
+            },
+        ]
+        result = _parse_saml_edges(edges)
+        assert result == {}
+
+    def test_edge_missing_name_id_is_skipped(self) -> None:
+        edges = [
+            {
+                "node": {
+                    "guid": "abc-123",
+                    "user": {"login": "user1"},
+                    "samlIdentity": {},
+                }
+            },
+        ]
+        result = _parse_saml_edges(edges)
+        assert result == {}
+
+    def test_edge_with_null_saml_identity_is_skipped(self) -> None:
+        edges = [
+            {
+                "node": {
+                    "guid": "abc-123",
+                    "user": {"login": "user1"},
+                    "samlIdentity": None,
+                }
+            },
+        ]
+        result = _parse_saml_edges(edges)
+        assert result == {}
+
+    def test_mixed_valid_and_malformed_edges(self) -> None:
+        edges: list[dict[str, Any]] = [
+            {
+                "node": {
+                    "guid": "good-1",
+                    "user": {"login": "user1"},
+                    "samlIdentity": {"nameId": "user1@corp.com"},
+                }
+            },
+            {
+                "node": {
+                    "guid": "bad-1",
+                    "user": {"login": "user2"},
+                    "samlIdentity": None,
+                }
+            },
+            {
+                "node": {
+                    "guid": "good-2",
+                    "user": {"login": "user3"},
+                    "samlIdentity": {"nameId": "user3@corp.com"},
+                }
+            },
+        ]
+        result = _parse_saml_edges(edges)
+        assert result == {"user1": "user1@corp.com", "user3": "user3@corp.com"}
+
+    def test_empty_edges(self) -> None:
+        assert _parse_saml_edges([]) == {}
