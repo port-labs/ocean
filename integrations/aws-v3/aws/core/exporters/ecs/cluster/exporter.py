@@ -1,5 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
+from botocore.exceptions import ClientError
+
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ecs.cluster.actions import EcsClusterActionsMap
 from aws.core.exporters.ecs.cluster.models import Cluster
@@ -23,11 +25,36 @@ class EcsClusterExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-cluster fetch only has a cluster name from CloudTrail.
+            # describe_clusters returns an empty list when the cluster is gone instead
+            # of raising, and the inspector would still build a stub from that name.
+            # Confirm it exists so a missing cluster raises and the live-event handler
+            # can treat the update as a delete instead.
+            response = await proxy.client.describe_clusters(  # type: ignore[attr-defined]
+                clusters=[options.cluster_name]
+            )
+            if not response.get("clusters"):
+                raise ClientError(
+                    {
+                        "Error": {
+                            "Code": "ClusterNotFoundException",
+                            "Message": f"Cluster not found: {options.cluster_name}",
+                        }
+                    },
+                    "DescribeClusters",
+                )
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect([options.cluster_name], options.include)
+            response = await inspector.inspect(
+                [options.cluster_name],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
 
             return response[0] if response else {}
 

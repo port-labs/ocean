@@ -8,6 +8,8 @@ from aws.core.helpers.metadata.types import (
 from aws.core.exporters.s3.bucket.models import SingleBucketRequest
 from aws.utils import RegionHelper
 
+CLOUDTRAIL_EVENT_SOURCE = "s3.amazonaws.com"
+
 
 def _bucket_arn(bucket_name: str) -> str:
     partition = RegionHelper.get_partition()
@@ -42,10 +44,14 @@ S3_BUCKET_LIVE_EVENTS = LiveEventFactories(
     deletion_identifier_properties_factory=_deletion_identifier_properties,
     cloudtrail_mappings={
         "CreateBucket": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_s3_bucket_name
+            CloudTrailEventAction.UPSERT,
+            _extract_s3_bucket_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "DeleteBucket": CloudTrailEventMapping(
-            CloudTrailEventAction.DELETE, _extract_s3_bucket_name
+            CloudTrailEventAction.DELETE,
+            _extract_s3_bucket_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
 )

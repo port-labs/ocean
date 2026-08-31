@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from port_ocean.config.settings import IntegrationSettings
 from port_ocean.utils.time import parse_interval_to_minutes
@@ -31,7 +31,7 @@ class TestParseIntervalToMinutes:
 
 class TestIncrementalSyncIntervalParsing:
     def test_settings_use_parse_interval_to_minutes(self) -> None:
-        settings = IntegrationSettings.parse_obj(
+        settings = IntegrationSettings.model_validate(
             {
                 "identifier": "test",
                 "type": "github",
