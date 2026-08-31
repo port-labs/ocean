@@ -501,6 +501,18 @@ class JiraClient(OAuthClient):
             for key, permission in response.get("permissions", {}).items()
         }
 
+    async def verify_teams_access(self, org_id: str) -> None:
+        """Verify the configured credentials can read teams for an organization.
+
+        Retries are disabled so a probe reports a rejected token immediately instead
+        of waiting out the backoff budget on credentials that cannot start working.
+        """
+        await self._send_api_request(
+            "GET",
+            f"{self.teams_base_url}/{org_id}/teams",
+            skip_retry=True,
+        )
+
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(

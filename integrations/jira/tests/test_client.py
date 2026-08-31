@@ -490,7 +490,23 @@ async def test_get_current_user_permissions_only_verifies_auth_when_no_keys(
 
     assert permissions == {}
     mock_request.assert_awaited_once_with(
-        "GET", f"{mock_jira_client.api_url}/myself", should_retry=False
+        "GET", f"{mock_jira_client.api_url}/myself", skip_retry=True
+    )
+
+
+@pytest.mark.asyncio
+async def test_verify_teams_access(mock_jira_client: JiraClient) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"entities": []}
+
+        await mock_jira_client.verify_teams_access("test_org_id")
+
+    mock_request.assert_awaited_once_with(
+        "GET",
+        f"{mock_jira_client.teams_base_url}/test_org_id/teams",
+        skip_retry=True,
     )
 
 
