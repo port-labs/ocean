@@ -195,3 +195,38 @@ class TestPullRequestReviewWebhookProcessor:
                     exclude_graphql_fields=[],
                 )
             )
+
+    async def test_handle_event_deletes_closed_pr_excluded_by_states(
+        self,
+        pull_request_review_webhook_processor: PullRequestReviewWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+    ) -> None:
+        """Review on a closed PR when states=["open"] should delete, not upsert."""
+        pr_data = {
+            "id": 1,
+            "number": 101,
+            "title": "Test PR",
+            "state": "open",
+        }
+        payload = {
+            "action": "submitted",
+            "pull_request": pr_data,
+            "repository": {"name": "test-repo", "full_name": "test-org/test-repo"},
+            "organization": {"login": "test-org"},
+            "review": {"id": 1, "state": "approved"},
+        }
+
+        fetched_pr_data = {**pr_data, "state": "closed", "additional_data": "from_api"}
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = fetched_pr_data
+
+        with patch(
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter",
+            return_value=mock_exporter,
+        ):
+            result = await pull_request_review_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == [fetched_pr_data]

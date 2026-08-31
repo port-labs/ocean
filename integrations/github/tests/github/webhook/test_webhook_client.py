@@ -137,12 +137,13 @@ class TestGithubWebhookClient:
             authenticator=authenticator,
         )
 
-        # Test data
         webhook_id = "hook1"
-        config_data = {
-            "url": "https://example.com/integration/webhook",
-            "content_type": "json",
-            "secret": "test-secret",
+        patch_data = {
+            "config": {
+                "url": "https://example.com/integration/webhook",
+                "content_type": "json",
+                "secret": "test-secret",
+            }
         }
         target = HookTarget(
             target_type="organization",
@@ -154,13 +155,12 @@ class TestGithubWebhookClient:
         )
 
         with patch.object(client, "send_api_request", AsyncMock()) as mock_send:
-            await client._patch_webhook(webhook_id, config_data, target)
+            await client._patch_webhook(webhook_id, patch_data, target)
 
-            # Verify the API request was made correctly
             mock_send.assert_called_once_with(
                 f"{client.base_url}/orgs/test-org/hooks/{webhook_id}",
                 method="PATCH",
-                json_data={"config": config_data},
+                json_data=patch_data,
             )
 
     async def test_upsert_webhook_create_new(

@@ -96,6 +96,17 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        pr_state = data_to_upsert.get("state", "")
+        if pr_state and pr_state not in config.selector.states:
+            logger.info(
+                f"Pull request {repo_name}/{number} has state '{pr_state}' which is "
+                f"excluded by selector states {config.selector.states}, deleting"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[data_to_upsert],
+            )
+
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
