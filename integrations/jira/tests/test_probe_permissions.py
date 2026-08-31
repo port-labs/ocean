@@ -9,6 +9,13 @@ from jira.probe import permissions as probe_permissions
 from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 
+def _probe_context(**kwargs: object) -> ProbeContext:
+    context = ProbeContext(**kwargs)
+    context.reporter = MagicMock()
+    context.reporter.report = AsyncMock()
+    return context
+
+
 def _http_status_error(status_code: int) -> httpx.HTTPStatusError:
     request = httpx.Request("GET", "https://example.atlassian.net/rest/api/3/myself")
     return httpx.HTTPStatusError(
@@ -41,17 +48,17 @@ async def test_jira_permissions_are_mapped_to_available_kinds(
         verify_teams_access=AsyncMock(),
     )
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["project", "user", "team"]
     snapshots: list[list[ProbeCheckStatus]] = []
+
+    async def capture_snapshot() -> None:
+        snapshots.append([check.status for check in context.checks])
+
     monkeypatch.setattr(
         context,
         "update_progress",
-        MagicMock(
-            side_effect=lambda: snapshots.append(
-                [check.status for check in context.checks]
-            )
-        ),
+        AsyncMock(side_effect=capture_snapshot),
     )
 
     await JiraPermissionProbe(context).run()
@@ -78,7 +85,7 @@ async def test_missing_jira_permission_information_is_unknown(
 ) -> None:
     client = SimpleNamespace(get_current_user_permissions=AsyncMock(return_value={}))
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["project"]
 
     await JiraPermissionProbe(context).run()
@@ -100,7 +107,7 @@ async def test_team_probe_verifies_authentication_without_jira_permissions(
         verify_teams_access=AsyncMock(),
     )
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["team"]
 
     await JiraPermissionProbe(context).run()
@@ -123,7 +130,7 @@ async def test_team_probe_fails_when_organization_id_is_missing(
         verify_teams_access=AsyncMock(),
     )
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["team"]
 
     await JiraPermissionProbe(context).run()
@@ -151,7 +158,7 @@ async def test_team_probe_reports_teams_api_failures(
         verify_teams_access=AsyncMock(side_effect=_http_status_error(status_code)),
     )
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["team"]
 
     await JiraPermissionProbe(context).run()
@@ -174,7 +181,7 @@ async def test_team_probe_reports_teams_api_connection_failure(
         verify_teams_access=AsyncMock(side_effect=error),
     )
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["team"]
 
     await JiraPermissionProbe(context).run()
@@ -214,7 +221,7 @@ async def test_failed_permission_lookup_fails_the_probe_with_a_reason(
 ) -> None:
     client = SimpleNamespace(get_current_user_permissions=AsyncMock(side_effect=error))
     monkeypatch.setattr(probe_permissions, "get_or_create_jira_client", lambda: client)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["project", "user"]
 
     await JiraPermissionProbe(context).run()

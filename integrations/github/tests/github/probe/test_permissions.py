@@ -11,13 +11,20 @@ from github.probe.permissions import runner as permissions
 from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 
+def _probe_context(**kwargs: object) -> ProbeContext:
+    context = ProbeContext(**kwargs)
+    context.reporter = MagicMock()
+    context.reporter.report = AsyncMock()
+    return context
+
+
 async def _run_probe(
     monkeypatch: pytest.MonkeyPatch,
     kinds: list[str],
     provider: object,
 ) -> ProbeContext:
     monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = kinds
     await GitHubPermissionProbe(context).run()
     return context
@@ -122,17 +129,17 @@ async def test_all_checks_are_published_as_pending_before_being_resolved(
     )
     monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
 
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["repository", "issue"]
     snapshots: list[list[ProbeCheckStatus]] = []
+
+    async def capture_snapshot() -> None:
+        snapshots.append([check.status for check in context.checks])
+
     monkeypatch.setattr(
         context,
         "update_progress",
-        MagicMock(
-            side_effect=lambda: snapshots.append(
-                [check.status for check in context.checks]
-            )
-        ),
+        AsyncMock(side_effect=capture_snapshot),
     )
 
     await GitHubPermissionProbe(context).run()
@@ -423,7 +430,7 @@ async def test_failed_pat_lookup_fails_the_probe_with_a_reason(
     monkeypatch: pytest.MonkeyPatch, error: Exception, expected_message: str
 ) -> None:
     monkeypatch.setattr(permissions, "get_auth_provider", lambda: _pat_provider(error))
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["repository", "issue"]
 
     await GitHubPermissionProbe(context).run()
@@ -453,7 +460,7 @@ async def test_failed_app_token_fetch_fails_the_probe_with_a_reason(
         ),
     )
     monkeypatch.setattr(permissions, "get_auth_provider", lambda: provider)
-    context = ProbeContext()
+    context = _probe_context()
     context.available_kinds = ["repository"]
 
     await GitHubPermissionProbe(context).run()

@@ -7,7 +7,7 @@ from port_ocean.core.probe.reporters.log import LogProbeReporter
 
 
 @patch("port_ocean.core.probe.reporters.log.logger")
-def test_log_probe_reporter_logs_report(mock_logger: MagicMock) -> None:
+async def test_log_probe_reporter_logs_report(mock_logger: MagicMock) -> None:
     # Arrange
     reporter = LogProbeReporter(ProbeConfig())
     report = {
@@ -16,7 +16,7 @@ def test_log_probe_reporter_logs_report(mock_logger: MagicMock) -> None:
     }
 
     # Act
-    reporter.report(report)
+    await reporter.report(report)
 
     # Assert
     mock_logger.info.assert_called_once_with("Probe status report", probe_report=report)
