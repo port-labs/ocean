@@ -1,5 +1,5 @@
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
 
@@ -9,7 +9,7 @@ class TestLiveEventsRedisSettingsValidation:
         settings = LiveEventsRedisSettings(url="redis://localhost:6379")
 
         assert settings.enable_tls is False
-        assert settings.pel_requeue_worker_enabled is True
+        assert settings.stream_maintenance_worker_enabled is True
         assert settings.stream_ttl_seconds == 2_592_000
 
     def test_is_redis_stream_consumer_enabled_from_env(
@@ -29,13 +29,13 @@ class TestLiveEventsRedisSettingsValidation:
 
         assert config.live_events.is_redis_stream_consumer_enabled is True
 
-    def test_pel_requeue_worker_enabled_from_env(
+    def test_stream_maintenance_worker_enabled_from_env(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from port_ocean.config.settings import IntegrationConfiguration
 
         monkeypatch.setenv(
-            "OCEAN__LIVE_EVENTS__REDIS__PEL_REQUEUE_WORKER_ENABLED", "true"
+            "OCEAN__LIVE_EVENTS__REDIS__STREAM_MAINTENANCE_WORKER_ENABLED", "true"
         )
         monkeypatch.setenv("OCEAN__PORT__CLIENT_ID", "test-client-id")
         monkeypatch.setenv("OCEAN__PORT__CLIENT_SECRET", "test-client-secret")
@@ -44,7 +44,7 @@ class TestLiveEventsRedisSettingsValidation:
 
         config = IntegrationConfiguration()
 
-        assert config.live_events.redis.pel_requeue_worker_enabled is True
+        assert config.live_events.redis.stream_maintenance_worker_enabled is True
 
     def test_stream_ttl_seconds_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from port_ocean.config.settings import IntegrationConfiguration

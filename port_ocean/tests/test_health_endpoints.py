@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from port_ocean.health import create_health_router
+from port_ocean.health import create_health_router, set_ready
 
 
 def test_health_endpoints_return_json_payload() -> None:
@@ -17,6 +17,14 @@ def test_health_endpoints_return_json_payload() -> None:
         assert isinstance(live_body["core_version"], str)
         assert live_body["core_version"]
 
+        set_ready(False)
+        ready_not_started = client.get("/health/ready")
+        assert ready_not_started.status_code == 503
+        not_ready_body = ready_not_started.json()
+        assert not_ready_body["status"] == "not_ready"
+        assert not_ready_body["check"] == "ready"
+
+        set_ready(True)
         ready = client.get("/health/ready")
         assert ready.status_code == 200
         ready_body = ready.json()

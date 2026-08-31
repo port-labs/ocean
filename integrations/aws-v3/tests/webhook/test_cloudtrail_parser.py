@@ -16,7 +16,10 @@ def _eventbridge_envelope(
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {"eventName": event_name}
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "s3.amazonaws.com",
+    }
     if region is not None:
         detail["awsRegion"] = region
     if account is not None:
@@ -136,7 +139,10 @@ def _lambda_eventbridge_envelope(
     account: str | None = "111122223333",
     region: str | None = "us-east-1",
 ) -> EventBridgeCloudTrailPayload:
-    detail: CloudTrailDetail = {"eventName": event_name}
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "lambda.amazonaws.com",
+    }
     if region is not None:
         detail["awsRegion"] = region
     if account is not None:
@@ -252,3 +258,404 @@ def test_parse_versioned_lambda_event_names() -> None:
 def test_is_supported_cloudtrail_event_false_for_unrelated_lambda_prefix() -> None:
     payload = _lambda_eventbridge_envelope("GetFunction20150331v2")
     assert is_supported_cloudtrail_event(payload) is False
+
+
+def _dynamodb_eventbridge_envelope(
+    event_name: str,
+    table_name: str | None = "my-table",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "dynamodb.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+    if table_name is not None:
+        detail["requestParameters"] = {"tableName": table_name}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.dynamodb",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_dynamodb_events() -> None:
+    for event_name in ("CreateTable", "UpdateTable", "DeleteTable"):
+        payload = _dynamodb_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_create_table_event() -> None:
+    payload = _dynamodb_eventbridge_envelope("CreateTable", table_name="my-table")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.DYNAMODB_TABLE
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == "my-table"
+    assert parsed.event_name == "CreateTable"
+
+
+def test_parse_delete_table_event() -> None:
+    payload = _dynamodb_eventbridge_envelope("DeleteTable", table_name="my-table")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.DYNAMODB_TABLE
+    assert parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_parse_returns_none_when_table_name_missing() -> None:
+    payload = _dynamodb_eventbridge_envelope("CreateTable", table_name=None)
+    assert parse_cloudtrail_event(payload) is None
+
+
+def _rds_db_instance_eventbridge_envelope(
+    event_name: str,
+    db_instance_identifier: str | None = "my-db-instance",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+    identifier_key: str = "dbInstanceIdentifier",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "rds.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+    if db_instance_identifier is not None:
+        detail["requestParameters"] = {identifier_key: db_instance_identifier}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.rds",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_rds_db_instance_events() -> None:
+    for event_name in ("CreateDBInstance", "ModifyDBInstance", "DeleteDBInstance"):
+        payload = _rds_db_instance_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_create_db_instance_event() -> None:
+    payload = _rds_db_instance_eventbridge_envelope(
+        "CreateDBInstance", db_instance_identifier="my-db-instance"
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.RDS_DB_INSTANCE
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == "my-db-instance"
+    assert parsed.event_name == "CreateDBInstance"
+
+
+def test_parse_modify_db_instance_event() -> None:
+    payload = _rds_db_instance_eventbridge_envelope("ModifyDBInstance")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.RDS_DB_INSTANCE
+    assert parsed.action == CloudTrailEventAction.UPSERT
+
+
+def test_parse_delete_db_instance_event() -> None:
+    payload = _rds_db_instance_eventbridge_envelope("DeleteDBInstance")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.RDS_DB_INSTANCE
+    assert parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_parse_db_instance_identifier_from_d_b_instance_identifier_key() -> None:
+    payload = _rds_db_instance_eventbridge_envelope(
+        "DeleteDBInstance",
+        db_instance_identifier="legacy-db",
+        identifier_key="dBInstanceIdentifier",
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.identifier == "legacy-db"
+
+
+def test_parse_returns_none_when_db_instance_identifier_missing() -> None:
+    payload = _rds_db_instance_eventbridge_envelope(
+        "CreateDBInstance", db_instance_identifier=None
+    )
+    assert parse_cloudtrail_event(payload) is None
+
+
+def _cluster_eventbridge_envelope(
+    event_name: str,
+    *,
+    event_source: str,
+    cluster_name: str | None = "my-cluster",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+    identifier_key: str = "clusterName",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": event_source,
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+    if cluster_name is not None:
+        detail["requestParameters"] = {identifier_key: cluster_name}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": event_source,
+        },
+    )
+
+
+def _ecr_eventbridge_envelope(
+    event_name: str,
+    repository_name: str | None = "my-repo",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    return _cluster_eventbridge_envelope(
+        event_name,
+        event_source="ecr.amazonaws.com",
+        cluster_name=repository_name,
+        account=account,
+        region=region,
+        identifier_key="repositoryName",
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_ecr_repository_events() -> None:
+    for event_name in ("CreateRepository", "DeleteRepository"):
+        payload = _ecr_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_create_repository_event() -> None:
+    payload = _ecr_eventbridge_envelope("CreateRepository", repository_name="my-repo")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECR_REPOSITORY
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == "my-repo"
+    assert parsed.event_name == "CreateRepository"
+
+
+def test_parse_delete_repository_event() -> None:
+    payload = _ecr_eventbridge_envelope("DeleteRepository")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECR_REPOSITORY
+    assert parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_parse_returns_none_when_repository_name_missing() -> None:
+    payload = _ecr_eventbridge_envelope("CreateRepository", repository_name=None)
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_is_supported_cloudtrail_event_true_for_ecs_cluster_events() -> None:
+    for event_name in (
+        "CreateCluster",
+        "PutClusterCapacityProviders",
+        "DeleteCluster",
+    ):
+        payload = _cluster_eventbridge_envelope(
+            event_name, event_source="ecs.amazonaws.com"
+        )
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_ecs_create_cluster_event() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "CreateCluster", event_source="ecs.amazonaws.com", cluster_name="ecs-cluster"
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_CLUSTER
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == "ecs-cluster"
+
+
+def test_parse_ecs_delete_cluster_event() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "DeleteCluster", event_source="ecs.amazonaws.com"
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_CLUSTER
+    assert parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_parse_ecs_put_cluster_capacity_providers_event_from_cluster_name() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "PutClusterCapacityProviders",
+        event_source="ecs.amazonaws.com",
+        cluster_name="ecs-cluster",
+        identifier_key="cluster",
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_CLUSTER
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == "ecs-cluster"
+
+
+def test_parse_ecs_put_cluster_capacity_providers_event_from_cluster_arn() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "PutClusterCapacityProviders",
+        event_source="ecs.amazonaws.com",
+        cluster_name="arn:aws:ecs:us-east-1:111122223333:cluster/ecs-cluster",
+        identifier_key="cluster",
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_CLUSTER
+    assert parsed.identifier == "ecs-cluster"
+
+
+def test_is_supported_cloudtrail_event_true_for_eks_cluster_events() -> None:
+    for event_name in (
+        "CreateCluster",
+        "UpdateClusterConfig",
+        "UpdateClusterVersion",
+        "DeleteCluster",
+    ):
+        payload = _cluster_eventbridge_envelope(
+            event_name, event_source="eks.amazonaws.com"
+        )
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_eks_create_cluster_event_from_cluster_name() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "CreateCluster", event_source="eks.amazonaws.com", cluster_name="eks-cluster"
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.EKS_CLUSTER
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == "eks-cluster"
+
+
+def test_parse_eks_create_cluster_event_from_name() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "CreateCluster",
+        event_source="eks.amazonaws.com",
+        cluster_name="eks-cluster",
+        identifier_key="name",
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.EKS_CLUSTER
+    assert parsed.identifier == "eks-cluster"
+
+
+def test_parse_eks_delete_cluster_event() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "DeleteCluster", event_source="eks.amazonaws.com"
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.EKS_CLUSTER
+    assert parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_create_cluster_without_event_source_is_not_supported() -> None:
+    payload = _cluster_eventbridge_envelope(
+        "CreateCluster",
+        event_source="ecs.amazonaws.com",
+        cluster_name="ecs-cluster",
+    )
+    del payload["detail"]["eventSource"]
+
+    assert is_supported_cloudtrail_event(payload) is False
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_ecs_and_eks_create_cluster_are_disambiguated_by_event_source() -> None:
+    ecs_payload = _cluster_eventbridge_envelope(
+        "CreateCluster", event_source="ecs.amazonaws.com", cluster_name="shared-name"
+    )
+    eks_payload = _cluster_eventbridge_envelope(
+        "CreateCluster", event_source="eks.amazonaws.com", cluster_name="shared-name"
+    )
+
+    ecs_parsed = parse_cloudtrail_event(ecs_payload)
+    eks_parsed = parse_cloudtrail_event(eks_payload)
+
+    assert ecs_parsed is not None
+    assert eks_parsed is not None
+    assert ecs_parsed.kind == ObjectKind.ECS_CLUSTER
+    assert eks_parsed.kind == ObjectKind.EKS_CLUSTER

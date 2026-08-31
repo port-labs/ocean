@@ -3,13 +3,13 @@ import json
 from typing import Iterable, Any, TypeVar, Callable, Awaitable, AsyncGenerator, cast
 
 from loguru import logger
-from pydantic.v1 import BaseModel
 
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity, Runtime
 from port_ocean.core.models import EntityPortDiff
 from port_ocean.core.ocean_types import RAW_RESULT
+from port_ocean.core.utils.entity_identifier import normalize_identifier
 from port_ocean.exceptions.core import (
     RawObjectValidationException,
     IntegrationRuntimeException,
@@ -91,16 +91,7 @@ async def gather_and_split_errors_from_results(
 
 
 def _get_entity_key(entity: Entity) -> tuple[str, str]:
-    identifier = entity.identifier
-    if isinstance(identifier, BaseModel):
-        identifier = identifier.dict()
-
-    key_part = (
-        json.dumps(identifier, sort_keys=True)
-        if isinstance(identifier, dict)
-        else str(identifier)
-    )
-    return key_part, entity.blueprint
+    return normalize_identifier(entity.identifier), entity.blueprint
 
 
 def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPortDiff:

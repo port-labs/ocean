@@ -32,6 +32,7 @@ from aws.core.exporters.codepipeline import (
     PipelineExporter,
 )
 from aws.core.exporters.dynamodb import DynamoDBTableExporter
+from aws.core.exporters.dynamodb.table.live_events import DYNAMODB_TABLE_LIVE_EVENTS
 from aws.core.exporters.dynamodb.table.models import PaginatedTableRequest
 from aws.core.exporters.ec2.instance import (
     EC2InstanceExporter,
@@ -40,14 +41,17 @@ from aws.core.exporters.ec2.instance import (
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.exporters.ecr import EcrRepositoryExporter
+from aws.core.exporters.ecr.repository.live_events import ECR_REPOSITORY_LIVE_EVENTS
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
 from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
+from aws.core.exporters.ecs.cluster.live_events import ECS_CLUSTER_LIVE_EVENTS
 from aws.core.exporters.ecs.cluster.models import PaginatedClusterRequest
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
 from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
 from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
 from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitionRequest
 from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
+from aws.core.exporters.eks.cluster.live_events import EKS_CLUSTER_LIVE_EVENTS
 from aws.core.exporters.eks.cluster.models import PaginatedEksClusterRequest
 from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
@@ -62,6 +66,7 @@ from aws.core.exporters.msk.serverless_cluster.models import (
 from aws.core.exporters.rds.db_cluster.exporter import RdsDbClusterExporter
 from aws.core.exporters.rds.db_cluster.models import PaginatedDbClusterRequest
 from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
+from aws.core.exporters.rds.db_instance.live_events import RDS_DB_INSTANCE_LIVE_EVENTS
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
 from aws.core.exporters.s3 import PaginatedBucketRequest, S3BucketExporter
 from aws.core.exporters.s3.bucket.live_events import S3_BUCKET_LIVE_EVENTS
@@ -87,13 +92,19 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         EC2InstanceExporter, PaginatedEC2InstanceRequest
     ),
     ObjectKind.ECS_CLUSTER: ExporterMetadata(
-        EcsClusterExporter, PaginatedClusterRequest
+        EcsClusterExporter,
+        PaginatedClusterRequest,
+        live_events=ECS_CLUSTER_LIVE_EVENTS,
     ),
     ObjectKind.EKS_CLUSTER: ExporterMetadata(
-        EksClusterExporter, PaginatedEksClusterRequest
+        EksClusterExporter,
+        PaginatedEksClusterRequest,
+        live_events=EKS_CLUSTER_LIVE_EVENTS,
     ),
     ObjectKind.RDS_DB_INSTANCE: ExporterMetadata(
-        RdsDbInstanceExporter, PaginatedDbInstanceRequest
+        RdsDbInstanceExporter,
+        PaginatedDbInstanceRequest,
+        live_events=RDS_DB_INSTANCE_LIVE_EVENTS,
     ),
     ObjectKind.RDS_DB_CLUSTER: ExporterMetadata(
         RdsDbClusterExporter, PaginatedDbClusterRequest
@@ -111,7 +122,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
     ),
     ObjectKind.SQS_QUEUE: ExporterMetadata(SqsQueueExporter, PaginatedQueueRequest),
     ObjectKind.ECR_REPOSITORY: ExporterMetadata(
-        EcrRepositoryExporter, PaginatedRepositoryRequest
+        EcrRepositoryExporter,
+        PaginatedRepositoryRequest,
+        live_events=ECR_REPOSITORY_LIVE_EVENTS,
     ),
     ObjectKind.MSK_SERVERLESS_CLUSTER: ExporterMetadata(
         MskServerlessClusterExporter, PaginatedMskServerlessClusterRequest
@@ -165,7 +178,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         SesEmailIdentityExporter, PaginatedEmailIdentityRequest
     ),
     ObjectKind.DYNAMODB_TABLE: ExporterMetadata(
-        DynamoDBTableExporter, PaginatedTableRequest
+        DynamoDBTableExporter,
+        PaginatedTableRequest,
+        live_events=DYNAMODB_TABLE_LIVE_EVENTS,
     ),
     ObjectKind.SES_CONFIGURATION_SET: ExporterMetadata(
         SesConfigurationSetExporter, PaginatedConfigurationSetRequest

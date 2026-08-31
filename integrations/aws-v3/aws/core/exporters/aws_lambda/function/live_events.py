@@ -8,6 +8,8 @@ from aws.core.helpers.metadata.types import (
 )
 from aws.utils import RegionHelper
 
+CLOUDTRAIL_EVENT_SOURCE = "lambda.amazonaws.com"
+
 
 def _function_arn(context: LiveEventContext) -> str:
     partition = RegionHelper.get_partition()
@@ -45,16 +47,24 @@ LAMBDA_FUNCTION_LIVE_EVENTS = LiveEventFactories(
     deletion_identifier_properties_factory=_deletion_identifier_properties,
     cloudtrail_mappings={
         "CreateFunction20150331": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_lambda_function_name
+            CloudTrailEventAction.UPSERT,
+            _extract_lambda_function_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "UpdateFunctionConfiguration20150331v2": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_lambda_function_name
+            CloudTrailEventAction.UPSERT,
+            _extract_lambda_function_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "UpdateFunctionCode20150331v2": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_lambda_function_name
+            CloudTrailEventAction.UPSERT,
+            _extract_lambda_function_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "DeleteFunction20150331": CloudTrailEventMapping(
-            CloudTrailEventAction.DELETE, _extract_lambda_function_name
+            CloudTrailEventAction.DELETE,
+            _extract_lambda_function_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
 )

@@ -16,6 +16,7 @@ from typing import (
 
 from loguru import logger
 
+from github.helpers.exceptions import GraphQLForbiddenFieldError
 from port_ocean.utils import cache
 from port_ocean.utils.cache import cache_coroutine_result
 
@@ -56,6 +57,13 @@ class ObjectKind(StrEnum):
     COLLABORATOR = "collaborator"
     SKILL = "skill"
     PLUGIN = "plugin"
+    PACKAGE = "package"
+
+
+class PackageType(StrEnum):
+    """GitHub Packages REST `package_type` values we ingest."""
+
+    CONTAINER = "container"
 
 
 def enrich_with_organization(
@@ -209,13 +217,19 @@ class IgnoredError(NamedTuple):
     body_contains: Optional[str] = None
 
 
-@cache.cache_coroutine_result()
-async def get_repository_metadata(
+async def fetch_repository_metadata(
     client: "AbstractGithubClient", organization: str, repo_name: str
 ) -> Dict[str, Any]:
     url = f"{client.base_url}/repos/{organization}/{repo_name}"
     logger.info(f"Fetching metadata for repository: {repo_name} from {organization}")
     return await client.send_api_request(url)
+
+
+@cache.cache_coroutine_result()
+async def get_repository_metadata(
+    client: "AbstractGithubClient", organization: str, repo_name: str
+) -> Dict[str, Any]:
+    return await fetch_repository_metadata(client, organization, repo_name)
 
 
 @cache.cache_coroutine_result()
@@ -314,6 +328,11 @@ async def get_saml_identities(
         )
     except TypeError:
         logger.info(f"SAML not enabled for organization '{organization}'")
+    except GraphQLForbiddenFieldError:
+        logger.warning(
+            f"SAML identity query returned FORBIDDEN for organization '{organization}', "
+            "skipping SAML enrichment"
+        )
 
     return saml_users
 

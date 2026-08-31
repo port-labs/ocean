@@ -15,6 +15,7 @@ class LinearObject(StrEnum):
     TEAMS = "TEAMS"
     LABELS = "LABELS"
     ISSUES = "ISSUES"
+    DOCUMENTS = "DOCUMENTS"
 
 
 PAGE_SIZE = 50
@@ -23,6 +24,7 @@ WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 WEBHOOK_EVENTS = [
     "Issue",
     "IssueLabel",
+    "Document",
 ]
 
 
@@ -71,7 +73,21 @@ class LinearClient:
 
             for webhook in webhook_check["data"]["webhooks"]["nodes"]:
                 if webhook["url"] == webhook_target_app_host:
-                    logger.info("Ocean real time reporting webhook already exists")
+                    template = jinja2.Template(
+                        QUERIES["UPDATE_LIVE_EVENTS_WEBHOOK"], enable_async=True
+                    )
+                    query = await template.render_async(
+                        webhook_id=webhook["id"],
+                        resource_types=WEBHOOK_EVENTS,
+                    )
+                    logger.debug(f"Webhook update query: {query}")
+                    webhook_update_response = await self.client.post(
+                        self.linear_url, json={"query": query}
+                    )
+                    webhook_update_response.raise_for_status()
+                    logger.info(
+                        "Ocean real time reporting webhook already exists and was updated"
+                    )
                     return
 
             template = jinja2.Template(
@@ -180,6 +196,43 @@ class LinearClient:
         # Returning just the issue object for mapping consistency
         issue_json = issue_response.json()
         return issue_json["data"]["issue"]
+
+    async def get_paginated_documents(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting documents from Linear")
+
+        has_next_page = True
+        end_cursor = None
+        while has_next_page:
+            document_response_list = await self._get_paginated_objects(
+                LinearObject.DOCUMENTS, PAGE_SIZE, end_cursor
+            )
+            yield [
+                edge["node"]
+                for edge in document_response_list["data"]["documents"]["edges"]
+            ]
+            has_next_page = document_response_list["data"]["documents"]["pageInfo"][
+                "hasNextPage"
+            ]
+            end_cursor = document_response_list["data"]["documents"]["pageInfo"][
+                "endCursor"
+            ]
+
+    async def get_single_document(self, document_id: str) -> dict[str, Any]:
+        logger.info(f"Querying single document: {document_id}")
+        template = jinja2.Template(QUERIES["GET_SINGLE_DOCUMENT"], enable_async=True)
+        query = await template.render_async(
+            document_id=document_id,
+            base_query_fields=QUERIES[f"BASE_{LinearObject.DOCUMENTS}_QUERY_FIELDS"],
+        )
+        logger.debug(f"Query: {query}")
+        document_response = await self.client.post(
+            self.linear_url, json={"query": query}
+        )
+        document_response.raise_for_status()
+        document_json = document_response.json()
+        return document_json["data"]["document"]
 
     async def get_single_label(self, label_id: str) -> dict[str, Any]:
         logger.info(f"Querying single label: {label_id}")
