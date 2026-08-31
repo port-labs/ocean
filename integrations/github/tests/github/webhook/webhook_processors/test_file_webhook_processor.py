@@ -22,6 +22,7 @@ from github.webhook.webhook_processors.file_webhook_processor import (
     FileWebhookProcessor,
 )
 from github.helpers.utils import ObjectKind
+from github.core.exporters.file_exporter.file_processor import FileProcessor
 from github.core.options import FileContentOptions
 
 
@@ -477,6 +478,55 @@ class TestFileWebhookProcessor:
                 for call in mock_exporter.file_processor.process_file.call_args_list
             }
             assert resolve_by_content == {new_content: True, old_content: False}
+
+    async def test_handle_event_removed_file_deletes_parsed_items_from_before_sha(
+        self,
+        file_webhook_processor: FileWebhookProcessor,
+        resource_config_with_items_to_parse: GithubFileResourceConfig,
+        payload: EventPayload,
+    ) -> None:
+        # Whole-file delete: nothing offsets these identifiers in the upsert bucket,
+        # so the deletion payload must carry parsed items for itemsToParse to expand.
+        old_content = "items:\n  - name: a\n  - name: b\n"
+
+        mock_exporter = AsyncMock()
+        mock_exporter.fetch_commit_diff.return_value = {
+            "files": [{"filename": "config.yaml", "status": "removed"}]
+        }
+        mock_exporter.get_resource.return_value = {
+            "content": old_content,
+            "name": "config.yaml",
+            "path": "config.yaml",
+            "size": len(old_content),
+        }
+        mock_exporter.file_processor.process_file = AsyncMock(
+            wraps=FileProcessor(mock_exporter).process_file
+        )
+
+        with patch(
+            "github.webhook.webhook_processors.file_webhook_processor.RestFileExporter",
+            return_value=mock_exporter,
+        ):
+            result = await file_webhook_processor.handle_event(
+                payload, resource_config_with_items_to_parse
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert len(result.deleted_raw_results) == 1
+
+            deleted = result.deleted_raw_results[0]
+            assert deleted["content"] == {"items": [{"name": "a"}, {"name": "b"}]}
+            assert deleted["path"] == "config.yaml"
+            assert deleted["branch"] == "main"
+
+            mock_exporter.get_resource.assert_called_once()
+            options = mock_exporter.get_resource.call_args.args[0]
+            assert options["file_path"] == "config.yaml"
+            assert options["branch"] == payload["before"]
+
+            process_file_call = mock_exporter.file_processor.process_file.call_args
+            assert process_file_call.kwargs["should_resolve_references"] is False
 
     async def test_handle_event_removed_file_without_old_content_yields_no_deletion(
         self,
