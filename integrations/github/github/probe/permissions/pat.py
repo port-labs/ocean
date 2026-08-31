@@ -1,39 +1,15 @@
 from collections.abc import Mapping
 
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.validators import get_kind_probe_permissions
 from port_ocean.core.probe import KindPermissionVerdict, PermissionCombination
 from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.probe.permissions.base import GitHubPermissionProbeFlow, org_scopes
+from integration import GithubPortAppConfig
 
 NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
-
-PAT_KIND_SCOPES: dict[str, tuple[str, ...]] = {
-    "organization": ("read:org",),
-    "repository": ("repo",),
-    "folder": ("repo",),
-    "file": ("repo",),
-    "skill": ("repo",),
-    "plugin": ("repo",),
-    "user": ("read:org",),
-    "team": ("read:org",),
-    "workflow": ("repo",),
-    "workflow-run": ("repo",),
-    "pull-request": ("repo",),
-    "issue": ("repo",),
-    "release": ("repo",),
-    "tag": ("repo",),
-    "branch": ("repo",),
-    "environment": ("repo",),
-    "deployment": ("repo",),
-    "deployment-status": ("repo",),
-    "dependabot-alert": ("security_events",),
-    "code-scanning-alerts": ("security_events",),
-    "secret-scanning-alerts": ("security_events",),
-    "collaborator": ("repo",),
-    "package": ("read:packages",),
-}
 
 _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
     "repo": {
@@ -65,9 +41,8 @@ FINE_GRAINED_PAT_MESSAGE = (
 
 
 class PatKindPermissionVerdict(KindPermissionVerdict):
-    @property
-    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
-        return PAT_KIND_SCOPES
+    def load_kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
+        return get_kind_probe_permissions(GithubPortAppConfig, permission_key="pat")
 
     @property
     def combination(self) -> PermissionCombination:

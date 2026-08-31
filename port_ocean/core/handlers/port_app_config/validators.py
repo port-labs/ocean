@@ -10,6 +10,7 @@ from pydantic.v1 import BaseModel
 from port_ocean.core.handlers.port_app_config.models import (
     CUSTOM_KIND,
     PortAppConfig,
+    ProbePermissions,
     ResourceConfig,
     Selector,
 )
@@ -37,6 +38,62 @@ def get_port_app_config_kinds(config_class: Type[PortAppConfig]) -> list[str]:
         config_class.allow_custom_kinds,
     )
     return sorted(kind for kind in kinds if kind != CUSTOM_KIND)
+
+
+def get_kind_probe_permissions(
+    config_class: Type[PortAppConfig],
+    *,
+    permission_key: str | None = None,
+) -> dict[str, tuple[str, ...]]:
+    """Return probe permission requirements keyed by resource kind.
+
+    Resource configs may declare ``probe_permissions`` as either a single tuple
+    (one permission namespace) or a dict keyed by auth mode / namespace.
+    When a dict is used, *permission_key* selects the active namespace.
+    """
+    kind_permissions: dict[str, tuple[str, ...]] = {}
+    for model in _get_resource_config_models(config_class):
+        if not (isinstance(model, type) and issubclass(model, ResourceConfig)):
+            continue
+
+        kind_field = model.__fields__.get("kind")
+        if kind_field is None:
+            continue
+
+        kind_value = _resolve_kind_value(
+            kind_field, model.__name__, config_class.allow_custom_kinds
+        )
+        if kind_value is None or kind_value == CUSTOM_KIND:
+            continue
+
+        permissions = _resolve_probe_permissions_for_model(model, permission_key)
+        if permissions:
+            kind_permissions[kind_value] = permissions
+
+    return kind_permissions
+
+
+def _resolve_probe_permissions_for_model(
+    model: type,
+    permission_key: str | None,
+) -> tuple[str, ...] | None:
+    permissions: ProbePermissions | None = getattr(model, "probe_permissions", None)
+    if permissions is None:
+        return None
+    if isinstance(permissions, tuple):
+        return permissions
+    if isinstance(permissions, dict):
+        if permission_key is None:
+            raise ValueError(
+                f"{model.__name__}.probe_permissions is a dict; "
+                "permission_key is required"
+            )
+        resolved = permissions.get(permission_key)
+        return resolved if resolved else None
+    raise TypeError(
+        f"{model.__name__}.probe_permissions must be a tuple or dict, "
+        f"got {type(permissions).__name__}"
+    )
 
 
 def _is_model(annotation: Any, model: type) -> bool:

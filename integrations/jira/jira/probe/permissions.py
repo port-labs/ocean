@@ -1,9 +1,11 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 
 import httpx
 
 from kinds import Kinds
+from jira.overrides import JiraPortAppConfig
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.validators import get_kind_probe_permissions
 from port_ocean.core.probe import (
     KindPermissionVerdict,
     PermissionCombination,
@@ -20,18 +22,6 @@ UNAUTHORIZED_STATUS_CODES = (
     httpx.codes.FORBIDDEN,
 )
 
-KIND_PERMISSIONS: dict[str, tuple[str, ...]] = {
-    "project": ("BROWSE_PROJECTS",),
-    "issue": ("BROWSE_PROJECTS",),
-    "user": ("USER_PICKER",),
-    "release": ("BROWSE_PROJECTS",),
-    "board": ("BROWSE_PROJECTS",),
-    "sprint": ("BROWSE_PROJECTS",),
-    "backlog": ("BROWSE_PROJECTS",),
-    "epic": ("BROWSE_PROJECTS",),
-    "worklog": ("BROWSE_PROJECTS",),
-    "component": ("BROWSE_PROJECTS",),
-}
 
 TEAM_ORG_ID_MISSING_MESSAGE = (
     "Atlassian organization ID is required to sync teams; "
@@ -41,9 +31,8 @@ TEAM_ACCESS_SUCCESS_MESSAGE = "Atlassian Teams API access verified"
 
 
 class JiraKindPermissionVerdict(KindPermissionVerdict):
-    @property
-    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
-        return KIND_PERMISSIONS
+    def load_kind_permissions(self) -> dict[str, tuple[str, ...]]:
+        return get_kind_probe_permissions(JiraPortAppConfig)
 
     @property
     def combination(self) -> PermissionCombination:
@@ -76,7 +65,7 @@ class JiraPermissionProbe:
                 for kind in self.context.available_kinds
                 if kind != Kinds.TEAM
             ],
-            KIND_PERMISSIONS,
+            _JIRA_KIND_PERMISSION_VERDICT.kind_permissions,
         )
         client = get_or_create_jira_client()
         try:

@@ -14,8 +14,7 @@ KIND_PERMISSIONS = {
 
 
 class AndKindPermissionVerdict(KindPermissionVerdict):
-    @property
-    def kind_permissions(self) -> dict[str, tuple[str, ...]]:
+    def load_kind_permissions(self) -> dict[str, tuple[str, ...]]:
         return KIND_PERMISSIONS
 
     @property
@@ -36,8 +35,7 @@ class AndKindPermissionVerdict(KindPermissionVerdict):
 
 
 class OrKindPermissionVerdict(KindPermissionVerdict):
-    @property
-    def kind_permissions(self) -> dict[str, tuple[str, ...]]:
+    def load_kind_permissions(self) -> dict[str, tuple[str, ...]]:
         return KIND_PERMISSIONS
 
     @property
@@ -55,8 +53,7 @@ class OrKindPermissionVerdict(KindPermissionVerdict):
 
 
 class PresenceOrKindPermissionVerdict(OrKindPermissionVerdict):
-    @property
-    def kind_permissions(self) -> dict[str, tuple[str, ...]]:
+    def load_kind_permissions(self) -> dict[str, tuple[str, ...]]:
         return {"project": ("repo",)}
 
     def is_granted(self, permission: str, permissions: dict[str, object]) -> bool:

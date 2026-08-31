@@ -1,34 +1,10 @@
 from collections.abc import Mapping
 
+from port_ocean.core.handlers.port_app_config.validators import get_kind_probe_permissions
 from port_ocean.core.probe import KindPermissionVerdict, PermissionCombination
 
 from github.probe.permissions.base import GitHubPermissionProbeFlow, org_scopes
-
-APP_KIND_PERMISSIONS: dict[str, tuple[str, ...]] = {
-    "organization": ("metadata",),
-    "repository": ("metadata",),
-    "folder": ("contents",),
-    "file": ("contents",),
-    "skill": ("contents",),
-    "plugin": ("contents",),
-    "user": ("members",),
-    "team": ("members",),
-    "workflow": ("actions",),
-    "workflow-run": ("actions",),
-    "pull-request": ("pull_requests",),
-    "issue": ("issues",),
-    "release": ("contents",),
-    "tag": ("contents",),
-    "branch": ("contents",),
-    "environment": ("environments",),
-    "deployment": ("deployments",),
-    "deployment-status": ("deployments",),
-    "dependabot-alert": ("vulnerability_alerts",),
-    "code-scanning-alerts": ("security_events",),
-    "secret-scanning-alerts": ("secret_scanning_alerts",),
-    "collaborator": ("metadata",),
-    "package": ("organization_packages", "packages"),
-}
+from integration import GithubPortAppConfig
 
 _PERMISSION_LEVELS = {"read": 1, "write": 2, "admin": 3}
 
@@ -38,9 +14,8 @@ MISSING_APP_PERMISSIONS_MESSAGE = (
 
 
 class AppKindPermissionVerdict(KindPermissionVerdict):
-    @property
-    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
-        return APP_KIND_PERMISSIONS
+    def load_kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
+        return get_kind_probe_permissions(GithubPortAppConfig, permission_key="app")
 
     @property
     def combination(self) -> PermissionCombination:
