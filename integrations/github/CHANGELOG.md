@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.6 (2026-08-31)
+
+
+### Features
+
+- Expanded user email enrichment by adding includeVerifiedDomainEmails selector, enabling customers on GitHub Enterprise Cloud with verified domains to include organizationVerifiedDomainEmails on exported users. No N+1 API calls; the field is inlined into the existing member list query.
+
+
 ## 6.10.5 (2026-08-31)
 
 
