@@ -99,6 +99,19 @@ async def test_verify_run_actor_returns_the_org_reported_by_port(
     assert org_id == "org_1"
 
 
+async def test_verify_run_actor_rejects_when_port_omits_org_id(
+    mock_http_client: MagicMock,
+) -> None:
+    mock_http_client.get.return_value = response(
+        body={"active": True, "actorId": "jane@acme.com"}
+    )
+
+    with pytest.raises(IdentityVerificationError):
+        await PortIdentityTokenVerifier().verify_run_actor(
+            "run_1", "jane@acme.com", "attacker_org"
+        )
+
+
 async def test_verify_run_actor_rejects_someone_who_did_not_trigger_the_run(
     mock_http_client: MagicMock,
 ) -> None:
