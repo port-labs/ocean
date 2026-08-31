@@ -1,10 +1,11 @@
-import asyncio
+from asyncio import Event, sleep, wait_for
 from types import SimpleNamespace
 from typing import Any, Awaitable, Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import port_ocean.core.event_listener.base as base_module
 import port_ocean.core.event_listener.polling as polling_module
 from port_ocean.core.event_listener.polling import (
     PollingEventListener,
@@ -28,7 +29,7 @@ def _run_repeat_every_times(
             async def wrapped() -> None:
                 for _ in range(repetitions):
                     await func()
-                    await asyncio.sleep(0)
+                    await sleep(0)
 
             return wrapped
 
@@ -72,7 +73,7 @@ async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
     monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
-    await asyncio.sleep(0)
+    await sleep(0)
 
     port_client.get_current_integration.assert_not_called()
     port_client.get_integration_resync_request.assert_called_once()
@@ -122,7 +123,7 @@ async def test_polling_resyncs_on_integration_change_with_resync_request_lookup(
     monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
-    await asyncio.sleep(0)
+    await sleep(0)
 
     port_client.get_integration_resync_request.assert_called_once()
     resync_mock.assert_called_once_with({})
@@ -227,7 +228,7 @@ async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
     monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
-    await asyncio.sleep(0)
+    await sleep(0)
 
     assert resync_mock.call_count == 1
 
@@ -264,7 +265,6 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
 
     # Also need to patch ocean in base module for CancelledError handling
-    import port_ocean.core.event_listener.base as base_module
     monkeypatch.setattr(base_module, "ocean", SimpleNamespace(app=app))
 
     monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(2))
@@ -273,12 +273,12 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
     )
 
     resync_calls: list[Any] = []
-    second_resync_finished = asyncio.Event()
+    second_resync_finished = Event()
 
     async def resync_handler(args: Any) -> bool:
         resync_calls.append(args)
         if len(resync_calls) == 1:
-            await asyncio.sleep(3600)
+            await sleep(3600)
         else:
             second_resync_finished.set()
         return True
@@ -292,11 +292,11 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
 
     await listener._start()
 
-    await asyncio.wait_for(second_resync_finished.wait(), timeout=1)
+    await wait_for(second_resync_finished.wait(), timeout=1)
     for _ in range(100):
         if listener._current_resync_task is None:
             break
-        await asyncio.sleep(0)
+        await sleep(0)
     else:
         pytest.fail("Resync task did not complete")
 
@@ -344,8 +344,6 @@ async def test_polling_logs_background_resync_failures(
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
 
-    import port_ocean.core.event_listener.base as base_module
-
     monkeypatch.setattr(base_module, "ocean", SimpleNamespace(app=app))
     monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
     monkeypatch.setattr(
@@ -368,7 +366,7 @@ async def test_polling_logs_background_resync_failures(
         for _ in range(100):
             if listener._current_resync_task is None:
                 break
-            await asyncio.sleep(0)
+            await sleep(0)
         else:
             pytest.fail("Resync task did not complete")
 
