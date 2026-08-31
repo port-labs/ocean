@@ -28,6 +28,7 @@ def _run_repeat_every_times(
             async def wrapped() -> None:
                 for _ in range(repetitions):
                     await func()
+                    await asyncio.sleep(0)
 
             return wrapped
 

@@ -188,7 +188,6 @@ class PollingEventListener(BaseEventListener):
         signal_handler.register(running_task.cancel)
         self._current_resync_task = running_task
         running_task.add_done_callback(self._clear_resync_task_if_current)
-        await asyncio.sleep(0)
 
     async def _start(self) -> None:
         """
