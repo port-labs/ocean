@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, Callable, Dict, Type
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
 
 import port_ocean.helpers.metric.metric
@@ -28,7 +28,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
-from port_ocean.health import create_health_router
+from port_ocean.health import create_health_router, set_ready
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -51,8 +51,7 @@ class Ocean:
         self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
-            # type: ignore
-            _integration_config_model=config_factory,
+            integration_config_model=config_factory,
             **(config_override or {}),
         )
         self._warn_non_default_ssl_settings()
@@ -63,7 +62,7 @@ class Ocean:
         self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
-            base_url=self.config.port.base_url,
+            base_url=str(self.config.port.base_url),
             client_id=self.config.port.client_id,
             client_secret=self.config.port.client_secret,
             integration_identifier=self.config.integration.identifier,
@@ -264,7 +263,7 @@ class Ocean:
     def base_url(self) -> str:
         integration_config = self.config.integration.config
         if isinstance(integration_config, BaseModel):
-            integration_config = integration_config.dict()
+            integration_config = integration_config.model_dump(mode="json")
         if integration_config.get("app_host"):
             logger.warning(
                 "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
@@ -323,6 +322,7 @@ class Ocean:
                 await self._register_addons()
                 await self._setup_status_heartbeat()
                 await self._setup_scheduled_resync()
+                set_ready(True)
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")

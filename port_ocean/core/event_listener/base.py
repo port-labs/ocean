@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import TypedDict, Callable, Any, Awaitable
 
-from pydantic.v1 import Extra
+from pydantic import ConfigDict
 
 from port_ocean.config.base import BaseOceanModel
 from port_ocean.core.models import EventListenerType
@@ -78,7 +78,9 @@ class BaseEventListener:
             raise e
 
 
-class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
+class EventListenerSettings(BaseOceanModel):
+    model_config = ConfigDict(extra="allow")
+
     type: EventListenerType
     should_resync: bool = True
     should_process_webhooks: bool = True

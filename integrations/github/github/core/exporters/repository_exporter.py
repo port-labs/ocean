@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import re
 from datetime import datetime
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
@@ -42,6 +43,10 @@ if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
 
 ENRICHMENT_BATCH_SIZE = 10
+
+ARCHIVED_QUALIFIER_PATTERN = re.compile(
+    r"(?<!\S)archived:(?:true|false)(?!\S)", re.IGNORECASE
+)
 
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
@@ -131,6 +136,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         search_params = cast(
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
+        exclude_archived = params.pop("exclude_archived", False)
         is_personal_account = organization_type == "User"
         is_github_app_authenticated = isinstance(
             self.client.authenticator, GitHubAppInstallationAuthenticator
@@ -147,7 +153,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             params,
             search_params,
             incremental_cursor=incremental_cursor,
+            exclude_archived=exclude_archived,
         ):
+            if exclude_archived:
+                batch = [repo for repo in batch if not repo.get("archived")]
+                if not batch:
+                    continue
             yield batch
 
     async def _list_strategy(
@@ -158,6 +169,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         _: Optional[RepoSearchParams],
         *,
         incremental_cursor: datetime | None = None,
+        exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         url, final_params = self._build_repos_url_and_params(
             organization,
@@ -183,6 +195,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         search_params: Optional[RepoSearchParams],
         *,
         incremental_cursor: datetime | None = None,
+        exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repository_type = params.pop("type")
         forced_qualifiers = (
@@ -194,6 +207,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             if search_params
             else " ".join(forced_qualifiers).strip()
         )
+
+        if exclude_archived:
+            if ARCHIVED_QUALIFIER_PATTERN.search(raw_q):
+                raw_q = ARCHIVED_QUALIFIER_PATTERN.sub("archived:false", raw_q).strip()
+            else:
+                raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
         query_params = {
             "q": f"org:{organization} {raw_q}",

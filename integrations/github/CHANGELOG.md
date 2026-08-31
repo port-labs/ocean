@@ -7,6 +7,118 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.5 (2026-08-31)
+
+
+### Bug Fixes
+
+- Added retry with exponential backoff for GraphQL errors during team member enrichment. GitHub server-side errors like "Something went wrong while executing your query" are retried up to 3 times before failing, preventing a single error from aborting the entire team resync.
+
+
+## 6.10.4 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 6.10.3 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 6.10.2 (2026-08-28)
+
+
+### Bug Fixes
+
+- Fixed user sync abort when SAML identity query returns FORBIDDEN by handling GraphQLForbiddenFieldError gracefully, restoring pre-6.9.6 behavior of continuing with empty SAML map
+
+
+## 6.10.1 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 6.10.0 (2026-08-26)
+
+
+### Features
+
+- Add an `excludeArchived` selector to skip archived repositories during repository discovery for pull request, issue, workflow, release, file, folder, skill, and other per-repository kinds.
+
+
+## 6.9.7 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 6.9.6 (2026-08-26)
+
+
+### Bug Fixes
+
+- Fix: Retry GraphQL queries without forbidden fields when field-level permission errors occur
+
+
+## 6.9.5 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 6.9.4 (2026-08-24)
+
+
+### Features
+
+- Add bulk update and bulk delete actions for GitHub external custom property values APIs, with automatic 100-repo batching and multi-org support.
+
+
+## 6.9.3 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 6.9.2 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 6.9.1 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 6.9.0 (2026-08-23)
+
+
+### Features
+
+- Added a `package` kind that ingests GitHub Container Registry (GHCR) packages.
+
+
 ## 6.8.2 (2026-08-23)
 
 

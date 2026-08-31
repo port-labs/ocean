@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.13.3 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.13.2 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.13.1 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.13.0 (2026-08-26)
+
+
+### Features
+
+- Expanded default mapping with 8 new resource kinds (build, pipeline, pipeline-run, pipeline-stage, environment, pipeline-deployment, release-deployment, pull-request), enabling out-of-the-box CI/CD and PR visibility without manual mapping configuration
+
+
+## 0.12.8 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.12.7 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.12.6 (2026-08-25)
+
+
+### Bug Fixes
+
+- Fixed Azure DevOps org-level git.push webhook subscriptions to request full payload details and avoid duplicate subscription creation during reconciliation.
+
+
+## 0.12.5 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.12.4 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.12.3 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
 ## 0.12.2 (2026-08-18)
 
 
