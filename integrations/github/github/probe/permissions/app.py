@@ -1,4 +1,6 @@
-from port_ocean.core.probe import ProbeCheckStatus
+from collections.abc import Mapping
+
+from port_ocean.core.probe import KindPermissionVerdict, PermissionCombination
 
 from github.probe.permissions.base import GitHubPermissionProbeFlow, org_scopes
 
@@ -30,12 +32,53 @@ APP_KIND_PERMISSIONS: dict[str, tuple[str, ...]] = {
 
 _PERMISSION_LEVELS = {"read": 1, "write": 2, "admin": 3}
 
+MISSING_APP_PERMISSIONS_MESSAGE = (
+    "GitHub did not return permissions for the installation token"
+)
+
+
+class AppKindPermissionVerdict(KindPermissionVerdict):
+    @property
+    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
+        return APP_KIND_PERMISSIONS
+
+    @property
+    def combination(self) -> PermissionCombination:
+        return PermissionCombination.OR
+
+    def unmapped_message(self, kind: str) -> str:
+        return f"No GitHub App permission mapping is defined for {kind}"
+
+    def granted_message(self, granted: tuple[str, ...]) -> str:
+        if len(granted) == 1:
+            return f"GitHub App grants {granted[0]}"
+        return "GitHub App grants " + ", ".join(granted)
+
+    def denied_message(self, denied: tuple[str, ...]) -> str:
+        if len(denied) == 1:
+            return f"GitHub App requires read access for {denied[0]}"
+        return "GitHub App requires read access for " + " or ".join(denied)
+
+    def is_granted(self, permission: str, permissions: Mapping[str, object]) -> bool:
+        level = permissions.get(permission, "")
+        if not isinstance(level, str):
+            return False
+        return _PERMISSION_LEVELS.get(level, 0) >= _PERMISSION_LEVELS["read"]
+
+
+_APP_KIND_PERMISSION_VERDICT = AppKindPermissionVerdict()
+
 
 class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
     async def run(self) -> None:
         tokens = [
             await authenticator.get_token() for authenticator in self.authenticators
         ]
+        for token in tokens:
+            if token.permissions is None:
+                self.context.fail(MISSING_APP_PERMISSIONS_MESSAGE)
+                return
+
         pending = self.context.add_scopes(
             *org_scopes(
                 [authenticator.organization for authenticator in self.authenticators]
@@ -44,38 +87,8 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
         kind_count = len(self.context.available_kinds)
         for index, token in enumerate(tokens):
             checks = pending[index * kind_count : (index + 1) * kind_count]
-            for check in checks:
-                check.status, check.message = app_permission_verdict(
-                    check.kind,
-                    token.permissions,
-                )
-            self.context.update_progress()
-
-
-def app_permission_verdict(
-    kind: str,
-    permissions: dict[str, str] | None,
-) -> tuple[ProbeCheckStatus, str]:
-    required_permissions = APP_KIND_PERMISSIONS.get(kind)
-    if required_permissions is None:
-        return (
-            ProbeCheckStatus.UNKNOWN,
-            f"No GitHub App permission mapping is defined for {kind}",
-        )
-    if permissions is None:
-        return (
-            ProbeCheckStatus.UNKNOWN,
-            "GitHub did not return permissions for the installation token",
-        )
-
-    for permission in required_permissions:
-        actual = permissions.get(permission, "")
-        if _PERMISSION_LEVELS.get(actual, 0) >= _PERMISSION_LEVELS["read"]:
-            return (
-                ProbeCheckStatus.SUCCESS,
-                f"GitHub App has {actual} access for {permission}",
+            self._resolve_checks(
+                checks,
+                token.permissions,
+                _APP_KIND_PERMISSION_VERDICT,
             )
-    return (
-        ProbeCheckStatus.FAILURE,
-        "GitHub App requires read access for " + " or ".join(required_permissions),
-    )

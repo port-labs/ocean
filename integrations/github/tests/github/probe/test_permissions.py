@@ -147,7 +147,7 @@ async def test_all_checks_are_published_as_pending_before_being_resolved(
 
 
 @pytest.mark.asyncio
-async def test_missing_app_permissions_are_unknown(
+async def test_missing_app_permissions_fail_the_probe(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     authenticator = SimpleNamespace(
@@ -160,11 +160,13 @@ async def test_missing_app_permissions_are_unknown(
     )
 
     context = await _run_probe(monkeypatch, ["repository"], provider)
-    checks = context.checks
 
-    assert checks[0].status == ProbeCheckStatus.UNKNOWN
-    assert checks[0].kind == "repository"
-    assert checks[0].scopes == {}
+    assert context.status is ProbeStatus.FAILED
+    assert (
+        context.message
+        == "GitHub did not return permissions for the installation token"
+    )
+    assert context.checks == []
 
 
 @pytest.mark.asyncio
@@ -339,7 +341,7 @@ async def test_pat_organization_discovery_follows_pagination(
 
 
 @pytest.mark.asyncio
-async def test_fine_grained_pat_permissions_are_unknown(
+async def test_fine_grained_pat_fails_the_probe(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scope_response = httpx.Response(
@@ -364,14 +366,13 @@ async def test_fine_grained_pat_permissions_are_unknown(
     )
 
     context = await _run_probe(monkeypatch, ["repository", "issue"], provider)
-    checks = context.checks
 
-    assert [check.status for check in checks] == [
-        ProbeCheckStatus.UNKNOWN,
-        ProbeCheckStatus.UNKNOWN,
-    ]
-    assert [check.kind for check in checks] == ["repository", "issue"]
-    assert all(check.scopes == {} for check in checks)
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == (
+        "GitHub does not expose granted scopes for this token; "
+        "this is expected for fine-grained personal access tokens"
+    )
+    assert context.checks == []
 
 
 def _http_status_error(status_code: int) -> httpx.HTTPStatusError:
