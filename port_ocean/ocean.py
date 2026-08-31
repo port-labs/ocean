@@ -28,7 +28,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
-from port_ocean.health import create_health_router
+from port_ocean.health import create_health_router, set_ready
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -317,17 +317,20 @@ class Ocean:
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
+            set_ready(False)
             try:
                 await self.integration.start()
                 await self._register_addons()
                 await self._setup_status_heartbeat()
                 await self._setup_scheduled_resync()
+                set_ready(True)
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
                 logger.complete()
                 sys.exit("Server stopped")
             finally:
+                set_ready(False)
                 await signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
