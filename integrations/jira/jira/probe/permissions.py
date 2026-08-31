@@ -71,11 +71,11 @@ class JiraPermissionProbe:
         try:
             permissions = await client.get_current_user_permissions(permission_keys)
         except (httpx.HTTPStatusError, httpx.RequestError) as error:
-            self.context.fail(_lookup_failure_message(error))
+            await self.context.fail(_lookup_failure_message(error))
             return
 
-        checks = self.context.add_scopes({})
-        self._resolve_permission_checks(checks, permissions)
+        checks = await self.context.add_scopes({})
+        await self._resolve_permission_checks(checks, permissions)
         team_check = next(
             (check for check in checks if check.kind == Kinds.TEAM),
             None,
@@ -83,7 +83,7 @@ class JiraPermissionProbe:
         if team_check is not None:
             await self._resolve_team_check(team_check, client)
 
-    def _resolve_permission_checks(
+    async def _resolve_permission_checks(
         self,
         checks: Sequence[ProbeCheck],
         permissions: dict[str, bool],
@@ -95,7 +95,7 @@ class JiraPermissionProbe:
                 check.kind,
                 permissions,
             )
-        self.context.update_progress()
+        await self.context.update_progress()
 
     async def _resolve_team_check(
         self,
@@ -106,7 +106,7 @@ class JiraPermissionProbe:
         if not org_id:
             check.status = ProbeCheckStatus.FAILURE
             check.message = TEAM_ORG_ID_MISSING_MESSAGE
-            self.context.update_progress()
+            await self.context.update_progress()
             return
 
         try:
@@ -117,7 +117,7 @@ class JiraPermissionProbe:
                 f"Jira returned HTTP {error.response.status_code} "
                 "while verifying teams access"
             )
-            self.context.update_progress()
+            await self.context.update_progress()
             return
         except httpx.RequestError as error:
             check.status = ProbeCheckStatus.FAILURE
@@ -125,12 +125,12 @@ class JiraPermissionProbe:
                 "Jira could not be reached while verifying teams access: "
                 f"{error}"
             )
-            self.context.update_progress()
+            await self.context.update_progress()
             return
 
         check.status = ProbeCheckStatus.SUCCESS
         check.message = TEAM_ACCESS_SUCCESS_MESSAGE
-        self.context.update_progress()
+        await self.context.update_progress()
 
 
 def _lookup_failure_message(

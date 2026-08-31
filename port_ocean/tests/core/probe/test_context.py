@@ -294,14 +294,14 @@ def test_update_progress_reports_merged_payload() -> None:
     context.reporter.report.assert_called_once_with(context.build_request_body())
 
 
-def test_finalize() -> None:
+async def test_finalize() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     started_before = datetime.now(timezone.utc)
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.finalize()
+        await context.finalize()
 
     # Assert
     assert context.ended_at is not None
@@ -310,7 +310,7 @@ def test_finalize() -> None:
     mock_update_progress.assert_called_once_with()
 
 
-def test_fail() -> None:
+async def test_fail() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     started_before = datetime.now(timezone.utc)
@@ -318,7 +318,7 @@ def test_fail() -> None:
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.fail(failure_message)
+        await context.fail(failure_message)
 
     # Assert
     assert context.ended_at is not None

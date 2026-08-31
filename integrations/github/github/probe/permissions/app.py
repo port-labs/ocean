@@ -51,10 +51,10 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
         ]
         for token in tokens:
             if token.permissions is None:
-                self.context.fail(MISSING_APP_PERMISSIONS_MESSAGE)
+                await self.context.fail(MISSING_APP_PERMISSIONS_MESSAGE)
                 return
 
-        pending = self.context.add_scopes(
+        pending = await self.context.add_scopes(
             *org_scopes(
                 [authenticator.organization for authenticator in self.authenticators]
             )
@@ -62,7 +62,7 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
         kind_count = len(self.context.available_kinds)
         for index, token in enumerate(tokens):
             checks = pending[index * kind_count : (index + 1) * kind_count]
-            self._resolve_checks(
+            await self._resolve_checks(
                 checks,
                 token.permissions,
                 _APP_KIND_PERMISSION_VERDICT,

@@ -19,7 +19,7 @@ class GitHubPermissionProbeFlow(ABC):
     async def run(self) -> None:
         """Probe permissions for one GitHub authentication flow."""
 
-    def _resolve_checks(
+    async def _resolve_checks(
         self,
         checks: Sequence[ProbeCheck],
         permissions: dict[str, str],
@@ -27,7 +27,7 @@ class GitHubPermissionProbeFlow(ABC):
     ) -> None:
         for check in checks:
             check.status, check.message = verdict.verdict(check.kind, permissions)
-        self.context.update_progress()
+        await self.context.update_progress()
 
 
 def org_scopes(organizations: Sequence[str | None]) -> list[dict[str, str]]:

@@ -103,7 +103,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
     ) -> ProbeContext:
         """Invoke the registered ``on_probe`` listener."""
         context = ProbeContext(probe_id)
-        context.initialize(
+        await context.initialize(
             config,
             port_app_config_class=self.AppConfigHandlerClass.CONFIG_CLASS,
         )
@@ -112,7 +112,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             error = ModeNotSupportedException(
                 self.context.config.integration.type, "probe"
             )
-            context.fail(str(error))
+            await context.fail(str(error))
             raise error
 
         async with event_context(
@@ -122,11 +122,11 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             try:
                 returned = await listener(context)
             except Exception as error:
-                context.fail(str(error))
+                await context.fail(str(error))
                 raise
 
             final_context = returned or context
             if final_context.status is ProbeStatus.FAILED:
                 raise ProbeFailedError(final_context.message or "Probe failed")
-            final_context.finalize()
+            await final_context.finalize()
             return final_context
