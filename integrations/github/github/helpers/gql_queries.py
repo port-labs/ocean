@@ -39,12 +39,53 @@ query OrgMemberQuery(
 }}
 """
 
+LIST_ORG_MEMBER_WITH_VERIFIED_EMAILS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+query OrgMemberQuery(
+  $organization: String!
+  $first: Int = 25
+  $after: String
+) {{
+    organization(login: $organization) {{
+      membersWithRole(
+        first: $first
+        after: $after
+      ) {{
+        nodes {{
+            ... on User {{
+              login
+              id
+              databaseId
+              email
+              name
+              organizationVerifiedDomainEmails(login: $organization)
+            }}
+        }}
+        pageInfo {{
+        ...PageInfoFields
+        }}
+      }}
+    }}
+}}
+"""
+
 FETCH_GITHUB_USER_GQL = """
         query ($login: String!) {
             user(login: $login) {
                 login
                 email
                 name
+            }
+        }
+        """
+
+FETCH_GITHUB_USER_WITH_VERIFIED_EMAILS_GQL = """
+        query ($login: String!, $organization: String!) {
+            user(login: $login) {
+                login
+                email
+                name
+                organizationVerifiedDomainEmails(login: $organization)
             }
         }
         """
