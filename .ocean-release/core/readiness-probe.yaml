@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Readiness probe returns 503 until Ocean finishes startup, enabling faster Kubernetes rollouts with lower initialDelaySeconds.

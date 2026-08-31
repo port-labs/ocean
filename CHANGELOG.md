@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.5 (2026-08-31)
+
+
+### Improvements
+
+- Readiness probe returns 503 until Ocean finishes startup, enabling faster Kubernetes rollouts with lower initialDelaySeconds.
+
+
 ## 0.50.4 (2026-08-30)
 
 
