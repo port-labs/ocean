@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Added retry with exponential backoff for GraphQL errors during team member enrichment. GitHub server-side errors like "Something went wrong while executing your query" are retried up to 3 times before failing, preventing a single error from aborting the entire team resync.
