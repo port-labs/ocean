@@ -317,7 +317,6 @@ class Ocean:
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
-            set_ready(False)
             try:
                 await self.integration.start()
                 await self._register_addons()
@@ -330,7 +329,6 @@ class Ocean:
                 logger.complete()
                 sys.exit("Server stopped")
             finally:
-                set_ready(False)
                 await signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
