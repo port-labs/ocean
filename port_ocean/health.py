@@ -24,7 +24,9 @@ def is_ready() -> bool:
 class HealthResponse(BaseModel):
     """Structured payload for liveness/readiness probes and tooling."""
 
-    status: Literal["healthy", "not_ready"] = "healthy"
+    status: Literal["healthy", "not_ready"] = Field(
+        default="healthy", description="The health of the service."
+    )
     check: Literal["live", "ready"] = Field(
         ...,
         description="Whether this response is from the liveness or readiness endpoint.",
