@@ -1,0 +1,45 @@
+{
+  "title": "Komodor",
+  "type": "komodor",
+  "description": "Komodor integration for Port Ocean",
+  "icon": "Komodor",
+  "formMappingEnabled": true,
+  "recommendedInstallationMethod": "Saas",
+  "provider": {
+    "type": "community"
+  },
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Kubernetes Stack",
+      "resources": [
+        {
+          "kind": "komodorService"
+        },
+        {
+          "kind": "komodorHealthMonitoring"
+        }
+      ]
+    }
+  ],
+  "saas": {
+    "enabled": true
+  },
+  "configurations": [
+    {
+      "name": "komodorApiKey",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "The API token for the user in komodor"
+    },
+    {
+      "name": "komodorBaseUrl",
+      "default": "https://api.komodor.com/api/v2",
+      "required": true,
+      "type": "url",
+      "sensitive": false,
+      "description": "The API URL for Komodor"
+    }
+  ]
+}

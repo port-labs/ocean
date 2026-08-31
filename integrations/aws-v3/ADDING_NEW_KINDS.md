@@ -9,6 +9,11 @@ The AWS-v3 integration follows a consistent pattern for all resource types:
 Ocean Event → Resync Handler → Exporter → ResourceInspector → Actions → AWS API
 ```
 
+After implementing the steps below, run the
+[Self-Review Checklist](#self-review-checklist-before-opening-a-pr) against the real AWS API
+before opening a PR. Bootstrapped kinds often look correct while still using non-existent
+paginators, redundant actions, or invented model fields.
+
 ## Prerequisites
 
 - Understanding of Python async/await patterns
@@ -88,7 +93,7 @@ class YourResourceProperties(BaseModel):
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
 
     class Config:
-        extra = "forbid"  # Prevent unexpected fields
+        extra = "ignore"  # Drop unexpected fields instead of failing resync
         populate_by_name = True  # Allow field aliases
 
 
@@ -527,3 +532,179 @@ async def get_paginated_resources(self, options) -> AsyncGenerator[list[dict], N
     async for batch in self._fetch_resources_in_batches(options):
         yield batch  # Don't accumulate all data in memory
 ```
+
+## Self-Review Checklist (before opening a PR)
+
+New kinds (`aws/core/exporters/{service}/{resource}/`) are usually one-shot bootstrapped from
+this guide, with no real AWS calls made and no tests run against live data. Pattern-matching
+other kinds can hallucinate: paginators that don't exist, actions for data that's already
+available elsewhere, model fields that don't exist on the real API. Nothing catches this until
+it runs against a real account.
+
+**Do not open a PR until every item below is verified against the actual AWS API** — not against
+what "looks right" or what other kinds do.
+
+### 1. Paginator must actually exist
+
+`proxy.get_paginator(operation, key)` wraps botocore's native paginator. If the operation has no
+paginator config, it raises `OperationNotPageableError` at runtime — never at review time.
+
+**Verify:**
+```bash
+python3 -c "
+import botocore.session
+c = botocore.session.get_session().create_client('<service>', region_name='us-east-1', aws_access_key_id='x', aws_secret_access_key='y')
+print(c.can_paginate('<operation_name>'))
+"
+```
+If `False`: hand-roll the loop in the exporter using whatever token field the operation actually
+returns (`NextToken`, `Marker`, etc.) — do not use `proxy.get_paginator`.
+
+### 2. Don't add an action the resource doesn't need
+
+Check what the "describe/get details" call already returns before adding a separate action for
+tags/policy/etc. If the primary response already includes it (SES's `GetEmailIdentity` returns
+`Tags` natively — a separate `ListTagsForResource` action was pure dead weight), don't add a
+second call. Only add an action for data that is genuinely absent from every other call already
+being made.
+
+**Verify:** read the operation's response shape in the real botocore service model, not AWS
+prose docs:
+```bash
+python3 -c "
+import gzip, json
+with gzip.open('<path-to-venv>/lib/python3.12/site-packages/botocore/data/<service>/<version>/service-2.json.gz') as f:
+    d = json.load(f)
+print(json.dumps(d['shapes'][d['operations']['<Operation>']['output']['shape']], indent=2))
+"
+```
+
+### 3. Confirm the service is available in every region you'll query
+
+Not every AWS service is deployed to every region. If unsupported regions aren't filtered out,
+resync throws `Could not connect to the endpoint URL` (not an access-denied error, so the
+generic `safe_iterate` skip logic won't catch it).
+
+**Verify:**
+```bash
+python3 -c "
+import json, botocore, os
+p = os.path.dirname(botocore.__file__)
+d = json.load(open(os.path.join(p, 'data', 'endpoints.json')))
+for partition in d['partitions']:
+    svc = partition['services'].get('<endpointPrefix>')  # endpointPrefix from service-2.json metadata, not the service id
+    print(partition['partition'], list(svc.get('endpoints', {})) if svc else None)
+"
+```
+If the region list is narrower than "all", add a `<KIND>_SUPPORTED_REGIONS: frozenset[str]` in a
+`regions.py` next to the exporter, and set `_supported_regions` on the exporter class (see
+`memorydb/user/exporter.py`). `resync.py`'s `filter_regions_for_exporter` reads this
+automatically — no other wiring needed.
+
+### 4. Model fields must mirror the real API, not an invented shape
+
+- Every field on a `*Properties` model must come from an actual field in a real API response
+  (checked per #2's method) — never guessed from memory or AWS doc prose.
+- Don't rename raw fields to "nicer" names (`IdentityName` → `EmailIdentity`). Use the AWS
+  field name as-is. If a genuine identifier needs a stable/predictable key across list vs. get
+  calls that use different names for the same concept, that's a sign the model or the exporter
+  needs a deliberate decision — flag it, don't silently rename in an action.
+- Don't flatten nested response structures into new top-level convenience fields (e.g. computing
+  `DkimEnabled` from `DkimAttributes.SigningEnabled` in Python). Keep the nested raw structure as
+  a single field; compute convenience values in the Port mapping's jq instead
+  (`.Properties.DkimAttributes.SigningEnabled`), the same way ARNs are often built in
+  `port-app-config.yml` from `.Properties.X` + `.__ExtraContext.Region`/`AccountId` rather than
+  in Python.
+- Don't construct and store IDs/ARNs in Python if the mapping can derive them from fields already
+  on the model plus `.__ExtraContext`. Only compute a value in Python if it's needed for an
+  actual AWS API call the action must make (e.g. an ARN required as a `list_tags_for_resource`
+  parameter) — never just to expose it as a property.
+
+### 5. Strip SDK response envelopes
+
+Every raw boto3/aiobotocore response includes a top-level `ResponseMetadata` key (HTTP headers,
+request ID, retry count). If an action returns a raw response dict directly, pop it first:
+```python
+response.pop("ResponseMetadata", None)
+```
+This isn't part of any service's actual data contract — it's transport plumbing botocore adds to
+every call.
+
+### 6. No redundant double-fetch in `get_resource`
+
+`get_resource` (single-resource fetch) must avoid redundant AWS calls. If your default action already
+fetches details, seed `inspector.inspect()` with only the minimal identifier (name/ARN) and let the
+`defaults` action(s) make the AWS call.
+If the defaults are pass-through actions that expect full response items (e.g., ECR repositories,
+MemoryDB users), `get_resource` may perform the single "describe/get" call and pass its result to
+the inspector — but it must not call an API that a default action will call again.
+
+### 7. Actions run concurrently over the same raw input, not chained
+
+All actions in `defaults` + selected `options` run via `asyncio.gather` over the *same* raw
+identifier list (see `ResourceInspector.inspect`) — one action's output never becomes another
+action's input. Every action must independently read whatever key it needs straight from the raw
+item passed to `_execute`. Don't assume a prior action in the list "already ran" and reshaped the
+data.
+
+### 8. Extra-field handling on the model must match what's actually returned
+
+- Use `extra="ignore"` on `*Properties` (not `extra="forbid"`). AWS responses can gain fields
+  over time; ignoring unknowns keeps resync resilient instead of failing the whole sync.
+- Still declare every field you care about and that appears in the raw responses used to build
+  Properties. If an action does a true raw passthrough (recommended default — don't
+  filter/rename in Python, see #4), declare the full union of fields from every raw response
+  that feeds the model so those values are kept rather than silently dropped.
+
+### 9. Keep mapping/blueprint/examples in sync with the model
+
+A field rename or removal in `models.py` must be mirrored in:
+`.port/resources/port-app-config.yml`, `.port/resources/blueprints.json`,
+`examples/{kind}/*-mappings.yaml`, `examples/{kind}/*-raw-data.json`,
+`examples/{kind}/*-expected-output.json`. Verify the jq mapping actually resolves against the
+raw-data example:
+```bash
+jq '<mapping-expression>' examples/{kind}/*-raw-data.json
+```
+and confirm the result matches `*-expected-output.json`.
+
+### 10. Tests must exercise the real boto call shape, not just the abstraction
+
+Mock the actual client method (`list_email_identities`, `get_email_identity`, etc.) with
+realistic return shapes — not `proxy.get_paginator`/`ResourceInspector` directly for every test.
+Tests that only patch the internal abstractions will pass even when the underlying operation
+doesn't support pagination, doesn't return an assumed field, or doesn't exist. It's fine for
+exporter-level tests to mock `ResourceInspector.inspect` when testing exporter-only concerns
+(e.g. `NextToken` looping), but action-level tests must mock the AWS client method itself.
+
+### 11. Delete tests that test nothing
+
+If a `*Properties`/`*Request` model has no custom validators — just `Field(...)` declarations —
+don't write tests asserting default values or required-field errors. That tests Pydantic, not
+this codebase.
+
+### 12. Prefer importing from the service package when it re-exports symbols
+
+If `aws/core/exporters/{service}/__init__.py` re-exports an exporter/model, prefer importing from
+`aws.core.exporters.{service}` in central wiring modules (`exporter_metadata.py`, `main.py`) to
+avoid deep import paths; otherwise import from the defining submodule.
+
+### 13. Optional list/dict fields default to `None`, not `Field(default_factory=list/dict)`
+
+Only default to an empty collection if the field is genuinely always populated (e.g. list
+concatenation). Fields like `Tags` that many resources simply won't have should be
+`list[dict[str, str]] | None = None`, consistent with every other optional field on the model —
+not an allocated-but-empty collection on every single resource.
+
+### 14. Type the data actions operate on with a `TypedDict`, when it's shaped like a dict
+
+If the identifiers actions receive are dicts (e.g. `list[dict[str, Any]]` built from a `list_*`
+response), define a `TypedDict` next to the actions (mark fields `NotRequired` if they're only
+present from one of the call sites feeding it, e.g. list vs. single-get) and parameterize
+`Action[list[YourRecord]]` with it instead of `Action[list[dict[str, Any]]]`. This documents the
+exact shape actions can rely on without cross-referencing AWS docs, and mypy will catch a typo'd
+key at the construction site.
+
+This does **not** apply when the API's list call returns plain strings (e.g. SQS's
+`list_queues` → `QueueUrls`, a `list[str]`) — there's no dict shape to document, so keep
+`Action[list[str]]` as-is.

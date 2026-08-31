@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -35,6 +35,9 @@ async def async_mock_generator(items: list[Any]) -> AsyncGenerator[Any, None]:
 async def async_raising_generator(error: Exception) -> AsyncGenerator[Any, None]:
     raise error
     yield  # pragma: no cover
+
+
+_MISSING = object()
 
 
 @pytest.mark.asyncio
@@ -1137,6 +1140,36 @@ class TestGitLabClient:
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
 
+    @pytest.mark.parametrize(
+        "default_branch",
+        [
+            pytest.param(None, id="null"),
+            pytest.param("", id="empty"),
+            pytest.param(_MISSING, id="missing"),
+        ],
+    )
+    async def test_get_repository_folders_skips_without_default_branch(
+        self, client: GitLabClient, default_branch: Any
+    ) -> None:
+        """Folder tree search skips empty projects with no usable default branch."""
+        mock_project: dict[str, Any] = {
+            "id": "1",
+            "path_with_namespace": "group/empty",
+        }
+        if default_branch is not _MISSING:
+            mock_project["default_branch"] = default_branch
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client.get_repository_folders("src", "group/empty"):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
+
     async def test_match_files_with_repository_tree_scoped_directory(
         self, client: GitLabClient
     ) -> None:
@@ -1334,6 +1367,94 @@ class TestGitLabClient:
                 assert results == []
                 mock_get_paginated.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "default_branch,expected",
+        [
+            pytest.param("main", "main", id="main"),
+            pytest.param(None, None, id="null"),
+            pytest.param("", None, id="empty"),
+            pytest.param(_MISSING, None, id="missing"),
+        ],
+    )
+    async def test_project_tree_ref(
+        self, client: GitLabClient, default_branch: Any, expected: str | None
+    ) -> None:
+        project: dict[str, Any] = {"id": "1", "path_with_namespace": "group/project"}
+        if default_branch is not _MISSING:
+            project["default_branch"] = default_branch
+        assert client._project_tree_ref(project) == expected
+
+    async def test_partition_and_log_skipped_projects_without_default_branch(
+        self, client: GitLabClient
+    ) -> None:
+        projects: list[dict[str, Any]] = [
+            {"id": "1", "path_with_namespace": "group/ok", "default_branch": "main"},
+            {"id": "2", "path_with_namespace": "group/null", "default_branch": None},
+            {"id": "3", "path_with_namespace": "group/empty", "default_branch": ""},
+            {"id": "4", "path_with_namespace": "group/missing"},
+            {
+                "id": "5",
+                "path_with_namespace": "group/also-ok",
+                "default_branch": "master",
+            },
+            {"id": "6", "path_with_namespace": "group/extra-1"},
+            {"id": "7", "path_with_namespace": "group/extra-2"},
+            {"id": "8", "path_with_namespace": "group/extra-3"},
+        ]
+        searchable, skipped = client._partition_projects_with_tree_ref(projects)
+        assert [p["path_with_namespace"] for p in searchable] == [
+            "group/ok",
+            "group/also-ok",
+        ]
+        assert skipped == [
+            "group/null",
+            "group/empty",
+            "group/missing",
+            "group/extra-1",
+            "group/extra-2",
+            "group/extra-3",
+        ]
+
+        with patch("gitlab.clients.gitlab_client.logger") as mock_logger:
+            client._log_skipped_projects_without_default_branch(skipped)
+            mock_logger.info.assert_called_once()
+            message = mock_logger.info.call_args.args[0]
+            assert "Skipping 6 project(s) without a default branch" in message
+            assert "group/null" in message
+            assert "(+1 more)" in message
+
+    @pytest.mark.parametrize(
+        "default_branch",
+        [
+            pytest.param(None, id="null"),
+            pytest.param("", id="empty"),
+            pytest.param(_MISSING, id="missing"),
+        ],
+    )
+    async def test_match_files_with_repository_tree_without_default_branch(
+        self, client: GitLabClient, default_branch: Any
+    ) -> None:
+        """Projects without a usable default_branch have no tree ref to search."""
+        mock_project: dict[str, Any] = {
+            "id": "1",
+            "path_with_namespace": "group/empty",
+        }
+        if default_branch is not _MISSING:
+            mock_project["default_branch"] = default_branch
+
+        with patch.object(client, "get_project", AsyncMock(return_value=mock_project)):
+            with patch.object(
+                client.rest, "get_paginated_project_resource"
+            ) as mock_get_paginated:
+                results = []
+                async for batch in client._match_files_with_repository_tree(
+                    "group/empty", build_search_query("README.md")
+                ):
+                    results.extend(batch)
+
+                assert results == []
+                mock_get_paginated.assert_not_called()
+
     async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
         """Test that parsed file content with file:// reference fetches and resolves content."""
         # Arrange
@@ -1383,6 +1504,84 @@ class TestGitLabClient:
             mock_get_file_content.assert_called_once_with(
                 "123", "other_file.txt", "main"
             )
+
+    async def test_process_file_retries_with_default_branch_on_empty_response(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 111, "default_branch": "main"}
+
+        with (
+            patch.object(
+                client,
+                "get_project",
+                AsyncMock(return_value=project),
+            ) as mock_get_project,
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(
+                    side_effect=[
+                        {},
+                        {"content": "hello", "path": "a.yml"},
+                    ]
+                ),
+            ) as mock_get_file_data,
+        ):
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "deadbeef"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert result["content"] == "hello"
+        mock_get_project.assert_called_once_with("111")
+        assert mock_get_file_data.call_args_list == [
+            call("111", "a.yml", "deadbeef"),
+            call("111", "a.yml", "main"),
+        ]
+
+    async def test_process_file_no_retry_when_ref_matches_default_branch(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 111, "default_branch": "main"}
+
+        with (
+            patch.object(
+                client,
+                "get_project",
+                AsyncMock(return_value=project),
+            ),
+            patch.object(
+                client.rest,
+                "get_file_data",
+                AsyncMock(return_value={}),
+            ) as mock_get_file_data,
+        ):
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "main"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert "content" not in result
+        mock_get_file_data.assert_called_once_with("111", "a.yml", "main")
+
+    async def test_process_file_no_retry_when_first_fetch_succeeds(
+        self, client: GitLabClient
+    ) -> None:
+        with patch.object(
+            client.rest,
+            "get_file_data",
+            AsyncMock(return_value={"content": "ok", "path": "a.yml"}),
+        ) as mock_get_file_data:
+            result = await client._process_file(
+                {"path": "a.yml", "project_id": "111", "ref": "deadbeef"},
+                "ctx",
+                skip_parsing=True,
+            )
+
+        assert result["content"] == "ok"
+        mock_get_file_data.assert_called_once_with("111", "a.yml", "deadbeef")
 
     async def test_resolve_file_references_relative_reference(
         self, client: GitLabClient

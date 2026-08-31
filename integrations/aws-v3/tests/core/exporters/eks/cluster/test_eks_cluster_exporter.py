@@ -1,6 +1,7 @@
 import pytest
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from botocore.exceptions import ClientError
 from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
 from aws.core.exporters.eks.cluster.models import (
     SingleEksClusterRequest,
@@ -45,6 +46,9 @@ class TestEksClusterExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_cluster.return_value = {
+            "cluster": {"name": "test-cluster"}
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -79,7 +83,15 @@ class TestEksClusterExporter:
         # Verify
         assert result == expected_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "eks")
-        mock_inspector.inspect.assert_called_once_with(["test-cluster"], [])
+        mock_client.describe_cluster.assert_awaited_once_with(name="test-cluster")
+        mock_inspector.inspect.assert_called_once_with(
+            ["test-cluster"],
+            [],
+            extra_context={
+                "AccountId": "123456789012",
+                "Region": "us-west-2",
+            },
+        )
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.eks.cluster.exporter.AioBaseClientProxy")
@@ -199,6 +211,38 @@ class TestEksClusterExporter:
     @pytest.mark.asyncio
     @patch("aws.core.exporters.eks.cluster.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.eks.cluster.exporter.ResourceInspector")
+    async def test_get_resource_describe_cluster_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: EksClusterExporter,
+    ) -> None:
+        """Missing clusters must raise from describe_cluster before stub resources are built."""
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_cluster.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException", "Message": "gone"}},
+            "DescribeCluster",
+        )
+
+        options = SingleEksClusterRequest(
+            region="us-west-2",
+            account_id="123456789012",
+            cluster_name="nonexistent-cluster",
+            include=[],
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
+
+        assert exc_info.value.response["Error"]["Code"] == "ResourceNotFoundException"
+        mock_inspector_class.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.eks.cluster.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.eks.cluster.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -211,6 +255,9 @@ class TestEksClusterExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_cluster.return_value = {
+            "cluster": {"name": "nonexistent-cluster"}
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector

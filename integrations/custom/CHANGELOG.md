@@ -8,6 +8,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.116 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.6.115 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.6.114 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.6.113 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.6.112 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.6.111 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.6.110 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.6.109 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.6.108 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.6.107 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.6.106 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.6.105 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.6.104 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.6.103 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.6.102 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.6.101 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
 ## 0.6.100 (2026-08-11)
 
 
@@ -434,9 +562,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.6.47 (2026-06-04)
 
+
 ### Improvements
 
 - Add docs to custom SaaS installation types
+
 
 ## 0.6.46 (2026-06-03)
 
@@ -452,6 +582,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Move custom ocean to Build Your Own Integration
+
 
 ## 0.6.44 (2026-06-03)
 
@@ -611,6 +742,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Updated baseUrl format to url
+
 
 ## 0.6.24 (2026-05-19)
 
@@ -810,6 +942,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Removed beta tag for the custom integration
+
 
 ## 0.5.4-beta (2026-04-06)
 
@@ -1104,7 +1237,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Bumped ocean version to ^0.37.1
 
 
@@ -1303,11 +1435,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.41-beta (2025-12-24)
 
+
 ### Improvements
 
 - Enabled saas for the custom integration
 
+
 ## 0.2.40-beta (2025-12-24)
+
 
 ### Improvements
 
@@ -1538,26 +1673,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.29.8
 
 
-## [0.2.11-beta] - 2025-01-27
+## 0.2.11-beta (2025-01-27)
+
 
 ### Bug Fixes
+
 - Fixed timeout configuration to use Ocean's core `client_timeout` capability directly - removed duplicate timeout parameter to fully leverage Ocean's core functionality
 - Fixed SSL verification (`verify_ssl`) configuration not being properly applied to HTTP requests
 - Fixed data path auto-detection logic to correctly handle explicit `data_path` configurations vs auto-detection scenarios
 
-## [0.2.2] - 2025-04-11
+
+## 0.2.2 (2025-04-11)
+
+
 ### Improvements
+
 Fixed docs shown in generic http integration
 
 
-## [0.2.1] - 2025-03-11
+## 0.2.1 (2025-03-11)
+
+
 ### Improvements
+
 Added docs to other installation methods in custom integration other than helm
 
 
-## [0.1.0] - 2024-01-01
+## 0.1.0 (2024-01-01)
 
-### Added
+
+### Features
+
 - Initial release of HTTP Server integration
 - Support for multiple authentication methods (Bearer token, Basic auth, API key, none)
 - Support for multiple pagination patterns (offset/limit, page/size, cursor-based, none)

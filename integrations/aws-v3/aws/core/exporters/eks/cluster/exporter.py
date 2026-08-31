@@ -23,11 +23,26 @@ class EksClusterExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-cluster fetch only has a cluster name from CloudTrail.
+            # DescribeClusterAction swallows ResourceNotFoundException as recoverable,
+            # so the inspector would return an empty payload for a deleted cluster.
+            # Confirm it exists so a missing cluster raises and the live-event handler
+            # can treat the update as a delete instead.
+            await proxy.client.describe_cluster(  # type: ignore[attr-defined]
+                name=options.cluster_name
+            )
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect([options.cluster_name], options.include)
+            response = await inspector.inspect(
+                [options.cluster_name],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
 
             return response[0] if response else {}
 

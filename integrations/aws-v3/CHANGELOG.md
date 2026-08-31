@@ -1,4 +1,4 @@
-# Changelog - Ocean - aws-v3
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,158 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 2.22.2-beta (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 2.22.1-beta (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 2.22.0-beta (2026-08-30)
+
+
+### Features
+
+- Add CloudTrail live events for ECR repositories, ECS clusters, and EKS clusters
+
+
+## 2.21.1-beta (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 2.21.0-beta (2026-08-26)
+
+
+### Features
+
+- Add CloudTrail live events support for DynamoDB tables and RDS DB instances.
+
+
+## 2.20.16-beta (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 2.20.15-beta (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 2.20.14-beta (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 2.20.13-beta (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 2.20.12-beta (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 2.20.11-beta (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 2.20.10-beta (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 2.20.9-beta (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 2.20.8-beta (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 2.20.7-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 2.20.6-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 2.20.5-beta (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 2.20.4-beta (2026-08-12)
+
+
+### Bug Fixes
+
+- Remove liveEventsApiKey from spec.yaml so it is not shown in the UI while live events are behind a feature flag
+
+
+## 2.20.3-beta (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
 
 ## 2.20.2-beta (2026-08-11)
 
@@ -479,7 +631,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for AWS::CodePipeline::ActionExecution resource kind, enabling ingestion of CodePipeline Action Executions into the Port catalog
 
 
-
 ## 2.12.0-beta (2026-06-28)
 
 
@@ -599,12 +750,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed silent index-shift in concurrent action result merging that caused enrichment data (tags, encryption, etc.) to be applied to the wrong AWS resource when one resource's API call returned a recoverable error. All recoverable-skip paths in S3, SQS, RDS, Lambda, Organizations, and the shared `execute_concurrent_aws_operations` helper (used by ECR, ECS, EC2) now preserve list alignment via an empty placeholder.
 
+
 ## 2.5.3-beta (2026-06-16)
 
 
 ### Improvements
 
 - Base Action class Generic had variable name override fixed, should now properly identify typing
+
 
 ## 2.5.2-beta (2026-06-15)
 
@@ -1785,7 +1938,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
 - Bumped ocean version to ^0.29.8
 
 
@@ -1798,6 +1950,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 2.0.7-beta (2025-11-17)
+
 
 ### Bug Fixes
 
@@ -1907,6 +2060,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.4.8-beta (2025-10-26)
 
+
 ### Improvements
 
 - Move aws-v3 integration from stable to beta
@@ -1930,9 +2084,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.4.5 (2025-10-20)
 
+
 ### Improvements
 
 - Move aws-v3 integration from beta to stable
+
 
 ## 1.4.4-beta (2025-10-15)
 
@@ -2313,6 +2469,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add assume role with web identity provider
+
 
 ## 0.1.2-dev (2025-07-20)
 

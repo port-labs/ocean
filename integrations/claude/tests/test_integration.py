@@ -4,10 +4,14 @@ from pydantic.v1 import ValidationError
 from integration import (
     ClaudeAIUserActivitySelector,
     ClaudeAIUserReportSelector,
+    ClaudeCodeAnalyticsResourceConfig,
+    ClaudeCostRecordResourceConfig,
+    ClaudeAISkillUsageSelector,
     ClaudePlatformCodeAnalyticsResourceConfig,
     ClaudePlatformCodeAnalyticsSelector,
     ClaudePlatformCostRecordResourceConfig,
     ClaudePlatformUsageRecordResourceConfig,
+    ClaudeUsageRecordResourceConfig,
 )
 
 _MINIMAL_PORT = {"entity": {"mappings": {"identifier": ".id", "blueprint": '"bp"'}}}
@@ -76,6 +80,42 @@ def test_user_activity_selector_rejects_malformed_starting_date() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Claude AI skill usage selector
+# ---------------------------------------------------------------------------
+
+
+def test_skill_usage_selector_allows_neither_field() -> None:
+    sel = ClaudeAISkillUsageSelector(query="true")
+    assert sel.time_frame is None
+    assert sel.starting_date is None
+
+
+def test_skill_usage_selector_accepts_time_frame_only() -> None:
+    sel = ClaudeAISkillUsageSelector(query="true", timeFrame=14)
+    assert sel.time_frame == 14
+    assert sel.starting_date is None
+
+
+def test_skill_usage_selector_rejects_both_fields() -> None:
+    with pytest.raises(
+        ValidationError, match="'startingDate' and 'timeFrame' are mutually exclusive"
+    ):
+        ClaudeAISkillUsageSelector(
+            query="true", startingDate="2026-01-01", timeFrame=30
+        )
+
+
+def test_skill_usage_selector_rejects_non_positive_time_frame() -> None:
+    with pytest.raises(ValidationError):
+        ClaudeAISkillUsageSelector(query="true", timeFrame=0)
+
+
+def test_skill_usage_selector_rejects_malformed_starting_date() -> None:
+    with pytest.raises(ValidationError):
+        ClaudeAISkillUsageSelector(query="true", startingDate="not-a-date")
+
+
+# ---------------------------------------------------------------------------
 # Claude AI user report selector (shared by usage and cost)
 # ---------------------------------------------------------------------------
 
@@ -103,31 +143,42 @@ def test_user_report_selector_rejects_malformed_starting_at() -> None:
 
 
 @pytest.mark.parametrize(
-    "config_cls,new_kind,legacy_kind,selector",
+    "config_cls,kind,selector",
     [
         (
             ClaudePlatformUsageRecordResourceConfig,
             "claude-platform-usage-record",
+            {"query": "true"},
+        ),
+        (
+            ClaudeUsageRecordResourceConfig,
             "claude-usage-record",
             {"query": "true"},
         ),
         (
             ClaudePlatformCostRecordResourceConfig,
             "claude-platform-cost-record",
+            {"query": "true"},
+        ),
+        (
+            ClaudeCostRecordResourceConfig,
             "claude-cost-record",
             {"query": "true"},
         ),
         (
             ClaudePlatformCodeAnalyticsResourceConfig,
             "claude-platform-code-analytics",
+            {"query": "true", "timeFrame": 30},
+        ),
+        (
+            ClaudeCodeAnalyticsResourceConfig,
             "claude-code-analytics",
             {"query": "true", "timeFrame": 30},
         ),
     ],
 )
 def test_platform_config_accepts_new_and_legacy_kinds(
-    config_cls: type, new_kind: str, legacy_kind: str, selector: dict[str, object]
+    config_cls: type, kind: str, selector: dict[str, object]
 ) -> None:
-    for kind in (new_kind, legacy_kind):
-        config = config_cls(kind=kind, selector=selector, port=_MINIMAL_PORT)
-        assert config.kind == kind
+    config = config_cls(kind=kind, selector=selector, port=_MINIMAL_PORT)
+    assert config.kind == kind
