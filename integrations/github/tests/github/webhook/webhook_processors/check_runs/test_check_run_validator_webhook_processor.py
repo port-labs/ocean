@@ -22,9 +22,11 @@ from github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_p
     CheckRunValidatorWebhookProcessor,
 )
 from github.helpers.utils import ObjectKind
+from github.webhook.events import CHECK_RUN_PR_ACTIONS
 from github.webhook.webhook_processors.check_runs.file_validation import (
     ResourceConfigToPatternMapping,
 )
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 
 class MockAsyncGenerator:
@@ -288,32 +290,48 @@ class TestCheckRunValidatorWebhookProcessor:
                 mock_validation_service_class.assert_called_once()
                 assert mock_validation_service.validate_pull_request_files.called
 
-    async def test_handle_event_skipped_actions(
+    async def test_should_process_event_valid(
         self,
         checkrun_validator_webhook_processor: CheckRunValidatorWebhookProcessor,
-        mock_port_app_config: GithubPortAppConfig,
-        pull_request_resource_config: GithubPullRequestConfig,
     ) -> None:
-        """Test handle_event skips certain pull request actions."""
-        skipped_actions = ["closed", "merged", "assigned", "unassigned"]
+        for action in CHECK_RUN_PR_ACTIONS:
+            mock_event = MagicMock(spec=WebhookEvent)
+            mock_event.headers = {"x-github-event": "pull_request"}
+            mock_event.payload = {"action": action}
 
-        for action in skipped_actions:
-            payload = {
-                "action": action,
-                "repository": {"name": "test-repo"},
-                "pull_request": {
-                    "number": 101,
-                    "base": {"sha": "base-sha-123"},
-                    "head": {"sha": "head-sha-456"},
-                },
-                "organization": {"login": "test-org"},
-            }
-
-            async with event_context("test_event") as event:
-                event.port_app_config = mock_port_app_config
-                result = await checkrun_validator_webhook_processor.handle_event(
-                    payload, pull_request_resource_config
+            assert (
+                await checkrun_validator_webhook_processor._should_process_event(
+                    mock_event
                 )
-                assert isinstance(result, WebhookEventRawResults)
-                assert result.updated_raw_results == []
-                assert result.deleted_raw_results == []
+                is True
+            )
+
+    async def test_should_process_event_wrong_header(
+        self,
+        checkrun_validator_webhook_processor: CheckRunValidatorWebhookProcessor,
+    ) -> None:
+        mock_event = MagicMock(spec=WebhookEvent)
+        mock_event.headers = {"x-github-event": "pull_request_review"}
+        mock_event.payload = {"action": "opened"}
+
+        assert (
+            await checkrun_validator_webhook_processor._should_process_event(mock_event)
+            is False
+        )
+
+    async def test_should_process_event_non_validation_action(
+        self,
+        checkrun_validator_webhook_processor: CheckRunValidatorWebhookProcessor,
+    ) -> None:
+        non_validation_actions = ["closed", "merged", "assigned", "unassigned"]
+        for action in non_validation_actions:
+            mock_event = MagicMock(spec=WebhookEvent)
+            mock_event.headers = {"x-github-event": "pull_request"}
+            mock_event.payload = {"action": action}
+
+            assert (
+                await checkrun_validator_webhook_processor._should_process_event(
+                    mock_event
+                )
+                is False
+            )
