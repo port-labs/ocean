@@ -3,7 +3,7 @@ name: Notify on external contribution
 on:
   # pull_request_target so fork PRs get secrets; safe since no PR code is checked out
   pull_request_target:
-    types: [opened, synchronize]
+    types: [opened, reopened, synchronize]
   issue_comment:
     types: [created, edited, deleted]
   pull_request_review:
