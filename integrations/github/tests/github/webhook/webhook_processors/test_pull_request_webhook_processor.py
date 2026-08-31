@@ -118,7 +118,12 @@ class TestPullRequestWebhookProcessor:
         [
             (["open"], "opened", True, False),  # open allowed
             (["open"], "closed", False, True),  # closed not in states → delete
-            (["closed"], "opened", True, False),  # still update if opened
+            (
+                ["closed"],
+                "opened",
+                False,
+                True,
+            ),  # open state excluded by states → delete
             (["closed"], "closed", True, False),  # closed allowed → update
             (["open", "closed"], "closed", True, False),  # both allowed → update
         ],
@@ -153,7 +158,7 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.RestPullRequestExporter",
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_webhook_processor.handle_event(
@@ -177,11 +182,16 @@ class TestPullRequestWebhookProcessor:
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []
-                # Deletions are enriched with repository + organization metadata
-                assert result.deleted_raw_results == [
-                    {**pr_data, "__organization": "test-org"}
-                ]
-                mock_exporter.get_resource.assert_not_called()
+                if action == "closed":
+                    # Early delete path uses payload PR data enriched with metadata
+                    assert result.deleted_raw_results == [
+                        {**pr_data, "__organization": "test-org"}
+                    ]
+                    mock_exporter.get_resource.assert_not_called()
+                else:
+                    # Post-fetch delete: fetched state excluded by selector
+                    assert result.deleted_raw_results == [updated_pr_data]
+                    mock_exporter.get_resource.assert_called_once()
 
     async def test_handle_event_passes_excluded_graphql_fields_when_configured(
         self,
@@ -205,7 +215,7 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.pull_request_webhook_processor.GraphQLPullRequestExporter",
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.GraphQLPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_webhook_processor.handle_event(
