@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.8 (2026-08-31)
+
+
+### Features
+
+- Expanded SAML email enrichment to support enterprise-level SAML SSO by automatically falling back to the enterprise identity provider when org-level SAML is not configured, enabling __SAMLEmail population for customers who centralize SAML at the enterprise level. Requires a classic PAT from an enterprise owner with read:enterprise scope.
+
+
 ## 6.10.7 (2026-08-31)
 
 
