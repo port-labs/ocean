@@ -6,7 +6,9 @@ from loguru import logger
 from pydantic import ConfigDict
 
 from port_ocean.config.base import BaseOceanModel
+from port_ocean.context.event import event
 from port_ocean.core.models import EventListenerType
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.utils.signal import signal_handler
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -61,6 +63,16 @@ class BaseEventListener:
             IntegrationStateStatus.Failed
         )
 
+    def _should_mark_aborted_on_cancel(self) -> bool:
+        if ocean.app.resync_state_updater.supersede_in_progress:
+            return False
+        try:
+            if event.aborted and not event.external_abort:
+                return False
+        except EventContextNotFoundError:
+            pass
+        return True
+
     async def _resync(
         self,
         resync_args: dict[Any, Any],
@@ -76,7 +88,7 @@ class BaseEventListener:
             else:
                 await self._on_resync_failure(Exception("Resync failed"))
         except asyncio.CancelledError:
-            if not ocean.app.resync_state_updater.supersede_in_progress:
+            if self._should_mark_aborted_on_cancel():
                 logger.info(
                     "Resync was cancelled, updating state to Aborted",
                 )
