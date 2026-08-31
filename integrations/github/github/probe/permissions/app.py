@@ -36,7 +36,7 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
         tokens = [
             await authenticator.get_token() for authenticator in self.authenticators
         ]
-        pending = self.context.add_scopes(
+        pending = await self.context.add_scopes(
             *org_scopes(
                 [authenticator.organization for authenticator in self.authenticators]
             )
@@ -44,7 +44,7 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
         kind_count = len(self.context.available_kinds)
         for index, token in enumerate(tokens):
             checks = pending[index * kind_count : (index + 1) * kind_count]
-            self._resolve_checks(checks, token.permissions, app_permission_verdict)
+            await self._resolve_checks(checks, token.permissions, app_permission_verdict)
 
 
 def app_permission_verdict(

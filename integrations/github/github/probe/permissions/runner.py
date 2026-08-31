@@ -28,13 +28,13 @@ class GitHubPermissionProbe:
             )
             await flow.run()
         except (httpx.HTTPStatusError, httpx.RequestError) as error:
-            self.context.fail(_lookup_failure_message(error))
+            await self.context.fail(_lookup_failure_message(error))
         except AuthenticationException as error:
             cause = error.__cause__
             if isinstance(cause, (httpx.HTTPStatusError, httpx.RequestError)):
-                self.context.fail(_lookup_failure_message(cause))
+                await self.context.fail(_lookup_failure_message(cause))
             else:
-                self.context.fail(str(error))
+                await self.context.fail(str(error))
 
 
 def _lookup_failure_message(

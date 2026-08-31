@@ -61,14 +61,14 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         authenticator = self.authenticators[0]
         organizations = await self._get_organizations(authenticator)
         granted_scopes = await self._get_scopes(authenticator)
-        checks = self.context.add_scopes(*org_scopes(organizations))
+        checks = await self.context.add_scopes(*org_scopes(organizations))
 
         permissions = (
             {scope: "granted" for scope in expand_pat_scopes(granted_scopes)}
             if granted_scopes is not None
             else None
         )
-        self._resolve_checks(checks, permissions, pat_permission_verdict)
+        await self._resolve_checks(checks, permissions, pat_permission_verdict)
 
     async def _get_scopes(
         self,

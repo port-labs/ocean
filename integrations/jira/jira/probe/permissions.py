@@ -41,20 +41,20 @@ class JiraPermissionProbe:
         try:
             permissions = await client.get_current_user_permissions(permission_keys)
         except (httpx.HTTPStatusError, httpx.RequestError) as error:
-            self.context.fail(_lookup_failure_message(error))
+            await self.context.fail(_lookup_failure_message(error))
             return
 
-        checks = self.context.add_scopes({})
-        self._resolve_checks(checks, permissions)
+        checks = await self.context.add_scopes({})
+        await self._resolve_checks(checks, permissions)
 
-    def _resolve_checks(
+    async def _resolve_checks(
         self,
         checks: Sequence[ProbeCheck],
         permissions: dict[str, bool],
     ) -> None:
         for check in checks:
             check.status, check.message = _permission_verdict(check.kind, permissions)
-        self.context.update_progress()
+        await self.context.update_progress()
 
 
 def _lookup_failure_message(

@@ -9,6 +9,7 @@ from port_ocean.core.probe.models import ProbeCheck, ProbeStatus
 from port_ocean.core.probe.reporters import ProbeReporter, REPORTER_MODES
 from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
 from port_ocean.utils.misc import get_spec_kinds
+from port_ocean.core.probe.serialization import serialize_probe_value
 
 
 @dataclass
@@ -23,7 +24,7 @@ class ProbeContext:
     checks: list[ProbeCheck] = field(default_factory=list)
     reporter: ProbeReporter | None = None
 
-    def add_scopes(self, *scopes: dict[str, str | int]) -> list[ProbeCheck]:
+    async def add_scopes(self, *scopes: dict[str, str | int]) -> list[ProbeCheck]:
         logger.debug("Registering additional scopes", scopes=scopes)
         new_checks: list[ProbeCheck] = []
         for scope in scopes:
@@ -32,29 +33,34 @@ class ProbeContext:
                 new_checks.append(check)
                 self.checks.append(check)
 
-        self.update_progress()
+        await self.update_progress()
         return new_checks
 
     def build_request_body(self) -> dict[str, Any]:
-        return {
-            "probe_id": self.probe_id,
-            "status": self.status,
-            "mode": self.config.mode,
-            "started_at": self.started_at.isoformat(),
-            "ended_at": self.ended_at.isoformat() if self.ended_at else None,
-            "message": self.message,
-            "checks": [
-                {
-                    "status": check.status,
-                    "message": check.message,
-                    "kind": check.kind,
-                    "scopes": check.scopes,
-                }
-                for check in self.checks
-            ],
-        }
+        return serialize_probe_value(
+            {
+                "probeId": self.probe_id,
+                "status": self.status,
+                "probeMode": self.config.mode,
+                "startedAt": self.started_at.isoformat(),
+                "endedAt": self.ended_at.isoformat() if self.ended_at else None,
+                "message": self.message,
+                "checks": [
+                    {
+                        "status": check.status,
+                        "message": check.message,
+                        "kind": check.kind,
+                        "scopes": {
+                            scope_key: str(scope_value)
+                            for scope_key, scope_value in check.scopes.items()
+                        },
+                    }
+                    for check in self.checks
+                ],
+            }
+        )
 
-    def initialize(self, config: ProbeConfig | None = None) -> None:
+    async def initialize(self, config: ProbeConfig | None = None) -> None:
         self.config = config or ProbeConfig()
         if self.config.kinds is not None:
             configured_kinds_set = set(self.config.kinds)
@@ -71,21 +77,21 @@ class ProbeContext:
 
         self.reporter = REPORTER_MODES[self.config.reporting_mode](self.config)
         self.status = ProbeStatus.IN_PROGRESS
-        self.update_progress()
+        await self.update_progress()
 
-    def update_progress(self) -> None:
+    async def update_progress(self) -> None:
         if not self.reporter:
             raise ProbeNotInitializedError("Reporter is not initialized")
 
-        self.reporter.report(self.build_request_body())
+        await self.reporter.report(self.build_request_body())
 
-    def finalize(self) -> None:
+    async def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.COMPLETED
-        self.update_progress()
+        await self.update_progress()
 
-    def fail(self, message: str) -> None:
+    async def fail(self, message: str) -> None:
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.FAILED
         self.message = message
-        self.update_progress()
+        await self.update_progress()
