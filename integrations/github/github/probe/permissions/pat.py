@@ -1,11 +1,7 @@
 from collections.abc import Mapping
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.probe import (
-    KindPermissionVerdict,
-    PermissionCombination,
-    ProbeCheckStatus,
-)
+from port_ocean.core.probe import KindPermissionVerdict, PermissionCombination
 from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -108,15 +104,11 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         authenticator = self.authenticators[0]
         organizations = await self._get_organizations(authenticator)
         granted_scopes = await self._get_scopes(authenticator)
-        checks = self.context.add_scopes(*org_scopes(organizations))
-
         if granted_scopes is None:
-            for check in checks:
-                check.status = ProbeCheckStatus.UNKNOWN
-                check.message = FINE_GRAINED_PAT_MESSAGE
-            self.context.update_progress()
+            self.context.fail(FINE_GRAINED_PAT_MESSAGE)
             return
 
+        checks = self.context.add_scopes(*org_scopes(organizations))
         permissions = {
             scope: "granted" for scope in expand_pat_scopes(granted_scopes)
         }
