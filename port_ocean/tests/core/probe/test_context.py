@@ -2,10 +2,16 @@
 
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic.v1 import Field
 
+from port_ocean.core.handlers.port_app_config.models import (
+    PortAppConfig,
+    ResourceConfig,
+)
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import (
@@ -18,6 +24,37 @@ from port_ocean.core.probe.models import (
 from port_ocean.core.probe.reporters.file import FileProbeReporter
 from port_ocean.core.probe.reporters.log import LogProbeReporter
 from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
+
+
+def _resources_field() -> Any:
+    return Field(
+        default_factory=list,
+        title="Resources",
+        description="The list of resource configurations for the integration.",
+    )
+
+
+class _RepositoryConfig(ResourceConfig):
+    kind: Literal["repository"] = Field(title="Repository", description="Repository")
+
+
+class _PullRequestConfig(ResourceConfig):
+    kind: Literal["pull-request"] = Field(
+        title="Pull Request",
+        description="Pull request",
+    )
+
+
+class _RepositoryPortAppConfig(PortAppConfig):
+    resources: list[_RepositoryConfig] = _resources_field()  # type: ignore[assignment]
+
+
+class _RepositoryAndPullRequestPortAppConfig(PortAppConfig):
+    resources: list[_RepositoryConfig | _PullRequestConfig] = _resources_field()  # type: ignore[assignment]
+
+
+class _EmptyPortAppConfig(PortAppConfig):
+    resources: list = _resources_field()  # type: ignore[assignment]
 
 
 def test_starts_with_empty_state() -> None:
@@ -146,10 +183,7 @@ def test_build_request_body_when_probe_in_progress() -> None:
     assert body["checks"] == []
 
 
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
-def test_initialize_sets_config_and_available_kinds(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+def test_initialize_sets_config_and_available_kinds() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     context.status = ProbeStatus.COMPLETED
@@ -157,23 +191,16 @@ def test_initialize_sets_config_and_available_kinds(
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.initialize(config)
+        context.initialize(config, port_app_config_class=_RepositoryPortAppConfig)
 
     # Assert
     assert context.config is config
     assert context.available_kinds == ["repository"]
     assert context.status == ProbeStatus.IN_PROGRESS
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
     mock_update_progress.assert_called_once_with()
 
 
-@patch(
-    "port_ocean.core.probe.context.get_spec_kinds",
-    return_value=["repository", "pull-request"],
-)
-def test_initialize_deduplicates_injected_kinds(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+def test_initialize_deduplicates_injected_kinds() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     config = ProbeConfig(
@@ -183,20 +210,16 @@ def test_initialize_deduplicates_injected_kinds(
 
     # Act
     with patch.object(context, "update_progress"):
-        context.initialize(config)
+        context.initialize(
+            config,
+            port_app_config_class=_RepositoryAndPullRequestPortAppConfig,
+        )
 
     # Assert
     assert context.available_kinds == ["pull-request", "repository"]
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
 
 
-@patch(
-    "port_ocean.core.probe.context.get_spec_kinds",
-    return_value=["repository", "pull-request"],
-)
-def test_initialize_raises_for_invalid_kinds(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+def test_initialize_raises_for_invalid_kinds() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     config = ProbeConfig(
@@ -208,27 +231,24 @@ def test_initialize_raises_for_invalid_kinds(
     with pytest.raises(
         InvalidProbeKindsError, match="Invalid probe kinds: \\['fake-kind'\\]"
     ):
-        context.initialize(config)
+        context.initialize(
+            config,
+            port_app_config_class=_RepositoryAndPullRequestPortAppConfig,
+        )
 
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
 
-
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
-def test_initialize_uses_default_config_when_none(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+def test_initialize_uses_default_config_when_none() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     context.status = ProbeStatus.COMPLETED
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        context.initialize()
+        context.initialize(port_app_config_class=_EmptyPortAppConfig)
 
     # Assert
     assert context.config == ProbeConfig()
     assert context.status == ProbeStatus.IN_PROGRESS
-    mock_get_spec_kinds.assert_called_once_with(Path("."))
     mock_update_progress.assert_called_once_with()
 
 
@@ -239,9 +259,7 @@ def test_initialize_uses_default_config_when_none(
         (ProbeReportingMode.FILE, FileProbeReporter),
     ],
 )
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
 def test_initialize_creates_reporter_for_reporting_mode(
-    mock_get_spec_kinds: MagicMock,
     reporting_mode: ProbeReportingMode,
     expected_reporter_type: type[LogProbeReporter] | type[FileProbeReporter],
 ) -> None:
@@ -251,12 +269,11 @@ def test_initialize_creates_reporter_for_reporting_mode(
 
     # Act
     with patch.object(context, "update_progress"):
-        context.initialize(config)
+        context.initialize(config, port_app_config_class=_EmptyPortAppConfig)
 
     # Assert
     assert isinstance(context.reporter, expected_reporter_type)
     assert context.reporter.config is config
-    mock_get_spec_kinds.assert_called_once_with(Path("."))
 
 
 def test_update_progress_raises_when_reporter_not_initialized() -> None:

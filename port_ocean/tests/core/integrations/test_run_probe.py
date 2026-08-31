@@ -5,23 +5,33 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
 from port_ocean.exceptions.core import ModeNotSupportedException
 from port_ocean.exceptions.probe import ProbeFailedError
 
 
+class _TestPortAppConfig(PortAppConfig):
+    pass
+
+
 @pytest.fixture
 def integration() -> BaseIntegration:
     context = MagicMock()
     context.config.integration.type = "github"
-    return BaseIntegration(context)
+    integration = BaseIntegration(context)
+    integration.AppConfigHandlerClass.CONFIG_CLASS = _TestPortAppConfig
+    return integration
 
 
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
+@patch(
+    "port_ocean.core.handlers.port_app_config.validators.get_port_app_config_kinds",
+    return_value=["repository"],
+)
 @pytest.mark.asyncio
 async def test_run_probe_raises_when_listener_is_not_registered(
-    mock_get_spec_kinds: MagicMock,
+    mock_get_port_app_config_kinds: MagicMock,
     integration: BaseIntegration,
 ) -> None:
     # Arrange
@@ -34,13 +44,16 @@ async def test_run_probe_raises_when_listener_is_not_registered(
     ):
         await integration.run_probe("probe-123", ProbeConfig(path=Path("/integration")))
 
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
+    mock_get_port_app_config_kinds.assert_called_once_with(_TestPortAppConfig)
 
 
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
+@patch(
+    "port_ocean.core.handlers.port_app_config.validators.get_port_app_config_kinds",
+    return_value=["repository"],
+)
 @pytest.mark.asyncio
 async def test_run_probe_finalizes_listener_context(
-    mock_get_spec_kinds: MagicMock,
+    mock_get_port_app_config_kinds: MagicMock,
     integration: BaseIntegration,
 ) -> None:
     # Arrange
@@ -57,13 +70,16 @@ async def test_run_probe_finalizes_listener_context(
     assert result.probe_id == "probe-123"
     assert result.status == ProbeStatus.COMPLETED
     assert result.ended_at is not None
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
+    mock_get_port_app_config_kinds.assert_called_once_with(_TestPortAppConfig)
 
 
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
+@patch(
+    "port_ocean.core.handlers.port_app_config.validators.get_port_app_config_kinds",
+    return_value=["repository"],
+)
 @pytest.mark.asyncio
 async def test_run_probe_marks_context_failed_when_listener_raises(
-    mock_get_spec_kinds: MagicMock,
+    mock_get_port_app_config_kinds: MagicMock,
     integration: BaseIntegration,
 ) -> None:
     # Arrange
@@ -84,10 +100,13 @@ async def test_run_probe_marks_context_failed_when_listener_raises(
     assert captured_context[0].ended_at is not None
 
 
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
+@patch(
+    "port_ocean.core.handlers.port_app_config.validators.get_port_app_config_kinds",
+    return_value=["repository"],
+)
 @pytest.mark.asyncio
 async def test_run_probe_raises_when_context_is_failed(
-    mock_get_spec_kinds: MagicMock,
+    mock_get_port_app_config_kinds: MagicMock,
     integration: BaseIntegration,
 ) -> None:
     # Arrange

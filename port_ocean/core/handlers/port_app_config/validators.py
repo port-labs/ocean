@@ -30,6 +30,15 @@ def validate_and_get_config_schema(
     }
 
 
+def get_port_app_config_kinds(config_class: Type[PortAppConfig]) -> list[str]:
+    """Return literal resource kind values declared on a PortAppConfig class."""
+    kinds = _build_kinds_mapping(
+        _get_resource_config_models(config_class),
+        config_class.allow_custom_kinds,
+    )
+    return sorted(kind for kind in kinds if kind != CUSTOM_KIND)
+
+
 def _is_model(annotation: Any, model: type) -> bool:
     try:
         return isinstance(annotation, type) and issubclass(annotation, model)

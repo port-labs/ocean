@@ -103,7 +103,10 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
     ) -> ProbeContext:
         """Invoke the registered ``on_probe`` listener."""
         context = ProbeContext(probe_id)
-        context.initialize(config)
+        context.initialize(
+            config,
+            port_app_config_class=self.AppConfigHandlerClass.CONFIG_CLASS,
+        )
         listener = self.event_strategy.on_probe
         if listener is None:
             error = ModeNotSupportedException(
