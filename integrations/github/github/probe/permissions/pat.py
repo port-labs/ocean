@@ -1,5 +1,11 @@
+from collections.abc import Mapping
+
 from port_ocean.context.ocean import ocean
-from port_ocean.core.probe import ProbeCheckStatus
+from port_ocean.core.probe import (
+    KindPermissionVerdict,
+    PermissionCombination,
+    ProbeCheckStatus,
+)
 from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -7,30 +13,30 @@ from github.probe.permissions.base import GitHubPermissionProbeFlow, org_scopes
 
 NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
 
-PAT_KIND_SCOPES: dict[str, str] = {
-    "organization": "read:org",
-    "repository": "repo",
-    "folder": "repo",
-    "file": "repo",
-    "skill": "repo",
-    "plugin": "repo",
-    "user": "read:org",
-    "team": "read:org",
-    "workflow": "repo",
-    "workflow-run": "repo",
-    "pull-request": "repo",
-    "issue": "repo",
-    "release": "repo",
-    "tag": "repo",
-    "branch": "repo",
-    "environment": "repo",
-    "deployment": "repo",
-    "deployment-status": "repo",
-    "dependabot-alert": "security_events",
-    "code-scanning-alerts": "security_events",
-    "secret-scanning-alerts": "security_events",
-    "collaborator": "repo",
-    "package": "read:packages",
+PAT_KIND_SCOPES: dict[str, tuple[str, ...]] = {
+    "organization": ("read:org",),
+    "repository": ("repo",),
+    "folder": ("repo",),
+    "file": ("repo",),
+    "skill": ("repo",),
+    "plugin": ("repo",),
+    "user": ("read:org",),
+    "team": ("read:org",),
+    "workflow": ("repo",),
+    "workflow-run": ("repo",),
+    "pull-request": ("repo",),
+    "issue": ("repo",),
+    "release": ("repo",),
+    "tag": ("repo",),
+    "branch": ("repo",),
+    "environment": ("repo",),
+    "deployment": ("repo",),
+    "deployment-status": ("repo",),
+    "dependabot-alert": ("security_events",),
+    "code-scanning-alerts": ("security_events",),
+    "secret-scanning-alerts": ("security_events",),
+    "collaborator": ("repo",),
+    "package": ("read:packages",),
 }
 
 _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
@@ -56,6 +62,47 @@ _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
 }
 
 
+FINE_GRAINED_PAT_MESSAGE = (
+    "GitHub does not expose granted scopes for this token; "
+    "this is expected for fine-grained personal access tokens"
+)
+
+
+class PatKindPermissionVerdict(KindPermissionVerdict):
+    @property
+    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
+        return PAT_KIND_SCOPES
+
+    @property
+    def combination(self) -> PermissionCombination:
+        return PermissionCombination.OR
+
+    def unmapped_message(self, kind: str) -> str:
+        return f"No personal access token scope mapping is defined for {kind}"
+
+    def granted_message(self, granted: tuple[str, ...]) -> str:
+        if len(granted) == 1:
+            return f"Personal access token grants {granted[0]}"
+        return "Personal access token grants " + ", ".join(granted)
+
+    def denied_message(self, denied: tuple[str, ...]) -> str:
+        if len(denied) == 1:
+            return (
+                f"Personal access token requires {denied[0]} for private resources"
+            )
+        return (
+            "Personal access token requires "
+            + " or ".join(denied)
+            + " for private resources"
+        )
+
+    def is_granted(self, permission: str, permissions: Mapping[str, object]) -> bool:
+        return permission in permissions
+
+
+_PAT_KIND_PERMISSION_VERDICT = PatKindPermissionVerdict()
+
+
 class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
     async def run(self) -> None:
         authenticator = self.authenticators[0]
@@ -63,12 +110,17 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         granted_scopes = await self._get_scopes(authenticator)
         checks = self.context.add_scopes(*org_scopes(organizations))
 
-        permissions = (
-            {scope: "granted" for scope in expand_pat_scopes(granted_scopes)}
-            if granted_scopes is not None
-            else None
-        )
-        self._resolve_checks(checks, permissions, pat_permission_verdict)
+        if granted_scopes is None:
+            for check in checks:
+                check.status = ProbeCheckStatus.UNKNOWN
+                check.message = FINE_GRAINED_PAT_MESSAGE
+            self.context.update_progress()
+            return
+
+        permissions = {
+            scope: "granted" for scope in expand_pat_scopes(granted_scopes)
+        }
+        self._resolve_checks(checks, permissions, _PAT_KIND_PERMISSION_VERDICT)
 
     async def _get_scopes(
         self,
@@ -122,30 +174,6 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         if organizations:
             return organizations
         return [None]
-
-
-def pat_permission_verdict(
-    kind: str,
-    permissions: dict[str, str] | None,
-) -> tuple[ProbeCheckStatus, str]:
-    required = PAT_KIND_SCOPES.get(kind)
-    if permissions is None:
-        return (
-            ProbeCheckStatus.UNKNOWN,
-            "GitHub does not expose granted scopes for this token; "
-            "this is expected for fine-grained personal access tokens",
-        )
-    if required is None:
-        return (
-            ProbeCheckStatus.UNKNOWN,
-            f"No personal access token scope mapping is defined for {kind}",
-        )
-    if required in permissions:
-        return (ProbeCheckStatus.SUCCESS, f"Personal access token grants {required}")
-    return (
-        ProbeCheckStatus.FAILURE,
-        f"Personal access token requires {required} for private resources",
-    )
 
 
 def expand_pat_scopes(scopes: set[str]) -> set[str]:

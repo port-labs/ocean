@@ -1,14 +1,9 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 
-from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
+from port_ocean.core.probe import KindPermissionVerdict, ProbeCheck, ProbeContext
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-
-PermissionVerdict = Callable[
-    [str, dict[str, str] | None],
-    tuple[ProbeCheckStatus, str],
-]
 
 
 class GitHubPermissionProbeFlow(ABC):
@@ -27,11 +22,11 @@ class GitHubPermissionProbeFlow(ABC):
     def _resolve_checks(
         self,
         checks: Sequence[ProbeCheck],
-        permissions: dict[str, str] | None,
-        verdict: PermissionVerdict,
+        permissions: dict[str, str],
+        verdict: KindPermissionVerdict,
     ) -> None:
         for check in checks:
-            check.status, check.message = verdict(check.kind, permissions)
+            check.status, check.message = verdict.verdict(check.kind, permissions)
         self.context.update_progress()
 
 

@@ -1,8 +1,13 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import httpx
 
-from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
+from port_ocean.core.probe import (
+    KindPermissionVerdict,
+    PermissionCombination,
+    ProbeCheck,
+    ProbeContext,
+)
 
 from initialize_client import get_or_create_jira_client
 
@@ -25,17 +30,39 @@ KIND_PERMISSIONS: dict[str, tuple[str, ...]] = {
 }
 
 
+class JiraKindPermissionVerdict(KindPermissionVerdict):
+    @property
+    def kind_permissions(self) -> Mapping[str, tuple[str, ...]]:
+        return KIND_PERMISSIONS
+
+    @property
+    def combination(self) -> PermissionCombination:
+        return PermissionCombination.AND
+
+    def unmapped_message(self, kind: str) -> str:
+        return f"No Jira permission mapping is defined for {kind}"
+
+    def missing_message(self, missing: tuple[str, ...]) -> str:
+        return "Jira did not return permission information for " + ", ".join(missing)
+
+    def granted_message(self, granted: tuple[str, ...]) -> str:
+        return "Jira grants " + ", ".join(granted)
+
+    def denied_message(self, denied: tuple[str, ...]) -> str:
+        return "Jira requires " + ", ".join(denied)
+
+
+_JIRA_KIND_PERMISSION_VERDICT = JiraKindPermissionVerdict()
+
+
 class JiraPermissionProbe:
     def __init__(self, context: ProbeContext) -> None:
         self.context = context
 
     async def run(self) -> None:
-        permission_keys = tuple(
-            dict.fromkeys(
-                permission
-                for kind in self.context.available_kinds
-                for permission in KIND_PERMISSIONS.get(kind, ())
-            )
+        permission_keys = _collect_required_permissions(
+            self.context.available_kinds,
+            KIND_PERMISSIONS,
         )
         client = get_or_create_jira_client()
         try:
@@ -53,7 +80,10 @@ class JiraPermissionProbe:
         permissions: dict[str, bool],
     ) -> None:
         for check in checks:
-            check.status, check.message = _permission_verdict(check.kind, permissions)
+            check.status, check.message = _JIRA_KIND_PERMISSION_VERDICT.verdict(
+                check.kind,
+                permissions,
+            )
         self.context.update_progress()
 
 
@@ -69,32 +99,14 @@ def _lookup_failure_message(
     return f"Jira could not be reached while reading the current user's permissions: {error}"
 
 
-def _permission_verdict(
-    kind: str,
-    permissions: dict[str, bool],
-) -> tuple[ProbeCheckStatus, str]:
-    required = KIND_PERMISSIONS.get(kind)
-    if required is None:
-        return (
-            ProbeCheckStatus.UNKNOWN,
-            f"No Jira permission mapping is defined for {kind}",
+def _collect_required_permissions(
+    available_kinds: Sequence[str],
+    kind_permissions: dict[str, tuple[str, ...]],
+) -> tuple[str, ...]:
+    return tuple(
+        dict.fromkeys(
+            permission
+            for kind in available_kinds
+            for permission in kind_permissions.get(kind, ())
         )
-
-    missing = [permission for permission in required if permission not in permissions]
-    if missing:
-        return (
-            ProbeCheckStatus.UNKNOWN,
-            "Jira did not return permission information for " + ", ".join(missing),
-        )
-
-    denied = [permission for permission in required if not permissions[permission]]
-    if denied:
-        return (
-            ProbeCheckStatus.FAILURE,
-            "Jira requires " + ", ".join(denied),
-        )
-
-    return (
-        ProbeCheckStatus.SUCCESS,
-        "Jira grants " + ", ".join(required),
     )

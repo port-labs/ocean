@@ -44,7 +44,12 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
         kind_count = len(self.context.available_kinds)
         for index, token in enumerate(tokens):
             checks = pending[index * kind_count : (index + 1) * kind_count]
-            self._resolve_checks(checks, token.permissions, app_permission_verdict)
+            for check in checks:
+                check.status, check.message = app_permission_verdict(
+                    check.kind,
+                    token.permissions,
+                )
+            self.context.update_progress()
 
 
 def app_permission_verdict(
