@@ -120,6 +120,7 @@ class PollingEventListener(BaseEventListener):
             )
             resync_request_updated_at = resync_request.get("updatedAt", "")
             if self.should_resync_from_resync_request(resync_request_updated_at):
+                logger.info("Detected integration resync request")
                 return True, resync_request_updated_at
         except Exception as error:
             logger.exception(
