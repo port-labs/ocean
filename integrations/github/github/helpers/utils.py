@@ -381,9 +381,7 @@ async def _get_enterprise_saml_identities(
         ):
             saml_users.update(_parse_saml_edges(identity_batch))
     except TypeError:
-        logger.info(
-            f"Enterprise-level SAML not configured for '{enterprise_slug}'"
-        )
+        logger.info(f"Enterprise-level SAML not configured for '{enterprise_slug}'")
     except GraphQLForbiddenFieldError:
         logger.warning(
             f"Enterprise SAML identity query returned FORBIDDEN for '{enterprise_slug}', "
