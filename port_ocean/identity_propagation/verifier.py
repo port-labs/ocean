@@ -188,9 +188,14 @@ class PortIdentityTokenVerifier(IdentityTokenVerifier):
                 "Only the user who triggered this run can authenticate for it"
             )
 
-        # Trust Port's org over the caller-supplied one: the query param is attacker-controllable
-        # and decides which vault namespace the token lands in.
-        return body.get("orgId") or org_id or ""
+        # Only trust orgId from Port's response. The caller-supplied org_id query param is
+        # attacker-controllable and decides which vault namespace the token lands in.
+        run_org_id = body.get("orgId")
+        if not run_org_id:
+            raise IdentityVerificationError(
+                "Port did not return an org for this workflow run"
+            )
+        return run_org_id
 
     @staticmethod
     async def _headers() -> dict[str, str]:
