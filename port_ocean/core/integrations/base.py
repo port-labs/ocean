@@ -104,6 +104,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
     ) -> ProbeContext:
         """Invoke the registered ``on_probe`` listener."""
         context = ProbeContext(probe_id)
+
         listener = self.event_strategy.on_probe
         if listener is None:
             config = config or ProbeConfig()
@@ -122,7 +123,6 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                 config,
                 port_app_config_class=self.AppConfigHandlerClass.CONFIG_CLASS,
             )
-
             try:
                 returned = await listener(context)
             except Exception as error:

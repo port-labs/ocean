@@ -411,7 +411,16 @@ class IncludeSAMLEmailSelector(Selector):
 
 
 class GithubUserSelector(IncludeSAMLEmailSelector):
-    pass
+    include_verified_domain_emails: bool = Field(
+        title="Include verified domain emails",
+        alias="includeVerifiedDomainEmails",
+        default=False,
+        description=(
+            "When enabled, the integration will include `organizationVerifiedDomainEmails` "
+            "on exported GitHub users — a list of email addresses matching the organization's "
+            "verified domains. Requires GitHub Enterprise Cloud with at least one verified domain."
+        ),
+    )
 
 
 class GithubUserConfig(ResourceConfig):
