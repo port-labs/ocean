@@ -2,11 +2,14 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.reporters.log import LogProbeReporter
 
 
 @patch("port_ocean.core.probe.reporters.log.logger")
+@pytest.mark.asyncio
 async def test_log_probe_reporter_logs_report(mock_logger: MagicMock) -> None:
     # Arrange
     reporter = LogProbeReporter(ProbeConfig())

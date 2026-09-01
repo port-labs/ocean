@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.models import ProbeReportingMode
 from port_ocean.core.probe.reporters.file import (
@@ -13,6 +15,7 @@ from port_ocean.core.probe.reporters.file import (
 )
 
 
+@pytest.mark.asyncio
 async def test_file_probe_reporter_writes_report_to_configured_path(
     tmp_path: Path,
 ) -> None:
@@ -41,6 +44,7 @@ async def test_file_probe_reporter_writes_report_to_configured_path(
     assert json.loads(report_path.read_text(encoding="utf-8")) == report
 
 
+@pytest.mark.asyncio
 async def test_file_probe_reporter_creates_reports_directory(tmp_path: Path) -> None:
     # Arrange
     reporter = FileProbeReporter(

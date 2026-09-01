@@ -12,9 +12,8 @@ class PortProbeReporter(ProbeReporter):
     async def report(self, report: dict[str, Any]) -> None:
         from port_ocean.context.ocean import ocean
 
-        """Placeholder for sending a probe status report to Port."""
         body = report.copy()
-        probe_id = body.pop("probeId", None)
+        probe_id = body.pop("probe_id", None)
         if not probe_id:
             raise ProbeNotInitializedError(
                 "probe_id is required when using Port probe reporting mode"
@@ -22,4 +21,5 @@ class PortProbeReporter(ProbeReporter):
 
         if self._org_id is None:
             self._org_id = await ocean.port_client.get_org_id()
+
         await ocean.port_client.patch_probe_health_result(self._org_id, probe_id, body)
