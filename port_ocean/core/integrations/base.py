@@ -120,8 +120,8 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             trigger_type="machine",
         ):
             await context.initialize(
+                self.AppConfigHandlerClass.CONFIG_CLASS,
                 config,
-                port_app_config_class=self.AppConfigHandlerClass.CONFIG_CLASS,
             )
             try:
                 returned = await listener(context)
