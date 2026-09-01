@@ -39,7 +39,8 @@ async def test_get_org_id_returns_organization_id(port_client: PortClient) -> No
     response = MagicMock()
     response.is_error = False
     response.json.return_value = {"organization": {"id": "org-123"}}
-    port_client.client.get.return_value = response
+    get_mock = AsyncMock(return_value=response)
+    port_client.client.get = get_mock  # type: ignore[method-assign]
 
     # Act
     with patch("port_ocean.clients.port.client.handle_port_status_code"):
@@ -47,7 +48,7 @@ async def test_get_org_id_returns_organization_id(port_client: PortClient) -> No
 
     # Assert
     assert org_id == "org-123"
-    port_client.client.get.assert_called_once_with(
+    get_mock.assert_called_once_with(
         f"{TEST_API_URL}/organization",
         headers={"Authorization": "Bearer test-token"},
     )
@@ -60,7 +61,8 @@ async def test_patch_probe_health_result_sends_patch_request(
     # Arrange
     response = MagicMock()
     response.is_success = True
-    port_client.client.patch.return_value = response
+    patch_mock = AsyncMock(return_value=response)
+    port_client.client.patch = patch_mock  # type: ignore[method-assign]
     body: dict[str, Any] = {
         "status": "IN_PROGRESS",
         "checks": [],
@@ -71,7 +73,7 @@ async def test_patch_probe_health_result_sends_patch_request(
         await port_client.patch_probe_health_result("org-123", "probe-1", body)
 
     # Assert
-    port_client.client.patch.assert_called_once_with(
+    patch_mock.assert_called_once_with(
         f"{TEST_API_URL}/org/org-123/probe/probe-1",
         headers={"Authorization": "Bearer test-token"},
         json=body,
