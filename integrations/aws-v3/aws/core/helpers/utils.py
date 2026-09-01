@@ -30,6 +30,10 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         "NotFoundException",
         "NoSuchBucket",
         "DBInstanceNotFound",
+        "DBClusterNotFoundFault",
+        "CacheClusterNotFoundFault",
+        "InvalidInstanceID.NotFound",
+        "InvalidVolume.NotFound",
         "404",
     ]
     response = getattr(e, "response", None)

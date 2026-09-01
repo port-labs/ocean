@@ -43,6 +43,18 @@ class TestEC2InstanceExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_instances.return_value = {
+            "Reservations": [
+                {
+                    "Instances": [
+                        {
+                            "InstanceId": "i-1234567890abcdef0",
+                            "InstanceType": "t3.micro",
+                        }
+                    ]
+                }
+            ]
+        }
 
         # Inspector
         mock_inspector = AsyncMock()
@@ -66,6 +78,9 @@ class TestEC2InstanceExporter:
 
         assert result == instance.dict(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ec2")
+        mock_client.describe_instances.assert_called_once_with(
+            InstanceIds=["i-1234567890abcdef0"]
+        )
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
             [{"InstanceId": "i-1234567890abcdef0"}], ["GetInstanceStatusAction"]
@@ -81,7 +96,12 @@ class TestEC2InstanceExporter:
         exporter: EC2InstanceExporter,
     ) -> None:
         mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_instances.return_value = {
+            "Reservations": [{"Instances": [{"InstanceId": "i-notexists"}]}]
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -251,8 +271,13 @@ class TestEC2InstanceExporter:
         exporter: EC2InstanceExporter,
     ) -> None:
         mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
         mock_proxy_class.return_value.__aexit__ = AsyncMock()
+        mock_client.describe_instances.return_value = {
+            "Reservations": [{"Instances": [{"InstanceId": "i-55"}]}]
+        }
 
         mock_inspector = AsyncMock()
         instance = EC2Instance(Properties=EC2InstanceProperties(InstanceId="i-55"))

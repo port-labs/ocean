@@ -1,5 +1,7 @@
 from typing import Any, AsyncGenerator, Type, List, Dict
 
+from botocore.exceptions import ClientError
+
 from loguru import logger
 
 from aws.core.client.proxy import AioBaseClientProxy
@@ -12,7 +14,6 @@ from aws.core.exporters.ec2.instance.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from loguru import logger
 
 
 class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
@@ -26,6 +27,28 @@ class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-instance fetch only has an instance ID from CloudTrail.
+            # Confirm it exists so a missing instance raises and the live-event
+            # handler can treat the update as a delete instead.
+            response = await proxy.client.describe_instances(  # type: ignore[attr-defined]
+                InstanceIds=[options.instance_id]
+            )
+            reservations = response.get("Reservations", [])
+            instances = [
+                instance
+                for reservation in reservations
+                for instance in reservation.get("Instances", [])
+            ]
+            if not instances:
+                raise ClientError(
+                    {
+                        "Error": {
+                            "Code": "InvalidInstanceID.NotFound",
+                            "Message": (f"Instance not found: {options.instance_id}"),
+                        }
+                    },
+                    "DescribeInstances",
+                )
 
             inspector = ResourceInspector(
                 proxy.client,

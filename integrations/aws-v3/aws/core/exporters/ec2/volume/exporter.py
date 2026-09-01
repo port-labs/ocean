@@ -1,5 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
+from botocore.exceptions import ClientError
+
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ec2.volume.actions import EbsVolumeActionsMap
 from aws.core.exporters.ec2.volume.models import (
@@ -32,7 +34,15 @@ class EbsVolumeExporter(IResourceExporter[list[dict[str, Any]]]):
             )
             volumes = response.get("Volumes", [])
             if not volumes:
-                return {}
+                raise ClientError(
+                    {
+                        "Error": {
+                            "Code": "InvalidVolume.NotFound",
+                            "Message": f"Volume not found: {options.volume_id}",
+                        }
+                    },
+                    "DescribeVolumes",
+                )
             result = await inspector.inspect(
                 volumes,
                 options.include,
