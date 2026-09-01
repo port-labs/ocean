@@ -1,4 +1,4 @@
-# Changelog - Ocean - claude
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,216 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.2.58 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.2.57 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.2.56 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.2.55 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.2.54 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.2.53 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.2.52 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.2.51 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.2.50 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.2.49 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.48 (2026-08-17)
+
+
+### Bug Fixes
+
+- Use a 2-day lag for skill-usage date windows so the latest day matches when Anthropic actually serves data (docs cite ~1 day but availability often lags further).
+- Restore startup API verification to a single `/analytics/users` probe; one `read:analytics` check is sufficient and avoids noisy 400s from the skills endpoint.
+
+
+## 0.2.47 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.46 (2026-08-16)
+
+
+### Improvements
+
+- Split deprecated Claude kind aliases onto dedicated ResourceConfig classes.
+
+
+## 0.2.45 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.2.44 (2026-08-13)
+
+
+### Improvements
+
+- Added `claude-ai-skill-usage` kind for org-level Claude Skills Analytics, syncing per-skill usage into the `claude_ai_skill_usage` blueprint.
+
+
+## 0.2.43 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+- Added `claude-ai-skill-usage` kind for org-level Claude Skills Analytics, syncing per-skill usage into the `claude_ai_skill_usage` blueprint.
+
+
+## 0.2.42 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.2.41 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.2.40 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.2.39 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.2.38 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.2.37 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.2.36 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.2.35 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.2.34 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.2.33 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
 
 ## 0.2.32 (2026-08-04)
 
@@ -629,6 +839,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.0 (2025-04-02)
+
 
 ### Features
 

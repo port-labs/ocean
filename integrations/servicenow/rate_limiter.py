@@ -8,6 +8,7 @@ from loguru import logger
 LIMIT_HEADER = "x-ratelimit-limit"
 LIMIT_RESET_HEADER = "x-ratelimit-reset"
 RETRY_AFTER_HEADER = "retry-after"
+DEFAULT_429_COOLDOWN_SECONDS = 1800
 
 
 class ServiceNowRateLimiter:
@@ -28,12 +29,17 @@ class ServiceNowRateLimiter:
     so we track request count internally and reset when the window expires.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        fallback_429_cooldown_seconds: float = DEFAULT_429_COOLDOWN_SECONDS,
+    ) -> None:
         self._lock = asyncio.Lock()
 
         self._limit: Optional[int] = None
         self._reset_time: Optional[float] = None
         self._request_count: int = 0
+        self._fallback_429_cooldown_seconds = float(fallback_429_cooldown_seconds)
+        self._cooldown_until: Optional[float] = None
 
     @property
     def seconds_until_reset(self) -> float:
@@ -43,6 +49,15 @@ class ServiceNowRateLimiter:
 
     async def __aenter__(self) -> "ServiceNowRateLimiter":
         async with self._lock:
+            if self._cooldown_until is not None:
+                cooldown_wait = self._cooldown_until - time.time()
+                if cooldown_wait > 0:
+                    logger.warning(
+                        f"ServiceNow rate limit: waiting {cooldown_wait:.1f}s for throttle cooldown"
+                    )
+                    await asyncio.sleep(cooldown_wait)
+                self._cooldown_until = None
+
             if self._reset_time is not None and time.time() >= self._reset_time:
                 self._request_count = 0
                 self._reset_time = None
@@ -78,23 +93,21 @@ class ServiceNowRateLimiter:
 
                 if reset_header:
                     reset_time = float(reset_header)
-                    if reset_time <= max(time.time(), self._reset_time or 0.0):
-                        return
-                    self._reset_time = reset_time
-                    if limit_header:
-                        self._limit = int(limit_header)
-                    logger.debug(
-                        f"Rate limit status - {self._request_count}/{self._limit} requests, "
-                        f"resets in {self.seconds_until_reset:.1f}s"
-                    )
+                    if reset_time > max(time.time(), self._reset_time or 0.0):
+                        self._reset_time = reset_time
+                        if limit_header:
+                            self._limit = int(limit_header)
+                        logger.debug(
+                            f"Rate limit status - {self._request_count}/{self._limit} requests, "
+                            f"resets in {self.seconds_until_reset:.1f}s"
+                        )
 
                 if retry_after:
                     wait_seconds = int(retry_after)
                     retry_after_reset = time.time() + wait_seconds
-                    if self._reset_time is None:
-                        self._reset_time = retry_after_reset
-                    else:
-                        self._reset_time = max(self._reset_time, retry_after_reset)
+                    self._cooldown_until = max(
+                        self._cooldown_until or 0.0, retry_after_reset
+                    )
                     logger.info(
                         f"Rate limit 429 received: Retry-After {wait_seconds}s, "
                         f"limit {self._limit} req/hr"
@@ -102,3 +115,24 @@ class ServiceNowRateLimiter:
 
             except (ValueError, TypeError) as e:
                 logger.warning(f"Failed to parse ServiceNow rate limit headers: {e}")
+
+    async def update_from_response(self, response: httpx.Response) -> None:
+        await self.update_from_headers(response.headers)
+        if (
+            response.status_code == httpx.codes.TOO_MANY_REQUESTS
+            and not response.headers.get(RETRY_AFTER_HEADER)
+            and not response.headers.get(LIMIT_RESET_HEADER)
+        ):
+            await self.signal_throttle(
+                self._fallback_429_cooldown_seconds,
+                "429 without retry headers",
+            )
+
+    async def signal_throttle(self, seconds: float, reason: str) -> None:
+        async with self._lock:
+            throttle_until = time.time() + seconds
+            if self._cooldown_until is None or throttle_until > self._cooldown_until:
+                self._cooldown_until = throttle_until
+                logger.warning(
+                    f"ServiceNow rate limit: {reason}, pausing requests for {seconds:.0f}s"
+                )

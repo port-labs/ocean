@@ -11,6 +11,7 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   apply-release:
@@ -58,17 +59,164 @@ jobs:
 
       - name: Apply release on merge commit
         if: steps.detect.outputs.has_release == 'true'
+        id: apply
         run: |
           git config user.name "ocean-release[bot]"
           git config user.email "ocean-release[bot]@users.noreply.github.com"
           git fetch origin main
+
           python3 scripts/ci/apply_ocean_release.py \
             --merge-sha "${{ github.sha }}" \
-            --main-ref origin/main
+            --main-ref origin/main \
+            --skip-checkout \
+            --skip-commit
 
-      - name: Rebase onto main and push
-        if: steps.detect.outputs.has_release == 'true'
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No version/changelog changes to apply"
+            exit 0
+          fi
+
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          BRANCH_NAME="ocean-release/apply-${SHORT_SHA}"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "branch_name=${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+          PR_TITLE=$(
+            git diff --name-only | python3 -c '
+          import sys
+          labels = []
+          has_core = False
+          for path in sys.stdin.read().splitlines():
+              if path == "pyproject.toml":
+                  has_core = True
+                  labels.append("ocean-core")
+              elif path.startswith("integrations/") and path.endswith("/pyproject.toml"):
+                  labels.append(path.split("/")[1])
+
+          prefix = "[CoreBump]" if has_core else "[IntegrationBump]"
+          labels_text = ", ".join(labels)
+          print(f"{prefix} Apply version and changelog for {labels_text}")
+          '
+          )
+          echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve developer from merge commit
+        if: steps.apply.outputs.has_changes == 'true'
+        id: developer
+        env:
+          GH_TOKEN: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
         run: |
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          login=$(gh api "/repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0].user.login // empty' 2>/dev/null || true)
+          if [ -z "$login" ]; then
+            login="${{ github.actor }}"
+          fi
+          echo "login=$login" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Port user from GitHub username
+        if: steps.apply.outputs.has_changes == 'true'
+        id: port_user
+        continue-on-error: true
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_MAIN_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_MAIN_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
+          operation: SEARCH
+          query: |
+            {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "property": "$blueprint",
+                  "value": "_user"
+                },
+                {
+                  "operator": "=",
+                  "property": "github_username",
+                  "value": "${{ steps.developer.outputs.login }}"
+                }
+              ]
+            }
+
+      - name: Resolve Slack mention from Port user
+        if: steps.apply.outputs.has_changes == 'true'
+        id: slack_mention
+        continue-on-error: true
+        run: |
+          if [ "${{ steps.port_user.outputs.entities }}" = "" ] || [ "${{ steps.port_user.outputs.entities }}" = "[]" ]; then
+            exit 0
+          fi
+          slack_id='${{ fromJSON(steps.port_user.outputs.entities)[0].relations.slack_user_id }}'
+          if [ -n "$slack_id" ] && [ "$slack_id" != "null" ]; then
+            echo "text=<@${slack_id}>" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open pull request
+        if: steps.apply.outputs.has_changes == 'true'
+        id: open_pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+          branch: ${{ steps.apply.outputs.branch_name }}
+          base: main
+          title: ${{ steps.apply.outputs.pr_title }}
+          commit-message: "chore: apply ocean releases [ocean-release]"
+          committer: ocean-release[bot] <ocean-release[bot]@users.noreply.github.com>
+          author: ocean-release[bot] <ocean-release[bot]@users.noreply.github.com>
+          body: |
+            This PR was automatically created after merging a contribution with `.ocean-release` intent files.
+
+            **Triggered by:** @${{ steps.developer.outputs.login }}
+            **Merge commit:** ${{ github.sha }}
+
+            Please review the version and changelog updates before merging. Publish workflows run after this PR is merged.
+
+      - name: Send Slack notification
+        if: steps.open_pr.outputs.pull-request-url != ''
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v2
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Ocean release PR is ready for review!* :github:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Developer:* ${{ steps.slack_mention.outputs.text != '' && steps.slack_mention.outputs.text || format('<https://github.com/{0}|{0}>', steps.developer.outputs.login) }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Merge commit:* <https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Pull request:* <${{ steps.open_pr.outputs.pull-request-url }}|Review and merge>"
+                  }
+                }
+              ]
+            }

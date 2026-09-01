@@ -7,6 +7,214 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.24 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.2.23 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.2.22 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.2.21 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.2.20 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.2.19 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.2.18 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.2.17 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.2.16 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.2.15 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.14 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
+## 0.2.13 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.12 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.2.11 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.2.10 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.2.9 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.2.8 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.2.7 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.2.6 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.2.5 (2026-08-10)
+
+
+### Bug Fixes
+
+- Fixed a bug where a single asset lacking versioned resource data (e.g. certain BigQuery Table assets) would abort syncing for its entire kind across all projects. Such assets are now skipped with a warning instead. Additionally, an unexpected error in one project no longer stops other projects from syncing; the error is now surfaced once all projects finish instead of being swallowed or cancelling the others.
+
+
+## 0.2.4 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.2.3 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.2.2 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.2.1 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.2.0 (2026-08-05)
+
+
+### Features
+
+- Added `gcpCloudFunction` kind to support syncing resources from external HTTP endpoints implementing the Fivetran Cloud Function Sync protocol. Configurable via `functionUrl` and `resource` selector fields. GCP OIDC authentication is used automatically for private Cloud Run services. Secrets are passed via the integration-level `secret` config field (env var) rather than the Port mapping.
+
+
+## 0.1.380 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
 ## 0.1.379 (2026-08-04)
 
 
@@ -1188,7 +1396,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.232 (2025-12-25)
 
 
-## Bug Fixes
+### Bug Fixes
 
 - Fixed spec.yaml conventions
 
@@ -1447,6 +1655,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.1.199 (2025-11-09)
 
@@ -1839,6 +2048,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update dependencies
 
+
 ## 0.1.150 (2025-06-22)
 
 
@@ -2040,6 +2250,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.125 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2981,6 +3192,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated the returned response from the GCP integration to reflect the latest known resource version as identified by the GCP Asset Inventory. Removed the need for `.versioned_resources | max_by(.version).resource | .<property_name>`, now only requiring `.<property_name>` (#1)
 
+
 ## 0.1.9 (2024-05-22)
 
 
@@ -3020,6 +3232,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added Terraform deployment method as main deployment method (#1)
 - Added logs for Project/Folder/Org Injestion (#1)
+
 
 ## 0.1.4 (2024-05-01)
 

@@ -7,6 +7,190 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.67 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.6.66 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.6.65 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.6.64 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.6.63 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.6.62 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.6.61 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.6.60 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.6.59 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.6.58 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.6.57 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.6.56 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.6.55 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.6.54 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.6.53 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.6.52 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.6.51 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.6.50 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
+## 0.6.49 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.1
+
+
+## 0.6.48 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.10
+
+
+## 0.6.47 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.9
+
+
+## 0.6.46 (2026-08-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.8
+
+
+## 0.6.45 (2026-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.47.7
+
+
 ## 0.6.44 (2026-08-04)
 
 
@@ -1462,6 +1646,7 @@ Added `skipWebhookCreation` configuration option to prevent the integration from
 
 - Bumped starlette version to 0.49.3
 
+
 ## 0.3.35 (2025-11-09)
 
 
@@ -2124,11 +2309,13 @@ Added `skipWebhookCreation` configuration option to prevent the integration from
 
 ## 0.2.34 (2025-03-19)
 
+
 ### Improvements
 
 - Introduced a few flexibility enablements in the sloHistory kind:
   - Set period in Days, not just in Months
   - Set the concurrency of the history pulling dynamically
+
 
 ## 0.2.33 (2025-03-13)
 
@@ -2381,7 +2568,7 @@ Added `skipWebhookCreation` configuration option to prevent the integration from
 ## 0.2.2 (2025-01-02)
 
 
-### Bugfixes
+### Bug Fixes
 
 - Fixed the OAuth2 integration mapping for plain text values
 
@@ -2491,6 +2678,7 @@ Added `skipWebhookCreation` configuration option to prevent the integration from
 
 
 ## 0.1.61 (2024-12-04)
+
 
 ### Improvements
 
@@ -2688,232 +2876,308 @@ Added `skipWebhookCreation` configuration option to prevent the integration from
 
 ## 0.1.37 (2024-09-02)
 
+
 ### Improvements
 
 - Support for custom `env` and `service` tags in when fetching metrics
 
+
 ## 0.1.36 (2024-09-01)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.7 (#1)
 
+
 ## 0.1.35 (2024-08-30)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.5 (#1)
 
+
 ## 0.1.34 (2024-08-28)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.4 (#1)
 
+
 ## 0.1.33 (2024-08-28)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.3 (#1)
 
+
 ## 0.1.32 (2024-08-26)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.2 (#1)
 
+
 ## 0.1.31 (2024-08-26)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.1 (#1)
 
+
 ## 0.1.30 (2024-08-22)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.10.0 (#1)
 
+
 ## 0.1.29 (2024-08-20)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.14 (#1)
 
+
 ## 0.1.28 (2024-08-19)
+
 
 ### Features
 
 - Added the `serviceMetric` resource to the Datadog integration, enabling users to fetch specific metrics using filters like `metric`, `env`, `service`, and `timeframe`
 
+
 ## 0.1.27 (2024-08-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.13 (#1)
 
+
 ## 0.1.26 (2024-08-11)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.12 (#1)
 
+
 ## 0.1.25 (2024-08-05)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.11 (#1)
 
+
 ## 0.1.24 (2024-08-04)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.10 (#1)
 
-# Port_Ocean 0.1.23 (2024-08-01)
+
+## 0.1.23 (2024-08-01)
+
 
 ### Improvements
 
 - Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
 
+
 ## 0.1.22 (2024-07-31)
+
 
 ### Improvements
 
 - Upgraded integration dependencies (#1)
 
+
 ## 0.1.21 (2024-07-31)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
+
 ## 0.1.20 (2024-07-31)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.6 (#1)
 
+
 ## 0.1.19 (2024-07-25)
+
 
 ### Features
 
 - Add the datadog host blueprint
 
+
 ## 0.1.18 (2024-07-24)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
 
+
 ## 0.1.17 (2024-07-10)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.4 (#1)
 
+
 ## 0.1.16 (2024-07-09)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.3 (#1)
 
+
 ## 0.1.15 (2024-07-07)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
+
 ## 0.1.14 (2024-07-04)
+
 
 ### Improvements
 
 - Added support to fetch SLOs history back to 1 year ago (#1)
 
+
 ## 0.1.13 (2024-07-01)
+
 
 ### Improvements
 
 - Changed the way we handle concurrency from asyncio gather to use a queuing mechanism to reduce the chance of rate limit
 
+
 ## 0.1.12 (2024-07-01)
+
 
 ### Improvements
 
 - Added support for SLO history (#1)
 
+
 ### Bug Fixes
 
 - Changed Target and Warning threshold to number instead of string in SLO blueprint (#2)
 
+
 ## 0.1.11 (2024-06-23)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
+
 ## 0.1.10 (2024-06-19)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.0 (#1)
 
+
 ## 0.1.9 (2024-06-16)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
 
+
 ## 0.1.8 (2024-06-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.1 (#1)
 
+
 ## 0.1.7 (2024-06-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
+
 ## 0.1.6 (2024-06-10)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.6.0 (#1)
 
+
 ## 0.1.5 (2024-06-05)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
+
 ## 0.1.4 (2024-06-03)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.25 (#1)
 
+
 ## 0.1.3 (2024-06-02)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
+
 ## 0.1.2 (2024-05-30)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.23 (#1)
 - Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
 
+
 ## 0.1.1 (2024-05-29)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
 
+
 ## 0.1.0 (2024-05-28)
+
 
 ### Features
 

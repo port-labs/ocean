@@ -21,6 +21,7 @@ class TestRateLimiterInit:
         assert limiter._limit is None
         assert limiter._reset_time is None
         assert limiter._request_count == 0
+        assert limiter._cooldown_until is None
 
     def test_seconds_until_reset_no_reset_time(self) -> None:
         limiter = ServiceNowRateLimiter()
@@ -86,6 +87,22 @@ class TestRateLimiterAenter:
             pass
         assert limiter._request_count == 101
         mock_sleep.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_active_cooldown_sleeps_before_request(
+        self, mock_sleep: Mock
+    ) -> None:
+        limiter = ServiceNowRateLimiter()
+        limiter._cooldown_until = time.time() + 10
+
+        async with limiter:
+            pass
+
+        mock_sleep.assert_called_once()
+        delay = mock_sleep.call_args[0][0]
+        assert delay >= 9
+        assert limiter._cooldown_until is None
+        assert limiter._request_count == 1
 
     @pytest.mark.asyncio
     async def test_expired_window_resets_count(self, mock_sleep: Mock) -> None:
@@ -167,13 +184,13 @@ class TestUpdateFromHeaders:
         assert limiter._reset_time == reset_time
 
     @pytest.mark.asyncio
-    async def test_retry_after_sets_reset_time_when_none(self) -> None:
+    async def test_retry_after_sets_cooldown_when_none(self) -> None:
         limiter = ServiceNowRateLimiter()
         headers = httpx.Headers({"retry-after": "30"})
         before = time.time()
         await limiter.update_from_headers(headers)
-        assert limiter._reset_time is not None
-        assert limiter._reset_time >= before + 29
+        assert limiter._cooldown_until is not None
+        assert limiter._cooldown_until >= before + 29
 
     @pytest.mark.asyncio
     async def test_retry_after_uses_max_with_existing_reset(self) -> None:
@@ -189,10 +206,11 @@ class TestUpdateFromHeaders:
         )
         await limiter.update_from_headers(headers)
         assert limiter._reset_time == far_future
+        assert limiter._cooldown_until is not None
 
     @pytest.mark.asyncio
-    async def test_retry_after_wins_when_later_than_reset(self) -> None:
-        """Retry-After wins if it computes to a later time than X-RateLimit-Reset."""
+    async def test_retry_after_sets_cooldown_when_later_than_reset(self) -> None:
+        """Retry-After sets cooldown even when it is later than X-RateLimit-Reset."""
         limiter = ServiceNowRateLimiter()
         near_future = time.time() + 5
         headers = httpx.Headers(
@@ -204,12 +222,12 @@ class TestUpdateFromHeaders:
         )
         before = time.time()
         await limiter.update_from_headers(headers)
-        assert limiter._reset_time is not None
-        assert limiter._reset_time >= before + 119
+        assert limiter._cooldown_until is not None
+        assert limiter._cooldown_until >= before + 119
 
     @pytest.mark.asyncio
-    async def test_exhausted_reset_header_skips_entire_update(self) -> None:
-        """A stale reset timestamp means the whole response is invalid — limit also ignored."""
+    async def test_exhausted_reset_header_ignores_reset_and_limit(self) -> None:
+        """A stale reset timestamp carries no useful rate-limit state."""
         limiter = ServiceNowRateLimiter()
         headers = httpx.Headers(
             {"x-ratelimit-limit": "500", "x-ratelimit-reset": str(time.time() - 60)}
@@ -239,6 +257,7 @@ class TestUpdateFromHeaders:
         await limiter.update_from_headers(headers)
         assert limiter._limit is None
         assert limiter._reset_time is None
+        assert limiter._cooldown_until is None
 
     @pytest.mark.asyncio
     async def test_invalid_reset_header_value_logged_not_raised(self) -> None:
@@ -260,6 +279,28 @@ class TestUpdateFromHeaders:
         )
         await limiter.update_from_headers(headers)
         assert limiter._request_count == 42
+
+    @pytest.mark.asyncio
+    async def test_headerless_429_sets_fallback_cooldown(self) -> None:
+        limiter = ServiceNowRateLimiter(fallback_429_cooldown_seconds=120)
+        response = httpx.Response(429, headers={})
+        before = time.time()
+
+        await limiter.update_from_response(response)
+
+        assert limiter._cooldown_until is not None
+        assert limiter._cooldown_until >= before + 119
+
+    @pytest.mark.asyncio
+    async def test_429_with_retry_after_uses_retry_after_not_fallback(self) -> None:
+        limiter = ServiceNowRateLimiter(fallback_429_cooldown_seconds=120)
+        response = httpx.Response(429, headers={"retry-after": "30"})
+        before = time.time()
+
+        await limiter.update_from_response(response)
+
+        assert limiter._cooldown_until is not None
+        assert before + 29 <= limiter._cooldown_until < before + 60
 
 
 class TestRateLimiterConcurrency:

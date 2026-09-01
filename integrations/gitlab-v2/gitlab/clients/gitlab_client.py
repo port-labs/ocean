@@ -353,11 +353,48 @@ class GitLabClient:
             return None
         return self.enrich_with_project_path(branch, project_path)
 
+    @staticmethod
+    def _project_tree_ref(project: dict[str, Any]) -> str | None:
+        """Return a usable default-branch ref for repository tree API calls.
+
+        Empty or uninitialized GitLab projects may omit ``default_branch`` or
+        return ``null``/``""``. Those projects have no tree to walk.
+        """
+        ref = project.get("default_branch")
+        return ref if ref else None
+
+    def _partition_projects_with_tree_ref(
+        self, projects: list[dict[str, Any]]
+    ) -> tuple[list[dict[str, Any]], list[str]]:
+        searchable: list[dict[str, Any]] = []
+        skipped: list[str] = []
+        for project in projects:
+            if self._project_tree_ref(project):
+                searchable.append(project)
+            else:
+                skipped.append(
+                    str(project.get("path_with_namespace", project.get("id")))
+                )
+        return searchable, skipped
+
+    def _log_skipped_projects_without_default_branch(self, skipped: list[str]) -> None:
+        if not skipped:
+            return
+        examples = skipped[:5]
+        examples_msg = ", ".join(examples)
+        more = len(skipped) - len(examples)
+        if more > 0:
+            examples_msg = f"{examples_msg}, ... (+{more} more)"
+        logger.info(
+            f"Skipping {len(skipped)} project(s) without a default branch "
+            f"during repository tree search (examples: {examples_msg})"
+        )
+
     async def _fetch_default_branch(
         self, project: dict[str, Any], semaphore: asyncio.Semaphore
     ) -> dict[str, Any] | None:
         async with semaphore:
-            default_branch = project.get("default_branch")
+            default_branch = self._project_tree_ref(project)
             if not default_branch:
                 return None
             return await self.get_single_branch(
@@ -779,6 +816,15 @@ class GitLabClient:
         else:
             logger.info(f"Searching for {query.path} across all accessible projects")
             async for projects_batch in self.get_projects(params=params):
+                projects_to_search = projects_batch
+                if should_use_tree:
+                    (
+                        projects_to_search,
+                        skipped,
+                    ) = self._partition_projects_with_tree_ref(projects_batch)
+                    self._log_skipped_projects_without_default_branch(skipped)
+                    if not projects_to_search:
+                        continue
                 tasks = [
                     semaphore_async_iterator(
                         semaphore,
@@ -791,7 +837,7 @@ class GitLabClient:
                             should_use_tree=should_use_tree,
                         ),
                     )
-                    for project in projects_batch
+                    for project in projects_to_search
                 ]
                 async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
@@ -834,25 +880,30 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for folders in specified repositories only."""
         project = await self.get_project(repository)
-        if project:
-            effective_branch = branch or project["default_branch"]
-            is_wildcard = _is_wildcard_path(path)
-            async for items_batch in self.get_repository_tree(
-                project, path, effective_branch
-            ):
-                folders_batch = [
-                    {"folder": item, "repo": project, "__branch": effective_branch}
-                    for item in items_batch
-                    if item["type"] == "tree"
-                    and (
-                        not is_wildcard
-                        or glob.globmatch(
-                            item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                        )
+        if not project:
+            return
+
+        effective_branch = branch or self._project_tree_ref(project)
+        if not effective_branch:
+            return
+
+        is_wildcard = _is_wildcard_path(path)
+        async for items_batch in self.get_repository_tree(
+            project, path, effective_branch
+        ):
+            folders_batch = [
+                {"folder": item, "repo": project, "__branch": effective_branch}
+                for item in items_batch
+                if item["type"] == "tree"
+                and (
+                    not is_wildcard
+                    or glob.globmatch(
+                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
                     )
-                ]
-                if folders_batch:
-                    yield folders_batch
+                )
+            ]
+            if folders_batch:
+                yield folders_batch
 
     async def _enrich_batch(
         self,
@@ -1018,14 +1069,45 @@ class GitLabClient:
         project["__members"] = members
         return project
 
+    async def _get_file_content_with_ref_heal(
+        self, project_id: str, file_path: str, ref: str
+    ) -> tuple[dict[str, Any], str]:
+        """Fetch file content, retrying with default_branch when the ref fails.
+
+        Stale refs from GitLab blob search are mainly a group-search issue; project
+        search omits ref so GitLab searches the default branch, and repository tree
+        uses it explicitly. Webhooks use live commit SHAs from push events, not
+        search-index refs.
+        """
+        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+
+        if not file_data:
+            project = await self.get_project(project_id)
+            if project:
+                default_branch = project.get("default_branch")
+                if default_branch and default_branch != ref:
+                    logger.info(
+                        f"Retrying file fetch for '{file_path}' in project "
+                        f"'{project_id}' with default_branch '{default_branch}' "
+                        f"(original ref '{ref}' returned empty)"
+                    )
+                    ref = default_branch
+                    file_data = await self.rest.get_file_data(
+                        project_id, file_path, ref
+                    )
+
+        return file_data or {}, ref
+
     async def _process_file(
         self, file: dict[str, Any], context: str, skip_parsing: bool = False
     ) -> dict[str, Any]:
         file_path = file.get("path", "")
         project_id = str(file["project_id"])
-        ref = file.get("ref", "main")
+        ref = file.get("ref") or "main"
 
-        file_data = await self.rest.get_file_data(project_id, file_path, ref)
+        file_data, ref = await self._get_file_content_with_ref_heal(
+            project_id, file_path, ref
+        )
         file_data["project_id"] = project_id
         file_data["path"] = file_path
 
@@ -1086,10 +1168,19 @@ class GitLabClient:
         params = {"scope": scope, "search": query.to_query_string()}
         encoded_repo = quote(repo, safe="")
         search_path = f"projects/{encoded_repo}/search"
-        async for file_batch in self.rest.get_paginated_resource(
-            search_path, params=params
-        ):
-            yield file_batch
+        try:
+            async for file_batch in self.rest.get_paginated_resource(
+                search_path, params=params
+            ):
+                yield file_batch
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code not in (400, 404):
+                raise
+            logger.warning(
+                f"Project blob search failed for repository '{repo}' "
+                f"(status {e.response.status_code}): {e.response.text}. "
+                "Skipping repository and continuing with remaining repositories."
+            )
 
     async def _match_files_with_repository_tree(
         self, repo: str, query: SearchQuery
@@ -1130,7 +1221,10 @@ class GitLabClient:
             if not project:
                 return
 
-        ref = project["default_branch"]
+        ref = self._project_tree_ref(project)
+        if not ref:
+            return
+
         match_patterns: list[str] = []
         # (api_path, recursive) — exact file paths keep a non-recursive directory list.
         walks: set[tuple[str, bool]] = set()
@@ -1229,21 +1323,35 @@ class GitLabClient:
                     yield processed_batch
 
         if repositories:
+            dict_repos = [repo for repo in repositories if isinstance(repo, dict)]
+            other_repos = [repo for repo in repositories if not isinstance(repo, dict)]
+            searchable, skipped = self._partition_projects_with_tree_ref(dict_repos)
+            self._log_skipped_projects_without_default_branch(skipped)
+            repos_to_search: list[str | dict[str, Any]] = [
+                *searchable,
+                *other_repos,
+            ]
+            if not repos_to_search:
+                return
             tasks = [
                 semaphore_async_iterator(semaphore, partial(_search_repo, repo))
-                for repo in repositories
+                for repo in repos_to_search
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
             return
 
         async for projects_batch in self.get_projects(params=params):
+            searchable, skipped = self._partition_projects_with_tree_ref(projects_batch)
+            self._log_skipped_projects_without_default_branch(skipped)
+            if not searchable:
+                continue
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
                     partial(_search_repo, project),
                 )
-                for project in projects_batch
+                for project in searchable
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch

@@ -49,3 +49,28 @@ resources:
             team: .team.key
             labels: .labelIds
             parentIssue: .parent.identifier
+  - kind: document
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"linearDocument"'
+          properties:
+            url: .url
+            summary: .summary
+            content: .content
+            slugId: .slugId
+            parentType: 'if .project then "project" elif .issue then "issue" elif .team then "team" elif .initiative then "initiative" elif .cycle then "cycle" elif .release then "release" else null end'
+            project: .project.name
+            initiative: .initiative.name
+            cycle: .cycle.number
+            creator: .creator.email
+            owner: .owner.email
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.key
+            issue: .issue.identifier

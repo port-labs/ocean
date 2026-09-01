@@ -55,6 +55,7 @@ from github.core.exporters.secret_scanning_alert_exporter import (
     RestSecretScanningAlertExporter,
 )
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
+from github.core.exporters.package_exporter import RestPackageExporter
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
     FolderPatternMappingBuilder,
@@ -80,6 +81,7 @@ from github.core.options import (
     ListCodeScanningAlertOptions,
     ListCollaboratorOptions,
     ListSecretScanningAlertOptions,
+    ListPackageOptions,
 )
 from github.helpers.utils import (
     ObjectKind,
@@ -113,6 +115,7 @@ from integration import (
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
     GithubUserConfig,
+    GithubPackageConfig,
 )
 from github.core.exporters.skill_exporter import (
     SkillExporter,
@@ -261,6 +264,7 @@ async def resync_repositories(
                     type=port_app_config.repository_type,
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
+                    exclude_archived=repo_config.selector.exclude_archived,
                 )
             )
             for org in organizations
@@ -293,6 +297,7 @@ async def resync_users(
                         options=ListUserOptions(
                             organization=org["login"],
                             include_saml_email=config.selector.include_saml_email,
+                            include_verified_domain_emails=config.selector.include_verified_domain_emails,
                         )
                     )
                 )
@@ -369,6 +374,38 @@ async def resync_teams(
                 yield teams
 
 
+@ocean.on_resync(ObjectKind.PACKAGE)
+@_resync_per_authenticator
+async def resync_packages(
+    kind: str, authenticator: AbstractGitHubAuthenticator
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync GitHub packages across organizations."""
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    exporter = RestPackageExporter(rest_client)
+    config = cast(GithubPackageConfig, event.resource_config)
+
+    async for organizations in org_exporter.get_paginated_resources():
+        tasks = [
+            exporter.get_paginated_resources(
+                ListPackageOptions(
+                    organization=org["login"],
+                    org_type=org["type"],
+                    visibility=config.selector.visibility,
+                    package_types=config.selector.package_types,
+                    include_versions=config.selector.include_versions,
+                    max_versions=config.selector.max_versions,
+                )
+            )
+            for org in organizations
+        ]
+        if tasks:
+            async for packages in stream_async_iterators_tasks(*tasks):
+                logger.info(f"Received {len(packages)} batch {kind}s")
+                yield packages
+
+
 @ocean.on_resync(ObjectKind.WORKFLOW)
 @_resync_per_authenticator
 async def resync_workflows(
@@ -392,6 +429,7 @@ async def resync_workflows(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -436,6 +474,7 @@ async def resync_workflow_runs(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -515,6 +554,7 @@ async def resync_pull_requests(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repos in repository_exporter.get_paginated_resources(
@@ -586,6 +626,7 @@ async def resync_issues(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repos in repository_exporter.get_paginated_resources(
@@ -632,6 +673,7 @@ async def resync_releases(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -675,6 +717,7 @@ async def resync_tags(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -718,6 +761,7 @@ async def resync_branches(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=selector.repo_search,
+                exclude_archived=selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -773,6 +817,7 @@ async def resync_environments(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -819,6 +864,7 @@ async def resync_deployments(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -875,6 +921,7 @@ async def resync_deployment_statuses(
                 organization_type=org_type,
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -944,6 +991,7 @@ async def resync_dependabot_alerts(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -991,6 +1039,7 @@ async def resync_code_scanning_alerts(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1143,6 +1192,7 @@ async def resync_skills(
             repos=pattern.repos,
             skipParsing=True,
             validationCheck=False,
+            excludeArchived=pattern.exclude_archived,
         )
         for pattern in paths
     ]
@@ -1229,6 +1279,7 @@ async def resync_collaborators(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1273,6 +1324,7 @@ async def resync_secret_scanning_alerts(
                 organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(

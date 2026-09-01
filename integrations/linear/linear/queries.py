@@ -53,6 +53,67 @@ QUERIES = {
         identifier
     }
     """,
+    "BASE_DOCUMENTS_QUERY_FIELDS": """
+    id
+    title
+    summary
+    icon
+    color
+    slugId
+    url
+    content
+    documentContentId
+    createdAt
+    updatedAt
+    archivedAt
+    hiddenAt
+    trashed
+    sortOrder
+    creator {
+        id
+        name
+        email
+    }
+    owner {
+        id
+        name
+        email
+    }
+    updatedBy {
+        id
+        name
+        email
+    }
+    lastAppliedTemplate {
+        id
+        name
+    }
+    project {
+        id
+        name
+    }
+    initiative {
+        id
+        name
+    }
+    team {
+        id
+        name
+        key
+    }
+    issue {
+        id
+        identifier
+        title
+    }
+    release {
+        id
+    }
+    cycle {
+        id
+        number
+    }
+    """,
     "BASE_LABELS_QUERY_FIELDS": """
     id
     createdAt
@@ -76,6 +137,13 @@ QUERIES = {
     "GET_SINGLE_ISSUE": """
     query Issue {
         issue(id: "{{ issue_identifier }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_DOCUMENT": """
+    query Document {
+        document(id: "{{ document_id }}") {
             {{ base_query_fields }}
         }
     }
@@ -129,6 +197,23 @@ QUERIES = {
         }
     }
     """,
+    "GET_DOCUMENTS_PAGE": """
+    query Documents {
+        documents(first: {{ page_size }}{{ after_cursor }}, includeArchived: false) {
+            edges {
+                cursor
+                node {
+                    {{ base_query_fields }}
+                }
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
     "GET_LABELS_PAGE": """
     query IssueLabels {
         issueLabels(first: {{ page_size }}{{ after_cursor }}) {
@@ -169,6 +254,22 @@ QUERIES = {
                 label: "{{ webhook_label }}"
                 url: "{{ webhook_url }}"
                 allPublicTeams: true
+                resourceTypes: {{ resource_types|tojson() }}
+            }
+        ) {
+            success
+            webhook {
+                id
+                enabled
+            }
+        }
+    }
+    """,
+    "UPDATE_LIVE_EVENTS_WEBHOOK": """
+    mutation {
+        webhookUpdate(
+            id: "{{ webhook_id }}"
+            input: {
                 resourceTypes: {{ resource_types|tojson() }}
             }
         ) {

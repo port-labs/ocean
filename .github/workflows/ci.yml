@@ -28,6 +28,7 @@ jobs:
       - name: Prepare matrix
         id: prepare-matrix
         run: |
+          source scripts/ci/integration_spec.sh
           integrations_to_build=()
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
@@ -42,9 +43,9 @@ jobs:
           echo "Integration candidates: ${integration_names}"
 
           for integration_name in $(echo "$integration_names" | jq -r '.[]'); do
-            file="integrations/${integration_name}/.port/spec.yaml"
-            if [ ! -f "$file" ]; then
-              echo "Skipping ${integration_name}: no spec.yaml"
+            port_dir="integrations/${integration_name}/.port"
+            if ! file=$(resolve_spec_file "$port_dir"); then
+              echo "Skipping ${integration_name}: no spec.json, spec.yaml, or spec.yml found"
               continue
             fi
 

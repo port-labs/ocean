@@ -1,0 +1,146 @@
+name: Notify on external contribution
+
+on:
+  # pull_request_target so fork PRs get secrets; safe since no PR code is checked out
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  issue_comment:
+    types: [created, edited, deleted]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_comment:
+    types: [created, edited, deleted]
+
+permissions:
+  contents: read
+
+jobs:
+  notify-n8n:
+    runs-on: ubuntu-latest
+    # issue_comment fires for both issues AND PRs — skip plain-issue comments
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request != null
+    steps:
+      - name: Evaluate contributor status and notify n8n
+        uses: actions/github-script@v9
+        continue-on-error: true # informational only, must never block a PR
+        env:
+          N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_URL: ${{ secrets.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_URL }}
+          N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_USERNAME: ${{ secrets.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_USERNAME }}
+          N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_PASSWORD: ${{ secrets.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_PASSWORD }}
+          ORG_MEMBERSHIP_TOKEN: ${{ secrets.ORG_MEMBERSHIP_TOKEN }}
+        with:
+          script: |
+            const eventName = context.eventName;
+            const payload = context.payload;
+
+            // "internal vs external" is determined by the PR author, never the commenter
+            let pr;
+            switch (eventName) {
+              case 'pull_request_target':
+                pr = payload.pull_request;
+                break;
+              case 'issue_comment':
+                // For PR comments, the PR is exposed as payload.issue
+                pr = payload.issue;
+                break;
+              case 'pull_request_review':
+              case 'pull_request_review_comment':
+                pr = payload.pull_request;
+                break;
+              default:
+                core.info(`Unhandled event: ${eventName}`);
+                return;
+            }
+
+            const authorAssociation = pr.author_association;
+            const org = payload.repository.owner.login;
+            const user = pr.user.login;
+
+            // author_association misreports private org members as CONTRIBUTOR, so check
+            // real org membership via a fine-grained PAT (org resource, Members: Read-only)
+            const { getOctokit } = require('@actions/github');
+            const orgClient = getOctokit(process.env.ORG_MEMBERSHIP_TOKEN);
+
+            let isExternal;
+            try {
+              await orgClient.rest.orgs.checkMembershipForUser({ org, username: user });
+              isExternal = false;
+            } catch (err) {
+              if (err.status === 404) {
+                isExternal = true;
+              } else {
+                // Can't determine membership — skip rather than guess or fail the job
+                core.warning(`Org membership check failed (${err.status}): ${err.message}. Skipping notification.`);
+                return;
+              }
+            }
+
+            core.info(`Event: ${eventName} | PR author: ${user} | org member: ${!isExternal}`);
+
+            if (!isExternal) {
+              core.info('PR author is an org member — skipping webhook.');
+              return;
+            }
+
+            const body = {
+              event: eventName,
+              action: payload.action,
+              repository: payload.repository.full_name,
+              pull_request: {
+                number: pr.number,
+                title: pr.title,
+                url: pr.html_url,
+                author: user,
+                author_association: authorAssociation,
+                state: pr.state,
+              },
+            };
+
+            if (eventName === 'issue_comment') {
+              body.comment = {
+                id: payload.comment.id,
+                body: payload.comment.body,
+                url: payload.comment.html_url,
+                author: payload.comment.user.login,
+                author_association: payload.comment.author_association,
+              };
+            } else if (eventName === 'pull_request_review') {
+              body.review = {
+                id: payload.review.id,
+                state: payload.review.state,
+                body: payload.review.body,
+                url: payload.review.html_url,
+                author: payload.review.user.login,
+                author_association: payload.review.author_association,
+              };
+            } else if (eventName === 'pull_request_review_comment') {
+              body.comment = {
+                id: payload.comment.id,
+                body: payload.comment.body,
+                url: payload.comment.html_url,
+                author: payload.comment.user.login,
+                author_association: payload.comment.author_association,
+                path: payload.comment.path,
+                diff_hunk: payload.comment.diff_hunk,
+              };
+            }
+
+            const webhookUrl = process.env.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_URL;
+            const webhookUsername = process.env.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_USERNAME;
+            const webhookPassword = process.env.N8N_CONTRIBUTION_NOTIFICATION_WEBHOOK_PASSWORD;
+            const basicAuth = Buffer.from(`${webhookUsername}:${webhookPassword}`).toString('base64');
+
+            const response = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Basic ${basicAuth}`,
+              },
+              body: JSON.stringify(body),
+            });
+
+            if (!response.ok) {
+              core.setFailed(`n8n webhook failed: ${response.status} ${await response.text()}`);
+            } else {
+              core.info('Webhook sent successfully.');
+            }

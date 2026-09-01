@@ -110,6 +110,29 @@ class GCPResourceConfig(ResourceConfig):
     )
 
 
+class GCPCloudFunctionSelector(Selector):
+    function_url: str = Field(
+        alias="functionUrl",
+        title="Function URL",
+        description="URL of the HTTP endpoint implementing the cloud-function sync protocol (e.g. a Cloud Run service).",
+    )
+    resource: str = Field(
+        title="Resource",
+        description="Resource name forwarded to the cloud function endpoint so it can route internally (e.g. 'employees').",
+    )
+
+
+class GCPCloudFunctionResourceConfig(ResourceConfig):
+    kind: Literal["gcpCloudFunction"] = Field(
+        title="GCP Cloud Function",
+        description="GCP cloud-function sync protocol resource kind.",
+    )
+    selector: GCPCloudFunctionSelector = Field(
+        title="Cloud Function Selector",
+        description="Selector for a resource served by the cloud-function sync protocol.",
+    )
+
+
 class GCPPortAppConfig(PortAppConfig):
     allow_custom_kinds: ClassVar[bool] = True
 
@@ -120,6 +143,7 @@ class GCPPortAppConfig(PortAppConfig):
         | GCPProjectResourceConfig
         | GCPOrganizationResourceConfig
         | GCPFolderResourceConfig
+        | GCPCloudFunctionResourceConfig
         | GCPResourceConfig
     ] = Field(
         title="Resources",

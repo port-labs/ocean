@@ -11,6 +11,9 @@ from github.webhook.webhook_processors.repository_webhook_processor import (
 from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
 )
+from github.webhook.webhook_processors.pull_request_review_webhook_processor import (
+    PullRequestReviewWebhookProcessor,
+)
 from github.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )
@@ -75,6 +78,9 @@ from github.webhook.webhook_processors.secret_scanning_alert_webhook_processor i
 from github.webhook.webhook_processors.port_app_config_webhook_processor import (
     PortAppConfigWebhookProcessor,
 )
+from github.webhook.webhook_processors.package_webhook_processor import (
+    PackageWebhookProcessor,
+)
 
 WEBHOOK_PATH = "/webhook"
 
@@ -85,6 +91,7 @@ def register_live_events_webhooks() -> None:
     ocean.add_webhook_processor(WEBHOOK_PATH, PortAppConfigWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, RepositoryWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, PullRequestWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, PullRequestReviewWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, ReleaseWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, TagWebhookProcessor)
@@ -108,3 +115,4 @@ def register_live_events_webhooks() -> None:
     ocean.add_webhook_processor(WEBHOOK_PATH, CollaboratorTeamWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, CheckRunValidatorWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, SecretScanningAlertWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, PackageWebhookProcessor)

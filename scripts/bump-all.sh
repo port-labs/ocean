@@ -73,7 +73,8 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
     fi
 
 
-    poetry version "${NEW_VERSION}"
+    sed -i.bak "s/^version = \".*\"/version = \"${NEW_VERSION}\"/" pyproject.toml
+    rm -f pyproject.toml.bak
     echo "New version: ${NEW_VERSION}"
 
     echo "Run towncrier build to increment the patch version"
