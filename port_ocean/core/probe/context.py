@@ -30,7 +30,7 @@ class ProbeContext:
     checks: list[ProbeCheck] = field(default_factory=list)
     reporter: ProbeReporter | None = None
 
-    def add_scopes(self, *scopes: dict[str, str | int]) -> list[ProbeCheck]:
+    async def add_scopes(self, *scopes: dict[str, str | int]) -> list[ProbeCheck]:
         logger.debug("Registering additional scopes", scopes=scopes)
         new_checks: list[ProbeCheck] = []
         for scope in scopes:
@@ -39,29 +39,26 @@ class ProbeContext:
                 new_checks.append(check)
                 self.checks.append(check)
 
-        self.update_progress()
+        await self.update_progress()
         return new_checks
 
     def build_request_body(self) -> dict[str, Any]:
-        return {
-            "probe_id": self.probe_id,
+        data = {
+            "probeId": self.probe_id,
             "status": self.status,
-            "mode": self.config.mode,
-            "started_at": self.started_at.isoformat(),
-            "ended_at": self.ended_at.isoformat() if self.ended_at else None,
-            "message": self.message,
-            "checks": [
-                {
-                    "status": check.status,
-                    "message": check.message,
-                    "kind": check.kind,
-                    "scopes": check.scopes,
-                }
-                for check in self.checks
-            ],
+            "probeMode": self.config.mode,
+            "startedAt": self.started_at.isoformat(),
+            "checks": [check.serialize() for check in self.checks],
         }
 
-    def initialize(
+        if self.ended_at:
+            data["endedAt"] = self.ended_at.isoformat()
+        if self.message:
+            data["message"] = self.message
+
+        return data
+
+    async def initialize(
         self,
         port_app_config_class: type[PortAppConfig],
         config: ProbeConfig | None = None,
@@ -84,21 +81,21 @@ class ProbeContext:
 
         self.reporter = REPORTER_MODES[self.config.reporting_mode](self.config)
         self.status = ProbeStatus.IN_PROGRESS
-        self.update_progress()
+        await self.update_progress()
 
-    def update_progress(self) -> None:
+    async def update_progress(self) -> None:
         if not self.reporter:
             raise ProbeNotInitializedError("Reporter is not initialized")
 
-        self.reporter.report(self.build_request_body())
+        await self.reporter.report(self.build_request_body())
 
-    def finalize(self) -> None:
+    async def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.COMPLETED
-        self.update_progress()
+        await self.update_progress()
 
-    def fail(self, message: str) -> None:
+    async def fail(self, message: str) -> None:
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.FAILED
         self.message = message
-        self.update_progress()
+        await self.update_progress()

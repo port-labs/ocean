@@ -96,7 +96,7 @@ async def test_run_probe_raises_when_context_is_failed(
 
     async def on_probe(context: ProbeContext) -> ProbeContext:
         captured_context.append(context)
-        context.fail(message)
+        await context.fail(message)
         return context
 
     integration.event_strategy.on_probe = on_probe

@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.7 (2026-09-01)
+
+
+### Features
+
+- Add async Port probe reporter that sends incremental probe health results to Port during probe runs
+
+
 ## 0.50.6 (2026-09-01)
 
 
