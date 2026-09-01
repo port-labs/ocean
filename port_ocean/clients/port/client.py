@@ -95,6 +95,24 @@ class PortClient(
 
         return response.json()["organization"]["id"]
 
+    async def patch_probe_health_result(
+        self, org_id: str, probe_id: str, body: dict[str, Any]
+    ) -> None:
+        logger.debug(
+            "Patching probe health result",
+            org_id=org_id,
+            probe_id=probe_id,
+            status=body.get("status"),
+        )
+        response = await self.client.patch(
+            f"{self.api_url}/org/{org_id}/probe/{probe_id}",
+            headers=await self.auth.headers(),
+            json=body,
+        )
+        handle_port_status_code(response)
+        if response.is_success:
+            logger.info("Probe health result updated successfully", probe_id=probe_id)
+
     async def update_integration_state(
         self, state: dict[str, Any], should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
