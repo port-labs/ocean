@@ -16,7 +16,7 @@ class FileProbeReporter(ProbeReporter):
         super().__init__(config)
         self.timestamp: str = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
 
-    def report(self, report: dict[str, Any]) -> None:
+    async def report(self, report: dict[str, Any]) -> None:
         reports_directory = self.config.path / PROBE_REPORTS_DIRECTORY
         reports_directory.mkdir(parents=True, exist_ok=True)
         report_path = reports_directory / f"probe_report_{self.timestamp}.json"
