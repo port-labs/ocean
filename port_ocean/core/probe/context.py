@@ -48,17 +48,9 @@ class ProbeContext:
         data = {
             "probeId": self.probe_id,
             "status": self.status,
-            "mode": self.config.mode,
+            "probeMode": self.config.mode,
             "startedAt": self.started_at.isoformat(),
-            "checks": [
-                {
-                    "status": check.status,
-                    "message": check.message,
-                    "kind": check.kind,
-                    "scopes": check.scopes,
-                }
-                for check in self.checks
-            ],
+            "checks": [check.serialize() for check in self.checks],
         }
 
         if self.ended_at:

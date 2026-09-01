@@ -109,9 +109,11 @@ class PortClient(
             headers=await self.auth.headers(),
             json=body,
         )
-        handle_port_status_code(response)
+
         if response.is_success:
             logger.info("Probe health result updated successfully", probe_id=probe_id)
+        else:
+            logger.warning("Probe health result update failed", probe_id=probe_id)
 
     async def update_integration_state(
         self, state: dict[str, Any], should_raise: bool = True, should_log: bool = True
