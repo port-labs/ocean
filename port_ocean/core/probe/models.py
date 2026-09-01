@@ -33,3 +33,15 @@ class ProbeCheck:
     scopes: dict[str, str | int] = field(default_factory=dict)
     status: ProbeCheckStatus = ProbeCheckStatus.PENDING
     message: str | None = None
+
+    def serialize(self) -> dict[str, str | dict]:
+        data = {
+            "kind": self.kind,
+            "scopes": self.scopes,
+            "status": self.status,
+        }
+
+        if self.message:
+            data["message"] = self.message
+
+        return data
