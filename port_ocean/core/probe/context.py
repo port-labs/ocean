@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from loguru import logger
 
+from port_ocean.core.handlers.port_app_config.validators import (
+    get_port_app_config_kinds,
+)
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.models import ProbeCheck, ProbeStatus
 from port_ocean.core.probe.reporters import ProbeReporter, REPORTER_MODES
 from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
@@ -66,14 +70,9 @@ class ProbeContext:
 
     async def initialize(
         self,
-        config: ProbeConfig | None = None,
-        *,
         port_app_config_class: type[PortAppConfig],
+        config: ProbeConfig | None = None,
     ) -> None:
-        from port_ocean.core.handlers.port_app_config.validators import (
-            get_port_app_config_kinds,
-        )
-
         self.config = config or ProbeConfig()
         if self.config.kinds is not None:
             configured_kinds_set = set(self.config.kinds)
