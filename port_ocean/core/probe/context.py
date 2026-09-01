@@ -1,14 +1,20 @@
+import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
 from loguru import logger
 
+from port_ocean.core.handlers.port_app_config.validators import (
+    get_port_app_config_kinds,
+)
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.models import ProbeCheck, ProbeStatus
 from port_ocean.core.probe.reporters import ProbeReporter, REPORTER_MODES
 from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
-from port_ocean.utils.misc import get_spec_kinds
+
+if typing.TYPE_CHECKING:
+    from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
 @dataclass
@@ -55,11 +61,15 @@ class ProbeContext:
             ],
         }
 
-    def initialize(self, config: ProbeConfig | None = None) -> None:
+    def initialize(
+        self,
+        port_app_config_class: type[PortAppConfig],
+        config: ProbeConfig | None = None,
+    ) -> None:
         self.config = config or ProbeConfig()
         if self.config.kinds is not None:
             configured_kinds_set = set(self.config.kinds)
-            supported_kinds = get_spec_kinds(self.config.path)
+            supported_kinds = get_port_app_config_kinds(port_app_config_class)
             supported_kinds_set = set(supported_kinds)
             if not configured_kinds_set.issubset(supported_kinds_set):
                 raise InvalidProbeKindsError(
@@ -68,7 +78,9 @@ class ProbeContext:
 
             self.available_kinds = sorted(list(configured_kinds_set))
         else:
-            self.available_kinds = sorted(get_spec_kinds(self.config.path))
+            self.available_kinds = sorted(
+                get_port_app_config_kinds(port_app_config_class)
+            )
 
         self.reporter = REPORTER_MODES[self.config.reporting_mode](self.config)
         self.status = ProbeStatus.IN_PROGRESS

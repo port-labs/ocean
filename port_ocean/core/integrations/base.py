@@ -119,7 +119,10 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             EventType.ON_PROBE,
             trigger_type="machine",
         ):
-            context.initialize(config)
+            context.initialize(
+                config,
+                port_app_config_class=self.AppConfigHandlerClass.CONFIG_CLASS,
+            )
             try:
                 returned = await listener(context)
             except Exception as error:
