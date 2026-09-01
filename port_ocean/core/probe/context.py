@@ -19,6 +19,7 @@ class ProbeContext:
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     ended_at: datetime | None = None
     status: ProbeStatus = ProbeStatus.IN_PROGRESS
+    """The status of the overall probe, should never be altered manually, only using finalize() or fail()"""
     message: str | None = None
     checks: list[ProbeCheck] = field(default_factory=list)
     reporter: ProbeReporter | None = None
