@@ -19,6 +19,7 @@ from integration import GithubPortAppConfig, GithubTeamConfig, GithubTeamSelecto
 from port_ocean.context.event import event_context
 from github.core.options import SingleTeamOptions
 
+from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
     LIST_EXTERNAL_IDENTITIES_GQL,
@@ -621,6 +622,56 @@ class TestGraphQLTeamWithMembersExporterExtrasEnrichment:
 
         assert "extra_field" not in teams[0]
         assert teams[1]["extra_field"] == "extra-value"
+
+    async def test_enrich_team_retries_on_graphql_error_then_succeeds(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        base_team = {"slug": "team-alpha", "name": "Team Alpha"}
+        extras_team = {"slug": "team-alpha", "members": {"nodes": []}}
+
+        mock_get_resource = AsyncMock(
+            side_effect=[
+                GraphQLErrorGroup([GraphQLClientError("Something went wrong")]),
+                GraphQLErrorGroup([GraphQLClientError("Something went wrong")]),
+                extras_team,
+            ]
+        )
+
+        with patch.object(exporter, "get_resource", new=mock_get_resource):
+            with patch("asyncio.sleep", new_callable=AsyncMock) as sleep_mock:
+                teams = await exporter._enrich_team_with_extras(
+                    [copy.deepcopy(base_team)],
+                    ListTeamOptions(organization="test-org", include_saml_email=False),
+                )
+
+        assert teams[0]["members"] == {"nodes": []}
+        assert mock_get_resource.await_count == 3
+        assert sleep_mock.call_count == 2
+        assert sleep_mock.call_args_list[0][0][0] == 2
+        assert sleep_mock.call_args_list[1][0][0] == 4
+
+    async def test_enrich_team_raises_after_retries_exhausted(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+        base_team = {"slug": "team-alpha", "name": "Team Alpha"}
+
+        mock_get_resource = AsyncMock(
+            side_effect=GraphQLErrorGroup([GraphQLClientError("Something went wrong")])
+        )
+
+        with patch.object(exporter, "get_resource", new=mock_get_resource):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(GraphQLErrorGroup):
+                    await exporter._enrich_team_with_extras(
+                        [copy.deepcopy(base_team)],
+                        ListTeamOptions(
+                            organization="test-org", include_saml_email=False
+                        ),
+                    )
+
+        assert mock_get_resource.await_count == 3
 
 
 EXTERNAL_GROUP = {
