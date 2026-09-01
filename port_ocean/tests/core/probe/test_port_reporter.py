@@ -17,7 +17,7 @@ async def test_port_probe_reporter_patches_health_result(mock_ocean: MagicMock) 
     mock_ocean.port_client.patch_probe_health_result = AsyncMock()
     reporter = PortProbeReporter(ProbeConfig())
     report = {
-        "probe_id": "probe-1",
+        "probeId": "probe-1",
         "status": "IN_PROGRESS",
         "checks": [],
     }
@@ -45,8 +45,8 @@ async def test_port_probe_reporter_reuses_cached_org_id(
     reporter = PortProbeReporter(ProbeConfig())
 
     # Act
-    await reporter.report({"probe_id": "probe-1", "status": "IN_PROGRESS"})
-    await reporter.report({"probe_id": "probe-1", "status": "COMPLETED"})
+    await reporter.report({"probeId": "probe-1", "status": "IN_PROGRESS"})
+    await reporter.report({"probeId": "probe-1", "status": "COMPLETED"})
 
     # Assert
     mock_ocean.port_client.get_org_id.assert_called_once()

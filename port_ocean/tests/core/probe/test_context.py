@@ -118,11 +118,11 @@ def test_build_request_body() -> None:
 
     # Assert
     assert body == {
-        "probe_id": "probe-1",
+        "probeId": "probe-1",
         "status": ProbeStatus.COMPLETED,
         "mode": ProbeMode.SHALLOW,
-        "started_at": context.started_at.isoformat(),
-        "ended_at": ended_at.isoformat(),
+        "startedAt": context.started_at.isoformat(),
+        "endedAt": ended_at.isoformat(),
         "message": "probe finished",
         "checks": [
             {
@@ -143,11 +143,11 @@ def test_build_request_body_when_probe_in_progress() -> None:
     body = context.build_request_body()
 
     # Assert
-    assert body["probe_id"] == "probe-1"
+    assert body["probeId"] == "probe-1"
     assert body["status"] == ProbeStatus.IN_PROGRESS
     assert body["mode"] == ProbeMode.SHALLOW
-    assert body["ended_at"] is None
-    assert body["message"] is None
+    assert "endedAt" not in body
+    assert "message" not in body
     assert body["checks"] == []
 
 
