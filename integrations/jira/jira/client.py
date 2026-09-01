@@ -232,7 +232,14 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         retryable: bool = False,
+        skip_retry: bool = False
     ) -> Any:
+        extensions: dict[str, Any] = {}
+        if retryable:
+            extensions["retryable"] = True
+        if skip_retry:
+            extensions["skip_retry"] = True
+
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
@@ -241,7 +248,7 @@ class JiraClient(OAuthClient):
                     params=params,
                     json=json,
                     headers=headers,
-                    extensions={"retryable": retryable} if retryable else None,
+                    extensions=extensions or None,
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
