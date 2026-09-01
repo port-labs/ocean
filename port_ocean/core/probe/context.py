@@ -37,13 +37,11 @@ class ProbeContext:
         return new_checks
 
     def build_request_body(self) -> dict[str, Any]:
-        return {
-            "probe_id": self.probe_id,
+        data = {
+            "probeId": self.probe_id,
             "status": self.status,
             "mode": self.config.mode,
-            "started_at": self.started_at.isoformat(),
-            "ended_at": self.ended_at.isoformat() if self.ended_at else None,
-            "message": self.message,
+            "startedAt": self.started_at.isoformat(),
             "checks": [
                 {
                     "status": check.status,
@@ -54,6 +52,13 @@ class ProbeContext:
                 for check in self.checks
             ],
         }
+
+        if self.ended_at:
+            data["endedAt"] = self.ended_at.isoformat()
+        if self.message:
+            data["message"] = self.message
+
+        return data
 
     async def initialize(self, config: ProbeConfig | None = None) -> None:
         self.config = config or ProbeConfig()
