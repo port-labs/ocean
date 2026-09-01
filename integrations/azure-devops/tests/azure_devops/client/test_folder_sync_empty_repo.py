@@ -4,6 +4,7 @@ Repos with no commits/branches have no default branch in the ADO API
 """
 
 from typing import Any, AsyncGenerator
+from unittest.mock import patch
 
 import pytest
 
@@ -43,12 +44,23 @@ async def test_process_folder_patterns_skips_repo_without_default_branch() -> No
         if repo_id == "good-id":
             yield [{"path": "src", "gitObjectType": "tree"}]
 
-    client._get_repositories_for_project = mock_get_repositories_for_project  # type: ignore[method-assign]
-    client.get_repository_folders = mock_get_repository_folders  # type: ignore[method-assign]
-
-    results = []
-    async for folders in client.process_folder_patterns(patterns, project_name="proj"):
-        results.extend(folders)
+    with (
+        patch.object(
+            client,
+            "_get_repositories_for_project",
+            side_effect=mock_get_repositories_for_project,
+        ),
+        patch.object(
+            client,
+            "get_repository_folders",
+            side_effect=mock_get_repository_folders,
+        ),
+    ):
+        results = []
+        async for folders in client.process_folder_patterns(
+            patterns, project_name="proj"
+        ):
+            results.extend(folders)
 
     assert len(results) == 1
     assert results[0]["__repository"]["name"] == "good-repo"
