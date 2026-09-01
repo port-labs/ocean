@@ -2351,9 +2351,6 @@ class AzureDevopsClient(HTTPBaseClient):
 
         default_branch = repository.get("defaultBranch")
         if not default_branch:
-            logger.warning(
-                f"Repository {repository['name']} has no default branch. Skipping."
-            )
             return None
 
         return default_branch.replace("refs/heads/", "")
@@ -2369,6 +2366,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
         branch = self._resolve_repository_branch(repository)
         if not branch:
+            logger.warning(
+                f"Repository {repository['name']} has no default branch. Skipping."
+            )
             return
 
         files = []
@@ -2788,6 +2788,9 @@ class AzureDevopsClient(HTTPBaseClient):
             repo, repo_mapping.branch if repo_mapping else None
         )
         if not branch:
+            logger.warning(
+                f"Repository {repo['name']} has no default branch. Skipping."
+            )
             return
 
         async for found_folders in self.get_repository_folders(
