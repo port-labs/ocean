@@ -13,7 +13,7 @@ class PortProbeReporter(ProbeReporter):
         from port_ocean.context.ocean import ocean
 
         body = report.copy()
-        probe_id = body.pop("probe_id", None)
+        probe_id = body.pop("probeId", None)
         if not probe_id:
             raise ProbeNotInitializedError(
                 "probe_id is required when using Port probe reporting mode"
