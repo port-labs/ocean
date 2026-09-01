@@ -52,6 +52,15 @@ def test_is_resource_not_found_exception_includes_ecr_and_cluster_codes() -> Non
     )
 
 
+def test_is_resource_not_found_exception_includes_sqs_codes() -> None:
+    assert (
+        is_resource_not_found_exception(
+            _client_error("AWS.SimpleQueueService.NonExistentQueue")
+        )
+        is True
+    )
+
+
 def test_is_access_denied_exception() -> None:
     assert is_access_denied_exception(_client_error("AccessDenied")) is True
     assert is_access_denied_exception(_client_error("NoSuchBucket")) is False

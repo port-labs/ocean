@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, List, Dict, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.sqs.queue.exporter import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import (
@@ -41,6 +42,11 @@ class TestSqsQueueExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_queue_attributes.return_value = {
+            "Attributes": {
+                "QueueArn": "arn:aws:sqs:us-east-1:123456789012:test-queue",
+            }
+        }
 
         # Inspector
         mock_inspector = AsyncMock()
@@ -78,6 +84,49 @@ class TestSqsQueueExporter:
             result["Attributes"]["QueueArn"]
             == "arn:aws:sqs:us-east-1:123456789012:test-queue"
         )
+        mock_client.get_queue_attributes.assert_awaited_once_with(
+            QueueUrl="https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            AttributeNames=["All"],
+        )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.sqs.queue.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.sqs.queue.exporter.ResourceInspector")
+    async def test_get_resource_queue_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: SqsQueueExporter,
+    ) -> None:
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_queue_attributes.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "AWS.SimpleQueueService.NonExistentQueue",
+                    "Message": "gone",
+                }
+            },
+            "GetQueueAttributes",
+        )
+
+        request = SingleQueueRequest(
+            queue_url="https://sqs.us-east-1.amazonaws.com/123456789012/nonexistent",
+            region="us-east-1",
+            include=[],
+            account_id="123456789012",
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(request)
+
+        assert (
+            exc_info.value.response["Error"]["Code"]
+            == "AWS.SimpleQueueService.NonExistentQueue"
+        )
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.sqs.queue.exporter.AioBaseClientProxy")
@@ -218,6 +267,11 @@ class TestSqsQueueExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_queue_attributes.return_value = {
+            "Attributes": {
+                "QueueArn": "arn:aws:sqs:us-east-1:123456789012:test-queue",
+            }
+        }
 
         # Inspector raises exception
         mock_inspector = AsyncMock()

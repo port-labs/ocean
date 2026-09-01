@@ -55,11 +55,16 @@ class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
                 self._actions_map(),
                 lambda: self._model_cls(),
             )
-            response = await inspector.inspect(
-                [{"InstanceId": options.instance_id}], options.include
+            result = await inspector.inspect(
+                instances,
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
             )
 
-            return response[0] if response else {}
+            return result[0] if result else {}
 
     async def get_paginated_resources(
         self, options: PaginatedEC2InstanceRequest

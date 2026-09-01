@@ -6,8 +6,17 @@ from aws.core.helpers.metadata.types import (
     LiveEventContext,
     LiveEventFactories,
 )
+from aws.utils import RegionHelper
 
 CLOUDTRAIL_EVENT_SOURCE = "elasticache.amazonaws.com"
+
+
+def _cache_cluster_arn(context: LiveEventContext) -> str:
+    partition = RegionHelper.get_partition()
+    return (
+        f"arn:{partition}:elasticache:{context.region}:{context.account_id}:cluster:"
+        f"{context.identifier}"
+    )
 
 
 def _extract_cache_cluster_id(detail: CloudTrailDetail) -> str | None:
@@ -29,6 +38,7 @@ def _request_factory(
 
 def _deletion_identifier_properties(context: LiveEventContext) -> dict[str, str]:
     return {
+        "ARN": _cache_cluster_arn(context),
         "CacheClusterId": context.identifier,
     }
 
