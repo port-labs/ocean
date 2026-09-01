@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Add async Port probe reporter that sends incremental probe health results to Port during probe runs

@@ -9,5 +9,5 @@ from port_ocean.core.probe.reporters.base import ProbeReporter
 class LogProbeReporter(ProbeReporter):
     mode: ClassVar[ProbeReportingMode] = ProbeReportingMode.LOG
 
-    def report(self, report: dict[str, Any]) -> None:
+    async def report(self, report: dict[str, Any]) -> None:
         logger.info("Probe status report", probe_report=report)

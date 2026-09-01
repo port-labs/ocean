@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 
 class ProbeMode(StrEnum):
@@ -33,3 +34,15 @@ class ProbeCheck:
     scopes: dict[str, str | int] = field(default_factory=dict)
     status: ProbeCheckStatus = ProbeCheckStatus.PENDING
     message: str | None = None
+
+    def serialize(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            "kind": self.kind,
+            "scopes": self.scopes,
+            "status": self.status,
+        }
+
+        if self.message:
+            data["message"] = self.message
+
+        return data
