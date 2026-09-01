@@ -40,7 +40,7 @@ class ProbeContext:
         data = {
             "probeId": self.probe_id,
             "status": self.status,
-            "mode": self.config.mode,
+            "probeMode": self.config.mode,
             "startedAt": self.started_at.isoformat(),
             "checks": [
                 {
