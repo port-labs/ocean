@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.6 (2026-09-01)
+
+
+### Features
+
+- Add on_probe decorator, run_probe entry point, and ocean probe CLI with kind filtering and validation
+
+
 ## 0.50.5 (2026-08-31)
 
 

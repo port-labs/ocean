@@ -10,3 +10,7 @@ class InvalidProbeKindsError(BaseOceanException):
 
 class ProbeNotInitializedError(BaseOceanException):
     pass
+
+
+class ProbeFailedError(BaseOceanException):
+    """Raised when a probe fails due to a global-level error rather than a per-check verdict."""

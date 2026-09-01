@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.10 (2026-09-01)
+
+
+### Improvements
+
+- Rename debug.py to debug_resync.py and add debug_probe.py for local probe runs
+
+
+## 6.10.9 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 6.10.8 (2026-08-31)
+
+
+### Features
+
+- Expanded SAML email enrichment to support enterprise-level SAML SSO by automatically falling back to the enterprise identity provider when org-level SAML is not configured, enabling __SAMLEmail population for customers who centralize SAML at the enterprise level. Requires a classic PAT from an enterprise owner with read:enterprise scope.
+
+
+## 6.10.7 (2026-08-31)
+
+
+### Improvements
+
+- Expanded pull request live events to support all webhook actions and added pull request review live events with automatic webhook configuration updates
+
+
 ## 6.10.6 (2026-08-31)
 
 

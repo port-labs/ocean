@@ -210,6 +210,51 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
     }}
 """
 
+VIEWER_ENTERPRISE_GQL = """
+    query {
+      viewer {
+        enterprises(first: 1) {
+          nodes {
+            slug
+          }
+        }
+      }
+    }
+"""
+
+LIST_ENTERPRISE_EXTERNAL_IDENTITIES_GQL = f"""
+    {PAGE_INFO_FRAGMENT}
+    query ($enterprise: String!, $first: Int = 25, $after: String) {{
+      enterprise(slug: $enterprise) {{
+        ownerInfo {{
+          samlIdentityProvider {{
+            externalIdentities(first: $first, after: $after) {{
+              edges {{
+                node {{
+                  guid
+                  samlIdentity {{
+                    nameId
+                    emails {{
+                      primary
+                      type
+                      value
+                    }}
+                  }}
+                  user {{
+                    login
+                  }}
+                }}
+              }}
+              pageInfo {{
+              ...PageInfoFields
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+"""
+
 PR_COMMITS_TOTAL_ONLY = """
 commits { totalCount }
 """
