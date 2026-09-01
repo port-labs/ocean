@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 import pytest
 
 from port_ocean.core.probe.models import ProbeCheckStatus
@@ -56,7 +58,7 @@ class PresenceOrKindPermissionVerdict(OrKindPermissionVerdict):
     def load_kind_permissions(self) -> dict[str, tuple[str, ...]]:
         return {"project": ("repo",)}
 
-    def is_granted(self, permission: str, permissions: dict[str, object]) -> bool:
+    def is_granted(self, permission: str, permissions: Mapping[str, object]) -> bool:
         return permission in permissions
 
 

@@ -1,11 +1,16 @@
 """Unit tests for probe context."""
 
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic.v1 import Field
 
+from port_ocean.core.handlers.port_app_config.models import (
+    PortAppConfig,
+    ResourceConfig,
+)
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import (
@@ -18,6 +23,26 @@ from port_ocean.core.probe.models import (
 from port_ocean.core.probe.reporters.file import FileProbeReporter
 from port_ocean.core.probe.reporters.log import LogProbeReporter
 from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
+
+
+def _resources() -> Any:
+    return Field(
+        default_factory=list,
+        title="Resources",
+        description="The list of resource configurations for the integration.",
+    )
+
+
+class _RepositoryConfig(ResourceConfig):
+    kind: Literal["repository"] = Field(title="Repository", description="Repo.")
+
+
+class _PullRequestConfig(ResourceConfig):
+    kind: Literal["pull-request"] = Field(title="Pull Request", description="PR.")
+
+
+class _TestPortAppConfig(PortAppConfig):
+    resources: list[_RepositoryConfig | _PullRequestConfig] = _resources()  # type: ignore[assignment]
 
 
 def test_starts_with_empty_state() -> None:
@@ -151,64 +176,45 @@ def test_build_request_body_when_probe_in_progress() -> None:
     assert body["checks"] == []
 
 
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=["repository"])
 @pytest.mark.asyncio
-async def test_initialize_sets_config_and_available_kinds(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+async def test_initialize_sets_config_and_available_kinds() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     context.status = ProbeStatus.COMPLETED
-    config = ProbeConfig(path=Path("/integration"), kinds=["repository"])
+    config = ProbeConfig(kinds=["repository"])
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        await context.initialize(config)
+        await context.initialize(_TestPortAppConfig, config)
 
     # Assert
     assert context.config is config
     assert context.available_kinds == ["repository"]
     assert context.status == ProbeStatus.IN_PROGRESS
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
     mock_update_progress.assert_called_once_with()
 
 
-@patch(
-    "port_ocean.core.probe.context.get_spec_kinds",
-    return_value=["repository", "pull-request"],
-)
 @pytest.mark.asyncio
-async def test_initialize_deduplicates_injected_kinds(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+async def test_initialize_deduplicates_injected_kinds() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     config = ProbeConfig(
-        path=Path("/integration"),
         kinds=["repository", "repository", "pull-request", "repository"],
     )
 
     # Act
     with patch.object(context, "update_progress"):
-        await context.initialize(config)
+        await context.initialize(_TestPortAppConfig, config)
 
     # Assert
     assert context.available_kinds == ["pull-request", "repository"]
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
 
 
-@patch(
-    "port_ocean.core.probe.context.get_spec_kinds",
-    return_value=["repository", "pull-request"],
-)
 @pytest.mark.asyncio
-async def test_initialize_raises_for_invalid_kinds(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+async def test_initialize_raises_for_invalid_kinds() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     config = ProbeConfig(
-        path=Path("/integration"),
         kinds=["repository", "fake-kind"],
     )
 
@@ -216,28 +222,23 @@ async def test_initialize_raises_for_invalid_kinds(
     with pytest.raises(
         InvalidProbeKindsError, match="Invalid probe kinds: \\['fake-kind'\\]"
     ):
-        await context.initialize(config)
-
-    mock_get_spec_kinds.assert_called_once_with(Path("/integration"))
+        await context.initialize(_TestPortAppConfig, config)
 
 
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
 @pytest.mark.asyncio
-async def test_initialize_uses_default_config_when_none(
-    mock_get_spec_kinds: MagicMock,
-) -> None:
+async def test_initialize_uses_default_config_when_none() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
     context.status = ProbeStatus.COMPLETED
 
     # Act
     with patch.object(context, "update_progress") as mock_update_progress:
-        await context.initialize()
+        await context.initialize(_TestPortAppConfig)
 
     # Assert
     assert context.config == ProbeConfig()
+    assert context.available_kinds == ["pull-request", "repository"]
     assert context.status == ProbeStatus.IN_PROGRESS
-    mock_get_spec_kinds.assert_called_once_with(Path("."))
     mock_update_progress.assert_called_once_with()
 
 
@@ -248,10 +249,8 @@ async def test_initialize_uses_default_config_when_none(
         (ProbeReportingMode.FILE, FileProbeReporter),
     ],
 )
-@patch("port_ocean.core.probe.context.get_spec_kinds", return_value=[])
 @pytest.mark.asyncio
 async def test_initialize_creates_reporter_for_reporting_mode(
-    mock_get_spec_kinds: MagicMock,
     reporting_mode: ProbeReportingMode,
     expected_reporter_type: type[LogProbeReporter] | type[FileProbeReporter],
 ) -> None:
@@ -261,12 +260,11 @@ async def test_initialize_creates_reporter_for_reporting_mode(
 
     # Act
     with patch.object(context, "update_progress"):
-        await context.initialize(config)
+        await context.initialize(_TestPortAppConfig, config)
 
     # Assert
     assert isinstance(context.reporter, expected_reporter_type)
     assert context.reporter.config is config
-    mock_get_spec_kinds.assert_called_once_with(Path("."))
 
 
 @pytest.mark.asyncio
