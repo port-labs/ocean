@@ -233,7 +233,6 @@ class JiraClient(OAuthClient):
         headers: dict[str, str] | None = None,
         retryable: bool = False,
     ) -> Any:
-        response: httpx.Response | None = None
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
