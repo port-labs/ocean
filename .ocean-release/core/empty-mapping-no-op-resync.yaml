@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Treat empty Port mapping as a valid no-op during resync so the integration stays alive, marks resync as completed, and actions continue to work.
