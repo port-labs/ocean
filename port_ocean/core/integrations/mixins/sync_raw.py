@@ -1288,6 +1288,29 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
+            if not app_config.resources:
+                logger.info(
+                    "Port app config has no resources configured; "
+                    "skipping resync as no-op until mapping is configured"
+                )
+                dsp_enabled = await is_dsp_mode_enabled()
+                ocean.metrics.initialize_metrics([MetricResourceKind.RUNTIME])
+                async with metric_resource_context(MetricResourceKind.RUNTIME):
+                    ocean.metrics.sync_state = SyncState.COMPLETED
+                    ocean.metrics.set_metric(
+                        name=MetricType.SUCCESS_NAME,
+                        labels=[MetricResourceKind.RUNTIME, MetricPhase.RESYNC],
+                        value=1,
+                    )
+                    await ocean.metrics.send_metrics_to_webhook(
+                        kind=MetricResourceKind.RUNTIME
+                    )
+                    await ocean.metrics.report_sync_metrics(
+                        kinds=[MetricResourceKind.RUNTIME],
+                        dsp_enabled=dsp_enabled,
+                    )
+                return True
+
             logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
 
             dsp_enabled = await is_dsp_mode_enabled()
