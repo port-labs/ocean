@@ -20,8 +20,6 @@ from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.context.resource import resource
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
-from port_ocean.clients.port.utils import get_event_context_params
-
 from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
@@ -177,6 +175,7 @@ async def event_context(
     dispatcher.send(event_type, triggering_event_id=event.id)
 
     start_time = get_time(seconds_precision=False)
+    from port_ocean.clients.port.utils import get_event_context_params
 
     with logger.contextualize(
         event_trigger_type=event.trigger_type,
