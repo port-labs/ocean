@@ -40,9 +40,13 @@ from azure_devops.incremental import (
     flatten_advanced_security_params,
     wiql_changed_after_clause,
 )
-from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
+from azure_devops.client.base_client import (
+    CONTINUATION_TOKEN_HEADER,
+    MAX_TIMEMOUT_RETRIES,
+    PAGE_SIZE,
+    HTTPBaseClient,
+)
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
-from azure_devops.client.base_client import CONTINUATION_TOKEN_HEADER, PAGE_SIZE
 
 from azure_devops.client.file_processing import (
     PathDescriptor,
@@ -2337,6 +2341,23 @@ class AzureDevopsClient(HTTPBaseClient):
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
 
+    def _resolve_repository_branch(
+        self,
+        repository: dict[str, Any],
+        branch_override: str | None = None,
+    ) -> str | None:
+        if branch_override:
+            return branch_override
+
+        default_branch = repository.get("defaultBranch")
+        if not default_branch:
+            logger.warning(
+                f"Repository {repository['name']} has no default branch. Skipping."
+            )
+            return None
+
+        return default_branch.replace("refs/heads/", "")
+
     async def _get_repository_files(
         self,
         repository: dict[str, Any],
@@ -2346,14 +2367,9 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Checking repository {repository['name']} for files matching {paths}"
         )
 
-        branch = repository.get("defaultBranch")
+        branch = self._resolve_repository_branch(repository)
         if not branch:
-            logger.warning(
-                f"Repository {repository['name']} has no default branch. Skipping."
-            )
             return
-
-        branch = branch.replace("refs/heads/", "")
 
         files = []
         literal_paths, glob_patterns = separate_glob_and_literal_paths(paths)
@@ -2768,20 +2784,24 @@ class AzureDevopsClient(HTTPBaseClient):
         folder_pattern: FolderPattern,
         repo_mapping: RepositoryBranchMapping | None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        branch = repo_mapping.branch if repo_mapping else None
-        if not branch and "defaultBranch" in repo:
-            branch = repo["defaultBranch"].replace("refs/heads/", "")
+        branch = self._resolve_repository_branch(
+            repo, repo_mapping.branch if repo_mapping else None
+        )
+        if not branch:
+            return
 
         async for found_folders in self.get_repository_folders(
             repo["id"], [folder_pattern.path]
         ):
-            processed_folders = []
-            for folder in found_folders:
-                folder_dict = dict(folder)
-                folder_dict["__repository"] = repo
-                folder_dict["__branch"] = branch
-                folder_dict["__pattern"] = folder_pattern.path
-                processed_folders.append(folder_dict)
+            processed_folders = [
+                {
+                    **folder,
+                    "__repository": repo,
+                    "__branch": branch,
+                    "__pattern": folder_pattern.path,
+                }
+                for folder in found_folders
+            ]
             if processed_folders:
                 yield processed_folders
 
