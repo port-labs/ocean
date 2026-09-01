@@ -45,7 +45,7 @@ def test_get_port_app_config_kinds_skips_custom_kind_slot() -> None:
         kind: str = Field(title="Custom", description="Custom kind.")
 
     class Config(PortAppConfig):
-        allow_custom_kinds = True
+        allow_custom_kinds: ClassVar[bool] = True
         resources: list[IncidentConfig | CustomResourceConfig] = _resources()  # type: ignore[assignment]
 
     assert get_port_app_config_kinds(Config) == ["incident"]
