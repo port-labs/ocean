@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Sequence
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.clients.client_factory import create_github_client
-from github.core.exporters.organization_exporter import RestOrganizationExporter
 from port_ocean.core.probe import ProbeContext, ProbeCheck, KindPermissionVerdict
 
 
@@ -42,23 +40,3 @@ def org_scopes(organizations: Sequence[str]) -> list[dict[str, str]]:
         {"org": organization} if is_multi_org else {}
         for organization in organizations
     ]
-
-
-async def discover_organization_logins(
-    authenticator: AbstractGitHubAuthenticator,
-) -> list[str]:
-    if authenticator.organization:
-        return [authenticator.organization]
-
-    rest_client = create_github_client(authenticator)
-    exporter = RestOrganizationExporter(rest_client)
-    organizations: list[str] = []
-    async for batch in exporter.get_paginated_resources():
-        for organization in batch:
-            if (
-                isinstance(organization, dict)
-                and isinstance(login := organization.get("login"), str)
-                and login not in organizations
-            ):
-                organizations.append(login)
-    return organizations
