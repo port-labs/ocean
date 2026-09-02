@@ -1,6 +1,5 @@
 from jira.overrides import JiraPortAppConfig
-from jira.probe import JiraKindPermissionVerdict
-from jira.probe.permissions import JiraKindPermissionVerdict as PermissionsVerdict
+from jira.probe.permissions import JiraKindPermissionVerdict
 from port_ocean.core.handlers.port_app_config.validators import (
     get_kind_probe_permissions,
 )
@@ -16,7 +15,7 @@ def test_jira_kind_permission_verdict_loads_kind_probe_permissions() -> None:
 
 
 def test_jira_kind_permission_verdict_grants_and_denies_permissions() -> None:
-    verdict = PermissionsVerdict()
+    verdict = JiraKindPermissionVerdict()
 
     granted_status, granted_message = verdict.verdict(
         "project",
