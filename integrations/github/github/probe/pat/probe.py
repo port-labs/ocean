@@ -38,6 +38,10 @@ FINE_GRAINED_PAT_MESSAGE = (
 )
 
 
+def is_fine_grained_pat(token: str) -> bool:
+    return token.startswith("github_pat_")
+
+
 class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
     def _permission_verdict_class(self) -> type[KindPermissionVerdict]:
         return PatKindPermissionVerdict
