@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Probe discovers supported resource kinds from the integration PortAppConfig
