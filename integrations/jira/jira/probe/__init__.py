@@ -1,2 +1,3 @@
-# mypy: implicit_reexport
-from jira.probe.permissions import JiraPermissionProbe as JiraPermissionProbe
+# mypy: implicit-reexport
+from jira.probe.permissions import JiraKindPermissionVerdict
+from jira.probe.probe import JiraPermissionProbe

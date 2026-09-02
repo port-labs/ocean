@@ -75,11 +75,9 @@ class ProbeContext:
                     list(configured_kinds_set - supported_kinds_set), supported_kinds
                 )
 
-            self.available_kinds = sorted(list(configured_kinds_set))
+            self.available_kinds = sorted(configured_kinds_set)
         else:
-            self.available_kinds = sorted(
-                get_port_app_config_kinds(port_app_config_class)
-            )
+            self.available_kinds = get_port_app_config_kinds(port_app_config_class)
 
         self.reporter = REPORTER_MODES[self.config.reporting_mode](self.config)
         self.status = ProbeStatus.IN_PROGRESS

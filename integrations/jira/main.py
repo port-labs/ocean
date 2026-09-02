@@ -3,9 +3,11 @@ from typing import cast, Any
 
 from loguru import logger
 from initialize_client import get_or_create_jira_client
+from jira.probe import JiraPermissionProbe
 from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.probe import ProbeContext
 from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
 from port_ocean.core.probe import ProbeContext

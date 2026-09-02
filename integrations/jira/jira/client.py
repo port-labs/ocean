@@ -1,5 +1,4 @@
 import asyncio
-from collections.abc import Sequence
 import uuid
 from typing import Any, AsyncGenerator, Generator, Literal
 
@@ -16,7 +15,6 @@ from jira.overrides import (
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 from .rate_limiter import JiraRateLimiter
 from .retry_transport import JiraRetryTransport
 
@@ -234,13 +232,13 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         retryable: bool = False,
-        skip_retry: bool | None = None,
+        skip_retry: bool = False,
     ) -> Any:
         extensions: dict[str, Any] = {}
         if retryable:
             extensions["retryable"] = True
-        if skip_retry is not None:
-            extensions[SKIP_RETRY_EXTENSION_KEY] = skip_retry
+        if skip_retry:
+            extensions["skip_retry"] = True
 
         try:
             async with self._rate_limiter:
@@ -476,17 +474,14 @@ class JiraClient(OAuthClient):
 
         return has_permission
 
-    async def get_current_user_permissions(
-        self, permission_keys: Sequence[str]
-    ) -> dict[str, bool]:
-        """Verify authentication and return the current user's effective permissions.
+    async def verify_current_user(self) -> None:
+        """Validate that the configured credentials identify a real Jira user."""
+        await self._send_api_request("GET", f"{self.api_url}/myself", skip_retry=True)
 
-        Retries are disabled so a probe reports a rejected token immediately instead
-        of waiting out the backoff budget on credentials that cannot start working.
-        """
-        await self._send_api_request(
-            "GET", f"{self.api_url}/myself", skip_retry=True
-        )
+    async def get_current_user_permissions(
+        self, permission_keys: list[str]
+    ) -> dict[str, bool]:
+        """Return the current user's effective permissions for the given keys."""
         if not permission_keys:
             return {}
 
@@ -502,11 +497,6 @@ class JiraClient(OAuthClient):
         }
 
     async def verify_teams_access(self, org_id: str) -> None:
-        """Verify the configured credentials can read teams for an organization.
-
-        Retries are disabled so a probe reports a rejected token immediately instead
-        of waiting out the backoff budget on credentials that cannot start working.
-        """
         await self._send_api_request(
             "GET",
             f"{self.teams_base_url}/{org_id}/teams",

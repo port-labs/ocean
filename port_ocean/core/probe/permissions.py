@@ -28,17 +28,14 @@ class KindPermissionVerdict(ABC):
     def combination(self) -> PermissionCombination:
         """Whether all mapped permissions must be granted (AND) or any one (OR)."""
 
-    @abstractmethod
     def unmapped_message(self, kind: str) -> str:
-        """Message when no permission mapping exists for a kind."""
+        return f"No permission mapping is defined for {kind}"
 
-    @abstractmethod
     def granted_message(self, granted: tuple[str, ...]) -> str:
-        """Message when the required permissions are satisfied."""
+        return "Permission(s) granted: " + ", ".join(granted)
 
-    @abstractmethod
     def denied_message(self, denied: tuple[str, ...]) -> str:
-        """Message when the required permissions are not satisfied."""
+        return "Missing permission(s): " + ", ".join(denied)
 
     def missing_message(self, missing: tuple[str, ...]) -> str | None:
         """Message when the provider omitted one or more required permissions."""
