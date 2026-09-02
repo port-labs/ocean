@@ -183,6 +183,16 @@ def _parse_change_timestamp(timestamp: str) -> datetime:
         return datetime.max.replace(tzinfo=timezone.utc)
 
 
+def _normalize_git_scope_path(path: str) -> str:
+    """Normalize a Git item path for the Azure DevOps Items API ``scopePath`` parameter.
+
+    ADO expects a leading slash (e.g. ``/App/root``). Continuation tokens are bound to
+    the normalized scope path, so pagination must use the same format on every request.
+    """
+    normalized = path.strip().strip("/")
+    return "/" if not normalized else f"/{normalized}"
+
+
 def _normalize_area_path(path: str) -> str:
     """Convert a classification-node path to work-item ``System.AreaPath`` format.
 
@@ -2692,7 +2702,7 @@ class AzureDevopsClient(HTTPBaseClient):
         items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
 
         params = {
-            "scopePath": path,
+            "scopePath": _normalize_git_scope_path(path),
             "recursionLevel": recursion_level,
             "$top": PAGE_SIZE,
             "api-version": "7.1",
@@ -2725,16 +2735,16 @@ class AzureDevopsClient(HTTPBaseClient):
         parts = pattern.split("/")
         base_parts = []
         for part in parts:
-            if "*" not in part:
-                base_parts.append(part)
-            else:
+            if "*" in part:
                 break
+            if part:
+                base_parts.append(part)
         base_path = "/".join(base_parts)
 
         return functools.partial(
             self.get_repository_tree,
             repository_id,
-            path=base_path or "/",
+            path=_normalize_git_scope_path(base_path),
             recursion_level="oneLevel",  # Always use oneLevel recursion
         )
 
