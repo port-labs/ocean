@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import types
+from collections.abc import Iterable, Iterator
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
 from pydantic.v1 import BaseModel
@@ -33,11 +34,14 @@ def validate_and_get_config_schema(
 
 def get_port_app_config_kinds(config_class: Type[PortAppConfig]) -> list[str]:
     """Return literal resource kind values declared on a PortAppConfig class."""
-    kinds = _build_kinds_mapping(
-        _get_resource_config_models(config_class),
-        config_class.allow_custom_kinds,
+    return sorted(
+        kind
+        for _, kind in _iter_resource_kinds(
+            _get_resource_config_models(config_class),
+            config_class.allow_custom_kinds,
+        )
+        if kind != CUSTOM_KIND
     )
-    return sorted(kind for kind in kinds if kind != CUSTOM_KIND)
 
 
 def get_kind_probe_permissions(
@@ -52,18 +56,11 @@ def get_kind_probe_permissions(
     When a dict is used, *permission_key* selects the active namespace.
     """
     kind_permissions: dict[str, tuple[str, ...]] = {}
-    for model in _get_resource_config_models(config_class):
-        if not (isinstance(model, type) and issubclass(model, ResourceConfig)):
-            continue
-
-        kind_field = model.__fields__.get("kind")
-        if kind_field is None:
-            continue
-
-        kind_value = _resolve_kind_value(
-            kind_field, model.__name__, config_class.allow_custom_kinds
-        )
-        if kind_value is None or kind_value == CUSTOM_KIND:
+    for model, kind_value in _iter_resource_kinds(
+        _get_resource_config_models(config_class),
+        config_class.allow_custom_kinds,
+    ):
+        if kind_value == CUSTOM_KIND:
             continue
 
         permissions = _resolve_probe_permissions_for_model(model, permission_key)
@@ -220,6 +217,26 @@ def _get_resource_config_models(config_class: Type[PortAppConfig]) -> list[type]
     return _unwrap_union(list_args[0])
 
 
+def _iter_resource_kinds(
+    models: Iterable[type],
+    allow_custom_kinds: bool,
+) -> Iterator[tuple[type[ResourceConfig], str]]:
+    """Yield each ``ResourceConfig`` model with its resolved kind value."""
+    for model in models:
+        if not (isinstance(model, type) and issubclass(model, ResourceConfig)):
+            continue
+
+        kind_field = model.__fields__.get("kind")
+        if kind_field is None:
+            raise ValueError(f"{model.__name__} is missing the required 'kind' field")
+
+        kind_value = _resolve_kind_value(kind_field, model.__name__, allow_custom_kinds)
+        if kind_value is None:
+            raise ValueError(f"{model.__name__}: could not resolve kind value")
+
+        yield model, kind_value
+
+
 def _unwrap_union(annotation: Any) -> list[type]:
     """Unwrap a ``Union`` (or Python 3.10+ ``X | Y``) into member types."""
     origin = get_origin(annotation)
@@ -255,22 +272,13 @@ def _build_kinds_mapping(
     """Walk *models*, validate each ``kind``, and build the kinds mapping."""
     kinds: dict[str, dict[str, Any]] = {}
 
-    for model in models:
-        if not (isinstance(model, type) and issubclass(model, ResourceConfig)):
-            continue
-
-        kind_field = model.__fields__.get("kind")
-        if kind_field is None:
-            raise ValueError(f"{model.__name__} is missing the required 'kind' field")
-
-        kind_value = _resolve_kind_value(kind_field, model.__name__, allow_custom_kinds)
-        if kind_value is None:
-            raise ValueError(f"{model.__name__}: could not resolve kind value")
+    for model, kind_value in _iter_resource_kinds(models, allow_custom_kinds):
         if kind_value != CUSTOM_KIND and kind_value in kinds:
             raise ValueError(
                 f"Duplicate kind '{kind_value}' found in resource config models"
             )
 
+        kind_field = model.__fields__["kind"]
         kind_entry = _field_info_to_dict(kind_field.field_info)
 
         selector_field = model.__fields__.get("selector")
