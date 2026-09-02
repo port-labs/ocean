@@ -10,34 +10,38 @@ from aws.core.helpers.metadata.types import (
 CLOUDTRAIL_EVENT_SOURCE = "ec2.amazonaws.com"
 
 
-def _extract_volume_id(detail: CloudTrailDetail) -> str | None:
+def _extract_volume_id_from_request(detail: CloudTrailDetail) -> str | None:
+    """DeleteVolume: requestParameters.volumeId."""
     request_parameters = detail.get("requestParameters", {})
-    if isinstance(request_parameters, dict):
-        volume_id = request_parameters.get("volumeId")
-        if isinstance(volume_id, str):
-            return volume_id
+    if not isinstance(request_parameters, dict):
+        return None
 
-        modify_volume_request = request_parameters.get("ModifyVolumeRequest")
-        if isinstance(modify_volume_request, dict):
-            modify_volume_id = modify_volume_request.get("VolumeId")
-            if isinstance(modify_volume_id, str):
-                return modify_volume_id
+    volume_id = request_parameters.get("volumeId")
+    return volume_id if isinstance(volume_id, str) else None
 
+
+def _extract_volume_id_from_modify_request(detail: CloudTrailDetail) -> str | None:
+    """ModifyVolume: requestParameters.ModifyVolumeRequest.VolumeId."""
+    request_parameters = detail.get("requestParameters", {})
+    if not isinstance(request_parameters, dict):
+        return None
+
+    modify_volume_request = request_parameters.get("ModifyVolumeRequest")
+    if not isinstance(modify_volume_request, dict):
+        return None
+
+    volume_id = modify_volume_request.get("VolumeId")
+    return volume_id if isinstance(volume_id, str) else None
+
+
+def _extract_volume_id_from_response(detail: CloudTrailDetail) -> str | None:
+    """CreateVolume: responseElements.volumeId."""
     response_elements = detail.get("responseElements")
-    if isinstance(response_elements, dict):
-        response_volume_id = response_elements.get("volumeId")
-        if isinstance(response_volume_id, str):
-            return response_volume_id
+    if not isinstance(response_elements, dict):
+        return None
 
-        modify_volume_response = response_elements.get("ModifyVolumeResponse")
-        if isinstance(modify_volume_response, dict):
-            volume_modification = modify_volume_response.get("volumeModification")
-            if isinstance(volume_modification, dict):
-                modification_volume_id = volume_modification.get("volumeId")
-                if isinstance(modification_volume_id, str):
-                    return modification_volume_id
-
-    return None
+    volume_id = response_elements.get("volumeId")
+    return volume_id if isinstance(volume_id, str) else None
 
 
 def _request_factory(
@@ -63,17 +67,17 @@ EC2_VOLUME_LIVE_EVENTS = LiveEventFactories(
     cloudtrail_mappings={
         "CreateVolume": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_volume_id,
+            _extract_volume_id_from_response,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "ModifyVolume": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_volume_id,
+            _extract_volume_id_from_modify_request,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "DeleteVolume": CloudTrailEventMapping(
             CloudTrailEventAction.DELETE,
-            _extract_volume_id,
+            _extract_volume_id_from_request,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
