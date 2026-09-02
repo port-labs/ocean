@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Skip Azure DevOps repos with no default branch during folder sync
