@@ -185,7 +185,7 @@ async def event_context(
         event_resource_kind=(
             event.resource_config.kind if event.resource_config else None
         ),
-        **get_event_context_params(), 
+        **get_event_context_params(),
     ):
         logger.info("Event started")
         try:
