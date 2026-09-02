@@ -12,6 +12,3 @@ class PatKindPermissionVerdict(KindPermissionVerdict):
     @property
     def combination(self) -> PermissionCombination:
         return PermissionCombination.OR
-
-    def is_granted(self, permission: str, permissions: Mapping[str, object]) -> bool:
-        return permission in permissions
