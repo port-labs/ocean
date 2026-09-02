@@ -27,6 +27,7 @@ def require_aws_resource(
         operation_name,
     )
 
+
 def is_access_denied_exception(e: Exception) -> bool:
     access_denied_error_codes = [
         "AccessDenied",
