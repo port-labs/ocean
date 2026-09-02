@@ -4,7 +4,11 @@ from port_ocean.core.probe import KindPermissionVerdict
 from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
+from github.probe.base_probe_flow import (
+    GitHubPermissionProbeFlow,
+    discover_organization_logins,
+    org_scopes,
+)
 
 
 NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
@@ -48,7 +52,13 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
 
     async def run(self) -> None:
         authenticator = self.authenticators[0]
-        organizations = await self._get_organizations(authenticator)
+        token = (await authenticator.get_token()).token
+        if is_fine_grained_pat(token):
+            self.context.message = FINE_GRAINED_PAT_MESSAGE
+            return
+
+        organizations = await discover_organization_logins(authenticator)
+
         granted_scopes = await self._get_scopes(authenticator)
         if granted_scopes is None:
             return
@@ -78,41 +88,6 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             for scope in response.headers.get("x-oauth-scopes", "").split(",")
             if scope.strip()
         }
-
-    async def _get_organizations(
-        self,
-        authenticator: AbstractGitHubAuthenticator,
-    ) -> list[str | None]:
-        if authenticator.organization:
-            return [authenticator.organization]
-
-        headers = (await authenticator.get_headers()).as_dict()
-        url: str | None = (
-            f"{ocean.integration_config['github_host'].rstrip('/')}/user/orgs"
-        )
-        organizations: list[str | None] = []
-        params: dict[str, int] | None = {"per_page": 100}
-        while url:
-            response = await authenticator.client.get(
-                url,
-                headers=headers,
-                params=params,
-                extensions=NO_RETRY,
-            )
-            response.raise_for_status()
-            organizations.extend(
-                login
-                for organization in response.json()
-                if isinstance(organization, dict)
-                and isinstance(login := organization.get("login"), str)
-                and login not in organizations
-            )
-            next_link = response.links.get("next")
-            url = next_link.get("url") if next_link else None
-            params = None
-        if organizations:
-            return organizations
-        return [None]
 
 
 def expand_pat_scopes(scopes: set[str]) -> set[str]:
