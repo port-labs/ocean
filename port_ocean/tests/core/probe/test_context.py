@@ -1,7 +1,7 @@
 """Unit tests for probe context."""
 
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,14 +23,7 @@ from port_ocean.core.probe.models import (
 from port_ocean.core.probe.reporters.file import FileProbeReporter
 from port_ocean.core.probe.reporters.log import LogProbeReporter
 from port_ocean.exceptions.probe import InvalidProbeKindsError, ProbeNotInitializedError
-
-
-def _resources() -> Any:
-    return Field(
-        default_factory=list,
-        title="Resources",
-        description="The list of resource configurations for the integration.",
-    )
+from port_ocean.tests.core.handlers.port_app_config.test_helpers import resources_field
 
 
 class _RepositoryConfig(ResourceConfig):
@@ -42,7 +35,7 @@ class _PullRequestConfig(ResourceConfig):
 
 
 class _TestPortAppConfig(PortAppConfig):
-    resources: list[_RepositoryConfig | _PullRequestConfig] = _resources()  # type: ignore[assignment]
+    resources: list[_RepositoryConfig | _PullRequestConfig] = resources_field()  # type: ignore[assignment]
 
 
 def test_starts_with_empty_state() -> None:
