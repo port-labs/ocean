@@ -21,19 +21,52 @@ class JiraPermissionProbe:
         })
 
         try:
-            permissions = await self.client.get_current_user_permissions(permission_keys)
+            await self.client.verify_current_user()
         except (HTTPStatusError, RequestError):
-            await self.context.fail(f"Failed to fetch user permissions.")
+            await self.context.fail("Failed to verify Jira authentication.")
             return
 
         checks = await self.context.add_scopes({})
-        await self._resolve_permission_checks(checks, permissions)
+
+        try:
+            permissions = await self.client.get_current_user_permissions(permission_keys)
+        except HTTPStatusError as error:
+            await self._fail_permission_checks(
+                checks,
+                (
+                    f"Jira returned HTTP {error.response.status_code} "
+                    "while fetching user permissions"
+                ),
+            )
+        except RequestError as error:
+            await self._fail_permission_checks(
+                checks,
+                (
+                    "Jira could not be reached while fetching user permissions: "
+                    f"{error}"
+                ),
+            )
+        else:
+            await self._resolve_permission_checks(checks, permissions)
+
         team_check = next(
             (check for check in checks if check.kind == Kinds.TEAM),
             None,
         )
         if team_check is not None:
             await self._resolve_team_check(team_check)
+
+    async def _fail_permission_checks(
+        self,
+        checks: list[ProbeCheck],
+        message: str,
+    ) -> None:
+        for check in checks:
+            if check.kind == Kinds.TEAM:
+                continue
+            check.status = ProbeCheckStatus.FAILURE
+            check.message = message
+        await self.context.update_progress()
 
     async def _resolve_permission_checks(
         self,
