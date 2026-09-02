@@ -4,16 +4,17 @@ from typing import Any
 
 EventPayload = dict[str, Any]
 
-# Stay below New Relic's 255-attribute limit after JSON flattening.
+# Stay below typical log-backend attribute caps after nested JSON is flattened.
 _MAX_FLAT_PAYLOAD_ATTRIBUTES = 200
-# Cap JSON size before base64 to stay within NR blob storage (~128KB).
+# Cap JSON size before base64 so the encoded field stays within common log value limits.
 _MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES = 120 * 1024
 
 
-def count_flat_attributes(value: Any, *, limit: int | None = None) -> int:
-    """Estimate how many leaf attributes NR would create after flattening JSON.
+def count_flat_attributes(payload: EventPayload, *, limit: int | None = None) -> int:
+    """Estimate how many leaf attributes nested JSON would flatten into.
 
-    Stops once ``limit`` is reached so oversized payloads are not fully walked.
+    ``len(payload)`` and JSON byte size only measure how big the object is.
+    Nested values become extra attributes, so we walk leaves until ``limit``.
     Defaults to one past the base64 threshold used for Added To Queue logs.
     """
     stop_at = _MAX_FLAT_PAYLOAD_ATTRIBUTES + 1 if limit is None else limit
@@ -35,7 +36,7 @@ def count_flat_attributes(value: Any, *, limit: int | None = None) -> int:
             return total
         return 1
 
-    return _count(value)
+    return _count(payload)
 
 
 def _truncate_utf8_bytes(data: bytes, max_len: int) -> bytes:
@@ -58,11 +59,11 @@ def should_base64_payload(payload: EventPayload) -> bool:
 def build_added_to_queue_payload_log_fields(
     payload: EventPayload,
 ) -> dict[str, Any]:
-    """Build NR-safe payload fields for a single Event Added To Queue log.
+    """Build payload fields for a single Event Added To Queue log.
 
-    Headers are logged separately by the caller. Small payloads stay as nested
-    JSON. Payloads that would exceed NR's 255-attribute flatten limit are
-    logged as a single base64 string so the whole event is not dropped.
+    Small payloads stay as nested JSON. Payloads that would flatten into too
+    many log attributes are logged as a single base64 string so the event is
+    not dropped by the log backend.
     """
     if not should_base64_payload(payload):
         return {"payload": payload}

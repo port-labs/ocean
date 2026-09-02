@@ -13,6 +13,12 @@ def test_count_flat_attributes_counts_nested_leaves() -> None:
     assert count_flat_attributes(payload) == 2
 
 
+def test_count_flat_attributes_counts_nested_list_leaves() -> None:
+    payload = {"assignees": [{"login": "a"}, {"login": "b"}]}
+    assert count_flat_attributes(payload) == 2
+    assert len(payload) == 1
+
+
 def test_count_flat_attributes_stops_once_limit_is_reached() -> None:
     payload = {f"key_{index}": index for index in range(500)}
     assert count_flat_attributes(payload) == 201
