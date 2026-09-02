@@ -33,8 +33,8 @@ _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
 
 
 FINE_GRAINED_PAT_MESSAGE = (
-    "GitHub does not expose granted scopes for this token; "
-    "this is expected for fine-grained personal access tokens"
+    "Your token is valid, but permission verification is not available for "
+    "fine-grained personal access tokens because GitHub does not expose granted scopes."
 )
 
 
