@@ -51,7 +51,6 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         organizations = await self._get_organizations(authenticator)
         granted_scopes = await self._get_scopes(authenticator)
         if granted_scopes is None:
-            await self.context.fail(FINE_GRAINED_PAT_MESSAGE)
             return
 
         checks = await self.context.add_scopes(*org_scopes(organizations))
@@ -69,12 +68,14 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             headers=(await authenticator.get_headers()).as_dict(),
             extensions=NO_RETRY,
         )
-        response.raise_for_status()
-        if "x-oauth-scopes" not in response.headers:
+        if not response.is_success:
+            await self.context.fail(
+                f"Failed to fetch PAT scopes: GitHub API returned {response.status_code}"
+            )
             return None
         return {
             scope.strip()
-            for scope in response.headers["x-oauth-scopes"].split(",")
+            for scope in response.headers.get("x-oauth-scopes", "").split(",")
             if scope.strip()
         }
 
