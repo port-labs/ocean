@@ -3,12 +3,13 @@ from typing import cast, Any
 
 from loguru import logger
 from initialize_client import get_or_create_jira_client
+from jira.probe import JiraPermissionProbe
 from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.probe import ProbeContext
 from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
-from port_ocean.core.probe import ProbeContext
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
@@ -23,7 +24,6 @@ from jira.overrides import (
     JiraEpicResourceConfig,
     JiraComponentResourceConfig,
 )
-from jira.probe import JiraPermissionProbe
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
