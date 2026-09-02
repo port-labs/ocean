@@ -37,7 +37,9 @@ def test_build_added_to_queue_payload_log_fields_uses_json_for_small_payload() -
     assert fields == {"payload": payload}
 
 
-def test_build_added_to_queue_payload_log_fields_uses_base64_for_large_payload() -> None:
+def test_build_added_to_queue_payload_log_fields_uses_base64_for_large_payload() -> (
+    None
+):
     payload = {f"key_{index}": {"nested": index} for index in range(250)}
 
     fields = build_added_to_queue_payload_log_fields(payload)
