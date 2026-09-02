@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.exporters.ec2.volume.actions import EbsVolumeActionsMap
 from aws.core.exporters.ec2.volume.models import (
     EbsVolume,
@@ -30,9 +31,12 @@ class EbsVolumeExporter(IResourceExporter[list[dict[str, Any]]]):
             response = await proxy.client.describe_volumes(  # type: ignore[attr-defined]
                 VolumeIds=[options.volume_id]
             )
-            volumes = response.get("Volumes", [])
-            if not volumes:
-                return {}
+            volumes = require_aws_resource(
+                response.get("Volumes", []),
+                error_code="InvalidVolume.NotFound",
+                message=f"Volume not found: {options.volume_id}",
+                operation_name="DescribeVolumes",
+            )
             result = await inspector.inspect(
                 volumes,
                 options.include,

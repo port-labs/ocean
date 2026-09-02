@@ -1,9 +1,11 @@
 from typing import Any, AsyncGenerator, Type, List, Dict
 
+from aws.core.helpers.utils import require_aws_resource
 from loguru import logger
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ec2.instance.actions import EC2InstanceActionsMap
+from aws.core.exporters.ec2.instance.utils import extract_ec2_instances
 from aws.core.exporters.ec2.instance.models import EC2Instance
 from aws.core.exporters.ec2.instance.models import (
     SingleEC2InstanceRequest,
@@ -12,7 +14,6 @@ from aws.core.exporters.ec2.instance.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from loguru import logger
 
 
 class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
@@ -26,17 +27,31 @@ class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            response = await proxy.client.describe_instances(  # type: ignore[attr-defined]
+                InstanceIds=[options.instance_id]
+            )
+            instances = require_aws_resource(
+                extract_ec2_instances(response),
+                error_code="InvalidInstanceID.NotFound",
+                message=f"Instance not found: {options.instance_id}",
+                operation_name="DescribeInstances",
+            )
 
             inspector = ResourceInspector(
                 proxy.client,
                 self._actions_map(),
                 lambda: self._model_cls(),
             )
-            response = await inspector.inspect(
-                [{"InstanceId": options.instance_id}], options.include
+            result = await inspector.inspect(
+                instances,
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
             )
 
-            return response[0] if response else {}
+            return result[0] if result else {}
 
     async def get_paginated_resources(
         self, options: PaginatedEC2InstanceRequest
