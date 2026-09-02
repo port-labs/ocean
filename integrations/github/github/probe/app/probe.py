@@ -3,8 +3,6 @@ from port_ocean.core.probe import KindPermissionVerdict
 
 from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
 
-_PERMISSION_LEVELS = {"read": 1, "write": 2, "admin": 3}
-
 
 class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
     def _permission_verdict_class(self) -> type[KindPermissionVerdict]:
