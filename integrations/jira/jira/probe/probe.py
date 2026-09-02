@@ -104,7 +104,7 @@ class JiraPermissionProbe:
         except HTTPStatusError as error:
             check.status = ProbeCheckStatus.FAILURE
             check.message = (
-                f"Jira returned HTTP {error.response.status_code} "
+                f"Atlassian Teams API returned HTTP {error.response.status_code} "
                 "while verifying teams access"
             )
             await self.context.update_progress()
@@ -112,7 +112,8 @@ class JiraPermissionProbe:
         except RequestError as error:
             check.status = ProbeCheckStatus.FAILURE
             check.message = (
-                "Jira could not be reached while verifying teams access: " f"{error}"
+                "Atlassian Teams API could not be reached while verifying teams "
+                f"access: {error}"
             )
             await self.context.update_progress()
             return
