@@ -977,6 +977,10 @@ def _ec2_volume_eventbridge_envelope(
 
     if event_name == "CreateVolume" and volume_id is not None:
         detail["responseElements"] = {"volumeId": volume_id}
+    elif event_name == "ModifyVolume" and volume_id is not None:
+        detail["requestParameters"] = {
+            "ModifyVolumeRequest": {"VolumeId": volume_id, "Size": "2"}
+        }
     elif volume_id is not None:
         detail["requestParameters"] = {"volumeId": volume_id}
     else:
@@ -1006,15 +1010,22 @@ def test_is_supported_cloudtrail_event_true_for_ec2_volume_events() -> None:
 
 def test_parse_ec2_volume_events() -> None:
     create_payload = _ec2_volume_eventbridge_envelope("CreateVolume")
+    modify_payload = _ec2_volume_eventbridge_envelope("ModifyVolume")
     delete_payload = _ec2_volume_eventbridge_envelope("DeleteVolume")
 
     create_parsed = parse_cloudtrail_event(create_payload)
+    modify_parsed = parse_cloudtrail_event(modify_payload)
     delete_parsed = parse_cloudtrail_event(delete_payload)
 
     assert create_parsed is not None
     assert create_parsed.kind == ObjectKind.EC2_VOLUME
     assert create_parsed.action == CloudTrailEventAction.UPSERT
     assert create_parsed.identifier == "vol-1234567890abcdef0"
+
+    assert modify_parsed is not None
+    assert modify_parsed.kind == ObjectKind.EC2_VOLUME
+    assert modify_parsed.action == CloudTrailEventAction.UPSERT
+    assert modify_parsed.identifier == "vol-1234567890abcdef0"
 
     assert delete_parsed is not None
     assert delete_parsed.kind == ObjectKind.EC2_VOLUME

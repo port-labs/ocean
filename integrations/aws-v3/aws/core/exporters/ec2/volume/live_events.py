@@ -12,15 +12,30 @@ CLOUDTRAIL_EVENT_SOURCE = "ec2.amazonaws.com"
 
 def _extract_volume_id(detail: CloudTrailDetail) -> str | None:
     request_parameters = detail.get("requestParameters", {})
-    volume_id = request_parameters.get("volumeId")
-    if isinstance(volume_id, str):
-        return volume_id
+    if isinstance(request_parameters, dict):
+        volume_id = request_parameters.get("volumeId")
+        if isinstance(volume_id, str):
+            return volume_id
+
+        modify_volume_request = request_parameters.get("ModifyVolumeRequest")
+        if isinstance(modify_volume_request, dict):
+            modify_volume_id = modify_volume_request.get("VolumeId")
+            if isinstance(modify_volume_id, str):
+                return modify_volume_id
 
     response_elements = detail.get("responseElements")
     if isinstance(response_elements, dict):
         response_volume_id = response_elements.get("volumeId")
         if isinstance(response_volume_id, str):
             return response_volume_id
+
+        modify_volume_response = response_elements.get("ModifyVolumeResponse")
+        if isinstance(modify_volume_response, dict):
+            volume_modification = modify_volume_response.get("volumeModification")
+            if isinstance(volume_modification, dict):
+                modification_volume_id = volume_modification.get("volumeId")
+                if isinstance(modification_volume_id, str):
+                    return modification_volume_id
 
     return None
 
