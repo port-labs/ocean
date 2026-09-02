@@ -224,6 +224,7 @@ async def probe(context: ProbeContext) -> ProbeContext:
     logger.info(
         f"Probing GitHub permissions for {len(context.available_kinds)} resource kinds"
     )
+    await ocean.integration.port_app_config_handler.get_port_app_config()
     provider = get_auth_provider()
     probe_flow = GitHubAppPermissionProbe if provider.is_app_auth() else GitHubPatPermissionProbe
     await probe_flow(context, await provider.list_authenticators()).run()
