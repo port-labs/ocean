@@ -1320,3 +1320,29 @@ class TestFileExporterUtils:
         assert 'repository(owner: "test-org", name: "repo1")' in query["query"]
         # Should not contain any file objects
         assert "file_0: object" not in query["query"]
+
+
+@pytest.mark.asyncio
+class TestFileProcessorMultiDocumentYaml:
+    async def test_process_file_returns_list_for_multi_document_yaml(self) -> None:
+        """Resync and webhook file processing both route through FileProcessor."""
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+        multi_doc_yaml = (
+            "name: service-a\nversion: 1.0.0\n---\nname: service-b\nversion: 2.0.0\n"
+        )
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="services.yaml",
+            skip_parsing=False,
+            branch="main",
+            content=multi_doc_yaml,
+            metadata={},
+        )
+
+        assert result["content"] == [
+            {"name": "service-a", "version": "1.0.0"},
+            {"name": "service-b", "version": "2.0.0"},
+        ]
+
