@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.exporters.rds.db_cluster.actions import RdsDbClusterActionsMap
 from aws.core.exporters.rds.db_cluster.models import (
     DbCluster,
@@ -23,17 +24,23 @@ class RdsDbClusterExporter(IResourceExporter[list[dict[str, Any]]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            inspector = ResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
-            )
-
             response = await proxy.client.describe_db_clusters(  # type: ignore[attr-defined]
                 DBClusterIdentifier=options.db_cluster_identifier
             )
 
-            db_cluster = response["DBClusters"]
+            db_clusters = require_aws_resource(
+                response.get("DBClusters", []),
+                error_code="DBClusterNotFoundFault",
+                message=f"DB cluster not found: {options.db_cluster_identifier}",
+                operation_name="DescribeDBClusters",
+            )
+
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls()
+            )
+
             action_result = await inspector.inspect(
-                db_cluster,
+                db_clusters,
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,

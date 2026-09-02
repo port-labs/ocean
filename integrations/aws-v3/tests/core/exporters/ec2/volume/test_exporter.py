@@ -1,5 +1,6 @@
 from typing import AsyncGenerator, List, Dict, Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from botocore.exceptions import ClientError
 import pytest
 
 from aws.core.exporters.ec2.volume.exporter import EbsVolumeExporter
@@ -97,8 +98,10 @@ class TestEbsVolumeExporter:
             volume_id="vol-nonexistent",
         )
 
-        result = await exporter.get_resource(options)
-        assert result == {}
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
+
+        assert exc_info.value.response["Error"]["Code"] == "InvalidVolume.NotFound"
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ec2.volume.exporter.AioBaseClientProxy")
