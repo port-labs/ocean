@@ -1,5 +1,3 @@
-from typing import Mapping
-
 from httpx import HTTPStatusError, RequestError
 from port_ocean.context.ocean import ocean
 
@@ -16,14 +14,11 @@ class JiraPermissionProbe:
         self.client = get_or_create_jira_client()
 
     async def run(self) -> None:
-        permission_keys = _collect_required_permissions(
-            [
-                kind
-                for kind in self.context.available_kinds
-                if kind != Kinds.TEAM
-            ],
-            self.permission_verdict.kind_permissions,
-        )
+        permission_keys = list({
+            permission
+            for kind in self.context.available_kinds
+            for permission in self.permission_verdict.kind_permissions.get(kind, ())
+        })
 
         try:
             permissions = await self.client.get_current_user_permissions(permission_keys)
@@ -87,16 +82,3 @@ class JiraPermissionProbe:
         check.status = ProbeCheckStatus.SUCCESS
         check.message = "Atlassian Teams API access verified"
         await self.context.update_progress()
-
-
-def _collect_required_permissions(
-    available_kinds: list[str],
-    kind_permissions: Mapping[str, tuple[str, ...]],
-) -> tuple[str, ...]:
-    return tuple(
-        dict.fromkeys(
-            permission
-            for kind in available_kinds
-            for permission in kind_permissions.get(kind, ())
-        )
-    )
