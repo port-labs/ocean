@@ -1,8 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
-from botocore.exceptions import ClientError
-
 from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.exporters.ecs.cluster.actions import EcsClusterActionsMap
 from aws.core.exporters.ecs.cluster.models import Cluster
 from aws.core.exporters.ecs.cluster.models import (
@@ -33,16 +32,12 @@ class EcsClusterExporter(IResourceExporter[list[str]]):
             response = await proxy.client.describe_clusters(  # type: ignore[attr-defined]
                 clusters=[options.cluster_name]
             )
-            if not response.get("clusters"):
-                raise ClientError(
-                    {
-                        "Error": {
-                            "Code": "ClusterNotFoundException",
-                            "Message": f"Cluster not found: {options.cluster_name}",
-                        }
-                    },
-                    "DescribeClusters",
-                )
+            require_aws_resource(
+                response.get("clusters"),
+                error_code="ClusterNotFoundException",
+                message=f"Cluster not found: {options.cluster_name}",
+                operation_name="DescribeClusters",
+            )
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()

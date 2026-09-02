@@ -1,8 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
-from botocore.exceptions import ClientError
-
 from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.exporters.elasticache.cluster.actions import ElastiCacheClusterActionsMap
 from aws.core.exporters.elasticache.cluster.models import CacheCluster
 from aws.core.exporters.elasticache.cluster.models import (
@@ -30,19 +29,12 @@ class ElastiCacheClusterExporter(IResourceExporter[list[dict[str, Any]]]):
                 ShowCacheNodeInfo=True,
             )
 
-            cache_clusters = response.get("CacheClusters", [])
-            if not cache_clusters:
-                raise ClientError(
-                    {
-                        "Error": {
-                            "Code": "CacheClusterNotFoundFault",
-                            "Message": (
-                                f"Cache cluster not found: {options.cache_cluster_id}"
-                            ),
-                        }
-                    },
-                    "DescribeCacheClusters",
-                )
+            cache_clusters = require_aws_resource(
+                response.get("CacheClusters", []),
+                error_code="CacheClusterNotFoundFault",
+                message=f"Cache cluster not found: {options.cache_cluster_id}",
+                operation_name="DescribeCacheClusters",
+            )
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()

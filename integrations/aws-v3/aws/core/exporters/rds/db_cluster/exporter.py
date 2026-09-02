@@ -1,8 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
-from botocore.exceptions import ClientError
-
 from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.exporters.rds.db_cluster.actions import RdsDbClusterActionsMap
 from aws.core.exporters.rds.db_cluster.models import (
     DbCluster,
@@ -29,19 +28,12 @@ class RdsDbClusterExporter(IResourceExporter[list[dict[str, Any]]]):
                 DBClusterIdentifier=options.db_cluster_identifier
             )
 
-            db_clusters = response.get("DBClusters", [])
-            if not db_clusters:
-                raise ClientError(
-                    {
-                        "Error": {
-                            "Code": "DBClusterNotFoundFault",
-                            "Message": (
-                                f"DB cluster not found: {options.db_cluster_identifier}"
-                            ),
-                        }
-                    },
-                    "DescribeDBClusters",
-                )
+            db_clusters = require_aws_resource(
+                response.get("DBClusters", []),
+                error_code="DBClusterNotFoundFault",
+                message=f"DB cluster not found: {options.db_cluster_identifier}",
+                operation_name="DescribeDBClusters",
+            )
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()

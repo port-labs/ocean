@@ -1,7 +1,6 @@
 from typing import Any, AsyncGenerator, Type, List, Dict
 
-from botocore.exceptions import ClientError
-
+from aws.core.helpers.utils import extract_ec2_instances, require_aws_resource
 from loguru import logger
 
 from aws.core.client.proxy import AioBaseClientProxy
@@ -33,22 +32,12 @@ class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
             response = await proxy.client.describe_instances(  # type: ignore[attr-defined]
                 InstanceIds=[options.instance_id]
             )
-            reservations = response.get("Reservations", [])
-            instances = [
-                instance
-                for reservation in reservations
-                for instance in reservation.get("Instances", [])
-            ]
-            if not instances:
-                raise ClientError(
-                    {
-                        "Error": {
-                            "Code": "InvalidInstanceID.NotFound",
-                            "Message": (f"Instance not found: {options.instance_id}"),
-                        }
-                    },
-                    "DescribeInstances",
-                )
+            instances = require_aws_resource(
+                extract_ec2_instances(response),
+                error_code="InvalidInstanceID.NotFound",
+                message=f"Instance not found: {options.instance_id}",
+                operation_name="DescribeInstances",
+            )
 
             inspector = ResourceInspector(
                 proxy.client,
