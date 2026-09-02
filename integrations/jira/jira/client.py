@@ -474,6 +474,31 @@ class JiraClient(OAuthClient):
 
         return has_permission
 
+    async def get_current_user_permissions(
+            self, permission_keys: list[str]
+    ) -> dict[str, bool]:
+        """Verify authentication and return the current user's effective permissions.
+
+        We first validate the user is valid, then check their permissions (the permissions check
+        accepts invalid users and will simply return a default list of permissions).
+        """
+        await self._send_api_request(
+            "GET", f"{self.api_url}/myself", skip_retry=True
+        )
+        if not permission_keys:
+            return {}
+
+        response = await self._send_api_request(
+            "GET",
+            f"{self.api_url}/mypermissions",
+            params={"permissions": ",".join(permission_keys)},
+            skip_retry=True,
+        )
+        return {
+            key: bool(permission.get("havePermission"))
+            for key, permission in response.get("permissions", {}).items()
+        }
+
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
