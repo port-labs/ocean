@@ -1,5 +1,8 @@
 from loguru import logger
+from typing import cast
+
 from linear.client import LinearClient
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from linear.utils import ObjectKind
@@ -54,6 +57,41 @@ async def on_resync_documents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received document batch with {len(documents)} documents")
         yield documents
 
+
+@ocean.on_resync(ObjectKind.USER)
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for users in client.get_paginated_users():
+        logger.info(f"Received user batch with {len(users)} users")
+        yield users
+
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for projects in client.get_paginated_projects():
+        logger.info(f"Received project batch with {len(projects)} projects")
+        yield projects
+
+
+@ocean.on_resync(ObjectKind.TEAM_MEMBERS)
+async def on_resync_team_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for team_members in client.get_paginated_team_members():
+        logger.info(f"Received team member batch with {len(team_members)} memberships")
+        yield team_members
+
+
+@ocean.on_resync(ObjectKind.CYCLE)
+async def on_resync_cycles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for cycles in client.get_paginated_cycles():
+        logger.info(f"Received cycle batch with {len(cycles)} cycles")
+        yield cycles
 
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()

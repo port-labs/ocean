@@ -39,12 +39,43 @@ class DocumentResourceConfig(ResourceConfig):
     )
 
 
+class UserResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.USER] = Field(
+        title="Linear User",
+        description="Linear user resource kind.",
+    )
+
+
+class ProjectResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PROJECT] = Field(
+        title="Linear Project",
+        description="Linear project resource kind.",
+    )
+
+
+class TeamMembersResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.TEAM_MEMBERS] = Field(
+        title="Linear Team Members",
+        description="Linear team membership resource kind.",
+    )
+
+
+class CycleResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.CYCLE] = Field(
+        title="Linear Cycle",
+        description="Linear cycle resource kind.",
+    )
+
 class LinearPortAppConfig(PortAppConfig):
     resources: list[
         TeamResourceConfig
         | LabelResourceConfig
         | IssueResourceConfig
         | DocumentResourceConfig
+        | UserResourceConfig
+        | ProjectResourceConfig
+        | TeamMembersResourceConfig
+        | CycleResourceConfig
     ] = Field(
         default_factory=list,
     )  # type: ignore[assignment]

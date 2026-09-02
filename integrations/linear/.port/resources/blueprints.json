@@ -220,5 +220,289 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "linearUser",
+    "title": "Linear User",
+    "icon": "Linear",
+    "description": "A Linear workspace user",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The user's full name"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email",
+          "description": "The user's email address"
+        },
+        "url": {
+          "type": "string",
+          "title": "Profile URL",
+          "format": "url",
+          "description": "URL to the user's profile in Linear"
+        },
+        "title": {
+          "type": "string",
+          "title": "Job Title",
+          "description": "The user's job title"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "Active",
+          "description": "Whether the user account is active"
+        },
+        "admin": {
+          "type": "boolean",
+          "title": "Admin",
+          "description": "Whether the user is a workspace administrator"
+        },
+        "guest": {
+          "type": "boolean",
+          "title": "Guest",
+          "description": "Whether the user is a guest with limited team access"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the user was created"
+        },
+        "updated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time",
+          "description": "When the user was last updated"
+        }
+      }
+    },
+    "calculationProperties": {}
+  },
+  {
+    "identifier": "linearProject",
+    "title": "Linear Project",
+    "icon": "Linear",
+    "description": "A Linear project",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Project URL",
+          "format": "url",
+          "description": "URL to the project in Linear"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The project description"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current project status"
+        },
+        "health": {
+          "type": "string",
+          "title": "Health",
+          "description": "The overall health of the project",
+          "enum": ["onTrack", "atRisk", "offTrack"],
+          "enumColors": {
+            "onTrack": "green",
+            "atRisk": "yellow",
+            "offTrack": "red"
+          }
+        },
+        "progress": {
+          "type": "number",
+          "title": "Progress",
+          "description": "The overall progress of the project (0-1)"
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority",
+          "description": "The priority label of the project"
+        },
+        "startDate": {
+          "type": "string",
+          "title": "Start Date",
+          "format": "date-time",
+          "description": "The estimated start date of the project"
+        },
+        "targetDate": {
+          "type": "string",
+          "title": "Target Date",
+          "format": "date-time",
+          "description": "The estimated completion date of the project"
+        },
+        "lead": {
+          "type": "string",
+          "title": "Lead",
+          "format": "user",
+          "description": "The email of the project lead"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the project was created"
+        },
+        "updated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time",
+          "description": "When the project was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "teams": {
+        "target": "linearTeam",
+        "title": "Teams",
+        "description": "The Linear teams associated with this project",
+        "required": false,
+        "many": true
+      },
+      "leadUser": {
+        "target": "linearUser",
+        "title": "Lead User",
+        "description": "The user who leads this project",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "linearTeamMember",
+    "title": "Linear Team Member",
+    "icon": "Linear",
+    "description": "A Linear team membership linking a user to a team",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email",
+          "description": "The member's email address"
+        },
+        "isOwner": {
+          "type": "boolean",
+          "title": "Is Owner",
+          "description": "Whether the user is an owner of the team"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the membership was created"
+        },
+        "updated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time",
+          "description": "When the membership was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "team": {
+        "target": "linearTeam",
+        "title": "Team",
+        "description": "The Linear team this membership belongs to",
+        "required": false,
+        "many": false
+      },
+      "user": {
+        "target": "linearUser",
+        "title": "User",
+        "description": "The Linear user in this membership",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "linearCycle",
+    "title": "Linear Cycle",
+    "icon": "Linear",
+    "description": "A Linear cycle (sprint)",
+    "schema": {
+      "properties": {
+        "number": {
+          "type": "number",
+          "title": "Number",
+          "description": "The auto-incrementing cycle number within the team"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the cycle"
+        },
+        "progress": {
+          "type": "number",
+          "title": "Progress",
+          "description": "The overall progress of the cycle (0-1)"
+        },
+        "startsAt": {
+          "type": "string",
+          "title": "Starts At",
+          "format": "date-time",
+          "description": "When the cycle starts"
+        },
+        "endsAt": {
+          "type": "string",
+          "title": "Ends At",
+          "format": "date-time",
+          "description": "When the cycle ends"
+        },
+        "completedAt": {
+          "type": "string",
+          "title": "Completed At",
+          "format": "date-time",
+          "description": "When the cycle was completed"
+        },
+        "isActive": {
+          "type": "boolean",
+          "title": "Is Active",
+          "description": "Whether the cycle is currently active"
+        },
+        "isFuture": {
+          "type": "boolean",
+          "title": "Is Future",
+          "description": "Whether the cycle has not yet started"
+        },
+        "isPast": {
+          "type": "boolean",
+          "title": "Is Past",
+          "description": "Whether the cycle's end date has passed"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the cycle was created"
+        },
+        "updated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time",
+          "description": "When the cycle was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "team": {
+        "target": "linearTeam",
+        "title": "Team",
+        "description": "The Linear team this cycle belongs to",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

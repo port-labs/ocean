@@ -6,6 +6,7 @@ from httpx import HTTPStatusError
 from loguru import logger
 import jinja2
 from linear.queries import QUERIES
+from linear.helpers.graphql_utils import extract_graphql_batch, extract_page_info
 
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
@@ -16,6 +17,29 @@ class LinearObject(StrEnum):
     LABELS = "LABELS"
     ISSUES = "ISSUES"
     DOCUMENTS = "DOCUMENTS"
+    USERS = "USERS"
+    PROJECTS = "PROJECTS"
+    CYCLES = "CYCLES"
+    TEAM_MEMBERSHIPS = "TEAM_MEMBERSHIPS"
+
+
+RESPONSE_ROOTS = {
+    LinearObject.TEAMS: "teams",
+    LinearObject.LABELS: "issueLabels",
+    LinearObject.ISSUES: "issues",
+    LinearObject.DOCUMENTS: "documents",
+    LinearObject.USERS: "users",
+    LinearObject.PROJECTS: "projects",
+    LinearObject.CYCLES: "cycles",
+    LinearObject.TEAM_MEMBERSHIPS: "teamMemberships",
+}
+
+NODE_PAGINATION_OBJECTS = {
+    LinearObject.USERS,
+    LinearObject.PROJECTS,
+    LinearObject.CYCLES,
+    LinearObject.TEAM_MEMBERSHIPS,
+}
 
 
 PAGE_SIZE = 50
@@ -248,3 +272,60 @@ class LinearClient:
         # Returning just the label object for mapping consistency
         label_json = label_response.json()
         return label_json["data"]["issueLabel"]
+
+    def _extract_paginated_batch(
+        self, response: dict[str, Any], object_type: LinearObject
+    ) -> list[dict[str, Any]]:
+        connection = response["data"][RESPONSE_ROOTS[object_type]]
+        if object_type in NODE_PAGINATION_OBJECTS:
+            return connection["nodes"]
+        return [edge["node"] for edge in connection["edges"]]
+
+    def _get_page_info(
+        self, response: dict[str, Any], object_type: LinearObject
+    ) -> dict[str, Any]:
+        return response["data"][RESPONSE_ROOTS[object_type]]["pageInfo"]
+
+    async def _iter_paginated_resources(
+        self, object_type: LinearObject
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        has_next_page = True
+        end_cursor = None
+        while has_next_page:
+            response = await self._get_paginated_objects(
+                object_type, PAGE_SIZE, end_cursor
+            )
+            yield self._extract_paginated_batch(response, object_type)
+            page_info = self._get_page_info(response, object_type)
+            has_next_page = page_info["hasNextPage"]
+            end_cursor = page_info["endCursor"]
+
+    async def get_paginated_users(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting users from Linear")
+        async for users in self._iter_paginated_resources(LinearObject.USERS):
+            yield users
+
+    async def get_paginated_projects(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting projects from Linear")
+        async for projects in self._iter_paginated_resources(LinearObject.PROJECTS):
+            yield projects
+
+    async def get_paginated_cycles(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting cycles from Linear")
+        async for cycles in self._iter_paginated_resources(LinearObject.CYCLES):
+            yield cycles
+
+    async def get_paginated_team_members(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting team memberships from Linear")
+        async for team_members in self._iter_paginated_resources(
+            LinearObject.TEAM_MEMBERSHIPS
+        ):
+            yield team_members

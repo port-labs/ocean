@@ -74,3 +74,86 @@ resources:
           relations:
             team: .team.key
             issue: .issue.identifier
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .displayName // .name
+          blueprint: '"linearUser"'
+          properties:
+            name: .name
+            email: .email
+            url: .url
+            title: .title
+            active: .active
+            admin: .admin
+            guest: .guest
+            created: .createdAt
+            updated: .updatedAt
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"linearProject"'
+          properties:
+            url: .url
+            description: .description
+            status: .status.name
+            health: .health
+            progress: .progress
+            priority: .priorityLabel
+            startDate: .startDate
+            targetDate: .targetDate
+            lead: .lead.email
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            teams: "[.teams.nodes[].key]"
+            leadUser: .lead.id
+  - kind: team-members
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .user.displayName // .user.name
+          blueprint: '"linearTeamMember"'
+          properties:
+            email: .user.email
+            isOwner: .owner
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.key
+            user: .user.id
+  - kind: cycle
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: if .name then .name else "Cycle " + (.number | tostring)
+          blueprint: '"linearCycle"'
+          properties:
+            number: .number
+            description: .description
+            progress: .progress
+            startsAt: .startsAt
+            endsAt: .endsAt
+            completedAt: .completedAt
+            isActive: .isActive
+            isFuture: .isFuture
+            isPast: .isPast
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.key

@@ -134,6 +134,88 @@ QUERIES = {
         }
     }
     """,
+    "BASE_USERS_QUERY_FIELDS": """
+    id
+    name
+    displayName
+    email
+    active
+    admin
+    guest
+    url
+    avatarUrl
+    title
+    createdAt
+    updatedAt
+    """,
+    "BASE_PROJECTS_QUERY_FIELDS": """
+    id
+    name
+    description
+    url
+    progress
+    health
+    priority
+    priorityLabel
+    startDate
+    targetDate
+    slugId
+    createdAt
+    updatedAt
+    status {
+        name
+        type
+    }
+    lead {
+        id
+        name
+        email
+    }
+    teams {
+        nodes {
+            id
+            key
+            name
+        }
+    }
+    """,
+    "BASE_CYCLES_QUERY_FIELDS": """
+    id
+    number
+    name
+    description
+    startsAt
+    endsAt
+    completedAt
+    progress
+    isActive
+    isFuture
+    isPast
+    createdAt
+    updatedAt
+    team {
+        id
+        key
+        name
+    }
+    """,
+    "BASE_TEAM_MEMBERSHIPS_QUERY_FIELDS": """
+    id
+    owner
+    createdAt
+    updatedAt
+    team {
+        id
+        key
+        name
+    }
+    user {
+        id
+        name
+        email
+        displayName
+    }
+    """,
     "GET_SINGLE_ISSUE": """
     query Issue {
         issue(id: "{{ issue_identifier }}") {
@@ -222,6 +304,62 @@ QUERIES = {
                 node {
                     {{ base_query_fields }}
                 }
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_USERS_PAGE": """
+    query Users {
+        users(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_PROJECTS_PAGE": """
+    query Projects {
+        projects(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_CYCLES_PAGE": """
+    query Cycles {
+        cycles(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_TEAM_MEMBERSHIPS_PAGE": """
+    query TeamMemberships {
+        teamMemberships(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
             }
             pageInfo {
                 hasNextPage
