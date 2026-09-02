@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.9 (2026-09-02)
+
+
+### Bug Fixes
+
+- Log oversized "Event Added To Queue" webhook payloads as a single base64 field so nested JSON is not flattened into too many log attributes
+
+
 ## 0.50.8 (2026-09-02)
 
 
