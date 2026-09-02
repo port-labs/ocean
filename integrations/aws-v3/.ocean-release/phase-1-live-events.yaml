@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Add CloudTrail live events support for RDS DB clusters, SNS topics, SQS queues, EC2 instances, EC2 volumes, and ElastiCache clusters.
