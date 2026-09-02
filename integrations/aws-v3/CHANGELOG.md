@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.23.0-beta (2026-09-02)
+
+
+### Features
+
+- Add CloudTrail live events support for RDS DB clusters, SNS topics, SQS queues, EC2 instances, EC2 volumes, and ElastiCache clusters.
+
+
 ## 2.22.5-beta (2026-09-02)
 
 
