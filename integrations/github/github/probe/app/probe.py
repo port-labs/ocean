@@ -12,6 +12,7 @@ MISSING_PERMISSIONS_MESSAGE = (
 
 
 class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
+    @property
     def _permission_verdict_class(self) -> type[KindPermissionVerdict]:
         return AppKindPermissionVerdict
 

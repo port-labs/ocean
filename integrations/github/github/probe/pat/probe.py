@@ -47,6 +47,7 @@ def is_fine_grained_pat(token: str) -> bool:
 
 
 class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
+    @property
     def _permission_verdict_class(self) -> type[KindPermissionVerdict]:
         return PatKindPermissionVerdict
 
