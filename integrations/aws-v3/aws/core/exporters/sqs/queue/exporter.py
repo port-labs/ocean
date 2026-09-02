@@ -21,11 +21,7 @@ class SqsQueueExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            # Live-event single-queue fetch only has a queue URL from CloudTrail.
-            # GetQueueAttributesAction swallows recoverable not-found errors,
-            # so the inspector would build a stub from ListQueuesAction for a deleted queue.
-            # Confirm it exists so a missing queue raises and the live-event handler
-            # can treat the update as a delete instead.
+            # Confirm the queue exists so live events can treat a missing queue as deleted.
             await proxy.client.get_queue_attributes(  # type: ignore[attr-defined]
                 QueueUrl=options.queue_url,
                 AttributeNames=["All"],
