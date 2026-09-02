@@ -1183,6 +1183,20 @@ class TestFileExporterUtils:
         content = parse_content("invalid: yaml: content:", "config.yaml")
         assert content == "invalid: yaml: content:"
 
+    def test_parse_content_multi_document_yaml(self) -> None:
+        content = parse_content(
+            "name: service-a\nversion: 1.0.0\n---\nname: service-b\nversion: 2.0.0\n",
+            "services.yaml",
+        )
+        assert content == [
+            {"name": "service-a", "version": "1.0.0"},
+            {"name": "service-b", "version": "2.0.0"},
+        ]
+
+    def test_parse_content_single_document_yaml_with_leading_marker(self) -> None:
+        content = parse_content("---\nname: test\nvalue: 123\n", "config.yaml")
+        assert content == {"name": "test", "value": 123}
+
     def test_match_file_path_against_glob_pattern_exact(self) -> None:
         assert match_file_path_against_glob_pattern("test.txt", "test.txt") is True
 

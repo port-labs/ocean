@@ -99,7 +99,10 @@ def parse_content(content: str, file_path: str) -> Any:
             return json.loads(content)
         elif file_path.endswith(YAML_FILE_SUFFIX):
             yaml = YAML(typ="safe")
-            return yaml.load(content)
+            documents = [doc for doc in yaml.load_all(content) if doc is not None]
+            if not documents:
+                return content
+            return documents if len(documents) > 1 else documents[0]
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
 
