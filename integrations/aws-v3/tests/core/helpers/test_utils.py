@@ -118,12 +118,15 @@ class TestExecuteConcurrentAwsOperations:
 class TestRequireAwsResource:
     def test_returns_items_when_present(self) -> None:
         items = [{"id": "vol-1"}]
-        assert require_aws_resource(
-            items,
-            error_code="InvalidVolume.NotFound",
-            message="Volume not found: vol-1",
-            operation_name="DescribeVolumes",
-        ) == items
+        assert (
+            require_aws_resource(
+                items,
+                error_code="InvalidVolume.NotFound",
+                message="Volume not found: vol-1",
+                operation_name="DescribeVolumes",
+            )
+            == items
+        )
 
     def test_raises_client_error_when_empty(self) -> None:
         with pytest.raises(ClientError) as exc_info:

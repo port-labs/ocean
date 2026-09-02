@@ -86,7 +86,6 @@ class TestSqsQueueExporter:
         )
         mock_client.get_queue_attributes.assert_awaited_once_with(
             QueueUrl="https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            AttributeNames=["All"],
         )
 
     @pytest.mark.asyncio
