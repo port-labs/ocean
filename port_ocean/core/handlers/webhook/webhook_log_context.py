@@ -2,37 +2,34 @@ import base64
 import json
 from typing import Any
 
-EventPayload = dict[str, Any]
-
 # Stay below typical log-backend attribute caps after nested JSON is flattened.
 _MAX_FLAT_PAYLOAD_ATTRIBUTES = 200
 # Cap JSON size before base64 so the encoded field stays within common log value limits.
 _MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES = 120 * 1024
 
 
-def count_flat_attributes(payload: EventPayload, *, limit: int | None = None) -> int:
+def count_flat_attributes(payload: dict[str, Any], *, limit: int | None = None) -> int:
     """Estimate how many leaf attributes nested JSON would flatten into.
 
     ``len(payload)`` and JSON byte size only measure how big the object is.
-    Nested values become extra attributes, so we walk leaves until ``limit``.
-    Defaults to one past the base64 threshold used for Added To Queue logs.
+    Nested values become extra attributes, so we walk leaves.
+    Pass ``limit`` to stop early; ``None`` counts the full payload.
     """
-    stop_at = _MAX_FLAT_PAYLOAD_ATTRIBUTES + 1 if limit is None else limit
 
     def _count(node: Any) -> int:
         if isinstance(node, dict) and node:
             total = 0
             for item in node.values():
                 total += _count(item)
-                if total >= stop_at:
-                    return stop_at
+                if limit is not None and total >= limit:
+                    return limit
             return total
         if isinstance(node, list) and node:
             total = 0
             for item in node:
                 total += _count(item)
-                if total >= stop_at:
-                    return stop_at
+                if limit is not None and total >= limit:
+                    return limit
             return total
         return 1
 
@@ -49,7 +46,7 @@ def _truncate_utf8_bytes(data: bytes, max_len: int) -> bytes:
 
 
 def build_added_to_queue_payload_log_fields(
-    payload: EventPayload,
+    payload: dict[str, Any],
 ) -> dict[str, Any]:
     """Build payload fields for a single Event Added To Queue log.
 
@@ -57,7 +54,10 @@ def build_added_to_queue_payload_log_fields(
     many log attributes are logged as a single base64 string so the event is
     not dropped by the log backend.
     """
-    if count_flat_attributes(payload) <= _MAX_FLAT_PAYLOAD_ATTRIBUTES:
+    if (
+        count_flat_attributes(payload, limit=_MAX_FLAT_PAYLOAD_ATTRIBUTES + 1)
+        <= _MAX_FLAT_PAYLOAD_ATTRIBUTES
+    ):
         return {"payload": payload}
 
     payload_bytes = json.dumps(payload, default=str, separators=(",", ":")).encode(

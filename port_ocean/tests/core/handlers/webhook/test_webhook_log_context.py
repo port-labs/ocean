@@ -20,7 +20,8 @@ def test_count_flat_attributes_counts_nested_list_leaves() -> None:
 
 def test_count_flat_attributes_stops_once_limit_is_reached() -> None:
     payload = {f"key_{index}": index for index in range(500)}
-    assert count_flat_attributes(payload) == 201
+    assert count_flat_attributes(payload) == 500
+    assert count_flat_attributes(payload, limit=201) == 201
     assert count_flat_attributes(payload, limit=500) == 500
 
 
