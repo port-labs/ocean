@@ -475,7 +475,7 @@ class JiraClient(OAuthClient):
         return has_permission
 
     async def get_current_user_permissions(
-            self, permission_keys: list[str]
+        self, permission_keys: list[str]
     ) -> dict[str, bool]:
         """Verify authentication and return the current user's effective permissions.
 
