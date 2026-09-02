@@ -209,12 +209,6 @@ jobs:
     needs: [test, test-integrations]
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.test.result == 'success' && (needs.test-integrations.result == 'success' || needs.test-integrations.result == 'skipped') }}
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
-    env:
-      CAN_COMMENT_ON_PR: ${{ github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v7
@@ -273,8 +267,7 @@ jobs:
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
       - name: Comment PR with code coverage summary
-        if: ${{ steps.pr-number.outputs.PR_NUMBER != 0 && env.CAN_COMMENT_ON_PR == 'true' }}
-        continue-on-error: true
+        if: ${{ steps.pr-number.outputs.PR_NUMBER != 0 }}
         uses: actions/github-script@v9
         env:
           CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
@@ -311,8 +304,7 @@ jobs:
           echo "CURRENT_COVERAGE=$(echo "$PORT_ENTITY" | jq -r '.properties.coverage_percent')" >> $GITHUB_OUTPUT
 
       - name: Comment if Coverage Regression
-        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) && (env.CAN_COMMENT_ON_PR == 'true') }}
-        continue-on-error: true
+        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
         uses: actions/github-script@v9
         env:
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
