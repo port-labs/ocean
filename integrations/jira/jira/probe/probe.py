@@ -14,11 +14,13 @@ class JiraPermissionProbe:
         self.client = get_or_create_jira_client()
 
     async def run(self) -> None:
-        permission_keys = list({
-            permission
-            for kind in self.context.available_kinds
-            for permission in self.permission_verdict.kind_permissions.get(kind, ())
-        })
+        permission_keys = list(
+            {
+                permission
+                for kind in self.context.available_kinds
+                for permission in self.permission_verdict.kind_permissions.get(kind, ())
+            }
+        )
 
         try:
             await self.client.verify_current_user()
@@ -29,7 +31,9 @@ class JiraPermissionProbe:
         checks = await self.context.add_scopes({})
 
         try:
-            permissions = await self.client.get_current_user_permissions(permission_keys)
+            permissions = await self.client.get_current_user_permissions(
+                permission_keys
+            )
         except HTTPStatusError as error:
             await self._fail_permission_checks(
                 checks,
@@ -106,8 +110,7 @@ class JiraPermissionProbe:
         except RequestError as error:
             check.status = ProbeCheckStatus.FAILURE
             check.message = (
-                "Jira could not be reached while verifying teams access: "
-                f"{error}"
+                "Jira could not be reached while verifying teams access: " f"{error}"
             )
             await self.context.update_progress()
             return

@@ -1,7 +1,9 @@
 from jira.overrides import JiraPortAppConfig
 from jira.probe import JiraKindPermissionVerdict
 from jira.probe.permissions import JiraKindPermissionVerdict as PermissionsVerdict
-from port_ocean.core.handlers.port_app_config.validators import get_kind_probe_permissions
+from port_ocean.core.handlers.port_app_config.validators import (
+    get_kind_probe_permissions,
+)
 from port_ocean.core.probe import ProbeCheckStatus
 
 

@@ -232,7 +232,7 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         retryable: bool = False,
-        skip_retry: bool = False
+        skip_retry: bool = False,
     ) -> Any:
         extensions: dict[str, Any] = {}
         if retryable:
@@ -476,9 +476,7 @@ class JiraClient(OAuthClient):
 
     async def verify_current_user(self) -> None:
         """Validate that the configured credentials identify a real Jira user."""
-        await self._send_api_request(
-            "GET", f"{self.api_url}/myself", skip_retry=True
-        )
+        await self._send_api_request("GET", f"{self.api_url}/myself", skip_retry=True)
 
     async def get_current_user_permissions(
         self, permission_keys: list[str]
