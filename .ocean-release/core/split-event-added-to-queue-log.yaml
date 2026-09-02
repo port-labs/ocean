@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Split "Event Added To Queue" timestamp logs into separate payload and headers log entries to stay under New Relic's 255-attribute limit

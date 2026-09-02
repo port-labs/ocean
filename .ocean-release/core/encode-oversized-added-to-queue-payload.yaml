@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Log the "Event Added To Queue" webhook payload as a single base64 field when it would exceed New Relic's 255-attribute limit, so the log is no longer dropped

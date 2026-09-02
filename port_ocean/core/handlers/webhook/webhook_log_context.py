@@ -1,0 +1,80 @@
+import base64
+import json
+from typing import Any
+
+EventPayload = dict[str, Any]
+
+# Stay below New Relic's 255-attribute limit after JSON flattening.
+_MAX_FLAT_PAYLOAD_ATTRIBUTES = 200
+# Cap JSON size before base64 to stay within NR blob storage (~128KB).
+_MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES = 120 * 1024
+
+
+def count_flat_attributes(value: Any, *, limit: int | None = None) -> int:
+    """Estimate how many leaf attributes NR would create after flattening JSON.
+
+    Stops once ``limit`` is reached so oversized payloads are not fully walked.
+    Defaults to one past the base64 threshold used for Added To Queue logs.
+    """
+    stop_at = _MAX_FLAT_PAYLOAD_ATTRIBUTES + 1 if limit is None else limit
+
+    def _count(node: Any) -> int:
+        if isinstance(node, dict) and node:
+            total = 0
+            for item in node.values():
+                total += _count(item)
+                if total >= stop_at:
+                    return stop_at
+            return total
+        if isinstance(node, list) and node:
+            total = 0
+            for item in node:
+                total += _count(item)
+                if total >= stop_at:
+                    return stop_at
+            return total
+        return 1
+
+    return _count(value)
+
+
+def _truncate_utf8_bytes(data: bytes, max_len: int) -> bytes:
+    if len(data) <= max_len:
+        return data
+    truncated = data[:max_len]
+    while truncated and (truncated[-1] & 0b11000000) == 0b10000000:
+        truncated = truncated[:-1]
+    return truncated
+
+
+def _payload_json_bytes(payload: EventPayload) -> bytes:
+    return json.dumps(payload, default=str, separators=(",", ":")).encode("utf-8")
+
+
+def should_base64_payload(payload: EventPayload) -> bool:
+    return count_flat_attributes(payload) > _MAX_FLAT_PAYLOAD_ATTRIBUTES
+
+
+def build_added_to_queue_payload_log_fields(
+    payload: EventPayload,
+) -> dict[str, Any]:
+    """Build NR-safe payload fields for a single Event Added To Queue log.
+
+    Headers are logged separately by the caller. Small payloads stay as nested
+    JSON. Payloads that would exceed NR's 255-attribute flatten limit are
+    logged as a single base64 string so the whole event is not dropped.
+    """
+    if not should_base64_payload(payload):
+        return {"payload": payload}
+
+    payload_bytes = _payload_json_bytes(payload)
+    truncated = len(payload_bytes) > _MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES
+    encoded_bytes = _truncate_utf8_bytes(
+        payload_bytes, _MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES
+    )
+    fields: dict[str, Any] = {
+        "payload_b64": base64.b64encode(encoded_bytes).decode("ascii"),
+    }
+    if truncated:
+        fields["payload_b64_truncated"] = True
+    return fields

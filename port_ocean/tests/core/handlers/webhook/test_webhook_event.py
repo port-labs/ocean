@@ -117,7 +117,7 @@ def test_setTimestamp_setsTimestampCorrectly(
 def test_setTimestamp_logsTraceIdAtTopLevelExtra(
     sample_payload: EventPayload, sample_headers: EventHeaders
 ) -> None:
-    """Added To Queue logs should split payload and headers into separate entries."""
+    """Added To Queue logs headers and payload on a single entry."""
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload=sample_payload,
@@ -137,27 +137,54 @@ def test_setTimestamp_logsTraceIdAtTopLevelExtra(
     try:
         event.set_timestamp(LiveEventTimestamp.AddedToQueue)
         logger.complete()
-        payload_record = queue.get()
-        headers_record = queue.get()
+        record = queue.get()
+        assert queue.empty()
     finally:
         logger.remove(logger_id)
 
-    payload_extra = _serialize_record(payload_record)["extra"]
-    headers_extra = _serialize_record(headers_record)["extra"]
+    extra = _serialize_record(record)["extra"]
 
-    assert payload_extra["trace_id"] == "test-trace-id"
-    assert payload_extra["timestamp_type"] == "Added To Queue"
-    assert payload_extra["event_context"] == "payload"
-    assert payload_extra["payload"] == sample_payload
-    assert "headers" not in payload_extra
-    assert payload_extra.get("extra") is None
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["timestamp_type"] == "Added To Queue"
+    assert extra["payload"] == sample_payload
+    assert extra["headers"] == sample_headers
+    assert "payload_b64" not in extra
+    assert extra.get("extra") is None
 
-    assert headers_extra["trace_id"] == "test-trace-id"
-    assert headers_extra["timestamp_type"] == "Added To Queue"
-    assert headers_extra["event_context"] == "headers"
-    assert headers_extra["headers"] == sample_headers
-    assert "payload" not in headers_extra
-    assert headers_extra.get("extra") is None
+
+def test_setTimestamp_addedToQueue_base64EncodesOversizedPayload() -> None:
+    payload = {f"key_{index}": {"nested": index} for index in range(250)}
+    headers = {"x-github-event": "pull_request"}
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=payload,
+        headers=headers,
+        original_request=None,
+    )
+
+    queue: Queue[LogRecord] = Queue()
+    queue_handler = QueueHandler(queue)
+    logger_id = logger.add(
+        queue_handler,
+        level="DEBUG",
+        format="{message}",
+        diagnose=False,
+        enqueue=True,
+    )
+    try:
+        event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+        logger.complete()
+        record = queue.get()
+        assert queue.empty()
+    finally:
+        logger.remove(logger_id)
+
+    extra = _serialize_record(record)["extra"]
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["headers"] == headers
+    assert "payload" not in extra
+    assert "payload_b64" in extra
 
 
 class TestWebhookRequestAdapter:
