@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import asyncio
 import json
+from functools import partial
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request, Response, HTTPStatusError
@@ -3248,6 +3249,7 @@ def test_build_tree_fetcher_normalizes_wildcard_base_path() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
     fetcher = client._build_tree_fetcher(MOCK_REPOSITORY_ID, "App/root/env/region/*")
 
+    assert isinstance(fetcher, partial)
     assert fetcher.args == (MOCK_REPOSITORY_ID,)
     assert fetcher.keywords == {
         "path": "/App/root/env/region",
