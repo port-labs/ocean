@@ -105,7 +105,7 @@ class PortClient(
             status=body.get("status"),
         )
         response = await self.client.patch(
-            f"{self.api_url}/org/{org_id}/probe/{probe_id}",
+            f"{self.api_url}/org/{org_id}/integration/probe/{probe_id}",
             headers=await self.auth.headers(),
             json=body,
         )
