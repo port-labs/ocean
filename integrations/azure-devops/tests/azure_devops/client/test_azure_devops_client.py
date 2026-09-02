@@ -19,6 +19,7 @@ from azure_devops.client.azure_devops_client import (
     _normalize_area_path,
     _normalize_git_scope_path,
 )
+from azure_devops.client.base_client import CONTINUATION_TOKEN_HEADER
 from azure_devops.client.file_processing import PathDescriptor
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
@@ -3234,7 +3235,6 @@ async def test_get_repository_tree_with_deep_path() -> None:
         ("/", "/"),
         ("", "/"),
         ("App/root/env/region", "/App/root/env/region"),
-        ("/App/root/env/region", "/App/root/env/region"),
         ("/App/root/env/region/", "/App/root/env/region"),
         ("test/", "/test"),
         ("/src/**/*.py", "/src/**/*.py"),
@@ -3244,44 +3244,26 @@ def test_normalize_git_scope_path(raw_path: str, expected: str) -> None:
     assert _normalize_git_scope_path(raw_path) == expected
 
 
-@pytest.mark.asyncio
-async def test_get_repository_tree_normalizes_scope_path() -> None:
-    """Folder patterns without a leading slash must still use ADO scopePath format."""
+def test_build_tree_fetcher_normalizes_wildcard_base_path() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-    captured_params: list[dict[str, Any]] = []
+    fetcher = client._build_tree_fetcher(MOCK_REPOSITORY_ID, "App/root/env/region/*")
 
-    async def mock_get_paginated_by_top_and_continuation_token(
-        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        if additional_params is not None:
-            captured_params.append(dict(additional_params))
-        yield []
-
-    with patch.object(
-        client,
-        "_get_paginated_by_top_and_continuation_token",
-        side_effect=mock_get_paginated_by_top_and_continuation_token,
-    ):
-        async for _ in client.get_repository_tree(
-            MOCK_REPOSITORY_ID,
-            path="App/root/env/region",
-            recursion_level="oneLevel",
-        ):
-            pass
-
-    assert captured_params[0]["scopePath"] == "/App/root/env/region"
+    assert fetcher.args == (MOCK_REPOSITORY_ID,)
+    assert fetcher.keywords == {
+        "path": "/App/root/env/region",
+        "recursion_level": "oneLevel",
+    }
 
 
 @pytest.mark.asyncio
-async def test_get_repository_tree_keeps_scope_path_on_pagination() -> None:
-    """Continuation requests must repeat the same normalized scopePath as page one."""
+async def test_get_repository_tree_normalizes_scope_path_across_pages() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
     captured_params: list[dict[str, Any]] = []
 
-    mock_response1 = AsyncMock(spec=Response)
-    mock_response1.status_code = 200
-    mock_response1.headers = {"x-ms-continuationtoken": "token-page-2"}
-    mock_response1.json.return_value = {
+    page_one = AsyncMock(spec=Response)
+    page_one.status_code = 200
+    page_one.headers = {CONTINUATION_TOKEN_HEADER: "token-page-2"}
+    page_one.json.return_value = {
         "value": [
             {
                 "objectId": "abc123",
@@ -3291,10 +3273,10 @@ async def test_get_repository_tree_keeps_scope_path_on_pagination() -> None:
         ]
     }
 
-    mock_response2 = AsyncMock(spec=Response)
-    mock_response2.status_code = 200
-    mock_response2.headers = {}
-    mock_response2.json.return_value = {
+    page_two = AsyncMock(spec=Response)
+    page_two.status_code = 200
+    page_two.headers = {}
+    page_two.json.return_value = {
         "value": [
             {
                 "objectId": "def456",
@@ -3306,49 +3288,21 @@ async def test_get_repository_tree_keeps_scope_path_on_pagination() -> None:
 
     async def capture_send_request(method: str, url: str, **kwargs: Any) -> Response:
         captured_params.append(dict(kwargs.get("params") or {}))
-        if len(captured_params) == 1:
-            return mock_response1
-        return mock_response2
+        return page_one if len(captured_params) == 1 else page_two
 
     with patch.object(client, "send_request", side_effect=capture_send_request):
         folders = []
-        async for folder_batch in client.get_repository_tree(
+        async for batch in client.get_repository_tree(
             MOCK_REPOSITORY_ID,
             path="App/root/env/region",
             recursion_level="oneLevel",
         ):
-            folders.extend(folder_batch)
+            folders.extend(batch)
 
     assert len(folders) == 2
     assert len(captured_params) == 2
-    assert captured_params[0]["scopePath"] == "/App/root/env/region"
-    assert captured_params[1]["scopePath"] == "/App/root/env/region"
+    assert all(p["scopePath"] == "/App/root/env/region" for p in captured_params)
     assert captured_params[1]["continuationToken"] == "token-page-2"
-
-
-@pytest.mark.asyncio
-async def test_build_tree_fetcher_normalizes_pattern_base_path() -> None:
-    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-    captured_paths: list[str] = []
-
-    async def mock_get_repository_tree(
-        repository_id: str,
-        recursion_level: str,
-        path: str = "/",
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        captured_paths.append(path)
-        yield []
-
-    with patch.object(
-        client, "get_repository_tree", side_effect=mock_get_repository_tree
-    ):
-        fetcher = client._build_tree_fetcher(
-            MOCK_REPOSITORY_ID, "/App/root/env/region/*"
-        )
-        async for _ in fetcher():
-            pass
-
-    assert captured_paths == ["/App/root/env/region"]
 
 
 @pytest.mark.asyncio
