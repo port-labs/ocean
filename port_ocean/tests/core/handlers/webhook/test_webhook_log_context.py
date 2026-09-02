@@ -4,7 +4,6 @@ import json
 from port_ocean.core.handlers.webhook.webhook_log_context import (
     build_added_to_queue_payload_log_fields,
     count_flat_attributes,
-    should_base64_payload,
 )
 
 
@@ -23,16 +22,6 @@ def test_count_flat_attributes_stops_once_limit_is_reached() -> None:
     payload = {f"key_{index}": index for index in range(500)}
     assert count_flat_attributes(payload) == 201
     assert count_flat_attributes(payload, limit=500) == 500
-
-
-def test_should_base64_payload_false_for_small_flat_payload() -> None:
-    payload = {"action": "opened", "id": 1}
-    assert should_base64_payload(payload) is False
-
-
-def test_should_base64_payload_true_when_attribute_count_exceeds_limit() -> None:
-    payload = {f"key_{index}": {"nested": index} for index in range(250)}
-    assert should_base64_payload(payload) is True
 
 
 def test_build_added_to_queue_payload_log_fields_uses_json_for_small_payload() -> None:

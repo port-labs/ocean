@@ -48,14 +48,6 @@ def _truncate_utf8_bytes(data: bytes, max_len: int) -> bytes:
     return truncated
 
 
-def _payload_json_bytes(payload: EventPayload) -> bytes:
-    return json.dumps(payload, default=str, separators=(",", ":")).encode("utf-8")
-
-
-def should_base64_payload(payload: EventPayload) -> bool:
-    return count_flat_attributes(payload) > _MAX_FLAT_PAYLOAD_ATTRIBUTES
-
-
 def build_added_to_queue_payload_log_fields(
     payload: EventPayload,
 ) -> dict[str, Any]:
@@ -65,10 +57,12 @@ def build_added_to_queue_payload_log_fields(
     many log attributes are logged as a single base64 string so the event is
     not dropped by the log backend.
     """
-    if not should_base64_payload(payload):
+    if count_flat_attributes(payload) <= _MAX_FLAT_PAYLOAD_ATTRIBUTES:
         return {"payload": payload}
 
-    payload_bytes = _payload_json_bytes(payload)
+    payload_bytes = json.dumps(payload, default=str, separators=(",", ":")).encode(
+        "utf-8"
+    )
     truncated = len(payload_bytes) > _MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES
     encoded_bytes = _truncate_utf8_bytes(
         payload_bytes, _MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES
