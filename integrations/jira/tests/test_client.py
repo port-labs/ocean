@@ -433,7 +433,9 @@ async def test_send_api_request_forwards_retry_extensions(
             "GET", "http://example.com", **kwargs  # type: ignore[arg-type]
         )
 
-    assert mock_request.await_args.kwargs["extensions"] == expected_extensions
+    await_args = mock_request.await_args
+    assert await_args is not None
+    assert await_args.kwargs["extensions"] == expected_extensions
 
 
 @pytest.mark.asyncio

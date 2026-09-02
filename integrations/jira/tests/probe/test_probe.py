@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
@@ -18,8 +19,8 @@ def http_status_error(status_code: int) -> httpx.HTTPStatusError:
     )
 
 
-def _mock_client(**kwargs: object) -> SimpleNamespace:
-    defaults = {
+def _mock_client(**kwargs: Any) -> SimpleNamespace:
+    defaults: dict[str, Any] = {
         "verify_current_user": AsyncMock(),
         "get_current_user_permissions": AsyncMock(return_value={}),
         "verify_teams_access": AsyncMock(),
