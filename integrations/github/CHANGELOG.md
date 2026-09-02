@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.11 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 6.10.10 (2026-09-01)
+
+
+### Improvements
+
+- Rename debug.py to debug_resync.py and add debug_probe.py for local probe runs
+
+
+## 6.10.9 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 6.10.8 (2026-08-31)
+
+
+### Features
+
+- Expanded SAML email enrichment to support enterprise-level SAML SSO by automatically falling back to the enterprise identity provider when org-level SAML is not configured, enabling __SAMLEmail population for customers who centralize SAML at the enterprise level. Requires a classic PAT from an enterprise owner with read:enterprise scope.
+
+
+## 6.10.7 (2026-08-31)
+
+
+### Improvements
+
+- Expanded pull request live events to support all webhook actions and added pull request review live events with automatic webhook configuration updates
+
+
+## 6.10.6 (2026-08-31)
+
+
+### Features
+
+- Expanded user email enrichment by adding includeVerifiedDomainEmails selector, enabling customers on GitHub Enterprise Cloud with verified domains to include organizationVerifiedDomainEmails on exported users. No N+1 API calls; the field is inlined into the existing member list query.
+
+
+## 6.10.5 (2026-08-31)
+
+
+### Bug Fixes
+
+- Added retry with exponential backoff for GraphQL errors during team member enrichment. GitHub server-side errors like "Something went wrong while executing your query" are retried up to 3 times before failing, preventing a single error from aborting the entire team resync.
+
+
+## 6.10.4 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 6.10.3 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
 ## 6.10.2 (2026-08-28)
 
 

@@ -7,6 +7,46 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.7 (2026-09-01)
+
+
+### Features
+
+- Add async Port probe reporter that sends incremental probe health results to Port during probe runs
+
+
+## 0.50.6 (2026-09-01)
+
+
+### Features
+
+- Add on_probe decorator, run_probe entry point, and ocean probe CLI with kind filtering and validation
+
+
+## 0.50.5 (2026-08-31)
+
+
+### Improvements
+
+- Readiness probe returns 503 until Ocean finishes startup, enabling faster Kubernetes rollouts with lower initialDelaySeconds.
+
+
+## 0.50.4 (2026-08-30)
+
+
+### Features
+
+- Allow individual HTTP requests to opt out of retries via the skip_retry request extension (#74233718)
+
+
+## 0.50.3 (2026-08-30)
+
+
+### Features
+
+- Add probe context, config, and result models for integration probing
+
+
 ## 0.50.2 (2026-08-27)
 
 
