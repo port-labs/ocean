@@ -1,10 +1,11 @@
 from typing import Any, AsyncGenerator, Type, List, Dict
 
-from aws.core.helpers.utils import extract_ec2_instances, require_aws_resource
+from aws.core.helpers.utils import require_aws_resource
 from loguru import logger
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ec2.instance.actions import EC2InstanceActionsMap
+from aws.core.exporters.ec2.instance.utils import extract_ec2_instances
 from aws.core.exporters.ec2.instance.models import EC2Instance
 from aws.core.exporters.ec2.instance.models import (
     SingleEC2InstanceRequest,
@@ -26,9 +27,6 @@ class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            # Live-event single-instance fetch only has an instance ID from CloudTrail.
-            # Confirm it exists so a missing instance raises and the live-event
-            # handler can treat the update as a delete instead.
             response = await proxy.client.describe_instances(  # type: ignore[attr-defined]
                 InstanceIds=[options.instance_id]
             )

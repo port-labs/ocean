@@ -10,7 +10,7 @@ from aws.core.helpers.metadata.types import (
 CLOUDTRAIL_EVENT_SOURCE = "ec2.amazonaws.com"
 
 
-def _extract_volume_id_from_request(detail: CloudTrailDetail) -> str | None:
+def _extract_volume_id_from_delete_request(detail: CloudTrailDetail) -> str | None:
     """DeleteVolume: requestParameters.volumeId."""
     request_parameters = detail.get("requestParameters", {})
     if not isinstance(request_parameters, dict):
@@ -34,7 +34,7 @@ def _extract_volume_id_from_modify_request(detail: CloudTrailDetail) -> str | No
     return volume_id if isinstance(volume_id, str) else None
 
 
-def _extract_volume_id_from_response(detail: CloudTrailDetail) -> str | None:
+def _extract_volume_id_from_create_response(detail: CloudTrailDetail) -> str | None:
     """CreateVolume: responseElements.volumeId."""
     response_elements = detail.get("responseElements")
     if not isinstance(response_elements, dict):
@@ -67,7 +67,7 @@ EC2_VOLUME_LIVE_EVENTS = LiveEventFactories(
     cloudtrail_mappings={
         "CreateVolume": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_volume_id_from_response,
+            _extract_volume_id_from_create_response,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "ModifyVolume": CloudTrailEventMapping(
@@ -77,7 +77,7 @@ EC2_VOLUME_LIVE_EVENTS = LiveEventFactories(
         ),
         "DeleteVolume": CloudTrailEventMapping(
             CloudTrailEventAction.DELETE,
-            _extract_volume_id_from_request,
+            _extract_volume_id_from_delete_request,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },

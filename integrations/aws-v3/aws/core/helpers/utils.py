@@ -27,15 +27,6 @@ def require_aws_resource(
         operation_name,
     )
 
-
-def extract_ec2_instances(response: dict[str, Any]) -> list[dict[str, Any]]:
-    return [
-        instance
-        for reservation in response.get("Reservations", [])
-        for instance in reservation.get("Instances", [])
-    ]
-
-
 def is_access_denied_exception(e: Exception) -> bool:
     access_denied_error_codes = [
         "AccessDenied",

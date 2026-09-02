@@ -24,11 +24,6 @@ class EcsClusterExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            # Live-event single-cluster fetch only has a cluster name from CloudTrail.
-            # describe_clusters returns an empty list when the cluster is gone instead
-            # of raising, and the inspector would still build a stub from that name.
-            # Confirm it exists so a missing cluster raises and the live-event handler
-            # can treat the update as a delete instead.
             response = await proxy.client.describe_clusters(  # type: ignore[attr-defined]
                 clusters=[options.cluster_name]
             )

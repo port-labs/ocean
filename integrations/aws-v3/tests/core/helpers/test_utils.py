@@ -5,7 +5,6 @@ from botocore.exceptions import ClientError
 
 from aws.core.helpers.utils import (
     execute_concurrent_aws_operations,
-    extract_ec2_instances,
     require_aws_resource,
 )
 
@@ -150,22 +149,3 @@ class TestRequireAwsResource:
             )
 
         assert exc_info.value.response["Error"]["Code"] == "ClusterNotFoundException"
-
-
-class TestExtractEc2Instances:
-    def test_flattens_reservations(self) -> None:
-        response = {
-            "Reservations": [
-                {"Instances": [{"InstanceId": "i-1"}, {"InstanceId": "i-2"}]},
-                {"Instances": [{"InstanceId": "i-3"}]},
-            ]
-        }
-
-        assert extract_ec2_instances(response) == [
-            {"InstanceId": "i-1"},
-            {"InstanceId": "i-2"},
-            {"InstanceId": "i-3"},
-        ]
-
-    def test_returns_empty_list_when_missing(self) -> None:
-        assert extract_ec2_instances({}) == []
