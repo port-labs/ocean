@@ -74,7 +74,7 @@ async def test_patch_probe_health_result_sends_patch_request(
 
     # Assert
     patch_mock.assert_called_once_with(
-        f"{TEST_API_URL}/org/org-123/probe/probe-1",
+        f"{TEST_API_URL}/org/org-123/integration/probe/probe-1",
         headers={"Authorization": "Bearer test-token"},
         json=body,
     )
