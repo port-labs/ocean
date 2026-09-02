@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Added user, project, team-members, and cycle resource kinds with default blueprints and mappings.
+changelog: Added user, project, team-members, and cycle resource kinds with default blueprints and mappings. In addition, Added live event support for user, project, and cycle kinds via Linear webhooks.

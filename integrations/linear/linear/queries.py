@@ -237,6 +237,27 @@ QUERIES = {
         }
     }
     """,
+    "GET_SINGLE_USER": """
+    query User {
+        user(id: "{{ user_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_PROJECT": """
+    query Project {
+        project(id: "{{ project_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_CYCLE": """
+    query Cycle {
+        cycle(id: "{{ cycle_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
     "GET_ISSUES_PAGE": """
     query Issues {
         issues(first: {{ page_size }}{{ after_cursor }}) {

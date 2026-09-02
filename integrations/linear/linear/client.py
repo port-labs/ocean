@@ -6,7 +6,6 @@ from httpx import HTTPStatusError
 from loguru import logger
 import jinja2
 from linear.queries import QUERIES
-from linear.helpers.graphql_utils import extract_graphql_batch, extract_page_info
 
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
@@ -49,6 +48,9 @@ WEBHOOK_EVENTS = [
     "Issue",
     "IssueLabel",
     "Document",
+    "User",
+    "Project",
+    "Cycle",
 ]
 
 
@@ -272,6 +274,39 @@ class LinearClient:
         # Returning just the label object for mapping consistency
         label_json = label_response.json()
         return label_json["data"]["issueLabel"]
+
+    async def get_single_user(self, user_id: str) -> dict[str, Any]:
+        logger.info(f"Querying single user: {user_id}")
+        template = jinja2.Template(QUERIES["GET_SINGLE_USER"], enable_async=True)
+        query = await template.render_async(
+            user_id=user_id,
+            base_query_fields=QUERIES[f"BASE_{LinearObject.USERS}_QUERY_FIELDS"],
+        )
+        response = await self.client.post(self.linear_url, json={"query": query})
+        response.raise_for_status()
+        return response.json()["data"]["user"]
+
+    async def get_single_project(self, project_id: str) -> dict[str, Any]:
+        logger.info(f"Querying single project: {project_id}")
+        template = jinja2.Template(QUERIES["GET_SINGLE_PROJECT"], enable_async=True)
+        query = await template.render_async(
+            project_id=project_id,
+            base_query_fields=QUERIES[f"BASE_{LinearObject.PROJECTS}_QUERY_FIELDS"],
+        )
+        response = await self.client.post(self.linear_url, json={"query": query})
+        response.raise_for_status()
+        return response.json()["data"]["project"]
+
+    async def get_single_cycle(self, cycle_id: str) -> dict[str, Any]:
+        logger.info(f"Querying single cycle: {cycle_id}")
+        template = jinja2.Template(QUERIES["GET_SINGLE_CYCLE"], enable_async=True)
+        query = await template.render_async(
+            cycle_id=cycle_id,
+            base_query_fields=QUERIES[f"BASE_{LinearObject.CYCLES}_QUERY_FIELDS"],
+        )
+        response = await self.client.post(self.linear_url, json={"query": query})
+        response.raise_for_status()
+        return response.json()["data"]["cycle"]
 
     def _extract_paginated_batch(
         self, response: dict[str, Any], object_type: LinearObject

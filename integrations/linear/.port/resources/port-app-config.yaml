@@ -141,7 +141,7 @@ resources:
       entity:
         mappings:
           identifier: .id
-          title: if .name then .name else "Cycle " + (.number | tostring)
+          title: .name // "Cycle " + (.number | tostring)
           blueprint: '"linearCycle"'
           properties:
             number: .number

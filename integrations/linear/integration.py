@@ -66,6 +66,7 @@ class CycleResourceConfig(ResourceConfig):
         description="Linear cycle resource kind.",
     )
 
+
 class LinearPortAppConfig(PortAppConfig):
     resources: list[
         TeamResourceConfig

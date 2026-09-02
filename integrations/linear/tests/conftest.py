@@ -1,7 +1,7 @@
 """Pytest configuration and fixtures."""
 
 from typing import Any, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean

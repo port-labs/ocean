@@ -1,15 +1,16 @@
 from loguru import logger
-from typing import cast
 
 from linear.client import LinearClient
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from linear.utils import ObjectKind
 from webhook_processors import (
+    CycleWebhookProcessor,
     DocumentWebhookProcessor,
     IssueWebhookProcessor,
     LabelWebhookProcessor,
+    ProjectWebhookProcessor,
+    UserWebhookProcessor,
 )
 
 
@@ -93,6 +94,7 @@ async def on_resync_cycles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received cycle batch with {len(cycles)} cycles")
         yield cycles
 
+
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
@@ -107,3 +109,6 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", LabelWebhookProcessor)
 ocean.add_webhook_processor("/webhook", DocumentWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", CycleWebhookProcessor)
