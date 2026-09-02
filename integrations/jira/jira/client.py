@@ -465,21 +465,17 @@ class JiraClient(OAuthClient):
 
     async def has_webhook_permission(self) -> bool:
         logger.info(f"Checking webhook permissions for Jira instance: {self.jira_url}")
-        response = await self._send_api_request(
-            method="GET",
-            url=f"{self.api_url}/mypermissions",
-            params={"permissions": "ADMINISTER"},
+        permissions = await self.get_current_user_permissions(
+            ["ADMINISTER"], skip_retry=False
         )
-        has_permission = response["permissions"]["ADMINISTER"]["havePermission"]
-
-        return has_permission
+        return permissions.get("ADMINISTER", False)
 
     async def verify_current_user(self) -> None:
         """Validate that the configured credentials identify a real Jira user."""
         await self._send_api_request("GET", f"{self.api_url}/myself", skip_retry=True)
 
     async def get_current_user_permissions(
-        self, permission_keys: list[str]
+        self, permission_keys: list[str], *, skip_retry: bool = True
     ) -> dict[str, bool]:
         """Return the current user's effective permissions for the given keys."""
         if not permission_keys:
@@ -489,7 +485,7 @@ class JiraClient(OAuthClient):
             "GET",
             f"{self.api_url}/mypermissions",
             params={"permissions": ",".join(permission_keys)},
-            skip_retry=True,
+            skip_retry=skip_retry,
         )
         return {
             key: bool(permission.get("havePermission"))
