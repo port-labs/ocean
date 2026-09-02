@@ -184,11 +184,7 @@ def _parse_change_timestamp(timestamp: str) -> datetime:
 
 
 def _normalize_git_scope_path(path: str) -> str:
-    """Normalize a Git item path for the Azure DevOps Items API ``scopePath`` parameter.
-
-    ADO expects a leading slash (e.g. ``/App/root``). Continuation tokens are bound to
-    the normalized scope path, so pagination must use the same format on every request.
-    """
+    """Format ``scopePath`` for the Git Items API (leading ``/``, no trailing ``/``)."""
     normalized = path.strip().strip("/")
     return "/" if not normalized else f"/{normalized}"
 
