@@ -498,6 +498,13 @@ class JiraClient(OAuthClient):
             for key, permission in response.get("permissions", {}).items()
         }
 
+    async def verify_teams_access(self, org_id: str) -> None:
+        await self._send_api_request(
+            "GET",
+            f"{self.teams_base_url}/{org_id}/teams",
+            skip_retry=True,
+        )
+
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
