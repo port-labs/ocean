@@ -6,6 +6,8 @@ from jira.probe.permissions import JiraKindPermissionVerdict
 from kinds import Kinds
 from port_ocean.core.probe import ProbeContext, ProbeCheck, ProbeCheckStatus
 
+NON_PERMISSIONS_KINDS = frozenset({Kinds.TEAM})
+
 
 class JiraPermissionProbe:
     def __init__(self, context: ProbeContext) -> None:
@@ -66,7 +68,7 @@ class JiraPermissionProbe:
         message: str,
     ) -> None:
         for check in checks:
-            if check.kind == Kinds.TEAM:
+            if check.kind in NON_PERMISSIONS_KINDS:
                 continue
             check.status = ProbeCheckStatus.FAILURE
             check.message = message
@@ -78,7 +80,7 @@ class JiraPermissionProbe:
         permissions: dict[str, bool],
     ) -> None:
         for check in checks:
-            if check.kind == Kinds.TEAM:
+            if check.kind in NON_PERMISSIONS_KINDS:
                 continue
             check.status, check.message = self.permission_verdict.verdict(
                 check.kind,
