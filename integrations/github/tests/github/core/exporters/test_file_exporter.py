@@ -1183,6 +1183,20 @@ class TestFileExporterUtils:
         content = parse_content("invalid: yaml: content:", "config.yaml")
         assert content == "invalid: yaml: content:"
 
+    def test_parse_content_multi_document_yaml(self) -> None:
+        content = parse_content(
+            "name: service-a\nversion: 1.0.0\n---\nname: service-b\nversion: 2.0.0\n",
+            "services.yaml",
+        )
+        assert content == [
+            {"name": "service-a", "version": "1.0.0"},
+            {"name": "service-b", "version": "2.0.0"},
+        ]
+
+    def test_parse_content_single_document_yaml_with_leading_marker(self) -> None:
+        content = parse_content("---\nname: test\nvalue: 123\n", "config.yaml")
+        assert content == {"name": "test", "value": 123}
+
     def test_match_file_path_against_glob_pattern_exact(self) -> None:
         assert match_file_path_against_glob_pattern("test.txt", "test.txt") is True
 
@@ -1306,3 +1320,63 @@ class TestFileExporterUtils:
         assert 'repository(owner: "test-org", name: "repo1")' in query["query"]
         # Should not contain any file objects
         assert "file_0: object" not in query["query"]
+
+
+@pytest.mark.asyncio
+class TestFileProcessorMultiDocumentYaml:
+    async def test_process_file_returns_list_for_multi_document_yaml(self) -> None:
+        """Resync and webhook file processing both route through FileProcessor."""
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+        multi_doc_yaml = (
+            "name: service-a\nversion: 1.0.0\n---\nname: service-b\nversion: 2.0.0\n"
+        )
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="services.yaml",
+            skip_parsing=False,
+            branch="main",
+            content=multi_doc_yaml,
+            metadata={},
+        )
+
+        assert result["content"] == [
+            {"name": "service-a", "version": "1.0.0"},
+            {"name": "service-b", "version": "2.0.0"},
+        ]
+
+    async def test_process_file_passes_through_non_mapping_documents(self) -> None:
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+        mixed_doc_yaml = "name: service-a\n---\njust a string\n---\n42\n"
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="services.yaml",
+            skip_parsing=False,
+            branch="main",
+            content=mixed_doc_yaml,
+            metadata={},
+        )
+
+        assert result["content"] == [
+            {"name": "service-a"},
+            "just a string",
+            42,
+        ]
+
+    async def test_process_file_passes_through_top_level_yaml_list(self) -> None:
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="items.yaml",
+            skip_parsing=False,
+            branch="main",
+            content="- item1\n- item2\n",
+            metadata={},
+        )
+
+        assert result["content"] == ["item1", "item2"]
