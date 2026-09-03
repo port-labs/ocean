@@ -271,17 +271,28 @@ async def test_get_port_app_config_validation_error(
 
 
 @pytest.mark.asyncio
-async def test_get_port_app_config_fetch_error(
+async def test_get_port_app_config_raises_empty_port_app_config_error(
     port_app_config_handler: MockPortAppConfig,
 ) -> None:
-    # Arrange
     port_app_config_handler.mock_get_port_app_config.side_effect = (
         EmptyPortAppConfigError("Port app config is empty")
     )
 
-    # Act & Assert
-    async with event_context(EventType.RESYNC, trigger_type="machine"):
-        with pytest.raises(EmptyPortAppConfigError, match="Port app config is empty"):
+    with pytest.raises(EmptyPortAppConfigError, match="Port app config is empty"):
+        async with event_context(EventType.RESYNC, trigger_type="machine"):
+            await port_app_config_handler.get_port_app_config()
+
+
+@pytest.mark.asyncio
+async def test_get_port_app_config_raises_empty_port_app_config_error_for_action_run(
+    port_app_config_handler: MockPortAppConfig,
+) -> None:
+    port_app_config_handler.mock_get_port_app_config.side_effect = (
+        EmptyPortAppConfigError("Port app config is empty")
+    )
+
+    with pytest.raises(EmptyPortAppConfigError, match="Port app config is empty"):
+        async with event_context(EventType.ACTION_RUN, trigger_type="machine"):
             await port_app_config_handler.get_port_app_config()
 
 
