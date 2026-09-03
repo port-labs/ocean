@@ -2,13 +2,19 @@ import json
 
 import httpx
 
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-class MissingExecutionPropertyError(Exception):
+
+class MissingExecutionPropertyError(ActionExecutionError):
     """Raised when a required execution property is absent from the action run."""
 
+    DEFAULT_STATUS_LABEL = "Invalid inputs"
 
-class GitlabTriggerPipelineError(Exception):
+
+class GitlabTriggerPipelineError(ActionExecutionError):
     """Raised when the GitLab API returns an error while triggering a pipeline."""
+
+    DEFAULT_STATUS_LABEL = "Trigger failed"
 
     @classmethod
     def from_response(
