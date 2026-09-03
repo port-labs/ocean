@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.10.14 (2026-09-03)
+
+
+### Bug Fixes
+
+- Fixed multi-document YAML parsing in the GitHub file exporter
+
+
 ## 6.10.13 (2026-09-02)
 
 
