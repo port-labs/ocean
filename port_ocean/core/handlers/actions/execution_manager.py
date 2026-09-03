@@ -16,6 +16,7 @@ from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
     RunAlreadyAcknowledgedError,
 )
+from port_ocean.exceptions.identity_propagation import UserAuthRequiredError
 from port_ocean.utils.signal import SignalHandler
 
 RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
@@ -486,7 +487,6 @@ class ExecutionManager:
                 "run_kind": run.run_kind.value,
             },
         ):
-            await ocean.integration.port_app_config_handler.get_port_app_config()
             with logger.contextualize(run_id=run.id, action=run.action_type):
                 try:
                     executor = self._actions_executors[run.action_type]
@@ -521,6 +521,18 @@ class ExecutionManager:
                         "Run already being processed by another worker, skipping execution",
                     )
                     return
+                except UserAuthRequiredError:
+                    # Can also be raised here: the rate-limit check above resolves the user's
+                    # token too (same code path as actual execution), so a vault miss can
+                    # surface before the run is even acknowledged.
+                    logger.info(
+                        "Run is waiting for the user to authenticate",
+                        node_run_id=run.id,
+                    )
+                    await ocean.port_client.patch_run(
+                        run, {"reauthRequired": True}, should_raise=False
+                    )
+                    return
                 except Exception as e:
                     logger.exception(
                         "Error occurred while trying to acknowledge run",
@@ -536,6 +548,20 @@ class ExecutionManager:
                         "Run executed successfully",
                         elapsed_ms=(time.monotonic() - start_time) * 1000,
                     )
+                except UserAuthRequiredError:
+                    logger.info(
+                        "Run is waiting for the user to authenticate",
+                        node_run_id=run.id,
+                    )
+                    await ocean.port_client.patch_run(
+                        run, {"reauthRequired": True}, should_raise=False
+                    )
+                    logger.info(
+                        "Sent reauthRequired signal to Port (see preceding line for "
+                        "an error if this PATCH failed)",
+                        node_run_id=run.id,
+                    )
+                    return
                 except ActionExecutionError as e:
                     logger.warning("Action run failed: {}", str(e))
                     error_summary = str(e)
