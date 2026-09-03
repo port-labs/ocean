@@ -1,0 +1,1 @@
+Fixed `_build_base_url` doubling the Jenkins context path when recursing into folder jobs on a Jenkins instance not served at the root path (e.g. `https://host/jenkins`), which caused nested folder jobs to fail with `Exception: 'jobs'` and be silently skipped during resync.
