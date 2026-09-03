@@ -46,12 +46,14 @@ def _make_resource(
     method: str = "GET",
     query_params: dict[str, Any] | None = None,
     path_parameters: dict[str, Any] | None = None,
+    dynamic_query_params: dict[str, Any] | None = None,
 ) -> HttpServerResourceConfig:
     selector = HttpServerSelector(
         query="true",
         method=method,
         query_params=query_params,
         path_parameters=path_parameters,
+        dynamic_query_params=dynamic_query_params,
     )
     return HttpServerResourceConfig(
         kind=kind,
@@ -147,6 +149,24 @@ class TestAnalyzeCacheableEndpoints:
         orgs_key = make_cache_key("/api/v2/organizations.json", "GET")
         assert tickets_key in cacheable
         assert orgs_key not in cacheable
+
+    def test_query_param_endpoint_matching_kind_is_cacheable(self) -> None:
+        param = ApiPathParameter(
+            endpoint="/api/v2/teams.json",
+            method="GET",
+            field=".id",
+            data_path=".teams",
+        )
+        resources = [
+            _make_resource("/api/v2/teams.json"),
+            _make_resource(
+                "/api/v2/members.json",
+                dynamic_query_params={"team_id": param},
+            ),
+        ]
+        cacheable = analyze_cacheable_endpoints(resources)
+        expected_key = make_cache_key("/api/v2/teams.json", "GET")
+        assert expected_key in cacheable
 
 
 class TestEndpointCacheWriteAndRead:
