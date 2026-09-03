@@ -54,6 +54,8 @@ from actions.utils import build_external_id
 from webhook_processors.session_webhook_processor import SessionWebhookProcessor
 from webhook_processors.trigger_agent_webhook_processor import (
     _INTERACTION_EVENT_TYPES,
+    SESSION_COMPLETED_STATUS_LABEL,
+    SESSION_FAILED_STATUS_LABEL,
     TriggerAgentWebhookProcessor,
 )
 from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
@@ -317,7 +319,9 @@ async def test_trigger_reports_success_without_error_logs() -> None:
     mock_ocean.port_client.post_run_logs.assert_not_awaited()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
-    assert mock_ocean.port_client.report_run_completed.call_args.kwargs == {}
+    assert set(mock_ocean.port_client.report_run_completed.call_args.kwargs) == {
+        "status_label"
+    }
 
 
 @pytest.mark.asyncio
@@ -347,7 +351,9 @@ async def test_trigger_reports_response_on_success() -> None:
     ):
         await processor.handle_event(payload, None)
 
-    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, True)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, True, status_label=SESSION_COMPLETED_STATUS_LABEL
+    )
     assert run.output == {
         "sessionId": "s1",
         "userMessageEventId": _ANCHOR_ID,
@@ -386,7 +392,9 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
 
     logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert [log.level for log in logs] == ["ERROR"]
-    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, True)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, True, status_label=SESSION_COMPLETED_STATUS_LABEL
+    )
     assert run.output == {
         "sessionId": "s1",
         "userMessageEventId": _ANCHOR_ID,
@@ -424,7 +432,9 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
         "to access the Anthropic API.",
     ]
     assert [log.level for log in logs] == ["ERROR"]
-    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, False)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, False, status_label=SESSION_FAILED_STATUS_LABEL
+    )
     assert run.output == {
         "sessionId": "s1",
         "userMessageEventId": _ANCHOR_ID,
@@ -463,7 +473,9 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     ]
     assert [log.level for log in logs] == ["WARN"]
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
-    assert mock_ocean.port_client.report_run_completed.call_args.kwargs == {}
+    assert set(mock_ocean.port_client.report_run_completed.call_args.kwargs) == {
+        "status_label"
+    }
     anchor = _user_message("try again")
     payload = _webhook_payload()
     processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
@@ -486,7 +498,9 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
         await processor.handle_event(payload, None)
 
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is False
-    assert mock_ocean.port_client.report_run_completed.call_args.kwargs == {}
+    assert set(mock_ocean.port_client.report_run_completed.call_args.kwargs) == {
+        "status_label"
+    }
     anchor = _user_message("go")
     payload = _webhook_payload(event_type="session.status_terminated")
     processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
@@ -749,7 +763,9 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
     logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert len(logs) == 1
     assert "billing_error" in logs[0].message
-    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, False)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, False, status_label=SESSION_FAILED_STATUS_LABEL
+    )
     assert run.output == {
         "sessionId": "s1",
         "userMessageEventId": _ANCHOR_ID,
@@ -838,7 +854,9 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
     logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
     assert len(logs) == 1
     assert "billing_error" in logs[0].message
-    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, False)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, False, status_label=SESSION_FAILED_STATUS_LABEL
+    )
     assert run.output == {
         "sessionId": "s1",
         "userMessageEventId": _ANCHOR_ID,
