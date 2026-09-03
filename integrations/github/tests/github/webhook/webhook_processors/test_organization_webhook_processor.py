@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -45,7 +47,7 @@ def organization_webhook_processor(
     return OrganizationWebhookProcessor(event=mock_webhook_event)
 
 
-def make_org_payload(action: str) -> dict:
+def make_org_payload(action: str) -> dict[str, Any]:
     return {
         "action": action,
         "organization": {"login": "test-org", "id": 123},
@@ -116,7 +118,7 @@ class TestOrganizationWebhookProcessor:
     async def test_validate_payload_valid(
         self, organization_webhook_processor: OrganizationWebhookProcessor
     ) -> None:
-        payload = make_org_payload("member_added")
+        payload = make_org_payload("renamed")
         assert await organization_webhook_processor.validate_payload(payload) is True
 
     async def test_validate_payload_missing_action(
@@ -128,13 +130,13 @@ class TestOrganizationWebhookProcessor:
     async def test_validate_payload_missing_organization(
         self, organization_webhook_processor: OrganizationWebhookProcessor
     ) -> None:
-        payload = {"action": "member_added"}
+        payload = {"action": "renamed"}
         assert await organization_webhook_processor.validate_payload(payload) is False
 
     async def test_validate_payload_missing_login(
         self, organization_webhook_processor: OrganizationWebhookProcessor
     ) -> None:
-        payload = {"action": "member_added", "organization": {"id": 123}}
+        payload = {"action": "renamed", "organization": {"id": 123}}
         assert await organization_webhook_processor.validate_payload(payload) is False
 
     async def test_handle_event_deleted(
@@ -154,7 +156,7 @@ class TestOrganizationWebhookProcessor:
 
     @pytest.mark.parametrize(
         "action",
-        ["renamed", "member_invited", "member_added", "member_removed"],
+        ["renamed"],
     )
     async def test_handle_event_upsert(
         self,

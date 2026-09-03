@@ -58,12 +58,7 @@ TEAM_EVENTS = TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS
 USER_EVENTS = USER_UPSERT_EVENTS + USER_DELETE_EVENTS
 
 # Organization events (x-github-event: organization)
-ORGANIZATION_UPSERT_EVENTS = [
-    "renamed",
-    "member_invited",
-    "member_added",
-    "member_removed",
-]
+ORGANIZATION_UPSERT_EVENTS = ["renamed"]
 ORGANIZATION_DELETE_EVENTS = ["deleted"]
 ORGANIZATION_EVENTS = ORGANIZATION_UPSERT_EVENTS + ORGANIZATION_DELETE_EVENTS
 
