@@ -24,6 +24,12 @@ from webhook_processors.trigger_agent_webhook_processor import (
     TriggerAgentWebhookProcessor,
 )
 
+STARTING_STATUS_LABEL = "Sending prompt"
+SESSION_RUNNING_STATUS_LABEL = "Session running"
+PROMPT_SENT_STATUS_LABEL = "Prompt sent"
+SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Session closed"
+SESSION_START_FAILED_STATUS_LABEL = "Start failed"
+
 
 class TriggerAgentExecutor(AbstractAnthropicExecutor):
     """Executor for the `trigger_agent` action.
@@ -54,7 +60,8 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         if status != "idle":
             raise ActionExecutionError(
                 f"Session {session_id} cannot be continued (status={status!r}); "
-                "only idle sessions accept a new prompt"
+                "only idle sessions accept a new prompt",
+                status_label=SESSION_NOT_CONTINUABLE_STATUS_LABEL,
             )
 
         async for batch in self.client.get_session_events(
@@ -69,7 +76,8 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                 if isinstance(stop_reason, BetaManagedAgentsSessionRequiresAction):
                     raise ActionExecutionError(
                         f"Session {session_id} is waiting for user action "
-                        "(tool confirmation or similar) and cannot accept a plain prompt"
+                        "(tool confirmation or similar) and cannot accept a plain prompt",
+                        status_label=SESSION_NOT_CONTINUABLE_STATUS_LABEL,
                     )
             break
 
@@ -90,6 +98,17 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         if not (agent_id and prompt):
             raise InvalidActionParametersException("agentId and prompt are required")
 
+        await ocean.port_client.post_run_log(
+            run,
+            (
+                f"Sending prompt to Claude agent {agent_id} " f"(session {session_id})"
+                if session_id
+                else f"Starting a new session for Claude agent {agent_id}"
+            ),
+            status_label=STARTING_STATUS_LABEL,
+            should_raise=False,
+        )
+
         if session_id:
             session = await self._ensure_session_continuable(session_id)
             resolved_session_id = session_id
@@ -107,7 +126,8 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             resolved_session_id = session.get("id")
             if not resolved_session_id or not isinstance(resolved_session_id, str):
                 raise ActionExecutionError(
-                    "Session was created but no session id was returned"
+                    "Session was created but no session id was returned",
+                    status_label=SESSION_START_FAILED_STATUS_LABEL,
                 )
 
         user_message = await self.client.send_user_message(resolved_session_id, prompt)
@@ -134,9 +154,13 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                 "sessionId": resolved_session_id,
                 "userMessageEventId": user_message.id,
             },
+            status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 
         if not props.get("reportSessionStatus", False):
             await ocean.port_client.report_run_completed(
-                run, True, f"Prompt sent to session {resolved_session_id}"
+                run,
+                True,
+                f"Prompt sent to session {resolved_session_id}",
+                status_label=PROMPT_SENT_STATUS_LABEL,
             )
