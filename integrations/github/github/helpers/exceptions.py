@@ -1,5 +1,6 @@
 from typing import List, TYPE_CHECKING
 from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 if TYPE_CHECKING:
     from github.clients.rate_limiter.utils import RateLimitInfo
@@ -46,16 +47,22 @@ class OrganizationConflictError(Exception):
     """Raised when both github_organization and github_multi_organizations are provided."""
 
 
-class RepositoryDefaultBranchNotFoundException(Exception):
+class RepositoryDefaultBranchNotFoundException(ActionExecutionError):
     """Exception for default branch not found."""
 
+    DEFAULT_STATUS_LABEL = "Branch missing"
 
-class InvalidActionParametersException(Exception):
+
+class InvalidActionParametersException(ActionExecutionError):
     """Exception for invalid action parameters."""
 
+    DEFAULT_STATUS_LABEL = "Invalid inputs"
 
-class NoWorkflowRunsFoundException(Exception):
+
+class NoWorkflowRunsFoundException(ActionExecutionError):
     """Exception for workflow runs not found after dispatch."""
+
+    DEFAULT_STATUS_LABEL = "Tracking failed"
 
 
 class RateLimitException(Exception):
