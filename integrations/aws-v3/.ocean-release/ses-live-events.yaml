@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Add CloudTrail live events support for SES email identities and configuration sets.
