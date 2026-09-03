@@ -1,0 +1,68 @@
+[
+  {
+    "identifier": "scaleQualityEntity",
+    "title": "ScaleQuality",
+    "icon": "Deployment",
+    "schema": {
+      "properties": {
+        "scopeType": {
+          "type": "string",
+          "title": "Scope",
+          "description": "Whether this entity is an organization, a business unit, or a team.",
+          "enum": ["org", "bu", "team"],
+          "enumColors": {"org": "blue", "bu": "purple", "team": "turquoise"}
+        },
+        "aiDurability": {
+          "type": "number",
+          "title": "AI durability (%)",
+          "description": "Share of AI-written code that survives review and production instead of turning into rework."
+        },
+        "engMaturityLevel": {
+          "type": "number",
+          "title": "Engineering maturity (level)",
+          "description": "Consolidated engineering assessment level, from 1 to 5."
+        },
+        "codeMaturityScore": {
+          "type": "number",
+          "title": "Code maturity (/100)",
+          "description": "Zero-config code maturity verdict, from 0 to 100."
+        },
+        "technologies": {
+          "type": "number",
+          "title": "Technologies",
+          "description": "Number of technologies placed on the tech radar for this scope."
+        },
+        "durabilityStatus": {
+          "type": "string",
+          "title": "Durability status",
+          "enum": ["ok", "warn", "risk", "unknown"],
+          "enumColors": {"ok": "green", "warn": "orange", "risk": "red", "unknown": "lightGray"}
+        },
+        "deepLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Open in ScaleQuality",
+          "description": "Deep link back to this scope in the ScaleQuality app."
+        },
+        "measuredAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Measured at"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "parent": {
+        "title": "Parent scope",
+        "description": "The business unit or organization this scope rolls up into.",
+        "target": "scaleQualityEntity",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
