@@ -82,6 +82,12 @@ from aws.core.exporters.ses import (
     SesConfigurationSetExporter,
     SesEmailIdentityExporter,
 )
+from aws.core.exporters.ses.configuration_set.live_events import (
+    SES_CONFIGURATION_SET_LIVE_EVENTS,
+)
+from aws.core.exporters.ses.email_identity.live_events import (
+    SES_EMAIL_IDENTITY_LIVE_EVENTS,
+)
 from aws.core.exporters.sns import SNSTopicExporter, PaginatedTopicRequest
 from aws.core.exporters.sns.topic.live_events import SNS_TOPIC_LIVE_EVENTS
 from aws.core.exporters.sqs import SqsQueueExporter
@@ -195,7 +201,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         CodePipelineActionExecutionExporter, PaginatedCodePipelineActionExecutionRequest
     ),
     ObjectKind.SES_EMAIL_IDENTITY: ExporterMetadata(
-        SesEmailIdentityExporter, PaginatedEmailIdentityRequest
+        SesEmailIdentityExporter,
+        PaginatedEmailIdentityRequest,
+        live_events=SES_EMAIL_IDENTITY_LIVE_EVENTS,
     ),
     ObjectKind.DYNAMODB_TABLE: ExporterMetadata(
         DynamoDBTableExporter,
@@ -203,7 +211,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         live_events=DYNAMODB_TABLE_LIVE_EVENTS,
     ),
     ObjectKind.SES_CONFIGURATION_SET: ExporterMetadata(
-        SesConfigurationSetExporter, PaginatedConfigurationSetRequest
+        SesConfigurationSetExporter,
+        PaginatedConfigurationSetRequest,
+        live_events=SES_CONFIGURATION_SET_LIVE_EVENTS,
     ),
     ObjectKind.SNS_TOPIC: ExporterMetadata(
         SNSTopicExporter,

@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.ses.configuration_set.exporter import (
     SesConfigurationSetExporter,
@@ -47,6 +48,9 @@ class TestSesConfigurationSetExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_configuration_set.return_value = {
+            "ConfigurationSetName": "my-config-set",
+        }
 
         # Inspector
         mock_inspector = AsyncMock()
@@ -74,11 +78,44 @@ class TestSesConfigurationSetExporter:
         assert isinstance(result, dict)
         assert result["ConfigurationSetName"] == "my-config-set"
 
-        mock_client.get_configuration_set.assert_not_called()
+        mock_client.get_configuration_set.assert_awaited_once_with(
+            ConfigurationSetName="my-config-set"
+        )
         mock_inspector.inspect.assert_called_once()
         assert mock_inspector.inspect.call_args.args[0] == [
             {"ConfigurationSetName": "my-config-set"}
         ]
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ses.configuration_set.exporter.ResourceInspector")
+    async def test_get_resource_configuration_set_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: SesConfigurationSetExporter,
+    ) -> None:
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_configuration_set.side_effect = ClientError(
+            {"Error": {"Code": "NotFoundException", "Message": "gone"}},
+            "GetConfigurationSet",
+        )
+
+        request = SingleConfigurationSetRequest(
+            configuration_set_name="my-config-set",
+            region="us-east-1",
+            include=[],
+            account_id="123456789012",
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(request)
+
+        assert exc_info.value.response["Error"]["Code"] == "NotFoundException"
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ses.configuration_set.exporter.AioBaseClientProxy")
@@ -94,6 +131,9 @@ class TestSesConfigurationSetExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_configuration_set.return_value = {
+            "ConfigurationSetName": "nonexistent-set",
+        }
 
         # Inspector returns empty
         mock_inspector = AsyncMock()
