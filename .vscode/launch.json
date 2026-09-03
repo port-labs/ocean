@@ -161,6 +161,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/linear",
+      "envFile": "${workspaceFolder}/integrations/linear/.env",
+      "justMyCode": false,
+      "name": "Run Linear integration",
+      "program": "${workspaceFolder}/integrations/linear/debug.py",
+      "python": "${workspaceFolder}/integrations/linear/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/aws-v3",
       "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
       "justMyCode": false,

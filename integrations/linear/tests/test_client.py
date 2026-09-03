@@ -5,14 +5,6 @@ import pytest
 from linear.client import LinearClient
 
 
-@pytest.fixture
-def linear_client() -> LinearClient:
-    mock_http = MagicMock()
-    mock_http.headers = {}
-    with patch("linear.client.http_async_client", mock_http):
-        return LinearClient("test-api-key")
-
-
 @pytest.mark.asyncio
 class TestLinearDocumentClient:
     async def test_create_events_webhook_updates_existing_webhook(
@@ -100,3 +92,69 @@ class TestLinearDocumentClient:
         payload = mock_post.await_args.kwargs["json"]["query"]
         assert "document(id:" in payload.replace(" ", "")
         assert "50e3e770-03ef-4c12-9f5a-e3122a768bc4" in payload
+
+
+@pytest.mark.asyncio
+class TestLinearNewResourceClient:
+    async def test_get_paginated_users(self, linear_client: LinearClient) -> None:
+        from linear.client import LinearObject, PAGE_SIZE
+
+        first_page = {
+            "data": {
+                "users": {
+                    "nodes": [
+                        {"id": "user-1", "name": "Alice"},
+                        {"id": "user-2", "name": "Bob"},
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "cursor-1"},
+                }
+            }
+        }
+
+        with patch.object(
+            linear_client, "_get_paginated_objects", new_callable=AsyncMock
+        ) as mock_get:
+            mock_get.return_value = first_page
+            results = [batch async for batch in linear_client.get_paginated_users()]
+
+        assert results == [
+            [
+                {"id": "user-1", "name": "Alice"},
+                {"id": "user-2", "name": "Bob"},
+            ]
+        ]
+        mock_get.assert_awaited_once_with(LinearObject.USERS, PAGE_SIZE, None)
+
+    async def test_get_paginated_team_members(
+        self, linear_client: LinearClient
+    ) -> None:
+        from linear.client import LinearObject, PAGE_SIZE
+
+        page = {
+            "data": {
+                "teamMemberships": {
+                    "nodes": [
+                        {
+                            "id": "membership-1",
+                            "owner": True,
+                            "team": {"id": "team-1", "key": "ENG"},
+                            "user": {"id": "user-1", "name": "Alice"},
+                        }
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "cursor-1"},
+                }
+            }
+        }
+
+        with patch.object(
+            linear_client, "_get_paginated_objects", new_callable=AsyncMock
+        ) as mock_get:
+            mock_get.return_value = page
+            results = [
+                batch async for batch in linear_client.get_paginated_team_members()
+            ]
+
+        assert results == [page["data"]["teamMemberships"]["nodes"]]
+        mock_get.assert_awaited_once_with(
+            LinearObject.TEAM_MEMBERSHIPS, PAGE_SIZE, None
+        )

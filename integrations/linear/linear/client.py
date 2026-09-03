@@ -16,6 +16,29 @@ class LinearObject(StrEnum):
     LABELS = "LABELS"
     ISSUES = "ISSUES"
     DOCUMENTS = "DOCUMENTS"
+    USERS = "USERS"
+    PROJECTS = "PROJECTS"
+    CYCLES = "CYCLES"
+    TEAM_MEMBERSHIPS = "TEAM_MEMBERSHIPS"
+
+
+RESPONSE_ROOTS = {
+    LinearObject.TEAMS: "teams",
+    LinearObject.LABELS: "issueLabels",
+    LinearObject.ISSUES: "issues",
+    LinearObject.DOCUMENTS: "documents",
+    LinearObject.USERS: "users",
+    LinearObject.PROJECTS: "projects",
+    LinearObject.CYCLES: "cycles",
+    LinearObject.TEAM_MEMBERSHIPS: "teamMemberships",
+}
+
+NODE_PAGINATION_OBJECTS = {
+    LinearObject.USERS,
+    LinearObject.PROJECTS,
+    LinearObject.CYCLES,
+    LinearObject.TEAM_MEMBERSHIPS,
+}
 
 
 PAGE_SIZE = 50
@@ -25,6 +48,9 @@ WEBHOOK_EVENTS = [
     "Issue",
     "IssueLabel",
     "Document",
+    "User",
+    "Project",
+    "Cycle",
 ]
 
 
@@ -248,3 +274,93 @@ class LinearClient:
         # Returning just the label object for mapping consistency
         label_json = label_response.json()
         return label_json["data"]["issueLabel"]
+
+    async def get_single_user(self, user_id: str) -> dict[str, Any]:
+        logger.info(f"Querying single user: {user_id}")
+        template = jinja2.Template(QUERIES["GET_SINGLE_USER"], enable_async=True)
+        query = await template.render_async(
+            user_id=user_id,
+            base_query_fields=QUERIES[f"BASE_{LinearObject.USERS}_QUERY_FIELDS"],
+        )
+        response = await self.client.post(self.linear_url, json={"query": query})
+        response.raise_for_status()
+        return response.json()["data"]["user"]
+
+    async def get_single_project(self, project_id: str) -> dict[str, Any]:
+        logger.info(f"Querying single project: {project_id}")
+        template = jinja2.Template(QUERIES["GET_SINGLE_PROJECT"], enable_async=True)
+        query = await template.render_async(
+            project_id=project_id,
+            base_query_fields=QUERIES[f"BASE_{LinearObject.PROJECTS}_QUERY_FIELDS"],
+        )
+        response = await self.client.post(self.linear_url, json={"query": query})
+        response.raise_for_status()
+        return response.json()["data"]["project"]
+
+    async def get_single_cycle(self, cycle_id: str) -> dict[str, Any]:
+        logger.info(f"Querying single cycle: {cycle_id}")
+        template = jinja2.Template(QUERIES["GET_SINGLE_CYCLE"], enable_async=True)
+        query = await template.render_async(
+            cycle_id=cycle_id,
+            base_query_fields=QUERIES[f"BASE_{LinearObject.CYCLES}_QUERY_FIELDS"],
+        )
+        response = await self.client.post(self.linear_url, json={"query": query})
+        response.raise_for_status()
+        return response.json()["data"]["cycle"]
+
+    def _extract_paginated_batch(
+        self, response: dict[str, Any], object_type: LinearObject
+    ) -> list[dict[str, Any]]:
+        connection = response["data"][RESPONSE_ROOTS[object_type]]
+        if object_type in NODE_PAGINATION_OBJECTS:
+            return connection["nodes"]
+        return [edge["node"] for edge in connection["edges"]]
+
+    def _get_page_info(
+        self, response: dict[str, Any], object_type: LinearObject
+    ) -> dict[str, Any]:
+        return response["data"][RESPONSE_ROOTS[object_type]]["pageInfo"]
+
+    async def _iter_paginated_resources(
+        self, object_type: LinearObject
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        has_next_page = True
+        end_cursor = None
+        while has_next_page:
+            response = await self._get_paginated_objects(
+                object_type, PAGE_SIZE, end_cursor
+            )
+            yield self._extract_paginated_batch(response, object_type)
+            page_info = self._get_page_info(response, object_type)
+            has_next_page = page_info["hasNextPage"]
+            end_cursor = page_info["endCursor"]
+
+    async def get_paginated_users(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting users from Linear")
+        async for users in self._iter_paginated_resources(LinearObject.USERS):
+            yield users
+
+    async def get_paginated_projects(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting projects from Linear")
+        async for projects in self._iter_paginated_resources(LinearObject.PROJECTS):
+            yield projects
+
+    async def get_paginated_cycles(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting cycles from Linear")
+        async for cycles in self._iter_paginated_resources(LinearObject.CYCLES):
+            yield cycles
+
+    async def get_paginated_team_members(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting team memberships from Linear")
+        async for team_members in self._iter_paginated_resources(
+            LinearObject.TEAM_MEMBERSHIPS
+        ):
+            yield team_members
