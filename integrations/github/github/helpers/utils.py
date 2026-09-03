@@ -58,6 +58,7 @@ class ObjectKind(StrEnum):
     COLLABORATOR = "collaborator"
     SKILL = "skill"
     PLUGIN = "plugin"
+    MCP = "mcp"
     PACKAGE = "package"
 
 

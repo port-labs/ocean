@@ -38,6 +38,7 @@ from github.core.exporters.plugin_exporter.utils import (
     DEFAULT_PLUGIN_PROVIDERS,
     PluginProvider,
 )
+from github.core.exporters.mcp_exporter.utils import DEFAULT_MCP_PATHS
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
@@ -374,6 +375,53 @@ class GithubPluginResourceConfig(ResourceConfig):
     selector: GithubPluginSelector = Field(
         title="Plugin selector",
         description="Selector for discovering agent plugin repositories.",
+    )
+
+
+class GithubMcpPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description=(
+            "Path to an MCP server config file (e.g. 'mcp.json' or '.mcp.json'). "
+            "Root-level exact paths are recommended; broadening this to a glob "
+            "(e.g. '**/mcp.json') can pick up unrelated IDE config files such as "
+            "'.cursor/mcp.json' or '.vscode/mcp.json'."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubMcpSelector(Selector):
+    paths: list[GithubMcpPattern] = Field(
+        title="Paths",
+        default=[GithubMcpPattern(path=path) for path in DEFAULT_MCP_PATHS],
+        description=(
+            "Paths for MCP server config discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtering."
+        ),
+    )
+
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+                for path in default_paths
+            ]
+
+
+class GithubMcpResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.MCP] = Field(
+        title="Github MCP Server",
+        description="MCP server (mcp.json/.mcp.json) resource kind.",
+    )
+    selector: GithubMcpSelector = Field(
+        title="MCP selector",
+        description="Selector for discovering and ingesting MCP servers.",
     )
 
 
@@ -986,6 +1034,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubSkillResourceConfig
         | GithubPluginResourceConfig
+        | GithubMcpResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig

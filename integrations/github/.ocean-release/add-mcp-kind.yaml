@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add a dedicated `mcp` kind to discover MCP servers from `mcp.json`/`.mcp.json` files bundled with agent plugins, emitting one entity per server with derived transport (http/stdio) and full create/update/delete parity on live push events.
