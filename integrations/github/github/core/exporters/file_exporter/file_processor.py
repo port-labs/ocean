@@ -162,7 +162,7 @@ class FileProcessor:
     async def _process_list_content(
         self,
         organization: str,
-        data: List[Dict[str, Any]],
+        data: List[Any],
         parent_directory: str,
         file_path: str,
         file_name: str,
@@ -170,9 +170,12 @@ class FileProcessor:
         file_info: Dict[str, Any],
         repo_info: Dict[str, Any],
     ) -> FileObject:
-        """Process each dict item in the list concurrently, resolving file references."""
+        """Process list content, resolving file references in dict items only."""
 
-        async def process_item(item: Dict[str, Any]) -> Dict[str, Any]:
+        async def process_item(item: Any) -> Any:
+            if not isinstance(item, dict):
+                return item
+
             keys = list(item.keys())
             values = await asyncio.gather(
                 *[

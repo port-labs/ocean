@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.13.9 (2026-09-03)
+
+
+### Bug Fixes
+
+- Normalize Git Items API scopePath for folder sync so pagination continuation tokens remain valid when listing more than 50 folders under a path.
+
+
 ## 0.13.8 (2026-09-02)
 
 
