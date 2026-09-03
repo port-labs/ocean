@@ -58,21 +58,25 @@ jobs:
 
             // author_association misreports private org members as CONTRIBUTOR, so check
             // real org membership via a fine-grained PAT (org resource, Members: Read-only)
-            const { getOctokit } = require('@actions/github');
             const orgClient = getOctokit(process.env.ORG_MEMBERSHIP_TOKEN);
+
+            async function isOrgMember(username) {
+              try {
+                await orgClient.rest.orgs.checkMembershipForUser({ org, username });
+                return true;
+              } catch (err) {
+                if (err.status === 404) return false;
+                throw err;
+              }
+            }
 
             let isExternal;
             try {
-              await orgClient.rest.orgs.checkMembershipForUser({ org, username: user });
-              isExternal = false;
+              isExternal = !(await isOrgMember(user));
             } catch (err) {
-              if (err.status === 404) {
-                isExternal = true;
-              } else {
-                // Can't determine membership — skip rather than guess or fail the job
-                core.warning(`Org membership check failed (${err.status}): ${err.message}. Skipping notification.`);
-                return;
-              }
+              // Can't determine membership — skip rather than guess or fail the job
+              core.warning(`Org membership check failed (${err.status}): ${err.message}. Skipping notification.`);
+              return;
             }
 
             core.info(`Event: ${eventName} | PR author: ${user} | org member: ${!isExternal}`);
@@ -80,6 +84,22 @@ jobs:
             if (!isExternal) {
               core.info('PR author is an org member — skipping webhook.');
               return;
+            }
+
+            if (eventName !== 'pull_request_target') {
+              const actor =
+                eventName === 'pull_request_review' ? payload.review.user.login : payload.comment.user.login;
+              let actorIsMember;
+              try {
+                actorIsMember = await isOrgMember(actor);
+              } catch (err) {
+                core.warning(`Org membership check failed for ${actor} (${err.status}): ${err.message}. Skipping notification.`);
+                return;
+              }
+              if (actorIsMember) {
+                core.info(`${actor} is an org member — skipping webhook.`);
+                return;
+              }
             }
 
             const body = {
