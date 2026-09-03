@@ -18,6 +18,12 @@ from webhook_processors.cursor_agent_webhook_processor import (
 )
 
 
+TRIGGERING_STATUS_LABEL = "Sending follow-up"
+TRIGGER_FAILED_STATUS_LABEL = "Follow-up failed"
+AGENT_RUNNING_STATUS_LABEL = "Agent running"
+FOLLOW_UP_SENT_STATUS_LABEL = "Follow-up sent"
+
+
 class TriggerAgentExecutor(AbstractCursorExecutor):
     """Executor for the `trigger_agent` action.
 
@@ -58,13 +64,22 @@ class TriggerAgentExecutor(AbstractCursorExecutor):
 
         body = build_v1_run_body(prompt=props.get("prompt"), config=config)
         parse_v1_run_body(body)
+
+        await ocean.port_client.post_run_log(
+            run,
+            f"Sending follow-up prompt to Cursor agent {agent_id}",
+            status_label=TRIGGERING_STATUS_LABEL,
+            should_raise=False,
+        )
+
         try:
             response = await self.client.send_api_request(
                 "POST", v1_agent_runs(agent_id), json_body=body
             )
         except Exception as error:
             raise ActionExecutionError(
-                f"Failed to trigger Cursor agent {agent_id}: {error}"
+                f"Failed to trigger Cursor agent {agent_id}: {error}",
+                status_label=TRIGGER_FAILED_STATUS_LABEL,
             ) from error
 
         run_obj = response.get("run") or {}
@@ -87,17 +102,22 @@ class TriggerAgentExecutor(AbstractCursorExecutor):
         if report_completion and await self._agent_has_registered_webhook(agent_id):
             if not run_id:
                 raise ActionExecutionError(
-                    f"Cursor agent {agent_id} returned no run id for follow-up"
+                    f"Cursor agent {agent_id} returned no run id for follow-up",
+                    status_label=TRIGGER_FAILED_STATUS_LABEL,
                 )
             await ocean.port_client.update_run_started(
                 run,
                 build_agent_link(self.client.get_console_host(), agent_id),
                 run_id,
                 extra_output={"agentId": agent_id, "runId": run_id},
+                status_label=AGENT_RUNNING_STATUS_LABEL,
             )
         else:
             await ocean.port_client.report_run_completed(
-                run, True, f"Follow-up sent to agent {agent_id}"
+                run,
+                True,
+                f"Follow-up sent to agent {agent_id}",
+                status_label=FOLLOW_UP_SENT_STATUS_LABEL,
             )
 
     async def _agent_has_registered_webhook(self, agent_id: str) -> bool:
