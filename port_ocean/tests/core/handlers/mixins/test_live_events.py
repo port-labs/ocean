@@ -388,6 +388,34 @@ async def test_parse_raw_event_results_to_entities_deletion(
 
 
 @pytest.mark.asyncio
+async def test_parse_raw_event_results_to_entities_deletion_when_selector_fails(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Delete events should remove entities even when the raw item fails the selector."""
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock()  # type: ignore
+
+    calculation_result = CalculationResult(
+        entity_selector_diff=EntitySelectorDiff(passed=[], failed=[entity]),
+        errors=[],
+        misconfigured_entity_keys={},
+    )
+    mock_live_events_mixin.entity_processor.parse_items.return_value = (
+        calculation_result
+    )
+
+    (
+        entities_to_create,
+        entities_to_delete,
+    ) = await mock_live_events_mixin._parse_raw_event_results_to_entities(
+        [one_webhook_event_raw_results_for_deletion]
+    )
+
+    assert entities_to_create == []
+    assert entities_to_delete == [entity]
+    mock_live_events_mixin.entity_processor.parse_items.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_parse_raw_event_results_to_entities_skips_results_without_resource(
     mock_live_events_mixin: LiveEventsMixin,
 ) -> None:
