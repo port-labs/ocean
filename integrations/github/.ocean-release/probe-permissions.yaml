@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add GitHub permission probing for PAT and GitHub App authentication
