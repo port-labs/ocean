@@ -44,6 +44,17 @@ class ProbeContext:
         await self.update_progress()
         return new_checks
 
+    async def setup_unscoped_checks(self) -> list[ProbeCheck]:
+        logger.debug("Registering unscoped checks")
+        new_checks: list[ProbeCheck] = []
+        for kind in self.available_kinds:
+            check = ProbeCheck(kind=kind)
+            new_checks.append(check)
+            self.checks.append(check)
+
+        await self.update_progress()
+        return new_checks
+
     def build_request_body(self) -> dict[str, Any]:
         data = {
             "probeId": self.probe_id,
