@@ -1,11 +1,11 @@
 from github.probe.pat.permissions import PatKindPermissionVerdict
+from httpx import Response
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import KindPermissionVerdict
 from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
-
 
 NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
 
@@ -54,23 +54,46 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             self.context.message = FINE_GRAINED_PAT_MESSAGE
             return
 
-        organizations = await self._get_organizations(authenticator)
+        user_response = await self._fetch_user(authenticator)
+        if user_response is None:
+            return
+
+        granted_scopes = self._parse_scopes(user_response)
+        organizations = await self._get_organizations(authenticator, user_response)
         if organizations is None:
             return
 
-        granted_scopes = await self._get_scopes(authenticator)
-        if granted_scopes is None:
-            return
-
         checks = await self.context.add_scopes(*org_scopes(organizations))
-        permissions = {
-            scope: "granted" for scope in expand_pat_scopes(granted_scopes)
-        }
+        permissions = {scope: "granted" for scope in expand_pat_scopes(granted_scopes)}
         await self._resolve_checks(checks, permissions)
+
+    async def _fetch_user(
+        self,
+        authenticator: AbstractGitHubAuthenticator,
+    ) -> Response | None:
+        response = await authenticator.client.get(
+            f"{ocean.integration_config['github_host'].rstrip('/')}/user",
+            headers=(await authenticator.get_headers()).as_dict(),
+            extensions=NO_RETRY,
+        )
+        if not response.is_success:
+            await self.context.fail(
+                f"Failed to fetch authenticated user: GitHub API returned {response.status_code}"
+            )
+            return None
+        return response
+
+    def _parse_scopes(self, user_response: Response) -> set[str]:
+        return {
+            scope.strip()
+            for scope in user_response.headers.get("x-oauth-scopes", "").split(",")
+            if scope.strip()
+        }
 
     async def _get_organizations(
         self,
         authenticator: AbstractGitHubAuthenticator,
+        user_response: Response,
     ) -> list[str] | None:
         if authenticator.organization:
             return [authenticator.organization]
@@ -79,16 +102,6 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         github_host = ocean.integration_config["github_host"].rstrip("/")
         organizations: list[str] = []
 
-        user_response = await authenticator.client.get(
-            f"{github_host}/user",
-            headers=headers,
-            extensions=NO_RETRY,
-        )
-        if not user_response.is_success:
-            await self.context.fail(
-                f"Failed to fetch authenticated user: GitHub API returned {user_response.status_code}"
-            )
-            return None
         user = user_response.json()
         if isinstance(user, dict) and isinstance(login := user.get("login"), str):
             organizations.append(login)
@@ -117,26 +130,6 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             url = next_link.get("url") if next_link else None
             params = None
         return organizations
-
-    async def _get_scopes(
-        self,
-        authenticator: AbstractGitHubAuthenticator,
-    ) -> set[str] | None:
-        response = await authenticator.client.get(
-            f"{ocean.integration_config['github_host'].rstrip('/')}/user",
-            headers=(await authenticator.get_headers()).as_dict(),
-            extensions=NO_RETRY,
-        )
-        if not response.is_success:
-            await self.context.fail(
-                f"Failed to fetch PAT scopes: GitHub API returned {response.status_code}"
-            )
-            return None
-        return {
-            scope.strip()
-            for scope in response.headers.get("x-oauth-scopes", "").split(",")
-            if scope.strip()
-        }
 
 
 def expand_pat_scopes(scopes: set[str]) -> set[str]:
