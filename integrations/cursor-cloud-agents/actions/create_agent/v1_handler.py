@@ -11,6 +11,10 @@ from actions.utils import build_v1_create_body
 from clients.endpoints import V1_AGENTS
 from integration import ObjectKind
 
+CREATING_STATUS_LABEL = "Creating agent"
+CREATE_FAILED_STATUS_LABEL = "Agent creation failed"
+AGENT_CREATED_STATUS_LABEL = "Agent created"
+
 
 class CreateAgentV1Handler(CreateAgentHandler):
     async def execute(
@@ -27,13 +31,22 @@ class CreateAgentV1Handler(CreateAgentHandler):
             config=ctx.config,
         )
         parse_v1_create_body(body)
+
+        await ocean.port_client.post_run_log(
+            run,
+            "Creating Cursor agent",
+            status_label=CREATING_STATUS_LABEL,
+            should_raise=False,
+        )
+
         try:
             response = await executor.client.send_api_request(
                 "POST", V1_AGENTS, json_body=body
             )
         except Exception as error:
             raise ActionExecutionError(
-                f"Failed to create Cursor agent: {error}"
+                f"Failed to create Cursor agent: {error}",
+                status_label=CREATE_FAILED_STATUS_LABEL,
             ) from error
 
         agent = response.get("agent") or {}
@@ -42,7 +55,8 @@ class CreateAgentV1Handler(CreateAgentHandler):
         run_id = run_obj.get("id")
         if not agent_id:
             raise ActionExecutionError(
-                "Cursor agent was created but no id was returned"
+                "Cursor agent was created but no id was returned",
+                status_label=CREATE_FAILED_STATUS_LABEL,
             )
 
         logger.info(f"Created Cursor agent {agent_id} (v1) for run {run.id}")
@@ -59,5 +73,8 @@ class CreateAgentV1Handler(CreateAgentHandler):
             run.output["url"] = agent.get("url")
 
         await ocean.port_client.report_run_completed(
-            run, True, f"Created agent {agent_id}"
+            run,
+            True,
+            f"Created agent {agent_id}",
+            status_label=AGENT_CREATED_STATUS_LABEL,
         )

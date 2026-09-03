@@ -14,6 +14,7 @@ from integration import ObjectKind
 from core.exporters.agents_exporter import AgentsExporter
 from core.exporters.runs_exporter import RunsExporter
 from webhook_processors.cursor_agent_webhook_processor import (
+    _STATUS_LABELS,
     CursorAgentWebhookProcessor,
 )
 
@@ -170,7 +171,7 @@ async def test_handle_event_completes_create_run_via_agent_id_fallback() -> None
         result = await processor.handle_event(payload, None)
 
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Added README"
+        run, True, "Added README", status_label=_STATUS_LABELS["FINISHED"]
     )
     assert run.output["status"] == "FINISHED"
     assert run.output["runId"] == "cursor-run-1"
@@ -245,7 +246,7 @@ async def test_handle_event_completes_follow_up_via_cursor_run_id() -> None:
         await processor.handle_event(payload, None)
 
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        follow_up_run, True, "Done"
+        follow_up_run, True, "Done", status_label=_STATUS_LABELS["FINISHED"]
     )
     assert follow_up_run.output["runId"] == "cursor-run-2"
 

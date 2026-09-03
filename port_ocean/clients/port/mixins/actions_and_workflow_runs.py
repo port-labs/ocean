@@ -25,6 +25,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
     def _wf_node_completion_patch(
         result: WorkflowNodeRunResult,
         output: dict[str, Any] | None = None,
+        status_label: str | None = None,
     ) -> dict[str, Any]:
         patch: dict[str, Any] = {
             "status": WorkflowNodeRunStatus.COMPLETED,
@@ -32,6 +33,8 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         }
         if output:
             patch["output"] = output
+        if status_label:
+            patch["statusLabel"] = status_label
         return patch
 
     async def claim_pending_runs(
@@ -78,8 +81,15 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         run: IntegrationRun,
         message: str,
         level: Literal["INFO", "WARNING", "ERROR", "DEBUG"] = "INFO",
+        status_label: str | None = None,
         should_raise: bool = False,
     ) -> None:
+        """Post a log line to a run.
+
+        ``status_label`` is a short human-readable phase description shown on the
+        run in Port. Action runs accept it on the log itself, while workflow node
+        runs only accept it on the run, so it takes an extra patch there.
+        """
         if isinstance(run, WorkflowNodeRun):
             # API expects "WARN" not "WARNING"
             log_level: Literal["INFO", "WARN", "ERROR", "DEBUG"] = (
@@ -90,8 +100,14 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 [WorkflowNodeRunLog(level=log_level, message=message)],
                 should_raise=should_raise,
             )
+            if status_label:
+                await self.patch_wf_node_run(
+                    run.id,
+                    {"statusLabel": status_label},
+                    should_raise=should_raise,
+                )
         else:
-            await self.post_action_run_log(run.id, message)
+            await self.post_action_run_log(run.id, message, status_label=status_label)
 
     async def post_run_logs(
         self,
@@ -137,35 +153,43 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         link: str,
         external_id: str,
         extra_output: dict[str, Any] | None = None,
+        status_label: str | None = None,
     ) -> None:
         """Update a run to indicate it has started, setting the link and external ID."""
+        patch: dict[str, Any]
         if isinstance(run, WorkflowNodeRun):
             output: dict[str, Any] = {"workflowRunUrl": link}
             if extra_output:
                 output.update(extra_output)
-            await self.patch_wf_node_run(
-                run.id,
-                {
-                    "status": WorkflowNodeRunStatus.IN_PROGRESS,
-                    "externalRunId": external_id,
-                    "output": output,
-                    "links": [link],
-                },
-            )
+            patch = {
+                "status": WorkflowNodeRunStatus.IN_PROGRESS,
+                "externalRunId": external_id,
+                "output": output,
+                "links": [link],
+            }
+            if status_label:
+                patch["statusLabel"] = status_label
+            await self.patch_wf_node_run(run.id, patch)
             run.output = output
         else:
-            await self.patch_action_run(
-                run.id, {"link": link, "externalRunId": external_id}
-            )
+            patch = {"link": link, "externalRunId": external_id}
+            if status_label:
+                patch["statusLabel"] = status_label
+            await self.patch_action_run(run.id, patch)
 
     async def report_run_completed(
         self,
         run: IntegrationRun,
         success: bool,
         message: str | None = None,
+        status_label: str | None = None,
         should_raise: bool = False,
     ) -> None:
-        """Report a run as completed with success or failure."""
+        """Report a run as completed with success or failure.
+
+        ``status_label`` is a short human-readable description of the outcome,
+        shown on the run in Port alongside its terminal status.
+        """
         if not success:
             logger.error("Run completed with failure", run_id=run.id)
 
@@ -186,13 +210,14 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 )
             await self.patch_wf_node_run(
                 run.id,
-                self._wf_node_completion_patch(result, run.output),
+                self._wf_node_completion_patch(result, run.output, status_label),
                 should_raise=should_raise,
             )
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
             if message:
                 await self.post_action_run_log(run.id, message)
-            await self.patch_action_run(
-                run.id, {"status": status}, should_raise=should_raise
-            )
+            patch: dict[str, Any] = {"status": status}
+            if status_label:
+                patch["statusLabel"] = status_label
+            await self.patch_action_run(run.id, patch, should_raise=should_raise)

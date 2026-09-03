@@ -7,6 +7,10 @@ from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.exceptions import InvalidActionParametersException
 from integration import ObjectKind
 
+CREATING_STATUS_LABEL = "Creating agent"
+CREATE_FAILED_STATUS_LABEL = "Agent creation failed"
+AGENT_CREATED_STATUS_LABEL = "Agent created"
+
 
 class CreateAgentExecutor(AbstractAnthropicExecutor):
     """Executor for the `create_agent` action.
@@ -32,12 +36,22 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         elif not isinstance(extra, dict):
             raise InvalidActionParametersException("config must be an object")
 
+        await ocean.port_client.post_run_log(
+            run,
+            f"Creating Claude agent '{name}' with model {model}",
+            status_label=CREATING_STATUS_LABEL,
+            should_raise=False,
+        )
+
         try:
             agent = await self.client.create_agent(
                 name=name, model=model, system=system, extra=extra
             )
         except Exception as error:
-            raise ActionExecutionError(f"Failed to create agent: {error}") from error
+            raise ActionExecutionError(
+                f"Failed to create agent: {error}",
+                status_label=CREATE_FAILED_STATUS_LABEL,
+            ) from error
 
         agent_id = agent.get("id")
         logger.info(f"Created Claude agent {agent_id} for run {run.id}")
@@ -54,5 +68,8 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
             run.output["agentId"] = agent_id
 
         await ocean.port_client.report_run_completed(
-            run, True, f"Created agent {agent_id}"
+            run,
+            True,
+            f"Created agent {agent_id}",
+            status_label=AGENT_CREATED_STATUS_LABEL,
         )

@@ -88,10 +88,18 @@ class ActionsClientMixin:
                 raise RunAlreadyAcknowledgedError()
             raise
 
-    async def post_action_run_log(self, run_id: str, message: str) -> None:
+    async def post_action_run_log(
+        self,
+        run_id: str,
+        message: str,
+        status_label: str | None = None,
+    ) -> None:
+        body: dict[str, Any] = {"message": message}
+        if status_label:
+            body["statusLabel"] = status_label
         response = await self.client.post(
             f"{self.auth.api_url}/actions/runs/{run_id}/logs",
             headers=await self.auth.headers(),
-            json={"message": message},
+            json=body,
         )
         handle_port_status_code(response, should_raise=False)

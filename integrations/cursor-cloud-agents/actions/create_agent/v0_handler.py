@@ -19,6 +19,11 @@ from core.webhook_signing import get_webhook_signing_secret
 from exporter_factory import create_runs_exporter
 from integration import ObjectKind
 
+LAUNCHING_STATUS_LABEL = "Launching agent"
+LAUNCH_FAILED_STATUS_LABEL = "Agent launch failed"
+AGENT_RUNNING_STATUS_LABEL = "Agent running"
+AGENT_LAUNCHED_STATUS_LABEL = "Agent launched"
+
 
 class CreateAgentV0Handler(CreateAgentHandler):
     async def execute(
@@ -47,19 +52,28 @@ class CreateAgentV0Handler(CreateAgentHandler):
                 webhook_url, get_webhook_signing_secret()
             )
 
+        await ocean.port_client.post_run_log(
+            run,
+            "Launching Cursor agent",
+            status_label=LAUNCHING_STATUS_LABEL,
+            should_raise=False,
+        )
+
         try:
             agent = await executor.client.send_api_request(
                 "POST", V0_AGENTS, json_body=body
             )
         except Exception as error:
             raise ActionExecutionError(
-                f"Failed to launch Cursor agent: {error}"
+                f"Failed to launch Cursor agent: {error}",
+                status_label=LAUNCH_FAILED_STATUS_LABEL,
             ) from error
 
         agent_id = agent.get("id")
         if not agent_id:
             raise ActionExecutionError(
-                "Cursor agent was launched but no id was returned"
+                "Cursor agent was launched but no id was returned",
+                status_label=LAUNCH_FAILED_STATUS_LABEL,
             )
 
         logger.info(
@@ -92,8 +106,12 @@ class CreateAgentV0Handler(CreateAgentHandler):
                 build_agent_link(executor.client.get_console_host(), agent_id),
                 agent_id,
                 extra_output={"agentId": agent_id},
+                status_label=AGENT_RUNNING_STATUS_LABEL,
             )
         else:
             await ocean.port_client.report_run_completed(
-                run, True, f"Launched agent {agent_id}"
+                run,
+                True,
+                f"Launched agent {agent_id}",
+                status_label=AGENT_LAUNCHED_STATUS_LABEL,
             )
