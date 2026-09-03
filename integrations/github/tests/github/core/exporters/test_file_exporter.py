@@ -1345,4 +1345,3 @@ class TestFileProcessorMultiDocumentYaml:
             {"name": "service-a", "version": "1.0.0"},
             {"name": "service-b", "version": "2.0.0"},
         ]
-
