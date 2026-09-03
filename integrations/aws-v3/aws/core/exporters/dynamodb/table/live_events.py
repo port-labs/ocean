@@ -8,6 +8,8 @@ from aws.core.helpers.metadata.types import (
 )
 from aws.utils import RegionHelper
 
+CLOUDTRAIL_EVENT_SOURCE = "dynamodb.amazonaws.com"
+
 
 def _table_arn(context: LiveEventContext) -> str:
     partition = RegionHelper.get_partition()
@@ -45,13 +47,19 @@ DYNAMODB_TABLE_LIVE_EVENTS = LiveEventFactories(
     deletion_identifier_properties_factory=_deletion_identifier_properties,
     cloudtrail_mappings={
         "CreateTable": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_table_name
+            CloudTrailEventAction.UPSERT,
+            _extract_table_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "UpdateTable": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_table_name
+            CloudTrailEventAction.UPSERT,
+            _extract_table_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "DeleteTable": CloudTrailEventMapping(
-            CloudTrailEventAction.DELETE, _extract_table_name
+            CloudTrailEventAction.DELETE,
+            _extract_table_name,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
 )

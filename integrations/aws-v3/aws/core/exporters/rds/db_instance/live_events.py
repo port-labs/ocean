@@ -8,6 +8,8 @@ from aws.core.helpers.metadata.types import (
 )
 from aws.utils import RegionHelper
 
+CLOUDTRAIL_EVENT_SOURCE = "rds.amazonaws.com"
+
 
 def _db_instance_arn(context: LiveEventContext) -> str:
     partition = RegionHelper.get_partition()
@@ -49,13 +51,19 @@ RDS_DB_INSTANCE_LIVE_EVENTS = LiveEventFactories(
     deletion_identifier_properties_factory=_deletion_identifier_properties,
     cloudtrail_mappings={
         "CreateDBInstance": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_db_instance_identifier
+            CloudTrailEventAction.UPSERT,
+            _extract_db_instance_identifier,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "ModifyDBInstance": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT, _extract_db_instance_identifier
+            CloudTrailEventAction.UPSERT,
+            _extract_db_instance_identifier,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "DeleteDBInstance": CloudTrailEventMapping(
-            CloudTrailEventAction.DELETE, _extract_db_instance_identifier
+            CloudTrailEventAction.DELETE,
+            _extract_db_instance_identifier,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
 )

@@ -15,6 +15,7 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
     LIST_ORG_MEMBER_GQL,
+    LIST_ORG_MEMBER_WITH_VERIFIED_EMAILS_GQL,
     LIST_EXTERNAL_IDENTITIES_GQL,
     FETCH_GITHUB_USER_GQL,
 )
@@ -279,6 +280,119 @@ class TestGraphQLUserExporter:
                         {"login": "user3", "__SAMLEmail": None},
                     ]
                 ]
+
+    async def test_get_paginated_resources_include_verified_domain_emails(
+        self,
+        graphql_client: GithubGraphQLClient,
+    ) -> None:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [
+                {
+                    "login": "user1",
+                    "email": "user1@personal.com",
+                    "organizationVerifiedDomainEmails": ["user1@corp.com"],
+                },
+                {
+                    "login": "user2",
+                    "email": "user2@personal.com",
+                    "organizationVerifiedDomainEmails": [],
+                },
+            ]
+
+        with (
+            patch.object(
+                graphql_client,
+                "send_paginated_request",
+                return_value=mock_paginated_request(),
+            ) as mock_request,
+            patch(
+                "github.helpers.utils.get_saml_identities",
+                new=AsyncMock(return_value={}),
+            ),
+        ):
+            async with event_context("test_event"):
+                exporter = GraphQLUserExporter(graphql_client)
+
+                users: list[list[dict[str, Any]]] = []
+                async for batch in exporter.get_paginated_resources(
+                    ListUserOptions(
+                        organization="test-org",
+                        include_saml_email=False,
+                        include_verified_domain_emails=True,
+                    )
+                ):
+                    users.append(batch)
+
+                assert users == [
+                    [
+                        {
+                            "login": "user1",
+                            "email": "user1@personal.com",
+                            "organizationVerifiedDomainEmails": ["user1@corp.com"],
+                        },
+                        {
+                            "login": "user2",
+                            "email": "user2@personal.com",
+                            "organizationVerifiedDomainEmails": [],
+                        },
+                    ]
+                ]
+
+                mock_request.assert_called_once_with(
+                    LIST_ORG_MEMBER_WITH_VERIFIED_EMAILS_GQL,
+                    {
+                        "organization": "test-org",
+                        "__path": "organization.membersWithRole",
+                    },
+                )
+
+    async def test_get_resource_with_verified_domain_emails(
+        self,
+        graphql_client: GithubGraphQLClient,
+    ) -> None:
+        mock_response_data = {
+            "data": {
+                "user": {
+                    "login": "user1",
+                    "email": "user1@personal.com",
+                    "name": "User One",
+                    "organizationVerifiedDomainEmails": ["user1@corp.com"],
+                }
+            }
+        }
+
+        with (
+            patch.object(
+                graphql_client,
+                "send_api_request",
+                return_value=mock_response_data,
+            ) as mock_request,
+            patch(
+                "github.helpers.utils.get_saml_identities",
+                new=AsyncMock(return_value={}),
+            ),
+        ):
+            exporter = GraphQLUserExporter(graphql_client)
+            user = await exporter.get_resource(
+                SingleUserOptions(
+                    organization="test-org",
+                    login="user1",
+                    include_saml_email=False,
+                    include_verified_domain_emails=True,
+                )
+            )
+
+            assert user is not None
+            assert user["organizationVerifiedDomainEmails"] == ["user1@corp.com"]
+
+            call_args = mock_request.call_args
+            assert call_args is not None
+            payload = call_args.kwargs.get("json_data") or call_args[1].get("json_data")
+            assert payload is not None
+            assert "organizationVerifiedDomainEmails" in payload["query"]
+            assert payload["variables"]["organization"] == "test-org"
 
     async def test_enrich_members_with_saml_email_modifies_in_place(
         self, graphql_client: GithubGraphQLClient

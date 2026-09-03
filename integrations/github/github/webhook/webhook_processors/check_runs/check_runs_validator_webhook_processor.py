@@ -21,12 +21,14 @@ from github.core.exporters.file_exporter.utils import (
 from github.core.exporters.file_exporter.core import RestFileExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event
-from github.webhook.webhook_processors.pull_request_webhook_processor import (
-    PullRequestWebhookProcessor,
+from github.webhook.events import CHECK_RUN_PR_ACTIONS
+from github.webhook.webhook_processors.base_pull_request_webhook_processor import (
+    BasePullRequestWebhookProcessor,
 )
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 
-class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
+class CheckRunValidatorWebhookProcessor(BasePullRequestWebhookProcessor):
     """
     Validates PR files against Port schemas and reports via GitHub check runs.
 
@@ -39,6 +41,12 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         deleted_raw_results=[],
     )
 
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return (
+            event.headers.get("x-github-event") == "pull_request"
+            and event.payload.get("action") in CHECK_RUN_PR_ACTIONS
+        )
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
@@ -49,12 +57,6 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         base_sha = pull_request["base"]["sha"]
         head_sha = pull_request["head"]["sha"]
         organization = self.get_webhook_payload_organization(payload)["login"]
-
-        if action not in ["opened", "synchronize", "reopened", "edited"]:
-            logger.info(
-                f"Skipping handling of file validation for pull request event: {action} for {repo_name}/{pr_number} of organization: {organization}"
-            )
-            return self._NoWebhookEventResults
 
         logger.info(
             f"Handling file validation for pull request of type: {action} for {repo_name}/{pr_number} of organization: {organization}"
