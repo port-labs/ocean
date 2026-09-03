@@ -15,7 +15,10 @@ from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
 )
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.create_agent_executor import CreateAgentExecutor
+from actions.create_agent_executor import (
+    AGENT_CREATED_STATUS_LABEL,
+    CreateAgentExecutor,
+)
 from actions.exceptions import InvalidActionParametersException
 from actions.trigger_agent_executor import TriggerAgentExecutor
 from actions.utils import (
@@ -47,6 +50,7 @@ def _build_mock_ocean() -> MagicMock:
     mock_ocean.config.port = SimpleNamespace(base_url="https://api.getport.io")
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
+    mock_ocean.port_client.post_run_log = AsyncMock()
     return mock_ocean
 
 
@@ -285,7 +289,7 @@ async def test_create_agent_executor_sets_agent_id_output_for_workflow_nodes() -
 
     assert run.output == {"agentId": "agent_1"}
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Created agent agent_1"
+        run, True, "Created agent agent_1", status_label=AGENT_CREATED_STATUS_LABEL
     )
 
 
@@ -312,7 +316,7 @@ async def test_create_agent_executor_skips_output_for_classic_action_runs() -> N
         await executor.execute(run)
 
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Created agent agent_1"
+        run, True, "Created agent agent_1", status_label=AGENT_CREATED_STATUS_LABEL
     )
 
 
@@ -340,13 +344,16 @@ async def test_create_agent_executor_posts_warn_log_when_catalog_upsert_fails() 
     ):
         await executor.execute(run)
 
-    mock_ocean.port_client.post_run_log.assert_awaited_once()
-    call = mock_ocean.port_client.post_run_log.call_args
-    assert call.args[0] is run
-    assert "port is down" in call.args[1]
-    assert call.kwargs["level"] == "WARNING"
+    warn_calls = [
+        call
+        for call in mock_ocean.port_client.post_run_log.await_args_list
+        if call.kwargs.get("level") == "WARNING"
+    ]
+    assert len(warn_calls) == 1
+    assert warn_calls[0].args[0] is run
+    assert "port is down" in warn_calls[0].args[1]
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Created agent agent_1"
+        run, True, "Created agent agent_1", status_label=AGENT_CREATED_STATUS_LABEL
     )
 
 
@@ -680,8 +687,9 @@ async def test_trigger_agent_rejects_non_idle_session() -> None:
         "prompt": "go",
     }
 
-    with pytest.raises(ActionExecutionError, match="cannot be continued"):
-        await executor.execute(run)
+    with patch("actions.trigger_agent_executor.ocean", _build_mock_ocean()):
+        with pytest.raises(ActionExecutionError, match="cannot be continued"):
+            await executor.execute(run)
 
 
 @pytest.mark.asyncio
@@ -720,8 +728,9 @@ async def test_trigger_agent_rejects_requires_action_idle() -> None:
         "prompt": "go",
     }
 
-    with pytest.raises(ActionExecutionError, match="waiting for user action"):
-        await executor.execute(run)
+    with patch("actions.trigger_agent_executor.ocean", _build_mock_ocean()):
+        with pytest.raises(ActionExecutionError, match="waiting for user action"):
+            await executor.execute(run)
 
 
 @pytest.mark.asyncio
@@ -729,8 +738,9 @@ async def test_trigger_agent_requires_environment_for_new_session() -> None:
     executor = _build_executor(TriggerAgentExecutor, MagicMock())
     run = MagicMock()
     run.execution_properties = {"agentId": "agent_1", "prompt": "go"}
-    with pytest.raises(InvalidActionParametersException, match="environmentId"):
-        await executor.execute(run)
+    with patch("actions.trigger_agent_executor.ocean", _build_mock_ocean()):
+        with pytest.raises(InvalidActionParametersException, match="environmentId"):
+            await executor.execute(run)
 
 
 @pytest.mark.asyncio
