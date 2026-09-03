@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import asyncio
 import json
+from functools import partial
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request, Response, HTTPStatusError
@@ -17,7 +18,9 @@ from azure_devops.client.azure_devops_client import (
     AzureDevopsClient,
     _flatten_area_path_tree,
     _normalize_area_path,
+    _normalize_git_scope_path,
 )
+from azure_devops.client.base_client import CONTINUATION_TOKEN_HEADER
 from azure_devops.client.file_processing import PathDescriptor
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
@@ -3225,6 +3228,83 @@ async def test_get_repository_tree_with_deep_path() -> None:
         paths = {folder["path"] for folder in folders}
         assert paths == {"/src/main", "/src/main/api", "/src/test"}
         assert all(folder["gitObjectType"] == "tree" for folder in folders)
+
+
+@pytest.mark.parametrize(
+    ("raw_path", "expected"),
+    [
+        ("/", "/"),
+        ("", "/"),
+        ("App/root/env/region", "/App/root/env/region"),
+        ("/App/root/env/region/", "/App/root/env/region"),
+        ("test/", "/test"),
+        ("/src/**/*.py", "/src/**/*.py"),
+    ],
+)
+def test_normalize_git_scope_path(raw_path: str, expected: str) -> None:
+    assert _normalize_git_scope_path(raw_path) == expected
+
+
+def test_build_tree_fetcher_normalizes_wildcard_base_path() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    fetcher = client._build_tree_fetcher(MOCK_REPOSITORY_ID, "App/root/env/region/*")
+
+    assert isinstance(fetcher, partial)
+    assert fetcher.args == (MOCK_REPOSITORY_ID,)
+    assert fetcher.keywords == {
+        "path": "/App/root/env/region",
+        "recursion_level": "oneLevel",
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_normalizes_scope_path_across_pages() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    captured_params: list[dict[str, Any]] = []
+
+    page_one = AsyncMock(spec=Response)
+    page_one.status_code = 200
+    page_one.headers = {CONTINUATION_TOKEN_HEADER: "token-page-2"}
+    page_one.json.return_value = {
+        "value": [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/App/root/env/region/folder-a",
+            }
+        ]
+    }
+
+    page_two = AsyncMock(spec=Response)
+    page_two.status_code = 200
+    page_two.headers = {}
+    page_two.json.return_value = {
+        "value": [
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/App/root/env/region/folder-b",
+            }
+        ]
+    }
+
+    async def capture_send_request(method: str, url: str, **kwargs: Any) -> Response:
+        captured_params.append(dict(kwargs.get("params") or {}))
+        return page_one if len(captured_params) == 1 else page_two
+
+    with patch.object(client, "send_request", side_effect=capture_send_request):
+        folders = []
+        async for batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID,
+            path="App/root/env/region",
+            recursion_level="oneLevel",
+        ):
+            folders.extend(batch)
+
+    assert len(folders) == 2
+    assert len(captured_params) == 2
+    assert all(p["scopePath"] == "/App/root/env/region" for p in captured_params)
+    assert captured_params[1]["continuationToken"] == "token-page-2"
 
 
 @pytest.mark.asyncio

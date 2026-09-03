@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jira"
-version = "0.7.112"
+version = "0.8.0"
 description = "Integration to bring information from Jira into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
@@ -86,6 +86,10 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore unused imports in __init__ files
+"**/__init__.py" = ["F401"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
