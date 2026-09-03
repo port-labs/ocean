@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added organization live events for real-time tracking of organization lifecycle changes (deleted, renamed)
