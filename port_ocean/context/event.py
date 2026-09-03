@@ -175,8 +175,6 @@ async def event_context(
     dispatcher.send(event_type, triggering_event_id=event.id)
 
     start_time = get_time(seconds_precision=False)
-    from port_ocean.clients.port.utils import get_event_context_params
-
     with logger.contextualize(
         event_trigger_type=event.trigger_type,
         event_kind=event.event_type,
@@ -185,7 +183,6 @@ async def event_context(
         event_resource_kind=(
             event.resource_config.kind if event.resource_config else None
         ),
-        **get_event_context_params(),
     ):
         logger.info("Event started")
         try:
