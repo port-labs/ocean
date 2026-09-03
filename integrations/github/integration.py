@@ -845,7 +845,7 @@ class GithubBranchConfig(ResourceConfig):
 
 class GithubOrganizationConfig(ResourceConfig):
     probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
-        "pat": ("repo",),
+        "pat": ("read:org",),
         "app": ("metadata",),
     }
 
