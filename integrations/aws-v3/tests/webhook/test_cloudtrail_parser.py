@@ -1092,3 +1092,137 @@ def test_parse_elasticache_cluster_events() -> None:
     assert delete_parsed is not None
     assert delete_parsed.kind == ObjectKind.ELASTICACHE_CLUSTER
     assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def _ses_email_identity_eventbridge_envelope(
+    event_name: str,
+    *,
+    email_identity: str | None = "example.com",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "ses.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+
+    if email_identity is not None:
+        detail["requestParameters"] = {"emailIdentity": email_identity}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.ses",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_ses_email_identity_events() -> None:
+    for event_name in (
+        "CreateEmailIdentity",
+        "PutEmailIdentityDkimSigningAttributes",
+        "PutEmailIdentityMailFromAttributes",
+        "PutEmailIdentityFeedbackAttributes",
+        "DeleteEmailIdentity",
+    ):
+        payload = _ses_email_identity_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_ses_email_identity_events() -> None:
+    create_payload = _ses_email_identity_eventbridge_envelope("CreateEmailIdentity")
+    delete_payload = _ses_email_identity_eventbridge_envelope("DeleteEmailIdentity")
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.SES_EMAIL_IDENTITY
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "example.com"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.SES_EMAIL_IDENTITY
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def _ses_configuration_set_eventbridge_envelope(
+    event_name: str,
+    *,
+    configuration_set_name: str | None = "my-config-set",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "ses.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+
+    if configuration_set_name is not None:
+        detail["requestParameters"] = {"configurationSetName": configuration_set_name}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.ses",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_ses_configuration_set_events() -> None:
+    for event_name in (
+        "CreateConfigurationSet",
+        "PutConfigurationSetTrackingOptions",
+        "DeleteConfigurationSet",
+    ):
+        payload = _ses_configuration_set_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_ses_configuration_set_events() -> None:
+    create_payload = _ses_configuration_set_eventbridge_envelope(
+        "CreateConfigurationSet"
+    )
+    delete_payload = _ses_configuration_set_eventbridge_envelope(
+        "DeleteConfigurationSet"
+    )
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.SES_CONFIGURATION_SET
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "my-config-set"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.SES_CONFIGURATION_SET
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
