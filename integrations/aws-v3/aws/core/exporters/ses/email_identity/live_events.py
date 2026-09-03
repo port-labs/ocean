@@ -12,6 +12,9 @@ CLOUDTRAIL_EVENT_SOURCE = "ses.amazonaws.com"
 
 def _extract_email_identity(detail: CloudTrailDetail) -> str | None:
     request_parameters = detail.get("requestParameters", {})
+    if not isinstance(request_parameters, dict):
+        return None
+
     identity = request_parameters.get("emailIdentity")
     return identity if isinstance(identity, str) else None
 

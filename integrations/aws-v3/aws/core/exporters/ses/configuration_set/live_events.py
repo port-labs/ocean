@@ -14,6 +14,9 @@ CLOUDTRAIL_EVENT_SOURCE = "ses.amazonaws.com"
 
 def _extract_configuration_set_name(detail: CloudTrailDetail) -> str | None:
     request_parameters = detail.get("requestParameters", {})
+    if not isinstance(request_parameters, dict):
+        return None
+
     name = request_parameters.get("configurationSetName")
     return name if isinstance(name, str) else None
 
