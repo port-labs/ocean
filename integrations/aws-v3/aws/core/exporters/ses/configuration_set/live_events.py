@@ -1,4 +1,6 @@
-from aws.core.exporters.ses.configuration_set.models import SingleConfigurationSetRequest
+from aws.core.exporters.ses.configuration_set.models import (
+    SingleConfigurationSetRequest,
+)
 from aws.core.helpers.metadata.types import (
     CloudTrailDetail,
     CloudTrailEventAction,

@@ -1134,8 +1134,9 @@ def _ses_email_identity_eventbridge_envelope(
 def test_is_supported_cloudtrail_event_true_for_ses_email_identity_events() -> None:
     for event_name in (
         "CreateEmailIdentity",
-        "UpdateEmailIdentity",
         "PutEmailIdentityDkimSigningAttributes",
+        "PutEmailIdentityMailFromAttributes",
+        "PutEmailIdentityFeedbackAttributes",
         "DeleteEmailIdentity",
     ):
         payload = _ses_email_identity_eventbridge_envelope(event_name)
@@ -1176,9 +1177,7 @@ def _ses_configuration_set_eventbridge_envelope(
         detail["recipientAccountId"] = account
 
     if configuration_set_name is not None:
-        detail["requestParameters"] = {
-            "configurationSetName": configuration_set_name
-        }
+        detail["requestParameters"] = {"configurationSetName": configuration_set_name}
     else:
         detail["requestParameters"] = {}
 
