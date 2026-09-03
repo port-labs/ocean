@@ -20,6 +20,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 PIPELINE_RUN_COMPLETED_STATE = "completed"
 PIPELINE_RUN_SUCCEEDED_RESULT = "succeeded"
 
+# Status labels for Azure DevOps pipeline run results, shown on the Port run.
+PIPELINE_RESULT_STATUS_LABELS = {
+    "succeeded": "Pipeline succeeded",
+    "failed": "Pipeline failed",
+    "canceled": "Pipeline cancelled",
+    "partiallySucceeded": "Partially succeeded",
+}
+
 
 class PipelineRunActionWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     """Report ``trigger_pipeline`` action completion from run-state-changed events.
@@ -106,6 +114,11 @@ class PipelineRunActionWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             result=result,
         )
         await ocean.port_client.report_run_completed(
-            port_run, is_success, f"Pipeline run {result}"
+            port_run,
+            is_success,
+            f"Pipeline run {result}",
+            status_label=PIPELINE_RESULT_STATUS_LABELS.get(
+                result, f"Pipeline run {result}"
+            ),
         )
         return empty_results
