@@ -40,7 +40,7 @@ async def test_probe_resolves_permission_checks_for_available_kinds(
         ProbeCheckStatus.FAILURE,
         ProbeCheckStatus.SUCCESS,
     ]
-    assert probe_context.checks[0].message == "Permission(s) granted: BROWSE_PROJECTS"
+    assert probe_context.checks[0].message == "Basic Jira access verified"
     assert probe_context.checks[1].message == "Missing permission(s): USER_PICKER"
     assert probe_context.checks[2].message == "Atlassian Teams API access verified"
 

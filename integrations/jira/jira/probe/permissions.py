@@ -12,3 +12,8 @@ class JiraKindPermissionVerdict(KindPermissionVerdict):
     @property
     def combination(self) -> PermissionCombination:
         return PermissionCombination.AND
+
+    def granted_message(self, granted: tuple[str, ...]) -> str:
+        if granted == ("BROWSE_PROJECTS",):
+            return "Basic Jira access verified"
+        return super().granted_message(granted)
