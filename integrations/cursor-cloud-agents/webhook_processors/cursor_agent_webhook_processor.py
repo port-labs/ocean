@@ -29,6 +29,14 @@ from webhook_processors.utils import (
 # v0 webhooks today only emit `FINISHED` and `ERROR`.
 _TERMINAL_STATUSES = {"FINISHED", "ERROR", "CANCELLED", "EXPIRED"}
 
+# Status labels for the terminal v0 webhook statuses, shown on the Port run.
+_STATUS_LABELS = {
+    "FINISHED": "Agent finished",
+    "ERROR": "Agent errored",
+    "CANCELLED": "Agent cancelled",
+    "EXPIRED": "Agent expired",
+}
+
 
 class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
     """Concludes `create_agent`/`trigger_agent` runs from v0 agent status webhooks.
@@ -160,6 +168,7 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
             run,
             success,
             summary or f"Cursor agent {agent_id} finished with status {status}",
+            status_label=_STATUS_LABELS.get(str(status), f"Agent {status}"),
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
