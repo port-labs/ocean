@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 from gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor import (
+    PIPELINE_STATUS_LABELS,
     TriggerPipelineWebhookProcessor,
 )
 
@@ -85,7 +86,10 @@ class TestTriggerPipelineWebhookProcessor:
                 should_raise=False,
             )
             mock_ocean.port_client.report_run_completed.assert_called_once_with(
-                run, True, "Pipeline completed: success"
+                run,
+                True,
+                "Pipeline completed: success",
+                status_label=PIPELINE_STATUS_LABELS["success"],
             )
 
     @pytest.mark.parametrize("status", ["failed", "canceled", "skipped"])
@@ -111,7 +115,10 @@ class TestTriggerPipelineWebhookProcessor:
                 should_raise=False,
             )
             mock_ocean.port_client.report_run_completed.assert_called_once_with(
-                run, False, f"Pipeline completed: {status}"
+                run,
+                False,
+                f"Pipeline completed: {status}",
+                status_label=PIPELINE_STATUS_LABELS[status],
             )
 
     async def test_no_matching_run_skips_silently(
