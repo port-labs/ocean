@@ -3,9 +3,11 @@ from typing import cast, Any
 
 from loguru import logger
 from initialize_client import get_or_create_jira_client
+from jira.probe import JiraPermissionProbe
 from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.probe import ProbeContext
 from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -36,6 +38,15 @@ async def setup_application() -> None:
 
     client = get_or_create_jira_client()
     await client.create_webhooks(base_url)
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing Jira permissions for {len(context.available_kinds)} resource kinds"
+    )
+    await JiraPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_resync(Kinds.PROJECT)
