@@ -1345,3 +1345,38 @@ class TestFileProcessorMultiDocumentYaml:
             {"name": "service-a", "version": "1.0.0"},
             {"name": "service-b", "version": "2.0.0"},
         ]
+
+    async def test_process_file_passes_through_non_mapping_documents(self) -> None:
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+        mixed_doc_yaml = "name: service-a\n---\njust a string\n---\n42\n"
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="services.yaml",
+            skip_parsing=False,
+            branch="main",
+            content=mixed_doc_yaml,
+            metadata={},
+        )
+
+        assert result["content"] == [
+            {"name": "service-a"},
+            "just a string",
+            42,
+        ]
+
+    async def test_process_file_passes_through_top_level_yaml_list(self) -> None:
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="items.yaml",
+            skip_parsing=False,
+            branch="main",
+            content="- item1\n- item2\n",
+            metadata={},
+        )
+
+        assert result["content"] == ["item1", "item2"]
