@@ -21,6 +21,8 @@ from port_ocean.utils.signal import SignalHandler
 RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
 QUEUE_GET_TIMEOUT_SECONDS = 1
 GLOBAL_SOURCE = "__global__"
+DEFAULT_FAILURE_STATUS_LABEL = "Execution failed"
+RATE_LIMITED_STATUS_LABEL = "Rate limited"
 
 
 class ExecutionManager:
@@ -504,7 +506,11 @@ class ExecutionManager:
                         )
                         msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
                         await ocean.port_client.post_run_log(
-                            run, msg, level="WARNING", should_raise=False
+                            run,
+                            msg,
+                            level="WARNING",
+                            status_label=RATE_LIMITED_STATUS_LABEL,
+                            should_raise=False,
                         )
                         await asyncio.sleep(backoff_seconds)
 
@@ -529,6 +535,7 @@ class ExecutionManager:
                     raise
 
                 error_summary: str | None = None
+                error_status_label: str | None = None
                 try:
                     start_time = time.monotonic()
                     await executor.execute(run)
@@ -539,13 +546,19 @@ class ExecutionManager:
                 except ActionExecutionError as e:
                     logger.warning("Action run failed: {}", str(e))
                     error_summary = str(e)
+                    error_status_label = e.status_label or DEFAULT_FAILURE_STATUS_LABEL
                 except Exception as e:
                     logger.exception("Error executing run", error=str(e))
                     error_summary = f"Failed to execute run: {str(e)}"
+                    error_status_label = DEFAULT_FAILURE_STATUS_LABEL
 
                 if error_summary:
                     await ocean.port_client.report_run_completed(
-                        run, success=False, message=error_summary, should_raise=False
+                        run,
+                        success=False,
+                        message=error_summary,
+                        status_label=error_status_label,
+                        should_raise=False,
                     )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:
