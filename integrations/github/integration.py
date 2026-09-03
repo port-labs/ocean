@@ -652,7 +652,7 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
 
 class GithubDependabotAlertConfig(ResourceConfig):
     probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
-        "pat": ("security_events",),
+        "pat": ("repo",),
         "app": ("vulnerability_alerts",),
     }
 
@@ -683,7 +683,7 @@ class GithubCodeScanningAlertSelector(RepoSearchSelector):
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
     probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
-        "pat": ("security_events",),
+        "pat": ("repo",),
         "app": ("security_events",),
     }
 
@@ -781,7 +781,7 @@ class GithubSecretScanningAlertSelector(RepoSearchSelector):
 
 class GithubSecretScanningAlertConfig(ResourceConfig):
     probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
-        "pat": ("security_events",),
+        "pat": ("repo",),
         "app": ("secret_scanning_alerts",),
     }
 
