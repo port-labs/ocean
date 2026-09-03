@@ -13,8 +13,10 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
+    DEFAULT_FAILURE_STATUS_LABEL,
     ExecutionManager,
     GLOBAL_SOURCE,
+    RATE_LIMITED_STATUS_LABEL,
 )
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -311,6 +313,7 @@ class TestExecutionManager:
             mock_test_action_run,
             ANY,
             level="WARNING",
+            status_label=RATE_LIMITED_STATUS_LABEL,
             should_raise=False,
         )
         mock_test_executor.is_close_to_rate_limit.assert_called_with(
@@ -845,7 +848,11 @@ class TestExecutionManager:
 
         mock_exception_log.assert_not_called()
         mock_port_client.report_run_completed.assert_called_once_with(
-            run, success=False, message=error_msg, should_raise=False
+            run,
+            success=False,
+            message=error_msg,
+            status_label=DEFAULT_FAILURE_STATUS_LABEL,
+            should_raise=False,
         )
 
     @pytest.mark.asyncio
