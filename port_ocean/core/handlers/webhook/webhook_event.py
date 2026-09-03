@@ -8,6 +8,9 @@ from fastapi import Request
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.webhook.webhook_log_context import (
+    build_added_to_queue_payload_log_fields,
+)
 from port_ocean.core.ocean_types import RAW_ITEM
 
 EventPayload = dict[str, Any]
@@ -128,12 +131,25 @@ class WebhookEvent(LiveEvent):
         self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event"""
+        if timestamp == LiveEventTimestamp.AddedToQueue:
+            super().set_timestamp(
+                timestamp,
+                params={
+                    "trace_id": self.trace_id,
+                    "headers": self.headers,
+                    **build_added_to_queue_payload_log_fields(self.payload),
+                    **(params or {}),
+                },
+            )
+            return
+
         super().set_timestamp(
             timestamp,
             params={
                 "trace_id": self.trace_id,
                 "payload": self.payload,
                 "headers": self.headers,
+                **(params or {}),
             },
         )
 

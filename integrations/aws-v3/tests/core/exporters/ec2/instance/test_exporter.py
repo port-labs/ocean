@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, List, Dict, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.ec2.instance.exporter import EC2InstanceExporter
 from aws.core.exporters.ec2.instance.models import (
@@ -43,6 +44,13 @@ class TestEC2InstanceExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        instance_data = {
+            "InstanceId": "i-1234567890abcdef0",
+            "InstanceType": "t3.micro",
+        }
+        mock_client.describe_instances.return_value = {
+            "Reservations": [{"Instances": [instance_data]}]
+        }
 
         # Inspector
         mock_inspector = AsyncMock()
@@ -53,7 +61,7 @@ class TestEC2InstanceExporter:
                 InstanceId="i-1234567890abcdef0", InstanceType="t3.micro"
             )
         )
-        mock_inspector.inspect.return_value = [instance.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [instance.model_dump(exclude_none=True)]
 
         options = SingleEC2InstanceRequest(
             region="us-west-2",
@@ -64,12 +72,50 @@ class TestEC2InstanceExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == instance.dict(exclude_none=True)
+        assert result == instance.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ec2")
+        mock_client.describe_instances.assert_called_once_with(
+            InstanceIds=["i-1234567890abcdef0"]
+        )
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"InstanceId": "i-1234567890abcdef0"}], ["GetInstanceStatusAction"]
+            [instance_data],
+            ["GetInstanceStatusAction"],
+            extra_context={
+                "AccountId": "123456789012",
+                "Region": "us-west-2",
+            },
         )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    async def test_get_resource_raises_when_instance_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: EC2InstanceExporter,
+    ) -> None:
+        """Missing instances must raise so live events can treat fetch-after-delete as deleted."""
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        mock_client.describe_instances.return_value = {"Reservations": []}
+
+        options = SingleEC2InstanceRequest(
+            region="us-east-1",
+            account_id="123456789012",
+            instance_id="i-nonexistent",
+            include=[],
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
+
+        assert exc_info.value.response["Error"]["Code"] == "InvalidInstanceID.NotFound"
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
@@ -81,7 +127,12 @@ class TestEC2InstanceExporter:
         exporter: EC2InstanceExporter,
     ) -> None:
         mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_instances.return_value = {
+            "Reservations": [{"Instances": [{"InstanceId": "i-notexists"}]}]
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -147,8 +198,8 @@ class TestEC2InstanceExporter:
         inst3 = EC2Instance(Properties=EC2InstanceProperties(InstanceId="i-3"))
 
         mock_inspector.inspect.side_effect = [
-            [inst1.dict(exclude_none=True), inst2.dict(exclude_none=True)],
-            [inst3.dict(exclude_none=True)],
+            [inst1.model_dump(exclude_none=True), inst2.model_dump(exclude_none=True)],
+            [inst3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedEC2InstanceRequest(
@@ -162,9 +213,9 @@ class TestEC2InstanceExporter:
             collected.extend(page)
 
         assert len(collected) == 3
-        assert collected[0] == inst1.dict(exclude_none=True)
-        assert collected[1] == inst2.dict(exclude_none=True)
-        assert collected[2] == inst3.dict(exclude_none=True)
+        assert collected[0] == inst1.model_dump(exclude_none=True)
+        assert collected[1] == inst2.model_dump(exclude_none=True)
+        assert collected[2] == inst3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "ec2")
         mock_proxy.get_paginator.assert_called_once_with(
@@ -251,12 +302,18 @@ class TestEC2InstanceExporter:
         exporter: EC2InstanceExporter,
     ) -> None:
         mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
         mock_proxy_class.return_value.__aexit__ = AsyncMock()
+        instance_data = {"InstanceId": "i-55"}
+        mock_client.describe_instances.return_value = {
+            "Reservations": [{"Instances": [instance_data]}]
+        }
 
         mock_inspector = AsyncMock()
         instance = EC2Instance(Properties=EC2InstanceProperties(InstanceId="i-55"))
-        mock_inspector.inspect.return_value = [instance.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [instance.model_dump(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleEC2InstanceRequest(
@@ -270,7 +327,14 @@ class TestEC2InstanceExporter:
         assert result["Properties"]["InstanceId"] == "i-55"
         assert result["Type"] == "AWS::EC2::Instance"
 
-        mock_inspector.inspect.assert_called_once_with([{"InstanceId": "i-55"}], [])
+        mock_inspector.inspect.assert_called_once_with(
+            [instance_data],
+            [],
+            extra_context={
+                "AccountId": "123456789012",
+                "Region": "us-west-2",
+            },
+        )
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ec2")
         mock_proxy_class.return_value.__aenter__.assert_called_once()
         mock_proxy_class.return_value.__aexit__.assert_called_once()

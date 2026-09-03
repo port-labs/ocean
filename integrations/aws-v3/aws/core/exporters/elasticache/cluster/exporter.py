@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.exporters.elasticache.cluster.actions import ElastiCacheClusterActionsMap
 from aws.core.exporters.elasticache.cluster.models import CacheCluster
 from aws.core.exporters.elasticache.cluster.models import (
@@ -23,16 +24,21 @@ class ElastiCacheClusterExporter(IResourceExporter[list[dict[str, Any]]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            inspector = ResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
-            )
-
             response = await proxy.client.describe_cache_clusters(  # type: ignore[attr-defined]
                 CacheClusterId=options.cache_cluster_id,
                 ShowCacheNodeInfo=True,
             )
 
-            cache_clusters = response["CacheClusters"]
+            cache_clusters = require_aws_resource(
+                response.get("CacheClusters", []),
+                error_code="CacheClusterNotFoundFault",
+                message=f"Cache cluster not found: {options.cache_cluster_id}",
+                operation_name="DescribeCacheClusters",
+            )
+
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls()
+            )
             action_result = await inspector.inspect(
                 cache_clusters,
                 options.include,
