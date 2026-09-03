@@ -7,7 +7,10 @@ import httpx
 import pytest
 from port_ocean.context.ocean import ocean
 
-from github.actions.dispatch_workflow_executor import DispatchWorkflowExecutor
+from github.actions.dispatch_workflow_executor import (
+    DispatchWorkflowExecutor,
+    WORKFLOW_RUNNING_STATUS_LABEL,
+)
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import (
     InvalidActionParametersException,
@@ -49,6 +52,7 @@ WORKFLOW_RUN = {
 def patched_ocean() -> Generator[MagicMock, None, None]:
     mock_client = MagicMock()
     mock_client.update_run_started = AsyncMock()
+    mock_client.post_run_log = AsyncMock()
     with patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean:
         mock_ocean.port_client = mock_client
         mock_ocean.integration_config = {
@@ -155,6 +159,7 @@ class TestDispatchWorkflowExecutor:
             WORKFLOW_RUN["html_url"],
             "gh_1_99_12345",
             extra_output={"workflowRunId": 12345},
+            status_label=WORKFLOW_RUNNING_STATUS_LABEL,
         )
 
     @pytest.mark.asyncio
@@ -384,6 +389,7 @@ class TestLegacyDispatchWorkflowExecutor:
             WORKFLOW_RUN["html_url"],
             "gh_1_99_12345",
             extra_output={"workflowRunId": 12345},
+            status_label=WORKFLOW_RUNNING_STATUS_LABEL,
         )
 
     @pytest.mark.asyncio
