@@ -17,6 +17,14 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 
 TERMINAL_PIPELINE_STATUSES = frozenset({"success", "failed", "canceled", "skipped"})
 
+# Status labels for terminal GitLab pipeline statuses, shown on the Port run.
+PIPELINE_STATUS_LABELS = {
+    "success": "Pipeline succeeded",
+    "failed": "Pipeline failed",
+    "canceled": "Pipeline cancelled",
+    "skipped": "Pipeline skipped",
+}
+
 
 class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
     events = ["pipeline"]
@@ -85,7 +93,12 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
             should_raise=False,
         )
         await ocean.port_client.report_run_completed(
-            run, success, f"Pipeline completed: {status}"
+            run,
+            success,
+            f"Pipeline completed: {status}",
+            status_label=PIPELINE_STATUS_LABELS.get(
+                status, f"Pipeline completed: {status}"
+            ),
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
