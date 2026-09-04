@@ -59,6 +59,35 @@ class TestLiveEventsRedisSettingsValidation:
 
         assert config.live_events.redis.stream_ttl_seconds == 7200
 
+    def test_processing_concurrency_defaults_to_one(self) -> None:
+        settings = LiveEventsRedisSettings(url="redis://localhost:6379")
+
+        assert settings.processing_concurrency == 1
+
+    def test_processing_concurrency_from_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from port_ocean.config.settings import IntegrationConfiguration
+
+        monkeypatch.setenv(
+            "OCEAN__LIVE_EVENTS__REDIS__PROCESSING_CONCURRENCY", "5"
+        )
+        monkeypatch.setenv("OCEAN__PORT__CLIENT_ID", "test-client-id")
+        monkeypatch.setenv("OCEAN__PORT__CLIENT_SECRET", "test-client-secret")
+        monkeypatch.setenv("OCEAN__INTEGRATION__TYPE", "test")
+        monkeypatch.setenv("OCEAN__INTEGRATION__IDENTIFIER", "test-id")
+
+        config = IntegrationConfiguration()
+
+        assert config.live_events.redis.processing_concurrency == 5
+
+    def test_rejects_processing_concurrency_below_one(self) -> None:
+        with pytest.raises(ValidationError):
+            LiveEventsRedisSettings(
+                url="redis://localhost:6379",
+                processing_concurrency=0,
+            )
+
     def test_accepts_rediss_url_with_tls_enabled(self) -> None:
         settings = LiveEventsRedisSettings(
             url="rediss://localhost:6379",

@@ -366,6 +366,163 @@ class TestRedisStreamConsumerConnection:
         mock_sleep.assert_awaited_once_with(2.5)
         assert mock_redis.xreadgroup.await_count == 2
 
+    @pytest.mark.asyncio
+    async def test_read_loop_respects_processing_concurrency(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            block_ms=100,
+            processing_concurrency=2,
+        )
+        mock_redis = AsyncMock()
+        active_handlers = 0
+        max_active_handlers = 0
+        handler_lock = asyncio.Lock()
+        can_finish = asyncio.Event()
+        handlers_at_peak = asyncio.Event()
+        on_message = AsyncMock()
+
+        async def slow_handler(*_args: object, **_kwargs: object) -> None:
+            nonlocal active_handlers, max_active_handlers
+            async with handler_lock:
+                active_handlers += 1
+                max_active_handlers = max(max_active_handlers, active_handlers)
+                if active_handlers == 2:
+                    handlers_at_peak.set()
+            await can_finish.wait()
+            async with handler_lock:
+                active_handlers -= 1
+
+        on_message.side_effect = slow_handler
+
+        messages = [
+            (
+                "stream",
+                [
+                    ("1-0", {"eventId": "e1", "webhookPath": "webhook"}),
+                    ("2-0", {"eventId": "e2", "webhookPath": "webhook"}),
+                    ("3-0", {"eventId": "e3", "webhookPath": "webhook"}),
+                ],
+            )
+        ]
+
+        read_calls = 0
+
+        async def read_side_effect(**_kwargs: object) -> list[object]:
+            nonlocal read_calls
+            read_calls += 1
+            if read_calls == 1:
+                return messages
+            consumer._is_running = False
+            return []
+
+        mock_redis.xreadgroup = AsyncMock(side_effect=read_side_effect)
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ack_and_finalize_stream_entry",
+                new=AsyncMock(),
+            ),
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=on_message,
+                registered_paths={"/webhook"},
+            )
+            consumer._redis = mock_redis
+            consumer._is_running = True
+
+            read_task = asyncio.create_task(consumer._read_loop())
+            await asyncio.wait_for(handlers_at_peak.wait(), timeout=1)
+            can_finish.set()
+            await read_task
+
+        assert max_active_handlers == 2
+        assert on_message.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_stop_waits_for_pending_message_tasks(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            processing_concurrency=2,
+        )
+        mock_redis = AsyncMock()
+        handler_started = asyncio.Event()
+        allow_handler_to_finish = asyncio.Event()
+        on_message = AsyncMock()
+
+        async def blocking_handler(*_args: object, **_kwargs: object) -> None:
+            handler_started.set()
+            await allow_handler_to_finish.wait()
+
+        on_message.side_effect = blocking_handler
+
+        read_calls = 0
+
+        async def read_side_effect(**_kwargs: object) -> list[object]:
+            nonlocal read_calls
+            read_calls += 1
+            if read_calls == 1:
+                return [
+                    (
+                        "stream",
+                        [
+                            (
+                                "1-0",
+                                {
+                                    "eventId": "e1",
+                                    "webhookPath": "webhook",
+                                    "payload": "{}",
+                                },
+                            ),
+                        ],
+                    )
+                ]
+            await asyncio.sleep(0)
+            return []
+
+        mock_redis.xreadgroup = AsyncMock(side_effect=read_side_effect)
+        mock_redis.xgroup_create = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.create_redis_client_with_retry",
+                new=AsyncMock(return_value=mock_redis),
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ack_and_finalize_stream_entry",
+                new=AsyncMock(),
+            ),
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=on_message,
+                registered_paths={"/webhook"},
+            )
+            await consumer.start()
+            await handler_started.wait()
+            stop_task = asyncio.create_task(consumer.stop())
+            await asyncio.sleep(0)
+            assert not stop_task.done()
+            allow_handler_to_finish.set()
+            await stop_task
+
+        on_message.assert_awaited_once()
+        mock_redis.aclose.assert_awaited_once()
+
 
 class TestRedisStreamConsumerGroupCreation:
     @pytest.mark.asyncio

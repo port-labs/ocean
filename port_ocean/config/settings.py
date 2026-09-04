@@ -222,6 +222,14 @@ class LiveEventsRedisSettings(BaseOceanModel):
         ge=1,
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
+    processing_concurrency: int = Field(
+        default=1,
+        ge=1,
+        description=(
+            "Maximum number of Redis stream messages processed concurrently "
+            "by a single consumer instance."
+        ),
+    )
     stream_ttl_seconds: int | None = Field(
         default=2_592_000,  # 30 days
         ge=1,

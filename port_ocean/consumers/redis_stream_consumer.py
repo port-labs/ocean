@@ -62,6 +62,10 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._ssl_key_file: str | None = None
         self._is_running = False
         self._read_task: asyncio.Task[None] | None = None
+        self._pending_message_tasks: set[asyncio.Task[None]] = set()
+        self._processing_semaphore = asyncio.Semaphore(
+            self._settings.processing_concurrency
+        )
         self._consumer_name = (
             f"{ocean.config.integration.identifier}-{socket.gethostname()}"
         )
@@ -163,6 +167,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             self._read_task.cancel()
             await asyncio.gather(self._read_task, return_exceptions=True)
             self._read_task = None
+        if self._pending_message_tasks:
+            await asyncio.gather(
+                *self._pending_message_tasks,
+                return_exceptions=True,
+            )
+            self._pending_message_tasks.clear()
         if self._stream_maintenance_worker is not None:
             await self._stream_maintenance_worker.stop()
             self._stream_maintenance_worker = None
@@ -225,7 +235,14 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
 
                 for _stream_name, messages in response:
                     for message_id, fields in messages:
-                        await self._handle_message(message_id, fields)
+                        if not self._is_running:
+                            break
+                        await self._processing_semaphore.acquire()
+                        task = asyncio.create_task(
+                            self._process_message(message_id, fields)
+                        )
+                        self._pending_message_tasks.add(task)
+                        task.add_done_callback(self._pending_message_tasks.discard)
             except asyncio.CancelledError:
                 break
             except ResponseError as error:
@@ -251,6 +268,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                         stream_key=self._stream_key,
                         error=str(error),
                     )
+
+    async def _process_message(self, message_id: str, fields: dict[str, str]) -> None:
+        try:
+            await self._handle_message(message_id, fields)
+        finally:
+            self._processing_semaphore.release()
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()
