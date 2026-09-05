@@ -205,3 +205,45 @@ class TestLinearLabelChildrenPagination:
 
         assert results[0][0]["children"]["edges"] == [{"node": {"id": "child-0"}}]
         mock_post.assert_not_awaited()
+
+    async def test_get_single_label_follows_child_pagination(
+        self, linear_client: LinearClient
+    ) -> None:
+        single_label = {
+            "data": {
+                "issueLabel": {
+                    "id": "label-1",
+                    "name": "group",
+                    "children": {
+                        "edges": [{"node": {"id": f"child-{i}"}} for i in range(50)],
+                        "pageInfo": {"hasNextPage": True, "endCursor": "child-cursor-1"},
+                    },
+                }
+            }
+        }
+        children_page = {
+            "data": {
+                "issueLabel": {
+                    "children": {
+                        "edges": [{"node": {"id": "child-50"}}],
+                        "pageInfo": {"hasNextPage": False, "endCursor": "child-cursor-2"},
+                    }
+                }
+            }
+        }
+
+        mock_post = AsyncMock(
+            side_effect=[
+                MagicMock(json=MagicMock(return_value=single_label)),
+                MagicMock(json=MagicMock(return_value=children_page)),
+            ]
+        )
+        with patch.object(linear_client.client, "post", mock_post):
+            label = await linear_client.get_single_label("label-1")
+
+        assert label["id"] == "label-1"
+        children = label["children"]["edges"]
+        assert len(children) == 51
+        assert [edge["node"]["id"] for edge in children][-1] == "child-50"
+        query = mock_post.await_args.kwargs["json"]["query"]
+        assert 'after: "child-cursor-1"' in query

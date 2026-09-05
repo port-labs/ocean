@@ -140,7 +140,7 @@ class LinearClient:
             end_cursor = team_response_list["data"]["teams"]["pageInfo"]["endCursor"]
 
     async def _append_remaining_label_children(self, label: dict[str, Any]) -> None:
-        """Fetch children pages past the initial inline `children(first: 250)` window."""
+        """Fetch children pages past the initial inline children window."""
         children = label.get("children")
         if not children or not children.get("pageInfo", {}).get("hasNextPage"):
             return
@@ -275,5 +275,6 @@ class LinearClient:
         label_response.raise_for_status()
         # Response format is: { data: { issueLabel: {...} } }
         # Returning just the label object for mapping consistency
-        label_json = label_response.json()
-        return label_json["data"]["issueLabel"]
+        label = label_response.json()["data"]["issueLabel"]
+        await self._append_remaining_label_children(label)
+        return label

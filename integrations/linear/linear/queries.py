@@ -114,6 +114,10 @@ QUERIES = {
         number
     }
     """,
+    # The nested `children` connection must stay at Linear's default page size:
+    # Linear multiplies nested `first` values into its 10,000-point per-query
+    # complexity cap, and this template is expanded inside the 50-label page
+    # query. _append_remaining_label_children pages past the inline window.
     "BASE_LABELS_QUERY_FIELDS": """
     id
     createdAt
@@ -126,7 +130,7 @@ QUERIES = {
     parent {
     id
     }
-    children(first: 250) {
+    children {
         edges {
             node {
                 id
