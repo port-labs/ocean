@@ -100,3 +100,108 @@ class TestLinearDocumentClient:
         payload = mock_post.await_args.kwargs["json"]["query"]
         assert "document(id:" in payload.replace(" ", "")
         assert "50e3e770-03ef-4c12-9f5a-e3122a768bc4" in payload
+
+
+@pytest.mark.asyncio
+class TestLinearLabelChildrenPagination:
+    async def test_paginates_children_past_inline_window(
+        self, linear_client: LinearClient
+    ) -> None:
+        label_page = {
+            "data": {
+                "issueLabels": {
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "label-1",
+                                "name": "group",
+                                "children": {
+                                    "edges": [
+                                        {"node": {"id": f"child-{i}"}}
+                                        for i in range(250)
+                                    ],
+                                    "pageInfo": {
+                                        "hasNextPage": True,
+                                        "endCursor": "child-cursor-1",
+                                    },
+                                },
+                            }
+                        }
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "label-cursor-1"},
+                }
+            }
+        }
+        children_page = {
+            "data": {
+                "issueLabel": {
+                    "children": {
+                        "edges": [{"node": {"id": "child-250"}}],
+                        "pageInfo": {
+                            "hasNextPage": False,
+                            "endCursor": "child-cursor-2",
+                        },
+                    }
+                }
+            }
+        }
+
+        mock_post = AsyncMock(
+            return_value=MagicMock(json=MagicMock(return_value=children_page))
+        )
+        with (
+            patch.object(
+                linear_client, "_get_paginated_objects", new_callable=AsyncMock
+            ) as mock_get,
+            patch.object(linear_client.client, "post", mock_post),
+        ):
+            mock_get.return_value = label_page
+            results = [batch async for batch in linear_client.get_paginated_labels()]
+
+        assert len(results) == 1
+        children = results[0][0]["children"]["edges"]
+        assert [edge["node"]["id"] for edge in children][-1] == "child-250"
+        assert len(children) == 251
+        assert mock_post.await_count == 1
+        query = mock_post.await_args.kwargs["json"]["query"]
+        assert "issueLabel(id:" in query.replace(" ", "")
+        assert 'after: "child-cursor-1"' in query
+
+    async def test_no_extra_calls_when_children_fit_inline_window(
+        self, linear_client: LinearClient
+    ) -> None:
+        label_page = {
+            "data": {
+                "issueLabels": {
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "label-1",
+                                "name": "group",
+                                "children": {
+                                    "edges": [{"node": {"id": "child-0"}}],
+                                    "pageInfo": {
+                                        "hasNextPage": False,
+                                        "endCursor": "child-cursor-1",
+                                    },
+                                },
+                            }
+                        }
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "label-cursor-1"},
+                }
+            }
+        }
+
+        mock_post = AsyncMock()
+        with (
+            patch.object(
+                linear_client, "_get_paginated_objects", new_callable=AsyncMock
+            ) as mock_get,
+            patch.object(linear_client.client, "post", mock_post),
+        ):
+            mock_get.return_value = label_page
+            results = [batch async for batch in linear_client.get_paginated_labels()]
+
+        assert results[0][0]["children"]["edges"] == [{"node": {"id": "child-0"}}]
+        mock_post.assert_not_awaited()

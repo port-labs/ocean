@@ -126,11 +126,15 @@ QUERIES = {
     parent {
     id
     }
-    children{
+    children(first: 250) {
         edges {
             node {
                 id
             }
+        }
+        pageInfo {
+            hasNextPage
+            endCursor
         }
     }
     """,
@@ -227,6 +231,23 @@ QUERIES = {
                 hasNextPage
                 startCursor
                 endCursor
+            }
+        }
+    }
+    """,
+    "GET_LABEL_CHILDREN_PAGE": """
+    query IssueLabelChildren {
+        issueLabel(id: "{{ label_id }}") {
+            children(first: {{ page_size }}{{ after_cursor }}) {
+                edges {
+                    node {
+                        id
+                    }
+                }
+                pageInfo {
+                    hasNextPage
+                    endCursor
+                }
             }
         }
     }
