@@ -108,7 +108,7 @@ async def execute_concurrent_aws_operations(
     operation_func: Callable[[Any], Awaitable[Any]],
     get_resource_identifier: Callable[[Any], str],
     operation_name: str,
-    concurrency_limit: int = 10,
+    concurrency_limit: int = 20,
 ) -> list[dict[str, Any]]:
     """
     Generic concurrent AWS operation executor with concurrency control.
@@ -118,7 +118,7 @@ async def execute_concurrent_aws_operations(
         operation_func: Async function that takes an input item and returns result
         get_resource_identifier: Function to extract resource ID from input item
         operation_name: Name for logging (e.g., "repository policy")
-        concurrency_limit: Maximum number of concurrent operations (default: 10)
+        concurrency_limit: Maximum number of concurrent operations (default: 20)
 
     Returns:
         One entry per input item, in the same order as ``input_items``. An empty
@@ -126,7 +126,7 @@ async def execute_concurrent_aws_operations(
         recoverable AWS exception, so callers can rely on positional alignment
         when merging results with other concurrent operations.
     """
-    semaphore = asyncio.Semaphore(concurrency_limit)
+    semaphore = asyncio.BoundedSemaphore(concurrency_limit)
 
     async def bounded_operation(item: Any) -> Any:
         async with semaphore:

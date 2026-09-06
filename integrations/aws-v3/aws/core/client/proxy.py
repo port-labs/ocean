@@ -24,11 +24,11 @@ class AioBaseClientProxy:
             raise RuntimeError("Client not initialized. Use 'async with' context.")
         return self._base_client
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self, config=AWS_CLIENT_CONFIG) -> Self:
         self._client_cm = self.session.create_client(
             service_name=self.service_name,
             region_name=self.region,
-            config=AWS_CLIENT_CONFIG,
+            config=config,
         )
         self._base_client = await self._client_cm.__aenter__()
         return self
