@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.24.4-beta (2026-09-06)
+
+
+### Bug Fixes
+
+- Include ExtraContext on CloudTrail live-event delete payloads so custom port-app-config identifier mappings resolve on deletes, not just upserts.
+
+
 ## 2.24.3-beta (2026-09-06)
 
 
