@@ -33,7 +33,6 @@ jobs:
             const eventName = context.eventName;
             const payload = context.payload;
 
-            // "internal vs external" is determined by the PR author, never the commenter
             let pr;
             switch (eventName) {
               case 'pull_request_target':
@@ -70,18 +69,18 @@ jobs:
               }
             }
 
-            let isExternal;
+            let prAuthorIsExternal;
             try {
-              isExternal = !(await isOrgMember(user));
+              prAuthorIsExternal = !(await isOrgMember(user));
             } catch (err) {
               // Can't determine membership — skip rather than guess or fail the job
               core.warning(`Org membership check failed (${err.status}): ${err.message}. Skipping notification.`);
               return;
             }
 
-            core.info(`Event: ${eventName} | PR author: ${user} | org member: ${!isExternal}`);
+            core.info(`Event: ${eventName} | PR author: ${user} | org member: ${!prAuthorIsExternal}`);
 
-            if (!isExternal) {
+            if (!prAuthorIsExternal) {
               core.info('PR author is an org member — skipping webhook.');
               return;
             }
@@ -89,12 +88,16 @@ jobs:
             if (eventName !== 'pull_request_target') {
               const actor =
                 eventName === 'pull_request_review' ? payload.review.user.login : payload.comment.user.login;
-              let actorIsMember;
-              try {
-                actorIsMember = await isOrgMember(actor);
-              } catch (err) {
-                core.warning(`Org membership check failed for ${actor} (${err.status}): ${err.message}. Skipping notification.`);
-                return;
+              // when actor === user and we reach this point, their membership is already known (checked above as `user`)
+              // and we know they are not an org member
+              let actorIsMember = false;
+              if (actor !== user) {
+                try {
+                  actorIsMember = await isOrgMember(actor);
+                } catch (err) {
+                  core.warning(`Org membership check failed for ${actor} (${err.status}): ${err.message}. Skipping notification.`);
+                  return;
+                }
               }
               if (actorIsMember) {
                 core.info(`${actor} is an org member — skipping webhook.`);
