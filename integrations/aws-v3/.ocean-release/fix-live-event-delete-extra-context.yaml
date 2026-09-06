@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Include ExtraContext on CloudTrail live-event delete payloads so custom port-app-config identifier mappings resolve on deletes, not just upserts.
