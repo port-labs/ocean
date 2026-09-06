@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from aws.core.helpers.types import ObjectKind
 from aws.webhook.cloudtrail_parser import (
@@ -733,7 +733,8 @@ def test_parse_returns_none_when_short_ecs_service_arn_missing_cluster_arn() -> 
 
 def test_parse_returns_none_when_ecs_upsert_response_elements_is_null() -> None:
     payload = _ecs_service_eventbridge_envelope("CreateService")
-    payload["detail"]["responseElements"] = None
+    detail = cast(dict[str, Any], payload["detail"])
+    detail["responseElements"] = None
 
     assert parse_cloudtrail_event(payload) is None
 
@@ -831,7 +832,8 @@ def test_parse_returns_none_when_ecs_register_task_definition_response_elements_
     None
 ):
     payload = _ecs_task_definition_eventbridge_envelope("RegisterTaskDefinition")
-    payload["detail"]["responseElements"] = None
+    detail = cast(dict[str, Any], payload["detail"])
+    detail["responseElements"] = None
 
     assert parse_cloudtrail_event(payload) is None
 
@@ -845,7 +847,8 @@ def test_parse_returns_none_when_ecs_register_task_definition_is_null() -> None:
 
 def test_parse_returns_none_when_ecs_deregister_request_parameters_is_null() -> None:
     payload = _ecs_task_definition_eventbridge_envelope("DeregisterTaskDefinition")
-    payload["detail"]["requestParameters"] = None
+    detail = cast(dict[str, Any], payload["detail"])
+    detail["requestParameters"] = None
 
     assert parse_cloudtrail_event(payload) is None
 
