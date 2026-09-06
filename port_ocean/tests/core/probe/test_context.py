@@ -115,6 +115,67 @@ async def test_add_scopes_returns_only_new_checks(
     assert existing_check not in new_checks
 
 
+@patch("port_ocean.core.probe.context.ProbeContext.update_progress")
+@pytest.mark.asyncio
+async def test_setup_unscoped_checks_creates_check_per_kind(
+    mock_update_progress: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository", "pull-request"]
+
+    # Act
+    new_checks = await context.setup_unscoped_checks()
+
+    # Assert
+    assert len(new_checks) == 2
+    assert {check.kind for check in new_checks} == {"repository", "pull-request"}
+    assert all(check.scopes == {} for check in new_checks)
+    assert context.checks == new_checks
+    mock_update_progress.assert_called_once()
+
+
+@patch("port_ocean.core.probe.context.ProbeContext.update_progress")
+@pytest.mark.asyncio
+async def test_setup_unscoped_checks_returns_only_new_checks(
+    mock_update_progress: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+    existing_check = ProbeCheck(kind="existing", scopes={"org": "old"})
+    context.checks.append(existing_check)
+
+    # Act
+    new_checks = await context.setup_unscoped_checks()
+
+    # Assert
+    assert len(new_checks) == 1
+    assert new_checks[0].kind == "repository"
+    assert new_checks[0].scopes == {}
+    assert existing_check not in new_checks
+    assert len(context.checks) == 2
+    mock_update_progress.assert_called_once()
+
+
+@patch("port_ocean.core.probe.context.ProbeContext.update_progress")
+@pytest.mark.asyncio
+async def test_setup_unscoped_checks_with_no_available_kinds(
+    mock_update_progress: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = []
+
+    # Act
+    new_checks = await context.setup_unscoped_checks()
+
+    # Assert
+    assert new_checks == []
+    assert context.checks == []
+    mock_update_progress.assert_called_once()
+
+
 def test_build_request_body() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")
