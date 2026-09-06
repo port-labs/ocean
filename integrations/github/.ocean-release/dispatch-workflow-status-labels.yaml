@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: improvement
-changelog: Added run logs and status labels to the dispatch_workflow action, so Port shows when a workflow is being dispatched, running, or finished with its GitHub conclusion
+changelog: Added run logs and status labels to the dispatch_workflow action, so Port shows when a workflow is being dispatched, running, or finished with its GitHub conclusion. Dispatch failures now report GitHub's error message even when the response body is not JSON

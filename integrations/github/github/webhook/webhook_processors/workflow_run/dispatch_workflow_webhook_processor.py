@@ -16,7 +16,8 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from loguru import logger
 
 # Status labels for the GitHub `workflow_run.conclusion` values, shown on the
-# Port run. Anything unmapped falls back to echoing the raw conclusion.
+# Port run. Anything unmapped echoes the raw conclusion. Keep every label to
+# two words at most so it stays readable in Port's UI.
 CONCLUSION_STATUS_LABELS = {
     "success": "Workflow succeeded",
     "failure": "Workflow failed",
@@ -109,7 +110,7 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 success,
                 f"Workflow completed: {conclusion}",
                 status_label=CONCLUSION_STATUS_LABELS.get(
-                    conclusion, f"Workflow completed: {conclusion}"
+                    conclusion, f"Workflow {conclusion}"
                 ),
             )
 

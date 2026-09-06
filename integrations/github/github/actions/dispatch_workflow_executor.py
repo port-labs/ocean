@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from github.actions.utils import build_external_id
+from github.actions.utils import build_external_id, extract_error_message
 from github.clients.auth import get_auth_provider
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
@@ -346,7 +346,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         except Exception as e:
             error_message = str(e)
             if isinstance(e, httpx.HTTPStatusError):
-                error_message = json.loads(e.response.text).get("message", str(e))
+                error_message = extract_error_message(e.response)
             specific_label = (
                 e.status_label if isinstance(e, ActionExecutionError) else None
             )

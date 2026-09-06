@@ -9,6 +9,8 @@ from port_ocean.context.ocean import ocean
 
 from github.actions.dispatch_workflow_executor import (
     DispatchWorkflowExecutor,
+    DISPATCH_FAILED_STATUS_LABEL,
+    DISPATCHING_STATUS_LABEL,
     WORKFLOW_RUNNING_STATUS_LABEL,
 )
 from github.clients.http.rest_client import GithubRestClient
@@ -161,6 +163,19 @@ class TestDispatchWorkflowExecutor:
             extra_output={"workflowRunId": 12345},
             status_label=WORKFLOW_RUNNING_STATUS_LABEL,
         )
+        assert mock_port_client.post_run_log.await_args_list == [
+            call(
+                run,
+                "Dispatching workflow 'deploy.yml' in port-labs/ocean on ref 'main'",
+                status_label=DISPATCHING_STATUS_LABEL,
+                should_raise=False,
+            ),
+            call(
+                run,
+                f"Workflow run started: {WORKFLOW_RUN['html_url']}",
+                should_raise=False,
+            ),
+        ]
 
     @pytest.mark.asyncio
     async def test_uses_ref_from_workflow_inputs(
@@ -267,6 +282,40 @@ class TestDispatchWorkflowExecutor:
                 match="Error dispatching workflow: Workflow not found",
             ):
                 await executor.execute(run)
+
+    @pytest.mark.asyncio
+    async def test_github_non_json_http_error_raises(
+        self,
+        executor: DispatchWorkflowExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        """A gateway can answer with HTML instead of GitHub's JSON error body."""
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "workflow": "deploy.yml",
+            }
+        )
+
+        request = httpx.Request(
+            "POST",
+            "https://api.github.com/repos/port-labs/ocean/actions/workflows/deploy.yml/dispatches",
+        )
+        response = httpx.Response(502, text="<html>Bad gateway</html>", request=request)
+        mock_rest_client.make_request.side_effect = httpx.HTTPStatusError(
+            "502", request=request, response=response
+        )
+
+        with patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")):
+            with pytest.raises(
+                ActionExecutionError,
+                match="Error dispatching workflow: <html>Bad gateway</html>",
+            ) as exc_info:
+                await executor.execute(run)
+
+        assert exc_info.value.status_label == DISPATCH_FAILED_STATUS_LABEL
 
     @pytest.mark.asyncio
     async def test_default_branch_not_found_raises(
