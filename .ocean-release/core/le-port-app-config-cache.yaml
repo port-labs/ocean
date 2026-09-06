@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Use cached port app config for live events to reduce port-api load between TTL refreshes.
