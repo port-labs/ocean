@@ -30,13 +30,14 @@ class GitHubPermissionProbeFlow(ABC):
         permissions: dict[str, str],
     ) -> None:
         for check in checks:
-            check.status, check.message = self.permission_verdict.verdict(check.kind, permissions)
+            check.status, check.message = self.permission_verdict.verdict(
+                check.kind, permissions
+            )
         await self.context.update_progress()
 
 
-def org_scopes(organizations: Sequence[str]) -> list[dict[str, str]]:
+def org_scopes(organizations: list[str]) -> list[dict[str, str]]:
     is_multi_org = len(organizations) > 1
     return [
-        {"org": organization} if is_multi_org else {}
-        for organization in organizations
+        {"org": organization} if is_multi_org else {} for organization in organizations
     ]

@@ -4,7 +4,6 @@ from port_ocean.core.probe import KindPermissionVerdict
 
 from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
 
-
 MISSING_PERMISSIONS_MESSAGE = (
     "Your app installation token is valid, but permission verification is not "
     "available because GitHub did not return installation permissions."
@@ -19,8 +18,7 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
     async def run(self) -> None:
         try:
             tokens = [
-                await authenticator.get_token()
-                for authenticator in self.authenticators
+                await authenticator.get_token() for authenticator in self.authenticators
             ]
         except AuthenticationException as error:
             await self.context.fail(str(error))
@@ -32,7 +30,7 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
 
         checks = await self.context.add_scopes(
             *org_scopes(
-                [authenticator.organization for authenticator in self.authenticators]
+                [authenticator.organization for authenticator in self.authenticators if authenticator.organization is not None]
             )
         )
         kind_count = len(self.context.available_kinds)

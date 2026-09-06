@@ -225,7 +225,9 @@ async def probe(context: ProbeContext) -> ProbeContext:
         f"Probing GitHub permissions for {len(context.available_kinds)} resource kinds"
     )
     provider = get_auth_provider()
-    probe_flow = GitHubAppPermissionProbe if provider.is_app_auth() else GitHubPatPermissionProbe
+    probe_flow = (
+        GitHubAppPermissionProbe if provider.is_app_auth() else GitHubPatPermissionProbe
+    )
     await probe_flow(context, await provider.list_authenticators()).run()
     return context
 
