@@ -30,7 +30,11 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
 
         checks = await self.context.add_scopes(
             *org_scopes(  # type: ignore[arg-type]
-                [authenticator.organization for authenticator in self.authenticators if authenticator.organization is not None]
+                [
+                    authenticator.organization
+                    for authenticator in self.authenticators
+                    if authenticator.organization is not None
+                ]
             )
         )
         kind_count = len(self.context.available_kinds)
