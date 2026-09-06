@@ -227,7 +227,9 @@ class LiveEventsRedisSettings(BaseOceanModel):
         ge=1,
         description=(
             "Maximum number of Redis stream messages processed concurrently "
-            "by a single consumer instance."
+            "by a single consumer instance. When greater than 1, the consumer "
+            "reads one stream entry per free slot (read_count is ignored) to "
+            "avoid assigning more PEL entries than are actively being processed."
         ),
     )
     stream_ttl_seconds: int | None = Field(

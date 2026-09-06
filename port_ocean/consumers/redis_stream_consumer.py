@@ -63,8 +63,10 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._is_running = False
         self._read_task: asyncio.Task[None] | None = None
         self._pending_message_tasks: set[asyncio.Task[None]] = set()
-        self._processing_semaphore = asyncio.Semaphore(
-            self._settings.processing_concurrency
+        self._processing_semaphore: asyncio.Semaphore | None = (
+            asyncio.Semaphore(self._settings.processing_concurrency)
+            if self._settings.processing_concurrency > 1
+            else None
         )
         self._consumer_name = (
             f"{ocean.config.integration.identifier}-{socket.gethostname()}"
@@ -167,15 +169,15 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             self._read_task.cancel()
             await asyncio.gather(self._read_task, return_exceptions=True)
             self._read_task = None
+        if self._stream_maintenance_worker is not None:
+            await self._stream_maintenance_worker.stop()
+            self._stream_maintenance_worker = None
         if self._pending_message_tasks:
             await asyncio.gather(
                 *self._pending_message_tasks,
                 return_exceptions=True,
             )
             self._pending_message_tasks.clear()
-        if self._stream_maintenance_worker is not None:
-            await self._stream_maintenance_worker.stop()
-            self._stream_maintenance_worker = None
         if self._redis is not None:
             await self._redis.aclose()
             self._redis = None
@@ -219,6 +221,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             )
 
     async def _read_loop(self) -> None:
+        if self._settings.processing_concurrency > 1:
+            await self._read_loop_concurrent()
+        else:
+            await self._read_loop_sequential()
+
+    async def _read_loop_sequential(self) -> None:
         redis = self._require_redis()
 
         while self._is_running:
@@ -237,12 +245,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                     for message_id, fields in messages:
                         if not self._is_running:
                             break
-                        await self._processing_semaphore.acquire()
-                        task = asyncio.create_task(
-                            self._process_message(message_id, fields)
-                        )
-                        self._pending_message_tasks.add(task)
-                        task.add_done_callback(self._pending_message_tasks.discard)
+                        await self._handle_message(message_id, fields)
             except asyncio.CancelledError:
                 break
             except ResponseError as error:
@@ -269,11 +272,89 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                         error=str(error),
                     )
 
+    async def _read_loop_concurrent(self) -> None:
+        """Read one message per free processing slot to limit PEL exposure.
+
+        With batch XREADGROUP, every returned entry is assigned to this
+        consumer's PEL immediately, even before a handler starts. If messages
+        wait behind the concurrency limit longer than ``pel_stuck_timeout_seconds``,
+        the maintenance worker may XAUTOCLAIM and requeue them while handlers
+        are still running, causing duplicate delivery.
+        """
+        redis = self._require_redis()
+        processing_semaphore = self._require_processing_semaphore()
+
+        while self._is_running:
+            try:
+                await processing_semaphore.acquire()
+                if not self._is_running:
+                    processing_semaphore.release()
+                    break
+
+                try:
+                    response = await redis.xreadgroup(
+                        groupname=self._consumer_group,
+                        consumername=self._consumer_name,
+                        streams={self._stream_key: ">"},
+                        count=1,
+                        block=self._settings.block_ms,
+                    )
+                except Exception:
+                    processing_semaphore.release()
+                    raise
+
+                if not response:
+                    processing_semaphore.release()
+                    continue
+
+                for _stream_name, messages in response:
+                    for message_id, fields in messages:
+                        task = asyncio.create_task(
+                            self._process_message(message_id, fields)
+                        )
+                        self._pending_message_tasks.add(task)
+                        task.add_done_callback(self._pending_message_tasks.discard)
+                        break
+            except asyncio.CancelledError:
+                break
+            except ResponseError as error:
+                if is_missing_stream_or_group_error(error):
+                    await self._recover_missing_stream()
+                else:
+                    logger.exception(
+                        "Unexpected Redis error in stream read loop",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
+            except Exception as error:
+                if is_redis_connection_error(error):
+                    logger.exception(
+                        "Lost connection to Redis, retrying",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
+                    await asyncio.sleep(self._settings.connection_error_backoff_seconds)
+                else:
+                    logger.exception(
+                        "Unexpected error in Redis stream read loop",
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
+
+    def _require_processing_semaphore(self) -> asyncio.Semaphore:
+        if self._processing_semaphore is None:
+            raise RuntimeError(
+                "Processing semaphore is only initialized when processing_concurrency > 1"
+            )
+        return self._processing_semaphore
+
     async def _process_message(self, message_id: str, fields: dict[str, str]) -> None:
+        processing_semaphore = self._processing_semaphore
         try:
             await self._handle_message(message_id, fields)
         finally:
-            self._processing_semaphore.release()
+            if processing_semaphore is not None:
+                processing_semaphore.release()
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()

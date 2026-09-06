@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Add configurable processing concurrency for the Redis live-events stream consumer.
+changelog: Add configurable processing concurrency for the Redis live-events stream consumer. Concurrent mode reads one message per free slot to avoid PEL entries piling up ahead of handlers.
