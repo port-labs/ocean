@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.10 (2026-09-06)
+
+
+### Features
+
+- Add ProbeContext.setup_unscoped_checks to register one unscoped check per available kind
+
+
 ## 0.50.9 (2026-09-02)
 
 

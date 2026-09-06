@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: feature
-changelog: Add ProbeContext.setup_unscoped_checks to register one unscoped check per available kind
