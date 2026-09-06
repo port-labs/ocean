@@ -1,5 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
+from botocore.exceptions import ClientError
+
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ecs.task_definition.actions import EcsTaskDefinitionActionsMap
 from aws.core.exporters.ecs.task_definition.models import TaskDefinition
@@ -8,6 +10,7 @@ from aws.core.exporters.ecs.task_definition.models import (
     PaginatedTaskDefinitionRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -25,6 +28,34 @@ class EcsTaskDefinitionExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            try:
+                describe_response = await proxy.client.describe_task_definition(  # type: ignore[attr-defined]
+                    taskDefinition=options.task_definition_arn,
+                    include=["TAGS"],
+                )
+            except ClientError as error:
+                if error.response.get("Error", {}).get("Code") == "ClientException":
+                    raise ClientError(
+                        {
+                            "Error": {
+                                "Code": "TaskDefinitionNotFoundException",
+                                "Message": (
+                                    "Task definition not found: "
+                                    f"{options.task_definition_arn}"
+                                ),
+                            }
+                        },
+                        "DescribeTaskDefinition",
+                    ) from error
+                raise
+
+            require_aws_resource(
+                [describe_response.get("taskDefinition")],
+                error_code="TaskDefinitionNotFoundException",
+                message=(f"Task definition not found: {options.task_definition_arn}"),
+                operation_name="DescribeTaskDefinition",
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

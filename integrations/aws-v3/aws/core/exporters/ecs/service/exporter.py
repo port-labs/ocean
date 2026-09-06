@@ -8,6 +8,7 @@ from aws.core.exporters.ecs.service.models import (
     PaginatedServiceRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.utils import RegionHelper
@@ -24,13 +25,28 @@ class EcsServiceExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            inspector = ResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
-            )
-
             partition = RegionHelper.get_partition()
             cluster_arn = f"arn:{partition}:ecs:{options.region}:{options.account_id}:cluster/{options.cluster_name}"
             service_arn = f"arn:{partition}:ecs:{options.region}:{options.account_id}:service/{options.cluster_name}/{options.service_name}"
+
+            describe_response = await proxy.client.describe_services(  # type: ignore[attr-defined]
+                cluster=cluster_arn,
+                services=[service_arn],
+                include=["TAGS"],
+            )
+            require_aws_resource(
+                describe_response.get("services"),
+                error_code="ServiceNotFoundException",
+                message=(
+                    f"Service not found: {options.cluster_name}/"
+                    f"{options.service_name}"
+                ),
+                operation_name="DescribeServices",
+            )
+
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls()
+            )
 
             response = await inspector.inspect(
                 [service_arn],
