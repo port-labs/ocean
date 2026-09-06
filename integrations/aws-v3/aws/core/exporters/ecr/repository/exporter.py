@@ -32,7 +32,14 @@ class EcrRepositoryExporter(IResourceExporter[list[dict[str, Any]]]):
             if not repositories:
                 return {}
 
-            result = await inspector.inspect(repositories, options.include)
+            result = await inspector.inspect(
+                repositories,
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
             return result[0] if result else {}
 
     async def get_paginated_resources(

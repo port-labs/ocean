@@ -26,6 +26,15 @@ class SNSTopicExporter(IResourceExporter[SNSTopicActionInput]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-topic fetch only has a topic ARN from CloudTrail.
+            # GetTopicAttributesAction swallows ResourceNotFound as recoverable,
+            # so the inspector would build a stub from ListTopicsAction for a deleted topic.
+            # Confirm it exists so a missing topic raises and the live-event handler
+            # can treat the update as a delete instead.
+            await proxy.client.get_topic_attributes(  # type: ignore[attr-defined]
+                TopicArn=options.topic_arn
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

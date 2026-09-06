@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.24.1-beta (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 2.24.0-beta (2026-09-03)
+
+
+### Features
+
+- Add CloudTrail live events support for SES email identities and configuration sets.
+
+
+## 2.23.1-beta (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 2.23.0-beta (2026-09-02)
+
+
+### Features
+
+- Add CloudTrail live events support for RDS DB clusters, SNS topics, SQS queues, EC2 instances, EC2 volumes, and ElastiCache clusters.
+
+
+## 2.22.5-beta (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 2.22.4-beta (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 2.22.3-beta (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 2.22.2-beta (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 2.22.1-beta (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 2.22.0-beta (2026-08-30)
+
+
+### Features
+
+- Add CloudTrail live events for ECR repositories, ECS clusters, and EKS clusters
+
+
+## 2.21.1-beta (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 2.21.0-beta (2026-08-26)
+
+
+### Features
+
+- Add CloudTrail live events support for DynamoDB tables and RDS DB instances.
+
+
 ## 2.20.16-beta (2026-08-26)
 
 

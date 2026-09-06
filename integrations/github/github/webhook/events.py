@@ -27,7 +27,25 @@ PULL_REQUEST_EVENTS = [
     "closed",
     "labeled",
     "unlabeled",
+    "assigned",
+    "review_requested",
+    "converted_to_draft",
+    "locked",
+    "unlocked",
+    "auto_merge_enabled",
+    "auto_merge_disabled",
+    "milestoned",
+    "demilestoned",
+    "dequeued",
+    "enqueued",
+    "stacked",
 ]
+
+# Pull request review events (separate GitHub event type: pull_request_review)
+PULL_REQUEST_REVIEW_EVENTS = ["submitted", "edited", "dismissed"]
+
+# Check run validation only fires for these PR actions
+CHECK_RUN_PR_ACTIONS = ["opened", "synchronize", "reopened", "edited"]
 
 TEAM_UPSERT_EVENTS = ["created", "edited"]
 TEAM_DELETE_EVENTS = ["deleted"]
@@ -137,6 +155,7 @@ ALL_EVENTS = (
 WEBHOOK_CREATE_EVENTS = [
     "repository",
     "pull_request",
+    "pull_request_review",
     "issues",
     "release",
     "create",

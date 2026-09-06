@@ -26,6 +26,14 @@ class DynamoDBTableExporter(IResourceExporter[DynamoDBTableActionInput]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-table fetch only has a table name from CloudTrail.
+            # The inspector would still build a stub resource from ListTablesAction
+            # even if the table is gone. Confirm it exists so a missing table raises
+            # and the live-event handler can treat the update as a delete instead.
+            await proxy.client.describe_table(  # type: ignore[attr-defined]
+                TableName=options.table_name
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

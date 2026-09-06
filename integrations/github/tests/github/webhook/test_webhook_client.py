@@ -137,12 +137,13 @@ class TestGithubWebhookClient:
             authenticator=authenticator,
         )
 
-        # Test data
         webhook_id = "hook1"
-        config_data = {
-            "url": "https://example.com/integration/webhook",
-            "content_type": "json",
-            "secret": "test-secret",
+        patch_data = {
+            "config": {
+                "url": "https://example.com/integration/webhook",
+                "content_type": "json",
+                "secret": "test-secret",
+            }
         }
         target = HookTarget(
             target_type="organization",
@@ -154,13 +155,12 @@ class TestGithubWebhookClient:
         )
 
         with patch.object(client, "send_api_request", AsyncMock()) as mock_send:
-            await client._patch_webhook(webhook_id, config_data, target)
+            await client._patch_webhook(webhook_id, patch_data, target)
 
-            # Verify the API request was made correctly
             mock_send.assert_called_once_with(
                 f"{client.base_url}/orgs/test-org/hooks/{webhook_id}",
                 method="PATCH",
-                json_data={"config": config_data},
+                json_data=patch_data,
             )
 
     async def test_upsert_webhook_create_new(
@@ -210,23 +210,16 @@ class TestGithubWebhookClient:
             webhook_secret="test-secret",
         )
 
-        # Mock existing webhook without secret
+        # Mock existing webhook without secret, events match
         existing_webhook = {
             "id": "hook1",
+            "events": WEBHOOK_CREATE_EVENTS,
             "config": {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
                 # No secret
             },
         }
-        expected_target = HookTarget(
-            target_type="organization",
-            hooks_url=f"{client.base_url}/orgs/test-org/hooks",
-            single_hook_url_template=(
-                f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
-            ),
-            log_scope={"organization": "test-org"},
-        )
 
         with (
             patch.object(
@@ -234,19 +227,21 @@ class TestGithubWebhookClient:
                 "_get_existing_webhook",
                 AsyncMock(return_value=existing_webhook),
             ),
-            patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
+            patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
             await client.upsert_webhook("https://example.com")
 
-            # Verify the patch request was made correctly
+            # Verify the patch request was made with config only (events match)
             expected_config = {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
                 "secret": "test-secret",
             }
 
-            mock_patch.assert_called_once_with(
-                "hook1", expected_config, expected_target
+            mock_send.assert_called_once_with(
+                f"{client.base_url}/orgs/test-org/hooks/hook1",
+                method="PATCH",
+                json_data={"config": expected_config},
             )
 
     async def test_upsert_webhook_existing_remove_secret(
@@ -260,23 +255,16 @@ class TestGithubWebhookClient:
             webhook_secret=None,  # No webhook secret in the client
         )
 
-        # Mock existing webhook with secret
+        # Mock existing webhook with secret, events match
         existing_webhook = {
             "id": "hook1",
+            "events": WEBHOOK_CREATE_EVENTS,
             "config": {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
                 "secret": "old-secret",  # Has a secret
             },
         }
-        expected_target = HookTarget(
-            target_type="organization",
-            hooks_url=f"{client.base_url}/orgs/test-org/hooks",
-            single_hook_url_template=(
-                f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
-            ),
-            log_scope={"organization": "test-org"},
-        )
 
         with (
             patch.object(
@@ -284,7 +272,7 @@ class TestGithubWebhookClient:
                 "_get_existing_webhook",
                 AsyncMock(return_value=existing_webhook),
             ),
-            patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
+            patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
             await client.upsert_webhook("https://example.com")
 
@@ -295,8 +283,10 @@ class TestGithubWebhookClient:
                 # No secret
             }
 
-            mock_patch.assert_called_once_with(
-                "hook1", expected_config, expected_target
+            mock_send.assert_called_once_with(
+                f"{client.base_url}/orgs/test-org/hooks/hook1",
+                method="PATCH",
+                json_data={"config": expected_config},
             )
 
     async def test_upsert_webhook_no_changes_needed(
@@ -310,9 +300,10 @@ class TestGithubWebhookClient:
             webhook_secret="test-secret",
         )
 
-        # Mock existing webhook with matching configuration
+        # Mock existing webhook with matching configuration and events
         existing_webhook = {
             "id": "hook1",
+            "events": WEBHOOK_CREATE_EVENTS,
             "config": {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
@@ -326,13 +317,11 @@ class TestGithubWebhookClient:
                 "_get_existing_webhook",
                 AsyncMock(return_value=existing_webhook),
             ),
-            patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
             await client.upsert_webhook("https://example.com")
 
             # Verify no API calls were made since no changes were needed
-            mock_patch.assert_not_called()
             mock_send.assert_not_called()
 
     async def test_get_existing_webhook(
@@ -404,22 +393,15 @@ class TestGithubWebhookClient:
             webhook_secret="test-secret",
         )
 
-        # Mock an existing webhook without a secret
+        # Mock an existing webhook without a secret, events match
         existing_webhook = {
             "id": "hook1",
+            "events": WEBHOOK_CREATE_EVENTS,
             "config": {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
             },
         }
-        expected_target = HookTarget(
-            target_type="organization",
-            hooks_url=f"{client.base_url}/orgs/test-org/hooks",
-            single_hook_url_template=(
-                f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
-            ),
-            log_scope={"organization": "test-org"},
-        )
 
         with (
             patch.object(
@@ -427,19 +409,20 @@ class TestGithubWebhookClient:
                 "_get_existing_webhook",
                 AsyncMock(return_value=existing_webhook),
             ),
-            patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
+            patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
             await client.upsert_webhook("https://example.com")
 
-            # Verify the patch webhook call
             expected_config = {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
                 "secret": "test-secret",
             }
 
-            mock_patch.assert_called_once_with(
-                "hook1", expected_config, expected_target
+            mock_send.assert_called_once_with(
+                f"{client.base_url}/orgs/test-org/hooks/hook1",
+                method="PATCH",
+                json_data={"config": expected_config},
             )
 
     async def test_upsert_webhook_remove_secret(
@@ -454,23 +437,16 @@ class TestGithubWebhookClient:
             webhook_secret=None,  # No secret in client
         )
 
-        # Mock an existing webhook with a secret
+        # Mock an existing webhook with a secret, events match
         existing_webhook = {
             "id": "hook1",
+            "events": WEBHOOK_CREATE_EVENTS,
             "config": {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
                 "secret": "old-secret",
             },
         }
-        expected_target = HookTarget(
-            target_type="organization",
-            hooks_url=f"{client.base_url}/orgs/test-org/hooks",
-            single_hook_url_template=(
-                f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
-            ),
-            log_scope={"organization": "test-org"},
-        )
 
         with (
             patch.object(
@@ -478,18 +454,19 @@ class TestGithubWebhookClient:
                 "_get_existing_webhook",
                 AsyncMock(return_value=existing_webhook),
             ),
-            patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
+            patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
             await client.upsert_webhook("https://example.com")
 
-            # Verify the patch webhook call
             expected_config = {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
             }
 
-            mock_patch.assert_called_once_with(
-                "hook1", expected_config, expected_target
+            mock_send.assert_called_once_with(
+                f"{client.base_url}/orgs/test-org/hooks/hook1",
+                method="PATCH",
+                json_data={"config": expected_config},
             )
 
     async def test_upsert_webhook_no_changes(
@@ -504,9 +481,10 @@ class TestGithubWebhookClient:
             webhook_secret="test-secret",
         )
 
-        # Mock an existing webhook with a secret already
+        # Mock an existing webhook with matching secret and events
         existing_webhook = {
             "id": "hook1",
+            "events": WEBHOOK_CREATE_EVENTS,
             "config": {
                 "url": "https://example.com/integration/webhook",
                 "content_type": "json",
@@ -520,11 +498,99 @@ class TestGithubWebhookClient:
                 "_get_existing_webhook",
                 AsyncMock(return_value=existing_webhook),
             ),
-            patch.object(client, "_patch_webhook", AsyncMock()) as mock_patch,
             patch.object(client, "send_api_request", AsyncMock()) as mock_send,
         ):
             await client.upsert_webhook("https://example.com")
 
             # Verify no API calls were made
-            mock_patch.assert_not_called()
             mock_send.assert_not_called()
+
+    async def test_upsert_webhook_patches_events_when_different(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test updating webhook when events list differs but secret matches."""
+        client = GithubWebhookClient(
+            token="test-token",
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+            webhook_secret="test-secret",
+        )
+
+        # Mock webhook with old events list (missing pull_request_review)
+        old_events = [e for e in WEBHOOK_CREATE_EVENTS if e != "pull_request_review"]
+        existing_webhook = {
+            "id": "hook1",
+            "events": old_events,
+            "config": {
+                "url": "https://example.com/integration/webhook",
+                "content_type": "json",
+                "secret": "some-secret",
+            },
+        }
+
+        with (
+            patch.object(
+                client,
+                "_get_existing_webhook",
+                AsyncMock(return_value=existing_webhook),
+            ),
+            patch.object(client, "send_api_request", AsyncMock()) as mock_send,
+        ):
+            await client.upsert_webhook("https://example.com")
+
+            # Verify PATCH with events only (secret matches)
+            mock_send.assert_called_once_with(
+                f"{client.base_url}/orgs/test-org/hooks/hook1",
+                method="PATCH",
+                json_data={"events": WEBHOOK_CREATE_EVENTS},
+            )
+
+    async def test_upsert_webhook_patches_both_events_and_config(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Test updating webhook when both events and secret differ."""
+        client = GithubWebhookClient(
+            token="test-token",
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+            webhook_secret="test-secret",
+        )
+
+        # Mock webhook with old events and no secret
+        old_events = [e for e in WEBHOOK_CREATE_EVENTS if e != "pull_request_review"]
+        existing_webhook = {
+            "id": "hook1",
+            "events": old_events,
+            "config": {
+                "url": "https://example.com/integration/webhook",
+                "content_type": "json",
+            },
+        }
+
+        with (
+            patch.object(
+                client,
+                "_get_existing_webhook",
+                AsyncMock(return_value=existing_webhook),
+            ),
+            patch.object(client, "send_api_request", AsyncMock()) as mock_send,
+        ):
+            await client.upsert_webhook("https://example.com")
+
+            expected_config = {
+                "url": "https://example.com/integration/webhook",
+                "content_type": "json",
+                "secret": "test-secret",
+            }
+
+            # Verify single PATCH with both events and config
+            mock_send.assert_called_once_with(
+                f"{client.base_url}/orgs/test-org/hooks/hook1",
+                method="PATCH",
+                json_data={
+                    "events": WEBHOOK_CREATE_EVENTS,
+                    "config": expected_config,
+                },
+            )

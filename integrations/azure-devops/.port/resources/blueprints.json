@@ -122,6 +122,548 @@
     }
   },
   {
+    "identifier": "azureDevopsRelease",
+    "title": "Release",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "icon": "DefaultProperty",
+          "description": "The current status of the release"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string",
+          "description": "The reason for the release creation"
+        },
+        "createdDate": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the release was created"
+        },
+        "modifiedDate": {
+          "title": "Modified Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the release was last modified"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who created the release"
+        },
+        "modifiedBy": {
+          "title": "Modified By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who last modified the release"
+        },
+        "definitionName": {
+          "title": "Definition Name",
+          "type": "string",
+          "description": "The name of the release definition"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the release in Azure DevOps"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsPipeline",
+    "title": "Pipeline",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "number"
+        },
+        "folder": {
+          "title": "Folder",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": false,
+        "many": false
+      },
+      "repository": {
+        "title": "Repository",
+        "target": "azureDevopsRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsPullRequest",
+    "title": "Pull Request",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "completed",
+            "abandoned",
+            "active"
+          ],
+          "enumColors": {
+            "completed": "yellow",
+            "abandoned": "red",
+            "active": "green"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "title": "Closed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "string",
+          "icon": "User"
+        },
+        "reviewers": {
+          "title": "Reviewers",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "icon": "User"
+        },
+        "sourceBranch": {
+          "title": "Source Branch",
+          "type": "string"
+        },
+        "targetBranch": {
+          "title": "Target Branch",
+          "type": "string"
+        },
+        "leadTimeHours": {
+          "title": "Lead Time in hours",
+          "type": "number"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "azureDevopsRepository",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsBuild",
+    "title": "Build",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "enum": [
+            "succeeded",
+            "partiallySucceeded",
+            "failed",
+            "canceled",
+            "none"
+          ],
+          "enumColors": {
+            "succeeded": "green",
+            "partiallySucceeded": "yellow",
+            "failed": "red",
+            "canceled": "lightGray",
+            "none": "darkGray"
+          }
+        },
+        "queueTime": {
+          "title": "Queue Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "startTime": {
+          "title": "Start Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishTime": {
+          "title": "Finish Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "definitionName": {
+          "title": "Definition Name",
+          "type": "string"
+        },
+        "requestedFor": {
+          "title": "Requested For",
+          "type": "string",
+          "icon": "User"
+        },
+        "sourceBranch": {
+          "title": "Source Branch",
+          "type": "string"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": true,
+        "many": false
+      },
+      "repository": {
+        "title": "Repository",
+        "target": "azureDevopsRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsPipelineRun",
+    "title": "Pipeline Run",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string"
+        },
+        "createdDate": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishedDate": {
+          "title": "Finished Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "pipelineName": {
+          "title": "Pipeline Name",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": false,
+        "many": false
+      },
+      "pipeline": {
+        "title": "Pipeline",
+        "target": "azureDevopsPipeline",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsPipelineStage",
+    "title": "Pipeline Stage",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "enum": [
+            "succeeded",
+            "succeededWithIssues",
+            "failed",
+            "canceled",
+            "skipped",
+            "abandoned"
+          ],
+          "enumColors": {
+            "succeeded": "green",
+            "succeededWithIssues": "yellow",
+            "failed": "red",
+            "canceled": "lightGray",
+            "skipped": "darkGray",
+            "abandoned": "orange"
+          }
+        },
+        "startTime": {
+          "title": "Start Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishTime": {
+          "title": "Finish Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "stageType": {
+          "title": "Stage Type",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": true,
+        "many": false
+      },
+      "build": {
+        "title": "Build",
+        "target": "azureDevopsBuild",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsEnvironment",
+    "title": "Environment",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "createdOn": {
+          "title": "Created On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastModifiedOn": {
+          "title": "Last Modified On",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsPipelineDeployment",
+    "title": "Pipeline Deployment",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "planType": {
+          "title": "Plan Type",
+          "type": "string"
+        },
+        "stageName": {
+          "title": "Stage Name",
+          "type": "string"
+        },
+        "jobName": {
+          "title": "Job Name",
+          "type": "string"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string"
+        },
+        "startTime": {
+          "title": "Start Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishTime": {
+          "title": "Finish Time",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": true,
+        "many": false
+      },
+      "environment": {
+        "title": "Environment",
+        "target": "azureDevopsEnvironment",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsReleaseDeployment",
+    "title": "Release Deployment",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "startedOn": {
+          "title": "Started On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedOn": {
+          "title": "Completed On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "requestedBy": {
+          "title": "Requested By",
+          "type": "string",
+          "icon": "User"
+        },
+        "operationStatus": {
+          "title": "Operation Status",
+          "type": "string"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": false,
+        "many": false
+      },
+      "release": {
+        "title": "Release",
+        "target": "azureDevopsRelease",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "azureDevopsWorkItem",
     "title": "Work Item",
     "icon": "AzureDevops",
@@ -268,74 +810,6 @@
       "board": {
         "title": "board",
         "target": "azureDevopsBoard",
-        "required": true,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "azureDevopsRelease",
-    "title": "Release",
-    "icon": "AzureDevops",
-    "schema": {
-      "properties": {
-        "status": {
-          "title": "Status",
-          "type": "string",
-          "icon": "DefaultProperty",
-          "description": "The current status of the release"
-        },
-        "reason": {
-          "title": "Reason",
-          "type": "string",
-          "description": "The reason for the release creation"
-        },
-        "createdDate": {
-          "title": "Created Date",
-          "type": "string",
-          "format": "date-time",
-          "description": "The date and time when the release was created"
-        },
-        "modifiedDate": {
-          "title": "Modified Date",
-          "type": "string",
-          "format": "date-time",
-          "description": "The date and time when the release was last modified"
-        },
-        "createdBy": {
-          "title": "Created By",
-          "type": "string",
-          "icon": "User",
-          "description": "The person who created the release"
-        },
-        "modifiedBy": {
-          "title": "Modified By",
-          "type": "string",
-          "icon": "User",
-          "description": "The person who last modified the release"
-        },
-        "definitionName": {
-          "title": "Definition Name",
-          "type": "string",
-          "description": "The name of the release definition"
-        },
-        "link": {
-          "title": "Link",
-          "type": "string",
-          "format": "url",
-          "icon": "AzureDevops",
-          "description": "Link to the release in Azure DevOps"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
         "required": true,
         "many": false
       }
