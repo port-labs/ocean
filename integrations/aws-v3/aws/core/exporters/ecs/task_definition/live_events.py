@@ -5,6 +5,7 @@ from aws.core.helpers.metadata.types import (
     CloudTrailEventMapping,
     LiveEventContext,
     LiveEventFactories,
+    cloudtrail_dict_value,
 )
 from aws.utils import RegionHelper
 
@@ -26,8 +27,8 @@ def _normalize_task_definition_arn(
 def _extract_task_definition_arn_from_register_response(
     detail: CloudTrailDetail,
 ) -> str | None:
-    response_elements = detail.get("responseElements", {})
-    task_definition = response_elements.get("taskDefinition", {})
+    response_elements = cloudtrail_dict_value(detail.get("responseElements"))
+    task_definition = cloudtrail_dict_value(response_elements.get("taskDefinition"))
     task_definition_arn = task_definition.get("taskDefinitionArn")
     return task_definition_arn if task_definition_arn else None
 
@@ -35,7 +36,7 @@ def _extract_task_definition_arn_from_register_response(
 def _extract_task_definition_arn_from_deregister_request(
     detail: CloudTrailDetail,
 ) -> str | None:
-    request_parameters = detail.get("requestParameters", {})
+    request_parameters = cloudtrail_dict_value(detail.get("requestParameters"))
     task_definition = request_parameters.get("taskDefinition")
     return task_definition if task_definition else None
 

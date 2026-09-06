@@ -7,6 +7,11 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_models import ResourceRequestModel
 
 
+def cloudtrail_dict_value(value: Any) -> dict[str, Any]:
+    """Return a mapping from CloudTrail JSON, treating ``null`` as empty."""
+    return value if isinstance(value, dict) else {}
+
+
 class CloudTrailDetail(TypedDict, total=False):
     """CloudTrail record nested inside an EventBridge envelope."""
 
