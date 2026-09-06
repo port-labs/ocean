@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.11 (2026-09-06)
+
+
+### Improvements
+
+- Use cached port app config for live events to reduce port-api load between TTL refreshes.
+
+
 ## 0.50.10 (2026-09-06)
 
 
