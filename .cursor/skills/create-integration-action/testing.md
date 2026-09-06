@@ -120,7 +120,8 @@ Key points:
   either side.
 - Assert `report_run_completed.assert_not_called()` for async actions. It is the only thing
   that stops someone "fixing" an action by completing it early.
-- Never pass or assert a `status_label` / label argument — no client method accepts one.
+- Assert against the facade's real signatures (`actions_and_workflow_runs.py`); a mock happily
+  accepts an argument the production client would reject.
 - If the integration's `__init__` patches more than one module (some patch
   `actions.utils.ocean` too), patch all of them.
 

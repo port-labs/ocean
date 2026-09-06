@@ -30,73 +30,67 @@ Add an action executor to an existing Ocean integration. To build a whole new in
 - `completion` - `sync` (finishes inside `execute`) or `webhook` (external system reports later)
 - `task_id` - branch name
 
-## API surface — copy these signatures exactly
+## The client facade
 
-Every client method lives on `ocean.port_client` (mixed in from
-`port_ocean/clients/port/mixins/actions_and_workflow_runs.py`). These are the **complete**
-signatures. Do not invent parameters — in particular there is **no `status_label` argument on any
-of them**, and no status-label concept anywhere in the framework.
+Everything Port-facing goes through `ocean.port_client`. The action methods are mixed in from
+`port_ocean/clients/port/mixins/actions_and_workflow_runs.py` — a short file, and the source of
+truth for their current signatures. Read it before writing `execute`; the framework docstrings
+and `docs/framework-guides/docs/framework/features/actions.md` predate it and still describe an
+older API.
 
-```python
-async def post_run_log(run, message, level="INFO", should_raise=False) -> None
-async def update_run_started(run, link, external_id, extra_output=None) -> None
-async def report_run_completed(run, success, message=None, should_raise=False) -> None
-async def find_run_by_external_id(external_id) -> IntegrationRun | None
-async def patch_run(run, payload, should_raise=True) -> None
-def is_run_in_progress(run) -> bool          # sync, not a coroutine
-```
+| Method                                  | What it is for                                             |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `post_run_log(run, message, ...)`       | progress visible to whoever triggered the action            |
+| `update_run_started(run, link, ext_id)` | hand off to long-running external work; run stays open      |
+| `report_run_completed(run, success, …)` | conclude a run                                              |
+| `find_run_by_external_id(ext_id)`       | webhook side of the correlation; checks both run kinds      |
+| `is_run_in_progress(run)`               | guard against duplicate completions (this one is sync)      |
+| `patch_run(run, payload)`               | escape hatch for anything the above do not cover            |
 
-Per-kind behavior differences these methods absorb, and where they leak:
+These methods absorb the difference between an `ActionRun` and a `WorkflowNodeRun`. Two places
+where the absorption is partial, worth knowing before you rely on either:
 
-| Call                                | `ActionRun`                                   | `WorkflowNodeRun`                          |
-| ----------------------------------- | --------------------------------------------- | ------------------------------------------ |
-| `post_run_log(level=...)`           | **`level` is dropped** — always a plain log   | honored (`WARNING` sent as `WARN`)         |
-| `update_run_started(extra_output=)` | **silently ignored**                          | merged into the run's `output`             |
-| `update_run_started` writes         | `link`, `externalRunId`                       | `status`, `externalRunId`, `output`, `links` |
-| `report_run_completed(message=)`    | posted as a run log, then status patched      | posted as a run log, then status + result  |
+| Behavior                            | `ActionRun`                              | `WorkflowNodeRun`                 |
+| ----------------------------------- | ---------------------------------------- | --------------------------------- |
+| `post_run_log(level=...)`           | logged without the level                 | honored (`WARNING` sent as `WARN`) |
+| `update_run_started(extra_output=)` | not persisted                            | merged into the run's `output`    |
 
-If you need structured output visible for both kinds, put it in the `message`, not
-`extra_output`.
+So when structured detail must reach both kinds, put it in the log or completion `message`.
 
-## The contract, and where agents get it wrong
+## The contract
 
-Read this before writing code. These are the framework's actual behaviors, several of which
-contradict the code's own docstrings and the published docs.
+Read this before writing code. These are the framework's actual behaviors, verified in
+`port_ocean/core/handlers/actions/execution_manager.py`; a couple of them contradict the
+docstrings in `abstract_executor.py`.
 
 **The manager reports failures. You report success.** `ExecutionManager._execute_run` calls
 `report_run_completed(run, success=False, message=..., should_raise=False)` when `execute`
-raises, and does nothing at all when `execute` returns. So a sync action must call
-`report_run_completed(run, success=True, ...)` itself, and a webhook action must leave the run in
-progress for its processor to complete later.
+raises, and does nothing at all when `execute` returns. So a sync action reports its own success,
+and a webhook action leaves the run in progress for its processor to complete later.
 
-**Never report a failure yourself.** Raise and let the manager report it. Calling
-`report_run_completed(success=False)` _and_ raising double-reports.
+**Signal failure by raising.** The manager owns the failure report — one raise produces exactly
+one completion.
 
 **Raise `ActionExecutionError` for expected failures.** The manager branches on it:
 
-| Raised                       | Log                       | Message reported to Port         |
-| ---------------------------- | ------------------------- | -------------------------------- |
-| `ActionExecutionError` (sub) | `WARNING`, no stack trace | your message, verbatim           |
-| anything else                | `exception` + stack trace | `Failed to execute run: <msg>`   |
+| Raised                       | Log                       | Message reported to Port       |
+| ---------------------------- | ------------------------- | ------------------------------ |
+| `ActionExecutionError` (sub) | `WARNING`, no stack trace | your message, verbatim         |
+| anything else                | `exception` + stack trace | `Failed to execute run: <msg>` |
 
-`gitlab-v2` and `azure-devops` still subclass plain `Exception` and therefore get the noisy
-branch. Do not copy that; subclass `ActionExecutionError` (as `github` does).
+`github` uses the first branch. `gitlab-v2` and `azure-devops` still subclass plain `Exception`
+and land in the second; prefer `ActionExecutionError` for anything a user can cause.
 
-**Always set `WEBHOOK_PROCESSOR_CLASS`.** `register_executor` reads the attribute directly, and
-on `AbstractExecutor` it is only a bare annotation with no default. A sync executor that omits it
-raises `AttributeError` at registration.
+**Set `WEBHOOK_PROCESSOR_CLASS` on every executor.** `register_executor` reads the attribute
+directly, and on `AbstractExecutor` it is a bare annotation with no default, so registration
+raises `AttributeError` when it is absent. Sync executors set it to `None`; Step 3 puts that
+default on the per-integration base class once.
 
-**`AbstractExecutor`'s docstring and `docs/.../features/actions.md` are both stale.** They
-mention a `PARTITION_KEY` attribute (the real API is an async `_get_partition_key` method), show
-success reported via `patch_run` with `RunStatus.SUCCESS` (use `report_run_completed`), and refer
-to `.port/spec.yaml` (every integration with actions uses `.port/spec.json`). Follow this skill,
-not those.
-
-**Actions only run under two conditions.** `ocean.py` starts the manager only when
-`actions_processor.enabled` **and** `event_listener.should_run_actions` — the latter is `False`
-for the `WEBHOOKS_ONLY` and `ONCE` listeners. Then
-`start_processing_action_runs` returns early unless `port_client.auth.is_machine_user()`. An
-action that "does nothing" locally is usually one of these, not a bug in your code.
+**Actions run under two conditions.** `ocean.py` starts the manager when
+`actions_processor.enabled` **and** `event_listener.should_run_actions` — the latter is `True`
+for the default listeners and `False` for `WEBHOOKS_ONLY` and `ONCE`. Then
+`start_processing_action_runs` proceeds once `port_client.auth.is_machine_user()` holds. An
+action that appears inert locally is usually one of these two conditions rather than a code bug.
 
 ## Workflow
 
@@ -124,27 +118,27 @@ directory named after the product sits next to `main.py`:
 | Named package (`github/`, `gitlab/`, `azure_devops/`) | `integrations/<name>/<package>/actions/` | `from github.actions...` |
 | Flat (`actions/`, `clients/` at integration root)     | `integrations/<name>/actions/`           | `from actions...`        |
 
-Match whichever the integration already uses. Do not introduce a package directory.
+Match whichever the integration already uses.
 
 `github` groups a family of related actions into a subpackage
-(`actions/external_custom_properties/`). Do that only once there are three or more actions
-sharing helpers; a lone action goes flat in `actions/`.
+(`actions/external_custom_properties/`), which pays off once several actions share helpers. A
+lone action sits flat in `actions/`.
 
 ### Step 2: Decide sync vs webhook completion
 
-Ask this before writing anything, because it determines what `execute` does at the end.
+Settle this before writing anything, because it determines what `execute` does at the end.
 
 **Sync** - the third-party call completes the work. `execute` finishes by calling
-`report_run_completed(run, success=True, message=...)`. Set `WEBHOOK_PROCESSOR_CLASS = None`.
-Example: `github`'s `update_repo_external_custom_properties`.
+`report_run_completed(run, success=True, message=...)`, and `WEBHOOK_PROCESSOR_CLASS` stays
+`None`. Example: `github`'s `update_repo_external_custom_properties`.
 
 **Webhook** - the call starts long-running work (a pipeline, a workflow, an agent). `execute`
 finishes by calling `update_run_started(...)` and returns with the run still in progress; a
 webhook processor completes it later. Example: `gitlab-v2`'s `trigger_pipeline`.
 
-If the third-party system has no completion webhook, the action must be sync. `cursor-cloud-agents`
-does exactly this per-input: its `v1` API has no webhooks, so that path completes the run at
-launch while `v0` waits for one.
+Sync is the right shape whenever the third-party system has no completion webhook.
+`cursor-cloud-agents` decides this per-input: its `v1` API has no webhooks, so that path
+completes the run at launch, while `v0` waits for one.
 
 ### Step 3: Bootstrap actions support (first action only)
 
@@ -166,9 +160,9 @@ MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE = 20
 
 
 class Abstract<Name>Executor(AbstractExecutor):
-    # `AbstractExecutor` only declares this as an annotation, so a subclass without a
-    # webhook would raise AttributeError when `register_executor` reads it. The explicit
-    # type keeps mypy happy when a subclass overrides it with a processor class.
+    # `AbstractExecutor` declares this as an annotation only, so subclasses without a
+    # webhook rely on this default when `register_executor` reads it. The explicit type
+    # keeps mypy happy when a subclass overrides it with a processor class.
     WEBHOOK_PROCESSOR_CLASS: type[AbstractWebhookProcessor] | None = None
 
     def __init__(self) -> None:
@@ -189,30 +183,31 @@ class Abstract<Name>Executor(AbstractExecutor):
         return info.seconds_until_reset
 ```
 
-The bare `WEBHOOK_PROCESSOR_CLASS = None` (no annotation) also works at runtime but mypy infers
-`None` as the type and rejects every subclass override. Use the annotated form.
+The annotation on `WEBHOOK_PROCESSOR_CLASS` matters: a bare `= None` makes mypy infer the type as
+`None` and reject subclass overrides.
 
-If the client exposes no rate-limit information, return `False` and `0.0` — the manager then
-never waits (`cursor-cloud-agents` does this and relies on Ocean's retrying transport instead).
-Build the client in `__init__` only if that cannot fail; `azure-devops` resolves it lazily behind
-a `client` property so the integration still boots when actions are disabled or the config is
-unsupported.
+Where the client exposes no rate-limit information, returning `False` and `0.0` lets the manager
+proceed immediately — `cursor-cloud-agents` does this and leans on Ocean's retrying transport
+instead. Build the client in `__init__` when that is safe; `azure-devops` resolves it lazily
+behind a `client` property so the integration still boots when actions are disabled or the
+config is unsupported.
 
 **A registry** at `<pkg>/actions/registry.py` (see Step 9).
 
-**`actionsProcessingEnabled`** in `.port/spec.json` (see Step 4). Without it,
-`Settings.validate_actions_processor` raises `"Serving as an actions processor is not currently
-supported for this integration."` as soon as the actions processor is enabled.
+**`actionsProcessingEnabled`** in `.port/spec.json` (see Step 4).
+`Settings.validate_actions_processor` requires it as soon as the actions processor is enabled,
+raising `"Serving as an actions processor is not currently supported for this integration."`
+otherwise.
 
 ### Step 4: Declare the action in `.port/spec.json`
 
-`ACTION_NAME` must equal `actions[].name` exactly. The manager routes on `run.action_type`, which
+`ACTION_NAME` matches `actions[].name` exactly. The manager routes on `run.action_type`, which
 resolves to `payload.integrationActionType` for an `ActionRun` and
-`config.integrationInvocationType` for a `WorkflowNodeRun` — both carry that spec name. A
-mismatch means no executor is found, and the manager acknowledges the run and immediately fails
-it with `"No executor registered for action type '<name>'"`.
+`config.integrationInvocationType` for a `WorkflowNodeRun` — both carry that spec name. When the
+two drift apart, the manager acknowledges the run and fails it with `"No executor registered for
+action type '<name>'"`, which is the signature to look for.
 
-Input `name` values are camelCase and are the keys you read from `run.execution_properties`.
+Input `name` values are camelCase and are the keys read from `run.execution_properties`.
 
 ```json
 "actionsProcessingEnabled": true,
@@ -245,10 +240,11 @@ For a webhook action, include a boolean opt-in input like `reportPipelineStatus`
 `true`). The webhook processor honors it, letting a user trigger work without Port waiting on
 its outcome. Also confirm `saas.liveEvents.enabled` is `true`.
 
-Input `type` values in use across the existing action specs are `string`, `boolean`, `array`,
-and `jqObject` for key-value maps. A `jqObject` description conventionally tells the user they
-can reference trigger data with `{{ .trigger.by.user.email }}`; copy that phrasing from
-`integrations/github/.port/spec.json`.
+Input `type` values across the existing action specs are `string`, `boolean`, `array`, and
+`jqObject` for key-value maps. Compare a few specs (`github`, `azure-devops`,
+`cursor-cloud-agents`) to pick descriptions in house style — `jqObject` descriptions
+conventionally tell the user they can reference trigger data with
+`{{ .trigger.by.user.email }}`.
 
 ### Step 5: Write the executor
 
@@ -310,7 +306,7 @@ class TriggerPipelineExecutor(Abstract<Name>Executor):
         )
 ```
 
-For a **sync** action, replace the closing `update_run_started` block with:
+For a **sync** action, the closing `update_run_started` block becomes:
 
 ```python
         await ocean.port_client.report_run_completed(
@@ -320,34 +316,33 @@ For a **sync** action, replace the closing `update_run_started` block with:
         )
 ```
 
-Notes on the APIs used:
+Notes on the shape above:
 
 - `run.execution_properties` is the unified accessor for inputs and works for both run kinds.
-  Do not reach into `run.payload` or `run.config`.
 - `execute` receives `IntegrationRun`, which is either an `ActionRun` or a `WorkflowNodeRun`.
-  Write against the unified `ocean.port_client` methods and you never need to branch on the
-  kind; they handle the differences. Branch on `run.run_kind` (or
-  `isinstance(run, WorkflowNodeRun)`) only if you genuinely need kind-specific behavior — and
-  check the leak table above first.
-- Pass `should_raise=False` on progress logs. A failed log should not fail the action.
+  Written against the unified `ocean.port_client` methods, the executor stays kind-agnostic.
+  `run.run_kind` (or `isinstance(run, WorkflowNodeRun)`) is there for behavior that genuinely
+  differs per kind — check the partial-absorption table above first, since it covers the two
+  cases that usually prompt the question.
+- `should_raise=False` on progress logs keeps a failed log from failing the action.
 - `update_run_started(run, link, external_id, extra_output=None)` sets the link users click and
   the external id the webhook correlates on. For a `WorkflowNodeRun` it also flips status to
   `IN_PROGRESS` and seeds `run.output`, which `report_run_completed` later preserves — so a
-  webhook action should always call it, not just when it has an external id.
+  webhook action calls it on every path, including one where the external id is synthetic.
 - Validate inputs before any network call, and validate the upstream response before reading
   fields out of it.
-- Keep detail in the log/`message` text. There is no separate label field.
+- The log and completion `message` carry all the detail a user sees, so spend the words there.
 
-Use a pydantic model instead of dict access when inputs are structured (nested objects or
-lists), following whatever pydantic version the integration already imports. Keep it beside the
-executor and give it a `from_execution_properties` classmethod;
+A pydantic model beats dict access once inputs are structured (nested objects or lists),
+following whatever pydantic version the integration already imports. Keep it beside the executor
+and give it a `from_execution_properties` classmethod;
 `cursor-cloud-agents/actions/request_bodies.py` is the reference for that shape.
 
 ### Step 6: Add exceptions
 
 Put exceptions in the integration's existing exceptions module (`<pkg>/helpers/exceptions.py` or
-`<pkg>/actions/exceptions.py`). Subclass `ActionExecutionError` so the manager logs them without
-a stack trace and reports the message verbatim:
+`<pkg>/actions/exceptions.py`). Subclassing `ActionExecutionError` gets them logged without a
+stack trace and reported verbatim:
 
 ```python
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -380,19 +375,19 @@ class TriggerPipelineError(ActionExecutionError):
         return text or f"HTTP {response.status_code}"
 ```
 
-`from_response` is a per-integration helper, not framework code — copy it in, adjusting the key
-preference order to the upstream API's error envelope. Existing versions:
+`from_response` is a per-integration helper rather than framework code, so copy it in and adjust
+the key preference order to the upstream API's error envelope. Existing versions:
 `integrations/gitlab-v2/gitlab/helpers/exceptions.py` and
 `integrations/azure-devops/azure_devops/actions/exceptions.py`.
 
-The point of it is that raw `httpx.HTTPStatusError` messages are useless to the user who
-triggered the action; the upstream error body is what they need.
+Its purpose: a raw `httpx.HTTPStatusError` message tells the user who triggered the action
+nothing, while the upstream error body tells them what to fix.
 
 ### Step 7: Decide on a partition key
 
 Override `_get_partition_key` on the executor to return a string when two concurrent runs of
-this action would conflict, or `None` (the inherited default) to let them run in parallel. Runs
-sharing a key are queued together and executed sequentially.
+this action would conflict. Runs sharing a key are queued together and executed sequentially;
+the inherited default returns `None`, which lets them run in parallel.
 
 ```python
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
@@ -401,14 +396,16 @@ sharing a key are queued together and executed sequentially.
         return f"{org}/{repo}"
 ```
 
-Return `None` when the inputs needed to build the key are missing, rather than raising —
-`_poll_action_runs` calls this before `execute`, and an exception there logs and drops the run
-without ever reporting a failure to Port. `github`'s `dispatch_workflow` also returns `None`
-whenever the config makes serialization unnecessary, so the common path stays parallel.
+Return `None` when the inputs needed to build the key are missing. This method runs inside
+`_poll_action_runs`, before `execute` and outside the try/except that reports failures, so
+`None` keeps the run flowing to the executor where a missing input becomes a proper reported
+error. `github`'s `dispatch_workflow` also returns `None` whenever its config makes
+serialization unnecessary, keeping the common path parallel.
 
-Reach for a key when the action mutates one resource (`update_repo_external_custom_properties`
-partitions on `org/repo`) or when correlation depends on ordering (legacy
-`dispatch_workflow` tracking polls for "the most recent run", which only works one at a time).
+A key earns its place when the action mutates one resource
+(`update_repo_external_custom_properties` partitions on `org/repo`) or when correlation depends
+on ordering (legacy `dispatch_workflow` tracking polls for "the most recent run", which holds
+only one at a time).
 
 ### Step 8: Wire async completion (webhook actions only)
 
@@ -440,10 +437,9 @@ Call it from the integration's `main.py` at module level, after webhook registra
 register_actions_executors()
 ```
 
-Instantiating the executor happens at import time, so anything expensive or failure-prone in
-`__init__` breaks integration startup — see the lazy-client note in Step 3.
-
-Registering two executors with the same `ACTION_NAME` raises `DuplicateActionExecutorError`.
+Executors are instantiated at import time, so keep `__init__` cheap and safe — see the
+lazy-client note in Step 3. Two executors sharing an `ACTION_NAME` raise
+`DuplicateActionExecutorError` at registration.
 
 ### Step 10: Tests
 
@@ -466,9 +462,9 @@ changelog: Added a trigger_pipeline action that triggers a pipeline and reports 
 ```
 
 `bump` is `patch`, `minor`, or `major`; `changelog-type` is one of `breaking`, `deprecation`,
-`feature`, `improvement`, `bugfix`, `doc`. A new action is normally `minor` / `feature`. Do not
-edit `CHANGELOG.md` or `pyproject.toml` — a separate `[IntegrationBump]` PR applies them from
-this file.
+`feature`, `improvement`, `bugfix`, `doc`. A new action is normally `minor` / `feature`. This
+file is the whole release deliverable — a separate `[IntegrationBump]` PR reads it and applies
+`CHANGELOG.md` and `pyproject.toml`.
 
 Then verify from the integration directory:
 
@@ -482,10 +478,10 @@ make lint
 
 **Contract:**
 
-- [ ] Sync action calls `report_run_completed(success=True, ...)`; webhook action does not
-- [ ] Failures are raised, never self-reported
+- [ ] Sync action calls `report_run_completed(success=True, ...)`; webhook action leaves it open
+- [ ] Failures reach Port by raising
 - [ ] `WEBHOOK_PROCESSOR_CLASS` is set (annotated `| None = None` on the abstract executor)
-- [ ] No invented client-method arguments — signatures match the API surface table
+- [ ] Client-method arguments match the facade in `actions_and_workflow_runs.py`
 
 **Wiring:**
 
@@ -494,7 +490,7 @@ make lint
 - [ ] `actionsProcessingEnabled: true` present in `.port/spec.json`
 - [ ] Executor registered in `registry.py` and called from `main.py`
 - [ ] Executor placed to match the integration's existing package topology
-- [ ] `__init__` cannot fail at import time, or the client is resolved lazily
+- [ ] `__init__` is safe at import time, or the client is resolved lazily
 
 **Async completion:**
 
@@ -507,21 +503,24 @@ make lint
 
 - [ ] Inputs validated before any network call; upstream response validated before use
 - [ ] Exceptions subclass `ActionExecutionError`; HTTP errors go through `from_response`
-- [ ] `_get_partition_key` returns `None` rather than raising on missing inputs
+- [ ] `_get_partition_key` returns `None` when its inputs are missing
 - [ ] Tests cover happy path, each missing input, upstream error, malformed response
 - [ ] Release intent file added; `make test` and `make lint` pass
 
 ## Reference
 
+Read the framework source when a detail here does not match what you find — it is the authority,
+and this skill trails it.
+
 - [async-completion.md](async-completion.md) - external id correlation and action webhook processors
 - [testing.md](testing.md) - fixtures and mocking for executors and action webhook processors
+- Client facade: `port_ocean/clients/port/mixins/actions_and_workflow_runs.py`
 - Framework: `port_ocean/core/handlers/actions/abstract_executor.py`,
   `port_ocean/core/handlers/actions/execution_manager.py`
-- Client facade: `port_ocean/clients/port/mixins/actions_and_workflow_runs.py`
 - Run models (`execution_properties`, `action_type`, `is_in_progress`): `port_ocean/core/models.py`
 - Simplest end-to-end webhook example: `integrations/gitlab-v2/gitlab/actions/trigger_pipeline_executor.py`
 - Simplest sync example: `integrations/github/github/actions/external_custom_properties/update_repo_external_custom_properties_executor.py`
-- Most complex example (polling, partition key, dual tracking modes):
+- Richest example (polling, partition key, dual tracking modes):
   `integrations/github/github/actions/dispatch_workflow_executor.py`
-- Framework docs: `docs/framework-guides/docs/framework/features/actions.md` (stale — see the
-  contract section)
+- Framework docs: `docs/framework-guides/docs/framework/features/actions.md` — predates the
+  current client facade, so treat the source as authoritative where they disagree

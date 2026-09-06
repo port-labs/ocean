@@ -6,8 +6,8 @@ it. Correlation is the part worth getting right.
 
 ## The external id convention
 
-Define one helper in `<pkg>/actions/utils.py` and use it from both sides. If the two sides ever
-build the id differently, the webhook silently never finds its run.
+Define one helper in `<pkg>/actions/utils.py` and call it from both sides, so the two can only
+ever agree. When they disagree the webhook simply never finds its run, with no error anywhere.
 
 ```python
 def build_external_id(project_id: int | str, pipeline_id: int | str) -> str:
@@ -23,7 +23,7 @@ fields present in *both* the trigger response and the webhook payload:
 | GitHub       | `gh_{owner_id}_{repo_id}_{workflow_run_id}`  | `(workflow_run: dict)`                |
 | Azure DevOps | `ado_{project_id}_{pipeline_id}_{run_id}`    | `(project_id, pipeline_id, run_id)`   |
 
-Prefer numeric ids over names, which users can rename mid-run.
+Numeric ids hold up better than names, which a user can rename mid-run.
 
 The executor writes it with `update_run_started(run, link, external_id, ...)`. The processor
 reads it back with `await ocean.port_client.find_run_by_external_id(external_id)`, which
@@ -41,7 +41,7 @@ works without anything configured in `port-app-config`.
 | --------------------- | --------------------------------------------- | ----------------------------------------- |
 | `get_processor_type`  | `WebhookProcessorType.WEBHOOK` (base default) | must return `WebhookProcessorType.ACTION` |
 | `get_matching_kinds`  | real kinds                                    | `[]`                                      |
-| `resource_config` arg | resolved config                               | `None` — never read it                    |
+| `resource_config` arg | resolved config                               | always `None`                             |
 | Returns               | entities to upsert or delete                  | empty `WebhookEventRawResults`            |
 
 An integration can have two processors for the same external event: one catalog processor that
@@ -129,13 +129,13 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
         return empty
 ```
 
-`report_run_completed(run, success, message=None, should_raise=False)` is the whole signature —
-`success` is positional here and there is no label argument. The raw upstream status belongs in
-the `message`, since that is the only text the user sees.
+`success` is positional in `report_run_completed`; the raw upstream status goes in the
+`message`, which is the text the user actually sees.
 
-The fourth guard is `should_process_event` filtering to terminal statuses, so in-progress
-events never conclude a run. Prefer an explicit terminal-status set over "not running": a status
-you have not seen before then leaves the run in progress instead of concluding it wrongly.
+The fourth guard is `should_process_event` filtering to terminal statuses, so in-progress events
+never conclude a run. An explicit terminal-status set is the safer shape here: a status you have
+not seen before leaves the run in progress, where a timeout will resolve it, instead of
+concluding it wrongly.
 
 Deriving `success` deserves care. `status == "success"` is right for GitLab because every other
 terminal status is a genuine failure. Where the upstream has a "neutral" or "cancelled" terminal
@@ -152,16 +152,18 @@ success = status in SUCCESSFUL_STATUSES
 
 If the webhook arrives before `update_run_started` finishes writing the external id, the lookup
 misses and the run stays in progress until it times out. The window is one Port API round trip.
-Every existing integration accepts this rather than adding retry machinery — do the same, and
-keep the `run is None` branch a debug log rather than an error.
+Every existing integration accepts this rather than adding retry machinery. Keeping the
+`run is None` branch at debug level fits that: the same branch is the normal path for any
+pipeline Port did not trigger.
 
 ## Registration
 
-Setting `WEBHOOK_PROCESSOR_CLASS` and `WEBHOOK_PATH` on the executor is what registers the
-processor: `register_executor` forwards them to `webhook_manager.register_processor`. Do not
-also register it in the integration's catalog webhook registry, or it runs twice.
+Setting `WEBHOOK_PROCESSOR_CLASS` and `WEBHOOK_PATH` on the executor is the whole registration:
+`register_executor` forwards them to `webhook_manager.register_processor`. That is the single
+place it belongs — an action processor also listed in the integration's catalog webhook registry
+runs twice per event.
 
 `WEBHOOK_PATH` is normally the integration's existing webhook path constant (usually
-`"/webhook"`), reused so the third-party system needs only one configured endpoint. Use a
-static path string; dynamically built paths are not matched by the Redis live-events consumer,
-which silently acknowledges and drops the event.
+`"/webhook"`), reused so the third-party system needs only one configured endpoint. Keep it a
+static string: the Redis live-events consumer matches paths literally, and a dynamically built
+one is acknowledged and dropped without an error.
