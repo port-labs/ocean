@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.51.0 (2026-09-06)
+
+
+### Features
+
+- Added status label support to run logs and status updates for both action runs and workflow node runs, so integration actions can report which lifecycle stage a run is in
+
+
 ## 0.50.11 (2026-09-06)
 
 
