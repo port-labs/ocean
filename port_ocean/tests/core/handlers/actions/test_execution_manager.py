@@ -13,8 +13,10 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
+    DEFAULT_FAILURE_STATUS_LABEL,
     ExecutionManager,
     GLOBAL_SOURCE,
+    RATE_LIMITED_STATUS_LABEL,
 )
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -311,6 +313,7 @@ class TestExecutionManager:
             mock_test_action_run,
             ANY,
             level="WARNING",
+            status_label=RATE_LIMITED_STATUS_LABEL,
             should_raise=False,
         )
         mock_test_executor.is_close_to_rate_limit.assert_called_with(
@@ -845,8 +848,38 @@ class TestExecutionManager:
 
         mock_exception_log.assert_not_called()
         mock_port_client.report_run_completed.assert_called_once_with(
-            run, success=False, message=error_msg, should_raise=False
+            run,
+            success=False,
+            message=error_msg,
+            status_label=DEFAULT_FAILURE_STATUS_LABEL,
+            should_raise=False,
         )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "error",
+        [ActionExecutionError("no label on this one"), Exception("unexpected")],
+        ids=["action_execution_error", "unexpected_exception"],
+    )
+    async def test_execute_run_labels_failures_that_supply_no_label(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        mock_test_executor: MagicMock,
+        error: Exception,
+    ) -> None:
+        """A failure without its own label still gets the generic one.
+
+        A run keeps the last label it was given, so reporting no label here
+        would leave an in-progress label such as "Dispatching workflow" on a run
+        that has already failed.
+        """
+        mock_test_executor.execute.side_effect = error
+
+        await execution_manager._execute_run(generate_mock_action_run())
+
+        _, called_kwargs = mock_port_client.report_run_completed.call_args
+        assert called_kwargs["status_label"] == DEFAULT_FAILURE_STATUS_LABEL
 
     @pytest.mark.asyncio
     async def test_execute_run_handles_acknowledge_run_api_error(
