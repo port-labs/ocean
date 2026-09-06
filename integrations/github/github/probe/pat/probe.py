@@ -63,7 +63,7 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         if organizations is None:
             return
 
-        checks = await self.context.add_scopes(*org_scopes(organizations))
+        checks = await self.context.add_scopes(*org_scopes(organizations))  # type: ignore[arg-type]
         permissions = {scope: "granted" for scope in expand_pat_scopes(granted_scopes)}
         await self._resolve_checks(checks, permissions)
 
