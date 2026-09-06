@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.elasticache.cluster.exporter import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import (
@@ -89,6 +90,36 @@ class TestElastiCacheClusterExporter:
         call_kwargs = mock_inspector.inspect.call_args[1]
         assert call_kwargs["extra_context"]["AccountId"] == "123456789012"
         assert call_kwargs["extra_context"]["Region"] == "us-west-2"
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.elasticache.cluster.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.elasticache.cluster.exporter.ResourceInspector")
+    async def test_get_resource_raises_when_cluster_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: ElastiCacheClusterExporter,
+    ) -> None:
+        """Missing clusters must raise so live events can treat fetch-after-delete as deleted."""
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        mock_client.describe_cache_clusters.return_value = {"CacheClusters": []}
+
+        options = SingleCacheClusterRequest(
+            region="us-west-2",
+            account_id="123456789012",
+            cache_cluster_id="cluster-missing",
+            include=[],
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
+
+        assert exc_info.value.response["Error"]["Code"] == "CacheClusterNotFoundFault"
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.elasticache.cluster.exporter.AioBaseClientProxy")

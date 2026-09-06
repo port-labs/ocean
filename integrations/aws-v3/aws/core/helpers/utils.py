@@ -1,8 +1,31 @@
-from typing import Any, Callable, Awaitable, cast
+from typing import Any, Callable, Awaitable, TypeVar, cast
 from aiobotocore.session import AioSession
 from aws.auth.region_resolver import RegionResolver
 from loguru import logger
 import asyncio
+from botocore.exceptions import ClientError
+
+T = TypeVar("T")
+
+
+def require_aws_resource(
+    items: list[T] | None,
+    *,
+    error_code: str,
+    message: str,
+    operation_name: str,
+) -> list[T]:
+    """Raise a not-found ClientError when a describe call returns no resources.
+
+    Live-event handlers rely on this to distinguish a deleted resource from a
+    successful empty inspect result when the AWS API returns an empty list.
+    """
+    if items:
+        return items
+    raise ClientError(
+        {"Error": {"Code": error_code, "Message": message}},
+        operation_name,
+    )
 
 
 def is_access_denied_exception(e: Exception) -> bool:
@@ -30,6 +53,11 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         "NotFoundException",
         "NoSuchBucket",
         "DBInstanceNotFound",
+        "DBClusterNotFoundFault",
+        "CacheClusterNotFoundFault",
+        "InvalidInstanceID.NotFound",
+        "InvalidVolume.NotFound",
+        "AWS.SimpleQueueService.NonExistentQueue",
         "404",
     ]
     response = getattr(e, "response", None)

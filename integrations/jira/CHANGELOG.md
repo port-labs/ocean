@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.0 (2026-09-03)
+
+
+### Features
+
+- Add Jira probe handler that verifies authentication, checks per-resource Jira permissions, and validates Atlassian Teams API access when syncing teams
+
+
+## 0.7.112 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
 ## 0.7.111 (2026-09-02)
 
 
