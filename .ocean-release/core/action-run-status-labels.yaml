@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added status label support to run logs and status updates for both action runs and workflow node runs, so integration actions can report which lifecycle stage a run is in
