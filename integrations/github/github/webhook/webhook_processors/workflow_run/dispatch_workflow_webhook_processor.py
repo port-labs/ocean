@@ -15,6 +15,8 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from loguru import logger
 
+from port_ocean.core.models import WorkflowNodeRun
+
 
 class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
     """
@@ -91,6 +93,9 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 run_id=run.id,
                 conclusion=conclusion,
             )
+
+            if isinstance(run, WorkflowNodeRun):
+                run.output["conclusion"] = conclusion
             await ocean.port_client.report_run_completed(
                 run, success, f"Workflow completed: {conclusion}"
             )

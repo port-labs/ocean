@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from aws.core.helpers.metadata.types import ExporterMetadata, LiveEventFactories
+from aws.core.helpers.metadata.types import (
+    ExporterMetadata,
+    LiveEventContext,
+    LiveEventFactories,
+)
 from aws.core.helpers.types import ObjectKind
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.webhook.cloudtrail_parser import parse_cloudtrail_event
@@ -15,6 +19,26 @@ from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
 )
 
 MODULE = "aws.webhook.webhook_processors.cloudtrail_webhook_processor"
+
+_DEFAULT_ACCOUNT_ID = "111122223333"
+_DEFAULT_REGION = "us-east-1"
+
+
+def _expected_deleted_raw_result(
+    kind: str,
+    properties: dict[str, str],
+    *,
+    account_id: str = _DEFAULT_ACCOUNT_ID,
+    region: str = _DEFAULT_REGION,
+) -> dict[str, object]:
+    return {
+        "Type": kind,
+        "Properties": properties,
+        "__ExtraContext": {
+            "AccountId": account_id,
+            "Region": region,
+        },
+    }
 
 
 @dataclass
@@ -368,6 +392,35 @@ async def test_parse_cloudtrail_event_called_once_per_processor(
     assert mock_parse.call_count == 1
 
 
+def test_build_deletion_result_includes_extra_context() -> None:
+    live_events = LiveEventFactories(
+        request_factory=MagicMock(),
+        deletion_identifier_properties_factory=lambda context: {
+            "QueueName": context.identifier,
+        },
+    )
+    context = LiveEventContext(
+        identifier="my-queue",
+        account_id="999988887777",
+        region="eu-west-1",
+    )
+
+    result = CloudTrailWebhookProcessor._build_deletion_result(
+        ObjectKind.SQS_QUEUE,
+        live_events,
+        context,
+    )
+
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.SQS_QUEUE,
+            {"QueueName": "my-queue"},
+            account_id="999988887777",
+            region="eu-west-1",
+        )
+    ]
+
+
 @pytest.mark.asyncio
 async def test_handle_event_delete_returns_deleted_result(
     processor: CloudTrailWebhookProcessor,
@@ -376,13 +429,13 @@ async def test_handle_event_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.S3_BUCKET,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.S3_BUCKET,
+            {
                 "Arn": "arn:aws:s3:::bucket-to-delete",
                 "BucketName": "bucket-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -444,15 +497,15 @@ async def test_handle_event_lambda_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.LAMBDA_FUNCTION,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.LAMBDA_FUNCTION,
+            {
                 "FunctionArn": (
                     "arn:aws:lambda:us-east-1:111122223333:function:function-to-delete"
                 ),
                 "FunctionName": "function-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -503,15 +556,15 @@ async def test_handle_event_dynamodb_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.DYNAMODB_TABLE,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.DYNAMODB_TABLE,
+            {
                 "TableArn": (
                     "arn:aws:dynamodb:us-east-1:111122223333:table/table-to-delete"
                 ),
                 "TableName": "table-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -562,15 +615,15 @@ async def test_handle_event_rds_db_instance_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.RDS_DB_INSTANCE,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.RDS_DB_INSTANCE,
+            {
                 "DBInstanceArn": (
                     "arn:aws:rds:us-east-1:111122223333:db:db-instance-to-delete"
                 ),
                 "DBInstanceIdentifier": "db-instance-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -638,15 +691,15 @@ async def test_handle_event_rds_db_instance_create_treats_not_found_as_deleted(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.RDS_DB_INSTANCE,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.RDS_DB_INSTANCE,
+            {
                 "DBInstanceArn": (
                     "arn:aws:rds:us-east-1:111122223333:db:missing-db-instance"
                 ),
                 "DBInstanceIdentifier": "missing-db-instance",
             },
-        }
+        )
     ]
 
 
@@ -666,15 +719,15 @@ async def test_handle_event_ecr_repository_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.ECR_REPOSITORY,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.ECR_REPOSITORY,
+            {
                 "RepositoryArn": (
                     "arn:aws:ecr:us-east-1:111122223333:repository/repo-to-delete"
                 ),
                 "RepositoryName": "repo-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -725,15 +778,15 @@ async def test_handle_event_ecs_cluster_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.ECS_CLUSTER,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.ECS_CLUSTER,
+            {
                 "ClusterArn": (
                     "arn:aws:ecs:us-east-1:111122223333:cluster/ecs-cluster-to-delete"
                 ),
                 "ClusterName": "ecs-cluster-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -784,15 +837,15 @@ async def test_handle_event_eks_cluster_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.EKS_CLUSTER,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.EKS_CLUSTER,
+            {
                 "Arn": (
                     "arn:aws:eks:us-east-1:111122223333:cluster/eks-cluster-to-delete"
                 ),
                 "Name": "eks-cluster-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -885,11 +938,11 @@ async def test_handle_event_create_treats_not_found_as_deleted(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.S3_BUCKET,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.S3_BUCKET,
+            {
                 "Arn": "arn:aws:s3:::missing-bucket",
                 "BucketName": "missing-bucket",
             },
-        }
+        )
     ]
