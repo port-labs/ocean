@@ -433,7 +433,3 @@ class PagerDutyClient(OAuthClient):
     def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Return the most-recently observed per-minute rate-limit info, or None if unknown."""
         return self._rate_limiter.rate_limit_info
-
-    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
-        """Return the most-recently observed per-minute rate-limit info, or None if unknown."""
-        return self._rate_limiter.rate_limit_info
