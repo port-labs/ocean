@@ -615,6 +615,13 @@ class JiraClient(OAuthClient):
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
+    async def create_issue(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._send_api_request(
+            "POST",
+            f"{self.api_url}/issue",
+            json=payload,
+        )
+
     @staticmethod
     def _build_issue_search_body(
         jql: str,
