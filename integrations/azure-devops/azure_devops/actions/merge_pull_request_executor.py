@@ -1,5 +1,8 @@
+from typing import Any
+
 import httpx
 from loguru import logger
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from azure_devops.actions.abstract_ado_executor import AbstractAzureDevopsExecutor
 from azure_devops.actions.exceptions import (
@@ -9,6 +12,28 @@ from azure_devops.actions.exceptions import (
 from azure_devops.misc import extract_org_name_from_url
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
+
+
+class MergePullRequestInputs(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True)
+
+    organization: str = Field(min_length=1)
+    project: str = Field(min_length=1)
+    repositoryId: str = Field(min_length=1)
+    pullRequestId: str = Field(min_length=1)
+
+
+def _parse_merge_pull_request_inputs(
+    execution_properties: dict[str, Any],
+) -> MergePullRequestInputs:
+    try:
+        return MergePullRequestInputs.model_validate(execution_properties)
+    except ValidationError as error:
+        messages = [
+            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
+            for err in error.errors()
+        ]
+        raise ValueError("; ".join(messages)) from error
 
 
 class MergePullRequestExecutor(AbstractAzureDevopsExecutor):
@@ -22,88 +47,67 @@ class MergePullRequestExecutor(AbstractAzureDevopsExecutor):
         project = run.execution_properties.get("project")
         repository_id = run.execution_properties.get("repositoryId")
         pull_request_id = run.execution_properties.get("pullRequestId")
+
         if not (organization and project and repository_id and pull_request_id):
             return None
         return f"{organization}/{project}/{repository_id}/{pull_request_id}"
 
     async def execute(self, run: IntegrationRun) -> None:
-        organization = run.execution_properties.get("organization")
-        project_input = run.execution_properties.get("project")
-        repository_id = run.execution_properties.get("repositoryId")
-        pull_request_id = run.execution_properties.get("pullRequestId")
-
-        missing = [
-            name
-            for name, value in [
-                ("organization", organization),
-                ("project", project_input),
-                ("repositoryId", repository_id),
-                ("pullRequestId", pull_request_id),
-            ]
-            if not value
-        ]
-        if missing:
+        try:
+            inputs = _parse_merge_pull_request_inputs(run.execution_properties)
+        except ValueError as error:
             logger.warning(
-                f"Missing required parameters for action run {run.id}",
+                f"Invalid parameters for action run {run.id}",
                 run_id=run.id,
-                missing=missing,
+                error=str(error),
             )
-            raise InvalidActionParametersError(
-                f"{', '.join(missing)} {'is' if len(missing) == 1 else 'are'} required"
-            )
+            raise InvalidActionParametersError(str(error)) from error
 
         configured_org = extract_org_name_from_url(self.client._organization_base_url)
-        if str(organization).lower() != configured_org.lower():
+        if inputs.organization.lower() != configured_org.lower():
             raise InvalidActionParametersError(
-                f"Organization '{organization}' does not match the configured "
+                f"Organization '{inputs.organization}' does not match the configured "
                 f"organization '{configured_org}'"
             )
 
-        project = await self.client.get_single_project(str(project_input))
-        if not project:
-            logger.warning(
-                f"Project '{project_input}' was not found for action run {run.id}",
-                run_id=run.id,
-                project=project_input,
-            )
-            raise InvalidActionParametersError(
-                f"Project '{project_input}' was not found"
-            )
-        project_id = project["id"]
-
         logger.info(
-            f"Merging pull request {pull_request_id} in repository {repository_id} "
-            f"for action run {run.id}",
+            f"Merging pull request {inputs.pullRequestId} in repository "
+            f"{inputs.repositoryId} for action run {run.id}",
             run_id=run.id,
-            project_id=project_id,
-            repository_id=repository_id,
-            pull_request_id=pull_request_id,
+            project_id=inputs.project,
+            repository_id=inputs.repositoryId,
+            pull_request_id=inputs.pullRequestId,
         )
         await ocean.port_client.post_run_log(
             run,
-            f"Merging pull request {pull_request_id} in repository {repository_id}",
+            f"Merging pull request {inputs.pullRequestId} in repository "
+            f"{inputs.repositoryId}",
             should_raise=False,
         )
 
         try:
             pull_request = await self.client.merge_pull_request(
-                project_id, str(repository_id), str(pull_request_id)
+                inputs.project,
+                inputs.repositoryId,
+                inputs.pullRequestId,
             )
         except httpx.HTTPStatusError as error:
             logger.error(
                 f"Azure DevOps rejected pull request merge for action run {run.id}: "
                 f"HTTP {error.response.status_code}",
                 run_id=run.id,
-                project_id=project_id,
-                repository_id=repository_id,
-                pull_request_id=pull_request_id,
+                project_id=inputs.project,
+                repository_id=inputs.repositoryId,
+                pull_request_id=inputs.pullRequestId,
                 status_code=error.response.status_code,
             )
             raise MergePullRequestError.from_response(
                 error.response,
-                f"Could not merge pull request '{pull_request_id}' in repository "
-                f"'{repository_id}'",
+                f"Could not merge pull request '{inputs.pullRequestId}' in repository "
+                f"'{inputs.repositoryId}'",
             )
+        except RuntimeError as error:
+            raise MergePullRequestError(str(error)) from error
 
         merged_id = pull_request.get("pullRequestId")
         if merged_id is None:
