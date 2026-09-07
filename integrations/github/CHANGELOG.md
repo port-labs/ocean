@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.11.1 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 6.11.0 (2026-09-07)
+
+
+### Improvements
+
+- Added run logs and status labels to the dispatch_workflow action, so Port shows when a workflow is being dispatched, running, or finished with its GitHub conclusion. Dispatch failures now report GitHub's error message even when the response body is not JSON
+
+
 ## 6.10.17 (2026-09-06)
 
 

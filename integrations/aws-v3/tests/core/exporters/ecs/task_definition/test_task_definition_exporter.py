@@ -1,6 +1,7 @@
 import pytest
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
+from botocore.exceptions import ClientError
 from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
 from aws.core.exporters.ecs.task_definition.models import (
     SingleTaskDefinitionRequest,
@@ -47,7 +48,13 @@ class TestEcsTaskDefinitionExporter:
             "aws.core.exporters.ecs.task_definition.exporter.AioBaseClientProxy"
         ) as mock_proxy_class:
             mock_proxy = AsyncMock()
+            mock_client = AsyncMock()
+            mock_proxy.client = mock_client
             mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+            mock_client.describe_task_definition.return_value = {
+                "taskDefinition": mock_task_def_data,
+                "tags": [],
+            }
 
             mock_inspector = AsyncMock()
             mock_inspector.inspect.return_value = [mock_task_def_data]
@@ -59,6 +66,9 @@ class TestEcsTaskDefinitionExporter:
                 result = await exporter.get_resource(options)
 
         assert result == mock_task_def_data
+        mock_client.describe_task_definition.assert_awaited_once_with(
+            taskDefinition="arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:1",
+        )
         mock_inspector.inspect.assert_called_once()
 
         call_args = mock_inspector.inspect.call_args[0][0]
@@ -73,7 +83,7 @@ class TestEcsTaskDefinitionExporter:
         assert extra_context["Region"] == "us-east-1"
 
     @pytest.mark.asyncio
-    async def test_get_resource_empty_response(
+    async def test_get_resource_describe_task_definition_not_found(
         self, exporter: EcsTaskDefinitionExporter
     ) -> None:
         options = SingleTaskDefinitionRequest(
@@ -86,18 +96,67 @@ class TestEcsTaskDefinitionExporter:
             "aws.core.exporters.ecs.task_definition.exporter.AioBaseClientProxy"
         ) as mock_proxy_class:
             mock_proxy = AsyncMock()
+            mock_client = AsyncMock()
+            mock_proxy.client = mock_client
             mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
-
-            mock_inspector = AsyncMock()
-            mock_inspector.inspect.return_value = []
+            mock_client.describe_task_definition.side_effect = ClientError(
+                {
+                    "Error": {
+                        "Code": "ClientException",
+                        "Message": "Unable to describe task definition.",
+                    }
+                },
+                "DescribeTaskDefinition",
+            )
 
             with patch(
-                "aws.core.exporters.ecs.task_definition.exporter.ResourceInspector",
-                return_value=mock_inspector,
-            ):
-                result = await exporter.get_resource(options)
+                "aws.core.exporters.ecs.task_definition.exporter.ResourceInspector"
+            ) as mock_inspector_class:
+                with pytest.raises(ClientError) as exc_info:
+                    await exporter.get_resource(options)
 
-        assert result == {}
+        assert (
+            exc_info.value.response["Error"]["Code"]
+            == "TaskDefinitionNotFoundException"
+        )
+        mock_inspector_class.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_resource_describe_task_definition_unrelated_client_exception(
+        self, exporter: EcsTaskDefinitionExporter
+    ) -> None:
+        options = SingleTaskDefinitionRequest(
+            task_definition_arn="arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:1",
+            region="us-east-1",
+            account_id="123456789012",
+        )
+        original_error = ClientError(
+            {
+                "Error": {
+                    "Code": "ClientException",
+                    "Message": "Some other client error.",
+                }
+            },
+            "DescribeTaskDefinition",
+        )
+
+        with patch(
+            "aws.core.exporters.ecs.task_definition.exporter.AioBaseClientProxy"
+        ) as mock_proxy_class:
+            mock_proxy = AsyncMock()
+            mock_client = AsyncMock()
+            mock_proxy.client = mock_client
+            mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+            mock_client.describe_task_definition.side_effect = original_error
+
+            with patch(
+                "aws.core.exporters.ecs.task_definition.exporter.ResourceInspector"
+            ) as mock_inspector_class:
+                with pytest.raises(ClientError) as exc_info:
+                    await exporter.get_resource(options)
+
+        assert exc_info.value is original_error
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.task_definition.exporter.AioBaseClientProxy")

@@ -54,7 +54,7 @@ class TestPagerDutyRateLimiter:
 
         # 90% usage: 900 used, 100 remaining out of 1000
         reset_in = 5
-        limiter.rate_limit_info = RateLimitInfo(
+        limiter.rate_limit_info = RateLimitInfo.with_seconds_until_reset(
             limit=1000, remaining=100, seconds_until_reset=reset_in
         )
 
@@ -72,7 +72,7 @@ class TestPagerDutyRateLimiter:
         limiter = PagerDutyRateLimiter(max_concurrent=3)
 
         # 50% usage: 500 used, 500 remaining out of 1000
-        limiter.rate_limit_info = RateLimitInfo(
+        limiter.rate_limit_info = RateLimitInfo.with_seconds_until_reset(
             limit=1000, remaining=500, seconds_until_reset=60
         )
 
@@ -103,7 +103,7 @@ class TestPagerDutyRateLimiter:
         assert limiter.daily_rate_limit_info is not None
         assert limiter.daily_rate_limit_info.limit == 10
         assert limiter.daily_rate_limit_info.remaining == 5
-        assert limiter.daily_rate_limit_info.seconds_until_reset == 49015
+        assert 49014 <= limiter.daily_rate_limit_info.seconds_until_reset <= 49016
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
@@ -111,7 +111,7 @@ class TestPagerDutyRateLimiter:
         self, mock_sleep: Mock
     ) -> None:
         limiter = PagerDutyRateLimiter(max_concurrent=5)
-        limiter.daily_rate_limit_info = RateLimitInfo(
+        limiter.daily_rate_limit_info = RateLimitInfo.with_seconds_until_reset(
             limit=10, remaining=2, seconds_until_reset=49000
         )
         headers = httpx.Headers(
@@ -126,7 +126,7 @@ class TestPagerDutyRateLimiter:
 
         assert limiter.daily_rate_limit_info.limit == 10
         assert limiter.daily_rate_limit_info.remaining == 2
-        assert limiter.daily_rate_limit_info.seconds_until_reset == 49000
+        assert 48999 <= limiter.daily_rate_limit_info.seconds_until_reset <= 49001
         assert limiter.rate_limit_info is not None
         assert limiter.rate_limit_info.remaining == 900
         mock_sleep.assert_not_called()
@@ -136,7 +136,7 @@ class TestPagerDutyRateLimiter:
         self, mock_sleep: Mock
     ) -> None:
         limiter = PagerDutyRateLimiter(max_concurrent=5)
-        limiter.daily_rate_limit_info = RateLimitInfo(
+        limiter.daily_rate_limit_info = RateLimitInfo.with_seconds_until_reset(
             limit=10, remaining=-1, seconds_until_reset=49015
         )
 
@@ -148,7 +148,7 @@ class TestPagerDutyRateLimiter:
         self, mock_sleep: Mock
     ) -> None:
         limiter = PagerDutyRateLimiter(max_concurrent=5)
-        limiter.daily_rate_limit_info = RateLimitInfo(
+        limiter.daily_rate_limit_info = RateLimitInfo.with_seconds_until_reset(
             limit=10, remaining=-1, seconds_until_reset=49015
         )
 

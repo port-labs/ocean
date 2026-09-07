@@ -34,7 +34,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         if output:
             patch["output"] = output
         if status_label:
-            patch["statusLabel"] = status_label
+            patch["statusLabel"] = {"text": status_label}
         return patch
 
     async def claim_pending_runs(
@@ -104,7 +104,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             if status_label:
                 await self.patch_wf_node_run(
                     run.id,
-                    {"statusLabel": status_label},
+                    {"statusLabel": {"text": status_label}},
                     should_raise=should_raise,
                 )
         else:
@@ -168,7 +168,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 "links": [link],
             }
             if status_label:
-                patch["statusLabel"] = status_label
+                patch["statusLabel"] = {"text": status_label}
             await self.patch_wf_node_run(run.id, patch)
             run.output = output
         else:
