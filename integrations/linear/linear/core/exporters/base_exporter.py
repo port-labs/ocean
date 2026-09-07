@@ -73,7 +73,6 @@ class PaginatedExporter(LinearExporter):
             logger.debug(f"{object_type} query: {query}")
             data = await self.graphql.execute(
                 query,
-                error_prefix=f"Could not paginate {connection_key}",
             )
             connection = data[connection_key]
             yield [edge["node"] for edge in connection["edges"]]

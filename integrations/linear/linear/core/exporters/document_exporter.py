@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from linear.client.constants import LinearObject
-from linear.client.templating import execute_query_template
 from linear.core.exporters.base_exporter import (
     GetOptions,
     PaginatedExporter,
@@ -37,10 +36,8 @@ class DocumentExporter(
 
     async def get_resource(self, options: GetDocumentOptions) -> dict[str, Any]:
         logger.info(f"Querying single document: {options.resource_id}")
-        data = await execute_query_template(
-            self.graphql,
+        data = await self.graphql.execute_query_template(
             "GET_SINGLE_DOCUMENT",
-            error_prefix=f"Could not fetch document '{options.resource_id}'",
             document_id=options.resource_id,
             base_query_fields=QUERIES[f"BASE_{LinearObject.DOCUMENTS}_QUERY_FIELDS"],
         )

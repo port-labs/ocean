@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from linear.client.constants import LinearObject
-from linear.client.templating import execute_query_template
 from linear.core.exporters.base_exporter import (
     GetOptions,
     PaginatedExporter,
@@ -36,10 +35,8 @@ class LabelExporter(
 
     async def get_resource(self, options: GetLabelOptions) -> dict[str, Any]:
         logger.info(f"Querying single label: {options.resource_id}")
-        data = await execute_query_template(
-            self.graphql,
+        data = await self.graphql.execute_query_template(
             "GET_SINGLE_LABEL",
-            error_prefix=f"Could not fetch label '{options.resource_id}'",
             label_id=options.resource_id,
             base_query_fields=QUERIES[f"BASE_{LinearObject.LABELS}_QUERY_FIELDS"],
         )

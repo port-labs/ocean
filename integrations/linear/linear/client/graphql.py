@@ -1,10 +1,12 @@
 from typing import Any
 
 import httpx
+import jinja2
 from httpx import HTTPStatusError
 
 from linear.client.rate_limiter import LinearRateLimitStatus, parse_rate_limit_headers
 from linear.helpers.exceptions import LinearActionError
+from linear.queries import QUERIES
 
 
 class GraphqlClient:
@@ -26,8 +28,6 @@ class GraphqlClient:
         self,
         query: str,
         variables: dict[str, Any] | None = None,
-        *,
-        error_prefix: str = "Linear request failed",
     ) -> dict[str, Any]:
         try:
             response = await self._http_client.post(
@@ -37,23 +37,28 @@ class GraphqlClient:
             )
             response.raise_for_status()
         except HTTPStatusError as error:
-            raise LinearActionError.from_response(
-                error.response, error_prefix
-            ) from error
+            raise LinearActionError.from_response(error.response) from error
 
         self._rate_limit_status = parse_rate_limit_headers(dict(response.headers))
 
         payload = response.json()
         if errors := payload.get("errors"):
-            raise LinearActionError.from_graphql_errors(errors, error_prefix)
+            raise LinearActionError.from_graphql_errors(errors)
 
         data = payload.get("data")
         if not isinstance(data, dict):
-            raise LinearActionError(
-                f"{error_prefix}: Linear returned an empty response"
-            )
+            raise LinearActionError("Linear returned an empty response")
 
         return data
+
+    async def execute_query_template(
+        self,
+        template_key: str,
+        **template_vars: str,
+    ) -> dict[str, Any]:
+        template = jinja2.Template(QUERIES[template_key], enable_async=True)
+        query = await template.render_async(**template_vars)
+        return await self.execute(query)
 
     async def execute_mutation(
         self,
@@ -61,12 +66,11 @@ class GraphqlClient:
         variables: dict[str, Any],
         *,
         result_key: str,
-        error_prefix: str,
     ) -> dict[str, Any]:
-        data = await self.execute(query, variables, error_prefix=error_prefix)
+        data = await self.execute(query, variables)
         result = data.get(result_key)
         if not isinstance(result, dict) or not result.get("success"):
             raise LinearActionError(
-                f"{error_prefix}: Linear returned an unsuccessful response"
+                f"Linear mutation '{result_key}' returned an unsuccessful response"
             )
         return result

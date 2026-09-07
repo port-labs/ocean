@@ -17,20 +17,18 @@ class LinearActionError(ActionExecutionError):
     DEFAULT_STATUS_LABEL = "Linear failed"
 
     @classmethod
-    def from_response(
-        cls, response: httpx.Response, prefix: str
-    ) -> "LinearActionError":
-        return cls(f"{prefix}: {cls._response_detail(response)}")
+    def from_response(cls, response: httpx.Response) -> "LinearActionError":
+        return cls(cls._response_detail(response))
 
     @classmethod
     def from_graphql_errors(
-        cls, errors: list[dict[str, Any]], prefix: str
+        cls, errors: list[dict[str, Any]]
     ) -> "LinearActionError":
         messages = [
             error.get("message", json.dumps(error)) for error in errors if error
         ]
         detail = "; ".join(messages) if messages else "Unknown GraphQL error"
-        return cls(f"{prefix}: {detail}")
+        return cls(detail)
 
     @staticmethod
     def _response_detail(response: httpx.Response) -> str:
