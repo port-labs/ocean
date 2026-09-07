@@ -28,6 +28,15 @@ class SesConfigurationSetExporter(IResourceExporter[list[ConfigurationSetRecord]
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-configuration-set fetch only has a name from CloudTrail.
+            # GetConfigurationSetAction swallows recoverable not-found errors,
+            # so the inspector would return an empty stub for a deleted set.
+            # Confirm it exists so a missing set raises and the live-event handler
+            # can treat the update as a delete instead.
+            await proxy.client.get_configuration_set(  # type: ignore[attr-defined]
+                ConfigurationSetName=options.configuration_set_name
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

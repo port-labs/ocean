@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, List, Dict, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.sns.topic.exporter import SNSTopicExporter
 from aws.core.exporters.sns.topic.models import (
@@ -40,6 +41,12 @@ class TestSNSTopicExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_topic_attributes.return_value = {
+            "Attributes": {
+                "TopicArn": "arn:aws:sns:us-east-1:123456789012:my-topic",
+                "Owner": "123456789012",
+            }
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -62,6 +69,40 @@ class TestSNSTopicExporter:
 
         assert isinstance(result, dict)
         assert result["TopicArn"] == "arn:aws:sns:us-east-1:123456789012:my-topic"
+        mock_client.get_topic_attributes.assert_awaited_once_with(
+            TopicArn="arn:aws:sns:us-east-1:123456789012:my-topic"
+        )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.sns.topic.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.sns.topic.exporter.ResourceInspector")
+    async def test_get_resource_topic_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: SNSTopicExporter,
+    ) -> None:
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_topic_attributes.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFound", "Message": "gone"}},
+            "GetTopicAttributes",
+        )
+
+        request = SingleTopicRequest(
+            topic_arn="arn:aws:sns:us-east-1:123456789012:nonexistent",
+            region="us-east-1",
+            include=[],
+            account_id="123456789012",
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(request)
+
+        assert exc_info.value.response["Error"]["Code"] == "ResourceNotFound"
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.sns.topic.exporter.AioBaseClientProxy")
@@ -73,8 +114,14 @@ class TestSNSTopicExporter:
         exporter: SNSTopicExporter,
     ) -> None:
         mock_proxy = AsyncMock()
-        mock_proxy.client = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.get_topic_attributes.return_value = {
+            "Attributes": {
+                "TopicArn": "arn:aws:sns:us-east-1:123456789012:nonexistent",
+            }
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -196,6 +243,11 @@ class TestSNSTopicExporter:
         mock_proxy = AsyncMock()
         mock_proxy.client = AsyncMock()
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_proxy.client.get_topic_attributes.return_value = {
+            "Attributes": {
+                "TopicArn": "arn:aws:sns:us-east-1:123456789012:my-topic",
+            }
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector

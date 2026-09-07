@@ -8,3 +8,7 @@ from port_ocean.core.probe.models import (
     ProbeCheckStatus,
     ProbeReportingMode,
 )
+from port_ocean.core.probe.permissions import (
+    KindPermissionVerdict,
+    PermissionCombination,
+)

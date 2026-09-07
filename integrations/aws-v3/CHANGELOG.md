@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.25.0-beta (2026-09-07)
+
+
+### Features
+
+- Add live events support for ECS Service and ECS Task Definition
+
+
+## 2.24.5-beta (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 2.24.4-beta (2026-09-06)
+
+
+### Bug Fixes
+
+- Include ExtraContext on CloudTrail live-event delete payloads so custom port-app-config identifier mappings resolve on deletes, not just upserts.
+
+
+## 2.24.3-beta (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 2.24.2-beta (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 2.24.1-beta (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 2.24.0-beta (2026-09-03)
+
+
+### Features
+
+- Add CloudTrail live events support for SES email identities and configuration sets.
+
+
+## 2.23.1-beta (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 2.23.0-beta (2026-09-02)
+
+
+### Features
+
+- Add CloudTrail live events support for RDS DB clusters, SNS topics, SQS queues, EC2 instances, EC2 volumes, and ElastiCache clusters.
+
+
+## 2.22.5-beta (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 2.22.4-beta (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 2.22.3-beta (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
 ## 2.22.2-beta (2026-08-31)
 
 

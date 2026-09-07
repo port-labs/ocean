@@ -12,5 +12,5 @@ class ProbeReporter(ABC):
         self.config = config
 
     @abstractmethod
-    def report(self, report: dict[str, Any]) -> None:
+    async def report(self, report: dict[str, Any]) -> None:
         """Publish one probe status report."""
