@@ -11,11 +11,16 @@ AWS_CLIENT_CONFIG = AioConfig(retries={"mode": "adaptive", "max_attempts": 10})
 class AioBaseClientProxy:
 
     def __init__(
-        self, session: AioSession, region: str, service_name: SupportedServices
+        self,
+        session: AioSession,
+        region: str,
+        service_name: SupportedServices,
+        client_config: AioConfig | None = None,
     ) -> None:
         self.session = session
         self.region = region
         self.service_name: SupportedServices = service_name
+        self._client_config = client_config or AWS_CLIENT_CONFIG
         self._base_client: AioBaseClient | None = None
 
     @property
@@ -24,11 +29,11 @@ class AioBaseClientProxy:
             raise RuntimeError("Client not initialized. Use 'async with' context.")
         return self._base_client
 
-    async def __aenter__(self, config=AWS_CLIENT_CONFIG) -> Self:
+    async def __aenter__(self) -> Self:
         self._client_cm = self.session.create_client(
             service_name=self.service_name,
             region_name=self.region,
-            config=config,
+            config=self._client_config,
         )
         self._base_client = await self._client_cm.__aenter__()
         return self

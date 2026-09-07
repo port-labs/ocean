@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 import pytest
+from aiobotocore.config import AioConfig
 
 from aws.core.client.proxy import AWS_CLIENT_CONFIG, AioBaseClientProxy
 from aws.core.client.paginator import AsyncPaginator
@@ -304,3 +305,30 @@ class TestAioBaseClientProxy:
 
         # Verify create_client was called twice
         assert isolated_mock_session.create_client.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_context_manager_uses_custom_client_config(
+        self, isolated_mock_session: AsyncMock
+    ) -> None:
+        """Test that a per-resource client config can be supplied at construction."""
+        custom_config = AioConfig(retries={"mode": "standard", "max_attempts": 3})
+        mock_client = AsyncMock()
+        mock_client_cm = AsyncMock()
+        mock_client_cm.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cm.__aexit__ = AsyncMock()
+
+        isolated_mock_session.create_client.return_value = mock_client_cm
+
+        proxy = AioBaseClientProxy(
+            session=isolated_mock_session,
+            region="us-east-1",
+            service_name="ecs",
+            client_config=custom_config,
+        )
+
+        async with proxy:
+            isolated_mock_session.create_client.assert_called_once_with(
+                service_name="ecs",
+                region_name="us-east-1",
+                config=custom_config,
+            )
