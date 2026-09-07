@@ -10,6 +10,7 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
+from jira.actions.create_issue_executor import CreateIssueExecutor
 from jira.actions.create_issue_executor import CreateIssueExecutor, CreateIssueInput
 from jira.actions.exceptions import CreateIssueError, MissingExecutionPropertyError
 
@@ -133,12 +134,18 @@ class TestCreateIssueExecutor:
         assert payload["fields"]["summary"] == "New task"
         assert payload["fields"]["priority"] == {"name": "High"}
         assert payload["fields"]["assignee"] == {"id": "abc-123"}
+        assert run.output == {
+            "issueKey": "PORT-42",
+            "issueId": "10001",
+            "issueUrl": "https://example.atlassian.net/browse/PORT-42",
+        }
         mock_port_client.post_run_log.assert_any_call(
             run,
             "Creating Jira issue in project PORT",
             status_label="Creating issue",
             should_raise=False,
         )
+
         mock_port_client.report_run_completed.assert_called_once_with(
             run,
             success=True,
