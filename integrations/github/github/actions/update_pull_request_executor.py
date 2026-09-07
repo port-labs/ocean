@@ -77,7 +77,13 @@ class UpdatePullRequestExecutor(AbstractGithubExecutor):
                 e.response, f"Could not update PR #{pr_number} in {org}/{repo}"
             )
 
-        if not pr or "number" not in pr:
+        if not pr or "number" not in pr or "html_url" not in pr:
+            logger.warning(
+                f"Received empty or incomplete response from GitHub for pull request update in {org}/{repo}",
+                org=org,
+                repo=repo,
+                pr_number=pr_number,
+            )
             raise UpdatePullRequestError(
                 "Failed to update pull request: upstream returned an empty or incomplete response"
             )
