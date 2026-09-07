@@ -6,6 +6,8 @@ import pytest
 
 from azure_devops.actions.create_pull_request_executor import (
     CreatePullRequestExecutor,
+    CreatePullRequestInputs,
+    _parse_create_pull_request_inputs,
 )
 from azure_devops.actions.exceptions import (
     CreatePullRequestError,
@@ -37,7 +39,6 @@ def _make_run(props: dict[str, Any]) -> ActionRun:
 def client() -> MagicMock:
     mock = MagicMock()
     mock._organization_base_url = "https://dev.azure.com/my-org"
-    mock.get_single_project = AsyncMock()
     mock.create_pull_request = AsyncMock()
     return mock
 
@@ -59,7 +60,7 @@ def _make_mock_ocean() -> MagicMock:
 def _valid_props(**overrides: Any) -> dict[str, Any]:
     props = {
         "organization": "my-org",
-        "project": "My Project",
+        "project": "proj-guid",
         "repositoryId": "repo-guid",
         "title": "Add feature",
         "sourceRefName": "feature/add-feature",
@@ -67,6 +68,71 @@ def _valid_props(**overrides: Any) -> dict[str, Any]:
     }
     props.update(overrides)
     return props
+
+
+def test_parse_create_pull_request_inputs_accepts_valid_strings() -> None:
+    inputs = _parse_create_pull_request_inputs(
+        {
+            "organization": "my-org",
+            "project": "proj-guid",
+            "repositoryId": "repo-guid",
+            "title": "Add feature",
+            "sourceRefName": "feature/add-feature",
+            "targetRefName": "main",
+            "description": "Optional description",
+        }
+    )
+
+    assert inputs == CreatePullRequestInputs(
+        organization="my-org",
+        project="proj-guid",
+        repositoryId="repo-guid",
+        title="Add feature",
+        sourceRefName="feature/add-feature",
+        targetRefName="main",
+        description="Optional description",
+    )
+
+
+@pytest.mark.parametrize(
+    "properties",
+    [
+        {},
+        {"organization": "my-org"},
+        {
+            "organization": "my-org",
+            "project": "proj-guid",
+            "repositoryId": "repo-guid",
+        },
+        {
+            "organization": "",
+            "project": "proj-guid",
+            "repositoryId": "repo-guid",
+            "title": "Add feature",
+            "sourceRefName": "feature/add-feature",
+            "targetRefName": "main",
+        },
+    ],
+)
+def test_parse_create_pull_request_inputs_rejects_missing_or_empty_values(
+    properties: dict[str, str],
+) -> None:
+    with pytest.raises(ValueError):
+        _parse_create_pull_request_inputs(properties)
+
+
+def test_parse_create_pull_request_inputs_rejects_non_string_values() -> None:
+    with pytest.raises(ValueError):
+        _parse_create_pull_request_inputs(
+            {
+                "organization": "my-org",
+                "project": "proj-guid",
+                "repositoryId": "repo-guid",
+                "title": 123,
+                "sourceRefName": "feature/add-feature",
+                "targetRefName": "main",
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -86,6 +152,14 @@ async def test_execute_missing_title_raises(
 
 
 @pytest.mark.asyncio
+async def test_execute_rejects_non_string_title(
+    executor: CreatePullRequestExecutor,
+) -> None:
+    with pytest.raises(InvalidActionParametersError):
+        await executor.execute(_make_run(_valid_props(title=123)))
+
+
+@pytest.mark.asyncio
 async def test_execute_organization_mismatch_raises(
     executor: CreatePullRequestExecutor,
 ) -> None:
@@ -101,7 +175,6 @@ async def test_execute_creates_pull_request_and_completes_run(
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client.get_single_project.return_value = {"id": "proj-guid"}
     client.create_pull_request.return_value = {
         "pullRequestId": 42,
         "_links": {
@@ -118,7 +191,6 @@ async def test_execute_creates_pull_request_and_completes_run(
     run = _make_run(_valid_props())
     await executor.execute(run)
 
-    client.get_single_project.assert_awaited_once_with("My Project")
     create_call = client.create_pull_request.await_args
     assert create_call is not None
     assert create_call.args[0] == "proj-guid"
@@ -137,30 +209,11 @@ async def test_execute_creates_pull_request_and_completes_run(
 
 
 @pytest.mark.asyncio
-async def test_execute_project_not_found_raises(
-    executor: CreatePullRequestExecutor,
-    client: MagicMock,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    client.get_single_project.return_value = None
-    monkeypatch.setattr(
-        "azure_devops.actions.create_pull_request_executor.ocean", _make_mock_ocean()
-    )
-
-    with pytest.raises(InvalidActionParametersError) as exc_info:
-        await executor.execute(_make_run(_valid_props(project="missing")))
-
-    assert "was not found" in str(exc_info.value)
-    client.create_pull_request.assert_not_awaited()
-
-
-@pytest.mark.asyncio
 async def test_execute_wraps_http_error_as_create_pull_request_error(
     executor: CreatePullRequestExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client.get_single_project.return_value = {"id": "proj-guid"}
     client.create_pull_request.side_effect = httpx.HTTPStatusError(
         "boom",
         request=httpx.Request("POST", "https://dev.azure.com"),
@@ -182,7 +235,6 @@ async def test_execute_malformed_response_raises(
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client.get_single_project.return_value = {"id": "proj-guid"}
     client.create_pull_request.return_value = {}
     monkeypatch.setattr(
         "azure_devops.actions.create_pull_request_executor.ocean", _make_mock_ocean()
@@ -207,5 +259,5 @@ async def test_partition_key(
 ) -> None:
     assert (
         await executor._get_partition_key(_make_run(_valid_props()))
-        == "my-org/My Project/repo-guid"
+        == "my-org/proj-guid/repo-guid"
     )
