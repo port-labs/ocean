@@ -80,7 +80,7 @@ class CreatePullRequestExecutor(AbstractGithubExecutor):
                 e.response, f"Could not create pull request in {org}/{repo}"
             )
 
-        if not pr or "number" not in pr:
+        if not pr or "number" not in pr or "html_url" not in pr:
             logger.warning(
                 f"Received empty or incomplete response from GitHub for pull request creation in {org}/{repo}",
                 org=org,
