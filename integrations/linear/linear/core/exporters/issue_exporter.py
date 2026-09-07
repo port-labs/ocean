@@ -6,7 +6,6 @@ from linear.client.constants import LinearObject
 from linear.client.templating import execute_query_template
 from linear.core.exporters.base_exporter import (
     GetOptions,
-    ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
 )
@@ -15,14 +14,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 if TYPE_CHECKING:
     from integration import IssueResourceConfig
-
-
-class ListIssueOptions(ListOptions["IssueResourceConfig"]):
-    @classmethod
-    def from_resource_config(
-        cls, resource_config: "IssueResourceConfig"
-    ) -> "ListIssueOptions":
-        return cls()
 
 
 class GetIssueOptions(GetOptions["IssueResourceConfig"]):
@@ -34,15 +25,13 @@ class GetIssueOptions(GetOptions["IssueResourceConfig"]):
 
 
 class IssueExporter(
-    PaginatedExporter[ListIssueOptions], SingleResourceExporter[GetIssueOptions]
+    PaginatedExporter, SingleResourceExporter[GetIssueOptions]
 ):
     async def get_paginated_resources(
-        self, options: ListIssueOptions
+        self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info("Getting issues from Linear")
-        async for issues in self._paginate_graphql_objects(
-            LinearObject.ISSUES, page_size=options.page_size
-        ):
+        async for issues in self._paginate_graphql_objects(LinearObject.ISSUES):
             yield issues
 
     async def get_resource(self, options: GetIssueOptions) -> dict[str, Any]:

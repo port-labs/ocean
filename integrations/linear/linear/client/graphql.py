@@ -8,9 +8,15 @@ from linear.helpers.exceptions import LinearActionError
 
 
 class GraphqlClient:
-    def __init__(self, http_client: httpx.AsyncClient, linear_url: str) -> None:
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient,
+        linear_url: str,
+        auth_headers: dict[str, str],
+    ) -> None:
         self._http_client = http_client
         self._linear_url = linear_url
+        self._auth_headers = auth_headers
         self._rate_limit_status: LinearRateLimitStatus | None = None
 
     def get_rate_limit_status(self) -> LinearRateLimitStatus | None:
@@ -27,6 +33,7 @@ class GraphqlClient:
             response = await self._http_client.post(
                 self._linear_url,
                 json={"query": query, "variables": variables or {}},
+                headers=self._auth_headers,
             )
             response.raise_for_status()
         except HTTPStatusError as error:

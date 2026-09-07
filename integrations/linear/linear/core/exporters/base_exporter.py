@@ -15,16 +15,6 @@ if TYPE_CHECKING:
 RC = TypeVar("RC", bound="ResourceConfig")
 
 
-class ListOptions(BaseModel, Generic[RC]):
-    """Base for paginated-exporter options."""
-
-    page_size: int = PAGE_SIZE
-
-    @classmethod
-    def from_resource_config(cls, resource_config: RC) -> "ListOptions[RC]":
-        raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
-
-
 class GetOptions(BaseModel, Generic[RC]):
     """Base for single-resource-exporter options."""
 
@@ -37,7 +27,6 @@ class GetOptions(BaseModel, Generic[RC]):
         raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
 
 
-ListOptionsT = TypeVar("ListOptionsT")
 GetOptionsT = TypeVar("GetOptionsT")
 
 
@@ -50,10 +39,10 @@ class LinearExporter(ABC):
         return self.client.graphql
 
 
-class PaginatedExporter(LinearExporter, Generic[ListOptionsT]):
+class PaginatedExporter(LinearExporter):
     @abstractmethod
     def get_paginated_resources(
-        self, options: ListOptionsT
+        self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
 
     async def _paginate_graphql_objects(

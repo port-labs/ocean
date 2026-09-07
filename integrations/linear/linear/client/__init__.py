@@ -2,16 +2,18 @@ from linear.client.constants import LINEAR_GRAPHQL_URL
 from linear.client.graphql import GraphqlClient
 from linear.client.rate_limiter import LinearRateLimitStatus
 from port_ocean.context.ocean import ocean
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.async_client import OceanAsyncClient
 
 
 class LinearClient:
     def __init__(self, linear_api_key: str) -> None:
-        self.linear_api_key = linear_api_key
-        self.api_auth_header = {"Authorization": self.linear_api_key}
-        self.client = http_async_client
-        self.client.headers.update(self.api_auth_header)
-        self.graphql = GraphqlClient(self.client, LINEAR_GRAPHQL_URL)
+        self._linear_api_key = linear_api_key
+        self._http_client = OceanAsyncClient(timeout=ocean.config.client_timeout)
+        self.graphql = GraphqlClient(
+            self._http_client,
+            LINEAR_GRAPHQL_URL,
+            auth_headers={"Authorization": self._linear_api_key},
+        )
 
     def get_rate_limit_status(self) -> LinearRateLimitStatus | None:
         return self.graphql.get_rate_limit_status()

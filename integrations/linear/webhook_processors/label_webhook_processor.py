@@ -55,10 +55,11 @@ class LabelWebhookProcessor(_LinearAbstractWebhookProcessor):
             )
 
         client = LinearClient.create_from_ocean_configuration()
+        label_exporter = LabelExporter(client)
         options = GetLabelOptions.from_resource_config(
             cast(LabelResourceConfig, resource_config), resource_id=label_id
         )
-        data_to_update = await LabelExporter(client).get_resource(options)
+        data_to_update = await label_exporter.get_resource(options)
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]
