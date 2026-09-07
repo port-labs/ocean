@@ -25,8 +25,8 @@ def _redirect_uri() -> str:
     return f"{ocean.app.base_url}{OAUTH_CALLBACK_PATH}"
 
 
-def _resume_api_url(run_id: str, node_run_id: str) -> str:
-    return f"{ocean.port_client.api_url}/workflows/runs/{run_id}/resume?nodeRunId={node_run_id}"
+def _resume_api_url(node_run_id: str) -> str:
+    return f"{ocean.port_client.api_url}/workflows/nodes/runs/{node_run_id}/resume"
 
 
 def _run_view_url(org_id: str, run_id: str) -> str:
@@ -121,13 +121,17 @@ def register_oauth_broker() -> None:
             "x-port-reserved-usage": "true",
         }
         response = await http_async_client.post(
-            _resume_api_url(payload.run_id, payload.node_run_id), headers=headers
+            _resume_api_url(payload.node_run_id), headers=headers
         )
         if response.status_code >= 400:
             logger.warning(
                 f"Failed to resume the run: status_code={response.status_code} "
                 f"response_body={response.text!r} run_id={payload.run_id} "
                 f"node_run_id={payload.node_run_id}"
+            )
+            raise HTTPException(
+                status_code=502,
+                detail="Failed to resume the workflow run after authentication",
             )
 
         logger.info(

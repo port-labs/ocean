@@ -29,8 +29,7 @@ DISCOVERY_CACHE_TTL_SECONDS = 3600
 class IdentityClaims(BaseModel):
     sub: str
     org_id: str
-    run_id: str
-    node_run_id: str | None = None
+    node_run_id: str
     actor_email: str | None = None
 
 
@@ -150,8 +149,7 @@ class PortIdentityTokenVerifier(IdentityTokenVerifier):
             return IdentityClaims(
                 sub=payload["sub"],
                 org_id=payload["org_id"],
-                run_id=payload["run_id"],
-                node_run_id=payload.get("node_run_id"),
+                node_run_id=payload["node_run_id"],
                 actor_email=payload.get("actor_email"),
             )
         except (KeyError, ValidationError) as e:

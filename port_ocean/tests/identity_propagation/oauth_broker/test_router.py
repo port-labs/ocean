@@ -182,13 +182,34 @@ def test_callback_stores_the_token_and_resumes_the_run(
         "auth-code", "https://ocean.acme.com/v1/oauth-broker/callback"
     )
     mock_http_client.post.assert_awaited_once_with(
-        "https://api.getport.io/v1/workflows/runs/run_1/resume?nodeRunId=wfnr_1",
+        "https://api.getport.io/v1/workflows/nodes/runs/wfnr_1/resume",
         headers={"Authorization": "Bearer token", "x-port-reserved-usage": "true"},
     )
     # Vault is keyed by the provider's own identity — no target is sent by the caller at all.
     org_id, actor_id, target, record = mock_vault.write.await_args.args
     assert (org_id, actor_id, target) == ("org_1", "jane@acme.com", "github-ocean")
     assert record.access_token == "gho_token"
+
+
+def test_callback_fails_when_resume_returns_an_error(
+    client: TestClient,
+    mock_vault: MagicMock,
+    mock_provider: MagicMock,
+    mock_http_client: MagicMock,
+) -> None:
+    mock_http_client.post = AsyncMock(
+        return_value=MagicMock(spec=httpx.Response, status_code=404, text="not found")
+    )
+    state = sign_state("run_1", "wfnr_1", "jane@acme.com", "org_1")
+
+    response = client.get(
+        "/v1/oauth-broker/callback",
+        params={"code": "auth-code", "state": state},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 502
+    mock_vault.write.assert_awaited_once()
 
 
 def test_callback_rejects_a_tampered_state(

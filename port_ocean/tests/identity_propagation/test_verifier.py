@@ -39,7 +39,6 @@ def identity_token(
         {
             "sub": "jane@acme.com",
             "org_id": "org_1",
-            "run_id": "run_1",
             "node_run_id": "node_run_1",
             "actor_email": "jane@acme.com",
             "iss": issuer,
@@ -174,7 +173,7 @@ async def test_verify_discovers_the_jwks_from_the_token_issuer(
     )
 
     assert claims.org_id == "org_1"
-    assert claims.run_id == "run_1"
+    assert claims.node_run_id == "node_run_1"
     mock_http_client.get.assert_awaited_once_with(
         f"{ISSUER_URL}{verifier_module.DISCOVERY_PATH}"
     )
