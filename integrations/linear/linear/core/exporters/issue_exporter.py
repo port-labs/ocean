@@ -23,9 +23,7 @@ class GetIssueOptions(GetOptions["IssueResourceConfig"]):
         return cls(resource_id=resource_id)
 
 
-class IssueExporter(
-    PaginatedExporter, SingleResourceExporter[GetIssueOptions]
-):
+class IssueExporter(PaginatedExporter, SingleResourceExporter[GetIssueOptions]):
     async def get_paginated_resources(
         self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

@@ -22,7 +22,8 @@ class AbstractLinearExecutor(AbstractExecutor):
             return False
         if (
             rate_limit_status.requests_remaining is not None
-            and rate_limit_status.requests_remaining < MIN_REMAINING_REQUESTS_FOR_EXECUTE
+            and rate_limit_status.requests_remaining
+            < MIN_REMAINING_REQUESTS_FOR_EXECUTE
         ):
             return True
         if (
