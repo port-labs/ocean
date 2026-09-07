@@ -7,6 +7,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from actions.registry import register_action_executors
 from clients.pagerduty import PagerDutyClient
 from clients.rate_limiter import PagerDutyDailyRateLimitExceededError
 from integration import (
@@ -192,3 +193,5 @@ async def on_start() -> None:
 
 ocean.add_webhook_processor("/webhook", ServiceWebhookProcessor)
 ocean.add_webhook_processor("/webhook", IncidentWebhookProcessor)
+
+register_action_executors()
