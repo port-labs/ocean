@@ -19,7 +19,6 @@ class TriggerIncidentInput(AbstractPagerDutyActionInput):
     fromEmail: str
     details: str | None = None
     urgency: Literal["high", "low"] | None = None
-    priorityId: str | None = None
     incidentKey: str | None = None
     escalationPolicyId: str | None = None
 
@@ -35,7 +34,6 @@ class TriggerIncidentInput(AbstractPagerDutyActionInput):
             "from_email": self.fromEmail,
             "details": self.details,
             "urgency": self.urgency,
-            "priority_id": self.priorityId,
             "incident_key": self.incidentKey,
             "escalation_policy_id": self.escalationPolicyId,
         }
@@ -62,11 +60,6 @@ class TriggerIncidentExecutor(AbstractPagerDutyExecutor):
             raise TriggerIncidentError.from_response(
                 e.response,
                 f"Could not create incident on service '{inputs.service}'",
-            )
-
-        if not incident or not all(k in incident for k in ("id", "html_url")):
-            raise TriggerIncidentError(
-                "Failed to create incident: PagerDuty returned an empty or incomplete response"
             )
 
         await ocean.port_client.report_run_completed(

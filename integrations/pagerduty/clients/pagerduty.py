@@ -309,7 +309,6 @@ class PagerDutyClient(OAuthClient):
         from_email: str,
         details: str | None = None,
         urgency: str | None = None,
-        priority_id: str | None = None,
         incident_key: str | None = None,
         escalation_policy_id: str | None = None,
     ) -> dict[str, Any]:
@@ -323,8 +322,6 @@ class PagerDutyClient(OAuthClient):
             incident["body"] = {"type": "incident_body", "details": details}
         if urgency:
             incident["urgency"] = urgency
-        if priority_id:
-            incident["priority"] = {"id": priority_id, "type": "priority_reference"}
         if incident_key:
             incident["incident_key"] = incident_key
         if escalation_policy_id:

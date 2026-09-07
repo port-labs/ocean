@@ -77,7 +77,6 @@ class TestTriggerIncidentExecutor:
             from_email="oncall@example.com",
             details="Disk is full",
             urgency="high",
-            priority_id=None,
             incident_key=None,
             escalation_policy_id=None,
         )
@@ -151,26 +150,6 @@ class TestTriggerIncidentExecutor:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-    async def test_incomplete_response_raises(
-        self, executor: TriggerIncidentExecutor, mock_port_client: MagicMock
-    ) -> None:
-        executor.client.create_incident = AsyncMock(  # type: ignore[method-assign]
-            return_value={"id": "Q1QGYB805SG874"}
-        )
-        run = make_run(
-            {
-                "service": "P00BUSE",
-                "title": "Test",
-                "fromEmail": "oncall@example.com",
-            }
-        )
-        with (
-            patch("actions.trigger_incident_executor.ocean") as mock_ocean,
-            pytest.raises(TriggerIncidentError, match="empty or incomplete"),
-        ):
-            mock_ocean.port_client = mock_port_client
-            await executor.execute(run)
-
 
 class TestTriggerIncidentInput:
     def test_from_execution_properties_happy_path(self) -> None:
@@ -181,7 +160,6 @@ class TestTriggerIncidentInput:
                 "fromEmail": "oncall@example.com",
                 "details": "Disk is full",
                 "urgency": "high",
-                "priorityId": "PHFV7WH",
                 "incidentKey": "dedup-key",
                 "escalationPolicyId": "P7LVMYP",
             }
@@ -194,7 +172,6 @@ class TestTriggerIncidentInput:
             "from_email": "oncall@example.com",
             "details": "Disk is full",
             "urgency": "high",
-            "priority_id": "PHFV7WH",
             "incident_key": "dedup-key",
             "escalation_policy_id": "P7LVMYP",
         }

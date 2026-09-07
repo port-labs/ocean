@@ -113,13 +113,6 @@
           "required": false
         },
         {
-          "name": "priorityId",
-          "title": "Priority ID",
-          "type": "string",
-          "description": "PagerDuty priority ID",
-          "required": false
-        },
-        {
           "name": "incidentKey",
           "title": "Incident key",
           "type": "string",
