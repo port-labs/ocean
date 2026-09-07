@@ -130,5 +130,7 @@ async def _refresh(
                 error=str(e),
             )
 
-        logger.info("Refreshed the user's token", target=target, run_id=claims.run_id)
+        logger.info(
+            "Refreshed the user's token", target=target, node_run_id=claims.node_run_id
+        )
         return refreshed
