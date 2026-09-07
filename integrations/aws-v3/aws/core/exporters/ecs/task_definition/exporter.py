@@ -33,7 +33,11 @@ class EcsTaskDefinitionExporter(IResourceExporter[list[str]]):
                     taskDefinition=options.task_definition_arn,
                 )
             except ClientError as error:
-                if error.response.get("Error", {}).get("Code") == "ClientException":
+                if (
+                    error.response.get("Error", {}).get("Code") == "ClientException"
+                    and "unable to describe task definition"
+                    in error.response.get("Error", {}).get("Message", "").lower()
+                ):
                     raise ClientError(
                         {
                             "Error": {

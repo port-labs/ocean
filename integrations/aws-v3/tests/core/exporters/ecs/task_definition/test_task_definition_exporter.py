@@ -122,6 +122,43 @@ class TestEcsTaskDefinitionExporter:
         mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_get_resource_describe_task_definition_unrelated_client_exception(
+        self, exporter: EcsTaskDefinitionExporter
+    ) -> None:
+        options = SingleTaskDefinitionRequest(
+            task_definition_arn="arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:1",
+            region="us-east-1",
+            account_id="123456789012",
+        )
+        original_error = ClientError(
+            {
+                "Error": {
+                    "Code": "ClientException",
+                    "Message": "Some other client error.",
+                }
+            },
+            "DescribeTaskDefinition",
+        )
+
+        with patch(
+            "aws.core.exporters.ecs.task_definition.exporter.AioBaseClientProxy"
+        ) as mock_proxy_class:
+            mock_proxy = AsyncMock()
+            mock_client = AsyncMock()
+            mock_proxy.client = mock_client
+            mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+            mock_client.describe_task_definition.side_effect = original_error
+
+            with patch(
+                "aws.core.exporters.ecs.task_definition.exporter.ResourceInspector"
+            ) as mock_inspector_class:
+                with pytest.raises(ClientError) as exc_info:
+                    await exporter.get_resource(options)
+
+        assert exc_info.value is original_error
+        mock_inspector_class.assert_not_called()
+
+    @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.task_definition.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.ecs.task_definition.exporter.ResourceInspector")
     async def test_get_paginated_resources_success(
