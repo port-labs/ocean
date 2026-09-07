@@ -37,7 +37,4 @@ class GitHubPermissionProbeFlow(ABC):
 
 
 def org_scopes(organizations: list[str]) -> list[dict[str, str]]:
-    is_multi_org = len(organizations) > 1
-    return [
-        {"org": organization} if is_multi_org else {} for organization in organizations
-    ]
+    return [{"org": organization} for organization in organizations]
