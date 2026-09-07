@@ -72,11 +72,15 @@ def mock_resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
-def mock_client() -> Generator[AsyncMock, None, None]:
-    with patch("webhook_processors.issue_webhook_processor.LinearClient") as mock:
-        client = AsyncMock()
-        mock.create_from_ocean_configuration.return_value = client
-        yield client
+def mock_exporter() -> Generator[AsyncMock, None, None]:
+    with (
+        patch("webhook_processors.issue_webhook_processor.LinearClient") as mock_client,
+        patch("webhook_processors.issue_webhook_processor.IssueExporter") as mock,
+    ):
+        mock_client.create_from_ocean_configuration.return_value = MagicMock()
+        exporter = AsyncMock()
+        mock.return_value = exporter
+        yield exporter
 
 
 @pytest.mark.asyncio
@@ -134,7 +138,7 @@ class TestIssueWebhookProcessor:
     )
     async def test_handle_event_success(
         self,
-        mock_client: AsyncMock,
+        mock_exporter: AsyncMock,
         issue_processor: IssueWebhookProcessor,
         valid_issue_payload: Dict[str, Any],
         mock_resource_config: ResourceConfig,
@@ -148,7 +152,7 @@ class TestIssueWebhookProcessor:
             "title": "Test Issue",
             "description": "Test Description",
         }
-        mock_client.get_single_issue.return_value = mock_issue_data
+        mock_exporter.get_resource.return_value = mock_issue_data
 
         # Modify payload
         valid_issue_payload["action"] = action
@@ -163,7 +167,7 @@ class TestIssueWebhookProcessor:
         assert len(result.deleted_raw_results) == expected_results["deleted_count"]
 
         if expected_results["client_called"]:
-            mock_client.get_single_issue.assert_called_once_with("ABC-123")
+            mock_exporter.get_resource.assert_called_once_with("ABC-123")
             assert result.updated_raw_results[0] == mock_issue_data
         else:
-            mock_client.get_single_issue.assert_not_called()
+            mock_exporter.get_resource.assert_not_called()

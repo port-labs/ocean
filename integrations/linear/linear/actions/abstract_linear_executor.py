@@ -1,4 +1,4 @@
-from linear.client.rate_limit import (
+from linear.client.rate_limiter import (
     MIN_REMAINING_COMPLEXITY_FOR_EXECUTE,
     MIN_REMAINING_REQUESTS_FOR_EXECUTE,
 )

@@ -1,6 +1,6 @@
 from typing import Any, Dict, Generator
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.handlers.port_app_config.models import (
@@ -68,11 +68,17 @@ def mock_resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
-def mock_client() -> Generator[AsyncMock, None, None]:
-    with patch("webhook_processors.document_webhook_processor.LinearClient") as mock:
-        client = AsyncMock()
-        mock.create_from_ocean_configuration.return_value = client
-        yield client
+def mock_exporter() -> Generator[AsyncMock, None, None]:
+    with (
+        patch(
+            "webhook_processors.document_webhook_processor.LinearClient"
+        ) as mock_client,
+        patch("webhook_processors.document_webhook_processor.DocumentExporter") as mock,
+    ):
+        mock_client.create_from_ocean_configuration.return_value = MagicMock()
+        exporter = AsyncMock()
+        mock.return_value = exporter
+        yield exporter
 
 
 @pytest.mark.asyncio
@@ -143,7 +149,7 @@ class TestDocumentWebhookProcessor:
     )
     async def test_handle_event_success(
         self,
-        mock_client: AsyncMock,
+        mock_exporter: AsyncMock,
         document_processor: DocumentWebhookProcessor,
         valid_document_payload: Dict[str, Any],
         mock_resource_config: ResourceConfig,
@@ -155,7 +161,7 @@ class TestDocumentWebhookProcessor:
             "title": "payment-service-prd",
             "content": "Here goes the actual content",
         }
-        mock_client.get_single_document.return_value = mock_document_data
+        mock_exporter.get_resource.return_value = mock_document_data
 
         valid_document_payload["action"] = action
 
@@ -167,9 +173,9 @@ class TestDocumentWebhookProcessor:
         assert len(result.deleted_raw_results) == expected_results["deleted_count"]
 
         if expected_results["client_called"]:
-            mock_client.get_single_document.assert_called_once_with(
+            mock_exporter.get_resource.assert_called_once_with(
                 "50e3e770-03ef-4c12-9f5a-e3122a768bc4"
             )
             assert result.updated_raw_results[0] == mock_document_data
         else:
-            mock_client.get_single_document.assert_not_called()
+            mock_exporter.get_resource.assert_not_called()
