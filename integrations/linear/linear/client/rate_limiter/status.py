@@ -9,13 +9,6 @@ class LinearRateLimitStatus:
     requests_reset_at_ms: int | None
     complexity_reset_at_ms: int | None
 
-    def is_close_to_limit(self) -> bool:
-        if self.requests_remaining is not None and self.requests_remaining < 20:
-            return True
-        if self.complexity_remaining is not None and self.complexity_remaining < 5_000:
-            return True
-        return False
-
     def seconds_until_reset(self) -> float:
         now_ms = int(time.time() * 1000)
         reset_times = [

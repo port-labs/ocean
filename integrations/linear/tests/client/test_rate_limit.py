@@ -31,15 +31,41 @@ def test_parse_rate_limit_headers() -> None:
     assert status.complexity_reset_at_ms == 3000
 
 
-def test_is_close_to_limit_when_requests_are_low() -> None:
-    status = LinearRateLimitStatus(
-        requests_remaining=5,
-        complexity_remaining=50_000,
-        requests_reset_at_ms=None,
-        complexity_reset_at_ms=None,
+@pytest.mark.asyncio
+async def test_is_close_to_limit_when_requests_are_low() -> None:
+    class StubExecutor(AbstractLinearExecutor):
+        ACTION_NAME = "create_issue"
+
+        async def execute(self, run: IntegrationRun) -> None:
+            return None
+
+    executor = StubExecutor.__new__(StubExecutor)
+    executor.client = type(
+        "ClientStub",
+        (),
+        {
+            "get_rate_limit_status": lambda self: LinearRateLimitStatus(
+                requests_remaining=5,
+                complexity_remaining=50_000,
+                requests_reset_at_ms=None,
+                complexity_reset_at_ms=None,
+            )
+        },
+    )()
+
+    run = WorkflowNodeRun(
+        id="run-1",
+        status=WorkflowNodeRunStatus.IN_PROGRESS,
+        config=WorkflowIntegrationActionConfig(
+            type="INTEGRATION_ACTION",
+            installationId="test-installation-id",
+            integrationProvider="linear",
+            integrationInvocationType="create_issue",
+            integrationActionExecutionProperties={},
+        ),
     )
 
-    assert status.is_close_to_limit()
+    assert await executor.is_close_to_rate_limit(run) is True
 
 
 def test_seconds_until_reset_uses_earliest_future_reset() -> None:
