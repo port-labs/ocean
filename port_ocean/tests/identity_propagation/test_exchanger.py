@@ -25,9 +25,7 @@ from port_ocean.exceptions.identity_propagation import (
     VaultError,
 )
 
-CLAIMS = IdentityClaims(
-    sub="jane@acme.com", org_id="org_1", run_id="run_1", node_run_id="node_run_1"
-)
+CLAIMS = IdentityClaims(sub="jane@acme.com", org_id="org_1", node_run_id="node_run_1")
 EXPIRED_AT = int(time.time()) - 3600
 VALID_UNTIL = int(time.time()) + 3600
 
