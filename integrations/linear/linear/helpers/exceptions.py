@@ -21,9 +21,7 @@ class LinearActionError(ActionExecutionError):
         return cls(cls._response_detail(response))
 
     @classmethod
-    def from_graphql_errors(
-        cls, errors: list[dict[str, Any]]
-    ) -> "LinearActionError":
+    def from_graphql_errors(cls, errors: list[dict[str, Any]]) -> "LinearActionError":
         messages = [
             error.get("message", json.dumps(error)) for error in errors if error
         ]

@@ -63,9 +63,7 @@ class TestDocumentExporter:
         with patch.object(
             exporter, "_paginate_graphql_objects", side_effect=mock_paginate
         ):
-            results = [
-                batch async for batch in exporter.get_paginated_resources()
-            ]
+            results = [batch async for batch in exporter.get_paginated_resources()]
 
         assert len(results) == 2
         assert results[0] == first_page

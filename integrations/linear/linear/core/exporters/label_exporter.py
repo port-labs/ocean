@@ -23,9 +23,7 @@ class GetLabelOptions(GetOptions["LabelResourceConfig"]):
         return cls(resource_id=resource_id)
 
 
-class LabelExporter(
-    PaginatedExporter, SingleResourceExporter[GetLabelOptions]
-):
+class LabelExporter(PaginatedExporter, SingleResourceExporter[GetLabelOptions]):
     async def get_paginated_resources(
         self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

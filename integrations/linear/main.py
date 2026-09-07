@@ -1,5 +1,4 @@
 from loguru import logger
-from port_ocean.context.event import event
 
 from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
