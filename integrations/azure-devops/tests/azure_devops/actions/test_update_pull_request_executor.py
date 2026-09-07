@@ -241,6 +241,41 @@ def test_has_update_fields_ignores_blank_optional_strings() -> None:
     assert _has_update_fields(inputs, None, None) is False
 
 
+def test_has_update_fields_ignores_blank_strings_without_normalization() -> None:
+    inputs = UpdatePullRequestInputs(
+        project="proj-guid",
+        repositoryId="repo-guid",
+        pullRequestId="42",
+        title="",
+        description="",
+        status="",
+        mergeStrategy="",
+        mergeCommitMessage="",
+        bypassReason="",
+        autoCompleteSetById="",
+    )
+
+    assert _has_update_fields(inputs, None, None) is False
+
+
+def test_build_update_pull_request_body_ignores_blank_strings_without_normalization() -> None:
+    inputs = UpdatePullRequestInputs(
+        project="proj-guid",
+        repositoryId="repo-guid",
+        pullRequestId="42",
+        title="Updated title",
+        description="",
+        targetBranch="",
+        mergeCommitMessage="",
+        bypassReason="",
+        autoCompleteSetById="",
+    )
+
+    body = _build_update_pull_request_body(inputs, None, None)
+
+    assert body == {"title": "Updated title"}
+
+
 @pytest.mark.parametrize(
     "properties",
     [

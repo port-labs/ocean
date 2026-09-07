@@ -99,9 +99,8 @@ def _normalize_optional_string_inputs(
     updates = {
         field: _blank_to_none(getattr(inputs, field))
         for field in OPTIONAL_STRING_FIELDS
-        if getattr(inputs, field) == ""
     }
-    if not updates:
+    if all(getattr(inputs, field) == updates[field] for field in OPTIONAL_STRING_FIELDS):
         return inputs
     return inputs.model_copy(update=updates)
 
@@ -148,22 +147,26 @@ def _build_update_pull_request_body(
     last_merge_source_commit: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {}
-    if inputs.title is not None:
-        body["title"] = inputs.title
-    if inputs.description is not None:
-        body["description"] = inputs.description
+    title = _blank_to_none(inputs.title)
+    if title is not None:
+        body["title"] = title
+    description = _blank_to_none(inputs.description)
+    if description is not None:
+        body["description"] = description
     if status is not None:
         body["status"] = status
-    if inputs.targetBranch is not None:
+    target_branch = _blank_to_none(inputs.targetBranch)
+    if target_branch is not None:
         body["targetRefName"] = (
-            inputs.targetBranch
-            if inputs.targetBranch.startswith("refs/")
-            else f"refs/heads/{inputs.targetBranch}"
+            target_branch
+            if target_branch.startswith("refs/")
+            else f"refs/heads/{target_branch}"
         )
     if last_merge_source_commit:
         body["lastMergeSourceCommit"] = last_merge_source_commit
-    if inputs.autoCompleteSetById is not None:
-        body["autoCompleteSetBy"] = {"id": inputs.autoCompleteSetById}
+    auto_complete_set_by_id = _blank_to_none(inputs.autoCompleteSetById)
+    if auto_complete_set_by_id is not None:
+        body["autoCompleteSetBy"] = {"id": auto_complete_set_by_id}
 
     merge_options: dict[str, Any] = {}
     if inputs.disableRenames is not None:
@@ -180,12 +183,14 @@ def _build_update_pull_request_body(
         completion_options["mergeStrategy"] = merge_strategy
     if inputs.deleteSourceBranch is not None:
         completion_options["deleteSourceBranch"] = inputs.deleteSourceBranch
-    if inputs.mergeCommitMessage is not None:
-        completion_options["mergeCommitMessage"] = inputs.mergeCommitMessage
+    merge_commit_message = _blank_to_none(inputs.mergeCommitMessage)
+    if merge_commit_message is not None:
+        completion_options["mergeCommitMessage"] = merge_commit_message
     if inputs.bypassPolicy is not None:
         completion_options["bypassPolicy"] = inputs.bypassPolicy
-    if inputs.bypassReason is not None:
-        completion_options["bypassReason"] = inputs.bypassReason
+    bypass_reason = _blank_to_none(inputs.bypassReason)
+    if bypass_reason is not None:
+        completion_options["bypassReason"] = bypass_reason
     if inputs.transitionWorkItems is not None:
         completion_options["transitionWorkItems"] = inputs.transitionWorkItems
     policy_config_ids = _parse_policy_config_ids(inputs.autoCompleteIgnoreConfigIds)
@@ -204,21 +209,21 @@ def _has_update_fields(
     return any(
         value is not None
         for value in (
-            inputs.title,
-            inputs.description,
+            _blank_to_none(inputs.title),
+            _blank_to_none(inputs.description),
             status,
-            inputs.targetBranch,
+            _blank_to_none(inputs.targetBranch),
             merge_strategy,
             inputs.deleteSourceBranch,
-            inputs.mergeCommitMessage,
+            _blank_to_none(inputs.mergeCommitMessage),
             inputs.bypassPolicy,
-            inputs.bypassReason,
+            _blank_to_none(inputs.bypassReason),
             inputs.transitionWorkItems,
             _parse_policy_config_ids(inputs.autoCompleteIgnoreConfigIds),
             inputs.disableRenames,
             inputs.conflictAuthorshipCommits,
             inputs.detectRenameFalsePositives,
-            inputs.autoCompleteSetById,
+            _blank_to_none(inputs.autoCompleteSetById),
         )
     )
 
