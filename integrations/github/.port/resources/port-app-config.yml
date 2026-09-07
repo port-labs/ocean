@@ -50,30 +50,61 @@ resources:
     selector:
       query: 'true'
       states:
-        - "open"
+        - open
+      api: graphql
+      enrichWithFirstCommit: true
+      excludeGraphqlFields:
+        - additions
+        - deletions
+        - changedFiles
     port:
       entity:
         mappings:
-          identifier: ".head.repo.name + (.id|tostring)"
-          title: ".title"
-          blueprint: '"githubPullRequest"'
+          identifier: .head.repo.name + (.id|tostring)
+          blueprint: '"githubPR"'
+          title: .title
           properties:
-            creator: (.user.login | gsub("\\["; "-") | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; ""))
-            assignees: '[.assignees[].login | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; "")]'
+            creator: (.author.login | gsub("\\["; "-") | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; ""))
+            assignees: >-
+              [(.assignees.nodes // .assignees // []) | .[] | select(. != null) | (.login | gsub("\\["; "-") |
+              gsub("\\](?=[^$])"; "-") | gsub("\\]$"; ""))]
             reviewers: '[.requested_reviewers[].login | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; "")]'
-            status: ".state"
-            closedAt: ".closed_at"
-            updatedAt: ".updated_at"
-            mergedAt: ".merged_at"
-            createdAt: ".created_at"
-            prNumber: ".id"
-            link: ".html_url"
+            status: .state
+            closedAt: .closedAt
+            updatedAt: .updatedAt
+            mergedAt: .mergedAt
+            createdAt: .createdAt
+            prNumber: .number
+            link: .url
             leadTimeHours: >-
-                (.created_at as $createdAt | .merged_at as $mergedAt |
-                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
-                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
-                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
-                if $mergedTimestamp == null then null else
-                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
+              (.createdAt as $createdAt | .mergedAt as $mergedAt | if $createdAt == null or $mergedAt == null then null
+              else ((($mergedAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) -
+                ($createdAt | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)) / 3600 * 100 | floor) / 100
+              end)
+            isDraft: .isDraft
+            reviewDecision: .reviewDecision
+            firstCommitAt: .firstCommit.committedDate
+            firstReviewAt: (.reviews.nodes | map(select(.createdAt != null)) | sort_by(.createdAt) | first.createdAt) // null
+            approvedAt: >-
+              (.reviews.nodes | map(select(.state == "APPROVED" and .createdAt != null)) | sort_by(.createdAt) |
+              last.createdAt) // null
+            readyForReviewAt: (if .isDraft == true then null else .createdAt end)
+            codingTimeHours: >-
+              (.firstCommit.committedDate as $first | (if .isDraft == true then null else .createdAt end) as $ready | if
+              $first == null or $ready == null then null else ((($ready | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) -
+                ($first | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)) / 3600 * 100 | floor) / 100
+              end)
+            timeToFirstReview: >-
+              (.createdAt as $created | (.reviews.nodes | map(select(.createdAt != null)) | sort_by(.createdAt) |
+              first.createdAt) as $firstReview | if $created == null or $firstReview == null then null else
+              ((($firstReview | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) -
+                ($created | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)) / 3600 * 100 | floor) / 100
+              end)
+            timeFromApprovalToMerge: >-
+              ((.reviews.nodes | map(select(.state == "APPROVED" and .createdAt != null)) | sort_by(.createdAt) |
+              last.createdAt) as $approved | .mergedAt as $merged | if $approved == null or $merged == null then null
+              else ((($merged | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) -
+                ($approved | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)) / 3600 * 100 | floor) / 100
+              end)
           relations:
             repository: .__repository
