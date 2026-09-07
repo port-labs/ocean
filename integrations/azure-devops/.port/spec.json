@@ -214,6 +214,41 @@
           "description": "Queue-time variables to pass to the pipeline run. Each value is sent as { \"value\": <value> }."
         }
       ]
+    },
+    {
+      "name": "close_pull_request",
+      "icon": "AzureDevops",
+      "description": "Close an Azure DevOps pull request by abandoning it",
+      "inputs": [
+        {
+          "name": "organization",
+          "title": "Organization",
+          "type": "string",
+          "description": "The Azure DevOps organization name. Must match the organization configured on the integration.",
+          "required": true
+        },
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "The name or ID of the Azure DevOps project that contains the repository",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the Git repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to close. It can be found in the pull request URL, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [
