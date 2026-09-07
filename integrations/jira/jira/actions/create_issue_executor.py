@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 from pydantic import Field
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
@@ -76,16 +76,10 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             )
 
         message = f"Created issue {issue_key}"
+        issue_link = ""
         if not self.client.is_oauth_enabled():
             issue_link = f"{self.client.jira_url.rstrip('/')}/browse/{issue_key}"
             message = f"{message}: {issue_link}"
-
-        output: dict[str, str] = {"issueKey": issue_key}
-        issue_id = created_issue.get("id")
-        if issue_id:
-            output["issueId"] = str(issue_id)
-        if issue_link:
-            output["issueUrl"] = issue_link
 
         await ocean.port_client.post_run_log(
             run,
@@ -98,7 +92,15 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             project=action_input.project,
             issue_type=action_input.issue_type,
         )
-        run.output = output
+
+        if isinstance(IntegrationRun, WorkflowNodeRun):
+            output: dict[str, str | None] = {"issueKey": issue_key}
+            issue_id = created_issue.get("id")
+            if issue_id:
+                output["issueId"] = str(issue_id)
+            if issue_link:
+                output["issueUrl"] = issue_link
+            run.output = output
         await ocean.port_client.report_run_completed(
             run,
             success=True,

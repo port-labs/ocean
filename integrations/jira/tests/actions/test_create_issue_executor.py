@@ -10,7 +10,6 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from jira.actions.create_issue_executor import CreateIssueExecutor
 from jira.actions.create_issue_executor import CreateIssueExecutor, CreateIssueInput
 from jira.actions.exceptions import CreateIssueError, MissingExecutionPropertyError
 
