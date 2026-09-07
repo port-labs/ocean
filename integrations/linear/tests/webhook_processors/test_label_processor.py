@@ -157,7 +157,10 @@ class TestLabelWebhookProcessor:
         assert len(result.deleted_raw_results) == expected_results["deleted_count"]
 
         if expected_results["client_called"]:
-            mock_exporter.get_resource.assert_called_once_with("label-123")
+            mock_exporter.get_resource.assert_called_once()
+            assert (
+                mock_exporter.get_resource.call_args.args[0].resource_id == "label-123"
+            )
             assert result.updated_raw_results[0] == mock_label_data
         else:
             mock_exporter.get_resource.assert_not_called()

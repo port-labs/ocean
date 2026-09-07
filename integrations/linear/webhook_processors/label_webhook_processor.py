@@ -1,3 +1,5 @@
+from typing import cast
+
 from webhook_processors.linear_abstract_webhook_processor import (
     _LinearAbstractWebhookProcessor,
 )
@@ -9,6 +11,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from linear.client import LinearClient
 from linear.core.exporters import LabelExporter
+from linear.core.exporters.label_exporter import GetLabelOptions
+from integration import LabelResourceConfig
 from linear.utils import ObjectKind
 from loguru import logger
 
@@ -51,7 +55,10 @@ class LabelWebhookProcessor(_LinearAbstractWebhookProcessor):
             )
 
         client = LinearClient.create_from_ocean_configuration()
-        data_to_update = await LabelExporter(client).get_resource(label_id)
+        options = GetLabelOptions.from_resource_config(
+            cast(LabelResourceConfig, resource_config), resource_id=label_id
+        )
+        data_to_update = await LabelExporter(client).get_resource(options)
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]

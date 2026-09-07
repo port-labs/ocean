@@ -1,4 +1,8 @@
+from typing import cast
+
 from loguru import logger
+from port_ocean.context.event import event
+
 from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
 from linear.core.exporters import (
@@ -7,7 +11,17 @@ from linear.core.exporters import (
     LabelExporter,
     TeamExporter,
 )
+from linear.core.exporters.document_exporter import ListDocumentOptions
+from linear.core.exporters.issue_exporter import ListIssueOptions
+from linear.core.exporters.label_exporter import ListLabelOptions
+from linear.core.exporters.team_exporter import ListTeamOptions
 from linear.webhook.webhook_client import LinearWebhookClient
+from integration import (
+    DocumentResourceConfig,
+    IssueResourceConfig,
+    LabelResourceConfig,
+    TeamResourceConfig,
+)
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from linear.utils import ObjectKind
@@ -29,36 +43,48 @@ async def setup_application() -> None:
 
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListTeamOptions.from_resource_config(
+        cast(TeamResourceConfig, event.resource_config)
+    )
     client = LinearClient.create_from_ocean_configuration()
 
-    async for teams in TeamExporter(client).get_paginated_resources():
+    async for teams in TeamExporter(client).get_paginated_resources(options):
         logger.info(f"Received team batch with {len(teams)} teams")
         yield teams
 
 
 @ocean.on_resync(ObjectKind.LABEL)
 async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListLabelOptions.from_resource_config(
+        cast(LabelResourceConfig, event.resource_config)
+    )
     client = LinearClient.create_from_ocean_configuration()
 
-    async for labels in LabelExporter(client).get_paginated_resources():
+    async for labels in LabelExporter(client).get_paginated_resources(options):
         logger.info(f"Received label batch with {len(labels)} labels")
         yield labels
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListIssueOptions.from_resource_config(
+        cast(IssueResourceConfig, event.resource_config)
+    )
     client = LinearClient.create_from_ocean_configuration()
 
-    async for issues in IssueExporter(client).get_paginated_resources():
+    async for issues in IssueExporter(client).get_paginated_resources(options):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
 
 @ocean.on_resync(ObjectKind.DOCUMENT)
 async def on_resync_documents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListDocumentOptions.from_resource_config(
+        cast(DocumentResourceConfig, event.resource_config)
+    )
     client = LinearClient.create_from_ocean_configuration()
 
-    async for documents in DocumentExporter(client).get_paginated_resources():
+    async for documents in DocumentExporter(client).get_paginated_resources(options):
         logger.info(f"Received document batch with {len(documents)} documents")
         yield documents
 

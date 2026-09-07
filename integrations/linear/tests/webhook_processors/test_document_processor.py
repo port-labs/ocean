@@ -173,8 +173,10 @@ class TestDocumentWebhookProcessor:
         assert len(result.deleted_raw_results) == expected_results["deleted_count"]
 
         if expected_results["client_called"]:
-            mock_exporter.get_resource.assert_called_once_with(
-                "50e3e770-03ef-4c12-9f5a-e3122a768bc4"
+            mock_exporter.get_resource.assert_called_once()
+            assert (
+                mock_exporter.get_resource.call_args.args[0].resource_id
+                == "50e3e770-03ef-4c12-9f5a-e3122a768bc4"
             )
             assert result.updated_raw_results[0] == mock_document_data
         else:
