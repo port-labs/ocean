@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -5,7 +7,6 @@ from port_ocean.core.models import IntegrationRun
 
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import CreateIssueError, MissingExecutionPropertyError
-from jira.actions.utils import build_create_issue_payload, get_issue_browse_url
 
 
 class CreateIssueExecutor(AbstractJiraExecutor):
@@ -33,17 +34,29 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             should_raise=False,
         )
 
-        payload = build_create_issue_payload(
-            project=project,
-            issue_type=issue_type,
-            summary=summary,
-            description=description,
-            priority=priority,
-            assignee_account_id=assignee_account_id,
-        )
+        fields: dict[str, Any] = {
+            "project": {"key": project},
+            "issuetype": {"name": issue_type},
+            "summary": summary,
+        }
+        if description:
+            fields["description"] = {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": description}],
+                    }
+                ],
+            }
+        if priority:
+            fields["priority"] = {"name": priority}
+        if assignee_account_id:
+            fields["assignee"] = {"id": assignee_account_id}
 
         try:
-            created_issue = await self.client.create_issue(payload)
+            created_issue = await self.client.create_issue({"fields": fields})
         except httpx.HTTPStatusError as error:
             raise CreateIssueError.from_response(
                 error.response,
@@ -56,13 +69,9 @@ class CreateIssueExecutor(AbstractJiraExecutor):
                 "Failed to create issue: Jira returned an empty or incomplete response"
             )
 
-        issue_link = get_issue_browse_url(
-            self.client.jira_url,
-            issue_key,
-            oauth_enabled=self.client.is_oauth_enabled(),
-        )
         message = f"Created issue {issue_key}"
-        if issue_link:
+        if not self.client.is_oauth_enabled():
+            issue_link = f"{self.client.jira_url.rstrip('/')}/browse/{issue_key}"
             message = f"{message}: {issue_link}"
 
         await ocean.port_client.post_run_log(
