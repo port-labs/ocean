@@ -1,0 +1,68 @@
+import httpx
+from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.core.models import IntegrationRun
+
+from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
+from github.actions.exceptions import ClosePullRequestError
+from github.clients.http.rest_client import GithubRestClient
+from github.helpers.exceptions import InvalidActionParametersException
+
+
+class ClosePullRequestExecutor(AbstractPullRequestExecutor):
+    ACTION_NAME = "close_pull_request"
+
+    async def execute(self, run: IntegrationRun) -> None:
+        org = run.execution_properties.get("org")
+        repo = run.execution_properties.get("repo")
+        pr_number = run.execution_properties.get("prNumber")
+
+        if not (org and repo and pr_number):
+            raise InvalidActionParametersException(
+                "org, repo, and prNumber are required"
+            )
+
+        rest_client = (await self._get_execution_clients(run))[0]
+        if not isinstance(rest_client, GithubRestClient):
+            raise InvalidActionParametersException("GitHub REST client is required")
+
+        await ocean.port_client.post_run_log(
+            run,
+            f"Closing pull request #{pr_number} in {org}/{repo}",
+            should_raise=False,
+        )
+
+        try:
+            pr = await rest_client.send_api_request(
+                f"{rest_client.base_url}/repos/{org}/{repo}/pulls/{pr_number}",
+                method="PATCH",
+                json_data={"state": "closed"},
+                ignore_default_errors=False,
+            )
+        except httpx.HTTPStatusError as e:
+            raise ClosePullRequestError.from_response(
+                e.response, f"Could not close pull request #{pr_number} in {org}/{repo}"
+            )
+
+        if not pr or "number" not in pr:
+            logger.warning(
+                f"Received empty or incomplete response from GitHub for pull request close in {org}/{repo}",
+                org=org,
+                repo=repo,
+                pr_number=pr_number,
+            )
+            raise ClosePullRequestError(
+                "Failed to close pull request: upstream returned an empty or incomplete response"
+            )
+
+        logger.info(
+            f"Closed pull request #{pr['number']} in {org}/{repo}",
+            pr_number=pr["number"],
+            html_url=pr["html_url"],
+        )
+
+        await ocean.port_client.report_run_completed(
+            run,
+            success=True,
+            message=f"Pull request #{pr['number']} closed: {pr['html_url']}",
+        )
