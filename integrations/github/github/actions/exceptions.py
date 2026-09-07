@@ -33,3 +33,11 @@ class MergePullRequestError(ActionExecutionError):
         cls, response: httpx.Response, prefix: str
     ) -> "MergePullRequestError":
         return cls(f"{prefix}: {extract_error_message(response)}")
+
+
+class ReviewPullRequestError(ActionExecutionError):
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "ReviewPullRequestError":
+        return cls(f"{prefix}: {extract_error_message(response)}")

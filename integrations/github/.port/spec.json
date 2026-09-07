@@ -512,6 +512,47 @@
           "description": "Extra detail for the merge commit (used with squash or merge methods)"
         }
       ]
+    },
+    {
+      "name": "review_pull_request",
+      "icon": "Github",
+      "description": "Submit a review on a pull request",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "string",
+          "description": "The number of the pull request to review",
+          "required": true
+        },
+        {
+          "name": "event",
+          "title": "Review event",
+          "type": "string",
+          "description": "The review action: APPROVE, REQUEST_CHANGES, or COMMENT",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Review body",
+          "type": "string",
+          "description": "The review comment text (required for REQUEST_CHANGES)"
+        }
+      ]
     }
   ],
   "installationDocs": {

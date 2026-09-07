@@ -5,6 +5,7 @@ from github.actions.dispatch_workflow_executor import (
     DispatchWorkflowExecutor,
 )
 from github.actions.merge_pull_request_executor import MergePullRequestExecutor
+from github.actions.review_pull_request_executor import ReviewPullRequestExecutor
 from github.actions.update_pull_request_executor import UpdatePullRequestExecutor
 from github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor import (
     BulkDeleteExternalCustomPropertyValuesExecutor,
@@ -27,3 +28,4 @@ def register_actions_executors() -> None:
     ocean.register_action_executor(UpdatePullRequestExecutor())
     ocean.register_action_executor(ClosePullRequestExecutor())
     ocean.register_action_executor(MergePullRequestExecutor())
+    ocean.register_action_executor(ReviewPullRequestExecutor())
