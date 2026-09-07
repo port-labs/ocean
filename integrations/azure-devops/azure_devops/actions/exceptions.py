@@ -25,13 +25,13 @@ class TriggerPipelineError(Exception):
         return _azure_devops_response_detail(response)
 
 
-class ClosePullRequestError(Exception):
-    """Raised when the Azure DevOps API returns an error while closing a pull request."""
+class MergePullRequestError(Exception):
+    """Raised when the Azure DevOps API returns an error while merging a pull request."""
 
     @classmethod
     def from_response(
         cls, response: httpx.Response, prefix: str
-    ) -> "ClosePullRequestError":
+    ) -> "MergePullRequestError":
         return cls(f"{prefix}: {cls._response_detail(response)}")
 
     @staticmethod

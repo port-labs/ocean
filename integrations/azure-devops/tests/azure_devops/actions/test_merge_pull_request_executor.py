@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from azure_devops.actions.close_pull_request_executor import ClosePullRequestExecutor
 from azure_devops.actions.exceptions import (
-    ClosePullRequestError,
     InvalidActionParametersError,
+    MergePullRequestError,
 )
+from azure_devops.actions.merge_pull_request_executor import MergePullRequestExecutor
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
@@ -20,11 +20,11 @@ def _make_run(props: dict[str, Any]) -> ActionRun:
     return ActionRun(
         id="run-1",
         status=RunStatus.IN_PROGRESS,
-        action=ActionRun.Action(identifier="close_pull_request"),
+        action=ActionRun.Action(identifier="merge_pull_request"),
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
             installationId="inst-1",
-            integrationActionType="close_pull_request",
+            integrationActionType="merge_pull_request",
             integrationActionExecutionProperties=props,
         ),
     )
@@ -35,13 +35,13 @@ def client() -> MagicMock:
     mock = MagicMock()
     mock._organization_base_url = "https://dev.azure.com/my-org"
     mock.get_single_project = AsyncMock()
-    mock.close_pull_request = AsyncMock()
+    mock.merge_pull_request = AsyncMock()
     return mock
 
 
 @pytest.fixture
-def executor(client: MagicMock) -> ClosePullRequestExecutor:
-    instance = ClosePullRequestExecutor()
+def executor(client: MagicMock) -> MergePullRequestExecutor:
+    instance = MergePullRequestExecutor()
     instance._client = client
     return instance
 
@@ -66,7 +66,7 @@ def _valid_props(**overrides: Any) -> dict[str, Any]:
 
 @pytest.mark.asyncio
 async def test_execute_missing_pull_request_id_raises(
-    executor: ClosePullRequestExecutor,
+    executor: MergePullRequestExecutor,
 ) -> None:
     with pytest.raises(InvalidActionParametersError):
         await executor.execute(_make_run(_valid_props(pullRequestId="")))
@@ -74,7 +74,7 @@ async def test_execute_missing_pull_request_id_raises(
 
 @pytest.mark.asyncio
 async def test_execute_organization_mismatch_raises(
-    executor: ClosePullRequestExecutor,
+    executor: MergePullRequestExecutor,
 ) -> None:
     with pytest.raises(InvalidActionParametersError) as exc_info:
         await executor.execute(_make_run(_valid_props(organization="other-org")))
@@ -83,15 +83,15 @@ async def test_execute_organization_mismatch_raises(
 
 
 @pytest.mark.asyncio
-async def test_execute_closes_pull_request_and_completes_run(
-    executor: ClosePullRequestExecutor,
+async def test_execute_merges_pull_request_and_completes_run(
+    executor: MergePullRequestExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client.get_single_project.return_value = {"id": "proj-guid"}
-    client.close_pull_request.return_value = {
+    client.merge_pull_request.return_value = {
         "pullRequestId": 42,
-        "status": "abandoned",
+        "status": "completed",
         "_links": {
             "web": {
                 "href": "https://dev.azure.com/my-org/My%20Project/_git/repo/pullrequest/42"
@@ -100,47 +100,47 @@ async def test_execute_closes_pull_request_and_completes_run(
     }
     mock_ocean = _make_mock_ocean()
     monkeypatch.setattr(
-        "azure_devops.actions.close_pull_request_executor.ocean", mock_ocean
+        "azure_devops.actions.merge_pull_request_executor.ocean", mock_ocean
     )
 
     run = _make_run(_valid_props())
     await executor.execute(run)
 
     client.get_single_project.assert_awaited_once_with("My Project")
-    client.close_pull_request.assert_awaited_once_with("proj-guid", "repo-guid", "42")
+    client.merge_pull_request.assert_awaited_once_with("proj-guid", "repo-guid", "42")
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
         run,
         success=True,
-        message="Pull request #42 closed: https://dev.azure.com/my-org/My%20Project/_git/repo/pullrequest/42",
+        message="Pull request #42 merged: https://dev.azure.com/my-org/My%20Project/_git/repo/pullrequest/42",
     )
 
 
 @pytest.mark.asyncio
 async def test_execute_project_not_found_raises(
-    executor: ClosePullRequestExecutor,
+    executor: MergePullRequestExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client.get_single_project.return_value = None
     monkeypatch.setattr(
-        "azure_devops.actions.close_pull_request_executor.ocean", _make_mock_ocean()
+        "azure_devops.actions.merge_pull_request_executor.ocean", _make_mock_ocean()
     )
 
     with pytest.raises(InvalidActionParametersError) as exc_info:
         await executor.execute(_make_run(_valid_props(project="missing")))
 
     assert "was not found" in str(exc_info.value)
-    client.close_pull_request.assert_not_awaited()
+    client.merge_pull_request.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_execute_wraps_http_error_as_close_pull_request_error(
-    executor: ClosePullRequestExecutor,
+async def test_execute_wraps_http_error_as_merge_pull_request_error(
+    executor: MergePullRequestExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client.get_single_project.return_value = {"id": "proj-guid"}
-    client.close_pull_request.side_effect = httpx.HTTPStatusError(
+    client.merge_pull_request.side_effect = httpx.HTTPStatusError(
         "boom",
         request=httpx.Request("PATCH", "https://dev.azure.com"),
         response=httpx.Response(
@@ -148,10 +148,10 @@ async def test_execute_wraps_http_error_as_close_pull_request_error(
         ),
     )
     monkeypatch.setattr(
-        "azure_devops.actions.close_pull_request_executor.ocean", _make_mock_ocean()
+        "azure_devops.actions.merge_pull_request_executor.ocean", _make_mock_ocean()
     )
 
-    with pytest.raises(ClosePullRequestError) as exc_info:
+    with pytest.raises(MergePullRequestError) as exc_info:
         await executor.execute(_make_run(_valid_props()))
 
     assert "pull request not found" in str(exc_info.value)
@@ -159,17 +159,17 @@ async def test_execute_wraps_http_error_as_close_pull_request_error(
 
 @pytest.mark.asyncio
 async def test_execute_malformed_response_raises(
-    executor: ClosePullRequestExecutor,
+    executor: MergePullRequestExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client.get_single_project.return_value = {"id": "proj-guid"}
-    client.close_pull_request.return_value = {}
+    client.merge_pull_request.return_value = {}
     monkeypatch.setattr(
-        "azure_devops.actions.close_pull_request_executor.ocean", _make_mock_ocean()
+        "azure_devops.actions.merge_pull_request_executor.ocean", _make_mock_ocean()
     )
 
-    with pytest.raises(ClosePullRequestError) as exc_info:
+    with pytest.raises(MergePullRequestError) as exc_info:
         await executor.execute(_make_run(_valid_props()))
 
     assert "incomplete response" in str(exc_info.value)
@@ -177,14 +177,14 @@ async def test_execute_malformed_response_raises(
 
 @pytest.mark.asyncio
 async def test_partition_key_returns_none_when_inputs_missing(
-    executor: ClosePullRequestExecutor,
+    executor: MergePullRequestExecutor,
 ) -> None:
     assert await executor._get_partition_key(_make_run({})) is None
 
 
 @pytest.mark.asyncio
 async def test_partition_key(
-    executor: ClosePullRequestExecutor,
+    executor: MergePullRequestExecutor,
 ) -> None:
     assert (
         await executor._get_partition_key(_make_run(_valid_props()))

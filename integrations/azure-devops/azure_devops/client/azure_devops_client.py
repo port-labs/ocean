@@ -1942,18 +1942,18 @@ class AzureDevopsClient(HTTPBaseClient):
             return {}
         return response.json()
 
-    async def close_pull_request(
+    async def merge_pull_request(
         self,
         project: str,
         repository_id: str,
         pull_request_id: str,
     ) -> dict[str, Any]:
-        """Abandon a pull request without merging it."""
+        """Merge a pull request."""
         return await self.update_pull_request(
             project,
             repository_id,
             pull_request_id,
-            {"status": "abandoned"},
+            {"status": "completed"},
         )
 
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:

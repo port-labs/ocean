@@ -216,9 +216,9 @@
       ]
     },
     {
-      "name": "close_pull_request",
+      "name": "merge_pull_request",
       "icon": "AzureDevops",
-      "description": "Close an Azure DevOps pull request by abandoning it",
+      "description": "Merge an Azure DevOps pull request",
       "inputs": [
         {
           "name": "organization",
@@ -245,7 +245,7 @@
           "name": "pullRequestId",
           "title": "Pull request ID",
           "type": "string",
-          "description": "The numeric ID of the pull request to close. It can be found in the pull request URL, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "description": "The numeric ID of the pull request to merge. It can be found in the pull request URL, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
           "required": true
         }
       ]
