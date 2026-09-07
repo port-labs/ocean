@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Fix workflow node run status labels to use the object shape Port expects
