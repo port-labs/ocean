@@ -1,4 +1,5 @@
 from loguru import logger
+from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -69,3 +70,5 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", LabelWebhookProcessor)
 ocean.add_webhook_processor("/webhook", DocumentWebhookProcessor)
+
+register_actions_executors()

@@ -5,6 +5,8 @@ from httpx import HTTPStatusError
 
 from loguru import logger
 import jinja2
+from linear.client.graphql import GraphqlClient
+from linear.client.rate_limit import LinearRateLimitStatus
 from linear.queries import QUERIES
 
 from port_ocean.context.ocean import ocean
@@ -36,6 +38,10 @@ class LinearClient:
         self.api_auth_header = {"Authorization": self.linear_api_key}
         self.client = http_async_client
         self.client.headers.update(self.api_auth_header)
+        self.graphql = GraphqlClient(self.client, self.linear_url)
+
+    def get_rate_limit_status(self) -> LinearRateLimitStatus | None:
+        return self.graphql.get_rate_limit_status()
 
     @classmethod
     def create_from_ocean_configuration(cls) -> "LinearClient":
@@ -128,8 +134,6 @@ class LinearClient:
             team_response_list = await self._get_paginated_objects(
                 LinearObject.TEAMS, PAGE_SIZE, end_cursor
             )
-            # Response format is: { data: { teams: { edges: [ { cursor: "...", node: {...} } ] } } }
-            # yielding array of nodes as top-level objects for mapping consistency
             yield [
                 edge["node"] for edge in team_response_list["data"]["teams"]["edges"]
             ]
@@ -149,8 +153,6 @@ class LinearClient:
             label_response_list = await self._get_paginated_objects(
                 LinearObject.LABELS, PAGE_SIZE, end_cursor
             )
-            # Response format is: { data: { issueLabels: { edges: [ { cursor: "...", node: {...} } ] } } }
-            # yielding array of nodes as top-level objects for mapping consistency
             yield [
                 edge["node"]
                 for edge in label_response_list["data"]["issueLabels"]["edges"]
@@ -172,8 +174,6 @@ class LinearClient:
             issue_response_list = await self._get_paginated_objects(
                 LinearObject.ISSUES, PAGE_SIZE, end_cursor
             )
-            # Response format is: { data: { issues: { edges: [ { cursor: "...", node: {...} } ] } } }
-            # yielding array of nodes as top-level objects for mapping consistency
             yield [
                 edge["node"] for edge in issue_response_list["data"]["issues"]["edges"]
             ]
@@ -192,8 +192,6 @@ class LinearClient:
         logger.debug(f"Query: {query}")
         issue_response = await self.client.post(self.linear_url, json={"query": query})
         issue_response.raise_for_status()
-        # Response format is: { data: { issue: {...} } }
-        # Returning just the issue object for mapping consistency
         issue_json = issue_response.json()
         return issue_json["data"]["issue"]
 
@@ -244,7 +242,5 @@ class LinearClient:
         logger.debug(f"Query: {query}")
         label_response = await self.client.post(self.linear_url, json={"query": query})
         label_response.raise_for_status()
-        # Response format is: { data: { issueLabel: {...} } }
-        # Returning just the label object for mapping consistency
         label_json = label_response.json()
         return label_json["data"]["issueLabel"]
