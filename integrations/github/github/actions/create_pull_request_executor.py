@@ -10,8 +10,6 @@ from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
-CREATING_STATUS_LABEL = "Creating PR"
-CREATED_STATUS_LABEL = "PR created"
 
 
 class CreatePullRequestExecutor(AbstractGithubExecutor):

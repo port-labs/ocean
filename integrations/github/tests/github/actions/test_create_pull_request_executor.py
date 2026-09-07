@@ -6,8 +6,6 @@ import pytest
 
 from github.actions.create_pull_request_executor import (
     CreatePullRequestExecutor,
-    CREATING_STATUS_LABEL,
-    CREATED_STATUS_LABEL,
 )
 from github.actions.exceptions import CreatePullRequestError
 from github.clients.http.rest_client import GithubRestClient
@@ -115,11 +113,6 @@ class TestCreatePullRequestExecutor:
             run,
             success=True,
             message="Pull request #42 created: https://github.com/port-labs/ocean/pull/42",
-            status_label=CREATED_STATUS_LABEL,
-        )
-        assert (
-            mock_port_client.post_run_log.call_args.kwargs["status_label"]
-            == CREATING_STATUS_LABEL
         )
 
     @pytest.mark.asyncio
