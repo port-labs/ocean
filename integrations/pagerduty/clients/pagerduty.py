@@ -301,6 +301,43 @@ class PagerDutyClient(OAuthClient):
             logger.error(f"Error fetching analytics for services {service_ids}: {e}")
             raise
 
+    async def create_incident(
+        self,
+        *,
+        service_id: str,
+        title: str,
+        from_email: str,
+        details: str | None = None,
+        urgency: str | None = None,
+        incident_key: str | None = None,
+        escalation_policy_id: str | None = None,
+    ) -> dict[str, Any]:
+        incident: dict[str, Any] = {
+            "type": "incident",
+            "title": title,
+            "service": {"id": service_id, "type": "service_reference"},
+        }
+
+        if details:
+            incident["body"] = {"type": "incident_body", "details": details}
+        if urgency:
+            incident["urgency"] = urgency
+        if incident_key:
+            incident["incident_key"] = incident_key
+        if escalation_policy_id:
+            incident["escalation_policy"] = {
+                "id": escalation_policy_id,
+                "type": "escalation_policy_reference",
+            }
+
+        response = await self.send_api_request(
+            endpoint="incidents",
+            method="POST",
+            json_data={"incident": incident},
+            headers={"From": from_email},
+        )
+        return response["incident"]
+
     async def send_api_request(
         self,
         endpoint: str,
@@ -308,6 +345,7 @@ class PagerDutyClient(OAuthClient):
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
         extensions: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> dict[str, Any]:
         logger.debug(
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
@@ -323,6 +361,7 @@ class PagerDutyClient(OAuthClient):
                     params=query_params,
                     json=json_data,
                     extensions=extensions,
+                    headers=headers,
                 )
                 response.raise_for_status()
                 return response.json()
