@@ -110,13 +110,14 @@ def _normalize_choice(
     value: str | None, allowed: Sequence[str], field_name: str
 ) -> Optional[str]:
     """Match a user-supplied value against the API's casing, or reject it."""
-    if _blank_to_none(value) is None:
+    normalized = _blank_to_none(value)
+    if normalized is None:
         return None
     for candidate in allowed:
-        if value.lower() == candidate.lower():
+        if normalized.lower() == candidate.lower():
             return candidate
     raise InvalidActionParametersError(
-        f"Invalid {field_name} '{value}'. Allowed values are: {', '.join(allowed)}"
+        f"Invalid {field_name} '{normalized}'. Allowed values are: {', '.join(allowed)}"
     )
 
 
