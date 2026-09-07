@@ -229,9 +229,9 @@
         },
         {
           "name": "project",
-          "title": "Project",
+          "title": "Project ID",
           "type": "string",
-          "description": "The name or ID of the Azure DevOps project that contains the repository",
+          "description": "The ID of the Azure DevOps project that contains the repository",
           "required": true
         },
         {

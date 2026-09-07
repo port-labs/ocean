@@ -4,7 +4,11 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from azure_devops.actions.close_pull_request_executor import ClosePullRequestExecutor
+from azure_devops.actions.close_pull_request_executor import (
+    ClosePullRequestExecutor,
+    ClosePullRequestInputs,
+    _parse_close_pull_request_inputs,
+)
 from azure_devops.actions.exceptions import (
     ClosePullRequestError,
     InvalidActionParametersError,
@@ -34,7 +38,6 @@ def _make_run(props: dict[str, Any]) -> ActionRun:
 def client() -> MagicMock:
     mock = MagicMock()
     mock._organization_base_url = "https://dev.azure.com/my-org"
-    mock.get_single_project = AsyncMock()
     mock.close_pull_request = AsyncMock()
     return mock
 
@@ -56,12 +59,67 @@ def _make_mock_ocean() -> MagicMock:
 def _valid_props(**overrides: Any) -> dict[str, Any]:
     props = {
         "organization": "my-org",
-        "project": "My Project",
+        "project": "proj-guid",
         "repositoryId": "repo-guid",
         "pullRequestId": "42",
     }
     props.update(overrides)
     return props
+
+
+def test_parse_close_pull_request_inputs_accepts_valid_strings() -> None:
+    inputs = _parse_close_pull_request_inputs(
+        {
+            "organization": "my-org",
+            "project": "proj-guid",
+            "repositoryId": "repo-guid",
+            "pullRequestId": "42",
+        }
+    )
+
+    assert inputs == ClosePullRequestInputs(
+        organization="my-org",
+        project="proj-guid",
+        repositoryId="repo-guid",
+        pullRequestId="42",
+    )
+
+
+@pytest.mark.parametrize(
+    "properties",
+    [
+        {},
+        {"organization": "my-org"},
+        {
+            "organization": "my-org",
+            "project": "proj-guid",
+            "repositoryId": "repo-guid",
+        },
+        {
+            "organization": "",
+            "project": "proj-guid",
+            "repositoryId": "repo-guid",
+            "pullRequestId": "42",
+        },
+    ],
+)
+def test_parse_close_pull_request_inputs_rejects_missing_or_empty_values(
+    properties: dict[str, str],
+) -> None:
+    with pytest.raises(ValueError):
+        _parse_close_pull_request_inputs(properties)
+
+
+def test_parse_close_pull_request_inputs_rejects_non_string_values() -> None:
+    with pytest.raises(ValueError):
+        _parse_close_pull_request_inputs(
+            {
+                "organization": "my-org",
+                "project": "proj-guid",
+                "repositoryId": "repo-guid",
+                "pullRequestId": 42,
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -70,6 +128,14 @@ async def test_execute_missing_pull_request_id_raises(
 ) -> None:
     with pytest.raises(InvalidActionParametersError):
         await executor.execute(_make_run(_valid_props(pullRequestId="")))
+
+
+@pytest.mark.asyncio
+async def test_execute_rejects_non_string_pull_request_id(
+    executor: ClosePullRequestExecutor,
+) -> None:
+    with pytest.raises(InvalidActionParametersError):
+        await executor.execute(_make_run(_valid_props(pullRequestId=42)))
 
 
 @pytest.mark.asyncio
@@ -88,7 +154,6 @@ async def test_execute_closes_pull_request_and_completes_run(
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client.get_single_project.return_value = {"id": "proj-guid"}
     client.close_pull_request.return_value = {
         "pullRequestId": 42,
         "status": "abandoned",
@@ -106,7 +171,6 @@ async def test_execute_closes_pull_request_and_completes_run(
     run = _make_run(_valid_props())
     await executor.execute(run)
 
-    client.get_single_project.assert_awaited_once_with("My Project")
     client.close_pull_request.assert_awaited_once_with("proj-guid", "repo-guid", "42")
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
         run,
@@ -116,30 +180,11 @@ async def test_execute_closes_pull_request_and_completes_run(
 
 
 @pytest.mark.asyncio
-async def test_execute_project_not_found_raises(
-    executor: ClosePullRequestExecutor,
-    client: MagicMock,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    client.get_single_project.return_value = None
-    monkeypatch.setattr(
-        "azure_devops.actions.close_pull_request_executor.ocean", _make_mock_ocean()
-    )
-
-    with pytest.raises(InvalidActionParametersError) as exc_info:
-        await executor.execute(_make_run(_valid_props(project="missing")))
-
-    assert "was not found" in str(exc_info.value)
-    client.close_pull_request.assert_not_awaited()
-
-
-@pytest.mark.asyncio
 async def test_execute_wraps_http_error_as_close_pull_request_error(
     executor: ClosePullRequestExecutor,
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client.get_single_project.return_value = {"id": "proj-guid"}
     client.close_pull_request.side_effect = httpx.HTTPStatusError(
         "boom",
         request=httpx.Request("PATCH", "https://dev.azure.com"),
@@ -163,7 +208,6 @@ async def test_execute_malformed_response_raises(
     client: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client.get_single_project.return_value = {"id": "proj-guid"}
     client.close_pull_request.return_value = {}
     monkeypatch.setattr(
         "azure_devops.actions.close_pull_request_executor.ocean", _make_mock_ocean()
@@ -188,5 +232,5 @@ async def test_partition_key(
 ) -> None:
     assert (
         await executor._get_partition_key(_make_run(_valid_props()))
-        == "my-org/My Project/repo-guid/42"
+        == "my-org/proj-guid/repo-guid/42"
     )
