@@ -10,8 +10,6 @@ from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
-UPDATING_STATUS_LABEL = "Updating PR"
-UPDATED_STATUS_LABEL = "PR updated"
 
 
 class UpdatePullRequestExecutor(AbstractGithubExecutor):
@@ -61,7 +59,6 @@ class UpdatePullRequestExecutor(AbstractGithubExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Updating pull request #{pr_number} in {org}/{repo}",
-            status_label=UPDATING_STATUS_LABEL,
             should_raise=False,
         )
 
@@ -98,5 +95,4 @@ class UpdatePullRequestExecutor(AbstractGithubExecutor):
             run,
             success=True,
             message=f"Pull request #{pr['number']} updated: {pr['html_url']}",
-            status_label=UPDATED_STATUS_LABEL,
         )
