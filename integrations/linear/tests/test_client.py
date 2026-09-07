@@ -5,6 +5,10 @@ import pytest
 
 from linear.client import LinearClient
 from linear.core.exporters import DocumentExporter
+from linear.core.exporters.document_exporter import (
+    GetDocumentOptions,
+    ListDocumentOptions,
+)
 from linear.webhook.webhook_client import LinearWebhookClient
 
 
@@ -50,6 +54,7 @@ class TestLinearWebhookClient:
 class TestDocumentExporter:
     async def test_get_paginated_resources(self, linear_client: LinearClient) -> None:
         exporter = DocumentExporter(linear_client)
+        options = ListDocumentOptions()
         first_page = [
             {"id": "doc-1", "title": "project-readme"},
             {"id": "doc-2", "title": "payment-service-prd"},
@@ -62,11 +67,12 @@ class TestDocumentExporter:
             yield first_page
             yield second_page
 
-        with patch(
-            "linear.core.exporters.document_exporter.paginate_graphql_objects",
-            side_effect=mock_paginate,
+        with patch.object(
+            exporter, "_paginate_graphql_objects", side_effect=mock_paginate
         ):
-            results = [batch async for batch in exporter.get_paginated_resources()]
+            results = [
+                batch async for batch in exporter.get_paginated_resources(options)
+            ]
 
         assert len(results) == 2
         assert results[0] == first_page
@@ -74,6 +80,7 @@ class TestDocumentExporter:
 
     async def test_get_resource(self, linear_client: LinearClient) -> None:
         exporter = DocumentExporter(linear_client)
+        options = GetDocumentOptions(resource_id="50e3e770-03ef-4c12-9f5a-e3122a768bc4")
         document = {
             "id": "50e3e770-03ef-4c12-9f5a-e3122a768bc4",
             "title": "payment-service-prd",
@@ -85,7 +92,7 @@ class TestDocumentExporter:
             "linear.core.exporters.document_exporter.execute_query_template",
             mock_execute_template,
         ):
-            result = await exporter.get_resource("50e3e770-03ef-4c12-9f5a-e3122a768bc4")
+            result = await exporter.get_resource(options)
 
         assert result == document
         mock_execute_template.assert_awaited_once()
