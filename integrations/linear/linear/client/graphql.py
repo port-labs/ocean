@@ -3,7 +3,7 @@ from typing import Any
 import httpx
 from httpx import HTTPStatusError
 
-from linear.client.rate_limit import LinearRateLimitStatus, parse_rate_limit_headers
+from linear.client.rate_limiter import LinearRateLimitStatus, parse_rate_limit_headers
 from linear.helpers.exceptions import LinearActionError
 
 

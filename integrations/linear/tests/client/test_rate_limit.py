@@ -3,7 +3,7 @@ import time
 import pytest
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
-from linear.client.rate_limit import (
+from linear.client.rate_limiter import (
     LinearRateLimitStatus,
     parse_rate_limit_headers,
 )
