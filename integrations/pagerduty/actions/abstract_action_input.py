@@ -17,9 +17,7 @@ class AbstractPagerDutyActionInput(BaseModel):
         return value
 
     @classmethod
-    def from_execution_properties(
-        cls, execution_properties: dict[str, Any]
-    ) -> Self:
+    def from_execution_properties(cls, execution_properties: dict[str, Any]) -> Self:
         try:
             return cls.model_validate(execution_properties)
         except ValidationError as error:

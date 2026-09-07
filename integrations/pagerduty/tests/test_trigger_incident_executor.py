@@ -10,7 +10,10 @@ from port_ocean.core.models import (
 )
 
 from actions.exceptions import MissingExecutionPropertyError, TriggerIncidentError
-from actions.trigger_incident_executor import TriggerIncidentExecutor, TriggerIncidentInput
+from actions.trigger_incident_executor import (
+    TriggerIncidentExecutor,
+    TriggerIncidentInput,
+)
 
 INCIDENT_RESPONSE = {
     "id": "Q1QGYB805SG874",
@@ -209,9 +212,7 @@ class TestTriggerIncidentInput:
         assert inputs.service == "P00BUSE"
 
     def test_rejects_empty_required_string(self) -> None:
-        with pytest.raises(
-            MissingExecutionPropertyError, match="must not be empty"
-        ):
+        with pytest.raises(MissingExecutionPropertyError, match="must not be empty"):
             TriggerIncidentInput.from_execution_properties(
                 {
                     "service": "P00BUSE",
