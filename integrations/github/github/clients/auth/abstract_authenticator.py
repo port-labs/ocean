@@ -20,7 +20,6 @@ GITHUB_RETRY_MAX_BACKOFF = 1800
 class GitHubToken(BaseModel):
     token: str
     expires_at: Optional[str] = None
-    permissions: dict[str, str] | None = None
     _time_buffer: timedelta = PrivateAttr(default_factory=lambda: timedelta(minutes=5))
 
     @property
@@ -30,6 +29,10 @@ class GitHubToken(BaseModel):
 
         expires_at_dt = parse(self.expires_at)
         return datetime.now(timezone.utc) >= (expires_at_dt - self._time_buffer)
+
+
+class GitHubAppToken(GitHubToken):
+    permissions: dict[str, str] | None = None
 
 
 class GitHubHeaders(BaseModel):

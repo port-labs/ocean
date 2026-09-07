@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
     GitHubToken,
+    GitHubAppToken,
 )
 from github.helpers.exceptions import AuthenticationException
 from github.probe.app.permissions import AppKindPermissionVerdict
@@ -129,7 +130,7 @@ async def test_app_probe_resolves_checks_for_single_installation(
     context.available_kinds = ["repository"]
 
     authenticator = _app_authenticator("my-org")
-    authenticator.get_token.return_value = GitHubToken(
+    authenticator.get_token.return_value = GitHubAppToken(
         token="installation-token",
         permissions={"metadata": "read"},
     )
@@ -155,12 +156,12 @@ async def test_app_probe_resolves_checks_per_installation_for_multi_org(
     context.available_kinds = ["repository", "user"]
 
     org_a = _app_authenticator("org-a")
-    org_a.get_token.return_value = GitHubToken(
+    org_a.get_token.return_value = GitHubAppToken(
         token="token-a",
         permissions={"metadata": "read", "members": "read"},
     )
     org_b = _app_authenticator("org-b")
-    org_b.get_token.return_value = GitHubToken(
+    org_b.get_token.return_value = GitHubAppToken(
         token="token-b",
         permissions={"metadata": "none"},
     )

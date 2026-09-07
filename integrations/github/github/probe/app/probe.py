@@ -1,3 +1,6 @@
+from typing import cast
+
+from github.clients.auth.abstract_authenticator import GitHubAppToken
 from github.helpers.exceptions import AuthenticationException
 from github.probe.app.permissions import AppKindPermissionVerdict
 from port_ocean.core.probe import KindPermissionVerdict, ProbeCheckStatus
@@ -29,13 +32,15 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
                 continue
 
             try:
-                token = await authenticator.get_token()
+                token = cast(GitHubAppToken, await authenticator.get_token())
             except AuthenticationException as error:
                 await self._fail_org_checks(authenticator.organization, str(error))
                 continue
 
             if token.permissions is None:
-                await self._fail_org_checks(authenticator.organization, MISSING_PERMISSIONS_MESSAGE)
+                await self._fail_org_checks(
+                    authenticator.organization, MISSING_PERMISSIONS_MESSAGE
+                )
                 continue
 
             checks = await self.context.add_scopes(
