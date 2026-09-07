@@ -57,5 +57,190 @@
     "liveEvents": {
       "enabled": true
     }
-  }
+  },
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_issue",
+      "icon": "Linear",
+      "description": "Create a new Linear issue in a team",
+      "inputs": [
+        {
+          "name": "teamId",
+          "title": "Team ID",
+          "type": "string",
+          "description": "The UUID of the Linear team. Copy it from Linear using Cmd/Ctrl+K \u2192 Copy model UUID.",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The issue title",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Issue description in Markdown"
+        },
+        {
+          "name": "assigneeId",
+          "title": "Assignee ID",
+          "type": "string",
+          "description": "UUID of the user to assign the issue to"
+        },
+        {
+          "name": "stateId",
+          "title": "State ID",
+          "type": "string",
+          "description": "UUID of the workflow state to assign the issue to"
+        },
+        {
+          "name": "projectId",
+          "title": "Project ID",
+          "type": "string",
+          "description": "UUID of the project to associate the issue with"
+        },
+        {
+          "name": "cycleId",
+          "title": "Cycle ID",
+          "type": "string",
+          "description": "UUID of the cycle to add the issue to"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "Issue priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low)"
+        },
+        {
+          "name": "labelIds",
+          "title": "Label IDs",
+          "type": "array",
+          "description": "UUIDs of labels to attach to the issue"
+        }
+      ]
+    },
+    {
+      "name": "create_sub_issue",
+      "icon": "Linear",
+      "description": "Create a sub-issue under an existing Linear issue",
+      "inputs": [
+        {
+          "name": "parentId",
+          "title": "Parent issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the parent issue (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The sub-issue title",
+          "required": true
+        },
+        {
+          "name": "teamId",
+          "title": "Team ID",
+          "type": "string",
+          "description": "Optional team UUID. When omitted, the parent issue's team is used."
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Issue description in Markdown"
+        },
+        {
+          "name": "assigneeId",
+          "title": "Assignee ID",
+          "type": "string",
+          "description": "UUID of the user to assign the issue to"
+        },
+        {
+          "name": "stateId",
+          "title": "State ID",
+          "type": "string",
+          "description": "UUID of the workflow state to assign the issue to"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "Issue priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low)"
+        }
+      ]
+    },
+    {
+      "name": "update_issue",
+      "icon": "Linear",
+      "description": "Update fields on an existing Linear issue",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to update (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "Updated issue title"
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Updated issue description in Markdown"
+        },
+        {
+          "name": "assigneeId",
+          "title": "Assignee ID",
+          "type": "string",
+          "description": "UUID of the user to assign the issue to"
+        },
+        {
+          "name": "stateId",
+          "title": "State ID",
+          "type": "string",
+          "description": "UUID of the workflow state to move the issue to"
+        },
+        {
+          "name": "projectId",
+          "title": "Project ID",
+          "type": "string",
+          "description": "UUID of the project to associate the issue with"
+        },
+        {
+          "name": "cycleId",
+          "title": "Cycle ID",
+          "type": "string",
+          "description": "UUID of the cycle to add the issue to"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "Issue priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low)"
+        },
+        {
+          "name": "delegateId",
+          "title": "Delegate ID",
+          "type": "string",
+          "description": "UUID of the agent app user to delegate the issue to"
+        },
+        {
+          "name": "labelIds",
+          "title": "Label IDs",
+          "type": "array",
+          "description": "UUIDs of labels to attach to the issue"
+        }
+      ]
+    }
+  ]
 }
