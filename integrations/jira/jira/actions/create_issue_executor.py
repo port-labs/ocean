@@ -93,7 +93,7 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             issue_type=action_input.issue_type,
         )
 
-        if isinstance(IntegrationRun, WorkflowNodeRun):
+        if isinstance(run, WorkflowNodeRun):
             output: dict[str, str | None] = {"issueKey": issue_key}
             issue_id = created_issue.get("id")
             if issue_id:
