@@ -187,7 +187,68 @@
                 "leadTimeHours": {
                     "title": "Lead Time in hours",
                     "type": "number"
-                }
+                },
+                "firstCommitAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "First Commit At",
+                    "dateFormat": "relative"
+                  },
+                  "isDraft": {
+                    "title": "Is Draft",
+                    "type": "boolean",
+                    "description": "Whether the PR is currently in draft state"
+                  },
+                  "reviewDecision": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVED",
+                      "CHANGES_REQUESTED",
+                      "REVIEW_REQUIRED"
+                    ],
+                    "enumColors": {
+                      "APPROVED": "lightGray",
+                      "CHANGES_REQUESTED": "lightGray",
+                      "REVIEW_REQUIRED": "lightGray"
+                    },
+                    "title": "Review Decision",
+                    "icon": "DefaultProperty"
+                  },
+                  "firstReviewAt": {
+                    "title": "First Review At",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp of the earliest review activity (any state) on the PR"
+                  },
+                  "approvedAt": {
+                    "title": "Approved At",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp of the most recent standing APPROVED review (excludes dismissed approvals)"
+                  },
+                  "readyForReviewAt": {
+                    "title": "Ready For Review At",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the PR left draft state. Falls back to createdAt for PRs never drafted. Approximate for PRs converted from draft after creation — see notes."
+                  },
+                  "codingTimeHours": {
+                    "title": "Coding Time (Hours)",
+                    "type": "number",
+                    "description": "Hours from first commit to the PR being ready for review"
+                  },
+                  "timeToFirstReview": {
+                    "type": "number",
+                    "title": "Time to First Review (Hours)",
+                    "description": "Hours from PR creation to first review activity",
+                    "icon": "DefaultProperty"
+                  },
+                  "timeFromApprovalToMerge": {
+                    "type": "number",
+                    "title": "Time from Approval to Merge",
+                    "description": "Hours from the most recent standing approval to merge",
+                    "icon": "DefaultProperty"
+                  }
             },
             "required": []
         },
