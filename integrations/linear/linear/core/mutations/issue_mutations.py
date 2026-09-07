@@ -66,3 +66,17 @@ class IssueMutations(LinearExporter):
                 f"Could not find workflow state '{state_name}' for issue '{issue_id}'"
             )
         return str(states[0]["id"])
+
+    async def archive_issue(self, issue_id: str) -> None:
+        await self.graphql.execute_mutation(
+            queries.ISSUE_ARCHIVE,
+            {"id": issue_id},
+            result_key="issueArchive",
+        )
+
+    async def delete_issue(self, issue_id: str) -> None:
+        await self.graphql.execute_mutation(
+            queries.ISSUE_DELETE,
+            {"id": issue_id},
+            result_key="issueDelete",
+        )
