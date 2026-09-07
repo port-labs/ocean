@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.25.0-beta (2026-09-07)
+
+
+### Features
+
+- Add live events support for ECS Service and ECS Task Definition
+
+
 ## 2.24.5-beta (2026-09-07)
 
 
