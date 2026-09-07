@@ -19,7 +19,7 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
         return AppKindPermissionVerdict
 
     async def _fail_org_checks(self, organization: str, message: str) -> None:
-        checks = await self.context.add_scopes({"org": organization})
+        checks = await self.context.add_scopes(*org_scopes([organization]))
         for check in checks:
             check.status = ProbeCheckStatus.FAILURE
             check.message = message
