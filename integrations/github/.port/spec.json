@@ -330,6 +330,58 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "update_pull_request",
+      "icon": "Github",
+      "description": "Update a pull request",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "string",
+          "description": "The number of the pull request to update",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The new title of the pull request"
+        },
+        {
+          "name": "body",
+          "title": "Body",
+          "type": "string",
+          "description": "The new description of the pull request"
+        },
+        {
+          "name": "state",
+          "title": "State",
+          "type": "string",
+          "description": "The state of the pull request (open or closed)"
+        },
+        {
+          "name": "base",
+          "title": "Base branch",
+          "type": "string",
+          "description": "The name of the branch you want the changes pulled into"
+        }
+      ]
     }
   ],
   "installationDocs": {
