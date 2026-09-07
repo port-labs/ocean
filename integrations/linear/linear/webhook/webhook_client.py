@@ -4,7 +4,6 @@ from loguru import logger
 
 from linear.client import LinearClient
 from linear.client.constants import WEBHOOK_EVENTS, WEBHOOK_NAME
-from linear.client.templating import execute_query_template
 from linear.queries import QUERIES
 from port_ocean.context.ocean import ocean
 
@@ -21,10 +20,8 @@ class LinearWebhookClient:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         logger.debug(f"Webhook check query: {QUERIES['GET_LIVE_EVENTS_WEBHOOKS']}")
         try:
-            webhook_check = await execute_query_template(
-                self._client.graphql,
+            webhook_check = await self._client.graphql.execute_query_template(
                 "GET_LIVE_EVENTS_WEBHOOKS",
-                error_prefix="Could not fetch Linear webhooks",
             )
 
             for webhook in webhook_check["webhooks"]["nodes"]:
@@ -37,10 +34,7 @@ class LinearWebhookClient:
                         resource_types=WEBHOOK_EVENTS,
                     )
                     logger.debug(f"Webhook update query: {query}")
-                    await self._client.graphql.execute(
-                        query,
-                        error_prefix="Could not update Linear webhook",
-                    )
+                    await self._client.graphql.execute(query)
                     logger.info(
                         "Ocean real time reporting webhook already exists and was updated"
                     )
@@ -55,10 +49,7 @@ class LinearWebhookClient:
                 resource_types=WEBHOOK_EVENTS,
             )
             logger.debug(f"Webhook create query: {query}")
-            await self._client.graphql.execute(
-                query,
-                error_prefix="Could not create Linear webhook",
-            )
+            await self._client.graphql.execute(query)
             logger.info("Ocean real time reporting webhook created")
         except HTTPStatusError as http_err:
             logger.error(

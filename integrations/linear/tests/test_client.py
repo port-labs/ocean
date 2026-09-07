@@ -81,9 +81,8 @@ class TestDocumentExporter:
         }
         mock_execute_template = AsyncMock(return_value={"document": document})
 
-        with patch(
-            "linear.core.exporters.document_exporter.execute_query_template",
-            mock_execute_template,
+        with patch.object(
+            linear_client.graphql, "execute_query_template", mock_execute_template
         ):
             result = await exporter.get_resource(options)
 
