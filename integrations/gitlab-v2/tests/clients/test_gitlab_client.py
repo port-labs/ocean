@@ -346,6 +346,29 @@ class TestGitLabClient:
                 "GET", f"projects/{project_id}/merge_requests/{merge_request_id}"
             )
 
+    async def test_update_merge_request(self, client: GitLabClient) -> None:
+        project_path = "my-group/my-project"
+        merge_request_iid = 18
+        payload = {"title": "New title", "assignee_ids": [1, 2]}
+        mock_merge_request = {
+            "iid": merge_request_iid,
+            "web_url": "https://gitlab.example.com/my-group/my-project/-/merge_requests/18",
+        }
+
+        with patch.object(
+            client.rest, "send_api_request", AsyncMock(return_value=mock_merge_request)
+        ) as mock_send_request:
+            result = await client.update_merge_request(
+                project_path, merge_request_iid, payload
+            )
+
+            assert result == mock_merge_request
+            mock_send_request.assert_called_once_with(
+                "PUT",
+                "projects/my-group%2Fmy-project/merge_requests/18",
+                data=payload,
+            )
+
     async def test_get_issue(self, client: GitLabClient) -> None:
         """Test fetching a single issue by ID"""
         # Arrange
