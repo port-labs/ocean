@@ -4,6 +4,10 @@ import httpx
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
+class MissingExecutionPropertyError(Exception):
+    """Raised when a required execution property is absent from the action run."""
+
+
 def _response_detail(response: httpx.Response) -> str:
     try:
         body = response.json()
@@ -17,10 +21,6 @@ def _response_detail(response: httpx.Response) -> str:
 
     text = response.text.strip()
     return text or f"HTTP {response.status_code}"
-
-
-class MissingExecutionPropertyError(ActionExecutionError):
-    """Raised when a required execution property is absent from the action run."""
 
 
 class GitlabTriggerPipelineError(Exception):
