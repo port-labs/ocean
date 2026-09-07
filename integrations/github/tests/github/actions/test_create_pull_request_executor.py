@@ -48,9 +48,7 @@ def patched_ocean() -> Generator[MagicMock, None, None]:
     mock_client = MagicMock()
     mock_client.report_run_completed = AsyncMock()
     mock_client.post_run_log = AsyncMock()
-    with patch(
-        "github.actions.create_pull_request_executor.ocean"
-    ) as mock_ocean:
+    with patch("github.actions.create_pull_request_executor.ocean") as mock_ocean:
         mock_ocean.port_client = mock_client
         yield mock_ocean
 
@@ -218,9 +216,7 @@ class TestCreatePullRequestExecutor:
             await executor.execute(run)
 
     @pytest.mark.asyncio
-    async def test_partition_key(
-        self, executor: CreatePullRequestExecutor
-    ) -> None:
+    async def test_partition_key(self, executor: CreatePullRequestExecutor) -> None:
         run = make_run(
             {
                 "org": "port-labs",
@@ -237,6 +233,4 @@ class TestCreatePullRequestExecutor:
         self, executor: CreatePullRequestExecutor
     ) -> None:
         assert await executor._get_partition_key(make_run({})) is None
-        assert (
-            await executor._get_partition_key(make_run({"org": "x"})) is None
-        )
+        assert await executor._get_partition_key(make_run({"org": "x"})) is None
