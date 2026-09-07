@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added actions processing support for PagerDuty integration
