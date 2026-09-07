@@ -2640,7 +2640,10 @@ async def test_merge_pull_request_includes_last_merge_source_commit() -> None:
     project_id = "proj-guid"
     repository_id = "repo-guid"
     pull_request_id = "42"
-    last_merge_source_commit = {"commitId": "abc123", "url": "https://example.com/commit/abc123"}
+    last_merge_source_commit = {
+        "commitId": "abc123",
+        "url": "https://example.com/commit/abc123",
+    }
     pull_request = {
         "pullRequestId": 42,
         "lastMergeSourceCommit": last_merge_source_commit,
