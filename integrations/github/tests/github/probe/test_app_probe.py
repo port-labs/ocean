@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
-    GitHubToken,
     GitHubAppToken,
 )
 from github.helpers.exceptions import AuthenticationException
@@ -80,19 +79,26 @@ def _app_authenticator(organization: str) -> MagicMock:
     "port_ocean.core.probe.context.ProbeContext.update_progress",
     new_callable=AsyncMock,
 )
-async def test_app_probe_sets_message_when_permissions_are_missing(
+async def test_app_probe_fails_org_checks_when_permissions_are_missing(
     mock_update_progress: AsyncMock,
 ) -> None:
     context = ProbeContext()
+    context.available_kinds = ["repository"]
     authenticator = _app_authenticator("my-org")
-    authenticator.get_token.return_value = GitHubToken(token="installation-token")
+    authenticator.get_token.return_value = GitHubAppToken(
+        token="installation-token",
+        permissions=None,
+    )
 
     probe = GitHubAppPermissionProbe(context, [authenticator])
     await probe.run()
 
-    assert context.message == MISSING_PERMISSIONS_MESSAGE
-    assert context.checks == []
-    mock_update_progress.assert_not_awaited()
+    assert context.message is None
+    assert len(context.checks) == 1
+    assert context.checks[0].scopes == {"org": "my-org"}
+    assert context.checks[0].status is ProbeCheckStatus.FAILURE
+    assert context.checks[0].message == MISSING_PERMISSIONS_MESSAGE
+    mock_update_progress.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -100,10 +106,11 @@ async def test_app_probe_sets_message_when_permissions_are_missing(
     "port_ocean.core.probe.context.ProbeContext.update_progress",
     new_callable=AsyncMock,
 )
-async def test_app_probe_fails_when_token_fetch_raises_authentication_error(
+async def test_app_probe_fails_org_checks_when_token_fetch_raises_authentication_error(
     mock_update_progress: AsyncMock,
 ) -> None:
     context = ProbeContext()
+    context.available_kinds = ["repository"]
     authenticator = _app_authenticator("my-org")
     authenticator.get_token.side_effect = AuthenticationException(
         "installation not found"
@@ -112,10 +119,13 @@ async def test_app_probe_fails_when_token_fetch_raises_authentication_error(
     probe = GitHubAppPermissionProbe(context, [authenticator])
     await probe.run()
 
-    assert context.status is ProbeStatus.FAILED
-    assert context.message == "installation not found"
-    assert context.checks == []
-    mock_update_progress.assert_awaited_once()
+    assert context.status is ProbeStatus.IN_PROGRESS
+    assert context.message is None
+    assert len(context.checks) == 1
+    assert context.checks[0].scopes == {"org": "my-org"}
+    assert context.checks[0].status is ProbeCheckStatus.FAILURE
+    assert context.checks[0].message == "installation not found"
+    mock_update_progress.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -139,7 +149,7 @@ async def test_app_probe_resolves_checks_for_single_installation(
     await probe.run()
 
     assert len(context.checks) == 1
-    assert context.checks[0].scopes == {}
+    assert context.checks[0].scopes == {"org": "my-org"}
     assert context.checks[0].status is ProbeCheckStatus.SUCCESS
     mock_update_progress.assert_awaited()
 

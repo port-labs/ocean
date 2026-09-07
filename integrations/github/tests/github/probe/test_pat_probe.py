@@ -122,5 +122,5 @@ async def test_classic_pat_probe_with_configured_organization_skips_org_listing(
 
     mock_client.get.assert_awaited_once()
     assert mock_client.get.call_args.args[0].endswith("/user")
-    assert all(check.scopes == {} for check in context.checks)
+    assert all(check.scopes == {"org": "my-org"} for check in context.checks)
     mock_update_progress.assert_awaited()
