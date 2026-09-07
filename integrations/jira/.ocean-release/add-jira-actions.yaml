@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added actions support with a create_issue action for creating Jira issues
