@@ -31,7 +31,6 @@ class EcsTaskDefinitionExporter(IResourceExporter[list[str]]):
             try:
                 describe_response = await proxy.client.describe_task_definition(  # type: ignore[attr-defined]
                     taskDefinition=options.task_definition_arn,
-                    include=["TAGS"],
                 )
             except ClientError as error:
                 if error.response.get("Error", {}).get("Code") == "ClientException":

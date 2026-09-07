@@ -68,7 +68,6 @@ class TestEcsTaskDefinitionExporter:
         assert result == mock_task_def_data
         mock_client.describe_task_definition.assert_awaited_once_with(
             taskDefinition="arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:1",
-            include=["TAGS"],
         )
         mock_inspector.inspect.assert_called_once()
 
