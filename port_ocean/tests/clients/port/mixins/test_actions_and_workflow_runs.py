@@ -373,7 +373,9 @@ class TestWorkflowNodeRunStatusLabel:
             ("INFO", "Triggering pipeline")
         ]
         mock_patch.assert_awaited_once_with(
-            run.id, {"statusLabel": "Triggering pipeline"}, should_raise=False
+            run.id,
+            {"statusLabel": {"text": "Triggering pipeline"}},
+            should_raise=False,
         )
 
     async def test_post_run_log_skips_patch_without_status_label(
@@ -411,7 +413,7 @@ class TestWorkflowNodeRunStatusLabel:
                 "externalRunId": EXTERNAL_ID,
                 "output": {"workflowRunUrl": "https://gitlab.example/pipelines/99"},
                 "links": ["https://gitlab.example/pipelines/99"],
-                "statusLabel": "Pipeline running",
+                "statusLabel": {"text": "Pipeline running"},
             },
         )
 
@@ -436,7 +438,7 @@ class TestWorkflowNodeRunStatusLabel:
                 "status": WorkflowNodeRunStatus.COMPLETED,
                 "result": WorkflowNodeRunResult.SUCCESS,
                 "output": {"workflowRunUrl": "https://gitlab.example/pipelines/99"},
-                "statusLabel": "Pipeline succeeded",
+                "statusLabel": {"text": "Pipeline succeeded"},
             },
             should_raise=False,
         )
