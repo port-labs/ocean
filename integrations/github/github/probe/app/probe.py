@@ -1,6 +1,6 @@
 from github.helpers.exceptions import AuthenticationException
 from github.probe.app.permissions import AppKindPermissionVerdict
-from port_ocean.core.probe import KindPermissionVerdict
+from port_ocean.core.probe import KindPermissionVerdict, ProbeCheckStatus
 
 from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
 
@@ -15,29 +15,37 @@ class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):
     def _permission_verdict_class(self) -> type[KindPermissionVerdict]:
         return AppKindPermissionVerdict
 
+    async def _fail_org_checks(self, organization: str, message: str) -> None:
+        checks = await self.context.add_scopes({"org": organization})
+        for check in checks:
+            check.status = ProbeCheckStatus.FAILURE
+            check.message = message
+
+        await self.context.update_progress()
+
     async def run(self) -> None:
-        try:
-            tokens = [
-                await authenticator.get_token() for authenticator in self.authenticators
-            ]
-        except AuthenticationException as error:
-            await self.context.fail(str(error))
-            return
+        for authenticator in self.authenticators:
+            if authenticator.organization is None:
+                continue
 
-        if any(token.permissions is None for token in tokens):
-            self.context.message = MISSING_PERMISSIONS_MESSAGE
-            return
+            try:
+                token = await authenticator.get_token()
+            except AuthenticationException as error:
+                await self._fail_org_checks(authenticator.organization, str(error))
+                continue
 
-        checks = await self.context.add_scopes(
-            *org_scopes(  # type: ignore[arg-type]
-                [
-                    authenticator.organization
-                    for authenticator in self.authenticators
-                    if authenticator.organization is not None
-                ]
+            if token.permissions is None:
+                await self._fail_org_checks(authenticator.organization, MISSING_PERMISSIONS_MESSAGE)
+                continue
+
+            checks = await self.context.add_scopes(
+                *org_scopes(  # type: ignore[arg-type]
+                    [
+                        authenticator.organization
+                        for authenticator in self.authenticators
+                        if authenticator.organization is not None
+                    ]
+                )
             )
-        )
-        kind_count = len(self.context.available_kinds)
-        for index, token in enumerate(tokens):
-            pending = checks[index * kind_count : (index + 1) * kind_count]
-            await self._resolve_checks(pending, token.permissions or {})
+
+            await self._resolve_checks(checks, token.permissions or {})
