@@ -1536,6 +1536,24 @@ class GitLabClient:
             "POST", f"projects/{encoded_id}/pipeline", data=data
         )
 
+    async def create_merge_request(
+        self,
+        project_id: str | int,
+        source_branch: str,
+        target_branch: str,
+        title: str,
+    ) -> dict[str, Any]:
+        """Create a merge request in the given project."""
+        encoded_id = quote(str(project_id), safe="")
+        data = {
+            "source_branch": source_branch,
+            "target_branch": target_branch,
+            "title": title,
+        }
+        return await self.rest.send_api_request(
+            "POST", f"projects/{encoded_id}/merge_requests", data=data
+        )
+
     def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Return the most-recently observed rate-limit info, or None if unknown."""
         return self.rest._rate_limiter.rate_limit_info
