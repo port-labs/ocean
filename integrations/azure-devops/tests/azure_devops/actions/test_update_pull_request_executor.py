@@ -13,8 +13,13 @@ from azure_devops.actions.exceptions import (
     InvalidActionParametersError,
     UpdatePullRequestError,
 )
-from azure_devops.actions.update_pull_request_executor import UpdatePullRequestExecutor
-from azure_devops.client.azure_devops_client import UpdatePullRequestOptions
+from azure_devops.actions.update_pull_request_executor import (
+    UpdatePullRequestExecutor,
+    UpdatePullRequestInputs,
+    _build_update_pull_request_body,
+    _parse_policy_config_ids,
+    _parse_update_pull_request_inputs,
+)
 
 PULL_REQUEST_URL = "https://dev.azure.com/org/proj/_git/repo/pullrequest/42"
 
@@ -44,9 +49,7 @@ def _updated_pull_request(status: str = "active") -> dict[str, Any]:
 @pytest.fixture
 def client() -> MagicMock:
     mock = MagicMock()
-    mock.get_single_project = AsyncMock(return_value={"id": "proj-guid"})
-    mock.get_repository_by_name = AsyncMock(return_value={"id": "repo-guid"})
-    mock.get_pull_request = AsyncMock()
+    mock.get_repository_pull_request = AsyncMock()
     mock.update_pull_request = AsyncMock(return_value=_updated_pull_request())
     return mock
 
@@ -73,15 +76,145 @@ def mock_ocean(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
+def _valid_props(**overrides: Any) -> dict[str, Any]:
+    props = {
+        "project": "proj-guid",
+        "repositoryId": "repo-guid",
+        "pullRequestId": "42",
+        "title": "Updated title",
+    }
+    props.update(overrides)
+    return props
+
+
+def test_parse_update_pull_request_inputs_accepts_valid_strings() -> None:
+    inputs = _parse_update_pull_request_inputs(
+        {
+            "project": "proj-guid",
+            "repositoryId": "repo-guid",
+            "pullRequestId": "42",
+            "title": "Updated title",
+            "description": "Updated description",
+            "status": "active",
+            "targetBranch": "main",
+            "mergeStrategy": "squash",
+            "deleteSourceBranch": True,
+            "mergeCommitMessage": "Merged via Port",
+            "bypassPolicy": True,
+            "bypassReason": "Emergency fix",
+            "transitionWorkItems": True,
+            "autoCompleteIgnoreConfigIds": "12, 34",
+            "disableRenames": True,
+            "conflictAuthorshipCommits": True,
+            "detectRenameFalsePositives": False,
+            "autoCompleteSetById": "user-guid",
+        }
+    )
+
+    assert inputs == UpdatePullRequestInputs(
+        project="proj-guid",
+        repositoryId="repo-guid",
+        pullRequestId="42",
+        title="Updated title",
+        description="Updated description",
+        status="active",
+        targetBranch="main",
+        mergeStrategy="squash",
+        deleteSourceBranch=True,
+        mergeCommitMessage="Merged via Port",
+        bypassPolicy=True,
+        bypassReason="Emergency fix",
+        transitionWorkItems=True,
+        autoCompleteIgnoreConfigIds="12, 34",
+        disableRenames=True,
+        conflictAuthorshipCommits=True,
+        detectRenameFalsePositives=False,
+        autoCompleteSetById="user-guid",
+    )
+
+
+def test_build_update_pull_request_body_maps_all_optional_fields() -> None:
+    inputs = UpdatePullRequestInputs(
+        project="proj-guid",
+        repositoryId="repo-guid",
+        pullRequestId="42",
+        bypassPolicy=True,
+        bypassReason="Approved by release manager",
+        transitionWorkItems=True,
+        autoCompleteIgnoreConfigIds="12,34",
+        disableRenames=True,
+        conflictAuthorshipCommits=True,
+        detectRenameFalsePositives=False,
+        autoCompleteSetById="user-guid",
+    )
+
+    body = _build_update_pull_request_body(inputs, "completed", "squash")
+
+    assert body == {
+        "status": "completed",
+        "autoCompleteSetBy": {"id": "user-guid"},
+        "mergeOptions": {
+            "disableRenames": True,
+            "conflictAuthorshipCommits": True,
+            "detectRenameFalsePositives": False,
+        },
+        "completionOptions": {
+            "mergeStrategy": "squash",
+            "bypassPolicy": True,
+            "bypassReason": "Approved by release manager",
+            "transitionWorkItems": True,
+            "autoCompleteIgnoreConfigIds": [12, 34],
+        },
+    }
+
+
+def test_parse_policy_config_ids_rejects_invalid_values() -> None:
+    with pytest.raises(InvalidActionParametersError):
+        _parse_policy_config_ids("12,abc")
+
+
+@pytest.mark.parametrize(
+    "properties",
+    [
+        {},
+        {"project": "proj-guid"},
+        {"project": "proj-guid", "repositoryId": "repo-guid"},
+        {
+            "project": "",
+            "repositoryId": "repo-guid",
+            "pullRequestId": "42",
+            "title": "Updated title",
+        },
+    ],
+)
+def test_parse_update_pull_request_inputs_rejects_missing_or_empty_values(
+    properties: dict[str, str],
+) -> None:
+    with pytest.raises(ValueError):
+        _parse_update_pull_request_inputs(properties)
+
+
+def test_parse_update_pull_request_inputs_rejects_non_string_values() -> None:
+    with pytest.raises(ValueError):
+        _parse_update_pull_request_inputs(
+            {
+                "project": "proj-guid",
+                "repositoryId": "repo-guid",
+                "pullRequestId": 42,
+                "title": "Updated title",
+            }
+        )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "props",
     [
-        {"repository": "repo", "pullRequestId": "42", "title": "New"},
-        {"project": "proj", "pullRequestId": "42", "title": "New"},
-        {"project": "proj", "repository": "repo", "title": "New"},
+        {"repositoryId": "repo-guid", "pullRequestId": "42", "title": "New"},
+        {"project": "proj-guid", "pullRequestId": "42", "title": "New"},
+        {"project": "proj-guid", "repositoryId": "repo-guid", "title": "New"},
     ],
-    ids=["missing_project", "missing_repository", "missing_pull_request_id"],
+    ids=["missing_project", "missing_repository_id", "missing_pull_request_id"],
 )
 async def test_execute_missing_required_parameters_raises(
     executor: UpdatePullRequestExecutor, props: dict[str, Any]
@@ -91,16 +224,52 @@ async def test_execute_missing_required_parameters_raises(
 
 
 @pytest.mark.asyncio
+async def test_execute_rejects_non_string_pull_request_id(
+    executor: UpdatePullRequestExecutor,
+) -> None:
+    with pytest.raises(InvalidActionParametersError):
+        await executor.execute(_make_run(_valid_props(pullRequestId=42)))
+
+
+@pytest.mark.asyncio
 async def test_execute_without_any_updated_field_raises(
     executor: UpdatePullRequestExecutor, client: MagicMock
 ) -> None:
     with pytest.raises(InvalidActionParametersError) as exc_info:
         await executor.execute(
-            _make_run({"project": "proj", "repository": "repo", "pullRequestId": "42"})
+            _make_run(
+                {
+                    "project": "proj-guid",
+                    "repositoryId": "repo-guid",
+                    "pullRequestId": "42",
+                }
+            )
         )
 
     assert "At least one field to update is required" in str(exc_info.value)
+    assert "autoCompleteSetById" in str(exc_info.value)
     client.update_pull_request.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_execute_accepts_boolean_only_update_field(
+    executor: UpdatePullRequestExecutor,
+    client: MagicMock,
+    mock_ocean: MagicMock,
+) -> None:
+    await executor.execute(
+        _make_run(
+            {
+                "project": "proj-guid",
+                "repositoryId": "repo-guid",
+                "pullRequestId": "42",
+                "transitionWorkItems": True,
+            }
+        )
+    )
+
+    body = client.update_pull_request.await_args.args[3]
+    assert body == {"completionOptions": {"transitionWorkItems": True}}
 
 
 @pytest.mark.asyncio
@@ -108,16 +277,7 @@ async def test_execute_invalid_status_raises(
     executor: UpdatePullRequestExecutor, client: MagicMock
 ) -> None:
     with pytest.raises(InvalidActionParametersError) as exc_info:
-        await executor.execute(
-            _make_run(
-                {
-                    "project": "proj",
-                    "repository": "repo",
-                    "pullRequestId": "42",
-                    "status": "merged",
-                }
-            )
-        )
+        await executor.execute(_make_run(_valid_props(status="merged")))
 
     assert "Invalid status 'merged'" in str(exc_info.value)
     client.update_pull_request.assert_not_awaited()
@@ -130,35 +290,28 @@ async def test_execute_updates_pull_request_and_reports_completion(
     mock_ocean: MagicMock,
 ) -> None:
     run = _make_run(
-        {
-            "project": "My Project",
-            "repository": "repo",
-            "pullRequestId": "42",
-            "title": "Updated title",
-            "description": "Updated description",
-            "targetBranch": "main",
-        }
+        _valid_props(
+            description="Updated description",
+            targetBranch="main",
+        )
     )
     await executor.execute(run)
 
-    client.get_single_project.assert_awaited_once_with("My Project")
-    # The update route is keyed by repository ID, so a supplied name is resolved.
-    client.get_repository_by_name.assert_awaited_once_with("proj-guid", "repo")
     update_call = client.update_pull_request.await_args
     assert update_call is not None
     assert update_call.args[0] == "proj-guid"
     assert update_call.args[1] == "repo-guid"
     assert update_call.args[2] == "42"
-    options = update_call.args[3]
-    assert isinstance(options, UpdatePullRequestOptions)
-    assert options.title == "Updated title"
-    assert options.description == "Updated description"
-    assert options.target_branch == "main"
-    assert options.last_merge_source_commit is None
+    body = update_call.args[3]
+    assert body == {
+        "title": "Updated title",
+        "description": "Updated description",
+        "targetRefName": "refs/heads/main",
+    }
 
     # A status of "completed" is what requires the extra lookup, so a plain
     # metadata update must not pay for it.
-    client.get_pull_request.assert_not_awaited()
+    client.get_repository_pull_request.assert_not_awaited()
 
     completed_call = mock_ocean.port_client.report_run_completed.await_args
     assert completed_call is not None
@@ -173,7 +326,7 @@ async def test_execute_completing_pull_request_sends_last_merge_source_commit(
     client: MagicMock,
     mock_ocean: MagicMock,
 ) -> None:
-    client.get_pull_request.return_value = {
+    client.get_repository_pull_request.return_value = {
         "pullRequestId": 42,
         "lastMergeSourceCommit": {
             "commitId": "abc123",
@@ -184,25 +337,28 @@ async def test_execute_completing_pull_request_sends_last_merge_source_commit(
 
     await executor.execute(
         _make_run(
-            {
-                "project": "proj",
-                "repository": "repo",
-                "pullRequestId": "42",
-                "status": "Completed",
-                "mergeStrategy": "SQUASH",
-                "deleteSourceBranch": True,
-            }
+            _valid_props(
+                title=None,
+                status="Completed",
+                mergeStrategy="SQUASH",
+                deleteSourceBranch=True,
+            )
         )
     )
 
-    client.get_pull_request.assert_awaited_once_with("42")
-    options = client.update_pull_request.await_args.args[3]
-    # Inputs are matched against the API's casing rather than passed through.
-    assert options.status == "completed"
-    assert options.merge_strategy == "squash"
-    assert options.delete_source_branch is True
-    # Narrowed to the commit ID rather than forwarding the whole GitCommitRef.
-    assert options.last_merge_source_commit == {"commitId": "abc123"}
+    client.get_repository_pull_request.assert_awaited_once_with(
+        "proj-guid", "repo-guid", "42"
+    )
+    body = client.update_pull_request.await_args.args[3]
+    assert body["status"] == "completed"
+    assert body["completionOptions"] == {
+        "mergeStrategy": "squash",
+        "deleteSourceBranch": True,
+    }
+    assert body["lastMergeSourceCommit"] == {
+        "commitId": "abc123",
+        "url": "https://dev.azure.com/org/_apis/git/commits/abc123",
+    }
     assert mock_ocean.port_client.report_run_completed.await_count == 1
 
 
@@ -212,69 +368,12 @@ async def test_execute_completing_without_merge_commit_raises(
     client: MagicMock,
     mock_ocean: MagicMock,
 ) -> None:
-    client.get_pull_request.return_value = {"pullRequestId": 42}
+    client.get_repository_pull_request.return_value = {"pullRequestId": 42}
 
     with pytest.raises(UpdatePullRequestError) as exc_info:
-        await executor.execute(
-            _make_run(
-                {
-                    "project": "proj",
-                    "repository": "repo",
-                    "pullRequestId": "42",
-                    "status": "completed",
-                }
-            )
-        )
+        await executor.execute(_make_run(_valid_props(title=None, status="completed")))
 
     assert "cannot be completed" in str(exc_info.value)
-    client.update_pull_request.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_execute_project_not_found_raises(
-    executor: UpdatePullRequestExecutor,
-    client: MagicMock,
-    mock_ocean: MagicMock,
-) -> None:
-    client.get_single_project.return_value = None
-
-    with pytest.raises(InvalidActionParametersError) as exc_info:
-        await executor.execute(
-            _make_run(
-                {
-                    "project": "missing",
-                    "repository": "repo",
-                    "pullRequestId": "42",
-                    "title": "New",
-                }
-            )
-        )
-
-    assert "was not found" in str(exc_info.value)
-    client.update_pull_request.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_execute_repository_not_found_raises(
-    executor: UpdatePullRequestExecutor,
-    client: MagicMock,
-    mock_ocean: MagicMock,
-) -> None:
-    client.get_repository_by_name.return_value = None
-
-    with pytest.raises(InvalidActionParametersError) as exc_info:
-        await executor.execute(
-            _make_run(
-                {
-                    "project": "proj",
-                    "repository": "missing-repo",
-                    "pullRequestId": "42",
-                    "title": "New",
-                }
-            )
-        )
-
-    assert "Repository 'missing-repo' was not found" in str(exc_info.value)
     client.update_pull_request.assert_not_awaited()
 
 
@@ -283,16 +382,7 @@ async def test_execute_description_over_limit_raises(
     executor: UpdatePullRequestExecutor, client: MagicMock
 ) -> None:
     with pytest.raises(InvalidActionParametersError) as exc_info:
-        await executor.execute(
-            _make_run(
-                {
-                    "project": "proj",
-                    "repository": "repo",
-                    "pullRequestId": "42",
-                    "description": "x" * 4001,
-                }
-            )
-        )
+        await executor.execute(_make_run(_valid_props(description="x" * 4001)))
 
     assert "at most 4000 characters" in str(exc_info.value)
     client.update_pull_request.assert_not_awaited()
@@ -313,16 +403,7 @@ async def test_execute_wraps_http_error_as_update_pull_request_error(
     )
 
     with pytest.raises(UpdatePullRequestError) as exc_info:
-        await executor.execute(
-            _make_run(
-                {
-                    "project": "proj",
-                    "repository": "repo",
-                    "pullRequestId": "42",
-                    "status": "abandoned",
-                }
-            )
-        )
+        await executor.execute(_make_run(_valid_props(title=None, status="abandoned")))
 
     assert "pull request is not active" in str(exc_info.value)
     mock_ocean.port_client.report_run_completed.assert_not_awaited()
@@ -337,16 +418,7 @@ async def test_execute_malformed_response_raises(
     client.update_pull_request.return_value = {}
 
     with pytest.raises(UpdatePullRequestError) as exc_info:
-        await executor.execute(
-            _make_run(
-                {
-                    "project": "proj",
-                    "repository": "repo",
-                    "pullRequestId": "42",
-                    "title": "New",
-                }
-            )
-        )
+        await executor.execute(_make_run(_valid_props()))
 
     assert "unexpected response" in str(exc_info.value)
     mock_ocean.port_client.report_run_completed.assert_not_awaited()
@@ -356,8 +428,8 @@ async def test_execute_malformed_response_raises(
 async def test_partition_key_serializes_runs_per_pull_request(
     executor: UpdatePullRequestExecutor,
 ) -> None:
-    run = _make_run({"project": "proj", "repository": "repo", "pullRequestId": "42"})
-    assert await executor._get_partition_key(run) == "proj/repo/42"
+    run = _make_run(_valid_props(title=None))
+    assert await executor._get_partition_key(run) == "proj-guid/repo-guid/42"
 
 
 @pytest.mark.asyncio
