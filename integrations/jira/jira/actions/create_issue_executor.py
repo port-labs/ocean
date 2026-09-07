@@ -61,6 +61,13 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             issue_key,
             oauth_enabled=self.client.is_oauth_enabled(),
         )
+        output: dict[str, str] = {"issueKey": issue_key}
+        issue_id = created_issue.get("id")
+        if issue_id:
+            output["issueId"] = str(issue_id)
+        if issue_link:
+            output["issueUrl"] = issue_link
+
         message = f"Created issue {issue_key}"
         if issue_link:
             message = f"{message}: {issue_link}"
@@ -76,6 +83,7 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             project=project,
             issue_type=issue_type,
         )
+        run.output = output
         await ocean.port_client.report_run_completed(
             run,
             success=True,

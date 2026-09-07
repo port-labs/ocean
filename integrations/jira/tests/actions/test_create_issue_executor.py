@@ -78,6 +78,11 @@ class TestCreateIssueExecutor:
         assert payload["fields"]["summary"] == "New task"
         assert payload["fields"]["priority"] == {"name": "High"}
         assert payload["fields"]["assignee"] == {"id": "abc-123"}
+        assert run.output == {
+            "issueKey": "PORT-42",
+            "issueId": "10001",
+            "issueUrl": "https://example.atlassian.net/browse/PORT-42",
+        }
         mock_port_client.report_run_completed.assert_called_once_with(
             run,
             success=True,
