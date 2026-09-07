@@ -214,6 +214,76 @@
           "description": "Queue-time variables to pass to the pipeline run. Each value is sent as { \"value\": <value> }."
         }
       ]
+    },
+    {
+      "name": "update_pull_request",
+      "icon": "AzureDevops",
+      "description": "Update an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "The name or ID of the Azure DevOps project that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "repository",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name or ID of the repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to update, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "A new title for the pull request. When omitted, the title is left unchanged."
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "A new description for the pull request, up to 4000 characters. When omitted, the description is left unchanged."
+        },
+        {
+          "name": "status",
+          "title": "Status",
+          "type": "string",
+          "description": "The status to set on the pull request. One of \"active\", \"abandoned\" or \"completed\". Use \"completed\" to merge it, \"abandoned\" to close it without merging, and \"active\" to reactivate an abandoned pull request."
+        },
+        {
+          "name": "targetBranch",
+          "title": "Target branch",
+          "type": "string",
+          "description": "A new target branch to retarget the pull request to, for example - \"main\". Requires pull request retargeting to be enabled in Azure DevOps."
+        },
+        {
+          "name": "mergeStrategy",
+          "title": "Merge strategy",
+          "type": "string",
+          "description": "The strategy used to merge the pull request on completion. One of \"noFastForward\", \"squash\", \"rebase\" or \"rebaseMerge\". When omitted, Azure DevOps picks the first strategy allowed by the target branch's policy."
+        },
+        {
+          "name": "deleteSourceBranch",
+          "title": "Delete source branch",
+          "type": "boolean",
+          "description": "Whether to delete the source branch after the pull request is completed"
+        },
+        {
+          "name": "mergeCommitMessage",
+          "title": "Merge commit message",
+          "type": "string",
+          "description": "The commit message to use for the merge commit. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. <a href=\"https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload\" target=\"_blank\">Learn more</a>"
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [

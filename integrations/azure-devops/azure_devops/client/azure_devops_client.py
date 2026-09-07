@@ -231,6 +231,27 @@ class RunPipelineOptions:
     variables: Optional[dict[str, Any]] = None
 
 
+@dataclass
+class UpdatePullRequestOptions:
+    """Fields to update on a pull request.
+
+    Azure DevOps accepts only a fixed set of properties on this endpoint and
+    either rejects or silently ignores anything else, so this mirrors that set.
+    ``last_merge_source_commit`` is a ``GitCommitRef`` and is required when
+    completing a pull request, so the merge runs against the source version the
+    caller last saw.
+    """
+
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    target_branch: Optional[str] = None
+    merge_strategy: Optional[str] = None
+    delete_source_branch: Optional[bool] = None
+    merge_commit_message: Optional[str] = None
+    last_merge_source_commit: Optional[dict[str, Any]] = None
+
+
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
@@ -1899,6 +1920,85 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         pull_request_data = response.json()
         return pull_request_data
+
+    async def update_pull_request(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+        options: UpdatePullRequestOptions,
+    ) -> dict[str, Any]:
+        """Update a pull request and return its updated representation.
+
+        API: PATCH {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update
+        """
+        update_pull_request_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        body: dict[str, Any] = {}
+        if options.title:
+            body["title"] = options.title
+        if options.description is not None:
+            body["description"] = options.description
+        if options.status:
+            body["status"] = options.status
+        if options.target_branch:
+            body["targetRefName"] = (
+                options.target_branch
+                if options.target_branch.startswith("refs/")
+                else f"refs/heads/{options.target_branch}"
+            )
+        if options.last_merge_source_commit:
+            body["lastMergeSourceCommit"] = options.last_merge_source_commit
+
+        completion_options: dict[str, Any] = {}
+        if options.merge_strategy:
+            completion_options["mergeStrategy"] = options.merge_strategy
+        if options.delete_source_branch is not None:
+            completion_options["deleteSourceBranch"] = options.delete_source_branch
+        if options.merge_commit_message:
+            completion_options["mergeCommitMessage"] = options.merge_commit_message
+        if completion_options:
+            body["completionOptions"] = completion_options
+
+        logger.info(
+            f"Sending Update Pull Request request for pull request {pull_request_id} "
+            f"in repository {repository_id}",
+            project_id=project_id,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+            updated_fields=sorted(body.keys()),
+        )
+        response = await self.send_request(
+            "PATCH",
+            update_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to update pull request {pull_request_id} in repository "
+                f"{repository_id}: no response from Azure DevOps",
+                project_id=project_id,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            raise RuntimeError(
+                f"Failed to update pull request {pull_request_id} in repository {repository_id}"
+            )
+        pull_request = response.json()
+        logger.info(
+            f"Update Pull Request request succeeded for pull request {pull_request_id}",
+            project_id=project_id,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+            status=pull_request.get("status"),
+        )
+        return pull_request
 
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
