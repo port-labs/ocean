@@ -72,6 +72,19 @@ class BaseGithubWebhookClient(GithubRestClient):
             config["secret"] = self.webhook_secret
         return config
 
+    async def _patch_webhook(
+        self,
+        webhook_id: str,
+        patch_data: dict[str, Any],
+        target: HookTarget,
+    ) -> None:
+        await self.send_api_request(
+            target.hook_url(webhook_id),
+            method="PATCH",
+            json_data=patch_data,
+        )
+        logger.info(f"Webhook {webhook_id} patched successfully")
+
     async def _create_new_github_webhook(
         self, webhook_url: str, webhook_events: List[str], target: HookTarget
     ) -> None:
@@ -151,12 +164,7 @@ class BaseGithubWebhookClient(GithubRestClient):
                         f"Patching webhook {existing_webhook_id} for "
                         f"{target.target_type} {self._target_name(target)}"
                     )
-                    await self.send_api_request(
-                        target.hook_url(existing_webhook_id),
-                        method="PATCH",
-                        json_data=patch_data,
-                    )
-                    logger.info(f"Webhook {existing_webhook_id} patched successfully")
+                    await self._patch_webhook(existing_webhook_id, patch_data, target)
                 return
 
             logger.info("Webhook already exists with appropriate configuration")

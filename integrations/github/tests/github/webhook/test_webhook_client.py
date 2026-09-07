@@ -127,6 +127,42 @@ class TestGithubWebhookClient:
 
             assert result is None
 
+    async def test_patch_webhook(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = GithubWebhookClient(
+            token="test-token",
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        webhook_id = "hook1"
+        patch_data = {
+            "config": {
+                "url": "https://example.com/integration/webhook",
+                "content_type": "json",
+                "secret": "test-secret",
+            }
+        }
+        target = HookTarget(
+            target_type="organization",
+            hooks_url=f"{client.base_url}/orgs/test-org/hooks",
+            single_hook_url_template=(
+                f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
+            ),
+            log_scope={"organization": "test-org"},
+        )
+
+        with patch.object(client, "send_api_request", AsyncMock()) as mock_send:
+            await client._patch_webhook(webhook_id, patch_data, target)
+
+            mock_send.assert_called_once_with(
+                f"{client.base_url}/orgs/test-org/hooks/{webhook_id}",
+                method="PATCH",
+                json_data=patch_data,
+            )
+
     async def test_upsert_webhook_create_new(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -482,11 +518,7 @@ class TestGithubWebhookClient:
         )
 
         # Mock webhook with old events list (missing pull_request_review)
-        old_events = [
-            event_name
-            for event_name in WEBHOOK_CREATE_EVENTS
-            if event_name != "pull_request_review"
-        ]
+        old_events = [e for e in WEBHOOK_CREATE_EVENTS if e != "pull_request_review"]
         existing_webhook = {
             "id": "hook1",
             "events": old_events,
@@ -527,11 +559,7 @@ class TestGithubWebhookClient:
         )
 
         # Mock webhook with old events and no secret
-        old_events = [
-            event_name
-            for event_name in WEBHOOK_CREATE_EVENTS
-            if event_name != "pull_request_review"
-        ]
+        old_events = [e for e in WEBHOOK_CREATE_EVENTS if e != "pull_request_review"]
         existing_webhook = {
             "id": "hook1",
             "events": old_events,
