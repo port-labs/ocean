@@ -73,11 +73,44 @@ def _parse_update_pull_request_inputs(
         raise ValueError("; ".join(messages)) from error
 
 
+OPTIONAL_STRING_FIELDS = (
+    "title",
+    "description",
+    "status",
+    "targetBranch",
+    "mergeStrategy",
+    "mergeCommitMessage",
+    "bypassReason",
+    "autoCompleteIgnoreConfigIds",
+    "autoCompleteSetById",
+)
+
+
+def _blank_to_none(value: str | None) -> str | None:
+    """Treat blank optional strings as omitted, matching the action spec."""
+    if value is None or value == "":
+        return None
+    return value
+
+
+def _normalize_optional_string_inputs(
+    inputs: UpdatePullRequestInputs,
+) -> UpdatePullRequestInputs:
+    updates = {
+        field: _blank_to_none(getattr(inputs, field))
+        for field in OPTIONAL_STRING_FIELDS
+        if getattr(inputs, field) == ""
+    }
+    if not updates:
+        return inputs
+    return inputs.model_copy(update=updates)
+
+
 def _normalize_choice(
     value: str | None, allowed: Sequence[str], field_name: str
 ) -> Optional[str]:
     """Match a user-supplied value against the API's casing, or reject it."""
-    if value is None or value == "":
+    if _blank_to_none(value) is None:
         return None
     for candidate in allowed:
         if value.lower() == candidate.lower():
@@ -114,13 +147,13 @@ def _build_update_pull_request_body(
     last_merge_source_commit: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {}
-    if inputs.title:
+    if inputs.title is not None:
         body["title"] = inputs.title
     if inputs.description is not None:
         body["description"] = inputs.description
-    if status:
+    if status is not None:
         body["status"] = status
-    if inputs.targetBranch:
+    if inputs.targetBranch is not None:
         body["targetRefName"] = (
             inputs.targetBranch
             if inputs.targetBranch.startswith("refs/")
@@ -128,7 +161,7 @@ def _build_update_pull_request_body(
         )
     if last_merge_source_commit:
         body["lastMergeSourceCommit"] = last_merge_source_commit
-    if inputs.autoCompleteSetById:
+    if inputs.autoCompleteSetById is not None:
         body["autoCompleteSetBy"] = {"id": inputs.autoCompleteSetById}
 
     merge_options: dict[str, Any] = {}
@@ -142,15 +175,15 @@ def _build_update_pull_request_body(
         body["mergeOptions"] = merge_options
 
     completion_options: dict[str, Any] = {}
-    if merge_strategy:
+    if merge_strategy is not None:
         completion_options["mergeStrategy"] = merge_strategy
     if inputs.deleteSourceBranch is not None:
         completion_options["deleteSourceBranch"] = inputs.deleteSourceBranch
-    if inputs.mergeCommitMessage:
+    if inputs.mergeCommitMessage is not None:
         completion_options["mergeCommitMessage"] = inputs.mergeCommitMessage
     if inputs.bypassPolicy is not None:
         completion_options["bypassPolicy"] = inputs.bypassPolicy
-    if inputs.bypassReason:
+    if inputs.bypassReason is not None:
         completion_options["bypassReason"] = inputs.bypassReason
     if inputs.transitionWorkItems is not None:
         completion_options["transitionWorkItems"] = inputs.transitionWorkItems
@@ -168,7 +201,7 @@ def _has_update_fields(
     merge_strategy: str | None,
 ) -> bool:
     return any(
-        value is not None and value != ""
+        value is not None
         for value in (
             inputs.title,
             inputs.description,
@@ -180,7 +213,7 @@ def _has_update_fields(
             inputs.bypassPolicy,
             inputs.bypassReason,
             inputs.transitionWorkItems,
-            inputs.autoCompleteIgnoreConfigIds,
+            _parse_policy_config_ids(inputs.autoCompleteIgnoreConfigIds),
             inputs.disableRenames,
             inputs.conflictAuthorshipCommits,
             inputs.detectRenameFalsePositives,
@@ -210,6 +243,8 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
                 error=str(error),
             )
             raise InvalidActionParametersError(str(error)) from error
+
+        inputs = _normalize_optional_string_inputs(inputs)
 
         if (
             inputs.description is not None

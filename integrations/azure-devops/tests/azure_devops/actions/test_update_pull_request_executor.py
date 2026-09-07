@@ -17,6 +17,8 @@ from azure_devops.actions.update_pull_request_executor import (
     UpdatePullRequestExecutor,
     UpdatePullRequestInputs,
     _build_update_pull_request_body,
+    _has_update_fields,
+    _normalize_optional_string_inputs,
     _parse_policy_config_ids,
     _parse_update_pull_request_inputs,
 )
@@ -173,6 +175,72 @@ def test_parse_policy_config_ids_rejects_invalid_values() -> None:
         _parse_policy_config_ids("12,abc")
 
 
+def test_normalize_optional_string_inputs_treats_blank_strings_as_omitted() -> None:
+    inputs = _normalize_optional_string_inputs(
+        UpdatePullRequestInputs(
+            project="proj-guid",
+            repositoryId="repo-guid",
+            pullRequestId="42",
+            title="",
+            description="",
+            status="",
+            targetBranch="",
+            mergeStrategy="",
+            mergeCommitMessage="",
+            bypassReason="",
+            autoCompleteIgnoreConfigIds="",
+            autoCompleteSetById="",
+        )
+    )
+
+    assert inputs.title is None
+    assert inputs.description is None
+    assert inputs.status is None
+    assert inputs.targetBranch is None
+    assert inputs.mergeStrategy is None
+    assert inputs.mergeCommitMessage is None
+    assert inputs.bypassReason is None
+    assert inputs.autoCompleteIgnoreConfigIds is None
+    assert inputs.autoCompleteSetById is None
+
+
+def test_build_update_pull_request_body_omits_blank_optional_strings() -> None:
+    inputs = _normalize_optional_string_inputs(
+        UpdatePullRequestInputs(
+            project="proj-guid",
+            repositoryId="repo-guid",
+            pullRequestId="42",
+            title="Updated title",
+            description="",
+            targetBranch="",
+            mergeCommitMessage="",
+            bypassReason="",
+            autoCompleteSetById="",
+        )
+    )
+
+    body = _build_update_pull_request_body(inputs, None, None)
+
+    assert body == {"title": "Updated title"}
+
+
+def test_has_update_fields_ignores_blank_optional_strings() -> None:
+    inputs = _normalize_optional_string_inputs(
+        UpdatePullRequestInputs(
+            project="proj-guid",
+            repositoryId="repo-guid",
+            pullRequestId="42",
+            title="",
+            description="",
+            status="",
+            mergeStrategy="",
+            autoCompleteIgnoreConfigIds=" , ",
+        )
+    )
+
+    assert _has_update_fields(inputs, None, None) is False
+
+
 @pytest.mark.parametrize(
     "properties",
     [
@@ -249,6 +317,46 @@ async def test_execute_without_any_updated_field_raises(
     assert "At least one field to update is required" in str(exc_info.value)
     assert "autoCompleteSetById" in str(exc_info.value)
     client.update_pull_request.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_execute_rejects_only_blank_optional_strings(
+    executor: UpdatePullRequestExecutor, client: MagicMock
+) -> None:
+    with pytest.raises(InvalidActionParametersError) as exc_info:
+        await executor.execute(
+            _make_run(
+                {
+                    "project": "proj-guid",
+                    "repositoryId": "repo-guid",
+                    "pullRequestId": "42",
+                    "title": "",
+                    "description": "",
+                    "status": "",
+                    "targetBranch": "",
+                    "mergeStrategy": "",
+                    "mergeCommitMessage": "",
+                    "bypassReason": "",
+                    "autoCompleteIgnoreConfigIds": "",
+                    "autoCompleteSetById": "",
+                }
+            )
+        )
+
+    assert "At least one field to update is required" in str(exc_info.value)
+    client.update_pull_request.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_execute_omits_blank_description_when_updating_other_fields(
+    executor: UpdatePullRequestExecutor,
+    client: MagicMock,
+    mock_ocean: MagicMock,
+) -> None:
+    await executor.execute(_make_run(_valid_props(description="")))
+
+    body = client.update_pull_request.await_args.args[3]
+    assert body == {"title": "Updated title"}
 
 
 @pytest.mark.asyncio
