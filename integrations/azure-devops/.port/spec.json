@@ -214,6 +214,61 @@
           "description": "Queue-time variables to pass to the pipeline run. Each value is sent as { \"value\": <value> }."
         }
       ]
+    },
+    {
+      "name": "create_pull_request",
+      "icon": "AzureDevops",
+      "description": "Create an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "organization",
+          "title": "Organization",
+          "type": "string",
+          "description": "The Azure DevOps organization name. Must match the organization configured on the integration.",
+          "required": true
+        },
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "The name or ID of the Azure DevOps project that contains the repository",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the Git repository where the pull request will be created",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The title of the pull request",
+          "required": true
+        },
+        {
+          "name": "sourceRefName",
+          "title": "Source branch",
+          "type": "string",
+          "description": "The source branch containing the changes, for example - \"feature/my-change\" or \"refs/heads/feature/my-change\"",
+          "required": true
+        },
+        {
+          "name": "targetRefName",
+          "title": "Target branch",
+          "type": "string",
+          "description": "The target branch to merge into, for example - \"main\" or \"refs/heads/main\"",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Optional description for the pull request"
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [
