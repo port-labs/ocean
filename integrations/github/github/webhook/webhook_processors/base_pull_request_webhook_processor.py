@@ -89,22 +89,10 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
         if not data_to_upsert:
             logger.warning(
-                f"No data returned from exporter for pull request {repo_name}/{number} "
-                f"in {organization}, skipping upsert"
+                f"No data returned for pull request {repo_name}/{number} from {organization}"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        pr_state = data_to_upsert.get("state", "")
-        if pr_state and pr_state not in config.selector.states:
-            logger.info(
-                f"Pull request {repo_name}/{number} has state '{pr_state}' which is "
-                f"excluded by selector states {config.selector.states}, deleting"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[data_to_upsert],
             )
 
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")

@@ -11,7 +11,6 @@ from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
 
-
 class UpdatePullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "update_pull_request"
     WEBHOOK_PROCESSOR_CLASS = None
