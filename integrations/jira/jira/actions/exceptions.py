@@ -7,9 +7,13 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 class MissingExecutionPropertyError(ActionExecutionError):
     """Raised when a required execution property is absent from the action run."""
 
+    DEFAULT_STATUS_LABEL = "Invalid input"
+
 
 class CreateIssueError(ActionExecutionError):
     """Raised when the Jira API returns an error while creating an issue."""
+
+    DEFAULT_STATUS_LABEL = "Create failed"
 
     @classmethod
     def from_response(cls, response: httpx.Response, prefix: str) -> "CreateIssueError":
