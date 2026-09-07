@@ -52,7 +52,6 @@ class CreatePullRequestExecutor(AbstractGithubExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Creating pull request '{title}' in {org}/{repo} ({head} → {base})",
-            status_label=CREATING_STATUS_LABEL,
             should_raise=False,
         )
 
@@ -100,5 +99,4 @@ class CreatePullRequestExecutor(AbstractGithubExecutor):
             run,
             success=True,
             message=f"Pull request #{pr['number']} created: {pr['html_url']}",
-            status_label=CREATED_STATUS_LABEL,
         )
