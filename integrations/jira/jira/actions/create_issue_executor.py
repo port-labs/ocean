@@ -94,13 +94,11 @@ class CreateIssueExecutor(AbstractJiraExecutor):
         )
 
         if isinstance(run, WorkflowNodeRun):
-            output: dict[str, str | None] = {"issueKey": issue_key}
-            issue_id = created_issue.get("id")
-            if issue_id:
-                output["issueId"] = str(issue_id)
-            if issue_link:
-                output["issueUrl"] = issue_link
-            run.output = output
+            run.output = {
+                "issueKey": issue_key,
+                "issueId": str(created_issue.get("id")),
+                "issueUrl": issue_link,
+            }
         await ocean.port_client.report_run_completed(
             run,
             success=True,
