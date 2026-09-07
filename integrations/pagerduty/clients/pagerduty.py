@@ -15,6 +15,7 @@ from port_ocean.utils.relative_time import days_ago, to_rfc3339
 from clients.rate_limiter import (
     PagerDutyDailyRateLimitExceededError,
     PagerDutyRateLimiter,
+    RateLimitInfo,
     daily_quota_exhausted,
 )
 from clients.retry_transport import PagerDutyRetryTransport
@@ -428,3 +429,11 @@ class PagerDutyClient(OAuthClient):
             entity["__custom_fields"] = result
 
         return entities
+
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
+        """Return the most-recently observed per-minute rate-limit info, or None if unknown."""
+        return self._rate_limiter.rate_limit_info
+
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
+        """Return the most-recently observed per-minute rate-limit info, or None if unknown."""
+        return self._rate_limiter.rate_limit_info
