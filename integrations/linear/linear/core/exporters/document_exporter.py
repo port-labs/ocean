@@ -6,7 +6,6 @@ from linear.client.constants import LinearObject
 from linear.client.templating import execute_query_template
 from linear.core.exporters.base_exporter import (
     GetOptions,
-    ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
 )
@@ -15,14 +14,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 if TYPE_CHECKING:
     from integration import DocumentResourceConfig
-
-
-class ListDocumentOptions(ListOptions["DocumentResourceConfig"]):
-    @classmethod
-    def from_resource_config(
-        cls, resource_config: "DocumentResourceConfig"
-    ) -> "ListDocumentOptions":
-        return cls()
 
 
 class GetDocumentOptions(GetOptions["DocumentResourceConfig"]):
@@ -34,16 +25,14 @@ class GetDocumentOptions(GetOptions["DocumentResourceConfig"]):
 
 
 class DocumentExporter(
-    PaginatedExporter[ListDocumentOptions],
+    PaginatedExporter,
     SingleResourceExporter[GetDocumentOptions],
 ):
     async def get_paginated_resources(
-        self, options: ListDocumentOptions
+        self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info("Getting documents from Linear")
-        async for documents in self._paginate_graphql_objects(
-            LinearObject.DOCUMENTS, page_size=options.page_size
-        ):
+        async for documents in self._paginate_graphql_objects(LinearObject.DOCUMENTS):
             yield documents
 
     async def get_resource(self, options: GetDocumentOptions) -> dict[str, Any]:

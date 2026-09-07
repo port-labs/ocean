@@ -1,7 +1,3 @@
-from linear.client.rate_limiter import (
-    MIN_REMAINING_COMPLEXITY_FOR_EXECUTE,
-    MIN_REMAINING_REQUESTS_FOR_EXECUTE,
-)
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -21,10 +17,7 @@ class AbstractLinearExecutor(AbstractExecutor):
         rate_limit_status = self.client.get_rate_limit_status()
         if rate_limit_status is None:
             return False
-        return rate_limit_status.is_close_to_limit(
-            MIN_REMAINING_REQUESTS_FOR_EXECUTE,
-            MIN_REMAINING_COMPLEXITY_FOR_EXECUTE,
-        )
+        return rate_limit_status.is_close_to_limit()
 
     async def get_remaining_seconds_until_rate_limit(
         self, run: IntegrationRun

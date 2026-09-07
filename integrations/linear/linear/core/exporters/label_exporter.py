@@ -6,7 +6,6 @@ from linear.client.constants import LinearObject
 from linear.client.templating import execute_query_template
 from linear.core.exporters.base_exporter import (
     GetOptions,
-    ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
 )
@@ -15,14 +14,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 if TYPE_CHECKING:
     from integration import LabelResourceConfig
-
-
-class ListLabelOptions(ListOptions["LabelResourceConfig"]):
-    @classmethod
-    def from_resource_config(
-        cls, resource_config: "LabelResourceConfig"
-    ) -> "ListLabelOptions":
-        return cls()
 
 
 class GetLabelOptions(GetOptions["LabelResourceConfig"]):
@@ -34,15 +25,13 @@ class GetLabelOptions(GetOptions["LabelResourceConfig"]):
 
 
 class LabelExporter(
-    PaginatedExporter[ListLabelOptions], SingleResourceExporter[GetLabelOptions]
+    PaginatedExporter, SingleResourceExporter[GetLabelOptions]
 ):
     async def get_paginated_resources(
-        self, options: ListLabelOptions
+        self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info("Getting labels from Linear")
-        async for labels in self._paginate_graphql_objects(
-            LinearObject.LABELS, page_size=options.page_size
-        ):
+        async for labels in self._paginate_graphql_objects(LinearObject.LABELS):
             yield labels
 
     async def get_resource(self, options: GetLabelOptions) -> dict[str, Any]:

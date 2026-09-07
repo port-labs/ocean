@@ -1,23 +1,17 @@
 from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from linear.client import LinearClient
 from linear.core.exporters import DocumentExporter
-from linear.core.exporters.document_exporter import (
-    GetDocumentOptions,
-    ListDocumentOptions,
-)
+from linear.core.exporters.document_exporter import GetDocumentOptions
 from linear.webhook.webhook_client import LinearWebhookClient
 
 
 @pytest.fixture
 def linear_client() -> LinearClient:
-    mock_http = MagicMock()
-    mock_http.headers = {}
-    with patch("linear.client.http_async_client", mock_http):
-        return LinearClient("test-api-key")
+    return LinearClient("test-api-key")
 
 
 @pytest.mark.asyncio
@@ -54,7 +48,6 @@ class TestLinearWebhookClient:
 class TestDocumentExporter:
     async def test_get_paginated_resources(self, linear_client: LinearClient) -> None:
         exporter = DocumentExporter(linear_client)
-        options = ListDocumentOptions()
         first_page = [
             {"id": "doc-1", "title": "project-readme"},
             {"id": "doc-2", "title": "payment-service-prd"},
@@ -71,7 +64,7 @@ class TestDocumentExporter:
             exporter, "_paginate_graphql_objects", side_effect=mock_paginate
         ):
             results = [
-                batch async for batch in exporter.get_paginated_resources(options)
+                batch async for batch in exporter.get_paginated_resources()
             ]
 
         assert len(results) == 2

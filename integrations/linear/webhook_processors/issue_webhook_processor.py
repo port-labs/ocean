@@ -51,10 +51,11 @@ class IssueWebhookProcessor(_LinearAbstractWebhookProcessor):
             )
 
         client = LinearClient.create_from_ocean_configuration()
+        issue_exporter = IssueExporter(client)
         options = GetIssueOptions.from_resource_config(
             cast(IssueResourceConfig, resource_config), resource_id=identifier
         )
-        data_to_update = await IssueExporter(client).get_resource(options)
+        data_to_update = await issue_exporter.get_resource(options)
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]

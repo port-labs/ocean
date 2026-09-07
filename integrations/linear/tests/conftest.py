@@ -11,5 +11,9 @@ def _mock_ocean_context() -> Generator[None, None, None]:
     """Mock Port Ocean context so OceanAsyncClient can be used without initializing the app."""
     mock_ocean = MagicMock()
     mock_ocean.app.is_saas.return_value = False
-    with patch("port_ocean.helpers.async_client.ocean", mock_ocean):
+    mock_ocean.config.client_timeout = 30
+    with (
+        patch("port_ocean.helpers.async_client.ocean", mock_ocean),
+        patch("linear.client.ocean", mock_ocean),
+    ):
         yield

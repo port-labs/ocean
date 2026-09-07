@@ -39,7 +39,7 @@ def test_is_close_to_limit_when_requests_are_low() -> None:
         complexity_reset_at_ms=None,
     )
 
-    assert status.is_close_to_limit(min_requests=20, min_complexity=5000)
+    assert status.is_close_to_limit()
 
 
 def test_seconds_until_reset_uses_earliest_future_reset() -> None:
