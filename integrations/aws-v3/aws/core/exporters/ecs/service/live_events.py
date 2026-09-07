@@ -11,15 +11,14 @@ from aws.core.helpers.metadata.types import (
     CloudTrailEventMapping,
     LiveEventContext,
     LiveEventFactories,
-    cloudtrail_dict_value,
 )
 
 CLOUDTRAIL_EVENT_SOURCE = "ecs.amazonaws.com"
 
 
 def _extract_upsert_service_arn(detail: CloudTrailDetail) -> str | None:
-    response_elements = cloudtrail_dict_value(detail.get("responseElements"))
-    service = cloudtrail_dict_value(response_elements.get("service"))
+    response_elements = detail.get("responseElements") or {}
+    service = response_elements.get("service") or {}
     service_arn = service.get("serviceArn")
     if not service_arn:
         return None
@@ -28,7 +27,7 @@ def _extract_upsert_service_arn(detail: CloudTrailDetail) -> str | None:
 
 
 def _extract_delete_service_arn(detail: CloudTrailDetail) -> str | None:
-    request_parameters = cloudtrail_dict_value(detail.get("requestParameters"))
+    request_parameters = detail.get("requestParameters") or {}
     cluster = request_parameters.get("cluster")
     service = request_parameters.get("service")
     region = detail.get("awsRegion")
