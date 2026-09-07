@@ -29,6 +29,7 @@ from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
 from webhook_processors.version_webhook_processor import VersionWebhookProcessor
 from webhook_processors.sprint_webhook_processor import SprintWebhookProcessor
+from jira.actions.registry import register_actions_executors
 
 
 async def setup_application() -> None:
@@ -267,3 +268,5 @@ ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BoardWebhookProcessor)
 ocean.add_webhook_processor("/webhook", SprintWebhookProcessor)
+
+register_actions_executors()

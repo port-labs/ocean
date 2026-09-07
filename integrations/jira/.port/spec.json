@@ -71,6 +71,55 @@
       "sensitive": false
     }
   ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_issue",
+      "icon": "Jira",
+      "description": "Create a new Jira issue",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "The Jira project key where the issue will be created",
+          "required": true
+        },
+        {
+          "name": "issueType",
+          "title": "Issue type",
+          "type": "string",
+          "description": "The name of the issue type to create, for example Task, Bug, or Story",
+          "required": true
+        },
+        {
+          "name": "summary",
+          "title": "Summary",
+          "type": "string",
+          "description": "The issue summary",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "The issue description"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "The issue priority name, for example High or Medium"
+        },
+        {
+          "name": "assigneeAccountId",
+          "title": "Assignee account ID",
+          "type": "string",
+          "description": "The Atlassian account ID of the user to assign the issue to"
+        }
+      ]
+    }
+  ],
   "saas": {
     "enabled": true,
     "liveEvents": {
