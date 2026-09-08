@@ -3,7 +3,10 @@ from typing import Any
 import pytest
 from botocore.exceptions import ClientError
 
-from aws.core.helpers.utils import execute_concurrent_aws_operations
+from aws.core.helpers.utils import (
+    execute_concurrent_aws_operations,
+    require_aws_resource,
+)
 
 
 class TestExecuteConcurrentAwsOperations:
@@ -109,3 +112,40 @@ class TestExecuteConcurrentAwsOperations:
         )
 
         assert result == []
+
+
+class TestRequireAwsResource:
+    def test_returns_items_when_present(self) -> None:
+        items = [{"id": "vol-1"}]
+        assert (
+            require_aws_resource(
+                items,
+                error_code="InvalidVolume.NotFound",
+                message="Volume not found: vol-1",
+                operation_name="DescribeVolumes",
+            )
+            == items
+        )
+
+    def test_raises_client_error_when_empty(self) -> None:
+        with pytest.raises(ClientError) as exc_info:
+            require_aws_resource(
+                [],
+                error_code="InvalidVolume.NotFound",
+                message="Volume not found: vol-1",
+                operation_name="DescribeVolumes",
+            )
+
+        assert exc_info.value.response["Error"]["Code"] == "InvalidVolume.NotFound"
+        assert exc_info.value.operation_name == "DescribeVolumes"
+
+    def test_raises_client_error_when_none(self) -> None:
+        with pytest.raises(ClientError) as exc_info:
+            require_aws_resource(
+                None,
+                error_code="ClusterNotFoundException",
+                message="Cluster not found: my-cluster",
+                operation_name="DescribeClusters",
+            )
+
+        assert exc_info.value.response["Error"]["Code"] == "ClusterNotFoundException"

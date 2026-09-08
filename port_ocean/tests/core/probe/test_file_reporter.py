@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from port_ocean.core.probe.config import ProbeConfig
 from port_ocean.core.probe.models import ProbeReportingMode
 from port_ocean.core.probe.reporters.file import (
@@ -13,7 +15,10 @@ from port_ocean.core.probe.reporters.file import (
 )
 
 
-def test_file_probe_reporter_writes_report_to_configured_path(tmp_path: Path) -> None:
+@pytest.mark.asyncio
+async def test_file_probe_reporter_writes_report_to_configured_path(
+    tmp_path: Path,
+) -> None:
     # Arrange
     report = {
         "probe_id": "probe-1",
@@ -27,7 +32,7 @@ def test_file_probe_reporter_writes_report_to_configured_path(tmp_path: Path) ->
         wraps=datetime,
     ) as mock_datetime:
         mock_datetime.now.return_value = fixed_time
-        FileProbeReporter(
+        await FileProbeReporter(
             ProbeConfig(path=tmp_path, reporting_mode=ProbeReportingMode.FILE)
         ).report(report)
 
@@ -39,7 +44,8 @@ def test_file_probe_reporter_writes_report_to_configured_path(tmp_path: Path) ->
     assert json.loads(report_path.read_text(encoding="utf-8")) == report
 
 
-def test_file_probe_reporter_creates_reports_directory(tmp_path: Path) -> None:
+@pytest.mark.asyncio
+async def test_file_probe_reporter_creates_reports_directory(tmp_path: Path) -> None:
     # Arrange
     reporter = FileProbeReporter(
         ProbeConfig(path=tmp_path, reporting_mode=ProbeReportingMode.FILE)
@@ -47,7 +53,7 @@ def test_file_probe_reporter_creates_reports_directory(tmp_path: Path) -> None:
     reports_directory = tmp_path / PROBE_REPORTS_DIRECTORY
 
     # Act
-    reporter.report({"stage": "some_value"})
+    await reporter.report({"stage": "some_value"})
 
     # Assert
     assert reports_directory.is_dir()

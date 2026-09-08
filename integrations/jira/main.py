@@ -3,9 +3,11 @@ from typing import cast, Any
 
 from loguru import logger
 from initialize_client import get_or_create_jira_client
+from jira.probe import JiraPermissionProbe
 from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.probe import ProbeContext
 from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -27,6 +29,7 @@ from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
 from webhook_processors.version_webhook_processor import VersionWebhookProcessor
 from webhook_processors.sprint_webhook_processor import SprintWebhookProcessor
+from jira.actions.registry import register_actions_executors
 
 
 async def setup_application() -> None:
@@ -36,6 +39,15 @@ async def setup_application() -> None:
 
     client = get_or_create_jira_client()
     await client.create_webhooks(base_url)
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing Jira permissions for {len(context.available_kinds)} resource kinds"
+    )
+    await JiraPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_resync(Kinds.PROJECT)
@@ -256,3 +268,5 @@ ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BoardWebhookProcessor)
 ocean.add_webhook_processor("/webhook", SprintWebhookProcessor)
+
+register_actions_executors()

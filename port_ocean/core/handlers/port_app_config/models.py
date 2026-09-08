@@ -7,6 +7,7 @@ from pydantic.v1 import BaseModel, Field
 from port_ocean.clients.port.types import RequestOptions
 
 CUSTOM_KIND = "__custom__"
+ProbePermissions = tuple[str, ...] | dict[str, tuple[str, ...]]
 
 
 class Rule(BaseModel):
@@ -104,6 +105,8 @@ class Selector(BaseModel):
 
 
 class ResourceConfig(BaseModel):
+    probe_permissions: ClassVar[ProbePermissions | None] = None
+
     kind: str = Field(
         title="Kind",
         description="key is a specifier for the object you wish to map from the tool's API.",

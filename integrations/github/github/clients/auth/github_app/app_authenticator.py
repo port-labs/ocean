@@ -10,6 +10,7 @@ from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
     GitHubHeaders,
     GitHubToken,
+    GitHubAppToken,
 )
 from github.helpers.exceptions import AuthenticationException
 
@@ -91,7 +92,11 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             response = await self.client.post(url, headers=headers)
             response.raise_for_status()
             data = response.json()
-            return GitHubToken(token=data["token"], expires_at=data["expires_at"])
+            return GitHubAppToken(
+                token=data["token"],
+                expires_at=data["expires_at"],
+                permissions=data.get("permissions"),
+            )
         except Exception as e:
             raise AuthenticationException(
                 f"Failed to fetch installation token: {e}"

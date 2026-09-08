@@ -17,6 +17,7 @@ class CloudTrailDetail(TypedDict, total=False):
     awsRegion: str
     recipientAccountId: str
     requestParameters: dict[str, Any]
+    responseElements: dict[str, Any]
 
 
 class EventBridgeCloudTrailPayload(TypedDict, total=False):

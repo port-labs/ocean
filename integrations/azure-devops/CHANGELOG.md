@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.13.13 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.13.12 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 0.13.11 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 0.13.10 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 0.13.9 (2026-09-03)
+
+
+### Bug Fixes
+
+- Normalize Git Items API scopePath for folder sync so pagination continuation tokens remain valid when listing more than 50 folders under a path.
+
+
+## 0.13.8 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 0.13.7 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 0.13.6 (2026-09-02)
+
+
+### Bug Fixes
+
+- Skip Azure DevOps repos with no default branch during folder sync
+
+
+## 0.13.5 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
 ## 0.13.4 (2026-09-01)
 
 
