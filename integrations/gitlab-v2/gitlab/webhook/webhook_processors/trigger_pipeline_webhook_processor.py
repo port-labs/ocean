@@ -18,6 +18,8 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 TERMINAL_PIPELINE_STATUSES = frozenset({"success", "failed", "canceled", "skipped"})
 
 # Status labels for terminal GitLab pipeline statuses, shown on the Port run.
+# Anything unmapped echoes the raw status. Keep every label to two words at most
+# so it stays readable in Port's UI.
 PIPELINE_STATUS_LABELS = {
     "success": "Pipeline succeeded",
     "failed": "Pipeline failed",
@@ -96,9 +98,7 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
             run,
             success,
             f"Pipeline completed: {status}",
-            status_label=PIPELINE_STATUS_LABELS.get(
-                status, f"Pipeline completed: {status}"
-            ),
+            status_label=PIPELINE_STATUS_LABELS.get(status, f"Pipeline {status}"),
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

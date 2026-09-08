@@ -140,6 +140,34 @@ class TestTriggerPipelineWebhookProcessor:
             mock_ocean.port_client.report_run_completed.assert_not_called()
             assert result.updated_raw_results == []
 
+    async def test_unmapped_status_falls_back_to_raw_status(
+        self, processor: TriggerPipelineWebhookProcessor
+    ) -> None:
+        """A status GitLab adds later should still yield a short label."""
+        run = make_mock_run()
+        resource_config = MagicMock()
+        with patch(
+            "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
+        ) as mock_ocean:
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+            mock_ocean.port_client.post_run_log = AsyncMock()
+            mock_ocean.port_client.report_run_completed = AsyncMock()
+
+            await processor.handle_event(
+                make_event("brand_new").payload, resource_config
+            )
+
+            label = mock_ocean.port_client.report_run_completed.call_args.kwargs[
+                "status_label"
+            ]
+            assert label == "Pipeline brand_new"
+
+
+def test_status_labels_are_two_words_max() -> None:
+    for label in PIPELINE_STATUS_LABELS.values():
+        assert len(label.split()) <= 2, label
+
     async def test_duplicate_webhook_ignored(
         self, processor: TriggerPipelineWebhookProcessor
     ) -> None:
