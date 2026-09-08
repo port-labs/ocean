@@ -1963,6 +1963,48 @@ class AzureDevopsClient(HTTPBaseClient):
             return {}
         return response.json()
 
+    async def create_pull_request_thread(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment thread on a pull request.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/create
+        """
+        create_thread_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/threads"
+        )
+        logger.info(
+            f"Creating comment thread on pull request {pull_request_id} in repository "
+            f"{repository_id} for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "POST",
+            create_thread_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create a comment thread on pull request {pull_request_id} "
+                f"in repository {repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
