@@ -100,7 +100,9 @@ def _normalize_optional_string_inputs(
         field: _blank_to_none(getattr(inputs, field))
         for field in OPTIONAL_STRING_FIELDS
     }
-    if all(getattr(inputs, field) == updates[field] for field in OPTIONAL_STRING_FIELDS):
+    if all(
+        getattr(inputs, field) == updates[field] for field in OPTIONAL_STRING_FIELDS
+    ):
         return inputs
     return inputs.model_copy(update=updates)
 
