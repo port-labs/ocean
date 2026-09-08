@@ -614,8 +614,18 @@ class JiraClient(OAuthClient):
         ):
             yield projects
 
-    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
-        return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
+    async def get_single_issue(
+        self, issue_key: str, *, fields: str | None = None
+    ) -> dict[str, Any]:
+        if fields is None:
+            return await self._send_api_request(
+                "GET", f"{self.api_url}/issue/{issue_key}"
+            )
+        return await self._send_api_request(
+            "GET",
+            f"{self.api_url}/issue/{issue_key}",
+            params={"fields": fields},
+        )
 
     async def create_issue(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._send_api_request(
