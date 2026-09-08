@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added a create_pull_request_thread action that opens a comment thread on an Azure DevOps pull request, either on the pull request overview or anchored to a file and line.
