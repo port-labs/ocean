@@ -332,6 +332,60 @@
           "description": "The identity ID of the user enabling auto-complete for this pull request."
         }
       ]
+    },
+    {
+      "name": "create_pull_request_thread",
+      "icon": "AzureDevops",
+      "description": "Create a comment thread on an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project ID",
+          "type": "string",
+          "description": "The ID of the Azure DevOps project that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to comment on, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        },
+        {
+          "name": "content",
+          "title": "Comment",
+          "type": "string",
+          "description": "The text of the first comment in the thread. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. <a href=\"https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload\" target=\"_blank\">Learn more</a>",
+          "required": true
+        },
+        {
+          "name": "status",
+          "title": "Status",
+          "type": "string",
+          "description": "The status to open the thread with. One of \"active\", \"fixed\", \"wontFix\", \"closed\", \"byDesign\" or \"pending\". Defaults to \"active\".",
+          "default": "active"
+        },
+        {
+          "name": "filePath",
+          "title": "File path",
+          "type": "string",
+          "description": "Anchor the thread to a file in the pull request, for example - \"/src/main.py\". The path is relative to the root of the repository. When omitted, the comment is left on the pull request overview instead of a file."
+        },
+        {
+          "name": "line",
+          "title": "Line",
+          "type": "string",
+          "description": "The line number in the file's right-hand (post-change) side to anchor the thread to, starting at 1. Requires a file path. When omitted, the thread is anchored to the file as a whole."
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [
