@@ -330,6 +330,145 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "create_issue",
+      "icon": "Github",
+      "description": "Create a GitHub issue",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The title of the issue",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Body",
+          "type": "string",
+          "description": "The description of the issue"
+        },
+        {
+          "name": "labels",
+          "title": "Labels",
+          "type": "array",
+          "description": "Labels to apply to the issue"
+        },
+        {
+          "name": "assignees",
+          "title": "Assignees",
+          "type": "array",
+          "description": "GitHub usernames to assign to the issue"
+        }
+      ]
+    },
+    {
+      "name": "edit_issue",
+      "icon": "Github",
+      "description": "Edit a GitHub issue",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "issueNumber",
+          "title": "Issue number",
+          "type": "string",
+          "description": "The number of the issue to edit",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The new title of the issue"
+        },
+        {
+          "name": "body",
+          "title": "Body",
+          "type": "string",
+          "description": "The new description of the issue"
+        },
+        {
+          "name": "state",
+          "title": "State",
+          "type": "string",
+          "description": "The state of the issue (open or closed)"
+        },
+        {
+          "name": "labels",
+          "title": "Labels",
+          "type": "array",
+          "description": "Labels to set on the issue"
+        },
+        {
+          "name": "assignees",
+          "title": "Assignees",
+          "type": "array",
+          "description": "GitHub usernames to assign to the issue"
+        }
+      ]
+    },
+    {
+      "name": "close_issue",
+      "icon": "Github",
+      "description": "Close a GitHub issue",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "issueNumber",
+          "title": "Issue number",
+          "type": "string",
+          "description": "The number of the issue to close",
+          "required": true
+        },
+        {
+          "name": "stateReason",
+          "title": "Close reason",
+          "type": "string",
+          "description": "The reason for closing: completed or not_planned",
+          "default": "completed"
+        }
+      ]
     }
   ],
   "installationDocs": {
