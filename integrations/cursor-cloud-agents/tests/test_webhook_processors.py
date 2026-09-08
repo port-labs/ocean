@@ -429,3 +429,8 @@ def test_get_processor_type_is_action() -> None:
     assert (
         CursorAgentWebhookProcessor.get_processor_type() == WebhookProcessorType.ACTION
     )
+
+
+def test_status_labels_are_two_words_max() -> None:
+    for label in _STATUS_LABELS.values():
+        assert len(label.split()) <= 2, label
