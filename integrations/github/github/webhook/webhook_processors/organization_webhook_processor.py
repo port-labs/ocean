@@ -21,9 +21,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 class OrganizationWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        if not event.payload.get("action"):
-            return False
-        if event.payload["action"] not in ORGANIZATION_EVENTS:
+        if event.payload.get("action") not in ORGANIZATION_EVENTS:
             return False
         return event.headers.get("x-github-event") == "organization"
 
@@ -40,7 +38,6 @@ class OrganizationWebhookProcessor(_GithubAbstractWebhookProcessor):
         logger.info(f"Processing organization event: {action} for {org_login}")
 
         if action in ORGANIZATION_DELETE_EVENTS:
-            logger.info(f"Organization {org_login} was deleted")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[organization]
             )
@@ -59,7 +56,7 @@ class OrganizationWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        logger.info(f"Organization {org_login} was upserted (action: {action})")
+        logger.info(f"Organization {org_login} upserted after {action} event")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )

@@ -84,6 +84,23 @@ class TestOrganizationWebhookProcessor:
             is False
         )
 
+    @pytest.mark.parametrize(
+        "action", ["member_added", "member_removed", "member_invited"]
+    )
+    async def test_should_not_process_membership_actions(
+        self,
+        organization_webhook_processor: OrganizationWebhookProcessor,
+        action: str,
+    ) -> None:
+        mock_event = MagicMock(spec=WebhookEvent)
+        mock_event.headers = {"x-github-event": "organization"}
+        mock_event.payload = {"action": action}
+
+        assert (
+            await organization_webhook_processor._should_process_event(mock_event)
+            is False
+        )
+
     async def test_should_process_event_unknown_action(
         self, organization_webhook_processor: OrganizationWebhookProcessor
     ) -> None:
@@ -154,17 +171,12 @@ class TestOrganizationWebhookProcessor:
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == [{"login": "test-org", "id": 123}]
 
-    @pytest.mark.parametrize(
-        "action",
-        ["renamed"],
-    )
     async def test_handle_event_upsert(
         self,
-        action: str,
         organization_webhook_processor: OrganizationWebhookProcessor,
         resource_config: ResourceConfig,
     ) -> None:
-        payload = make_org_payload(action)
+        payload = make_org_payload("renamed")
 
         fetched_org = {
             "login": "test-org",
@@ -206,7 +218,7 @@ class TestOrganizationWebhookProcessor:
         payload = make_org_payload("renamed")
 
         mock_exporter = AsyncMock()
-        mock_exporter.get_resource.return_value = {}
+        mock_exporter.get_resource.return_value = None
 
         with (
             patch(
