@@ -252,6 +252,8 @@ class JiraClient(OAuthClient):
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
+                if not response.content:
+                    return None
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
