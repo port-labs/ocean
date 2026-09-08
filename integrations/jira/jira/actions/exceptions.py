@@ -41,3 +41,9 @@ class CreateIssueError(ActionExecutionError):
 
         text = response.text.strip()
         return text or f"HTTP {response.status_code}"
+
+
+class AddCommentError(CreateIssueError):
+    """Raised when the Jira API returns an error while adding a comment."""
+
+    DEFAULT_STATUS_LABEL = "Add comment failed"
