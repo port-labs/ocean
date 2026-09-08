@@ -330,6 +330,104 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "create_pr_comment",
+      "icon": "Github",
+      "description": "Create a GitHub Pull Request Comment",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "string",
+          "description": "The number of the pull request to comment on",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Comment body",
+          "type": "string",
+          "description": "The comment text",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "edit_pr_comment",
+      "icon": "Github",
+      "description": "Edit a GitHub Pull Request Comment",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "commentId",
+          "title": "Comment ID",
+          "type": "string",
+          "description": "The ID of the comment to edit",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "New body",
+          "type": "string",
+          "description": "The updated comment text",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "delete_pr_comment",
+      "icon": "Github",
+      "description": "Delete a GitHub Pull Request Comment",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "commentId",
+          "title": "Comment ID",
+          "type": "string",
+          "description": "The ID of the comment to delete",
+          "required": true
+        }
+      ]
     }
   ],
   "installationDocs": {
