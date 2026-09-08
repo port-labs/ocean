@@ -334,7 +334,7 @@
     {
       "name": "create_issue",
       "icon": "Github",
-      "description": "Create a GitHub issue",
+      "description": "Create a GitHub Issue",
       "inputs": [
         {
           "name": "org",
@@ -380,7 +380,7 @@
     {
       "name": "edit_issue",
       "icon": "Github",
-      "description": "Edit a GitHub issue",
+      "description": "Edit a GitHub Issue",
       "inputs": [
         {
           "name": "org",
@@ -438,7 +438,7 @@
     {
       "name": "close_issue",
       "icon": "Github",
-      "description": "Close a GitHub issue",
+      "description": "Close a GitHub Issue",
       "inputs": [
         {
           "name": "org",
