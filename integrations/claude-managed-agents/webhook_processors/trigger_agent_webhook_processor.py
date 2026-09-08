@@ -61,6 +61,8 @@ _TERMINAL_SESSION_WEBHOOK_TYPES = {
     "session.status_terminated",
 }
 
+# Status labels for terminal session webhooks, shown on the Port run.
+# Keep every label to two words at most so it stays readable in Port's UI.
 SESSION_COMPLETED_STATUS_LABEL = "Session completed"
 SESSION_FAILED_STATUS_LABEL = "Session failed"
 

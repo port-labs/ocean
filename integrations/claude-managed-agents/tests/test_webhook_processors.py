@@ -863,3 +863,8 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
         "error": "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
     }
+
+
+def test_status_labels_are_two_words_max() -> None:
+    for label in (SESSION_COMPLETED_STATUS_LABEL, SESSION_FAILED_STATUS_LABEL):
+        assert len(label.split()) <= 2, label
