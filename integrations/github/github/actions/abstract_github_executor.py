@@ -1,5 +1,3 @@
-from abc import abstractmethod
-
 from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException

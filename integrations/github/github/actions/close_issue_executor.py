@@ -34,6 +34,7 @@ class CloseIssueExecutor(AbstractGithubExecutor):
         if not isinstance(rest_client, GithubRestClient):
             raise InvalidActionParametersException("GitHub REST client is required")
 
+        # https://docs.github.com/en/rest/issues/issues#update-an-issue
         state_reason = run.execution_properties.get("stateReason", "completed")
 
         await ocean.port_client.post_run_log(
@@ -42,7 +43,6 @@ class CloseIssueExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        # https://docs.github.com/en/rest/issues/issues#update-an-issue
         try:
             issue = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{org}/{repo}/issues/{issue_number}",
