@@ -30,8 +30,7 @@ from webhook_processors.utils import (
 _TERMINAL_STATUSES = {"FINISHED", "ERROR", "CANCELLED", "EXPIRED"}
 
 # Status labels for the terminal v0 webhook statuses, shown on the Port run.
-# Anything unmapped echoes the raw status. Keep every label to two words at most
-# so it stays readable in Port's UI.
+# Unmapped statuses use `Agent {status}` so the label stays two words.
 _STATUS_LABELS = {
     "FINISHED": "Agent finished",
     "ERROR": "Agent errored",
