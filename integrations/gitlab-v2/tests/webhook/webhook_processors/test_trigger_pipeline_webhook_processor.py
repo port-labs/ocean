@@ -163,11 +163,6 @@ class TestTriggerPipelineWebhookProcessor:
             ]
             assert label == "Pipeline brand_new"
 
-
-def test_status_labels_are_two_words_max() -> None:
-    for label in PIPELINE_STATUS_LABELS.values():
-        assert len(label.split()) <= 2, label
-
     async def test_duplicate_webhook_ignored(
         self, processor: TriggerPipelineWebhookProcessor
     ) -> None:
@@ -198,3 +193,8 @@ def test_status_labels_are_two_words_max() -> None:
             await processor.handle_event(make_event("success").payload, resource_config)
 
             mock_ocean.port_client.report_run_completed.assert_not_called()
+
+
+def test_status_labels_are_two_words_max() -> None:
+    for label in PIPELINE_STATUS_LABELS.values():
+        assert len(label.split()) <= 2, label
