@@ -634,6 +634,19 @@ class JiraClient(OAuthClient):
             json=payload,
         )
 
+    async def get_issue_transitions(self, issue_key: str) -> dict[str, Any]:
+        return await self._send_api_request(
+            "GET",
+            f"{self.api_url}/issue/{issue_key}/transitions",
+        )
+
+    async def transition_issue(self, issue_key: str, transition_id: str) -> None:
+        await self._send_api_request(
+            "POST",
+            f"{self.api_url}/issue/{issue_key}/transitions",
+            json={"transition": {"id": transition_id}},
+        )
+
     @staticmethod
     def _build_issue_search_body(
         jql: str,
