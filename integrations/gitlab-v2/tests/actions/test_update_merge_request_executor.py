@@ -97,9 +97,7 @@ class TestUpdateMergeRequestExecutor:
         self, executor: UpdateMergeRequestExecutor
     ) -> None:
         run = make_run({"mergeRequestIid": "18", "title": "x"})
-        with pytest.raises(
-            MissingExecutionPropertyError, match=r"id\s+field required"
-        ):
+        with pytest.raises(MissingExecutionPropertyError, match=r"id\s+field required"):
             await executor.execute(run)
 
     async def test_missing_merge_request_iid_raises(
