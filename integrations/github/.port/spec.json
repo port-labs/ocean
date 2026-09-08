@@ -334,7 +334,7 @@
     {
       "name": "create_pull_request",
       "icon": "Github",
-      "description": "Create a pull request",
+      "description": "Open a GitHub Pull Request",
       "inputs": [
         {
           "name": "org",
@@ -389,7 +389,7 @@
     {
       "name": "update_pull_request",
       "icon": "Github",
-      "description": "Update a pull request",
+      "description": "Update a GitHub Pull Request",
       "inputs": [
         {
           "name": "org",
@@ -441,7 +441,7 @@
     {
       "name": "close_pull_request",
       "icon": "Github",
-      "description": "Close a pull request",
+      "description": "Close a GitHub Pull Request",
       "inputs": [
         {
           "name": "org",
@@ -469,7 +469,7 @@
     {
       "name": "merge_pull_request",
       "icon": "Github",
-      "description": "Merge a pull request",
+      "description": "Merge a GitHub Pull Request",
       "inputs": [
         {
           "name": "org",
@@ -516,7 +516,7 @@
     {
       "name": "review_pull_request",
       "icon": "Github",
-      "description": "Submit a review on a pull request",
+      "description": "Review a GitHub Pull Request",
       "inputs": [
         {
           "name": "org",
