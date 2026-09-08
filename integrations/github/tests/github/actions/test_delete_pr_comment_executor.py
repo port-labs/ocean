@@ -6,27 +6,13 @@ import pytest
 
 from github.actions.delete_pr_comment_executor import DeletePrCommentExecutor
 from github.actions.exceptions import PullRequestCommentError
-from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
-from port_ocean.core.models import (
-    ActionRun,
-    IntegrationActionInvocationPayload,
-    RunStatus,
-)
+from port_ocean.core.models import ActionRun
+from tests.github.actions.conftest import make_action_run
 
 
 def make_run(execution_properties: dict[str, Any]) -> ActionRun:
-    return ActionRun(
-        id="run-123",
-        status=RunStatus.IN_PROGRESS,
-        action=ActionRun.Action(identifier="delete_pr_comment"),
-        payload=IntegrationActionInvocationPayload(
-            type="INTEGRATION_ACTION",
-            installationId="inst-1",
-            integrationActionType="delete_pr_comment",
-            integrationActionExecutionProperties=execution_properties,
-        ),
-    )
+    return make_action_run("delete_pr_comment", execution_properties)
 
 
 @pytest.fixture(autouse=True)
@@ -37,21 +23,6 @@ def patched_ocean() -> Generator[MagicMock, None, None]:
     with patch("github.actions.delete_pr_comment_executor.ocean") as mock_ocean:
         mock_ocean.port_client = mock_client
         yield mock_ocean
-
-
-@pytest.fixture
-def mock_port_client(patched_ocean: MagicMock) -> MagicMock:
-    return patched_ocean.port_client
-
-
-@pytest.fixture
-def mock_rest_client() -> MagicMock:
-    client = MagicMock(spec=GithubRestClient)
-    client.base_url = "https://api.github.com"
-    client.send_api_request = AsyncMock()
-    client.make_request = AsyncMock()
-    client.get_rate_limit_status = MagicMock(return_value=None)
-    return client
 
 
 @pytest.fixture
@@ -77,7 +48,7 @@ class TestDeletePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": 555,
+                "commentId": "555",
             }
         )
 
@@ -125,7 +96,7 @@ class TestDeletePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": 555,
+                "commentId": "555",
             }
         )
 
@@ -151,7 +122,7 @@ class TestDeletePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": 555,
+                "commentId": "555",
             }
         )
 
@@ -171,7 +142,7 @@ class TestDeletePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": 555,
+                "commentId": "555",
             }
         )
         assert await executor._get_partition_key(run) is None

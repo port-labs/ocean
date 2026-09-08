@@ -6,13 +6,9 @@ import pytest
 
 from github.actions.create_pr_comment_executor import CreatePrCommentExecutor
 from github.actions.exceptions import PullRequestCommentError
-from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
-from port_ocean.core.models import (
-    ActionRun,
-    IntegrationActionInvocationPayload,
-    RunStatus,
-)
+from port_ocean.core.models import ActionRun
+from tests.github.actions.conftest import make_action_run
 
 COMMENT_RESPONSE = {
     "id": 555,
@@ -22,17 +18,7 @@ COMMENT_RESPONSE = {
 
 
 def make_run(execution_properties: dict[str, Any]) -> ActionRun:
-    return ActionRun(
-        id="run-123",
-        status=RunStatus.IN_PROGRESS,
-        action=ActionRun.Action(identifier="create_pr_comment"),
-        payload=IntegrationActionInvocationPayload(
-            type="INTEGRATION_ACTION",
-            installationId="inst-1",
-            integrationActionType="create_pr_comment",
-            integrationActionExecutionProperties=execution_properties,
-        ),
-    )
+    return make_action_run("create_pr_comment", execution_properties)
 
 
 @pytest.fixture(autouse=True)
@@ -43,20 +29,6 @@ def patched_ocean() -> Generator[MagicMock, None, None]:
     with patch("github.actions.create_pr_comment_executor.ocean") as mock_ocean:
         mock_ocean.port_client = mock_client
         yield mock_ocean
-
-
-@pytest.fixture
-def mock_port_client(patched_ocean: MagicMock) -> MagicMock:
-    return patched_ocean.port_client
-
-
-@pytest.fixture
-def mock_rest_client() -> MagicMock:
-    client = MagicMock(spec=GithubRestClient)
-    client.base_url = "https://api.github.com"
-    client.send_api_request = AsyncMock()
-    client.get_rate_limit_status = MagicMock(return_value=None)
-    return client
 
 
 @pytest.fixture
@@ -82,7 +54,7 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": 42,
+                "prNumber": "42",
                 "body": "Test comment",
             }
         )
@@ -110,7 +82,7 @@ class TestCreatePrCommentExecutor:
         executor: CreatePrCommentExecutor,
         mock_rest_client: MagicMock,
     ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": 42})
+        run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": "42"})
 
         with pytest.raises(
             InvalidActionParametersException,
@@ -130,7 +102,7 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": 42,
+                "prNumber": "42",
                 "body": "Test comment",
             }
         )
@@ -157,7 +129,7 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": 42,
+                "prNumber": "42",
                 "body": "Test comment",
             }
         )
@@ -176,7 +148,7 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": 42,
+                "prNumber": "42",
                 "body": "Test comment",
             }
         )
