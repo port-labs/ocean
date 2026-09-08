@@ -319,9 +319,10 @@ async def test_trigger_reports_success_without_error_logs() -> None:
     mock_ocean.port_client.post_run_logs.assert_not_awaited()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
-    assert set(mock_ocean.port_client.report_run_completed.call_args.kwargs) == {
-        "status_label"
-    }
+    assert (
+        mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
+        == SESSION_COMPLETED_STATUS_LABEL
+    )
 
 
 @pytest.mark.asyncio
@@ -473,9 +474,10 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     ]
     assert [log.level for log in logs] == ["WARN"]
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
-    assert set(mock_ocean.port_client.report_run_completed.call_args.kwargs) == {
-        "status_label"
-    }
+    assert (
+        mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
+        == SESSION_COMPLETED_STATUS_LABEL
+    )
     anchor = _user_message("try again")
     payload = _webhook_payload()
     processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
@@ -498,9 +500,10 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
         await processor.handle_event(payload, None)
 
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is False
-    assert set(mock_ocean.port_client.report_run_completed.call_args.kwargs) == {
-        "status_label"
-    }
+    assert (
+        mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
+        == SESSION_FAILED_STATUS_LABEL
+    )
     anchor = _user_message("go")
     payload = _webhook_payload(event_type="session.status_terminated")
     processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
@@ -519,6 +522,10 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
         await processor.handle_event(payload, None)
 
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is False
+    assert (
+        mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
+        == SESSION_FAILED_STATUS_LABEL
+    )
 
 
 @pytest.mark.asyncio
