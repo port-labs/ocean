@@ -10,6 +10,29 @@ class MissingExecutionPropertyError(ActionExecutionError):
     DEFAULT_STATUS_LABEL = "Invalid input"
 
 
+def _jira_response_detail(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+    except json.JSONDecodeError:
+        body = None
+
+    if isinstance(body, dict):
+        error_messages = body.get("errorMessages")
+        if isinstance(error_messages, list) and error_messages:
+            return "; ".join(str(message) for message in error_messages)
+
+        errors = body.get("errors")
+        if isinstance(errors, dict) and errors:
+            return "; ".join(f"{key}: {value}" for key, value in errors.items())
+
+        for key in ("message", "error"):
+            if (value := body.get(key)) is not None:
+                return value if isinstance(value, str) else json.dumps(value)
+
+    text = response.text.strip()
+    return text or f"HTTP {response.status_code}"
+
+
 class CreateIssueError(ActionExecutionError):
     """Raised when the Jira API returns an error while creating an issue."""
 
@@ -17,27 +40,16 @@ class CreateIssueError(ActionExecutionError):
 
     @classmethod
     def from_response(cls, response: httpx.Response, prefix: str) -> "CreateIssueError":
-        return cls(f"{prefix}: {cls._response_detail(response)}")
+        return cls(f"{prefix}: {_jira_response_detail(response)}")
 
-    @staticmethod
-    def _response_detail(response: httpx.Response) -> str:
-        try:
-            body = response.json()
-        except Exception:
-            body = None
 
-        if isinstance(body, dict):
-            error_messages = body.get("errorMessages")
-            if isinstance(error_messages, list) and error_messages:
-                return "; ".join(str(message) for message in error_messages)
+class ChangeIssueStatusError(ActionExecutionError):
+    """Raised when the Jira API returns an error while changing issue status."""
 
-            errors = body.get("errors")
-            if isinstance(errors, dict) and errors:
-                return "; ".join(f"{key}: {value}" for key, value in errors.items())
+    DEFAULT_STATUS_LABEL = "Status change failed"
 
-            for key in ("message", "error"):
-                if (value := body.get(key)) is not None:
-                    return value if isinstance(value, str) else json.dumps(value)
-
-        text = response.text.strip()
-        return text or f"HTTP {response.status_code}"
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "ChangeIssueStatusError":
+        return cls(f"{prefix}: {_jira_response_detail(response)}")
