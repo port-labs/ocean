@@ -20,7 +20,10 @@ from actions.create_agent_executor import (
     CreateAgentExecutor,
 )
 from actions.exceptions import InvalidActionParametersException
-from actions.trigger_agent_executor import TriggerAgentExecutor
+from actions.trigger_agent_executor import (
+    SESSION_NOT_CONTINUABLE_STATUS_LABEL,
+    TriggerAgentExecutor,
+)
 from actions.utils import (
     build_external_id,
     build_session_link,
@@ -688,8 +691,12 @@ async def test_trigger_agent_rejects_non_idle_session() -> None:
     }
 
     with patch("actions.trigger_agent_executor.ocean", _build_mock_ocean()):
-        with pytest.raises(ActionExecutionError, match="cannot be continued"):
+        with pytest.raises(
+            ActionExecutionError, match="cannot be continued"
+        ) as exc_info:
             await executor.execute(run)
+
+    assert exc_info.value.status_label == SESSION_NOT_CONTINUABLE_STATUS_LABEL
 
 
 @pytest.mark.asyncio
@@ -729,8 +736,12 @@ async def test_trigger_agent_rejects_requires_action_idle() -> None:
     }
 
     with patch("actions.trigger_agent_executor.ocean", _build_mock_ocean()):
-        with pytest.raises(ActionExecutionError, match="waiting for user action"):
+        with pytest.raises(
+            ActionExecutionError, match="waiting for user action"
+        ) as exc_info:
             await executor.execute(run)
+
+    assert exc_info.value.status_label == SESSION_NOT_CONTINUABLE_STATUS_LABEL
 
 
 @pytest.mark.asyncio

@@ -27,7 +27,7 @@ from webhook_processors.trigger_agent_webhook_processor import (
 STARTING_STATUS_LABEL = "Sending prompt"
 SESSION_RUNNING_STATUS_LABEL = "Session running"
 PROMPT_SENT_STATUS_LABEL = "Prompt sent"
-SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Session closed"
+SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Cannot continue"
 SESSION_START_FAILED_STATUS_LABEL = "Start failed"
 
 
