@@ -21,8 +21,7 @@ PIPELINE_RUN_COMPLETED_STATE = "completed"
 PIPELINE_RUN_SUCCEEDED_RESULT = "succeeded"
 
 # Status labels for Azure DevOps pipeline run results, shown on the Port run.
-# Anything unmapped echoes the raw result. Keep every label to two words at most
-# so it stays readable in Port's UI.
+# Unmapped results use `Pipeline {result}` so the label stays two words.
 PIPELINE_RESULT_STATUS_LABELS = {
     "succeeded": "Pipeline succeeded",
     "failed": "Pipeline failed",
