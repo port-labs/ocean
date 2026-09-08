@@ -19,6 +19,7 @@ class LinearObject(StrEnum):
 
 
 PAGE_SIZE = 50
+LINEAR_MAX_PAGE_SIZE = 250
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 
 WEBHOOK_EVENTS = [
@@ -138,6 +139,32 @@ class LinearClient:
             ]
             end_cursor = team_response_list["data"]["teams"]["pageInfo"]["endCursor"]
 
+    async def _append_remaining_label_children(self, label: dict[str, Any]) -> None:
+        """Fetch children pages past the initial inline children window."""
+        children = label.get("children")
+        if not children or not children.get("pageInfo", {}).get("hasNextPage"):
+            return
+
+        has_next_page = True
+        end_cursor = children["pageInfo"]["endCursor"]
+        while has_next_page:
+            template = jinja2.Template(
+                QUERIES["GET_LABEL_CHILDREN_PAGE"], enable_async=True
+            )
+            query = await template.render_async(
+                label_id=label["id"],
+                page_size=LINEAR_MAX_PAGE_SIZE,
+                after_cursor=f', after: "{end_cursor}"' if end_cursor else "",
+            )
+            response = await self.client.post(self.linear_url, json={"query": query})
+            response.raise_for_status()
+            children_connection = response.json()["data"]["issueLabel"]["children"]
+            children["edges"].extend(children_connection["edges"])
+            has_next_page = children_connection["pageInfo"]["hasNextPage"]
+            end_cursor = children_connection["pageInfo"]["endCursor"]
+
+        children["pageInfo"]["hasNextPage"] = False
+
     async def get_paginated_labels(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -149,12 +176,14 @@ class LinearClient:
             label_response_list = await self._get_paginated_objects(
                 LinearObject.LABELS, PAGE_SIZE, end_cursor
             )
-            # Response format is: { data: { issueLabels: { edges: [ { cursor: "...", node: {...} } ] } } }
-            # yielding array of nodes as top-level objects for mapping consistency
-            yield [
+            nodes = [
                 edge["node"]
                 for edge in label_response_list["data"]["issueLabels"]["edges"]
             ]
+            for label in nodes:
+                await self._append_remaining_label_children(label)
+            # yielding array of nodes as top-level objects for mapping consistency
+            yield nodes
 
             has_next_page = label_response_list["data"]["issueLabels"]["pageInfo"][
                 "hasNextPage"
@@ -246,5 +275,6 @@ class LinearClient:
         label_response.raise_for_status()
         # Response format is: { data: { issueLabel: {...} } }
         # Returning just the label object for mapping consistency
-        label_json = label_response.json()
-        return label_json["data"]["issueLabel"]
+        label = label_response.json()["data"]["issueLabel"]
+        await self._append_remaining_label_children(label)
+        return label
