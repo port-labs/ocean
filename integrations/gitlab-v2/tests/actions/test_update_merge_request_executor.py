@@ -205,6 +205,45 @@ class TestUpdateMergeRequestExecutor:
             mock_ocean.port_client.report_run_completed = AsyncMock()
             await executor.execute(run)
 
+    async def test_blank_optional_strings_are_omitted(
+        self, executor: UpdateMergeRequestExecutor, mock_port_client: MagicMock
+    ) -> None:
+        run = make_run(
+            {
+                "id": "my-group/my-project",
+                "mergeRequestIid": "18",
+                "title": "New title",
+                "description": "  ",
+                "stateEvent": "",
+                "targetBranch": "   ",
+            }
+        )
+        with patch("gitlab.actions.update_merge_request_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        executor.client.update_merge_request.assert_called_once_with(  # type: ignore[attr-defined]
+            "my-group/my-project",
+            "18",
+            {"title": "New title"},
+        )
+
+    async def test_only_blank_optional_fields_raises(
+        self, executor: UpdateMergeRequestExecutor
+    ) -> None:
+        run = make_run(
+            {
+                "id": "my-group/my-project",
+                "mergeRequestIid": "18",
+                "title": "",
+                "stateEvent": "  ",
+            }
+        )
+        with pytest.raises(
+            MissingExecutionPropertyError, match="At least one of title"
+        ):
+            await executor.execute(run)
+
     async def test_empty_assignee_ids_unassigns(
         self, executor: UpdateMergeRequestExecutor, mock_port_client: MagicMock
     ) -> None:
