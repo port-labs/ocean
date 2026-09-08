@@ -1,6 +1,4 @@
-from typing import TYPE_CHECKING, Any
-
-from loguru import logger
+from typing import TYPE_CHECKING
 
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import (
@@ -8,8 +6,6 @@ from linear.core.exporters.base_exporter import (
     PaginatedExporter,
     SingleResourceExporter,
 )
-from linear.queries import QUERIES
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 if TYPE_CHECKING:
     from integration import IssueResourceConfig
@@ -24,18 +20,4 @@ class GetIssueOptions(GetOptions["IssueResourceConfig"]):
 
 
 class IssueExporter(PaginatedExporter, SingleResourceExporter[GetIssueOptions]):
-    async def get_paginated_resources(
-        self, options: None = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        logger.info("Getting issues from Linear")
-        async for issues in self._paginate_graphql_objects(LinearObject.ISSUES):
-            yield issues
-
-    async def get_resource(self, options: GetIssueOptions) -> dict[str, Any]:
-        logger.info(f"Querying single issue: {options.resource_id}")
-        data = await self.graphql.execute_query_template(
-            "GET_SINGLE_ISSUE",
-            issue_identifier=options.resource_id,
-            base_query_fields=QUERIES[f"BASE_{LinearObject.ISSUES}_QUERY_FIELDS"],
-        )
-        return data["issue"]
+    object_type = LinearObject.ISSUES

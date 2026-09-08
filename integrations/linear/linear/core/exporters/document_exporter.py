@@ -1,6 +1,4 @@
-from typing import TYPE_CHECKING, Any
-
-from loguru import logger
+from typing import TYPE_CHECKING
 
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import (
@@ -8,8 +6,6 @@ from linear.core.exporters.base_exporter import (
     PaginatedExporter,
     SingleResourceExporter,
 )
-from linear.queries import QUERIES
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 if TYPE_CHECKING:
     from integration import DocumentResourceConfig
@@ -27,18 +23,4 @@ class DocumentExporter(
     PaginatedExporter,
     SingleResourceExporter[GetDocumentOptions],
 ):
-    async def get_paginated_resources(
-        self, options: None = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        logger.info("Getting documents from Linear")
-        async for documents in self._paginate_graphql_objects(LinearObject.DOCUMENTS):
-            yield documents
-
-    async def get_resource(self, options: GetDocumentOptions) -> dict[str, Any]:
-        logger.info(f"Querying single document: {options.resource_id}")
-        data = await self.graphql.execute_query_template(
-            "GET_SINGLE_DOCUMENT",
-            document_id=options.resource_id,
-            base_query_fields=QUERIES[f"BASE_{LinearObject.DOCUMENTS}_QUERY_FIELDS"],
-        )
-        return data["document"]
+    object_type = LinearObject.DOCUMENTS

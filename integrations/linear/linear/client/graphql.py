@@ -54,7 +54,7 @@ class GraphqlClient:
     async def execute_query_template(
         self,
         template_key: str,
-        **template_vars: str,
+        **template_vars: Any,
     ) -> dict[str, Any]:
         template = jinja2.Template(QUERIES[template_key], enable_async=True)
         query = await template.render_async(**template_vars)
