@@ -112,6 +112,22 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         return metadata, metadata.live_events
 
     @staticmethod
+    def _build_live_event_delete_raw_item(
+        kind: str,
+        properties: dict[str, str],
+        context: LiveEventContext,
+    ) -> dict[str, Any]:
+        """Build a delete stub shaped like upsert raw items for customer jq mappings."""
+        return {
+            "Type": kind,
+            "Properties": properties,
+            "__ExtraContext": {
+                "AccountId": context.account_id,
+                "Region": context.region,
+            },
+        }
+
+    @staticmethod
     def _build_deletion_result(
         kind: str,
         live_events: LiveEventFactories,
@@ -120,12 +136,11 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[],
             deleted_raw_results=[
-                {
-                    "Type": kind,
-                    "Properties": live_events.deletion_identifier_properties_factory(
-                        context
-                    ),
-                }
+                CloudTrailWebhookProcessor._build_live_event_delete_raw_item(
+                    kind,
+                    live_events.deletion_identifier_properties_factory(context),
+                    context,
+                )
             ],
         )
 
