@@ -55,6 +55,12 @@ class UpdateMergeRequestInput(BaseModel):
             raise ValueError(f"{field.name} is required")
         return str(value)
 
+    @validator("title", "description", "stateEvent", "targetBranch", pre=True)
+    def empty_optional_str_as_none(cls, value: Any) -> Any:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @validator("stateEvent", pre=True)
     def validate_state_event(cls, value: Any) -> Any:
         if value is None:
