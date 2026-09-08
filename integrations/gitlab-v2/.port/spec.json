@@ -115,6 +115,63 @@
           "description": "Key-value pairs passed as CI/CD variables to the pipeline"
         }
       ]
+    },
+    {
+      "name": "update_merge_request",
+      "icon": "GitLab",
+      "description": "Update a GitLab merge request",
+      "inputs": [
+        {
+          "name": "id",
+          "title": "Project",
+          "type": "string",
+          "description": "GitLab project path (e.g., \"my-group/my-project\") or numeric ID",
+          "required": true
+        },
+        {
+          "name": "mergeRequestIid",
+          "title": "Merge request IID",
+          "type": "string",
+          "description": "The project-scoped merge request IID (not the global ID)",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "New title for the merge request"
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "New description for the merge request"
+        },
+        {
+          "name": "stateEvent",
+          "title": "State event",
+          "type": "string",
+          "description": "New merge request state. Allowed values: close, reopen"
+        },
+        {
+          "name": "targetBranch",
+          "title": "Target branch",
+          "type": "string",
+          "description": "New target branch for the merge request"
+        },
+        {
+          "name": "assigneeIds",
+          "title": "Assignee IDs",
+          "type": "array",
+          "description": "GitLab user IDs to assign to the merge request. An empty array unassigns all assignees. Example: [1, 2]"
+        },
+        {
+          "name": "reviewerIds",
+          "title": "Reviewer IDs",
+          "type": "array",
+          "description": "GitLab user IDs to set as reviewers. An empty array unassigns all reviewers. Example: [3, 4]"
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [
