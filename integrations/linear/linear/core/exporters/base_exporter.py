@@ -1,5 +1,5 @@
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generic, TypeVar
+from abc import ABC
+from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar, Generic, TypeVar
 
 import jinja2
 from loguru import logger
@@ -7,7 +7,12 @@ from pydantic.v1 import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from linear.client import LinearClient
-from linear.client.constants import CONNECTION_KEYS, PAGE_SIZE, LinearObject
+from linear.client.constants import (
+    CONNECTION_KEYS,
+    PAGE_SIZE,
+    SINGLE_RESOURCE_CONFIG,
+    LinearObject,
+)
 from linear.client.graphql import GraphqlClient
 from linear.queries import QUERIES
 
@@ -29,10 +34,12 @@ class GetOptions(BaseModel, Generic[RC]):
         raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
 
 
-GetOptionsT = TypeVar("GetOptionsT")
+GetOptionsT = TypeVar("GetOptionsT", bound=GetOptions[Any])
 
 
 class LinearExporter(ABC):
+    object_type: ClassVar[LinearObject]
+
     def __init__(self, client: LinearClient) -> None:
         self.client = client
 
@@ -42,10 +49,12 @@ class LinearExporter(ABC):
 
 
 class PaginatedExporter(LinearExporter):
-    @abstractmethod
-    def get_paginated_resources(
+    async def get_paginated_resources(
         self, options: None = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        logger.info(f"Getting {CONNECTION_KEYS[self.object_type]} from Linear")
+        async for batch in self._paginate_graphql_objects(self.object_type):
+            yield batch
 
     async def _paginate_graphql_objects(
         self,
@@ -81,5 +90,12 @@ class PaginatedExporter(LinearExporter):
 
 
 class SingleResourceExporter(LinearExporter, Generic[GetOptionsT]):
-    @abstractmethod
-    async def get_resource(self, options: GetOptionsT) -> dict[str, Any]: ...
+    async def get_resource(self, options: GetOptionsT) -> dict[str, Any]:
+        config = SINGLE_RESOURCE_CONFIG[self.object_type]
+        logger.info(f"Querying single {config.log_label}: {options.resource_id}")
+        data = await self.graphql.execute_query_template(
+            config.query_key,
+            **{config.id_param: options.resource_id},
+            base_query_fields=QUERIES.get(f"BASE_{self.object_type}_QUERY_FIELDS", ""),
+        )
+        return data[config.response_key]

@@ -20,7 +20,7 @@ class TestLinearWebhookClient:
         self, linear_client: LinearClient
     ) -> None:
         webhook_client = LinearWebhookClient(linear_client)
-        mock_execute = AsyncMock(
+        mock_execute_query_template = AsyncMock(
             side_effect=[
                 {
                     "webhooks": {
@@ -36,12 +36,22 @@ class TestLinearWebhookClient:
             ]
         )
 
-        with patch.object(linear_client.graphql, "execute", mock_execute):
+        with patch.object(
+            linear_client.graphql,
+            "execute_query_template",
+            mock_execute_query_template,
+        ):
             await webhook_client.create_events_webhook("https://app.getport.io")
 
-        assert mock_execute.await_count == 2
-        assert "webhookUpdate" in mock_execute.await_args_list[1].args[0]
-        assert "webhook-1" in mock_execute.await_args_list[1].args[0]
+        assert mock_execute_query_template.await_count == 2
+        assert (
+            mock_execute_query_template.await_args_list[1].args[0]
+            == "UPDATE_LIVE_EVENTS_WEBHOOK"
+        )
+        assert (
+            mock_execute_query_template.await_args_list[1].kwargs["webhook_id"]
+            == "webhook-1"
+        )
 
 
 @pytest.mark.asyncio
