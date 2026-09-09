@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Restore live-event deletes for file-kind itemsToParse item removals, whole-file deletes, and renames. Modified files with itemsToParse emit old content as deletes and new content as upserts; DSP keeps entities that appear in both lists.
