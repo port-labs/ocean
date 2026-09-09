@@ -45,6 +45,16 @@ class TestUpdateIssueExecutor:
             with pytest.raises(MissingExecutionPropertyError):
                 await executor.execute(run)
 
+    async def test_missing_issue_id(
+        self, mock_port_client: MagicMock, mock_linear_client: MagicMock
+    ) -> None:
+        executor = create_executor(UpdateIssueExecutor, mock_linear_client)
+        run = make_run("update_issue", {"title": "Updated title"})
+        with patch("linear.actions.update_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            with pytest.raises(MissingExecutionPropertyError):
+                await executor.execute(run)
+
     async def test_partition_key(self, mock_linear_client: MagicMock) -> None:
         executor = create_executor(UpdateIssueExecutor, mock_linear_client)
         run = make_run("update_issue", {"issueId": "ENG-1", "title": "x"})
