@@ -4,6 +4,9 @@ from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.utils import build_issue_create_input, require_property
+from linear.core.exporters import IssueExporter
+from linear.core.exporters.issue_exporter import GetIssueOptions
+from linear.core.mutations import IssueMutations
 from linear.helpers.exceptions import MissingExecutionPropertyError
 
 
@@ -18,7 +21,10 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
         issue_input["parentId"] = parent_id
 
         if not issue_input.get("teamId"):
-            parent_issue = await self.client.get_single_issue(str(parent_id))
+            exporter = IssueExporter(self.client)
+            parent_issue = await exporter.get_resource(
+                GetIssueOptions(resource_id=str(parent_id))
+            )
             team = parent_issue.get("team")
             if not isinstance(team, dict) or not team.get("id"):
                 raise MissingExecutionPropertyError(
@@ -32,7 +38,8 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
             should_raise=False,
         )
 
-        issue = await self.client.create_issue(issue_input)
+        mutations = IssueMutations(self.client)
+        issue = await mutations.create_issue(issue_input)
 
         await ocean.port_client.report_run_completed(
             run,
