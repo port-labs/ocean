@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import pytest
+from botocore.exceptions import ClientError
 from aws.core.exporters.codedeploy.application.exporter import (
     CodeDeployApplicationExporter,
 )
@@ -50,6 +51,11 @@ async def test_get_resource_success(
     mock_inspector = AsyncMock()
     mock_inspector_class.return_value = mock_inspector
     mock_inspector.inspect.return_value = [MagicMock()]
+    mock_proxy = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+    mock_proxy.client.batch_get_applications = AsyncMock(
+        return_value={"applicationsInfo": [{"applicationName": "abc"}]}
+    )
 
     # Act
     result = await exporter.get_resource(single_application_options)
@@ -73,35 +79,26 @@ async def test_get_resource_success(
 @patch(f"{patch_prefix}CodeDeployApplicationActionInput")
 @patch(f"{patch_prefix}AioBaseClientProxy")
 @patch(f"{patch_prefix}ResourceInspector")
-async def test_get_resource_empty_inspection_returns_empty_dict(
+async def test_get_resource_raises_when_application_not_found(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
     mock_input: MagicMock,
     exporter: CodeDeployApplicationExporter,
     single_application_options: SingleCodeDeployApplicationRequest,
 ) -> None:
-    # Arrange
-    mock_inspector = AsyncMock()
-    mock_inspector.inspect.return_value = []
-    mock_inspector_class.return_value = mock_inspector
+    mock_proxy = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+    mock_proxy.client.batch_get_applications = AsyncMock(
+        return_value={"applicationsInfo": []}
+    )
 
-    # Act
-    result = await exporter.get_resource(single_application_options)
+    with pytest.raises(ClientError) as exc_info:
+        await exporter.get_resource(single_application_options)
 
-    # Assert
-    assert result == {}
-    mock_proxy_class.assert_called_once_with(
-        exporter.session, single_application_options.region, "codedeploy"
+    assert (
+        exc_info.value.response["Error"]["Code"] == "ApplicationDoesNotExistException"
     )
-    mock_input.assert_called_once_with(
-        items=[single_application_options.application_name],
-        region=single_application_options.region,
-        account_id=single_application_options.account_id,
-    )
-    mock_inspector.inspect.assert_called_once_with(
-        mock_input.return_value,
-        single_application_options.include,
-    )
+    mock_inspector_class.assert_not_called()
 
 
 @pytest.mark.asyncio
