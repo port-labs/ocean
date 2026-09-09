@@ -1,0 +1,25 @@
+{
+  "mcp": {
+    "name": "everything",
+    "transport": "stdio",
+    "url": null,
+    "command": "docker",
+    "args": ["run", "-i", "--rm", "mcp/everything"],
+    "headers": {},
+    "env": {},
+    "config": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "mcp/everything"]
+    },
+    "path": "mcp.json",
+    "blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+  },
+  "__repository": {
+    "name": "acquaman-plugin",
+    "full_name": "port-gh-app-dev/acquaman-plugin",
+    "html_url": "https://github.com/port-gh-app-dev/acquaman-plugin",
+    "default_branch": "main"
+  },
+  "__branch": "main",
+  "__organization": "port-gh-app-dev"
+}
