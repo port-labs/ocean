@@ -1,5 +1,6 @@
 from enum import StrEnum, IntEnum
 from typing import List, Tuple, Dict, Any, AsyncGenerator
+from uuid import uuid4
 
 from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
@@ -151,14 +152,10 @@ async def get_projects() -> AsyncGenerator[List[Dict[Any, Any]], None]:
 
 
 async def trigger_fake_task(task_name: str) -> Dict[str, Any]:
-    url = f"{API_URL}/fake-tasks"
-    response = await http_async_client.post(
-        url,
-        headers={
-            "Accept": "application/json",
-            "User-Agent": USER_AGENT,
-        },
-        json={"taskName": task_name},
-    )
-    response.raise_for_status()
-    return response.json()
+    task_id = str(uuid4())
+    return {
+        "id": task_id,
+        "name": task_name,
+        "status": "pending",
+        "link": f"/fake-tasks/{task_id}",
+    }

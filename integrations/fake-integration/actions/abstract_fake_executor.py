@@ -4,9 +4,12 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.models import IntegrationRun
 
+from webhook_processors.constants import WEBHOOK_PATH
+
 
 class AbstractFakeExecutor(AbstractExecutor):
     WEBHOOK_PROCESSOR_CLASS: type[AbstractWebhookProcessor] | None = None
+    WEBHOOK_PATH = WEBHOOK_PATH
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         return False

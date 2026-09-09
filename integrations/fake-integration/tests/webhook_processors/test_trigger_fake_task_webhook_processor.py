@@ -22,7 +22,6 @@ def make_event(payload: dict[str, object]) -> WebhookEvent:
 def mock_port_client() -> MagicMock:
     client = MagicMock()
     client.find_run_by_external_id = AsyncMock()
-    client.is_run_in_progress = MagicMock(return_value=True)
     client.post_run_log = AsyncMock()
     client.report_run_completed = AsyncMock()
     return client
@@ -33,7 +32,6 @@ class TestTriggerFakeTaskWebhookProcessor:
     async def test_completes_matching_run(self, mock_port_client: MagicMock) -> None:
         run = MagicMock()
         run.id = "run-1"
-        run.execution_properties = {"reportTaskStatus": True}
         mock_port_client.find_run_by_external_id.return_value = run
 
         event = make_event(
@@ -57,7 +55,7 @@ class TestTriggerFakeTaskWebhookProcessor:
             status_label=TASK_STATUS_LABELS["success"],
         )
 
-    async def test_skips_non_terminal_status(self, mock_port_client: MagicMock) -> None:
+    async def test_skips_non_terminal_status(self) -> None:
         event = make_event(
             {
                 "event": "fake_task.completed",
@@ -66,10 +64,4 @@ class TestTriggerFakeTaskWebhookProcessor:
         )
         processor = TriggerFakeTaskWebhookProcessor(event)
 
-        with patch(
-            "webhook_processors.trigger_fake_task_webhook_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client = mock_port_client
-            await processor.handle_event(event.payload, MagicMock(spec=ResourceConfig))
-
-        mock_port_client.find_run_by_external_id.assert_not_awaited()
+        assert await processor.should_process_event(event) is False
