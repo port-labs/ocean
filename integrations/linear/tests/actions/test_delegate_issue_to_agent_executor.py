@@ -1,5 +1,3 @@
-"""Tests for Linear delegate-to-agent action executor (batch 4)."""
-
 from unittest.mock import MagicMock, patch
 
 import pytest
