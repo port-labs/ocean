@@ -33,7 +33,23 @@ class TestUpdateIssueExecutor:
         mock_issue_mutations.update_issue.assert_awaited_once_with(
             "ENG-1", {"title": "Updated title"}
         )
-        mock_port_client.report_run_completed.assert_awaited_once()
+        assert run.output == {
+            "identifier": "ENG-1",
+            "issueId": "issue-1",
+            "issueUrl": "https://linear.app/test/issue/ENG-1",
+        }
+        mock_port_client.post_run_log.assert_any_call(
+            run,
+            "Updating issue ENG-1",
+            status_label="Updating issue",
+            should_raise=False,
+        )
+        mock_port_client.report_run_completed.assert_awaited_once_with(
+            run,
+            success=True,
+            message="Updated issue ENG-1: https://linear.app/test/issue/ENG-1",
+            status_label="Issue updated",
+        )
 
     async def test_missing_update_fields(
         self, mock_port_client: MagicMock, mock_linear_client: MagicMock
