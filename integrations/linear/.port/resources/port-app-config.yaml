@@ -7,10 +7,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .key
+          identifier: .id
           title: .name
           blueprint: '"linearTeam"'
           properties:
+            key: .key
             description: .description
             workspaceName: .organization.name
             url: "\"https://linear.app/\" + .organization.urlKey + \"/team/\" + .key"
@@ -50,7 +51,7 @@ resources:
             created: .createdAt
             updated: .updatedAt
           relations:
-            team: .team.key
+            team: .team.id
             labels: .labelIds
             parentIssue: .parent.identifier
   - kind: document
@@ -76,7 +77,7 @@ resources:
             created: .createdAt
             updated: .updatedAt
           relations:
-            team: .team.key
+            team: .team.id
             issue: .issue.identifier
   - kind: user
     selector:

@@ -6,6 +6,11 @@
     "description": "A Linear team",
     "schema": {
       "properties": {
+        "key": {
+          "type": "string",
+          "title": "Team key",
+          "description": "The Linear team key (e.g. GET, POR)"
+        },
         "description": {
           "type": "string",
           "title": "Description",
