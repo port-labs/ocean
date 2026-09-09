@@ -1,6 +1,6 @@
 import asyncio
 from http import HTTPStatus
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Literal, Optional
 
 import httpx
 from loguru import logger
@@ -337,6 +337,47 @@ class PagerDutyClient(OAuthClient):
             headers={"From": from_email},
         )
         return response["incident"]
+
+    async def update_incident(
+        self,
+        *,
+        incident_id: str,
+        status: Literal["acknowledged", "resolved"],
+        from_email: str,
+    ) -> dict[str, Any]:
+        incident: dict[str, Any] = {
+            "id": incident_id,
+            "type": "incident_reference",
+            "status": status,
+        }
+
+        response = await self.send_api_request(
+            endpoint="incidents",
+            method="PUT",
+            json_data={"incidents": [incident]},
+            headers={"From": from_email},
+        )
+        incidents = response.get("incidents", [])
+        if not incidents:
+            raise ValueError(
+                f"PagerDuty returned an empty response while updating incident {incident_id}"
+            )
+        return incidents[0]
+
+    async def create_incident_note(
+        self,
+        *,
+        incident_id: str,
+        from_email: str,
+        content: str,
+    ) -> dict[str, Any]:
+        response = await self.send_api_request(
+            endpoint=f"incidents/{incident_id}/notes",
+            method="POST",
+            json_data={"note": {"content": content}},
+            headers={"From": from_email},
+        )
+        return response["note"]
 
     async def send_api_request(
         self,
