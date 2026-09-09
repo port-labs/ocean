@@ -1,9 +1,8 @@
-from typing import Any
-
 import httpx
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import Field
 
+from azure_devops.actions.abstract_ado_action_input import AbstractAzureDevopsActionInput
 from azure_devops.actions.abstract_ado_executor import AbstractAzureDevopsExecutor
 from azure_devops.actions.exceptions import (
     ClosePullRequestError,
@@ -14,26 +13,11 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 
-class ClosePullRequestInputs(BaseModel):
-    model_config = ConfigDict(extra="ignore", strict=True)
-
+class ClosePullRequestInputs(AbstractAzureDevopsActionInput):
     organization: str = Field(min_length=1)
     project: str = Field(min_length=1)
     repositoryId: str = Field(min_length=1)
     pullRequestId: str = Field(min_length=1)
-
-
-def _parse_close_pull_request_inputs(
-    execution_properties: dict[str, Any],
-) -> ClosePullRequestInputs:
-    try:
-        return ClosePullRequestInputs.model_validate(execution_properties)
-    except ValidationError as error:
-        messages = [
-            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
-            for err in error.errors()
-        ]
-        raise ValueError("; ".join(messages)) from error
 
 
 class ClosePullRequestExecutor(AbstractAzureDevopsExecutor):
@@ -53,14 +37,16 @@ class ClosePullRequestExecutor(AbstractAzureDevopsExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         try:
-            inputs = _parse_close_pull_request_inputs(run.execution_properties)
-        except ValueError as error:
+            inputs = ClosePullRequestInputs.from_execution_properties(
+                run.execution_properties
+            )
+        except InvalidActionParametersError as error:
             logger.warning(
                 f"Invalid parameters for action run {run.id}",
                 run_id=run.id,
                 error=str(error),
             )
-            raise InvalidActionParametersError(str(error)) from error
+            raise
 
         configured_org = extract_org_name_from_url(self.client._organization_base_url)
         if inputs.organization.lower() != configured_org.lower():
