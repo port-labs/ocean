@@ -47,12 +47,17 @@ def organization_webhook_processor(
     return OrganizationWebhookProcessor(event=mock_webhook_event)
 
 
-def make_org_payload(action: str) -> dict[str, Any]:
-    return {
+def make_org_payload(
+    action: str, old_login: str | None = None
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "action": action,
         "organization": {"login": "test-org", "id": 123},
         "sender": {"login": "admin-user"},
     }
+    if action == "renamed":
+        payload["changes"] = {"login": {"from": old_login or "old-org"}}
+    return payload
 
 
 @pytest.mark.asyncio
@@ -156,6 +161,25 @@ class TestOrganizationWebhookProcessor:
         payload = {"action": "renamed", "organization": {"id": 123}}
         assert await organization_webhook_processor.validate_payload(payload) is False
 
+    async def test_validate_payload_renamed_missing_changes(
+        self, organization_webhook_processor: OrganizationWebhookProcessor
+    ) -> None:
+        payload = {
+            "action": "renamed",
+            "organization": {"login": "new-org", "id": 123},
+        }
+        assert await organization_webhook_processor.validate_payload(payload) is False
+
+    async def test_validate_payload_renamed_missing_login_from(
+        self, organization_webhook_processor: OrganizationWebhookProcessor
+    ) -> None:
+        payload = {
+            "action": "renamed",
+            "organization": {"login": "new-org", "id": 123},
+            "changes": {"login": {}},
+        }
+        assert await organization_webhook_processor.validate_payload(payload) is False
+
     async def test_handle_event_deleted(
         self,
         organization_webhook_processor: OrganizationWebhookProcessor,
@@ -204,7 +228,7 @@ class TestOrganizationWebhookProcessor:
 
         assert isinstance(result, WebhookEventRawResults)
         assert result.updated_raw_results == [fetched_org]
-        assert result.deleted_raw_results == []
+        assert result.deleted_raw_results == [{"login": "old-org"}]
         mock_create_client.assert_called_once_with("test-org")
         mock_exporter.get_resource.assert_called_once_with(
             SingleOrganizationOptions(organization="test-org")

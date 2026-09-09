@@ -3,6 +3,7 @@ from loguru import logger
 from github.webhook.events import (
     ORGANIZATION_DELETE_EVENTS,
     ORGANIZATION_EVENTS,
+    ORGANIZATION_RENAME_EVENTS,
 )
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client_for_org
@@ -56,12 +57,26 @@ class OrganizationWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        deleted_raw_results = []
+        if action in ORGANIZATION_RENAME_EVENTS:
+            old_login = payload["changes"]["login"]["from"]
+            deleted_raw_results = [{"login": old_login}]
+            logger.info(
+                f"Organization renamed from {old_login} to {org_login}"
+            )
+
         logger.info(f"Organization {org_login} upserted after {action} event")
         return WebhookEventRawResults(
-            updated_raw_results=[data_to_upsert], deleted_raw_results=[]
+            updated_raw_results=[data_to_upsert],
+            deleted_raw_results=deleted_raw_results,
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not {"action", "organization"} <= payload.keys():
             return False
-        return bool(payload["organization"].get("login"))
+        if not payload["organization"].get("login"):
+            return False
+        if payload["action"] in ORGANIZATION_RENAME_EVENTS:
+            if not payload.get("changes", {}).get("login", {}).get("from"):
+                return False
+        return True
