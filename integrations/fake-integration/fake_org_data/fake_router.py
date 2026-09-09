@@ -1,4 +1,5 @@
 from typing import Any, Dict
+from uuid import uuid4
 
 from port_ocean.context.ocean import ocean
 
@@ -41,3 +42,14 @@ def initialize_fake_routes() -> None:
     @ocean.router.get("/projects")
     async def get_projects() -> Dict[str, Any]:
         return await generate_fake_projects()
+
+    @ocean.router.post("/fake-tasks")
+    async def create_fake_task(body: Dict[str, Any]) -> Dict[str, Any]:
+        task_id = str(uuid4())
+        task_name = body.get("taskName", "unnamed-task")
+        return {
+            "id": task_id,
+            "name": task_name,
+            "status": "pending",
+            "link": f"/fake-tasks/{task_id}",
+        }
