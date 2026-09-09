@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.codepipeline.pipeline.exporter import PipelineExporter
 from aws.core.exporters.codepipeline.pipeline.models import (
@@ -42,6 +43,9 @@ async def test_get_resource_success(
 ) -> None:
     # Arrange
     exporter = PipelineExporter(AsyncMock())
+    mock_proxy = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+    mock_proxy.client.get_pipeline = AsyncMock(return_value={"pipeline": {}})
     mock_inspector = AsyncMock()
     mock_inspector_class.return_value = mock_inspector
 
@@ -70,35 +74,27 @@ async def test_get_resource_success(
 @patch(f"{patch_prefix}.CodePipelinePipelineActionInput")
 @patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
-async def test_get_resource_empty_response(
+async def test_get_resource_raises_when_pipeline_not_found(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
     mock_input: MagicMock,
     single_options: SinglePipelineRequest,
 ) -> None:
-    # Arrange
     exporter = PipelineExporter(AsyncMock())
-    mock_inspector = AsyncMock()
-    mock_inspector_class.return_value = mock_inspector
-    mock_inspector.inspect.return_value = []
+    mock_proxy = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+    mock_proxy.client.get_pipeline = AsyncMock(
+        side_effect=ClientError(
+            {"Error": {"Code": "PipelineNotFoundException", "Message": "gone"}},
+            "GetPipeline",
+        )
+    )
 
-    # Act
-    result = await exporter.get_resource(single_options)
+    with pytest.raises(ClientError) as exc_info:
+        await exporter.get_resource(single_options)
 
-    # Assert
-    assert result == {}
-    mock_proxy_class.assert_called_once_with(
-        exporter.session, single_options.region, "codepipeline"
-    )
-    mock_inspector.inspect.assert_called_once()
-    mock_input.assert_called_once_with(
-        items=[{"name": single_options.pipeline_name}],
-        region=single_options.region,
-        account_id=single_options.account_id,
-    )
-    mock_inspector.inspect.assert_called_once_with(
-        mock_input.return_value, single_options.include
-    )
+    assert exc_info.value.response["Error"]["Code"] == "PipelineNotFoundException"
+    mock_inspector_class.assert_not_called()
 
 
 @pytest.mark.asyncio

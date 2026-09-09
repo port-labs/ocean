@@ -24,6 +24,11 @@ class PipelineExporter(IResourceExporter[CodePipelinePipelineActionInput]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-pipeline fetch only has a pipeline name from CloudTrail.
+            # Confirm it exists so a missing pipeline raises and the live-event handler
+            # can treat a stale update as delete instead of upserting an empty stub.
+            await proxy.client.get_pipeline(name=options.pipeline_name)  # type: ignore[attr-defined]
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

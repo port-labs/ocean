@@ -1535,3 +1535,303 @@ def test_parse_ses_configuration_set_events() -> None:
     assert delete_parsed is not None
     assert delete_parsed.kind == ObjectKind.SES_CONFIGURATION_SET
     assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def _memorydb_user_eventbridge_envelope(
+    event_name: str,
+    *,
+    user_name: str | None = "memorydb-user",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "memorydb.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+    if user_name is not None:
+        detail["requestParameters"] = {"userName": user_name}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.memorydb",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_memorydb_user_events() -> None:
+    for event_name in ("CreateUser", "UpdateUser", "DeleteUser"):
+        payload = _memorydb_user_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_memorydb_user_events() -> None:
+    create_payload = _memorydb_user_eventbridge_envelope("CreateUser")
+    delete_payload = _memorydb_user_eventbridge_envelope("DeleteUser")
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.MEMORYDB_USER
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "memorydb-user"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.MEMORYDB_USER
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_parse_returns_none_when_memorydb_request_parameters_is_null() -> None:
+    payload = _memorydb_user_eventbridge_envelope("CreateUser")
+    cast(dict[str, Any], payload["detail"])["requestParameters"] = None
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def _codebuild_project_eventbridge_envelope(
+    event_name: str,
+    *,
+    project_name: str | None = "sample-project",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    return _cluster_eventbridge_envelope(
+        event_name,
+        event_source="codebuild.amazonaws.com",
+        cluster_name=project_name,
+        account=account,
+        region=region,
+        identifier_key="name",
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_codebuild_project_events() -> None:
+    for event_name in ("CreateProject", "UpdateProject", "DeleteProject"):
+        payload = _codebuild_project_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_codebuild_project_events() -> None:
+    create_payload = _codebuild_project_eventbridge_envelope("CreateProject")
+    delete_payload = _codebuild_project_eventbridge_envelope("DeleteProject")
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.CODEBUILD_PROJECT
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "sample-project"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.CODEBUILD_PROJECT
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def test_parse_codebuild_project_delete_event_with_project_arn_in_name() -> None:
+    project_arn = (
+        "arn:aws:codebuild:us-east-1:111122223333:project/sample-project"
+    )
+    payload = _codebuild_project_eventbridge_envelope(
+        "DeleteProject", project_name=project_arn
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.CODEBUILD_PROJECT
+    assert parsed.action == CloudTrailEventAction.DELETE
+    assert parsed.identifier == "sample-project"
+
+
+def _codedeploy_application_eventbridge_envelope(
+    event_name: str,
+    *,
+    application_name: str | None = "MyApplication",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    return _cluster_eventbridge_envelope(
+        event_name,
+        event_source="codedeploy.amazonaws.com",
+        cluster_name=application_name,
+        account=account,
+        region=region,
+        identifier_key="applicationName",
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_codedeploy_application_events() -> None:
+    for event_name in ("CreateApplication", "UpdateApplication", "DeleteApplication"):
+        payload = _codedeploy_application_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_codedeploy_application_events() -> None:
+    create_payload = _codedeploy_application_eventbridge_envelope("CreateApplication")
+    delete_payload = _codedeploy_application_eventbridge_envelope("DeleteApplication")
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.CODEDEPLOY_APPLICATION
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "MyApplication"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.CODEDEPLOY_APPLICATION
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def _codedeploy_deployment_group_eventbridge_envelope(
+    event_name: str,
+    *,
+    application_name: str | None = "MyApplication",
+    deployment_group_name: str | None = "MyGroup",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "codedeploy.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+    if application_name is not None and deployment_group_name is not None:
+        detail["requestParameters"] = {
+            "applicationName": application_name,
+            "deploymentGroupName": deployment_group_name,
+        }
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.codedeploy",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_codedeploy_deployment_group_events() -> (
+    None
+):
+    for event_name in (
+        "CreateDeploymentGroup",
+        "UpdateDeploymentGroup",
+        "DeleteDeploymentGroup",
+    ):
+        payload = _codedeploy_deployment_group_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_codedeploy_deployment_group_events() -> None:
+    create_payload = _codedeploy_deployment_group_eventbridge_envelope(
+        "CreateDeploymentGroup"
+    )
+    delete_payload = _codedeploy_deployment_group_eventbridge_envelope(
+        "DeleteDeploymentGroup"
+    )
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.CODEDEPLOY_DEPLOYMENT_GROUP
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "MyApplication/MyGroup"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.CODEDEPLOY_DEPLOYMENT_GROUP
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def _codepipeline_pipeline_eventbridge_envelope(
+    event_name: str,
+    *,
+    pipeline_name: str | None = "MyPipeline",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+    nested_pipeline_name: bool = False,
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "codepipeline.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+    if pipeline_name is not None:
+        if nested_pipeline_name:
+            detail["requestParameters"] = {"pipeline": {"name": pipeline_name}}
+        else:
+            detail["requestParameters"] = {"name": pipeline_name}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.codepipeline",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_codepipeline_pipeline_events() -> None:
+    for event_name in ("CreatePipeline", "UpdatePipeline", "DeletePipeline"):
+        payload = _codepipeline_pipeline_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_codepipeline_pipeline_events() -> None:
+    create_payload = _codepipeline_pipeline_eventbridge_envelope(
+        "CreatePipeline", nested_pipeline_name=True
+    )
+    delete_payload = _codepipeline_pipeline_eventbridge_envelope("DeletePipeline")
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.CODEPIPELINE_PIPELINE
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "MyPipeline"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.CODEPIPELINE_PIPELINE
+    assert delete_parsed.action == CloudTrailEventAction.DELETE

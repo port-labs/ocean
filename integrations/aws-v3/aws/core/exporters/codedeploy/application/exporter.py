@@ -11,6 +11,7 @@ from aws.core.exporters.codedeploy.application.models import (
     PaginatedCodeDeployApplicationRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -31,6 +32,16 @@ class CodeDeployApplicationExporter(
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            batch_response = await proxy.client.batch_get_applications(  # type: ignore[attr-defined]
+                applicationNames=[options.application_name]
+            )
+            require_aws_resource(
+                batch_response.get("applicationsInfo"),
+                error_code="ApplicationDoesNotExistException",
+                message=f"Application not found: {options.application_name}",
+                operation_name="BatchGetApplications",
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

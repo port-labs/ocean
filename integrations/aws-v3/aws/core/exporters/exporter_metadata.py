@@ -9,6 +9,9 @@ from aws.core.exporters.codebuild import (
     PaginatedBuildRunRequest,
     PaginatedCodeBuildProjectRequest,
 )
+from aws.core.exporters.codebuild.project.live_events import (
+    CODEBUILD_PROJECT_LIVE_EVENTS,
+)
 from aws.core.exporters.codedeploy import (
     CodeDeployApplicationExporter,
     CodeDeployDeploymentExporter,
@@ -18,6 +21,12 @@ from aws.core.exporters.codedeploy import (
     PaginatedCodeDeployDeploymentGroupRequest,
     PaginatedCodeDeployDeploymentRequest,
     PaginatedCodeDeployDeploymentTargetRequest,
+)
+from aws.core.exporters.codedeploy.application.live_events import (
+    CODEDEPLOY_APPLICATION_LIVE_EVENTS,
+)
+from aws.core.exporters.codedeploy.deployment_group.live_events import (
+    CODEDEPLOY_DEPLOYMENT_GROUP_LIVE_EVENTS,
 )
 from aws.core.exporters.codepipeline import (
     CodePipelineActionExecutionExporter,
@@ -30,6 +39,9 @@ from aws.core.exporters.codepipeline import (
     PaginatedPipelineExecutionRequest,
     PaginatedPipelineRequest,
     PipelineExporter,
+)
+from aws.core.exporters.codepipeline.pipeline.live_events import (
+    CODEPIPELINE_PIPELINE_LIVE_EVENTS,
 )
 from aws.core.exporters.dynamodb import DynamoDBTableExporter
 from aws.core.exporters.dynamodb.table.live_events import DYNAMODB_TABLE_LIVE_EVENTS
@@ -65,6 +77,7 @@ from aws.core.exporters.elasticache.cluster.live_events import (
 )
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
+from aws.core.exporters.memorydb.user.live_events import MEMORYDB_USER_LIVE_EVENTS
 from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
 from aws.core.helpers.metadata.types import ExporterMetadata
 from aws.core.exporters.msk import MskClusterExporter, MskServerlessClusterExporter
@@ -160,7 +173,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         MskServerlessClusterExporter, PaginatedMskServerlessClusterRequest
     ),
     ObjectKind.MEMORYDB_USER: ExporterMetadata(
-        MemoryDbUserExporter, PaginatedMemoryDbUserRequest
+        MemoryDbUserExporter,
+        PaginatedMemoryDbUserRequest,
+        live_events=MEMORYDB_USER_LIVE_EVENTS,
     ),
     ObjectKind.MSK_CLUSTER: ExporterMetadata(
         MskClusterExporter, PaginatedMskClusterRequest
@@ -176,16 +191,22 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         live_events=EC2_VOLUME_LIVE_EVENTS,
     ),
     ObjectKind.CODEBUILD_PROJECT: ExporterMetadata(
-        CodeBuildProjectExporter, PaginatedCodeBuildProjectRequest
+        CodeBuildProjectExporter,
+        PaginatedCodeBuildProjectRequest,
+        live_events=CODEBUILD_PROJECT_LIVE_EVENTS,
     ),
     ObjectKind.CODEBUILD_BUILD_RUN: ExporterMetadata(
         CodeBuildBuildRunExporter, PaginatedBuildRunRequest
     ),
     ObjectKind.CODEDEPLOY_APPLICATION: ExporterMetadata(
-        CodeDeployApplicationExporter, PaginatedCodeDeployApplicationRequest
+        CodeDeployApplicationExporter,
+        PaginatedCodeDeployApplicationRequest,
+        live_events=CODEDEPLOY_APPLICATION_LIVE_EVENTS,
     ),
     ObjectKind.CODEDEPLOY_DEPLOYMENT_GROUP: ExporterMetadata(
-        CodeDeployDeploymentGroupExporter, PaginatedCodeDeployDeploymentGroupRequest
+        CodeDeployDeploymentGroupExporter,
+        PaginatedCodeDeployDeploymentGroupRequest,
+        live_events=CODEDEPLOY_DEPLOYMENT_GROUP_LIVE_EVENTS,
     ),
     ObjectKind.CODEDEPLOY_DEPLOYMENT: ExporterMetadata(
         CodeDeployDeploymentExporter, PaginatedCodeDeployDeploymentRequest
@@ -194,7 +215,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         CodeDeployDeploymentTargetExporter, PaginatedCodeDeployDeploymentTargetRequest
     ),
     ObjectKind.CODEPIPELINE_PIPELINE: ExporterMetadata(
-        PipelineExporter, PaginatedPipelineRequest
+        PipelineExporter,
+        PaginatedPipelineRequest,
+        live_events=CODEPIPELINE_PIPELINE_LIVE_EVENTS,
     ),
     ObjectKind.CODEPIPELINE_STAGE: ExporterMetadata(
         CodePipelineStageExporter, PaginatedCodePipelineStageRequest

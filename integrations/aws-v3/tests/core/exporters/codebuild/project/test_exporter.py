@@ -1,6 +1,7 @@
 from typing import AsyncGenerator
 
 import pytest
+from botocore.exceptions import ClientError
 from unittest.mock import AsyncMock, patch, MagicMock
 from aws.core.exporters.codebuild.project.exporter import CodeBuildProjectExporter
 from aws.core.exporters.codebuild.project.models import (
@@ -44,6 +45,9 @@ async def test_get_resource(
     mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
+    mock_proxy_instance.client.batch_get_projects = AsyncMock(
+        return_value={"projects": [{"name": "test-project"}]}
+    )
 
     mock_inspector_instance = AsyncMock()
     mock_inspector_class.return_value = mock_inspector_instance
@@ -68,26 +72,24 @@ async def test_get_resource(
 @pytest.mark.asyncio
 @patch("aws.core.exporters.codebuild.project.exporter.AioBaseClientProxy")
 @patch("aws.core.exporters.codebuild.project.exporter.ResourceInspector")
-async def test_get_resource_empty_response(
+async def test_get_resource_raises_when_project_not_found(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
     single_project_options: SingleCodeBuildProjectRequest,
 ) -> None:
-    # Setup mocks
+    """Missing projects must raise so live events can treat fetch-after-delete as deleted."""
     mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
+    mock_proxy_instance.client.batch_get_projects = AsyncMock(return_value={"projects": []})
 
-    mock_inspector_instance = AsyncMock()
-    mock_inspector_class.return_value = mock_inspector_instance
-    mock_inspector_instance.inspect.return_value = []
-
-    # Test
     exporter = CodeBuildProjectExporter(mock_session)
-    result = await exporter.get_resource(single_project_options)
 
-    # Assertions
-    assert result == {}
+    with pytest.raises(ClientError) as exc_info:
+        await exporter.get_resource(single_project_options)
+
+    assert exc_info.value.response["Error"]["Code"] == "ResourceNotFoundException"
+    mock_inspector_class.assert_not_called()
 
 
 @pytest.mark.asyncio

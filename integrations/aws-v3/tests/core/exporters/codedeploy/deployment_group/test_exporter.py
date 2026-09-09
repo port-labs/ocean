@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.codedeploy.deployment_group.exporter import (
     CodeDeployDeploymentGroupExporter,
@@ -52,6 +53,11 @@ async def test_get_resource_success(
     mock_inspector = AsyncMock()
     mock_inspector_class.return_value = mock_inspector
     mock_inspector.inspect.return_value = [MagicMock()]
+    mock_proxy = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+    mock_proxy.client.batch_get_deployment_groups = AsyncMock(
+        return_value={"deploymentGroupsInfo": [{"deploymentGroupName": "my-group"}]}
+    )
 
     # Act
     result = await exporter.get_resource(single_deployment_group_options)
@@ -81,34 +87,27 @@ async def test_get_resource_success(
 @patch(f"{patch_prefix}.DeploymentGroupActionInput")
 @patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
-async def test_get_resource_empty_inspection_returns_empty_dict(
+async def test_get_resource_raises_when_deployment_group_not_found(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
     mock_input: MagicMock,
     exporter: CodeDeployDeploymentGroupExporter,
     single_deployment_group_options: SingleCodeDeployDeploymentGroupRequest,
 ) -> None:
-    # Arrange
-    mock_inspector = AsyncMock()
-    mock_inspector.inspect.return_value = []
-    mock_inspector_class.return_value = mock_inspector
-
-    # Act
-    result = await exporter.get_resource(single_deployment_group_options)
-
-    # Assert
-    assert result == {}
-    mock_proxy_class.assert_called_once_with(
-        exporter.session, single_deployment_group_options.region, "codedeploy"
+    mock_proxy = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+    mock_proxy.client.batch_get_deployment_groups = AsyncMock(
+        return_value={"deploymentGroupsInfo": []}
     )
-    mock_inspector.inspect.assert_called_once_with(
-        mock_input.return_value,
-        single_deployment_group_options.include,
-        extra_context={
-            "AccountId": single_deployment_group_options.account_id,
-            "Region": single_deployment_group_options.region,
-        },
+
+    with pytest.raises(ClientError) as exc_info:
+        await exporter.get_resource(single_deployment_group_options)
+
+    assert (
+        exc_info.value.response["Error"]["Code"]
+        == "DeploymentGroupDoesNotExistException"
     )
+    mock_inspector_class.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,7 @@ from aws.core.exporters.codedeploy.deployment_group.models import (
     PaginatedCodeDeployDeploymentGroupRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -30,6 +31,20 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter[DeploymentGroupActionI
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            batch_response = await proxy.client.batch_get_deployment_groups(  # type: ignore[attr-defined]
+                applicationName=options.application_name,
+                deploymentGroupNames=[options.deployment_group_name],
+            )
+            require_aws_resource(
+                batch_response.get("deploymentGroupsInfo"),
+                error_code="DeploymentGroupDoesNotExistException",
+                message=(
+                    "Deployment group not found: "
+                    f"{options.application_name}/{options.deployment_group_name}"
+                ),
+                operation_name="BatchGetDeploymentGroups",
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
