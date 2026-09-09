@@ -4,6 +4,7 @@ from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.utils import build_issue_create_input, require_property
+from linear.core.mutations import IssueMutations
 
 
 class CreateIssueExecutor(AbstractLinearExecutor):
@@ -21,7 +22,8 @@ class CreateIssueExecutor(AbstractLinearExecutor):
             should_raise=False,
         )
 
-        issue = await self.client.create_issue(issue_input)
+        mutations = IssueMutations(self.client)
+        issue = await mutations.create_issue(issue_input)
 
         await ocean.port_client.report_run_completed(
             run,
