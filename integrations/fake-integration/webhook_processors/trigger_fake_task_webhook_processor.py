@@ -10,6 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+from actions.constants import TASK_STATUS_LABELS
 from actions.utils import build_external_id
 from webhook_processors.abstract_fake_webhook_processor import (
     AbstractFakeWebhookProcessor,
@@ -68,6 +69,9 @@ class TriggerFakeTaskWebhookProcessor(AbstractFakeWebhookProcessor):
             should_raise=False,
         )
         await ocean.port_client.report_run_completed(
-            run, success, f"Fake task completed: {status}"
+            run,
+            success,
+            f"Fake task completed: {status}",
+            status_label=TASK_STATUS_LABELS.get(status, f"Task {status}"),
         )
         return empty

@@ -3,6 +3,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from actions.abstract_fake_executor import AbstractFakeExecutor
+from actions.constants import TASK_RUNNING_STATUS_LABEL, TRIGGERING_TASK_STATUS_LABEL
 from actions.exceptions import MissingExecutionPropertyError, TriggerFakeTaskError
 from actions.utils import build_external_id
 from fake_org_data.fake_client import trigger_fake_task
@@ -23,7 +24,10 @@ class TriggerFakeTaskExecutor(AbstractFakeExecutor):
             raise MissingExecutionPropertyError("taskName is required")
 
         await ocean.port_client.post_run_log(
-            run, f"Triggering fake task '{task_name}'", should_raise=False
+            run,
+            f"Triggering fake task '{task_name}'",
+            status_label=TRIGGERING_TASK_STATUS_LABEL,
+            should_raise=False,
         )
 
         try:
@@ -40,9 +44,17 @@ class TriggerFakeTaskExecutor(AbstractFakeExecutor):
 
         external_id = build_external_id(str(task["id"]))
         link = task.get("link") or f"/fake-tasks/{task['id']}"
-        await ocean.port_client.update_run_started(run, link, external_id)
+        await ocean.port_client.update_run_started(
+            run,
+            link,
+            external_id,
+            status_label=TASK_RUNNING_STATUS_LABEL,
+        )
         await ocean.port_client.post_run_log(
-            run, f"Fake task started: {link}", should_raise=False
+            run,
+            f"Fake task started: {link}",
+            status_label=TASK_RUNNING_STATUS_LABEL,
+            should_raise=False,
         )
         logger.info(
             "Fake task triggered",

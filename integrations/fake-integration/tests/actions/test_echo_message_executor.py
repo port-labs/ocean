@@ -8,6 +8,7 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
+from actions.constants import ECHOING_STATUS_LABEL, MESSAGE_ECHOED_STATUS_LABEL
 from actions.echo_message_executor import EchoMessageExecutor
 from actions.exceptions import MissingExecutionPropertyError
 
@@ -49,8 +50,17 @@ class TestEchoMessageExecutor:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
+        mock_port_client.post_run_log.assert_awaited_once_with(
+            run,
+            "Echoing message: hello smoke test",
+            status_label=ECHOING_STATUS_LABEL,
+            should_raise=False,
+        )
         mock_port_client.report_run_completed.assert_awaited_once_with(
-            run, success=True, message="Echo: hello smoke test"
+            run,
+            success=True,
+            message="Echo: hello smoke test",
+            status_label=MESSAGE_ECHOED_STATUS_LABEL,
         )
 
     async def test_missing_message(
@@ -59,7 +69,8 @@ class TestEchoMessageExecutor:
         run = make_run({})
         with patch("actions.echo_message_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
-            with pytest.raises(MissingExecutionPropertyError):
+            with pytest.raises(MissingExecutionPropertyError) as exc_info:
                 await executor.execute(run)
 
+        assert exc_info.value.status_label == "Invalid input"
         mock_port_client.report_run_completed.assert_not_awaited()
