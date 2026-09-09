@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.12.1 (2026-09-09)
+
+
+### Bug Fixes
+
+- Restore live-event deletes for file-kind itemsToParse item removals, whole-file deletes, and renames. Modified files with itemsToParse emit old content as deletes and new content as upserts; DSP keeps entities that appear in both lists.
+
+
+## 6.12.0 (2026-09-08)
+
+
+### Features
+
+- Add GitHub permission probing for PAT and GitHub App authentication
+
+
 ## 6.11.1 (2026-09-07)
 
 
