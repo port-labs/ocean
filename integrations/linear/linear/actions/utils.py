@@ -35,11 +35,24 @@ def parse_priority(value: Any) -> int | None:
     return priority
 
 
+def require_property(
+    run: IntegrationRun, name: str, *, title: str | None = None
+) -> Any:
+    value = run.execution_properties.get(name)
+    if value is None or value == "":
+        raise MissingExecutionPropertyError(f"{title or name} is required")
+    return value
+
+
+def optional_string(value: Any) -> str | None:
+    if value is None or value == "":
+        return None
+    return str(value)
+
+
 def optional_payload_fields(**fields: Any) -> dict[str, Any]:
     return {
-        key: value
-        for key, value in fields.items()
-        if value is not None and value != ""
+        key: value for key, value in fields.items() if value is not None and value != ""
     }
 
 
