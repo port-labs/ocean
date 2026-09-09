@@ -3,7 +3,11 @@ from typing import Any
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import LinearExporter
 from linear.core.mutations import queries
-from linear.helpers.exceptions import CreateIssueError, UpdateIssueError
+from linear.helpers.exceptions import (
+    CreateIssueError,
+    LinearActionError,
+    UpdateIssueError,
+)
 
 
 class IssueMutations(LinearExporter):
