@@ -16,6 +16,14 @@ TEST_INTEGRATION_CONFIG: dict[str, Any] = {
 
 @pytest.fixture(autouse=True)
 def _mock_ocean_context() -> Generator[None, None, None]:
+    """Mock Port Ocean context so OceanAsyncClient can be used without initializing the app."""
+    mock_ocean = MagicMock()
+    mock_ocean.app.is_saas.return_value = False
+    mock_ocean.config.client_timeout = 30
+    with (
+        patch("port_ocean.helpers.async_client.ocean", mock_ocean),
+        patch("linear.client.ocean", mock_ocean),
+    ):
     """Mock Port Ocean context so OceanAsyncClient and JQ can run in tests."""
     try:
         mock_ocean_app = MagicMock()

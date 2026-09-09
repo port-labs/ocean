@@ -1,6 +1,14 @@
 from loguru import logger
 
+from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
+from linear.core.exporters import (
+    DocumentExporter,
+    IssueExporter,
+    LabelExporter,
+    TeamExporter,
+)
+from linear.webhook.webhook_client import LinearWebhookClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from linear.utils import ObjectKind
@@ -19,15 +27,15 @@ async def setup_application() -> None:
     if not base_url:
         return
 
-    linear_client = LinearClient.create_from_ocean_configuration()
-    await linear_client.create_events_webhook(base_url)
+    webhook_client = LinearWebhookClient.create_from_ocean_configuration()
+    await webhook_client.create_events_webhook(base_url)
 
 
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for teams in client.get_paginated_teams():
+    async for teams in TeamExporter(client).get_paginated_resources():
         logger.info(f"Received team batch with {len(teams)} teams")
         yield teams
 
@@ -36,7 +44,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for labels in client.get_paginated_labels():
+    async for labels in LabelExporter(client).get_paginated_resources():
         logger.info(f"Received label batch with {len(labels)} labels")
         yield labels
 
@@ -45,7 +53,7 @@ async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for issues in client.get_paginated_issues():
+    async for issues in IssueExporter(client).get_paginated_resources():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
@@ -54,7 +62,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_documents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for documents in client.get_paginated_documents():
+    async for documents in DocumentExporter(client).get_paginated_resources():
         logger.info(f"Received document batch with {len(documents)} documents")
         yield documents
 
@@ -112,3 +120,5 @@ ocean.add_webhook_processor("/webhook", DocumentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", CycleWebhookProcessor)
+
+register_actions_executors()
