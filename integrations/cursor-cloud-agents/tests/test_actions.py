@@ -26,7 +26,6 @@ _V0_LAUNCH_AGENT: dict[str, object] = {
     "createdAt": "2026-07-16T11:11:03.025Z",
 }
 
-
 @asynccontextmanager
 async def _noop_event_context(*args: Any, **kwargs: Any) -> AsyncIterator[None]:
     yield
