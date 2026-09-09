@@ -89,13 +89,6 @@
           "type": "string",
           "description": "Name of the fake task to trigger",
           "required": true
-        },
-        {
-          "name": "reportTaskStatus",
-          "title": "Report task status",
-          "type": "boolean",
-          "description": "Whether to report task completion status back to Port",
-          "default": true
         }
       ]
     }

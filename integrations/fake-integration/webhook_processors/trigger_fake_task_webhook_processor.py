@@ -29,38 +29,29 @@ class TriggerFakeTaskWebhookProcessor(AbstractFakeWebhookProcessor):
         return []
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("event") == FAKE_TASK_COMPLETED_EVENT
+        if event.payload.get("event") != FAKE_TASK_COMPLETED_EVENT:
+            return False
+
+        task = event.payload.get("task") or {}
+        task_id = task.get("id")
+        status = task.get("status")
+        return task_id is not None and status in TERMINAL_TASK_STATUSES
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
         task = payload.get("task") or {}
-        task_id = task.get("id")
-        status = task.get("status")
-
-        if task_id is None or status not in TERMINAL_TASK_STATUSES:
-            return empty
+        task_id = task["id"]
+        status = task["status"]
 
         run = await ocean.port_client.find_run_by_external_id(
             build_external_id(str(task_id))
         )
         if run is None:
             logger.debug(f"No Port run found for fake task {task_id}, skipping")
-            return empty
-
-        if not run.execution_properties.get("reportTaskStatus", True):
-            logger.info(
-                f"reportTaskStatus is disabled for run {run.id}, skipping status update"
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
-            return empty
-
-        if not ocean.port_client.is_run_in_progress(run):
-            logger.info(
-                f"Run {run.id} is already completed, skipping duplicate webhook"
-            )
-            return empty
 
         success = status == "success"
         await ocean.port_client.post_run_log(
@@ -74,4 +65,4 @@ class TriggerFakeTaskWebhookProcessor(AbstractFakeWebhookProcessor):
             f"Fake task completed: {status}",
             status_label=TASK_STATUS_LABELS.get(status, f"Task {status}"),
         )
-        return empty
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

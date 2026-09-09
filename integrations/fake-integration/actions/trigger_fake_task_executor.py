@@ -7,7 +7,6 @@ from actions.constants import TASK_RUNNING_STATUS_LABEL, TRIGGERING_TASK_STATUS_
 from actions.exceptions import MissingExecutionPropertyError, TriggerFakeTaskError
 from actions.utils import build_external_id
 from fake_org_data.fake_client import trigger_fake_task
-from webhook_processors.constants import WEBHOOK_PATH
 from webhook_processors.trigger_fake_task_webhook_processor import (
     TriggerFakeTaskWebhookProcessor,
 )
@@ -16,7 +15,6 @@ from webhook_processors.trigger_fake_task_webhook_processor import (
 class TriggerFakeTaskExecutor(AbstractFakeExecutor):
     ACTION_NAME = "trigger_fake_task"
     WEBHOOK_PROCESSOR_CLASS = TriggerFakeTaskWebhookProcessor
-    WEBHOOK_PATH = WEBHOOK_PATH
 
     async def execute(self, run: IntegrationRun) -> None:
         task_name = run.execution_properties.get("taskName")
