@@ -69,7 +69,7 @@
           "name": "teamId",
           "title": "Team ID",
           "type": "string",
-          "description": "The UUID of the Linear team. Copy it from Linear using Cmd/Ctrl+K \u2192 Copy model UUID.",
+          "description": "Linear team UUID. In self-service actions, map this from a linearTeam catalog entity.",
           "required": true
         },
         {
@@ -146,7 +146,7 @@
           "name": "teamId",
           "title": "Team ID",
           "type": "string",
-          "description": "Optional team UUID. When omitted, the parent issue's team is used."
+          "description": "Optional Linear team UUID. When omitted, the parent issue's team is used. Map from a linearTeam catalog entity when needed."
         },
         {
           "name": "description",
