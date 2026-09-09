@@ -40,7 +40,14 @@ class CodeBuildProjectExporter(IResourceExporter[list[str]]):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect([options.project_name], options.include)
+            response = await inspector.inspect(
+                [options.project_name],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
             return response[0] if response else {}
 
     async def get_paginated_resources(

@@ -66,7 +66,14 @@ async def test_get_resource(
     # Assertions
     assert result == expected_result
     mock_proxy_class.assert_called_once_with(mock_session, "us-east-1", "codebuild")
-    mock_inspector_instance.inspect.assert_called_once_with(["test-project"], [])
+    mock_inspector_instance.inspect.assert_called_once_with(
+        ["test-project"],
+        [],
+        extra_context={
+            "AccountId": "123456789012",
+            "Region": "us-east-1",
+        },
+    )
 
 
 @pytest.mark.asyncio

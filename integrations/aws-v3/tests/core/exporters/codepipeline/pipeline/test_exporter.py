@@ -66,7 +66,12 @@ async def test_get_resource_success(
         account_id=single_options.account_id,
     )
     mock_inspector.inspect.assert_called_once_with(
-        mock_input.return_value, single_options.include
+        mock_input.return_value,
+        single_options.include,
+        extra_context={
+            "AccountId": single_options.account_id,
+            "Region": single_options.region,
+        },
     )
 
 

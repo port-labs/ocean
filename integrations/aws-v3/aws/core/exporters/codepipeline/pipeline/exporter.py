@@ -39,6 +39,10 @@ class PipelineExporter(IResourceExporter[CodePipelinePipelineActionInput]):
                     account_id=options.account_id,
                 ),
                 options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
             )
             return response[0] if response else {}
 
