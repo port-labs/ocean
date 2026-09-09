@@ -46,3 +46,13 @@ class TestCreateIssueExecutor:
             mock_ocean.port_client = mock_port_client
             with pytest.raises(MissingExecutionPropertyError):
                 await executor.execute(run)
+
+    async def test_missing_title(
+        self, mock_port_client: MagicMock, mock_linear_client: MagicMock
+    ) -> None:
+        executor = create_executor(CreateIssueExecutor, mock_linear_client)
+        run = make_run("create_issue", {"teamId": "team-1"})
+        with patch("linear.actions.create_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            with pytest.raises(MissingExecutionPropertyError):
+                await executor.execute(run)
