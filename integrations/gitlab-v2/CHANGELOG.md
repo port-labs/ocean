@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.0 (2026-09-09)
+
+
+### Improvements
+
+- Added status labels to the trigger_pipeline action, so Port shows when a pipeline is being triggered, running, or finished with its GitLab status
+
+
 ## 0.9.47 (2026-09-07)
 
 
