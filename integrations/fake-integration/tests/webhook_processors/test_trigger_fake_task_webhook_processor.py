@@ -4,6 +4,7 @@ import pytest
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
+from actions.constants import TASK_STATUS_LABELS
 from webhook_processors.trigger_fake_task_webhook_processor import (
     TriggerFakeTaskWebhookProcessor,
 )
@@ -50,7 +51,10 @@ class TestTriggerFakeTaskWebhookProcessor:
             await processor.handle_event(event.payload, MagicMock(spec=ResourceConfig))
 
         mock_port_client.report_run_completed.assert_awaited_once_with(
-            run, True, "Fake task completed: success"
+            run,
+            True,
+            "Fake task completed: success",
+            status_label=TASK_STATUS_LABELS["success"],
         )
 
     async def test_skips_non_terminal_status(self, mock_port_client: MagicMock) -> None:

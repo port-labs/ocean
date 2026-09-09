@@ -8,6 +8,7 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
+from actions.constants import TASK_RUNNING_STATUS_LABEL, TRIGGERING_TASK_STATUS_LABEL
 from actions.exceptions import MissingExecutionPropertyError, TriggerFakeTaskError
 from actions.trigger_fake_task_executor import TriggerFakeTaskExecutor
 
@@ -62,8 +63,13 @@ class TestTriggerFakeTaskExecutor:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
+        first_log_call = mock_port_client.post_run_log.await_args_list[0]
+        assert first_log_call.kwargs["status_label"] == TRIGGERING_TASK_STATUS_LABEL
         mock_port_client.update_run_started.assert_awaited_once_with(
-            run, TASK_RESPONSE["link"], "fake_task_task-123"
+            run,
+            TASK_RESPONSE["link"],
+            "fake_task_task-123",
+            status_label=TASK_RUNNING_STATUS_LABEL,
         )
         mock_port_client.report_run_completed.assert_not_awaited()
 
@@ -88,5 +94,7 @@ class TestTriggerFakeTaskExecutor:
             ),
         ):
             mock_ocean.port_client = mock_port_client
-            with pytest.raises(TriggerFakeTaskError):
+            with pytest.raises(TriggerFakeTaskError) as exc_info:
                 await executor.execute(run)
+
+        assert exc_info.value.status_label == "Trigger failed"
