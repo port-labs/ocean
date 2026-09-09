@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Introduce Linear actions infrastructure with rate-limit aware GraphQL client and resource-config driven exporters for resync and webhooks
