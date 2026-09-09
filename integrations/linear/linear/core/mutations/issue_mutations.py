@@ -3,7 +3,7 @@ from typing import Any
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import LinearExporter
 from linear.core.mutations import queries
-from linear.helpers.exceptions import LinearActionError
+from linear.helpers.exceptions import CreateIssueError, UpdateIssueError
 
 
 class IssueMutations(LinearExporter):
@@ -19,7 +19,7 @@ class IssueMutations(LinearExporter):
         if not isinstance(issue, dict) or not all(
             issue.get(key) for key in ("id", "identifier", "url")
         ):
-            raise LinearActionError(
+            raise CreateIssueError(
                 "Linear returned an empty or incomplete issue create response"
             )
         return issue
@@ -36,7 +36,7 @@ class IssueMutations(LinearExporter):
         if not isinstance(issue, dict) or not all(
             issue.get(key) for key in ("id", "identifier", "url")
         ):
-            raise LinearActionError(
+            raise UpdateIssueError(
                 "Linear returned an empty or incomplete issue update response"
             )
         return issue

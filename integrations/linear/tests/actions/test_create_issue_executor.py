@@ -18,7 +18,13 @@ class TestCreateIssueExecutor:
         executor = create_executor(CreateIssueExecutor, mock_linear_client)
         run = make_run(
             "create_issue",
-            {"teamId": "team-1", "title": "Bug report"},
+            {
+                "teamId": "team-1",
+                "title": "Bug report",
+                "description": "Details",
+                "priority": "2",
+                "labelIds": ["label-1"],
+            },
         )
         with (
             patch("linear.actions.create_issue_executor.ocean") as mock_ocean,
@@ -30,11 +36,31 @@ class TestCreateIssueExecutor:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-        mock_issue_mutations.create_issue.assert_awaited_once()
+        mock_issue_mutations.create_issue.assert_awaited_once_with(
+            {
+                "teamId": "team-1",
+                "title": "Bug report",
+                "description": "Details",
+                "priority": 2,
+                "labelIds": ["label-1"],
+            }
+        )
+        assert run.output == {
+            "identifier": "ENG-1",
+            "issueId": "issue-1",
+            "issueUrl": "https://linear.app/test/issue/ENG-1",
+        }
+        mock_port_client.post_run_log.assert_any_call(
+            run,
+            "Creating issue 'Bug report' in team team-1",
+            status_label="Creating issue",
+            should_raise=False,
+        )
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
             message="Created issue ENG-1: https://linear.app/test/issue/ENG-1",
+            status_label="Issue created",
         )
 
     async def test_missing_team_id(
