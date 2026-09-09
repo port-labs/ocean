@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.0 (2026-09-07)
+
+
+### Features
+
+- Added trigger_incident action to create PagerDuty incidents from Port
+
+
+## 0.6.1 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.6.0 (2026-09-07)
+
+
+### Features
+
+- Added actions processing support for PagerDuty integration
+
+
 ## 0.5.156 (2026-09-06)
 
 

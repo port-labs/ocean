@@ -70,6 +70,65 @@
       }
     }
   },
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "trigger_incident",
+      "icon": "PagerDuty",
+      "description": "Create a PagerDuty incident",
+      "inputs": [
+        {
+          "name": "service",
+          "title": "Service",
+          "type": "string",
+          "description": "PagerDuty service ID",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "Incident title",
+          "required": true
+        },
+        {
+          "name": "fromEmail",
+          "title": "From email",
+          "type": "string",
+          "description": "Email of a valid PagerDuty user. Required for API token authentication.",
+          "required": true
+        },
+        {
+          "name": "details",
+          "title": "Details",
+          "type": "string",
+          "description": "Incident body details",
+          "required": false
+        },
+        {
+          "name": "urgency",
+          "title": "Urgency",
+          "type": "string",
+          "description": "Incident urgency: high or low",
+          "required": false
+        },
+        {
+          "name": "incidentKey",
+          "title": "Incident key",
+          "type": "string",
+          "description": "Deduplication key for open incidents on the same service",
+          "required": false
+        },
+        {
+          "name": "escalationPolicyId",
+          "title": "Escalation policy ID",
+          "type": "string",
+          "description": "PagerDuty escalation policy ID to assign the incident to",
+          "required": false
+        }
+      ]
+    }
+  ],
   "installationDocs": {
     "saas": [
       {
