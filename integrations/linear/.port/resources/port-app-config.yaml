@@ -14,6 +14,10 @@ resources:
             description: .description
             workspaceName: .organization.name
             url: "\"https://linear.app/\" + .organization.urlKey + \"/team/\" + .key"
+          relations:
+            members: "[.members.nodes[].id]"
+            parentTeam: .parent.key
+            subTeams: "[.children[].key]"
   - kind: label
     selector:
       query: "true"
@@ -93,6 +97,8 @@ resources:
             guest: .guest
             created: .createdAt
             updated: .updatedAt
+          relations:
+            teams: "[.teamMemberships.nodes[].team.key]"
   - kind: project
     selector:
       query: "true"
@@ -117,23 +123,6 @@ resources:
           relations:
             teams: "[.teams.nodes[].key]"
             leadUser: .lead.id
-  - kind: team-members
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .user.displayName // .user.name
-          blueprint: '"linearTeamMember"'
-          properties:
-            email: .user.email
-            isOwner: .owner
-            created: .createdAt
-            updated: .updatedAt
-          relations:
-            team: .team.key
-            user: .user.id
   - kind: cycle
     selector:
       query: "true"

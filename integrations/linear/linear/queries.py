@@ -147,6 +147,13 @@ QUERIES = {
     title
     createdAt
     updatedAt
+    teamMemberships {
+        nodes {
+            team {
+                key
+            }
+        }
+    }
     """,
     "BASE_PROJECTS_QUERY_FIELDS": """
     id
@@ -289,6 +296,17 @@ QUERIES = {
                         id
                         name
                         urlKey
+                    }
+                    members {
+                        nodes {
+                            id
+                        }
+                    }
+                    parent {
+                        key
+                    }
+                    children {
+                        key
                     }
                 }
             }

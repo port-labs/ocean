@@ -24,7 +24,30 @@
         }
       }
     },
-    "calculationProperties": {}
+    "calculationProperties": {},
+    "relations": {
+      "members": {
+        "target": "linearUser",
+        "title": "Members",
+        "description": "Users who are members of this team",
+        "required": false,
+        "many": true
+      },
+      "parentTeam": {
+        "target": "linearTeam",
+        "title": "Parent Team",
+        "description": "The parent team in Linear's team hierarchy",
+        "required": false,
+        "many": false
+      },
+      "subTeams": {
+        "target": "linearTeam",
+        "title": "Sub-teams",
+        "description": "Sub-teams nested under this team",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "linearLabel",
@@ -279,7 +302,16 @@
         }
       }
     },
-    "calculationProperties": {}
+    "calculationProperties": {},
+    "relations": {
+      "teams": {
+        "target": "linearTeam",
+        "title": "Teams",
+        "description": "Teams this user belongs to",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "linearProject",
