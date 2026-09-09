@@ -310,7 +310,7 @@ class TestAioBaseClientProxy:
     async def test_context_manager_uses_custom_client_config(
         self, isolated_mock_session: AsyncMock
     ) -> None:
-        """Test that a per-resource client config can be supplied at construction."""
+        """Test that a per-resource client config can be supplied when entering."""
         custom_config = AioConfig(retries={"mode": "standard", "max_attempts": 3})
         mock_client = AsyncMock()
         mock_client_cm = AsyncMock()
@@ -323,12 +323,14 @@ class TestAioBaseClientProxy:
             session=isolated_mock_session,
             region="us-east-1",
             service_name="ecs",
-            client_config=custom_config,
         )
 
-        async with proxy:
+        await proxy.__aenter__(config=custom_config)
+        try:
             isolated_mock_session.create_client.assert_called_once_with(
                 service_name="ecs",
                 region_name="us-east-1",
                 config=custom_config,
             )
+        finally:
+            await proxy.__aexit__(None, None, None)
