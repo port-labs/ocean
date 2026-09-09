@@ -1,11 +1,31 @@
+from typing import Any
+
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
+from pydantic.v1 import validator
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
-from linear.actions.utils import build_issue_update_input, require_property
+from linear.actions.utils import LinearActionInput, build_issue_update_input, require_non_empty_str
 from linear.core.mutations import IssueMutations
 from linear.helpers.exceptions import MissingExecutionPropertyError
+
+
+class UpdateIssueInput(LinearActionInput):
+    issueId: str
+    title: str | None = None
+    description: str | None = None
+    assigneeId: str | None = None
+    stateId: str | None = None
+    projectId: str | None = None
+    cycleId: str | None = None
+    priority: Any = None
+    delegateId: str | None = None
+    labelIds: list[str] | None = None
+
+    @validator("issueId", pre=True, always=True)
+    def require_issue_id(cls, value: Any, field: Any) -> str:
+        return require_non_empty_str(value, field)
 
 
 class UpdateIssueExecutor(AbstractLinearExecutor):
@@ -16,21 +36,21 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
         return str(issue_id) if issue_id else None
 
     async def execute(self, run: IntegrationRun) -> None:
-        issue_id = require_property(run, "issueId")
-        issue_input = build_issue_update_input(run.execution_properties)
+        inputs = UpdateIssueInput.from_execution_properties(run.execution_properties)
+        issue_input = build_issue_update_input(inputs.dict(exclude_none=True))
         if not issue_input:
             raise MissingExecutionPropertyError(
-                "At least one update field is required (title, description, assigneeId, stateId, projectId, cycleId, priority, estimate, dueDate, delegateId, or labelIds)"
+                "At least one update field is required (title, description, assigneeId, stateId, projectId, cycleId, priority, delegateId, or labelIds)"
             )
 
         await ocean.port_client.post_run_log(
             run,
-            f"Updating issue {issue_id}",
+            f"Updating issue {inputs.issueId}",
             should_raise=False,
         )
 
         mutations = IssueMutations(self.client)
-        issue = await mutations.update_issue(issue_id, issue_input)
+        issue = await mutations.update_issue(inputs.issueId, issue_input)
 
         await ocean.port_client.report_run_completed(
             run,

@@ -16,7 +16,9 @@ class IssueMutations(LinearExporter):
             result_key="issueCreate",
         )
         issue = result.get("issue")
-        if not isinstance(issue, dict) or not issue.get("id"):
+        if not isinstance(issue, dict) or not all(
+            issue.get(key) for key in ("id", "identifier", "url")
+        ):
             raise LinearActionError(
                 "Linear returned an empty or incomplete issue create response"
             )
@@ -31,7 +33,9 @@ class IssueMutations(LinearExporter):
             result_key="issueUpdate",
         )
         issue = result.get("issue")
-        if not isinstance(issue, dict) or not issue.get("id"):
+        if not isinstance(issue, dict) or not all(
+            issue.get(key) for key in ("id", "identifier", "url")
+        ):
             raise LinearActionError(
                 "Linear returned an empty or incomplete issue update response"
             )
