@@ -22,7 +22,9 @@ class CreateMergeRequestInput(BaseModel):
     class Config:
         extra = "ignore"
 
-    @validator("project", "sourceBranch", "targetBranch", "title", pre=True, always=True)
+    @validator(
+        "project", "sourceBranch", "targetBranch", "title", pre=True, always=True
+    )
     def require_non_empty_str(cls, value: Any, field: Any) -> str:
         if value is None or (isinstance(value, str) and not str(value).strip()):
             raise ValueError(f"{field.name} is required")
@@ -35,7 +37,17 @@ class CreateMergeRequestInput(BaseModel):
         try:
             return cls.parse_obj(execution_properties)
         except ValidationError as error:
-            raise MissingExecutionPropertyError(str(error)) from error
+            raise MissingExecutionPropertyError(
+                cls._validation_error_message(error)
+            ) from error
+
+    @staticmethod
+    def _validation_error_message(error: ValidationError) -> str:
+        first_error = error.errors()[0]
+        field_name = first_error["loc"][0]
+        if first_error["type"] == "value_error.missing":
+            return f"{field_name} is required"
+        return str(first_error["msg"])
 
 
 class CreateMergeRequestExecutor(AbstractGitlabExecutor):
