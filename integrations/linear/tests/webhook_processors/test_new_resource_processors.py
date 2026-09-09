@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -22,7 +22,7 @@ PROCESSOR_CASES = [
         ObjectKind.USER,
         "User",
         "user-1",
-        "get_single_user",
+        "UserExporter",
         {"id": "user-1", "name": "Alice"},
         id="user",
     ),
@@ -31,7 +31,7 @@ PROCESSOR_CASES = [
         ObjectKind.PROJECT,
         "Project",
         "project-1",
-        "get_single_project",
+        "ProjectExporter",
         {"id": "project-1", "name": "Payments"},
         id="project",
     ),
@@ -40,7 +40,7 @@ PROCESSOR_CASES = [
         ObjectKind.CYCLE,
         "Cycle",
         "cycle-1",
-        "get_single_cycle",
+        "CycleExporter",
         {"id": "cycle-1", "number": 5},
         id="cycle",
     ),
@@ -50,7 +50,7 @@ PROCESSOR_CASES = [
 @pytest.mark.asyncio
 class TestNewResourceWebhookProcessors:
     @pytest.mark.parametrize(
-        "processor_class,kind,event_type,entity_id,client_method,entity_data",
+        "processor_class,kind,event_type,entity_id,exporter_class,entity_data",
         PROCESSOR_CASES,
     )
     async def test_get_matching_kinds(
@@ -60,7 +60,7 @@ class TestNewResourceWebhookProcessors:
         kind: ObjectKind,
         event_type: str,
         entity_id: str,
-        client_method: str,
+        exporter_class: str,
         entity_data: dict[str, Any],
     ) -> None:
         processor = processor_class(event=mock_webhook_event)
@@ -73,7 +73,7 @@ class TestNewResourceWebhookProcessors:
         assert await processor.get_matching_kinds(event) == [kind]
 
     @pytest.mark.parametrize(
-        "processor_class,kind,event_type,entity_id,client_method,entity_data",
+        "processor_class,kind,event_type,entity_id,exporter_class,entity_data",
         PROCESSOR_CASES,
     )
     async def test_handle_event_success(
@@ -83,7 +83,7 @@ class TestNewResourceWebhookProcessors:
         kind: ObjectKind,
         event_type: str,
         entity_id: str,
-        client_method: str,
+        exporter_class: str,
         entity_data: dict[str, Any],
     ) -> None:
         processor = processor_class(event=mock_webhook_event)
@@ -107,21 +107,27 @@ class TestNewResourceWebhookProcessors:
             "data": {"id": entity_id},
         }
 
-        with patch(
-            f"webhook_processors.{event_type.lower()}_webhook_processor.LinearClient"
-        ) as mock_client_class:
-            client = AsyncMock()
-            mock_client_class.create_from_ocean_configuration.return_value = client
-            getattr(client, client_method).return_value = entity_data
+        with (
+            patch(
+                f"webhook_processors.{event_type.lower()}_webhook_processor.LinearClient"
+            ) as mock_client_class,
+            patch(
+                f"webhook_processors.{event_type.lower()}_webhook_processor.{exporter_class}"
+            ) as mock_exporter_class,
+        ):
+            mock_client_class.create_from_ocean_configuration.return_value = MagicMock()
+            exporter = AsyncMock()
+            exporter.get_resource.return_value = entity_data
+            mock_exporter_class.return_value = exporter
 
             result = await processor.handle_event(payload, resource_config)
 
         assert result.updated_raw_results == [entity_data]
         assert result.deleted_raw_results == []
-        getattr(client, client_method).assert_awaited_once_with(entity_id)
+        exporter.get_resource.assert_awaited_once()
 
     @pytest.mark.parametrize(
-        "processor_class,kind,event_type,entity_id,client_method,entity_data",
+        "processor_class,kind,event_type,entity_id,exporter_class,entity_data",
         PROCESSOR_CASES,
     )
     async def test_handle_event_remove(
@@ -131,7 +137,7 @@ class TestNewResourceWebhookProcessors:
         kind: ObjectKind,
         event_type: str,
         entity_id: str,
-        client_method: str,
+        exporter_class: str,
         entity_data: dict[str, Any],
     ) -> None:
         processor = processor_class(event=mock_webhook_event)
@@ -155,14 +161,20 @@ class TestNewResourceWebhookProcessors:
             "data": {"id": entity_id},
         }
 
-        with patch(
-            f"webhook_processors.{event_type.lower()}_webhook_processor.LinearClient"
-        ) as mock_client_class:
-            client = AsyncMock()
-            mock_client_class.create_from_ocean_configuration.return_value = client
+        with (
+            patch(
+                f"webhook_processors.{event_type.lower()}_webhook_processor.LinearClient"
+            ) as mock_client_class,
+            patch(
+                f"webhook_processors.{event_type.lower()}_webhook_processor.{exporter_class}"
+            ) as mock_exporter_class,
+        ):
+            mock_client_class.create_from_ocean_configuration.return_value = MagicMock()
+            exporter = AsyncMock()
+            mock_exporter_class.return_value = exporter
 
             result = await processor.handle_event(payload, resource_config)
 
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == [{"id": entity_id}]
-        getattr(client, client_method).assert_not_awaited()
+        exporter.get_resource.assert_not_awaited()

@@ -1,3 +1,5 @@
+from typing import cast
+
 from webhook_processors.linear_abstract_webhook_processor import (
     _LinearAbstractWebhookProcessor,
 )
@@ -8,6 +10,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from linear.client import LinearClient
+from linear.core.exporters import CycleExporter
+from linear.core.exporters.cycle_exporter import GetCycleOptions
+from integration import CycleResourceConfig
 from linear.utils import ObjectKind
 from loguru import logger
 
@@ -39,7 +44,11 @@ class CycleWebhookProcessor(_LinearAbstractWebhookProcessor):
             )
 
         client = LinearClient.create_from_ocean_configuration()
-        data_to_update = await client.get_single_cycle(cycle_id)
+        cycle_exporter = CycleExporter(client)
+        options = GetCycleOptions.from_resource_config(
+            cast(CycleResourceConfig, resource_config), resource_id=cycle_id
+        )
+        data_to_update = await cycle_exporter.get_resource(options)
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]

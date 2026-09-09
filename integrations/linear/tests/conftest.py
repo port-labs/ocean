@@ -16,14 +16,6 @@ TEST_INTEGRATION_CONFIG: dict[str, Any] = {
 
 @pytest.fixture(autouse=True)
 def _mock_ocean_context() -> Generator[None, None, None]:
-    """Mock Port Ocean context so OceanAsyncClient can be used without initializing the app."""
-    mock_ocean = MagicMock()
-    mock_ocean.app.is_saas.return_value = False
-    mock_ocean.config.client_timeout = 30
-    with (
-        patch("port_ocean.helpers.async_client.ocean", mock_ocean),
-        patch("linear.client.ocean", mock_ocean),
-    ):
     """Mock Port Ocean context so OceanAsyncClient and JQ can run in tests."""
     try:
         mock_ocean_app = MagicMock()
@@ -32,6 +24,7 @@ def _mock_ocean_context() -> Generator[None, None, None]:
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = "https://baseurl.com"
         mock_ocean_app.is_saas.return_value = False
+        mock_ocean_app.config.client_timeout = 30
 
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
@@ -41,13 +34,13 @@ def _mock_ocean_context() -> Generator[None, None, None]:
         "linear_api_key"
     ]
 
-    with patch("port_ocean.helpers.async_client.ocean", ocean):
+    with (
+        patch("port_ocean.helpers.async_client.ocean", ocean),
+        patch("linear.client.ocean", ocean),
+    ):
         yield
 
 
 @pytest.fixture
 def linear_client() -> LinearClient:
-    mock_http = MagicMock()
-    mock_http.headers = {}
-    with patch("linear.client.http_async_client", mock_http):
-        return LinearClient("test-api-key")
+    return LinearClient("test-api-key")

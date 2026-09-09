@@ -3,10 +3,14 @@ from loguru import logger
 from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
 from linear.core.exporters import (
+    CycleExporter,
     DocumentExporter,
     IssueExporter,
     LabelExporter,
+    ProjectExporter,
     TeamExporter,
+    TeamMembersExporter,
+    UserExporter,
 )
 from linear.webhook.webhook_client import LinearWebhookClient
 from port_ocean.context.ocean import ocean
@@ -71,7 +75,7 @@ async def on_resync_documents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for users in client.get_paginated_users():
+    async for users in UserExporter(client).get_paginated_resources():
         logger.info(f"Received user batch with {len(users)} users")
         yield users
 
@@ -80,7 +84,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for projects in client.get_paginated_projects():
+    async for projects in ProjectExporter(client).get_paginated_resources():
         logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
 
@@ -89,7 +93,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_team_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for team_members in client.get_paginated_team_members():
+    async for team_members in TeamMembersExporter(client).get_paginated_resources():
         logger.info(f"Received team member batch with {len(team_members)} memberships")
         yield team_members
 
@@ -98,7 +102,7 @@ async def on_resync_team_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_cycles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
 
-    async for cycles in client.get_paginated_cycles():
+    async for cycles in CycleExporter(client).get_paginated_resources():
         logger.info(f"Received cycle batch with {len(cycles)} cycles")
         yield cycles
 
