@@ -76,18 +76,6 @@ def test_is_resource_not_found_exception_includes_sqs_codes() -> None:
 
 def test_is_resource_not_found_exception_includes_cicd_and_memorydb_codes() -> None:
     assert (
-        is_resource_not_found_exception(
-            _client_error("ApplicationDoesNotExistException")
-        )
-        is True
-    )
-    assert (
-        is_resource_not_found_exception(
-            _client_error("DeploymentGroupDoesNotExistException")
-        )
-        is True
-    )
-    assert (
         is_resource_not_found_exception(_client_error("PipelineNotFoundException"))
         is True
     )
