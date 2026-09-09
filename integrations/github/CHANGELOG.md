@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.0 (2026-09-09)
+
+
+### Features
+
+- Add a dedicated `mcp` kind to discover MCP servers from `mcp.json`/`.mcp.json` files bundled with agent plugins, emitting one entity per server with derived transport (http/stdio) and full create/update/delete parity on live push events.
+
+
 ## 6.12.1 (2026-09-09)
 
 
