@@ -14,18 +14,27 @@ from tests.actions.conftest import create_executor, make_run
 @pytest.mark.asyncio
 class TestCreateIssueExecutor:
     async def test_happy_path(
-        self, mock_port_client: MagicMock, mock_linear_client: MagicMock
+        self,
+        mock_port_client: MagicMock,
+        mock_linear_client: MagicMock,
+        mock_issue_mutations: MagicMock,
     ) -> None:
         executor = create_executor(CreateIssueExecutor, mock_linear_client)
         run = make_run(
             "create_issue",
             {"teamId": "team-1", "title": "Bug report"},
         )
-        with patch("linear.actions.create_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("linear.actions.create_issue_executor.ocean") as mock_ocean,
+            patch(
+                "linear.actions.create_issue_executor.IssueMutations",
+                return_value=mock_issue_mutations,
+            ),
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-        mock_linear_client.create_issue.assert_awaited_once()
+        mock_issue_mutations.create_issue.assert_awaited_once()
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
@@ -46,19 +55,33 @@ class TestCreateIssueExecutor:
 @pytest.mark.asyncio
 class TestCreateSubIssueExecutor:
     async def test_resolves_team_from_parent(
-        self, mock_port_client: MagicMock, mock_linear_client: MagicMock
+        self,
+        mock_port_client: MagicMock,
+        mock_linear_client: MagicMock,
+        mock_issue_mutations: MagicMock,
+        mock_issue_exporter: MagicMock,
     ) -> None:
         executor = create_executor(CreateSubIssueExecutor, mock_linear_client)
         run = make_run(
             "create_sub_issue",
             {"parentId": "ENG-1", "title": "Sub task"},
         )
-        with patch("linear.actions.create_sub_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("linear.actions.create_sub_issue_executor.ocean") as mock_ocean,
+            patch(
+                "linear.actions.create_sub_issue_executor.IssueMutations",
+                return_value=mock_issue_mutations,
+            ),
+            patch(
+                "linear.actions.create_sub_issue_executor.IssueExporter",
+                return_value=mock_issue_exporter,
+            ),
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-        mock_linear_client.get_single_issue.assert_awaited_once_with("ENG-1")
-        create_call = mock_linear_client.create_issue.await_args
+        mock_issue_exporter.get_resource.assert_awaited_once()
+        create_call = mock_issue_mutations.create_issue.await_args
         assert create_call is not None
         assert create_call.args[0]["teamId"] == "team-1"
         assert create_call.args[0]["parentId"] == "ENG-1"
@@ -67,18 +90,27 @@ class TestCreateSubIssueExecutor:
 @pytest.mark.asyncio
 class TestUpdateIssueExecutor:
     async def test_happy_path(
-        self, mock_port_client: MagicMock, mock_linear_client: MagicMock
+        self,
+        mock_port_client: MagicMock,
+        mock_linear_client: MagicMock,
+        mock_issue_mutations: MagicMock,
     ) -> None:
         executor = create_executor(UpdateIssueExecutor, mock_linear_client)
         run = make_run(
             "update_issue",
             {"issueId": "ENG-1", "title": "Updated title"},
         )
-        with patch("linear.actions.update_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("linear.actions.update_issue_executor.ocean") as mock_ocean,
+            patch(
+                "linear.actions.update_issue_executor.IssueMutations",
+                return_value=mock_issue_mutations,
+            ),
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-        mock_linear_client.update_issue.assert_awaited_once_with(
+        mock_issue_mutations.update_issue.assert_awaited_once_with(
             "ENG-1", {"title": "Updated title"}
         )
         mock_port_client.report_run_completed.assert_awaited_once()

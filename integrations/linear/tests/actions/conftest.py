@@ -36,8 +36,13 @@ def mock_port_client() -> MagicMock:
 
 @pytest.fixture
 def mock_linear_client() -> MagicMock:
-    client = MagicMock()
-    client.create_issue = AsyncMock(
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_issue_mutations() -> MagicMock:
+    mutations = MagicMock()
+    mutations.create_issue = AsyncMock(
         return_value={
             "id": "issue-1",
             "identifier": "ENG-1",
@@ -45,7 +50,7 @@ def mock_linear_client() -> MagicMock:
             "url": "https://linear.app/test/issue/ENG-1",
         }
     )
-    client.update_issue = AsyncMock(
+    mutations.update_issue = AsyncMock(
         return_value={
             "id": "issue-1",
             "identifier": "ENG-1",
@@ -54,24 +59,50 @@ def mock_linear_client() -> MagicMock:
             "state": {"id": "state-1", "name": "In Progress"},
         }
     )
-    client.resolve_state_id = AsyncMock(return_value="state-1")
-    client.create_comment = AsyncMock(
+    mutations.resolve_state_id = AsyncMock(return_value="state-1")
+    mutations.archive_issue = AsyncMock(return_value=None)
+    mutations.delete_issue = AsyncMock(return_value=None)
+    return mutations
+
+
+@pytest.fixture
+def mock_comment_mutations() -> MagicMock:
+    mutations = MagicMock()
+    mutations.create_comment = AsyncMock(
         return_value={"id": "comment-1", "body": "Hello", "createdAt": "2026-01-01"}
     )
-    client.create_document = AsyncMock(
+    return mutations
+
+
+@pytest.fixture
+def mock_document_mutations() -> MagicMock:
+    mutations = MagicMock()
+    mutations.create_document = AsyncMock(
         return_value={
             "id": "doc-1",
             "title": "Notes",
             "url": "https://linear.app/test/document/doc-1",
         }
     )
-    client.create_reaction = AsyncMock(return_value={"id": "reaction-1", "emoji": "+1"})
-    client.archive_issue = AsyncMock(return_value=None)
-    client.delete_issue = AsyncMock(return_value=None)
-    client.get_single_issue = AsyncMock(
+    return mutations
+
+
+@pytest.fixture
+def mock_reaction_mutations() -> MagicMock:
+    mutations = MagicMock()
+    mutations.create_reaction = AsyncMock(
+        return_value={"id": "reaction-1", "emoji": "+1"}
+    )
+    return mutations
+
+
+@pytest.fixture
+def mock_issue_exporter() -> MagicMock:
+    exporter = MagicMock()
+    exporter.get_resource = AsyncMock(
         return_value={"team": {"id": "team-1", "name": "Engineering", "key": "ENG"}}
     )
-    return client
+    return exporter
 
 
 def create_executor(executor_cls: type[Any], mock_linear_client: MagicMock) -> Any:
