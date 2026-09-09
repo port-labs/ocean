@@ -148,3 +148,17 @@ async def get_teams() -> AsyncGenerator[List[Dict[Any, Any]], None]:
 
 async def get_projects() -> AsyncGenerator[List[Dict[Any, Any]], None]:
     yield await _fetch_integration_results("/projects")
+
+
+async def trigger_fake_task(task_name: str) -> Dict[str, Any]:
+    url = f"{API_URL}/fake-tasks"
+    response = await http_async_client.post(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+        json={"taskName": task_name},
+    )
+    response.raise_for_status()
+    return response.json()
