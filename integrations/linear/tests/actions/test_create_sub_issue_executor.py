@@ -45,10 +45,22 @@ class TestCreateSubIssueExecutor:
         assert create_call.args[0]["teamId"] == "team-1"
         assert create_call.args[0]["parentId"] == "ENG-1"
         assert "projectId" not in create_call.args[0]
+        assert run.output == {
+            "identifier": "ENG-1",
+            "issueId": "issue-1",
+            "issueUrl": "https://linear.app/test/issue/ENG-1",
+        }
+        mock_port_client.post_run_log.assert_any_call(
+            run,
+            "Creating sub-issue 'Sub task' under ENG-1",
+            status_label="Creating issue",
+            should_raise=False,
+        )
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
             message="Created sub-issue ENG-1: https://linear.app/test/issue/ENG-1",
+            status_label="Issue created",
         )
 
     @pytest.mark.parametrize(
