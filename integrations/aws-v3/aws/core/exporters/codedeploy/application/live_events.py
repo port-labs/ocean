@@ -9,7 +9,6 @@ from aws.core.helpers.metadata.types import (
     LiveEventFactories,
 )
 
-
 CLOUDTRAIL_EVENT_SOURCE = "codedeploy.amazonaws.com"
 
 
@@ -45,16 +44,6 @@ CODEDEPLOY_APPLICATION_LIVE_EVENTS = LiveEventFactories(
     cloudtrail_mappings={
         "CreateApplication": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_application_name,
-            event_source=CLOUDTRAIL_EVENT_SOURCE,
-        ),
-        "UpdateApplication": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT,
-            _extract_application_name,
-            event_source=CLOUDTRAIL_EVENT_SOURCE,
-        ),
-        "DeleteApplication": CloudTrailEventMapping(
-            CloudTrailEventAction.DELETE,
             _extract_application_name,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),

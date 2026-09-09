@@ -81,7 +81,9 @@ async def test_get_resource_raises_when_project_not_found(
     mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
-    mock_proxy_instance.client.batch_get_projects = AsyncMock(return_value={"projects": []})
+    mock_proxy_instance.client.batch_get_projects = AsyncMock(
+        return_value={"projects": []}
+    )
 
     exporter = CodeBuildProjectExporter(mock_session)
 

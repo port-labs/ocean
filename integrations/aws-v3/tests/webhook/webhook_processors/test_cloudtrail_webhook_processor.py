@@ -1268,9 +1268,7 @@ async def test_handle_event_codebuild_project_delete_returns_deleted_result(
         f"arn:aws:codebuild:{_DEFAULT_REGION}:{_DEFAULT_ACCOUNT_ID}:"
         "project/hadar-project"
     )
-    result = await processor.handle_event(
-        _codebuild_delete_event(project_arn), None
-    )
+    result = await processor.handle_event(_codebuild_delete_event(project_arn), None)
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [

@@ -46,8 +46,7 @@ def _request_factory(
     parsed = _parse_deployment_group_identifier(context.identifier)
     if parsed is None:
         raise ValueError(
-            "Invalid CodeDeploy deployment group identifier: "
-            f"{context.identifier}"
+            "Invalid CodeDeploy deployment group identifier: " f"{context.identifier}"
         )
 
     application_name, deployment_group_name = parsed
@@ -78,16 +77,6 @@ CODEDEPLOY_DEPLOYMENT_GROUP_LIVE_EVENTS = LiveEventFactories(
     cloudtrail_mappings={
         "CreateDeploymentGroup": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_deployment_group_identifier,
-            event_source=CLOUDTRAIL_EVENT_SOURCE,
-        ),
-        "UpdateDeploymentGroup": CloudTrailEventMapping(
-            CloudTrailEventAction.UPSERT,
-            _extract_deployment_group_identifier,
-            event_source=CLOUDTRAIL_EVENT_SOURCE,
-        ),
-        "DeleteDeploymentGroup": CloudTrailEventMapping(
-            CloudTrailEventAction.DELETE,
             _extract_deployment_group_identifier,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
