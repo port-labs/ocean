@@ -61,9 +61,7 @@ class OrganizationWebhookProcessor(_GithubAbstractWebhookProcessor):
         if action in ORGANIZATION_RENAME_EVENTS:
             old_login = payload["changes"]["login"]["from"]
             deleted_raw_results = [{"login": old_login}]
-            logger.info(
-                f"Organization renamed from {old_login} to {org_login}"
-            )
+            logger.info(f"Organization renamed from {old_login} to {org_login}")
 
         logger.info(f"Organization {org_login} upserted after {action} event")
         return WebhookEventRawResults(

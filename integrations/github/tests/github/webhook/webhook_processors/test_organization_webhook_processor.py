@@ -47,9 +47,7 @@ def organization_webhook_processor(
     return OrganizationWebhookProcessor(event=mock_webhook_event)
 
 
-def make_org_payload(
-    action: str, old_login: str | None = None
-) -> dict[str, Any]:
+def make_org_payload(action: str, old_login: str | None = None) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "action": action,
         "organization": {"login": "test-org", "id": 123},
