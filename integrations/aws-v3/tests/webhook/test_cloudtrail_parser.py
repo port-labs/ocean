@@ -1644,9 +1644,7 @@ def test_parse_codebuild_project_events() -> None:
 
 
 def test_parse_codebuild_project_delete_event_with_project_arn_in_name() -> None:
-    project_arn = (
-        "arn:aws:codebuild:us-east-1:111122223333:project/sample-project"
-    )
+    project_arn = "arn:aws:codebuild:us-east-1:111122223333:project/sample-project"
     payload = _codebuild_project_eventbridge_envelope(
         "DeleteProject", project_name=project_arn
     )
@@ -1676,27 +1674,34 @@ def _codedeploy_application_eventbridge_envelope(
     )
 
 
-def test_is_supported_cloudtrail_event_true_for_codedeploy_application_events() -> None:
-    for event_name in ("CreateApplication", "UpdateApplication", "DeleteApplication"):
+def test_is_supported_cloudtrail_event_true_for_codedeploy_application_create() -> None:
+    payload = _codedeploy_application_eventbridge_envelope("CreateApplication")
+    assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_is_supported_cloudtrail_event_false_for_codedeploy_application_update_and_delete() -> (
+    None
+):
+    for event_name in ("UpdateApplication", "DeleteApplication"):
         payload = _codedeploy_application_eventbridge_envelope(event_name)
-        assert is_supported_cloudtrail_event(payload) is True
+        assert is_supported_cloudtrail_event(payload) is False
 
 
-def test_parse_codedeploy_application_events() -> None:
+def test_parse_codedeploy_application_create_event() -> None:
     create_payload = _codedeploy_application_eventbridge_envelope("CreateApplication")
-    delete_payload = _codedeploy_application_eventbridge_envelope("DeleteApplication")
 
     create_parsed = parse_cloudtrail_event(create_payload)
-    delete_parsed = parse_cloudtrail_event(delete_payload)
 
     assert create_parsed is not None
     assert create_parsed.kind == ObjectKind.CODEDEPLOY_APPLICATION
     assert create_parsed.action == CloudTrailEventAction.UPSERT
     assert create_parsed.identifier == "MyApplication"
 
-    assert delete_parsed is not None
-    assert delete_parsed.kind == ObjectKind.CODEDEPLOY_APPLICATION
-    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+def test_parse_codedeploy_application_update_and_delete_return_none() -> None:
+    for event_name in ("UpdateApplication", "DeleteApplication"):
+        payload = _codedeploy_application_eventbridge_envelope(event_name)
+        assert parse_cloudtrail_event(payload) is None
 
 
 def _codedeploy_deployment_group_eventbridge_envelope(
@@ -1739,37 +1744,38 @@ def _codedeploy_deployment_group_eventbridge_envelope(
     )
 
 
-def test_is_supported_cloudtrail_event_true_for_codedeploy_deployment_group_events() -> (
+def test_is_supported_cloudtrail_event_true_for_codedeploy_deployment_group_create() -> (
     None
 ):
-    for event_name in (
-        "CreateDeploymentGroup",
-        "UpdateDeploymentGroup",
-        "DeleteDeploymentGroup",
-    ):
+    payload = _codedeploy_deployment_group_eventbridge_envelope("CreateDeploymentGroup")
+    assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_is_supported_cloudtrail_event_false_for_codedeploy_deployment_group_update_and_delete() -> (
+    None
+):
+    for event_name in ("UpdateDeploymentGroup", "DeleteDeploymentGroup"):
         payload = _codedeploy_deployment_group_eventbridge_envelope(event_name)
-        assert is_supported_cloudtrail_event(payload) is True
+        assert is_supported_cloudtrail_event(payload) is False
 
 
-def test_parse_codedeploy_deployment_group_events() -> None:
+def test_parse_codedeploy_deployment_group_create_event() -> None:
     create_payload = _codedeploy_deployment_group_eventbridge_envelope(
         "CreateDeploymentGroup"
     )
-    delete_payload = _codedeploy_deployment_group_eventbridge_envelope(
-        "DeleteDeploymentGroup"
-    )
 
     create_parsed = parse_cloudtrail_event(create_payload)
-    delete_parsed = parse_cloudtrail_event(delete_payload)
 
     assert create_parsed is not None
     assert create_parsed.kind == ObjectKind.CODEDEPLOY_DEPLOYMENT_GROUP
     assert create_parsed.action == CloudTrailEventAction.UPSERT
     assert create_parsed.identifier == "MyApplication/MyGroup"
 
-    assert delete_parsed is not None
-    assert delete_parsed.kind == ObjectKind.CODEDEPLOY_DEPLOYMENT_GROUP
-    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+def test_parse_codedeploy_deployment_group_update_and_delete_return_none() -> None:
+    for event_name in ("UpdateDeploymentGroup", "DeleteDeploymentGroup"):
+        payload = _codedeploy_deployment_group_eventbridge_envelope(event_name)
+        assert parse_cloudtrail_event(payload) is None
 
 
 def _codepipeline_pipeline_eventbridge_envelope(
