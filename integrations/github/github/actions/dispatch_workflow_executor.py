@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from github.actions.utils import build_external_id
+from github.actions.utils import build_external_id, extract_error_message
 from github.clients.auth import get_auth_provider
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
@@ -38,6 +38,10 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 MAX_WORKFLOW_POLL_ATTEMPTS = 30
 WORKFLOW_POLL_DELAY_SECONDS = 2
+
+DISPATCHING_STATUS_LABEL = "Dispatching workflow"
+DISPATCH_FAILED_STATUS_LABEL = "Dispatch failed"
+WORKFLOW_RUNNING_STATUS_LABEL = "Workflow running"
 
 
 class DispatchWorkflowExecutor(AbstractGithubExecutor):
@@ -285,6 +289,14 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         ref = inputs.pop("ref", None)
         if not ref:
             ref = await self._get_default_ref(rest_client, organization, repo)
+
+        await ocean.port_client.post_run_log(
+            run,
+            f"Dispatching workflow '{workflow}' in {organization}/{repo} on ref '{ref}'",
+            status_label=DISPATCHING_STATUS_LABEL,
+            should_raise=False,
+        )
+
         try:
             if self._use_legacy_dispatch_workflow_tracking():
                 iso_date = datetime.now(timezone.utc).isoformat()
@@ -324,9 +336,21 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 workflow_run["html_url"],
                 external_id,
                 extra_output={"workflowRunId": workflow_run_id},
+                status_label=WORKFLOW_RUNNING_STATUS_LABEL,
+            )
+            await ocean.port_client.post_run_log(
+                run,
+                f"Workflow run started: {workflow_run['html_url']}",
+                should_raise=False,
             )
         except Exception as e:
             error_message = str(e)
             if isinstance(e, httpx.HTTPStatusError):
-                error_message = json.loads(e.response.text).get("message", str(e))
-            raise ActionExecutionError(f"Error dispatching workflow: {error_message}")
+                error_message = extract_error_message(e.response)
+            specific_label = (
+                e.status_label if isinstance(e, ActionExecutionError) else None
+            )
+            raise ActionExecutionError(
+                f"Error dispatching workflow: {error_message}",
+                status_label=specific_label or DISPATCH_FAILED_STATUS_LABEL,
+            )

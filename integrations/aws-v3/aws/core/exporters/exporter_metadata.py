@@ -49,8 +49,12 @@ from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
 from aws.core.exporters.ecs.cluster.live_events import ECS_CLUSTER_LIVE_EVENTS
 from aws.core.exporters.ecs.cluster.models import PaginatedClusterRequest
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
+from aws.core.exporters.ecs.service.live_events import ECS_SERVICE_LIVE_EVENTS
 from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
 from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
+from aws.core.exporters.ecs.task_definition.live_events import (
+    ECS_TASK_DEFINITION_LIVE_EVENTS,
+)
 from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitionRequest
 from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
 from aws.core.exporters.eks.cluster.live_events import EKS_CLUSTER_LIVE_EVENTS
@@ -133,10 +137,14 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         live_events=LAMBDA_FUNCTION_LIVE_EVENTS,
     ),
     ObjectKind.ECS_SERVICE: ExporterMetadata(
-        EcsServiceExporter, PaginatedServiceRequest
+        EcsServiceExporter,
+        PaginatedServiceRequest,
+        live_events=ECS_SERVICE_LIVE_EVENTS,
     ),
     ObjectKind.ECS_TASK_DEFINITION: ExporterMetadata(
-        EcsTaskDefinitionExporter, PaginatedTaskDefinitionRequest
+        EcsTaskDefinitionExporter,
+        PaginatedTaskDefinitionRequest,
+        live_events=ECS_TASK_DEFINITION_LIVE_EVENTS,
     ),
     ObjectKind.SQS_QUEUE: ExporterMetadata(
         SqsQueueExporter,

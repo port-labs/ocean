@@ -303,8 +303,10 @@ class TestPagerDutyClient:
         not even reach the HTTP layer."""
         from clients.rate_limiter import RateLimitInfo
 
-        client._rate_limiter.daily_rate_limit_info = RateLimitInfo(
-            limit=10, remaining=-1, seconds_until_reset=49015
+        client._rate_limiter.daily_rate_limit_info = (
+            RateLimitInfo.with_seconds_until_reset(
+                limit=10, remaining=-1, seconds_until_reset=49015
+            )
         )
 
         request_mock = AsyncMock()
@@ -323,8 +325,10 @@ class TestPagerDutyClient:
         """Daily-quota state from a prior analytics 429 must not block REST calls."""
         from clients.rate_limiter import RateLimitInfo
 
-        client._rate_limiter.daily_rate_limit_info = RateLimitInfo(
-            limit=10, remaining=-1, seconds_until_reset=49015
+        client._rate_limiter.daily_rate_limit_info = (
+            RateLimitInfo.with_seconds_until_reset(
+                limit=10, remaining=-1, seconds_until_reset=49015
+            )
         )
 
         rest_response = MagicMock()

@@ -30,7 +30,7 @@ class JiraPermissionProbe:
             await self.context.fail("Failed to verify Jira authentication.")
             return
 
-        checks = await self.context.add_scopes({})
+        checks = await self.context.setup_unscoped_checks()
 
         try:
             permissions = await self.client.get_current_user_permissions(

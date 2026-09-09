@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from aws.core.helpers.metadata.types import ExporterMetadata, LiveEventFactories
+from aws.core.helpers.metadata.types import (
+    ExporterMetadata,
+    LiveEventContext,
+    LiveEventFactories,
+)
 from aws.core.helpers.types import ObjectKind
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.webhook.cloudtrail_parser import parse_cloudtrail_event
@@ -15,6 +19,26 @@ from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
 )
 
 MODULE = "aws.webhook.webhook_processors.cloudtrail_webhook_processor"
+
+_DEFAULT_ACCOUNT_ID = "111122223333"
+_DEFAULT_REGION = "us-east-1"
+
+
+def _expected_deleted_raw_result(
+    kind: str,
+    properties: dict[str, str],
+    *,
+    account_id: str = _DEFAULT_ACCOUNT_ID,
+    region: str = _DEFAULT_REGION,
+) -> dict[str, object]:
+    return {
+        "Type": kind,
+        "Properties": properties,
+        "__ExtraContext": {
+            "AccountId": account_id,
+            "Region": region,
+        },
+    }
 
 
 @dataclass
@@ -195,6 +219,79 @@ def _ecs_delete_event(cluster_name: str = "my-ecs-cluster") -> dict[str, Any]:
     }
 
 
+def _ecs_service_create_event(
+    cluster: str = "my-cluster",
+    service: str = "my-service",
+) -> dict[str, Any]:
+    service_arn = f"arn:aws:ecs:us-east-1:111122223333:service/{cluster}/{service}"
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "CreateService",
+            "eventSource": "ecs.amazonaws.com",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"cluster": cluster, "service": service},
+            "responseElements": {"service": {"serviceArn": service_arn}},
+        },
+    }
+
+
+def _ecs_service_delete_event(
+    cluster: str = "my-cluster",
+    service: str = "my-service",
+) -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "DeleteService",
+            "eventSource": "ecs.amazonaws.com",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"cluster": cluster, "service": service},
+        },
+    }
+
+
+def _ecs_task_definition_register_event(
+    task_definition_arn: str = (
+        "arn:aws:ecs:us-east-1:111122223333:task-definition/my-family:1"
+    ),
+) -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "RegisterTaskDefinition",
+            "eventSource": "ecs.amazonaws.com",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {},
+            "responseElements": {
+                "taskDefinition": {"taskDefinitionArn": task_definition_arn}
+            },
+        },
+    }
+
+
+def _ecs_task_definition_deregister_event(
+    task_definition: str = "my-family:1",
+) -> dict[str, Any]:
+    return {
+        "account": "111122223333",
+        "region": "us-east-1",
+        "detail": {
+            "eventName": "DeregisterTaskDefinition",
+            "eventSource": "ecs.amazonaws.com",
+            "awsRegion": "us-east-1",
+            "recipientAccountId": "111122223333",
+            "requestParameters": {"taskDefinition": task_definition},
+        },
+    }
+
+
 def _eks_create_event(cluster_name: str = "my-eks-cluster") -> dict[str, Any]:
     return {
         "account": "111122223333",
@@ -368,6 +465,35 @@ async def test_parse_cloudtrail_event_called_once_per_processor(
     assert mock_parse.call_count == 1
 
 
+def test_build_deletion_result_includes_extra_context() -> None:
+    live_events = LiveEventFactories(
+        request_factory=MagicMock(),
+        deletion_identifier_properties_factory=lambda context: {
+            "QueueName": context.identifier,
+        },
+    )
+    context = LiveEventContext(
+        identifier="my-queue",
+        account_id="999988887777",
+        region="eu-west-1",
+    )
+
+    result = CloudTrailWebhookProcessor._build_deletion_result(
+        ObjectKind.SQS_QUEUE,
+        live_events,
+        context,
+    )
+
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.SQS_QUEUE,
+            {"QueueName": "my-queue"},
+            account_id="999988887777",
+            region="eu-west-1",
+        )
+    ]
+
+
 @pytest.mark.asyncio
 async def test_handle_event_delete_returns_deleted_result(
     processor: CloudTrailWebhookProcessor,
@@ -376,13 +502,13 @@ async def test_handle_event_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.S3_BUCKET,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.S3_BUCKET,
+            {
                 "Arn": "arn:aws:s3:::bucket-to-delete",
                 "BucketName": "bucket-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -444,15 +570,15 @@ async def test_handle_event_lambda_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.LAMBDA_FUNCTION,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.LAMBDA_FUNCTION,
+            {
                 "FunctionArn": (
                     "arn:aws:lambda:us-east-1:111122223333:function:function-to-delete"
                 ),
                 "FunctionName": "function-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -503,15 +629,15 @@ async def test_handle_event_dynamodb_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.DYNAMODB_TABLE,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.DYNAMODB_TABLE,
+            {
                 "TableArn": (
                     "arn:aws:dynamodb:us-east-1:111122223333:table/table-to-delete"
                 ),
                 "TableName": "table-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -562,15 +688,15 @@ async def test_handle_event_rds_db_instance_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.RDS_DB_INSTANCE,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.RDS_DB_INSTANCE,
+            {
                 "DBInstanceArn": (
                     "arn:aws:rds:us-east-1:111122223333:db:db-instance-to-delete"
                 ),
                 "DBInstanceIdentifier": "db-instance-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -638,15 +764,15 @@ async def test_handle_event_rds_db_instance_create_treats_not_found_as_deleted(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.RDS_DB_INSTANCE,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.RDS_DB_INSTANCE,
+            {
                 "DBInstanceArn": (
                     "arn:aws:rds:us-east-1:111122223333:db:missing-db-instance"
                 ),
                 "DBInstanceIdentifier": "missing-db-instance",
             },
-        }
+        )
     ]
 
 
@@ -666,15 +792,15 @@ async def test_handle_event_ecr_repository_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.ECR_REPOSITORY,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.ECR_REPOSITORY,
+            {
                 "RepositoryArn": (
                     "arn:aws:ecr:us-east-1:111122223333:repository/repo-to-delete"
                 ),
                 "RepositoryName": "repo-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -725,15 +851,15 @@ async def test_handle_event_ecs_cluster_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.ECS_CLUSTER,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.ECS_CLUSTER,
+            {
                 "ClusterArn": (
                     "arn:aws:ecs:us-east-1:111122223333:cluster/ecs-cluster-to-delete"
                 ),
                 "ClusterName": "ecs-cluster-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -767,6 +893,229 @@ async def test_handle_event_ecs_cluster_create_fetches_and_returns_resource(
 
 
 @pytest.mark.asyncio
+async def test_get_matching_kinds_returns_ecs_service(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="t", payload=_ecs_service_create_event(), headers={})
+    assert await processor.get_matching_kinds(event) == [ObjectKind.ECS_SERVICE]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_ecs_service_delete_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    result = await processor.handle_event(
+        _ecs_service_delete_event("ecs-cluster", "web-service"), None
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.ECS_SERVICE,
+            {
+                "ServiceArn": (
+                    "arn:aws:ecs:us-east-1:111122223333:service/ecs-cluster/web-service"
+                ),
+                "ServiceName": "web-service",
+                "ClusterArn": (
+                    "arn:aws:ecs:us-east-1:111122223333:cluster/ecs-cluster"
+                ),
+                "ClusterName": "ecs-cluster",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_ecs_service_create_fetches_and_returns_resource(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    fake_resource = {
+        "Type": ObjectKind.ECS_SERVICE,
+        "Properties": {"ServiceName": "my-service"},
+    }
+
+    fixture = _live_event_metadata()
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.ECS_SERVICE: fixture.metadata},
+        ),
+    ):
+        mock_exporter = fixture.exporter_cls.return_value
+        mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
+
+        result = await processor.handle_event(_ecs_service_create_event(), None)
+
+    fixture.exporter_cls.assert_called_once_with("session")
+    assert result.updated_raw_results == [fake_resource]
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_handle_event_ecs_service_create_treats_not_found_as_deleted(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    class FakeNotFound(Exception):
+        response = {"Error": {"Code": "ServiceNotFoundException"}}
+
+    fixture = _live_event_metadata()
+    assert fixture.metadata.live_events is not None
+    cast(
+        MagicMock,
+        fixture.metadata.live_events.deletion_identifier_properties_factory,
+    ).return_value = {
+        "ServiceArn": (
+            "arn:aws:ecs:us-east-1:111122223333:service/my-cluster/my-service"
+        ),
+        "ServiceName": "my-service",
+        "ClusterArn": "arn:aws:ecs:us-east-1:111122223333:cluster/my-cluster",
+        "ClusterName": "my-cluster",
+    }
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.ECS_SERVICE: fixture.metadata},
+        ),
+    ):
+        mock_exporter = fixture.exporter_cls.return_value
+        mock_exporter.get_resource = AsyncMock(side_effect=FakeNotFound())
+
+        result = await processor.handle_event(_ecs_service_create_event(), None)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.ECS_SERVICE,
+            {
+                "ServiceArn": (
+                    "arn:aws:ecs:us-east-1:111122223333:service/my-cluster/my-service"
+                ),
+                "ServiceName": "my-service",
+                "ClusterArn": "arn:aws:ecs:us-east-1:111122223333:cluster/my-cluster",
+                "ClusterName": "my-cluster",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds_returns_ecs_task_definition(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    event = WebhookEvent(
+        trace_id="t", payload=_ecs_task_definition_register_event(), headers={}
+    )
+    assert await processor.get_matching_kinds(event) == [ObjectKind.ECS_TASK_DEFINITION]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_ecs_task_definition_deregister_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    result = await processor.handle_event(
+        _ecs_task_definition_deregister_event("cpu-wave:1"), None
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.ECS_TASK_DEFINITION,
+            {
+                "TaskDefinitionArn": (
+                    "arn:aws:ecs:us-east-1:111122223333:task-definition/cpu-wave:1"
+                ),
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_ecs_task_definition_register_fetches_and_returns_resource(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    fake_resource = {
+        "Type": ObjectKind.ECS_TASK_DEFINITION,
+        "Properties": {"Family": "my-family"},
+    }
+
+    fixture = _live_event_metadata()
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.ECS_TASK_DEFINITION: fixture.metadata},
+        ),
+    ):
+        mock_exporter = fixture.exporter_cls.return_value
+        mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
+
+        result = await processor.handle_event(
+            _ecs_task_definition_register_event(), None
+        )
+
+    fixture.exporter_cls.assert_called_once_with("session")
+    assert result.updated_raw_results == [fake_resource]
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_handle_event_ecs_task_definition_register_treats_not_found_as_deleted(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    class FakeNotFound(Exception):
+        response = {"Error": {"Code": "TaskDefinitionNotFoundException"}}
+
+    fixture = _live_event_metadata()
+    assert fixture.metadata.live_events is not None
+    cast(
+        MagicMock,
+        fixture.metadata.live_events.deletion_identifier_properties_factory,
+    ).return_value = {
+        "TaskDefinitionArn": (
+            "arn:aws:ecs:us-east-1:111122223333:task-definition/my-family:1"
+        ),
+    }
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            f"{MODULE}.kind_to_export_metadata",
+            {ObjectKind.ECS_TASK_DEFINITION: fixture.metadata},
+        ),
+    ):
+        mock_exporter = fixture.exporter_cls.return_value
+        mock_exporter.get_resource = AsyncMock(side_effect=FakeNotFound())
+
+        result = await processor.handle_event(
+            _ecs_task_definition_register_event(), None
+        )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.ECS_TASK_DEFINITION,
+            {
+                "TaskDefinitionArn": (
+                    "arn:aws:ecs:us-east-1:111122223333:task-definition/my-family:1"
+                ),
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
 async def test_get_matching_kinds_returns_eks_cluster(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
@@ -784,15 +1133,15 @@ async def test_handle_event_eks_cluster_delete_returns_deleted_result(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.EKS_CLUSTER,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.EKS_CLUSTER,
+            {
                 "Arn": (
                     "arn:aws:eks:us-east-1:111122223333:cluster/eks-cluster-to-delete"
                 ),
                 "Name": "eks-cluster-to-delete",
             },
-        }
+        )
     ]
 
 
@@ -885,11 +1234,11 @@ async def test_handle_event_create_treats_not_found_as_deleted(
 
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [
-        {
-            "Type": ObjectKind.S3_BUCKET,
-            "Properties": {
+        _expected_deleted_raw_result(
+            ObjectKind.S3_BUCKET,
+            {
                 "Arn": "arn:aws:s3:::missing-bucket",
                 "BucketName": "missing-bucket",
             },
-        }
+        )
     ]
