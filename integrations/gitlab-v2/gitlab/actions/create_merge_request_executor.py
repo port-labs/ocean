@@ -1,7 +1,10 @@
+from typing import Any
+
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
+from pydantic.v1 import BaseModel, ValidationError, validator
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
 from gitlab.helpers.exceptions import (
@@ -10,39 +13,58 @@ from gitlab.helpers.exceptions import (
 )
 
 
+class CreateMergeRequestInput(BaseModel):
+    project: str
+    sourceBranch: str
+    targetBranch: str
+    title: str
+
+    class Config:
+        extra = "ignore"
+
+    @validator("project", "sourceBranch", "targetBranch", "title", pre=True, always=True)
+    def require_non_empty_str(cls, value: Any, field: Any) -> str:
+        if value is None or (isinstance(value, str) and not str(value).strip()):
+            raise ValueError(f"{field.name} is required")
+        return str(value)
+
+    @classmethod
+    def from_execution_properties(
+        cls, execution_properties: dict[str, Any]
+    ) -> "CreateMergeRequestInput":
+        try:
+            return cls.parse_obj(execution_properties)
+        except ValidationError as error:
+            raise MissingExecutionPropertyError(str(error)) from error
+
+
 class CreateMergeRequestExecutor(AbstractGitlabExecutor):
     ACTION_NAME = "create_merge_request"
     WEBHOOK_PROCESSOR_CLASS = None
 
     async def execute(self, run: IntegrationRun) -> None:
-        project = run.execution_properties.get("project")
-        source_branch = run.execution_properties.get("sourceBranch")
-        target_branch = run.execution_properties.get("targetBranch")
-        title = run.execution_properties.get("title")
-
-        if not project:
-            raise MissingExecutionPropertyError("project is required")
-        if not source_branch:
-            raise MissingExecutionPropertyError("sourceBranch is required")
-        if not target_branch:
-            raise MissingExecutionPropertyError("targetBranch is required")
-        if not title:
-            raise MissingExecutionPropertyError("title is required")
+        inputs = CreateMergeRequestInput.from_execution_properties(
+            run.execution_properties
+        )
 
         await ocean.port_client.post_run_log(
             run,
-            f"Creating merge request in {project}: {source_branch} -> {target_branch}",
+            f"Creating merge request in {inputs.project}: "
+            f"{inputs.sourceBranch} -> {inputs.targetBranch}",
             should_raise=False,
         )
 
         try:
             merge_request = await self.client.create_merge_request(
-                project, source_branch, target_branch, title
+                inputs.project,
+                inputs.sourceBranch,
+                inputs.targetBranch,
+                inputs.title,
             )
         except httpx.HTTPStatusError as e:
             raise GitlabCreateMergeRequestError.from_response(
                 e.response,
-                f"Could not create merge request in project '{project}'",
+                f"Could not create merge request in project '{inputs.project}'",
             )
 
         if not merge_request or not all(k in merge_request for k in ("id", "web_url")):
@@ -61,9 +83,9 @@ class CreateMergeRequestExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
         logger.info(
-            f"Merge request {merge_request['id']} created in project {project}",
+            f"Merge request {merge_request['id']} created in project {inputs.project}",
             merge_request_id=merge_request["id"],
-            project=project,
-            source_branch=source_branch,
-            target_branch=target_branch,
+            project=inputs.project,
+            source_branch=inputs.sourceBranch,
+            target_branch=inputs.targetBranch,
         )
