@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.14.0 (2026-09-10)
+
+
+### Features
+
+- Added a close_pull_request action that abandons an Azure DevOps pull request
+
+
 ## 0.13.13 (2026-09-07)
 
 
