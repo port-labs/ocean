@@ -86,6 +86,7 @@ class ListIssueOptions(RepositoryIdentifier):
 
 class BaseUserOptions(SingleOrganizationOptions):
     include_saml_email: NotRequired[bool]
+    include_verified_domain_emails: NotRequired[bool]
 
 
 class SingleUserOptions(BaseUserOptions):

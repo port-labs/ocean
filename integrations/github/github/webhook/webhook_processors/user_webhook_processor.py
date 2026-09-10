@@ -62,6 +62,7 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
                 organization=organization,
                 login=user["login"],
                 include_saml_email=selector.include_saml_email,
+                include_verified_domain_emails=selector.include_verified_domain_emails,
             )
         )
         if not data_to_upsert:

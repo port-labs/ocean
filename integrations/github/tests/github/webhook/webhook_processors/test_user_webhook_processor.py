@@ -129,6 +129,7 @@ class TestUserWebhookProcessor:
                     organization="test-org",
                     login="test-user",
                     include_saml_email=False,
+                    include_verified_domain_emails=False,
                 )
             )
 
