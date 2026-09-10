@@ -127,6 +127,55 @@
           "required": false
         }
       ]
+    },
+    {
+      "name": "acknowledge_incident",
+      "icon": "PagerDuty",
+      "description": "Acknowledge a PagerDuty incident",
+      "inputs": [
+        {
+          "name": "incidentId",
+          "title": "Incident ID",
+          "type": "string",
+          "description": "PagerDuty incident ID",
+          "required": true
+        },
+        {
+          "name": "fromEmail",
+          "title": "From email",
+          "type": "string",
+          "description": "Email of a valid PagerDuty user. Required for API token authentication.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "resolve_incident",
+      "icon": "PagerDuty",
+      "description": "Resolve a PagerDuty incident",
+      "inputs": [
+        {
+          "name": "incidentId",
+          "title": "Incident ID",
+          "type": "string",
+          "description": "PagerDuty incident ID",
+          "required": true
+        },
+        {
+          "name": "fromEmail",
+          "title": "From email",
+          "type": "string",
+          "description": "Email of a valid PagerDuty user. Required for API token authentication.",
+          "required": true
+        },
+        {
+          "name": "resolution",
+          "title": "Resolution",
+          "type": "string",
+          "description": "Resolution note added to the incident Notes tab in PagerDuty",
+          "required": false
+        }
+      ]
     }
   ],
   "installationDocs": {
