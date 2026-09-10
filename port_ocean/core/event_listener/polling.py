@@ -1,4 +1,6 @@
-from asyncio import Task, get_event_loop
+import asyncio
+from asyncio import Task
+from traceback import format_exception
 from typing import Any, Literal
 
 from loguru import logger
@@ -48,6 +50,7 @@ class PollingEventListener(BaseEventListener):
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
+        self._current_resync_task: Task[Any] | None = None
 
     def should_resync(self) -> bool:
         _last_updated_at = (
@@ -109,7 +112,6 @@ class PollingEventListener(BaseEventListener):
             A tuple of (should_resync, resync_request_updated_at).
         """
         if self.should_resync():
-            logger.info("First polling iteration, resyncing")
             return True, ""
 
         try:
@@ -119,10 +121,7 @@ class PollingEventListener(BaseEventListener):
             resync_request_updated_at = resync_request.get("updatedAt", "")
             if self.should_resync_from_resync_request(resync_request_updated_at):
                 logger.info("Detected integration resync request")
-                return (
-                    True,
-                    resync_request_updated_at,
-                )
+                return True, resync_request_updated_at
         except Exception as error:
             logger.exception(
                 "Failed to fetch integration resync request in polling listener, continuing without resync request signal",
@@ -131,8 +130,51 @@ class PollingEventListener(BaseEventListener):
 
         return False, ""
 
+    def _clear_resync_task_if_current(self, task: Task[Any]) -> None:
+        if self._current_resync_task is task:
+            self._current_resync_task = None
+
+    async def _cancel_current_resync(self) -> None:
+        if not self._current_resync_task or self._current_resync_task.done():
+            return
+
+        ocean.app.resync_state_updater.supersede_in_progress = True
+        try:
+            self._current_resync_task.cancel()
+            try:
+                await self._current_resync_task
+            except asyncio.CancelledError:
+                pass
+        finally:
+            ocean.app.resync_state_updater.supersede_in_progress = False
+
+    async def _run_resync_task(self) -> None:
+        try:
+            await self._resync({})
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            formatted_exception = "".join(
+                format_exception(type(exc), exc, exc.__traceback__)
+            )
+            logger.bind(traceback=formatted_exception).error(
+                f"Resync task failed: {str(exc)}"
+            )
+
     async def _perform_resync(self, resync_request_updated_at: str) -> None:
-        logger.info("Performing resync")
+        is_superseding = (
+            self._current_resync_task is not None
+            and not self._current_resync_task.done()
+        )
+        if is_superseding:
+            logger.info(
+                "Detected new resync request during active resync, cancelling current resync"
+            )
+            await self._cancel_current_resync()
+        elif resync_request_updated_at:
+            logger.info("Performing resync from integration resync request")
+        else:
+            logger.info("First polling iteration, resyncing")
 
         ocean.app.resync_state_updater.last_integration_state_updated_at = (
             resync_request_updated_at
@@ -142,9 +184,10 @@ class PollingEventListener(BaseEventListener):
                 resync_request_updated_at
             )
 
-        running_task: Task[Any] = get_event_loop().create_task(self._resync({}))
+        running_task = asyncio.create_task(self._run_resync_task())
         signal_handler.register(running_task.cancel)
-        await running_task
+        self._current_resync_task = running_task
+        running_task.add_done_callback(self._clear_resync_task_if_current)
 
     async def _start(self) -> None:
         """
