@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Literal
+from typing import ClassVar, Literal
 from pydantic.v1 import Field, validator, BaseModel
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -48,6 +48,8 @@ class JiraIssueSelector(Selector):
 
 
 class JiraIssueConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     selector: JiraIssueSelector = Field(
         title="Issue Selector",
         description="Defines which Jira issues to include and how to query them",
@@ -67,6 +69,8 @@ class JiraProjectSelector(Selector):
 
 
 class JiraProjectResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     selector: JiraProjectSelector = Field(
         title="Project Selector",
         description="Defines which Jira projects to include and how to query them",
@@ -78,6 +82,8 @@ class JiraProjectResourceConfig(ResourceConfig):
 
 
 class JiraUserResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("USER_PICKER",)
+
     kind: Literal["user"] = Field(
         title="Jira User",
         description="A user account in your Jira organization",
@@ -85,6 +91,8 @@ class JiraUserResourceConfig(ResourceConfig):
 
 
 class JiraReleaseResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     kind: Literal["release"] = Field(
         title="Jira Release",
         description="A release (version) in a Jira project used to track shipped work",
@@ -116,6 +124,8 @@ class JiraBoardSelector(Selector):
 
 
 class JiraBoardResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     kind: Literal["board"] = Field(
         title="Jira Board",
         description="Jira board resource kind.",
@@ -158,6 +168,8 @@ class JiraSprintSelector(Selector):
 
 
 class JiraSprintResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     kind: Literal["sprint"] = Field(
         title="Jira Sprint",
         description="Jira sprint resource kind.",
@@ -202,6 +214,8 @@ class JiraBacklogSelector(Selector):
 
 
 class JiraBacklogResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     kind: Literal["backlog"] = Field(
         title="Jira Backlog",
         description="Jira backlog resource kind, representing the set of issues in the backlog of each board.",
@@ -242,6 +256,8 @@ class JiraEpicSelector(Selector):
 
 
 class JiraEpicResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     kind: Literal["epic"] = Field(
         title="Jira Epic",
         description="Jira epic resource kind.",
@@ -299,6 +315,8 @@ class JiraWorklogSelector(Selector):
 
 
 class JiraWorklogResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     kind: Literal["worklog"] = Field(
         title="Jira Worklog",
         description="Jira worklog resource kind, representing time tracking entries on issues.",
@@ -340,6 +358,8 @@ class JiraComponentSelector(Selector):
 
 
 class JiraComponentResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
     kind: Literal["component"] = Field(
         title="Jira Component",
         description="Jira component resource kind, representing components within Jira projects.",
