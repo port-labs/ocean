@@ -1,6 +1,6 @@
-from abc import abstractmethod
-
+from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.base_client import AbstractGithubClient
+from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.models import IntegrationRun
 
@@ -8,11 +8,13 @@ MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW = 20
 
 
 class AbstractGithubExecutor(AbstractExecutor):
-    @abstractmethod
     async def _get_execution_clients(
         self, run: IntegrationRun
     ) -> list[AbstractGithubClient]:
-        pass
+        organization = run.execution_properties.get("org")
+        if not isinstance(organization, str):
+            raise InvalidActionParametersException("org is required")
+        return [await create_github_client_for_org(organization)]
 
     def _is_client_close_to_rate_limit(self, client: AbstractGithubClient) -> bool:
         info = client.get_rate_limit_status()

@@ -1,7 +1,10 @@
 from port_ocean.context.ocean import ocean
+from github.actions.close_issue_executor import CloseIssueExecutor
+from github.actions.create_issue_executor import CreateIssueExecutor
 from github.actions.dispatch_workflow_executor import (
     DispatchWorkflowExecutor,
 )
+from github.actions.edit_issue_executor import EditIssueExecutor
 from github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor import (
     BulkDeleteExternalCustomPropertyValuesExecutor,
 )
@@ -19,3 +22,6 @@ def register_actions_executors() -> None:
     ocean.register_action_executor(UpdateRepoExternalCustomPropertiesExecutor())
     ocean.register_action_executor(BulkUpdateExternalCustomPropertyValuesExecutor())
     ocean.register_action_executor(BulkDeleteExternalCustomPropertyValuesExecutor())
+    ocean.register_action_executor(CreateIssueExecutor())
+    ocean.register_action_executor(EditIssueExecutor())
+    ocean.register_action_executor(CloseIssueExecutor())
