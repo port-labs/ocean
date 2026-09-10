@@ -1,7 +1,16 @@
+from typing import Any, cast
+
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 
 from port_ocean.clients.port.mixins.organization import OrganizationClientMixin
+
+
+def _set_organization_response(
+    mixin: OrganizationClientMixin, organization: dict[str, Any]
+) -> None:
+    mock_client = cast(MagicMock, mixin.client)
+    mock_client.get.return_value.json.return_value = {"organization": organization}
 
 
 @pytest.fixture
@@ -35,9 +44,10 @@ async def test_org_feature_flags_should_fetch_proper_json_path(
 async def test_is_organization_blocked_returns_true_when_org_is_blocked(
     mocked_org_mixin: OrganizationClientMixin,
 ) -> None:
-    mocked_org_mixin.client.get.return_value.json.return_value = {
-        "organization": {"id": "org-123", "featureFlags": [], "isBlocked": True}
-    }
+    _set_organization_response(
+        mocked_org_mixin,
+        {"id": "org-123", "featureFlags": [], "isBlocked": True},
+    )
 
     result = await mocked_org_mixin.is_organization_blocked()
 
@@ -47,9 +57,10 @@ async def test_is_organization_blocked_returns_true_when_org_is_blocked(
 async def test_is_organization_blocked_returns_false_when_field_missing(
     mocked_org_mixin: OrganizationClientMixin,
 ) -> None:
-    mocked_org_mixin.client.get.return_value.json.return_value = {
-        "organization": {"id": "org-123", "featureFlags": []}
-    }
+    _set_organization_response(
+        mocked_org_mixin,
+        {"id": "org-123", "featureFlags": []},
+    )
 
     result = await mocked_org_mixin.is_organization_blocked()
 
