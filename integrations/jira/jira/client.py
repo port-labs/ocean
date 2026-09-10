@@ -252,6 +252,8 @@ class JiraClient(OAuthClient):
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
+                if not response.content:
+                    return None
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
@@ -612,14 +614,37 @@ class JiraClient(OAuthClient):
         ):
             yield projects
 
-    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
-        return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
+    async def get_single_issue(
+        self, issue_key: str, *, fields: str | None = None
+    ) -> dict[str, Any]:
+        if fields is None:
+            return await self._send_api_request(
+                "GET", f"{self.api_url}/issue/{issue_key}"
+            )
+        return await self._send_api_request(
+            "GET",
+            f"{self.api_url}/issue/{issue_key}",
+            params={"fields": fields},
+        )
 
     async def create_issue(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._send_api_request(
             "POST",
             f"{self.api_url}/issue",
             json=payload,
+        )
+
+    async def get_issue_transitions(self, issue_key: str) -> dict[str, Any]:
+        return await self._send_api_request(
+            "GET",
+            f"{self.api_url}/issue/{issue_key}/transitions",
+        )
+
+    async def transition_issue(self, issue_key: str, transition_id: str) -> None:
+        await self._send_api_request(
+            "POST",
+            f"{self.api_url}/issue/{issue_key}/transitions",
+            json={"transition": {"id": transition_id}},
         )
 
     @staticmethod
