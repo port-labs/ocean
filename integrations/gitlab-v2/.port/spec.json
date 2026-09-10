@@ -115,6 +115,41 @@
           "description": "Key-value pairs passed as CI/CD variables to the pipeline"
         }
       ]
+    },
+    {
+      "name": "create_merge_request",
+      "icon": "GitLab",
+      "description": "Create a GitLab merge request",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "GitLab project path (e.g., \"my-group/my-project\") or numeric ID",
+          "required": true
+        },
+        {
+          "name": "sourceBranch",
+          "title": "Source branch",
+          "type": "string",
+          "description": "The branch containing the changes to merge",
+          "required": true
+        },
+        {
+          "name": "targetBranch",
+          "title": "Target branch",
+          "type": "string",
+          "description": "The branch to merge changes into",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "Title of the merge request",
+          "required": true
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [
