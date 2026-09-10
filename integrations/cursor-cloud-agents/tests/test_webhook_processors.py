@@ -180,7 +180,7 @@ async def test_handle_event_completes_create_run_via_agent_id_fallback() -> None
         [
             {
                 "id": "bc-1",
-                "status": "ACTIVE",
+                "status": "IDLE",
                 "summary": "Added README",
                 "target": {"branchName": "cursor/add-readme"},
                 "timestamp": "2025-06-01T12:00:00Z",
@@ -317,7 +317,7 @@ async def test_handle_event_upserts_catalog_when_no_run_tracked() -> None:
         [
             {
                 "id": "bc-1",
-                "status": "ACTIVE",
+                "status": "IDLE",
                 "summary": "Done",
                 "timestamp": "2025-06-01T12:00:00Z",
             }
