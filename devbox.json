@@ -9,16 +9,6 @@
 			"disable_plugin": true
 		},
 		"poetry": "latest",
-		"git": "latest",
-		"fzf": "latest"
-	},
-	"shell": {
-		"init_hook": ["echo \"Ocean devbox shell ready\""],
-		"scripts": {
-			"setup": "make install",
-			"integration-setup": "./infra/devbox/bin/integration-setup",
-			"lint": "make lint",
-			"test": "make test"
-		}
+		"git": "latest"
 	}
 }

@@ -14,22 +14,17 @@ empowering engineers to effortlessly prioritize key features and streamline the 
 
 ## Devbox (recommended for monorepo development)
 
-Install [devbox](https://www.jetify.com/docs/devbox/installing_devbox/), then:
+Install [devbox](https://www.jetify.com/docs/devbox/installing_devbox/) for a pinned toolchain (Python 3.13, Poetry — matching production), then use the existing Make targets:
 
 ```bash
 devbox shell
-devbox run setup   # installs core deps (make install)
-
-# Per integration (first time): poetry deps + local editable core
-devbox run -e INTEGRATION=github integration-setup
-# or: devbox run integration-setup   (interactive picker)
+make install
 
 cd integrations/github
+make install/local-core
 source .venv/bin/activate
 make run
 ```
-
-Run `integration-setup` inside `devbox shell` so Poetry uses Python 3.13 (matching production). Re-run it to recreate a `.venv` if the wrong Python was picked.
 
 ## Installation
 

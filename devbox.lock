@@ -1,59 +1,6 @@
 {
   "lockfile_version": "1",
   "packages": {
-    "fzf@latest": {
-      "last_modified": "2026-08-27T07:16:00Z",
-      "resolved": "github:NixOS/nixpkgs/c27cdad491a991b11ed731760aa2ef8db0cb0410#fzf",
-      "source": "devbox-search",
-      "version": "0.74.3",
-      "systems": {
-        "aarch64-darwin": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/7abbv8jr68frn2kg8qq0n74kriw548rw-fzf-0.74.3",
-              "default": true
-            },
-            {
-              "name": "man",
-              "path": "/nix/store/x4xj68mi412yhm7wmy7686sm2pva614y-fzf-0.74.3-man",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/7abbv8jr68frn2kg8qq0n74kriw548rw-fzf-0.74.3"
-        },
-        "aarch64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/8vg02a5v2z0zi5nb9kkygzz3qkhayf7c-fzf-0.74.3",
-              "default": true
-            },
-            {
-              "name": "man",
-              "path": "/nix/store/fjfxi7vw05vir0yigf8c1g5rl6jn12xv-fzf-0.74.3-man",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/8vg02a5v2z0zi5nb9kkygzz3qkhayf7c-fzf-0.74.3"
-        },
-        "x86_64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/a6yq1vjmqhwy5vw11mn3mrh9crzg7jxf-fzf-0.74.3",
-              "default": true
-            },
-            {
-              "name": "man",
-              "path": "/nix/store/zs2z41mxwr56brs17kipjhjab2gwkc1x-fzf-0.74.3-man",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/a6yq1vjmqhwy5vw11mn3mrh9crzg7jxf-fzf-0.74.3"
-        }
-      }
-    },
     "git@latest": {
       "last_modified": "2026-08-27T07:16:00Z",
       "resolved": "github:NixOS/nixpkgs/c27cdad491a991b11ed731760aa2ef8db0cb0410#git",
