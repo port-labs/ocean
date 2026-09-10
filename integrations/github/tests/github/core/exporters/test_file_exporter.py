@@ -2,7 +2,9 @@ import binascii
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import base64
+import httpx
 from github.core.exporters.file_exporter.core import RestFileExporter
+from github.helpers.exceptions import GitHubTreeFetchError
 import github.helpers.utils as helpers_utils
 from github.core.exporters.file_exporter.utils import (
     decode_content,
@@ -585,6 +587,7 @@ class TestRestFileExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
+                ignore_default_errors=False,
             )
 
     async def test_get_tree_recursive_empty_repo(
@@ -605,7 +608,38 @@ class TestRestFileExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{organization}/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
+                ignore_default_errors=False,
             )
+
+    async def test_get_tree_recursive_403_raises_exception(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When tree-fetch returns 403 (permission denied or GitHub outage),
+        GitHubTreeFetchError should be raised to prevent reconciliation deletes.
+        See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
+        """
+        exporter = RestFileExporter(rest_client)
+        organization = "test-org"
+
+        # Create a mock HTTPStatusError with 403 status
+        mock_response = httpx.Response(
+            status_code=403,
+            content=b'{"message": "API rate limit exceeded"}',
+            request=httpx.Request("GET", "https://api.github.com/repos/test-org/repo1/git/trees/main"),
+        )
+        http_error = httpx.HTTPStatusError(
+            "Forbidden", request=mock_response.request, response=mock_response
+        )
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(side_effect=http_error)
+        ):
+            with pytest.raises(GitHubTreeFetchError) as exc_info:
+                await exporter.get_tree_recursive(organization, "repo1", "main")
+
+            # Verify error message includes useful context
+            assert "Permission denied" in str(exc_info.value) or "GitHub unavailable" in str(exc_info.value)
+            assert "repo1@main" in str(exc_info.value)
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)

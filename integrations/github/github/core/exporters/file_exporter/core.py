@@ -1,8 +1,10 @@
 from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
 from urllib.parse import quote
+import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client_for_org
 from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
+from github.helpers.exceptions import GitHubTreeFetchError
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
@@ -394,11 +396,34 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_tree_recursive(
         self, organization: str, repo: str, branch: str
     ) -> tuple[List[Dict[str, Any]], bool]:
-        """Retrieve the recursive tree and whether GitHub truncated the response."""
+        """Retrieve the recursive tree and whether GitHub truncated the response.
+
+        Tree-fetch is the primary data source for file kinds. 403 on this endpoint
+        indicates permission/GitHub outage—must not be silently swallowed.
+
+        Raises GitHubTreeFetchError on 403 to ensure entities are preserved
+        until next successful resync (prevents reconciliation deletes).
+        See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
+        """
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
-        response = await self.client.send_api_request(
-            tree_url, ignored_errors=self._IGNORED_ERRORS
-        )
+
+        try:
+            # Do NOT use default ignored errors which include 403.
+            # Only ignore 409 (empty repo) - a legitimate response.
+            response = await self.client.send_api_request(
+                tree_url,
+                ignored_errors=self._IGNORED_ERRORS,
+                ignore_default_errors=False
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                raise GitHubTreeFetchError(
+                    f"Tree fetch failed for {organization}/{repo}@{branch}: "
+                    f"Permission denied or GitHub unavailable (403). "
+                    f"Entities will be preserved until next successful resync."
+                ) from e
+            raise
+
         if not response:
             logger.warning(
                 f"Did not retrieve tree from {repo}@{branch} from {organization}"

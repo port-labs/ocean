@@ -67,3 +67,14 @@ class RateLimitException(Exception):
             f"Rate limit exceeded. Reset at {rate_limit_info.reset_time}. "
             f"Remaining: {rate_limit_info.remaining}/{rate_limit_info.limit}"
         )
+
+
+class GitHubTreeFetchError(Exception):
+    """Raised when tree-fetch fails with 403 or other non-retryable errors.
+
+    Raising (rather than swallowing the error) makes Ocean skip its delete phase,
+    so catalog entities are preserved until the next successful resync.
+
+    This handles GitHub API outages where the tree endpoint becomes temporarily unavailable.
+    See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
+    """
