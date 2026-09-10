@@ -35,12 +35,14 @@ PYTHON_VERSION="$("$PYTHON" --version)"
 
 if [[ "$PYTHON_VERSION" != Python\ 3.13* ]]; then
 	echo "Expected devbox Python 3.13, got: $PYTHON_VERSION ($PYTHON)"
+	echo "Run this inside devbox shell: devbox shell"
 	exit 1
 fi
 
 cd "$INTEGRATION_DIR"
 
-# Poetry from nix may bundle a newer Python — force venv to use devbox's 3.13
+# make install deactivates venvs before poetry install, which lets nix Poetry pick 3.14.
+# Create the venv explicitly with devbox Python, then install into it.
 if [[ -d .venv ]]; then
 	venv_version="$(.venv/bin/python --version 2>&1 || true)"
 	if [[ "$venv_version" != Python\ 3.13* ]]; then
@@ -49,12 +51,17 @@ if [[ -d .venv ]]; then
 	fi
 fi
 
-poetry env use "$PYTHON"
+if [[ ! -d .venv ]]; then
+	"$PYTHON" -m venv .venv
+fi
 
-# install: poetry deps + dev tools; install/local-core: editable port_ocean from repo root
-make install/local-core
+# shellcheck disable=SC1091
+source .venv/bin/activate
+
+poetry install --with dev --no-root
+pip install -e ../../
 
 echo ""
-echo "Integration '$INTEGRATION' is ready ($PYTHON_VERSION)."
+echo "Integration '$INTEGRATION' is ready ($("$PYTHON" --version))."
 echo "  cd integrations/$INTEGRATION"
 echo "  source .venv/bin/activate"
