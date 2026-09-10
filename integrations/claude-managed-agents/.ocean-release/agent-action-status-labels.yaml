@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: improvement
+changelog: Added run logs and status labels to the create_agent and trigger_agent actions, so Port shows when an agent session is starting, running, or finished
