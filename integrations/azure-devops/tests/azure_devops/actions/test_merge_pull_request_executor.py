@@ -11,7 +11,6 @@ from azure_devops.actions.exceptions import (
 from azure_devops.actions.merge_pull_request_executor import (
     MergePullRequestExecutor,
     MergePullRequestInputs,
-    _parse_merge_pull_request_inputs,
 )
 from port_ocean.core.models import (
     ActionRun,
@@ -67,8 +66,10 @@ def _valid_props(**overrides: Any) -> dict[str, Any]:
     return props
 
 
-def test_parse_merge_pull_request_inputs_accepts_valid_strings() -> None:
-    inputs = _parse_merge_pull_request_inputs(
+def test_merge_pull_request_inputs_from_execution_properties_accepts_valid_strings() -> (
+    None
+):
+    inputs = MergePullRequestInputs.from_execution_properties(
         {
             "organization": "my-org",
             "project": "proj-guid",
@@ -103,16 +104,18 @@ def test_parse_merge_pull_request_inputs_accepts_valid_strings() -> None:
         },
     ],
 )
-def test_parse_merge_pull_request_inputs_rejects_missing_or_empty_values(
+def test_merge_pull_request_inputs_from_execution_properties_rejects_missing_or_empty_values(
     properties: dict[str, str],
 ) -> None:
-    with pytest.raises(ValueError):
-        _parse_merge_pull_request_inputs(properties)
+    with pytest.raises(InvalidActionParametersError):
+        MergePullRequestInputs.from_execution_properties(properties)
 
 
-def test_parse_merge_pull_request_inputs_rejects_non_string_values() -> None:
-    with pytest.raises(ValueError):
-        _parse_merge_pull_request_inputs(
+def test_merge_pull_request_inputs_from_execution_properties_rejects_non_string_values() -> (
+    None
+):
+    with pytest.raises(InvalidActionParametersError):
+        MergePullRequestInputs.from_execution_properties(
             {
                 "organization": "my-org",
                 "project": "proj-guid",
