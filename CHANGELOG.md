@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.50.8 (2026-09-02)
+
+
+### Features
+
+- Probe discovers supported resource kinds from the integration PortAppConfig
+
+
 ## 0.50.7 (2026-09-01)
 
 

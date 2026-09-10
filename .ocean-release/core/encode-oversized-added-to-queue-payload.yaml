@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Log oversized "Event Added To Queue" webhook payloads as a single base64 field so nested JSON is not flattened into too many log attributes

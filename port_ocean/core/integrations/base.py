@@ -119,7 +119,10 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             EventType.ON_PROBE,
             trigger_type="machine",
         ):
-            await context.initialize(config)
+            await context.initialize(
+                self.AppConfigHandlerClass.CONFIG_CLASS,
+                config,
+            )
             try:
                 returned = await listener(context)
             except Exception as error:
