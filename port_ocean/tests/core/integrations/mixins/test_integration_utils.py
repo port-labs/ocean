@@ -1108,21 +1108,21 @@ class TestProcessingModes:
         )
 
     @pytest.mark.asyncio
-    async def test_is_redis_live_events_enabled_when_flag_on(self) -> None:
+    async def test_is_redis_live_events_enabled_when_org_not_blocked(self) -> None:
         with patch(
             "port_ocean.core.integrations.mixins.utils.ocean"
         ) as mock_ocean_context:
             mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = (
                 True
             )
-            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
-                return_value=[IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED]
+            mock_ocean_context.port_client.is_organization_blocked = AsyncMock(
+                return_value=False
             )
 
             result = await is_redis_live_events_enabled()
 
         assert result is True
-        mock_ocean_context.port_client.get_organization_feature_flags.assert_called_once()
+        mock_ocean_context.port_client.is_organization_blocked.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_disabled_when_env_opt_in_off(self) -> None:
@@ -1132,31 +1132,31 @@ class TestProcessingModes:
             mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = (
                 False
             )
-            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
-                return_value=[IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED]
+            mock_ocean_context.port_client.is_organization_blocked = AsyncMock(
+                return_value=False
             )
 
             result = await is_redis_live_events_enabled()
 
         assert result is False
-        mock_ocean_context.port_client.get_organization_feature_flags.assert_not_called()
+        mock_ocean_context.port_client.is_organization_blocked.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_is_redis_live_events_disabled_when_flag_off(self) -> None:
+    async def test_is_redis_live_events_disabled_when_org_blocked(self) -> None:
         with patch(
             "port_ocean.core.integrations.mixins.utils.ocean"
         ) as mock_ocean_context:
             mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = (
                 True
             )
-            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
-                return_value=[]
+            mock_ocean_context.port_client.is_organization_blocked = AsyncMock(
+                return_value=True
             )
 
             result = await is_redis_live_events_enabled()
 
         assert result is False
-        mock_ocean_context.port_client.get_organization_feature_flags.assert_called_once()
+        mock_ocean_context.port_client.is_organization_blocked.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_enabled_uses_local_only_warning_on_exception(
@@ -1165,7 +1165,10 @@ class TestProcessingModes:
         with patch(
             "port_ocean.core.integrations.mixins.utils.ocean"
         ) as mock_ocean_context:
-            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+            mock_ocean_context.config.live_events.is_redis_stream_consumer_enabled = (
+                True
+            )
+            mock_ocean_context.port_client.is_organization_blocked = AsyncMock(
                 side_effect=Exception("timeout")
             )
 
@@ -1178,6 +1181,6 @@ class TestProcessingModes:
         assert result is False
         mock_logger.bind.assert_called_with(local_only=True)
         mock_bound.warning.assert_called_once()
-        assert "Failed to check Redis live events feature flags" in (
+        assert "Failed to check Redis live events settings" in (
             mock_bound.warning.call_args.args[0]
         )
