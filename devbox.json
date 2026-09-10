@@ -1,0 +1,24 @@
+{
+	"$schema": "https://raw.githubusercontent.com/jetpack-io/devbox/0.17.5/.schema/devbox.schema.json",
+	"env": {
+		"POETRY_VIRTUALENVS_IN_PROJECT": "true"
+	},
+	"packages": {
+		"python": {
+			"version": "3.13",
+			"disable_plugin": true
+		},
+		"poetry": "latest",
+		"git": "latest",
+		"fzf": "latest"
+	},
+	"shell": {
+		"init_hook": ["echo \"Ocean devbox shell ready\""],
+		"scripts": {
+			"setup": "make install",
+			"integration-setup": "./infra/devbox/bin/integration-setup",
+			"lint": "make lint",
+			"test": "make test"
+		}
+	}
+}
