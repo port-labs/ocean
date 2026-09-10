@@ -1,14 +1,20 @@
 from typing import Any, Self
 from aiobotocore.session import AioSession
 from aiobotocore.client import AioBaseClient
+from aiobotocore.config import AioConfig
 from aws.core.helpers.types import SupportedServices
 from aws.core.client.paginator import AsyncPaginator
+
+AWS_CLIENT_CONFIG = AioConfig(retries={"mode": "adaptive", "max_attempts": 10})
 
 
 class AioBaseClientProxy:
 
     def __init__(
-        self, session: AioSession, region: str, service_name: SupportedServices
+        self,
+        session: AioSession,
+        region: str,
+        service_name: SupportedServices,
     ) -> None:
         self.session = session
         self.region = region
@@ -21,9 +27,11 @@ class AioBaseClientProxy:
             raise RuntimeError("Client not initialized. Use 'async with' context.")
         return self._base_client
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self, config: AioConfig = AWS_CLIENT_CONFIG) -> Self:
         self._client_cm = self.session.create_client(
-            service_name=self.service_name, region_name=self.region
+            service_name=self.service_name,
+            region_name=self.region,
+            config=config,
         )
         self._base_client = await self._client_cm.__aenter__()
         return self
