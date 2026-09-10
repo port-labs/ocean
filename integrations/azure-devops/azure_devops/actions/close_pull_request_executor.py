@@ -2,7 +2,9 @@ import httpx
 from loguru import logger
 from pydantic import Field
 
-from azure_devops.actions.abstract_ado_action_input import AbstractAzureDevopsActionInput
+from azure_devops.actions.abstract_ado_action_input import (
+    AbstractAzureDevopsActionInput,
+)
 from azure_devops.actions.abstract_ado_executor import AbstractAzureDevopsExecutor
 from azure_devops.actions.exceptions import (
     ClosePullRequestError,
