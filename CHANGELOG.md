@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.51.2 (2026-09-10)
+
+
+### Bug Fixes
+
+- Cancel in-flight polling resyncs when a newer resync request arrives, without blocking the polling loop
+
+
 ## 0.51.1 (2026-09-07)
 
 
