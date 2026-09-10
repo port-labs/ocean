@@ -60,6 +60,8 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         "InvalidInstanceID.NotFound",
         "InvalidVolume.NotFound",
         "AWS.SimpleQueueService.NonExistentQueue",
+        "PipelineNotFoundException",
+        "UserNotFoundFault",
         "404",
     ]
     response = getattr(e, "response", None)

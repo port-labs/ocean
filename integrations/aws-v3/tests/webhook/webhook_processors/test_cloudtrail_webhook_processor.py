@@ -1242,3 +1242,41 @@ async def test_handle_event_create_treats_not_found_as_deleted(
             },
         )
     ]
+
+
+def _codebuild_delete_event(
+    project_name: str = "hadar-project",
+) -> dict[str, Any]:
+    return {
+        "account": _DEFAULT_ACCOUNT_ID,
+        "region": _DEFAULT_REGION,
+        "detail": {
+            "eventName": "DeleteProject",
+            "eventSource": "codebuild.amazonaws.com",
+            "awsRegion": _DEFAULT_REGION,
+            "recipientAccountId": _DEFAULT_ACCOUNT_ID,
+            "requestParameters": {"name": project_name},
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_handle_event_codebuild_project_delete_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    project_arn = (
+        f"arn:aws:codebuild:{_DEFAULT_REGION}:{_DEFAULT_ACCOUNT_ID}:"
+        "project/hadar-project"
+    )
+    result = await processor.handle_event(_codebuild_delete_event(project_arn), None)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.CODEBUILD_PROJECT,
+            {
+                "Arn": project_arn,
+                "Name": "hadar-project",
+            },
+        )
+    ]
