@@ -241,6 +241,85 @@
           "description": "UUIDs of labels to attach to the issue"
         }
       ]
+    },
+    {
+      "name": "change_status",
+      "icon": "Linear",
+      "description": "Move a Linear issue to a different workflow state",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to update (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "stateId",
+          "title": "State ID",
+          "type": "string",
+          "description": "UUID of the target workflow state"
+        },
+        {
+          "name": "stateName",
+          "title": "State name",
+          "type": "string",
+          "description": "Name of the target workflow state in the issue's team. Provide stateId or stateName."
+        }
+      ]
+    },
+    {
+      "name": "add_comment",
+      "icon": "Linear",
+      "description": "Add a comment to a Linear issue",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to comment on (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Comment body",
+          "type": "string",
+          "description": "Comment content in Markdown",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "add_document",
+      "icon": "Linear",
+      "description": "Create a Linear document linked to an issue or project",
+      "inputs": [
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "Document title",
+          "required": true
+        },
+        {
+          "name": "content",
+          "title": "Content",
+          "type": "string",
+          "description": "Document content in Markdown"
+        },
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the related issue. Provide issueId or projectId."
+        },
+        {
+          "name": "projectId",
+          "title": "Project ID",
+          "type": "string",
+          "description": "UUID of the related project. Provide issueId or projectId."
+        }
+      ]
     }
   ]
 }

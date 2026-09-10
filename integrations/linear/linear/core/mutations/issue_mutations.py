@@ -3,7 +3,11 @@ from typing import Any
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import LinearExporter
 from linear.core.mutations import queries
-from linear.helpers.exceptions import CreateIssueError, UpdateIssueError
+from linear.helpers.exceptions import (
+    CreateIssueError,
+    LinearActionError,
+    UpdateIssueError,
+)
 
 
 class IssueMutations(LinearExporter):
@@ -40,3 +44,25 @@ class IssueMutations(LinearExporter):
                 "Linear returned an empty or incomplete issue update response"
             )
         return issue
+
+    async def resolve_state_id(self, issue_id: str, state_name: str) -> str:
+        data = await self.graphql.execute(
+            queries.RESOLVE_STATE_BY_NAME,
+            {"issueId": issue_id, "stateName": state_name},
+        )
+        issue = data.get("issue")
+        if not isinstance(issue, dict):
+            raise LinearActionError(
+                f"Could not resolve state '{state_name}' for issue '{issue_id}'"
+            )
+        team = issue.get("team")
+        if not isinstance(team, dict):
+            raise LinearActionError(
+                f"Could not resolve state '{state_name}' for issue '{issue_id}'"
+            )
+        states = team.get("states", {}).get("nodes", [])
+        if not states or not isinstance(states[0], dict) or not states[0].get("id"):
+            raise LinearActionError(
+                f"Could not find workflow state '{state_name}' for issue '{issue_id}'"
+            )
+        return str(states[0]["id"])
