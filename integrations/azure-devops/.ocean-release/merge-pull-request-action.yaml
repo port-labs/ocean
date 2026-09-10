@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added a merge_pull_request action that merges an Azure DevOps pull request
