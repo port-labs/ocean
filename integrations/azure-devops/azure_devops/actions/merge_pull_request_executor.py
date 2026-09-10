@@ -104,12 +104,7 @@ class MergePullRequestExecutor(AbstractAzureDevopsExecutor):
                 "incomplete response"
             )
 
-        web_link = pull_request.get("_links", {}).get("web", {}).get("href", "")
-        message = (
-            f"Pull request #{merged_id} merged: {web_link}"
-            if web_link
-            else f"Pull request #{merged_id} merged"
-        )
+        message = f"Pull request #{merged_id} merged"
         await ocean.port_client.post_run_log(run, message, should_raise=False)
         await ocean.port_client.report_run_completed(
             run,

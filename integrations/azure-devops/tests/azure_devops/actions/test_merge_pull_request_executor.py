@@ -160,11 +160,6 @@ async def test_execute_merges_pull_request_and_completes_run(
     client.merge_pull_request.return_value = {
         "pullRequestId": 42,
         "status": "completed",
-        "_links": {
-            "web": {
-                "href": "https://dev.azure.com/my-org/My%20Project/_git/repo/pullrequest/42"
-            }
-        },
     }
     mock_ocean = _make_mock_ocean()
     monkeypatch.setattr(
@@ -178,7 +173,7 @@ async def test_execute_merges_pull_request_and_completes_run(
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
         run,
         success=True,
-        message="Pull request #42 merged: https://dev.azure.com/my-org/My%20Project/_git/repo/pullrequest/42",
+        message="Pull request #42 merged",
     )
 
 
