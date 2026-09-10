@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from aws.core.helpers.types import ObjectKind
 from aws.webhook.cloudtrail_parser import (
@@ -579,6 +579,315 @@ def test_parse_ecs_put_cluster_capacity_providers_event_from_cluster_arn() -> No
     assert parsed.identifier == "ecs-cluster"
 
 
+def _ecs_service_eventbridge_envelope(
+    event_name: str,
+    *,
+    cluster: str | None = "my-cluster",
+    service: str | None = "my-service",
+    service_arn: str | None = None,
+    cluster_arn: str | None = None,
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "ecs.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+
+    request_parameters: dict[str, str] = {}
+    if cluster is not None:
+        request_parameters["cluster"] = cluster
+    if service is not None:
+        request_parameters["service"] = service
+    detail["requestParameters"] = request_parameters
+
+    if event_name in ("CreateService", "UpdateService"):
+        resolved_arn = service_arn
+        if resolved_arn is None and cluster and service and region and account:
+            resolved_arn = f"arn:aws:ecs:{region}:{account}:service/{cluster}/{service}"
+        if resolved_arn is not None:
+            service_response: dict[str, str] = {"serviceArn": resolved_arn}
+            if cluster_arn is not None:
+                service_response["clusterArn"] = cluster_arn
+            elif cluster and region and account:
+                service_response["clusterArn"] = (
+                    f"arn:aws:ecs:{region}:{account}:cluster/{cluster}"
+                )
+            detail["responseElements"] = {"service": service_response}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.ecs",
+        },
+    )
+
+
+def _ecs_task_definition_eventbridge_envelope(
+    event_name: str,
+    *,
+    task_definition_arn: str | None = (
+        "arn:aws:ecs:us-east-1:111122223333:task-definition/my-family:1"
+    ),
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "ecs.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+
+    if event_name == "RegisterTaskDefinition" and task_definition_arn is not None:
+        detail["responseElements"] = {
+            "taskDefinition": {"taskDefinitionArn": task_definition_arn}
+        }
+        detail["requestParameters"] = {}
+    elif event_name == "DeregisterTaskDefinition" and task_definition_arn is not None:
+        detail["requestParameters"] = {"taskDefinition": task_definition_arn}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.ecs",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_ecs_service_events() -> None:
+    for event_name in ("CreateService", "UpdateService", "DeleteService"):
+        payload = _ecs_service_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_ecs_create_service_event_from_response_arn() -> None:
+    payload = _ecs_service_eventbridge_envelope("CreateService")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_SERVICE
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert (
+        parsed.identifier
+        == "arn:aws:ecs:us-east-1:111122223333:service/my-cluster/my-service"
+    )
+
+
+def test_parse_ecs_create_service_event_from_short_response_arn() -> None:
+    payload = _ecs_service_eventbridge_envelope(
+        "CreateService",
+        service_arn="arn:aws:ecs:us-east-1:111122223333:service/my-service",
+        cluster_arn="arn:aws:ecs:us-east-1:111122223333:cluster/default",
+        cluster=None,
+        service=None,
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_SERVICE
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert (
+        parsed.identifier
+        == "arn:aws:ecs:us-east-1:111122223333:service/default/my-service"
+    )
+
+
+def test_parse_returns_none_when_short_ecs_service_arn_missing_cluster_arn() -> None:
+    payload = _ecs_service_eventbridge_envelope(
+        "CreateService",
+        service_arn="arn:aws:ecs:us-east-1:111122223333:service/my-service",
+        cluster_arn=None,
+        cluster=None,
+        service=None,
+    )
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_parse_returns_none_when_ecs_upsert_response_elements_is_null() -> None:
+    payload = _ecs_service_eventbridge_envelope("CreateService")
+    detail = cast(dict[str, Any], payload["detail"])
+    detail["responseElements"] = None
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_parse_returns_none_when_ecs_upsert_service_is_null() -> None:
+    payload = _ecs_service_eventbridge_envelope("CreateService")
+    payload["detail"]["responseElements"] = {"service": None}
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_parse_returns_none_when_ecs_upsert_service_response_missing() -> None:
+    payload = _ecs_service_eventbridge_envelope(
+        "UpdateService",
+        service_arn=None,
+        cluster="ecs-cluster",
+        service="web-app",
+    )
+    del payload["detail"]["responseElements"]
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_parse_ecs_delete_service_event() -> None:
+    payload = _ecs_service_eventbridge_envelope("DeleteService")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_SERVICE
+    assert parsed.action == CloudTrailEventAction.DELETE
+    assert (
+        parsed.identifier
+        == "arn:aws:ecs:us-east-1:111122223333:service/my-cluster/my-service"
+    )
+
+
+def test_parse_ecs_delete_service_event_with_cluster_arn() -> None:
+    payload = _ecs_service_eventbridge_envelope(
+        "DeleteService",
+        cluster="arn:aws:ecs:us-east-1:111122223333:cluster/my-cluster",
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert (
+        parsed.identifier
+        == "arn:aws:ecs:us-east-1:111122223333:service/my-cluster/my-service"
+    )
+
+
+def test_parse_ecs_delete_service_event_with_service_arn() -> None:
+    payload = _ecs_service_eventbridge_envelope(
+        "DeleteService",
+        cluster="arn:aws:ecs:us-east-1:111122223333:cluster/my-cluster",
+        service="arn:aws:ecs:us-east-1:111122223333:service/my-cluster/my-service",
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert (
+        parsed.identifier
+        == "arn:aws:ecs:us-east-1:111122223333:service/my-cluster/my-service"
+    )
+
+
+def test_parse_returns_none_when_ecs_service_identifiers_missing() -> None:
+    payload = _ecs_service_eventbridge_envelope("DeleteService", cluster=None)
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_is_supported_cloudtrail_event_true_for_ecs_task_definition_events() -> None:
+    for event_name in ("RegisterTaskDefinition", "DeregisterTaskDefinition"):
+        payload = _ecs_task_definition_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_ecs_register_task_definition_event() -> None:
+    payload = _ecs_task_definition_eventbridge_envelope("RegisterTaskDefinition")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_TASK_DEFINITION
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert (
+        parsed.identifier
+        == "arn:aws:ecs:us-east-1:111122223333:task-definition/my-family:1"
+    )
+
+
+def test_parse_returns_none_when_ecs_register_task_definition_response_elements_is_null() -> (
+    None
+):
+    payload = _ecs_task_definition_eventbridge_envelope("RegisterTaskDefinition")
+    detail = cast(dict[str, Any], payload["detail"])
+    detail["responseElements"] = None
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_parse_returns_none_when_ecs_register_task_definition_is_null() -> None:
+    payload = _ecs_task_definition_eventbridge_envelope("RegisterTaskDefinition")
+    payload["detail"]["responseElements"] = {"taskDefinition": None}
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_parse_returns_none_when_ecs_deregister_request_parameters_is_null() -> None:
+    payload = _ecs_task_definition_eventbridge_envelope("DeregisterTaskDefinition")
+    detail = cast(dict[str, Any], payload["detail"])
+    detail["requestParameters"] = None
+
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_parse_ecs_deregister_task_definition_event_with_arn() -> None:
+    payload = _ecs_task_definition_eventbridge_envelope("DeregisterTaskDefinition")
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_TASK_DEFINITION
+    assert parsed.action == CloudTrailEventAction.DELETE
+    assert (
+        parsed.identifier
+        == "arn:aws:ecs:us-east-1:111122223333:task-definition/my-family:1"
+    )
+
+
+def test_parse_ecs_deregister_task_definition_event_with_family_revision() -> None:
+    payload = _ecs_task_definition_eventbridge_envelope(
+        "DeregisterTaskDefinition",
+        task_definition_arn="my-family:2",
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.ECS_TASK_DEFINITION
+    assert parsed.action == CloudTrailEventAction.DELETE
+    assert parsed.identifier == "my-family:2"
+
+
+def test_parse_returns_none_when_ecs_task_definition_arn_missing() -> None:
+    payload = _ecs_task_definition_eventbridge_envelope(
+        "RegisterTaskDefinition", task_definition_arn=None
+    )
+    assert parse_cloudtrail_event(payload) is None
+
+
 def test_is_supported_cloudtrail_event_true_for_eks_cluster_events() -> None:
     for event_name in (
         "CreateCluster",
@@ -1091,4 +1400,138 @@ def test_parse_elasticache_cluster_events() -> None:
 
     assert delete_parsed is not None
     assert delete_parsed.kind == ObjectKind.ELASTICACHE_CLUSTER
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def _ses_email_identity_eventbridge_envelope(
+    event_name: str,
+    *,
+    email_identity: str | None = "example.com",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "ses.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+
+    if email_identity is not None:
+        detail["requestParameters"] = {"emailIdentity": email_identity}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.ses",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_ses_email_identity_events() -> None:
+    for event_name in (
+        "CreateEmailIdentity",
+        "PutEmailIdentityDkimSigningAttributes",
+        "PutEmailIdentityMailFromAttributes",
+        "PutEmailIdentityFeedbackAttributes",
+        "DeleteEmailIdentity",
+    ):
+        payload = _ses_email_identity_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_ses_email_identity_events() -> None:
+    create_payload = _ses_email_identity_eventbridge_envelope("CreateEmailIdentity")
+    delete_payload = _ses_email_identity_eventbridge_envelope("DeleteEmailIdentity")
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.SES_EMAIL_IDENTITY
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "example.com"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.SES_EMAIL_IDENTITY
+    assert delete_parsed.action == CloudTrailEventAction.DELETE
+
+
+def _ses_configuration_set_eventbridge_envelope(
+    event_name: str,
+    *,
+    configuration_set_name: str | None = "my-config-set",
+    account: str | None = "111122223333",
+    region: str | None = "us-east-1",
+) -> EventBridgeCloudTrailPayload:
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "ses.amazonaws.com",
+    }
+    if region is not None:
+        detail["awsRegion"] = region
+    if account is not None:
+        detail["recipientAccountId"] = account
+
+    if configuration_set_name is not None:
+        detail["requestParameters"] = {"configurationSetName": configuration_set_name}
+    else:
+        detail["requestParameters"] = {}
+
+    payload: EventBridgeCloudTrailPayload = {"detail": detail}
+    if account is not None:
+        payload["account"] = account
+    if region is not None:
+        payload["region"] = region
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            **payload,
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.ses",
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_ses_configuration_set_events() -> None:
+    for event_name in (
+        "CreateConfigurationSet",
+        "PutConfigurationSetTrackingOptions",
+        "DeleteConfigurationSet",
+    ):
+        payload = _ses_configuration_set_eventbridge_envelope(event_name)
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_ses_configuration_set_events() -> None:
+    create_payload = _ses_configuration_set_eventbridge_envelope(
+        "CreateConfigurationSet"
+    )
+    delete_payload = _ses_configuration_set_eventbridge_envelope(
+        "DeleteConfigurationSet"
+    )
+
+    create_parsed = parse_cloudtrail_event(create_payload)
+    delete_parsed = parse_cloudtrail_event(delete_payload)
+
+    assert create_parsed is not None
+    assert create_parsed.kind == ObjectKind.SES_CONFIGURATION_SET
+    assert create_parsed.action == CloudTrailEventAction.UPSERT
+    assert create_parsed.identifier == "my-config-set"
+
+    assert delete_parsed is not None
+    assert delete_parsed.kind == ObjectKind.SES_CONFIGURATION_SET
     assert delete_parsed.action == CloudTrailEventAction.DELETE

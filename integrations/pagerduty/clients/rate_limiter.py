@@ -1,4 +1,5 @@
 import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
@@ -11,7 +12,11 @@ from pydantic.v1 import BaseModel, Field
 class RateLimitInfo:
     limit: int
     remaining: int
-    seconds_until_reset: int
+    reset_at: int
+
+    @property
+    def seconds_until_reset(self) -> int:
+        return max(0, self.reset_at - int(time.time()))
 
     @property
     def utilization_percentage(self) -> float:
@@ -19,6 +24,16 @@ class RateLimitInfo:
             return 0.0
         used = self.limit - self.remaining
         return max(0.0, min(100.0, (used / self.limit) * 100.0))
+
+    @classmethod
+    def with_seconds_until_reset(
+        cls, *, limit: int, remaining: int, seconds_until_reset: int
+    ) -> "RateLimitInfo":
+        return cls(
+            limit=limit,
+            remaining=remaining,
+            reset_at=int(time.time()) + seconds_until_reset,
+        )
 
 
 class PagerDutyDailyRateLimitExceededError(Exception):
@@ -100,7 +115,7 @@ class PagerDutyRateLimiter:
         return RateLimitInfo(
             limit=int(headers.ratelimit_limit),
             remaining=int(headers.ratelimit_remaining),
-            seconds_until_reset=int(headers.ratelimit_reset),
+            reset_at=int(time.time()) + int(headers.ratelimit_reset),
         )
 
     def _parse_daily_headers(
@@ -115,7 +130,7 @@ class PagerDutyRateLimiter:
         return RateLimitInfo(
             limit=int(headers.daily_ratelimit_limit),
             remaining=int(headers.daily_ratelimit_remaining),
-            seconds_until_reset=int(headers.daily_ratelimit_reset),
+            reset_at=int(time.time()) + int(headers.daily_ratelimit_reset),
         )
 
     def update_rate_limits(

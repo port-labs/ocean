@@ -183,6 +183,12 @@ def _parse_change_timestamp(timestamp: str) -> datetime:
         return datetime.max.replace(tzinfo=timezone.utc)
 
 
+def _normalize_git_scope_path(path: str) -> str:
+    """Format ``scopePath`` for the Git Items API (leading ``/``, no trailing ``/``)."""
+    normalized = path.strip().strip("/")
+    return "/" if not normalized else f"/{normalized}"
+
+
 def _normalize_area_path(path: str) -> str:
     """Convert a classification-node path to work-item ``System.AreaPath`` format.
 
@@ -1894,6 +1900,62 @@ class AzureDevopsClient(HTTPBaseClient):
         pull_request_data = response.json()
         return pull_request_data
 
+    async def update_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a pull request.
+
+        API: PATCH {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update
+        """
+        update_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        logger.info(
+            f"Updating pull request {pull_request_id} in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "PATCH",
+            update_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to update pull request {pull_request_id} in repository "
+                f"{repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def close_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Abandon a pull request without merging it."""
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {"status": "abandoned"},
+        )
+
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
@@ -2692,7 +2754,7 @@ class AzureDevopsClient(HTTPBaseClient):
         items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
 
         params = {
-            "scopePath": path,
+            "scopePath": _normalize_git_scope_path(path),
             "recursionLevel": recursion_level,
             "$top": PAGE_SIZE,
             "api-version": "7.1",
@@ -2725,16 +2787,16 @@ class AzureDevopsClient(HTTPBaseClient):
         parts = pattern.split("/")
         base_parts = []
         for part in parts:
-            if "*" not in part:
-                base_parts.append(part)
-            else:
+            if "*" in part:
                 break
+            if part:
+                base_parts.append(part)
         base_path = "/".join(base_parts)
 
         return functools.partial(
             self.get_repository_tree,
             repository_id,
-            path=base_path or "/",
+            path=_normalize_git_scope_path(base_path),
             recursion_level="oneLevel",  # Always use oneLevel recursion
         )
 

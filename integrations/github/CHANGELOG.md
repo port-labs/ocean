@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.0 (2026-09-09)
+
+
+### Features
+
+- Add a dedicated `mcp` kind to discover MCP servers from `mcp.json`/`.mcp.json` files bundled with agent plugins, emitting one entity per server with derived transport (http/stdio) and full create/update/delete parity on live push events.
+
+
+## 6.12.1 (2026-09-09)
+
+
+### Bug Fixes
+
+- Restore live-event deletes for file-kind itemsToParse item removals, whole-file deletes, and renames. Modified files with itemsToParse emit old content as deletes and new content as upserts; DSP keeps entities that appear in both lists.
+
+
+## 6.12.0 (2026-09-08)
+
+
+### Features
+
+- Add GitHub permission probing for PAT and GitHub App authentication
+
+
+## 6.11.1 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 6.11.0 (2026-09-07)
+
+
+### Improvements
+
+- Added run logs and status labels to the dispatch_workflow action, so Port shows when a workflow is being dispatched, running, or finished with its GitHub conclusion. Dispatch failures now report GitHub's error message even when the response body is not JSON
+
+
+## 6.10.17 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 6.10.16 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 6.10.15 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 6.10.14 (2026-09-03)
+
+
+### Bug Fixes
+
+- Fixed multi-document YAML parsing in the GitHub file exporter
+
+
+## 6.10.13 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
 ## 6.10.12 (2026-09-02)
 
 
