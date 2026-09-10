@@ -1,0 +1,60 @@
+{
+  "identifier": "request_policy_violation_waiver",
+  "title": "Request Waiver",
+  "icon": "Sonatype",
+  "description": "Request a waiver for this policy violation in Sonatype Lifecycle. Submits to the IQ Policy Waiver Request API (status: REQUESTED) after approval by a team lead or admin.",
+  "trigger": {
+    "type": "self-service",
+    "operation": "DAY-2",
+    "blueprintIdentifier": "sonatypePolicyViolation",
+    "userInputs": {
+      "properties": {
+        "reason": {
+          "type": "string",
+          "title": "Reason for waiver",
+          "description": "Why should this violation be waived? Recorded as the waiver comment in Lifecycle.",
+          "format": "multi-line"
+        },
+        "matcher_strategy": {
+          "type": "string",
+          "title": "Waiver Scope (matcher strategy)",
+          "description": "EXACT_COMPONENT waives only this exact component version. ALL_VERSIONS waives every version of this component. ALL_COMPONENTS waives any component that violates this policy.",
+          "default": "EXACT_COMPONENT",
+          "enum": ["EXACT_COMPONENT", "ALL_VERSIONS", "ALL_COMPONENTS"],
+          "enumColors": {
+            "EXACT_COMPONENT": "blue",
+            "ALL_VERSIONS": "orange",
+            "ALL_COMPONENTS": "red"
+          }
+        },
+        "note_to_reviewer": {
+          "type": "string",
+          "title": "Note to reviewer",
+          "description": "Optional note giving the approver more context.",
+          "format": "multi-line"
+        }
+      },
+      "required": ["reason"],
+      "order": ["reason", "matcher_strategy", "note_to_reviewer"]
+    }
+  },
+  "invocationMethod": {
+    "type": "WEBHOOK",
+    "url": "https://REPLACE_WITH_YOUR_IQ_SERVER_BASE_URL/api/v2/policyWaiverRequests/application/{{ .entity.relations.application }}/policyViolation/{{ .entity.properties.policyViolationId }}",
+    "agent": false,
+    "synchronized": false,
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Port-Requested-By": "{{ .trigger.by.user.email }}",
+      "X-Port-Run-Id": "{{ .run.id }}"
+    },
+    "body": {
+      "comment": "{{ .inputs.reason }}",
+      "matcherStrategy": "{{ .inputs.matcher_strategy }}",
+      "noteToReviewer": "{{ .inputs.note_to_reviewer }}"
+    }
+  },
+  "requiredApproval": true,
+  "publish": true
+}
