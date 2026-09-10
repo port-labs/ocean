@@ -38,6 +38,19 @@ class MergePullRequestError(Exception):
     def _response_detail(response: httpx.Response) -> str:
         return _azure_devops_response_detail(response)
 
+class ClosePullRequestError(Exception):
+    """Raised when the Azure DevOps API returns an error while closing a pull request."""
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "ClosePullRequestError":
+        return cls(f"{prefix}: {cls._response_detail(response)}")
+
+    @staticmethod
+    def _response_detail(response: httpx.Response) -> str:
+        return _azure_devops_response_detail(response)
+
 
 def _azure_devops_response_detail(response: httpx.Response) -> str:
     try:

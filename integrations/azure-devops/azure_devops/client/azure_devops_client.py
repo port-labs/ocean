@@ -1900,27 +1900,6 @@ class AzureDevopsClient(HTTPBaseClient):
         pull_request_data = response.json()
         return pull_request_data
 
-    async def get_repository_pull_request(
-        self,
-        project: str,
-        repository_id: str,
-        pull_request_id: str,
-    ) -> dict[str, Any] | None:
-        """Get a pull request scoped to a project and repository."""
-        get_pull_request_url = (
-            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
-            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
-        )
-        response = await self.send_request(
-            "GET",
-            get_pull_request_url,
-            params=API_PARAMS,
-            raise_on_404=True,
-        )
-        if not response:
-            return None
-        return response.json()
-
     async def update_pull_request(
         self,
         project: str,
@@ -1961,6 +1940,41 @@ class AzureDevopsClient(HTTPBaseClient):
                 pull_request_id=pull_request_id,
             )
             return {}
+        return response.json()
+
+    async def close_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Abandon a pull request without merging it."""
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {"status": "abandoned"},
+        )
+
+    async def get_repository_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any] | None:
+        """Get a pull request scoped to a project and repository."""
+        get_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        response = await self.send_request(
+            "GET",
+            get_pull_request_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return None
         return response.json()
 
     async def merge_pull_request(

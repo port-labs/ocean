@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.0 (2026-09-09)
+
+
+### Features
+
+- Added user, project, team-members, and cycle resource kinds with default blueprints and mappings. In addition, Added live event support for user, project, and cycle kinds via Linear webhooks.
+
+
+## 0.5.0 (2026-09-09)
+
+
+### Features
+
+- Introduce Linear actions infrastructure with rate-limit aware GraphQL client and resource-config driven exporters for resync and webhooks
+
+
 ## 0.4.16 (2026-09-07)
 
 
