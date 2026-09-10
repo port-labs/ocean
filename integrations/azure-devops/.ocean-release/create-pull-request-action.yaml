@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Added a create_pull_request action that creates an Azure DevOps pull request
