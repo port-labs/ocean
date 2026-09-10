@@ -273,6 +273,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/linear",
+      "envFile": "${workspaceFolder}/integrations/linear/.env",
+      "justMyCode": true,
+      "name": "Run linear integration",
+      "program": "${workspaceFolder}/integrations/linear/debug.py",
+      "python": "${workspaceFolder}/integrations/linear/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/checkmarx-one",
       "envFile": "${workspaceFolder}/integrations/checkmarx-one/.env",
       "justMyCode": true,
