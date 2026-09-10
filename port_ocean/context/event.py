@@ -20,7 +20,6 @@ from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.context.resource import resource
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
-from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
@@ -188,12 +187,6 @@ async def event_context(
         logger.info("Event started")
         try:
             yield event
-        except EmptyPortAppConfigError as e:
-            success = False
-            logger.bind(traceback=traceback.format_exc()).error(
-                f"Skipping resync due to empty mapping: {str(e)}"
-            )
-            raise
         except WebhookEventNotSupportedError as e:
             success = False
             logger.bind(traceback=traceback.format_exc()).warning(
