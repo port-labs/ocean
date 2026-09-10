@@ -333,6 +333,229 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "create_pull_request",
+      "icon": "Github",
+      "description": "Open a GitHub Pull Request",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The title of the pull request",
+          "required": true
+        },
+        {
+          "name": "head",
+          "title": "Head branch",
+          "type": "string",
+          "description": "The name of the branch where your changes are implemented",
+          "required": true
+        },
+        {
+          "name": "base",
+          "title": "Base branch",
+          "type": "string",
+          "description": "The name of the branch you want the changes pulled into",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Body",
+          "type": "string",
+          "description": "The description of the pull request"
+        },
+        {
+          "name": "draft",
+          "title": "Draft",
+          "type": "boolean",
+          "description": "Whether to create the pull request as a draft",
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "update_pull_request",
+      "icon": "Github",
+      "description": "Update a GitHub Pull Request",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "string",
+          "description": "The number of the pull request to update",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The new title of the pull request"
+        },
+        {
+          "name": "body",
+          "title": "Body",
+          "type": "string",
+          "description": "The new description of the pull request"
+        },
+        {
+          "name": "state",
+          "title": "State",
+          "type": "string",
+          "description": "The state of the pull request (open or closed)"
+        },
+        {
+          "name": "base",
+          "title": "Base branch",
+          "type": "string",
+          "description": "The name of the branch you want the changes pulled into"
+        }
+      ]
+    },
+    {
+      "name": "close_pull_request",
+      "icon": "Github",
+      "description": "Close a GitHub Pull Request",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "string",
+          "description": "The number of the pull request to close",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "merge_pull_request",
+      "icon": "Github",
+      "description": "Merge a GitHub Pull Request",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "string",
+          "description": "The number of the pull request to merge",
+          "required": true
+        },
+        {
+          "name": "mergeMethod",
+          "title": "Merge method",
+          "type": "string",
+          "description": "The merge method to use: merge, squash, or rebase",
+          "default": "merge"
+        },
+        {
+          "name": "commitTitle",
+          "title": "Commit title",
+          "type": "string",
+          "description": "Title for the merge commit (used with squash or merge methods)"
+        },
+        {
+          "name": "commitMessage",
+          "title": "Commit message",
+          "type": "string",
+          "description": "Extra detail for the merge commit (used with squash or merge methods)"
+        }
+      ]
+    },
+    {
+      "name": "review_pull_request",
+      "icon": "Github",
+      "description": "Review a GitHub Pull Request",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "string",
+          "description": "The number of the pull request to review",
+          "required": true
+        },
+        {
+          "name": "event",
+          "title": "Review event",
+          "type": "string",
+          "description": "The review action: APPROVE, REQUEST_CHANGES, or COMMENT",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Review body",
+          "type": "string",
+          "description": "The review comment text (required for REQUEST_CHANGES)"
+        }
+      ]
     }
   ],
   "installationDocs": {
