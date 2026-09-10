@@ -86,7 +86,10 @@ class LiveEventsMixin(HandlerMixin):
                     deletion_results = await self.entity_processor.parse_items(
                         resource, batch, parse_all=True
                     )
-                    entities_to_delete.extend(deletion_results.entity_selector_diff.passed)
+                    entities_to_delete.extend(
+                        deletion_results.entity_selector_diff.passed
+                        + deletion_results.entity_selector_diff.failed
+                    )
 
         entities_to_remove = []
         for entity in entities_to_delete + entities_not_passed:
