@@ -22,15 +22,33 @@ class TriggerPipelineError(Exception):
 
     @staticmethod
     def _response_detail(response: httpx.Response) -> str:
-        try:
-            body = response.json()
-        except Exception:
-            body = None
+        return _azure_devops_response_detail(response)
 
-        if isinstance(body, dict):
-            message = body.get("message")
-            if message is not None:
-                return message if isinstance(message, str) else json.dumps(message)
 
-        text = response.text.strip()
-        return text or f"HTTP {response.status_code}"
+class ClosePullRequestError(Exception):
+    """Raised when the Azure DevOps API returns an error while closing a pull request."""
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "ClosePullRequestError":
+        return cls(f"{prefix}: {cls._response_detail(response)}")
+
+    @staticmethod
+    def _response_detail(response: httpx.Response) -> str:
+        return _azure_devops_response_detail(response)
+
+
+def _azure_devops_response_detail(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+    except Exception:
+        body = None
+
+    if isinstance(body, dict):
+        message = body.get("message")
+        if message is not None:
+            return message if isinstance(message, str) else json.dumps(message)
+
+    text = response.text.strip()
+    return text or f"HTTP {response.status_code}"
