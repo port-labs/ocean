@@ -60,8 +60,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .head.repo.name + (.id|tostring)
-          blueprint: '"githubPR"'
+          identifier: .head.repo.name + (.fullDatabaseId|tostring)
+          blueprint: '"githubPullRequest"'
           title: .title
           properties:
             creator: (.author.login | gsub("\\["; "-") | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; ""))
