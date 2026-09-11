@@ -3,7 +3,7 @@ import asyncio
 import functools
 import json
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from itertools import batched
@@ -99,6 +99,7 @@ MAX_CONCURRENT_PROJECTS = 5
 MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
+MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION = 100
 MAX_CONCURRENT_USER_MEMBERSHIPS = 10
 MAX_CONCURRENT_WIKI_PAGES = 10
 TEST_RUN_QUERY_MAX_WINDOW = timedelta(days=7)
@@ -174,6 +175,31 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         eventType=ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
     ),
 ]
+
+# Azure DevOps rejects these events when the subscription has no projectId:
+# the tfs/pipelines ones fail with "not allowed at collection level" (400) and
+# the advsec ones with "No scope found" (403).
+PROJECT_SCOPED_ONLY_EVENT_TYPES = {
+    RepositoryEvents.REPO_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_STATE_CHANGED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_UPDATED,
+    PipelineEvents.PIPELINE_UPDATED,
+    PipelineStageEvents.PIPELINE_JOB_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_PENDING,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_COMPLETED,
+    PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
+}
+
+
+@dataclass
+class WebhookSubscriptionReconciliationPlan:
+    kept_sub_ids: list[str]
+    subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]]
+    subs_to_delete: list[WebhookSubscription]
+    action_counts: Counter[str]
+    skipped_project_scoped_count: int
 
 
 def _parse_change_timestamp(timestamp: str) -> datetime:
@@ -574,6 +600,15 @@ class AzureDevopsClient(HTTPBaseClient):
             return base_url.replace("dev.azure.com", f"{subdomain}.dev.azure.com")
 
         return base_url
+
+    def _get_subscription_base_url_and_params(
+        self, publisher_id: str
+    ) -> tuple[str, dict[str, str]]:
+        if publisher_id == ADVANCED_SECURITY_PUBLISHER_ID:
+            return self._advsec_base_url, ADVANCED_SECURITY_API_PARAMS
+        if publisher_id == RELEASE_PUBLISHER_ID:
+            return self._format_service_url("vsrm"), WEBHOOK_API_PARAMS
+        return self._organization_base_url, WEBHOOK_API_PARAMS
 
     async def generate_graph_users(
         self,
@@ -2271,20 +2306,33 @@ class AzureDevopsClient(HTTPBaseClient):
         event_type: str,
     ) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
+        subscription_base_url, api_params = self._get_subscription_base_url_and_params(
+            publisher_id
+        )
         params: dict[str, str] = {
+            **api_params,
             "publisherId": publisher_id,
             "eventType": event_type,
         }
         try:
             get_subscriptions_url = (
-                f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
+                f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
             response = await self.send_request(
                 "GET", get_subscriptions_url, headers=headers, params=params
             )
             if not response:
+                logger.warning(
+                    f"Webhook subscription lookup returned no response: "
+                    f"eventType={event_type}, publisherId={publisher_id}, "
+                    f"url={get_subscriptions_url}",
+                )
                 return []
             subscriptions_raw = response.json().get("value", [])
+            logger.debug(
+                f"Fetched webhook subscriptions: eventType={event_type}, publisherId={publisher_id}, "
+                f"count={response.json().get("count", []) or len(subscriptions_raw)}"
+            )
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
@@ -2295,11 +2343,16 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def get_filtered_webhook_subscriptions(
         self,
+        *,
+        org_level: bool = False,
     ) -> list[WebhookSubscription]:
-        unique_filters = {
-            (sub.publisherId, sub.eventType)
-            for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
-        }
+        unique_filters = sorted(
+            {
+                (sub.publisherId, sub.eventType)
+                for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+                if not org_level or sub.eventType not in PROJECT_SCOPED_ONLY_EVENT_TYPES
+            }
+        )
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
 
         async def fetch(
@@ -2317,6 +2370,13 @@ class AzureDevopsClient(HTTPBaseClient):
             *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
         )
 
+        total_subscriptions = sum(len(batch) for batch in results)
+        logger.info(
+            f"Completed filtered webhook subscription lookup: "
+            f"totalFilters={len(unique_filters)}, "
+            f"totalSubscriptions={total_subscriptions}"
+        )
+
         return [sub for batch in results for sub in batch]
 
     async def create_subscription(
@@ -2325,19 +2385,23 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> Optional[str]:
         """Create a webhook subscription and return its ID (or None on failure)."""
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
-        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
-            subscription_base_url = self._format_service_url("vsrm")
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         create_subscription_url = (
             f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
+        project_id = (webhook_subscription.publisherInputs or {}).get("projectId")
         webhook_subscription_json = webhook_subscription.json()
-        logger.info(f"Creating subscription to event: {webhook_subscription_json}")
+        logger.debug(
+            f"Creating webhook subscription: "
+            f"publisherId={webhook_subscription.publisherId}, "
+            f"eventType={webhook_subscription.eventType}, "
+            f"projectId={project_id}, "
+            f"url={create_subscription_url}, params={params}"
+        )
         response = await self.send_request(
             "POST",
             create_subscription_url,
@@ -2346,11 +2410,18 @@ class AzureDevopsClient(HTTPBaseClient):
             data=webhook_subscription_json,
         )
         if not response:
+            logger.warning(
+                f"Webhook subscription create returned no response: "
+                f"publisherId={webhook_subscription.publisherId}, "
+                f"eventType={webhook_subscription.eventType}, "
+                f"projectId={project_id}, "
+                f"url={create_subscription_url}, params={params}"
+            )
             return None
         response_content = response.json()
         sub_id = response_content.get("id")
         logger.info(
-            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')}"
+            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')} for projectId {project_id}"
         )
         return sub_id
 
@@ -2358,13 +2429,10 @@ class AzureDevopsClient(HTTPBaseClient):
         self, webhook_subscription: WebhookSubscription
     ) -> None:
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
-        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
-            subscription_base_url = self._format_service_url("vsrm")
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         delete_subscription_url = f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
         logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
@@ -2723,6 +2791,212 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", url, params=API_PARAMS)
         return response.json() if response else {}
 
+    def _dedupe_subscriptions_by_id(
+        self, subscriptions: list[WebhookSubscription]
+    ) -> list[WebhookSubscription]:
+        seen_ids: set[str] = set()
+        deduped_subscriptions: list[WebhookSubscription] = []
+        for subscription in subscriptions:
+            if not subscription.id or subscription.id in seen_ids:
+                continue
+            seen_ids.add(subscription.id)
+            deduped_subscriptions.append(subscription)
+        return deduped_subscriptions
+
+    def _select_subscription_to_keep(
+        self, matching_subscriptions: list[WebhookSubscription]
+    ) -> Optional[WebhookSubscription]:
+        for subscription in matching_subscriptions:
+            if subscription.is_enabled() and subscription.id:
+                return subscription
+        return None
+
+    def _plan_webhook_subscription_reconciliation(
+        self,
+        base_url: str,
+        auth_username: Optional[str],
+        webhook_secret: Optional[str],
+        project_id: Optional[str],
+        existing_subscriptions: list[WebhookSubscription],
+    ) -> WebhookSubscriptionReconciliationPlan:
+        subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]] = []
+        subs_to_delete: list[WebhookSubscription] = []
+        kept_sub_ids: list[str] = []
+        action_counts: Counter[str] = Counter()
+        skipped_project_scoped_count = 0
+
+        for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS:
+            if not project_id and sub.eventType in PROJECT_SCOPED_ONLY_EVENT_TYPES:
+                skipped_project_scoped_count += 1
+                logger.debug(
+                    f"Skipping webhook subscription not supported at org level: "
+                    f"publisherId={sub.publisherId}, eventType={sub.eventType}"
+                )
+                continue
+
+            sub.set_webhook_details(
+                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
+                auth_username=auth_username,
+                webhook_secret=webhook_secret,
+                project_id=project_id,
+            )
+            matching_subscriptions = sub.get_matching_subscriptions(
+                existing_subscriptions
+            )
+            subscription_to_keep = self._select_subscription_to_keep(
+                matching_subscriptions
+            )
+
+            action = "create"
+            if subscription_to_keep and subscription_to_keep.id:
+                kept_subscription_id = subscription_to_keep.id
+                duplicate_subscriptions = [
+                    matching_sub
+                    for matching_sub in matching_subscriptions
+                    if matching_sub.id != kept_subscription_id
+                ]
+                action = (
+                    "keep_and_delete_duplicates" if duplicate_subscriptions else "keep"
+                )
+                kept_sub_ids.append(kept_subscription_id)
+                subs_to_delete.extend(duplicate_subscriptions)
+            elif matching_subscriptions:
+                action = "create_before_delete"
+                subs_to_create.append((sub, matching_subscriptions))
+            else:
+                subs_to_create.append((sub, []))
+
+            action_counts[action] += 1
+            self._log_webhook_reconciliation_decision(
+                sub, matching_subscriptions, subscription_to_keep, action
+            )
+
+        return WebhookSubscriptionReconciliationPlan(
+            kept_sub_ids=kept_sub_ids,
+            subs_to_create=subs_to_create,
+            subs_to_delete=subs_to_delete,
+            action_counts=action_counts,
+            skipped_project_scoped_count=skipped_project_scoped_count,
+        )
+
+    def _log_webhook_reconciliation_decision(
+        self,
+        desired_subscription: WebhookSubscription,
+        matching_subscriptions: list[WebhookSubscription],
+        kept_subscription: Optional[WebhookSubscription],
+        action: str,
+    ) -> None:
+        selected_subscription = kept_subscription or (
+            matching_subscriptions[0] if matching_subscriptions else None
+        )
+        has_required_payload = (
+            selected_subscription.has_required_payload_details()
+            if selected_subscription
+            else None
+        )
+        enabled_matching_count = sum(
+            1 for subscription in matching_subscriptions if subscription.is_enabled()
+        )
+        logger.debug(
+            f"Webhook subscription reconciliation decision: "
+            f"desiredSubscription={desired_subscription.json()}, "
+            f"selectedSubscription={selected_subscription.json() if selected_subscription else None}, "
+            f"matchingSubscriptions={len(matching_subscriptions)}, "
+            f"enabledMatchingSubscriptions={enabled_matching_count}, "
+            f"hasRequiredPayload={has_required_payload}, action={action}"
+        )
+
+    async def _create_webhook_subscription_batch(
+        self,
+        subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]],
+    ) -> tuple[list[str], list[WebhookSubscription], int]:
+        created_sub_ids: list[str] = []
+        stale_subscriptions_to_delete: list[WebhookSubscription] = []
+        failed_create_count = 0
+
+        if not subs_to_create:
+            return created_sub_ids, stale_subscriptions_to_delete, failed_create_count
+
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+
+        async def create(subscription: WebhookSubscription) -> Optional[str]:
+            async with semaphore:
+                try:
+                    return await self.create_subscription(subscription)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create webhook subscription: "
+                        f"subscription={subscription.json()}, "
+                        f"errorType={type(e).__name__}, error={e}"
+                    )
+                    raise
+
+        results = await asyncio.gather(
+            *[create(sub) for sub, _ in subs_to_create],
+            return_exceptions=True,
+        )
+
+        for (_, subscriptions_to_replace), result in zip(subs_to_create, results):
+            if isinstance(result, Exception):
+                failed_create_count += 1
+                logger.error(
+                    f"Failed to create webhook: {type(result).__name__}: {result}"
+                )
+            elif isinstance(result, str):
+                created_sub_ids.append(result)
+                stale_subscriptions_to_delete.extend(subscriptions_to_replace)
+
+        return created_sub_ids, stale_subscriptions_to_delete, failed_create_count
+
+    async def _delete_webhook_subscriptions(
+        self,
+        subscriptions: list[WebhookSubscription],
+    ) -> None:
+        subscriptions = self._dedupe_subscriptions_by_id(subscriptions)
+        if not subscriptions:
+            return
+
+        total_subscription_count = len(subscriptions)
+        subscriptions = subscriptions[:MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION]
+        deferred_delete_count = total_subscription_count - len(subscriptions)
+        if deferred_delete_count:
+            logger.info(
+                f"Deferring duplicate/stale webhook subscription deletes: "
+                f"deferred={deferred_delete_count}, "
+                f"maxPerRun={MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION}"
+            )
+
+        logger.info(
+            f"Deleting duplicate/stale webhook subscriptions: "
+            f"count={len(subscriptions)}"
+        )
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+
+        async def delete(subscription: WebhookSubscription) -> None:
+            async with semaphore:
+                await self.delete_subscription(subscription)
+
+        results = await asyncio.gather(
+            *[delete(sub) for sub in subscriptions], return_exceptions=True
+        )
+
+        failed_delete_count = 0
+        for subscription, result in zip(subscriptions, results):
+            if isinstance(result, Exception):
+                failed_delete_count += 1
+                logger.error(
+                    f"Failed to delete duplicate webhook subscription: "
+                    f"subscription={subscription.json()}, "
+                    f"errorType={type(result).__name__}, error={result}"
+                )
+        logger.info(
+            f"Finished deleting duplicate/stale webhook subscriptions: "
+            f"requested={len(subscriptions)}, "
+            f"deleted={len(subscriptions) - failed_delete_count}, "
+            f"failed={failed_delete_count}, "
+            f"deferred={deferred_delete_count}"
+        )
+
     async def create_webhook_subscriptions(
         self,
         base_url: str,
@@ -2731,68 +3005,42 @@ class AzureDevopsClient(HTTPBaseClient):
         existing_subscriptions: Optional[list[WebhookSubscription]] = None,
     ) -> list[str]:
         """Create/reconcile webhook subscriptions and return all active subscription IDs."""
-        auth_username = self.webhook_auth_username
-
         if existing_subscriptions is None:
-            existing_subscriptions = await self.get_filtered_webhook_subscriptions()
-
-        subs_to_create = []
-        subs_to_delete = []
-        # IDs of existing healthy subscriptions we keep as-is — needed for
-        # the subscription registry so incoming events can be routed.
-        kept_sub_ids: list[str] = []
-
-        webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
-
-        for sub in webhook_subs:
-            sub.set_webhook_details(
-                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
-                auth_username=auth_username,
-                webhook_secret=webhook_secret,
-                project_id=project_id,
-            )
-            existing_sub = sub.get_event_by_subscription(existing_subscriptions)
-
-            if existing_sub and (
-                not existing_sub.is_enabled()
-                or not existing_sub.has_required_payload_details()
-            ):
-                subs_to_delete.append(existing_sub)
-                subs_to_create.append(sub)
-            elif existing_sub and existing_sub.id:
-                kept_sub_ids.append(existing_sub.id)
-            elif not existing_sub:
-                subs_to_create.append(sub)
-
-        if subs_to_delete:
-            await asyncio.gather(
-                *[self.delete_subscription(sub) for sub in subs_to_delete]
+            existing_subscriptions = await self.get_filtered_webhook_subscriptions(
+                org_level=not bool(project_id),
             )
 
-        created_sub_ids: list[str] = []
-        if subs_to_create:
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+        plan = self._plan_webhook_subscription_reconciliation(
+            base_url=base_url,
+            auth_username=self.webhook_auth_username,
+            webhook_secret=webhook_secret,
+            project_id=project_id,
+            existing_subscriptions=existing_subscriptions,
+        )
+        (
+            created_sub_ids,
+            stale_subscriptions_to_delete,
+            failed_create_count,
+        ) = await self._create_webhook_subscription_batch(plan.subs_to_create)
 
-            async def create(subscription: WebhookSubscription) -> Optional[str]:
-                async with semaphore:
-                    return await self.create_subscription(subscription)
+        subscriptions_to_delete = plan.subs_to_delete + stale_subscriptions_to_delete
+        delete_candidate_count = len(
+            self._dedupe_subscriptions_by_id(subscriptions_to_delete)
+        )
+        logger.info(
+            f"Webhook subscription reconciliation summary: "
+            f"kept={len(plan.kept_sub_ids)}, created={len(created_sub_ids)}, "
+            f"failedCreates={failed_create_count}, "
+            f"deleteCandidates={delete_candidate_count}, "
+            f"skippedProjectScoped={plan.skipped_project_scoped_count}, "
+            f"actions={dict(plan.action_counts)}"
+        )
 
-            results = await asyncio.gather(
-                *[create(sub) for sub in subs_to_create],
-                return_exceptions=True,
-            )
-
-            for result in results:
-                if isinstance(result, Exception):
-                    logger.error(
-                        f"Failed to create webhook: {type(result).__name__}: {result}"
-                    )
-                elif isinstance(result, str):
-                    created_sub_ids.append(result)
+        await self._delete_webhook_subscriptions(subscriptions_to_delete)
 
         # Return all active subscription IDs so the caller can populate the
         # subscription registry for webhook event routing.
-        return kept_sub_ids + created_sub_ids
+        return plan.kept_sub_ids + created_sub_ids
 
     async def get_repository_tree(
         self,
