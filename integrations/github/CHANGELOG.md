@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Enhanced the default pull request blueprint with additional review metrics, including coding time, time to first review, and duration from approval to merge.
-- Updated the default API for pull request entities from REST to GraphQL.
+- Added a GraphQL-based pull request sync path (REST configuration remains available).
 
 
 ## 6.11.1 (2026-09-07)
