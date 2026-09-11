@@ -66,9 +66,12 @@ resources:
           properties:
             creator: (.author.login | gsub("\\["; "-") | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; ""))
             assignees: >-
-              [(.assignees.nodes // .assignees // []) | .[] | select(. != null) | (.login | gsub("\\["; "-") |
-              gsub("\\](?=[^$])"; "-") | gsub("\\]$"; ""))]
-            reviewers: '[.requested_reviewers[].login | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; "")]'
+              [(.requested_reviewers // [])[]
+              | (if .type == "Team" then (.slug // .name) else .login end)
+              | select(. != null)
+              | gsub("\\["; "-")
+              | gsub("\\](?=[^$])"; "-")
+              | gsub("\\]$"; "")]
             status: .state
             closedAt: .closedAt
             updatedAt: .updatedAt
