@@ -2863,7 +2863,38 @@ async def test_generate_subscriptions_webhook_events_passes_filters() -> None:
             "GET",
             f"{MOCK_ORG_URL}/_apis/hooks/subscriptions",
             headers={"Content-Type": "application/json"},
-            params={"publisherId": "tfs", "eventType": "workitem.created"},
+            params={
+                "api-version": "7.1-preview.1",
+                "publisherId": "tfs",
+                "eventType": "workitem.created",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_generate_subscriptions_webhook_events_uses_vsrm_for_release_events() -> (
+    None
+):
+    client = AzureDevopsClient(
+        "https://dev.azure.com/serko", MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(status_code=200, json={"value": []})
+
+        await client.generate_subscriptions_webhook_events(
+            publisher_id="rm", event_type="ms.vss-release.release-created-event"
+        )
+
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "https://vsrm.dev.azure.com/serko/_apis/hooks/subscriptions",
+            headers={"Content-Type": "application/json"},
+            params={
+                "api-version": "7.1-preview.1",
+                "publisherId": "rm",
+                "eventType": "ms.vss-release.release-created-event",
+            },
         )
 
 
@@ -3009,6 +3040,161 @@ async def test_delete_subscription() -> None:
         headers={"Content-Type": "application/json"},
         params={"api-version": "7.1-preview.1"},
     )
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_subscriptions_keeps_one_enabled_match_and_deletes_duplicates() -> (
+    None
+):
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    desired_subscription = WebhookSubscription(publisherId="tfs", eventType="git.push")
+    webhook_url = "https://example.com/integration/webhook"
+    existing_subscriptions = [
+        WebhookSubscription(
+            id="enabled-1",
+            publisherId="tfs",
+            eventType="git.push",
+            consumerInputs={"url": webhook_url},
+            status="enabled",
+        ),
+        WebhookSubscription(
+            id="enabled-2",
+            publisherId="tfs",
+            eventType="git.push",
+            consumerInputs={"url": webhook_url},
+            status="enabled",
+        ),
+        WebhookSubscription(
+            id="probation-1",
+            publisherId="tfs",
+            eventType="git.push",
+            consumerInputs={"url": webhook_url},
+            status="onProbation",
+        ),
+        WebhookSubscription(
+            id="different-url",
+            publisherId="tfs",
+            eventType="git.push",
+            consumerInputs={"url": "https://other.example.com/integration/webhook"},
+            status="enabled",
+        ),
+    ]
+
+    with (
+        patch(
+            "azure_devops.client.azure_devops_client.AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS",
+            [desired_subscription],
+        ),
+        patch.object(
+            client, "create_subscription", new_callable=AsyncMock
+        ) as mock_create,
+        patch.object(
+            client, "delete_subscription", new_callable=AsyncMock
+        ) as mock_delete,
+    ):
+        sub_ids = await client.create_webhook_subscriptions(
+            "https://example.com",
+            existing_subscriptions=existing_subscriptions,
+        )
+
+    assert sub_ids == ["enabled-1"]
+    mock_create.assert_not_called()
+    assert {call.args[0].id for call in mock_delete.call_args_list} == {
+        "enabled-2",
+        "probation-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_subscriptions_caps_duplicate_deletes() -> None:
+    from azure_devops.client.azure_devops_client import (
+        MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION,
+    )
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    desired_subscription = WebhookSubscription(publisherId="tfs", eventType="git.push")
+    webhook_url = "https://example.com/integration/webhook"
+    duplicate_count = MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION + 5
+    existing_subscriptions = [
+        WebhookSubscription(
+            id="enabled-1",
+            publisherId="tfs",
+            eventType="git.push",
+            consumerInputs={"url": webhook_url},
+            status="enabled",
+        ),
+        *[
+            WebhookSubscription(
+                id=f"duplicate-{index}",
+                publisherId="tfs",
+                eventType="git.push",
+                consumerInputs={"url": webhook_url},
+                status="enabled",
+            )
+            for index in range(duplicate_count)
+        ],
+    ]
+
+    with (
+        patch(
+            "azure_devops.client.azure_devops_client.AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS",
+            [desired_subscription],
+        ),
+        patch.object(
+            client, "create_subscription", new_callable=AsyncMock
+        ) as mock_create,
+        patch.object(
+            client, "delete_subscription", new_callable=AsyncMock
+        ) as mock_delete,
+    ):
+        sub_ids = await client.create_webhook_subscriptions(
+            "https://example.com",
+            existing_subscriptions=existing_subscriptions,
+        )
+
+    assert sub_ids == ["enabled-1"]
+    mock_create.assert_not_called()
+    assert mock_delete.call_count == MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_subscriptions_replaces_probation_match_before_delete() -> (
+    None
+):
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    desired_subscription = WebhookSubscription(publisherId="tfs", eventType="git.push")
+    webhook_url = "https://example.com/integration/webhook"
+    existing_subscription = WebhookSubscription(
+        id="probation-1",
+        publisherId="tfs",
+        eventType="git.push",
+        consumerInputs={"url": webhook_url},
+        status="onProbation",
+    )
+    call_order: list[str] = []
+
+    async def create_subscription(_: WebhookSubscription) -> str:
+        call_order.append("create")
+        return "created-1"
+
+    async def delete_subscription(subscription: WebhookSubscription) -> None:
+        call_order.append(f"delete:{subscription.id}")
+
+    with (
+        patch(
+            "azure_devops.client.azure_devops_client.AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS",
+            [desired_subscription],
+        ),
+        patch.object(client, "create_subscription", side_effect=create_subscription),
+        patch.object(client, "delete_subscription", side_effect=delete_subscription),
+    ):
+        sub_ids = await client.create_webhook_subscriptions(
+            "https://example.com",
+            existing_subscriptions=[existing_subscription],
+        )
+
+    assert sub_ids == ["created-1"]
+    assert call_order == ["create", "delete:probation-1"]
 
 
 @pytest.mark.asyncio
