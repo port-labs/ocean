@@ -50,6 +50,8 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         "LifecyclePolicyNotFoundException",
         "RepositoryNotFoundException",
         "ClusterNotFoundException",
+        "ServiceNotFoundException",
+        "TaskDefinitionNotFoundException",
         "NotFoundException",
         "NoSuchBucket",
         "DBInstanceNotFound",

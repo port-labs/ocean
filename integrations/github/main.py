@@ -8,9 +8,11 @@ from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
 )
+from github.probe import GitHubAppPermissionProbe, GitHubPatPermissionProbe
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -108,6 +110,7 @@ from integration import (
     GithubFileResourceConfig,
     GithubSkillResourceConfig,
     GithubPluginResourceConfig,
+    GithubMcpResourceConfig,
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubDeploymentConfig,
@@ -122,6 +125,9 @@ from github.core.exporters.skill_exporter import (
 )
 from github.core.exporters.plugin_exporter import (
     PluginExporter,
+)
+from github.core.exporters.mcp_exporter import (
+    McpExporter,
 )
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
@@ -215,6 +221,19 @@ def _resync_per_authenticator(
             yield result
 
     return wrapper
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing GitHub permissions for {len(context.available_kinds)} resource kinds"
+    )
+    provider = get_auth_provider()
+    probe_flow = (
+        GitHubAppPermissionProbe if provider.is_app_auth() else GitHubPatPermissionProbe
+    )
+    await probe_flow(context, await provider.list_authenticators()).run()
+    return context
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)
@@ -1254,6 +1273,48 @@ async def resync_plugins(
                     ListPluginOptions(organization=org_login, repositories=repositories)
                 ):
                     yield plugins
+
+
+@ocean.on_resync(ObjectKind.MCP)
+@_resync_per_authenticator
+async def resync_mcp(
+    kind: str, authenticator: AbstractGitHubAuthenticator
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync MCP servers (mcp.json/.mcp.json) using glob path discovery."""
+    config = cast(GithubMcpResourceConfig, event.resource_config)
+    selector = config.selector
+    paths = [
+        pattern
+        for pattern in selector.paths
+        if can_access_organization(authenticator, pattern.organization)
+    ]
+    if not paths:
+        return
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    mcp_exporter = McpExporter(rest_client)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+
+    file_patterns = [
+        GithubFilePattern(
+            path=pattern.path,
+            organization=pattern.organization,
+            repos=pattern.repos,
+            excludeArchived=pattern.exclude_archived,
+        )
+        for pattern in paths
+    ]
+    pattern_builder = FilePatternMappingBuilder(
+        org_exporter=org_exporter,
+        repo_exporter=repo_exporter,
+        repo_type=app_config.repository_type,
+    )
+    repo_path_map = await pattern_builder.build(file_patterns)
+
+    async for servers in mcp_exporter.get_paginated_resources(repo_path_map):
+        yield servers
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)

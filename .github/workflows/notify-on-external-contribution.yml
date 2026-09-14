@@ -33,7 +33,6 @@ jobs:
             const eventName = context.eventName;
             const payload = context.payload;
 
-            // "internal vs external" is determined by the PR author, never the commenter
             let pr;
             switch (eventName) {
               case 'pull_request_target':
@@ -58,28 +57,52 @@ jobs:
 
             // author_association misreports private org members as CONTRIBUTOR, so check
             // real org membership via a fine-grained PAT (org resource, Members: Read-only)
-            const { getOctokit } = require('@actions/github');
             const orgClient = getOctokit(process.env.ORG_MEMBERSHIP_TOKEN);
 
-            let isExternal;
-            try {
-              await orgClient.rest.orgs.checkMembershipForUser({ org, username: user });
-              isExternal = false;
-            } catch (err) {
-              if (err.status === 404) {
-                isExternal = true;
-              } else {
-                // Can't determine membership — skip rather than guess or fail the job
-                core.warning(`Org membership check failed (${err.status}): ${err.message}. Skipping notification.`);
-                return;
+            async function isOrgMember(username) {
+              try {
+                await orgClient.rest.orgs.checkMembershipForUser({ org, username });
+                return true;
+              } catch (err) {
+                if (err.status === 404) return false;
+                throw err;
               }
             }
 
-            core.info(`Event: ${eventName} | PR author: ${user} | org member: ${!isExternal}`);
+            let prAuthorIsExternal;
+            try {
+              prAuthorIsExternal = !(await isOrgMember(user));
+            } catch (err) {
+              // Can't determine membership — skip rather than guess or fail the job
+              core.warning(`Org membership check failed (${err.status}): ${err.message}. Skipping notification.`);
+              return;
+            }
 
-            if (!isExternal) {
+            core.info(`Event: ${eventName} | PR author: ${user} | org member: ${!prAuthorIsExternal}`);
+
+            if (!prAuthorIsExternal) {
               core.info('PR author is an org member — skipping webhook.');
               return;
+            }
+
+            if (eventName !== 'pull_request_target') {
+              const actor =
+                eventName === 'pull_request_review' ? payload.review.user.login : payload.comment.user.login;
+              // when actor === user and we reach this point, their membership is already known (checked above as `user`)
+              // and we know they are not an org member
+              let actorIsMember = false;
+              if (actor !== user) {
+                try {
+                  actorIsMember = await isOrgMember(actor);
+                } catch (err) {
+                  core.warning(`Org membership check failed for ${actor} (${err.status}): ${err.message}. Skipping notification.`);
+                  return;
+                }
+              }
+              if (actorIsMember) {
+                core.info(`${actor} is an org member — skipping webhook.`);
+                return;
+              }
             }
 
             const body = {

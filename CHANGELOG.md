@@ -7,6 +7,54 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.51.3 (2026-09-14)
+
+
+### Improvements
+
+- Redis live-events stream consumption no longer requires the LIVE_EVENTS_REDIS_STREAM_ENABLED organization feature flag and is disabled for blocked organizations instead.
+
+
+## 0.51.2 (2026-09-10)
+
+
+### Bug Fixes
+
+- Cancel in-flight polling resyncs when a newer resync request arrives, without blocking the polling loop
+
+
+## 0.51.1 (2026-09-07)
+
+
+### Bug Fixes
+
+- Fix workflow node run status labels to use the object shape Port expects
+
+
+## 0.51.0 (2026-09-06)
+
+
+### Features
+
+- Added status label support to run logs and status updates for both action runs and workflow node runs, so integration actions can report which lifecycle stage a run is in
+
+
+## 0.50.11 (2026-09-06)
+
+
+### Improvements
+
+- Use cached port app config for live events to reduce port-api load between TTL refreshes.
+
+
+## 0.50.10 (2026-09-06)
+
+
+### Features
+
+- Add ProbeContext.setup_unscoped_checks to register one unscoped check per available kind
+
+
 ## 0.50.9 (2026-09-02)
 
 
