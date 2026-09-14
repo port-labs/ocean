@@ -126,6 +126,21 @@ test:
 smoke/test:
 	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
 
+smoke/test/profile:
+	$(ACTIVATE) && pytest --smoke-profile=$${SMOKE_TEST_PROFILE:-$${PROFILE:-once}} ./port_ocean/tests/smoke
+
+smoke/collect:
+	$(ACTIVATE) && pytest --smoke-profile=$${PROFILE:-once} --collect-only -q ./port_ocean/tests/smoke
+
+smoke/run:
+	chmod +x ./scripts/smoke-integration.sh && ./scripts/smoke-integration.sh run $${PROFILE:-once}
+
+smoke/run/all:
+	chmod +x ./scripts/smoke-integration.sh && ./scripts/smoke-integration.sh run-all
+
+smoke/clean/all:
+	chmod +x ./scripts/smoke-integration.sh && ./scripts/smoke-integration.sh clean-all
+
 smoke/clean:
 	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./scripts/clean-smoke-test.py
 
