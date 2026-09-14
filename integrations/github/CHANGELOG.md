@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.3 (2026-09-14)
+
+
+### Improvements
+
+- Expose GitHub workflow conclusion on workflow node run output when dispatch_workflow completes, so downstream workflow JQ can reference it
+
+
 ## 6.13.2 (2026-09-14)
 
 
