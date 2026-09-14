@@ -44,7 +44,9 @@ def executor() -> SetMergeRequestCommentReactionExecutor:
     with patch("gitlab.actions.abstract_gitlab_executor.create_gitlab_client"):
         ex = SetMergeRequestCommentReactionExecutor()
         ex.client = MagicMock()
-        ex.client.award_merge_request_note_emoji = AsyncMock(return_value=AWARD_RESPONSE)
+        ex.client.award_merge_request_note_emoji = AsyncMock(
+            return_value=AWARD_RESPONSE
+        )
         ex.client.list_merge_request_note_award_emojis = AsyncMock(
             return_value=[{"id": 88, "name": "thumbsup"}]
         )
@@ -63,7 +65,9 @@ def mock_port_client() -> MagicMock:
 @pytest.mark.asyncio
 class TestSetMergeRequestCommentReactionExecutor:
     async def test_add_reaction_happy_path(
-        self, executor: SetMergeRequestCommentReactionExecutor, mock_port_client: MagicMock
+        self,
+        executor: SetMergeRequestCommentReactionExecutor,
+        mock_port_client: MagicMock,
     ) -> None:
         run = make_run(
             {
@@ -96,7 +100,9 @@ class TestSetMergeRequestCommentReactionExecutor:
         )
 
     async def test_remove_reaction_happy_path(
-        self, executor: SetMergeRequestCommentReactionExecutor, mock_port_client: MagicMock
+        self,
+        executor: SetMergeRequestCommentReactionExecutor,
+        mock_port_client: MagicMock,
     ) -> None:
         run = make_run(
             {
@@ -134,7 +140,9 @@ class TestSetMergeRequestCommentReactionExecutor:
             await executor.execute(run)
 
     async def test_remove_when_not_found_raises(
-        self, executor: SetMergeRequestCommentReactionExecutor, mock_port_client: MagicMock
+        self,
+        executor: SetMergeRequestCommentReactionExecutor,
+        mock_port_client: MagicMock,
     ) -> None:
         executor.client.list_merge_request_note_award_emojis = AsyncMock(return_value=[])  # type: ignore[method-assign]
         run = make_run(
@@ -154,11 +162,17 @@ class TestSetMergeRequestCommentReactionExecutor:
                 await executor.execute(run)
 
     async def test_api_error_on_add_raises(
-        self, executor: SetMergeRequestCommentReactionExecutor, mock_port_client: MagicMock
+        self,
+        executor: SetMergeRequestCommentReactionExecutor,
+        mock_port_client: MagicMock,
     ) -> None:
-        response = httpx.Response(403, request=httpx.Request("POST", "https://gitlab.com"))
+        response = httpx.Response(
+            403, request=httpx.Request("POST", "https://gitlab.com")
+        )
         executor.client.award_merge_request_note_emoji = AsyncMock(  # type: ignore[method-assign]
-            side_effect=httpx.HTTPStatusError("forbidden", request=response.request, response=response)
+            side_effect=httpx.HTTPStatusError(
+                "forbidden", request=response.request, response=response
+            )
         )
         run = make_run(
             {
