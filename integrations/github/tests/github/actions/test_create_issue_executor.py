@@ -115,7 +115,9 @@ class TestCreateIssueExecutor:
             ignore_default_errors=False,
         )
         mock_port_client.report_run_completed.assert_awaited_once()
-        assert mock_port_client.report_run_completed.await_args.kwargs["success"] is True
+        assert (
+            mock_port_client.report_run_completed.await_args.kwargs["success"] is True
+        )
 
     @pytest.mark.asyncio
     async def test_create_issue_sets_workflow_output(
@@ -139,9 +141,7 @@ class TestCreateIssueExecutor:
         }
 
     @pytest.mark.asyncio
-    async def test_missing_title_raises(
-        self, executor: CreateIssueExecutor
-    ) -> None:
+    async def test_missing_title_raises(self, executor: CreateIssueExecutor) -> None:
         run = make_run({"org": "port-labs", "repo": "ocean"})
         with pytest.raises(InvalidActionParametersException):
             await executor.execute(run)
