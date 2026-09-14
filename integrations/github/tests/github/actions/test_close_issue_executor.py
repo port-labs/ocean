@@ -1,5 +1,3 @@
-"""Tests for CloseIssueExecutor."""
-
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -52,10 +50,10 @@ def mock_rest_client() -> MagicMock:
 
 @pytest.fixture
 def mock_port_client() -> MagicMock:
-    pc = MagicMock()
-    pc.post_run_log = AsyncMock()
-    pc.report_run_completed = AsyncMock()
-    return pc
+    port_client = MagicMock()
+    port_client.post_run_log = AsyncMock()
+    port_client.report_run_completed = AsyncMock()
+    return port_client
 
 
 @pytest.fixture
@@ -77,7 +75,14 @@ class TestCloseIssueExecutor:
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean", "issueNumber": 7})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "stateReason": "completed",
+            }
+        )
 
         with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
@@ -185,7 +190,14 @@ class TestCloseIssueExecutor:
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean", "issueNumber": 7})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "stateReason": "completed",
+            }
+        )
 
         request = httpx.Request(
             "PATCH", "https://api.github.com/repos/port-labs/ocean/issues/7"
@@ -207,7 +219,14 @@ class TestCloseIssueExecutor:
         mock_rest_client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean", "issueNumber": 7})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "stateReason": "completed",
+            }
+        )
         mock_rest_client.send_api_request.return_value = {}
 
         with pytest.raises(IssueActionError, match="empty or incomplete"):
@@ -224,6 +243,29 @@ class TestCloseIssueExecutor:
     async def test_partition_key_missing(self, executor: CloseIssueExecutor) -> None:
         run = make_run({"issueNumber": 7})
         assert await executor._get_partition_key(run) is None
+
+    @pytest.mark.asyncio
+    async def test_invalid_state_reason_raises(
+        self,
+        executor: CloseIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "stateReason": "invalid",
+            }
+        )
+
+        with pytest.raises(InvalidActionParametersException, match="stateReason"):
+            with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
+
+        mock_rest_client.send_api_request.assert_not_awaited()
 
     def test_action_name(self, executor: CloseIssueExecutor) -> None:
         assert executor.ACTION_NAME == ACTION

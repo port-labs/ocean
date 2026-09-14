@@ -1,5 +1,3 @@
-"""Tests for EditIssueExecutor."""
-
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -52,10 +50,10 @@ def mock_rest_client() -> MagicMock:
 
 @pytest.fixture
 def mock_port_client() -> MagicMock:
-    pc = MagicMock()
-    pc.post_run_log = AsyncMock()
-    pc.report_run_completed = AsyncMock()
-    return pc
+    port_client = MagicMock()
+    port_client.post_run_log = AsyncMock()
+    port_client.report_run_completed = AsyncMock()
+    return port_client
 
 
 @pytest.fixture
@@ -234,6 +232,82 @@ class TestEditIssueExecutor:
     async def test_partition_key_missing(self, executor: EditIssueExecutor) -> None:
         run = make_run({"issueNumber": 7})
         assert await executor._get_partition_key(run) is None
+
+    @pytest.mark.asyncio
+    async def test_close_via_edit_defaults_state_reason(
+        self,
+        executor: EditIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "state": "closed",
+            }
+        )
+
+        with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        call_kwargs = mock_rest_client.send_api_request.call_args
+        assert call_kwargs.kwargs["json_data"] == {
+            "state": "closed",
+            "state_reason": "completed",
+        }
+
+    @pytest.mark.asyncio
+    async def test_invalid_state_reason_raises(
+        self,
+        executor: EditIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "stateReason": "invalid",
+            }
+        )
+
+        with pytest.raises(InvalidActionParametersException, match="stateReason"):
+            with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
+
+        mock_rest_client.send_api_request.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_explicit_state_reason(
+        self,
+        executor: EditIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "state": "closed",
+                "stateReason": "not_planned",
+            }
+        )
+
+        with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        call_kwargs = mock_rest_client.send_api_request.call_args
+        assert call_kwargs.kwargs["json_data"] == {
+            "state": "closed",
+            "state_reason": "not_planned",
+        }
 
     def test_action_name(self, executor: EditIssueExecutor) -> None:
         assert executor.ACTION_NAME == ACTION

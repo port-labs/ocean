@@ -1,5 +1,3 @@
-"""Tests for CreateIssueExecutor."""
-
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -52,10 +50,10 @@ def mock_rest_client() -> MagicMock:
 
 @pytest.fixture
 def mock_port_client() -> MagicMock:
-    pc = MagicMock()
-    pc.post_run_log = AsyncMock()
-    pc.report_run_completed = AsyncMock()
-    return pc
+    port_client = MagicMock()
+    port_client.post_run_log = AsyncMock()
+    port_client.report_run_completed = AsyncMock()
+    return port_client
 
 
 @pytest.fixture
