@@ -4,16 +4,35 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from port_ocean.core.event_listener.base import BaseEventListener
-from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.context.event import EventType, event, event_context
 from port_ocean.core.event_listener.base import BaseEventListener
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.utils.misc import IntegrationStateStatus
 
 
 class _TestEventListener(BaseEventListener):
     async def _start(self) -> None:
         pass
+
+
+@pytest.fixture
+def resync_state_updater() -> SimpleNamespace:
+    return SimpleNamespace(
+        supersede_in_progress=False,
+        update_before_resync=AsyncMock(),
+        update_after_resync=AsyncMock(),
+    )
+
+
+@pytest.fixture
+def listener(
+    monkeypatch: pytest.MonkeyPatch, resync_state_updater: SimpleNamespace
+) -> _TestEventListener:
+    app = SimpleNamespace(resync_state_updater=resync_state_updater)
+    monkeypatch.setattr(
+        "port_ocean.core.event_listener.base.ocean", SimpleNamespace(app=app)
+    )
+    return _TestEventListener(events={"on_resync": AsyncMock(return_value=True)})
 
 
 @pytest.mark.asyncio
@@ -59,24 +78,66 @@ async def test_resync_fails_when_port_app_config_cannot_be_loaded(
     before_resync.assert_awaited_once()
     after_resync.assert_not_awaited()
     on_resync_failure.assert_awaited_once()
-@pytest.fixture
-def resync_state_updater() -> SimpleNamespace:
-    return SimpleNamespace(
-        supersede_in_progress=False,
-        update_before_resync=AsyncMock(),
-        update_after_resync=AsyncMock(),
+
+
+@pytest.mark.asyncio
+async def test_resync_updates_state_on_success(
+    listener: _TestEventListener, resync_state_updater: SimpleNamespace
+) -> None:
+    await listener._resync({})
+
+    resync_state_updater.update_before_resync.assert_awaited_once()
+    resync_state_updater.update_after_resync.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_resync_calls_on_resync_failure_when_on_resync_returns_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listener = _TestEventListener(
+        events={"on_resync": AsyncMock(return_value=False)},
+    )
+    before_resync = AsyncMock()
+    after_resync = AsyncMock()
+    on_resync_failure = AsyncMock()
+    monkeypatch.setattr(listener, "_before_resync", before_resync)
+    monkeypatch.setattr(listener, "_after_resync", after_resync)
+    monkeypatch.setattr(listener, "_on_resync_failure", on_resync_failure)
+
+    await listener._resync({})
+
+    before_resync.assert_awaited_once()
+    after_resync.assert_not_awaited()
+    on_resync_failure.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_resync_marks_failed_when_on_resync_returns_false(
+    listener: _TestEventListener, resync_state_updater: SimpleNamespace
+) -> None:
+    listener.events["on_resync"] = AsyncMock(return_value=False)
+
+    await listener._resync({})
+
+    resync_state_updater.update_before_resync.assert_awaited_once()
+    resync_state_updater.update_after_resync.assert_awaited_once_with(
+        IntegrationStateStatus.Failed
     )
 
 
-@pytest.fixture
-def listener(
-    monkeypatch: pytest.MonkeyPatch, resync_state_updater: SimpleNamespace
-) -> _TestEventListener:
-    app = SimpleNamespace(resync_state_updater=resync_state_updater)
-    monkeypatch.setattr(
-        "port_ocean.core.event_listener.base.ocean", SimpleNamespace(app=app)
+@pytest.mark.asyncio
+async def test_resync_marks_failed_on_exception(
+    listener: _TestEventListener, resync_state_updater: SimpleNamespace
+) -> None:
+    listener.events["on_resync"] = AsyncMock(side_effect=EmptyPortAppConfigError())
+
+    with pytest.raises(EmptyPortAppConfigError):
+        await listener._resync({})
+
+    resync_state_updater.update_before_resync.assert_awaited_once()
+    resync_state_updater.update_after_resync.assert_awaited_once_with(
+        IntegrationStateStatus.Failed
     )
-    return _TestEventListener(events={"on_resync": AsyncMock(return_value=True)})
 
 
 @pytest.mark.asyncio
