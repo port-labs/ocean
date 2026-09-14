@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added a create_merge_request action that creates a GitLab merge request
