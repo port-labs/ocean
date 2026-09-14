@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.51.4 (2026-09-14)
+
+
+### Bug Fixes
+
+- Treat empty Port mapping as a valid no-op during resync so the integration stays alive, marks resync as completed, and actions continue to work.
+
+
 ## 0.51.3 (2026-09-14)
 
 
