@@ -8,14 +8,14 @@ from pydantic.v1 import BaseModel
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.tests.helpers.smoke_test import SmokeTestDetails, get_smoke_test_details
+from port_ocean.tests.smoke.helpers.details import get_smoke_test_details
 
 ECHO_MESSAGE_ACTION = "echo_message"
 TRIGGER_FAKE_TASK_ACTION = "trigger_fake_task"
 FAKE_TASK_COMPLETED_EVENT = "fake_task.completed"
 
 
-class ActionsSmokeTestResources(BaseModel):
+class ActionResources(BaseModel):
     suffix: str
     installation_id: str
     integration_provider: str
@@ -33,13 +33,13 @@ class CompletedRun:
     message: str | None
 
 
-def get_actions_smoke_resources() -> ActionsSmokeTestResources:
+def get_action_resources() -> ActionResources:
     details = get_smoke_test_details()
     suffix = details.integration_identifier.removeprefix("smoke-test-integration")
     suffix = suffix.removeprefix("-")
     resource_suffix = f"-{suffix}" if suffix else ""
 
-    return ActionsSmokeTestResources(
+    return ActionResources(
         suffix=resource_suffix,
         installation_id=details.integration_identifier,
         integration_provider=details.integration_type,
@@ -51,7 +51,7 @@ def get_actions_smoke_resources() -> ActionsSmokeTestResources:
 
 
 def _integration_action_invocation(
-    resources: ActionsSmokeTestResources,
+    resources: ActionResources,
     action_type: str,
     execution_properties: dict[str, Any],
 ) -> dict[str, Any]:
@@ -63,7 +63,7 @@ def _integration_action_invocation(
     }
 
 
-def build_echo_message_action(resources: ActionsSmokeTestResources) -> dict[str, Any]:
+def build_echo_message_action(resources: ActionResources) -> dict[str, Any]:
     return {
         "identifier": resources.echo_action_identifier,
         "title": "Smoke test echo message",
@@ -91,9 +91,7 @@ def build_echo_message_action(resources: ActionsSmokeTestResources) -> dict[str,
     }
 
 
-def build_trigger_fake_task_action(
-    resources: ActionsSmokeTestResources,
-) -> dict[str, Any]:
+def build_trigger_fake_task_action(resources: ActionResources) -> dict[str, Any]:
     return {
         "identifier": resources.trigger_fake_task_action_identifier,
         "title": "Smoke test trigger fake task",
@@ -125,7 +123,7 @@ def build_trigger_fake_task_action(
 
 
 def _integration_workflow_node(
-    resources: ActionsSmokeTestResources,
+    resources: ActionResources,
     node_identifier: str,
     title: str,
     action_type: str,
@@ -148,7 +146,7 @@ def _integration_workflow_node(
     }
 
 
-def build_echo_message_workflow(resources: ActionsSmokeTestResources) -> dict[str, Any]:
+def build_echo_message_workflow(resources: ActionResources) -> dict[str, Any]:
     trigger_id = "trigger"
     action_id = "echo_message"
     return {
@@ -180,9 +178,7 @@ def build_echo_message_workflow(resources: ActionsSmokeTestResources) -> dict[st
     }
 
 
-def build_trigger_fake_task_workflow(
-    resources: ActionsSmokeTestResources,
-) -> dict[str, Any]:
+def build_trigger_fake_task_workflow(resources: ActionResources) -> dict[str, Any]:
     trigger_id = "trigger"
     action_id = "trigger_fake_task"
     return {
@@ -235,22 +231,18 @@ async def _upsert_workflow(port_client: PortClient, workflow: dict[str, Any]) ->
     handle_port_status_code(response, should_log=False)
 
 
-async def setup_actions_smoke_test(
-    port_client: PortClient,
-) -> ActionsSmokeTestResources:
-    resources = get_actions_smoke_resources()
+async def setup_action_resources(port_client: PortClient) -> ActionResources:
+    resources = get_action_resources()
     await _upsert_action(port_client, build_echo_message_action(resources))
     await _upsert_action(port_client, build_trigger_fake_task_action(resources))
     await _upsert_workflow(port_client, build_echo_message_workflow(resources))
     await _upsert_workflow(port_client, build_trigger_fake_task_workflow(resources))
-    logger.info(
-        "Configured actions and workflows for actions smoke test", resources=resources
-    )
+    logger.info("Configured actions and workflows for smoke test", resources=resources)
     return resources
 
 
-async def cleanup_actions_smoke_test(
-    port_client: PortClient, resources: ActionsSmokeTestResources
+async def cleanup_action_resources(
+    port_client: PortClient, resources: ActionResources
 ) -> None:
     for identifier in (
         resources.echo_action_identifier,
@@ -400,7 +392,3 @@ async def simulate_fake_task_webhook(
     async with httpx.AsyncClient() as client:
         response = await client.post(integration_webhook_url, json=payload)
         response.raise_for_status()
-
-
-def get_smoke_test_details_for_actions() -> SmokeTestDetails:
-    return get_smoke_test_details()
