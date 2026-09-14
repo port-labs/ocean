@@ -150,6 +150,76 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "create_merge_request_comment",
+      "icon": "GitLab",
+      "description": "Post a comment on a GitLab merge request",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "GitLab project path (e.g., \"my-group/my-project\") or numeric ID",
+          "required": true
+        },
+        {
+          "name": "mergeRequestIid",
+          "title": "Merge request IID",
+          "type": "string",
+          "description": "Internal merge request ID (the number in !42)",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Comment body",
+          "type": "string",
+          "description": "Text of the merge request comment",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "set_merge_request_comment_reaction",
+      "icon": "GitLab",
+      "description": "Add or remove a reaction on a merge request comment",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "GitLab project path (e.g., \"my-group/my-project\") or numeric ID",
+          "required": true
+        },
+        {
+          "name": "mergeRequestIid",
+          "title": "Merge request IID",
+          "type": "string",
+          "description": "Internal merge request ID (the number in !42)",
+          "required": true
+        },
+        {
+          "name": "noteId",
+          "title": "Comment ID",
+          "type": "string",
+          "description": "ID of the merge request note (comment) to react to",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Reaction name",
+          "type": "string",
+          "description": "GitLab emoji name without colons (for example, thumbsup)",
+          "required": true
+        },
+        {
+          "name": "removeReaction",
+          "title": "Remove reaction",
+          "type": "boolean",
+          "description": "When true, removes the reaction instead of adding it",
+          "default": false
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [

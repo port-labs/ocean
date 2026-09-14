@@ -1554,6 +1554,60 @@ class GitLabClient:
             "POST", f"projects/{encoded_id}/merge_requests", data=data
         )
 
+    async def create_merge_request_note(
+        self,
+        project_id: str | int,
+        merge_request_iid: int,
+        body: str,
+    ) -> dict[str, Any]:
+        encoded_id = quote(str(project_id), safe="")
+        path = f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes"
+        return await self.rest.send_api_request("POST", path, data={"body": body})
+
+    async def award_merge_request_note_emoji(
+        self,
+        project_id: str | int,
+        merge_request_iid: int,
+        note_id: int,
+        name: str,
+    ) -> dict[str, Any]:
+        encoded_id = quote(str(project_id), safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji"
+        )
+        return await self.rest.send_api_request("POST", path, data={"name": name})
+
+    async def list_merge_request_note_award_emojis(
+        self,
+        project_id: str | int,
+        merge_request_iid: int,
+        note_id: int,
+    ) -> list[dict[str, Any]]:
+        encoded_id = quote(str(project_id), safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji"
+        )
+        response = await self.rest.send_api_request("GET", path)
+        if isinstance(response, list):
+            return response
+        return []
+
+    async def revoke_merge_request_note_award_emoji(
+        self,
+        project_id: str | int,
+        merge_request_iid: int,
+        note_id: int,
+        award_id: int,
+    ) -> dict[str, Any]:
+        encoded_id = quote(str(project_id), safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji/{award_id}"
+        )
+        return await self.rest.send_api_request("DELETE", path)
+
     def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Return the most-recently observed rate-limit info, or None if unknown."""
         return self.rest._rate_limiter.rate_limit_info

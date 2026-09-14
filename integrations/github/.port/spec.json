@@ -218,6 +218,34 @@
   "actionsProcessingEnabled": true,
   "actions": [
     {
+      "name": "create_issue",
+      "icon": "Github",
+      "description": "Create a new GitHub issue",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The name of your GitHub organization or user, as in https://github.com/port-labs",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository where the issue will be created",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The title of the issue",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "dispatch_workflow",
       "icon": "GithubActions",
       "description": "Dispatch a GitHub workflow",
