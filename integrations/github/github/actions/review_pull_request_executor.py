@@ -5,7 +5,6 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
 from github.actions.exceptions import ReviewPullRequestError
-from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
 # https://docs.github.com/en/rest/pulls/reviews#create-a-review-for-a-pull-request
@@ -38,9 +37,7 @@ class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
                     "body is required when event is REQUEST_CHANGES"
                 )
 
-        rest_client = (await self._get_execution_clients(run))[0]
-        if not isinstance(rest_client, GithubRestClient):
-            raise InvalidActionParametersException("GitHub REST client is required")
+        rest_client = await self._get_rest_client(run)
 
         await ocean.port_client.post_run_log(
             run,

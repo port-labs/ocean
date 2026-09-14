@@ -5,8 +5,9 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
 from github.actions.exceptions import UpdatePullRequestError
-from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
+
+UPDATABLE_PR_FIELDS = ("title", "body", "state", "base")
 
 
 class UpdatePullRequestExecutor(AbstractPullRequestExecutor):
@@ -23,7 +24,7 @@ class UpdatePullRequestExecutor(AbstractPullRequestExecutor):
             )
 
         patch_body: dict[str, str] = {}
-        for key in ("title", "body", "state", "base"):
+        for key in UPDATABLE_PR_FIELDS:
             value = run.execution_properties.get(key)
             if value is not None:
                 patch_body[key] = value
@@ -33,9 +34,7 @@ class UpdatePullRequestExecutor(AbstractPullRequestExecutor):
                 "At least one field to update is required (title, body, state, or base)"
             )
 
-        rest_client = (await self._get_execution_clients(run))[0]
-        if not isinstance(rest_client, GithubRestClient):
-            raise InvalidActionParametersException("GitHub REST client is required")
+        rest_client = await self._get_rest_client(run)
 
         await ocean.port_client.post_run_log(
             run,

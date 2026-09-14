@@ -5,7 +5,6 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
 from github.actions.exceptions import ClosePullRequestError
-from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
 
@@ -22,9 +21,7 @@ class ClosePullRequestExecutor(AbstractPullRequestExecutor):
                 "org, repo, and prNumber are required"
             )
 
-        rest_client = (await self._get_execution_clients(run))[0]
-        if not isinstance(rest_client, GithubRestClient):
-            raise InvalidActionParametersException("GitHub REST client is required")
+        rest_client = await self._get_rest_client(run)
 
         await ocean.port_client.post_run_log(
             run,

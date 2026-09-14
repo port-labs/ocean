@@ -74,7 +74,7 @@ def executor(
 
 class TestMergePullRequestExecutor:
     @pytest.mark.asyncio
-    async def test_happy_path_default_merge(
+    async def test_happy_path_merge(
         self,
         executor: MergePullRequestExecutor,
         mock_rest_client: MagicMock,
@@ -85,6 +85,7 @@ class TestMergePullRequestExecutor:
                 "org": "port-labs",
                 "repo": "ocean",
                 "prNumber": "42",
+                "mergeMethod": "merge",
             }
         )
         await executor.execute(run)
@@ -132,6 +133,23 @@ class TestMergePullRequestExecutor:
         )
 
     @pytest.mark.asyncio
+    async def test_missing_merge_method(
+        self, executor: MergePullRequestExecutor
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "prNumber": "42",
+            }
+        )
+        with pytest.raises(
+            InvalidActionParametersException,
+            match="mergeMethod is required",
+        ):
+            await executor.execute(run)
+
+    @pytest.mark.asyncio
     async def test_invalid_merge_method(
         self, executor: MergePullRequestExecutor
     ) -> None:
@@ -144,7 +162,8 @@ class TestMergePullRequestExecutor:
             }
         )
         with pytest.raises(
-            InvalidActionParametersException, match="mergeMethod must be one of"
+            InvalidActionParametersException,
+            match="mergeMethod is required and must be one of",
         ):
             await executor.execute(run)
 
@@ -184,6 +203,7 @@ class TestMergePullRequestExecutor:
                 "org": "port-labs",
                 "repo": "ocean",
                 "prNumber": "42",
+                "mergeMethod": "merge",
             }
         )
         with pytest.raises(MergePullRequestError, match="Head branch is out of date"):
@@ -203,6 +223,7 @@ class TestMergePullRequestExecutor:
                 "org": "port-labs",
                 "repo": "ocean",
                 "prNumber": "42",
+                "mergeMethod": "merge",
             }
         )
         with pytest.raises(MergePullRequestError, match="Not mergeable"):
@@ -220,6 +241,7 @@ class TestMergePullRequestExecutor:
                 "org": "port-labs",
                 "repo": "ocean",
                 "prNumber": "42",
+                "mergeMethod": "merge",
             }
         )
         with pytest.raises(MergePullRequestError, match="Failed to merge"):
