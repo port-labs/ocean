@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.38 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.1.37 (2026-09-10)
+
+
+### Bug Fixes
+
+- Add IDLE to the cursor_agent blueprint and map v0 run lifecycle statuses to v1 agent lifecycle values on webhook and action upserts.
+
+
 ## 0.1.36 (2026-09-07)
 
 
