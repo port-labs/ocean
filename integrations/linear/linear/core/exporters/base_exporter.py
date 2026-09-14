@@ -9,6 +9,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from linear.client import LinearClient
 from linear.client.constants import (
     CONNECTION_KEYS,
+    NODE_PAGINATION_OBJECTS,
     PAGE_SIZE,
     SINGLE_RESOURCE_CONFIG,
     LinearObject,
@@ -84,7 +85,10 @@ class PaginatedExporter(LinearExporter):
                 query,
             )
             connection = data[connection_key]
-            yield [edge["node"] for edge in connection["edges"]]
+            if object_type in NODE_PAGINATION_OBJECTS:
+                yield connection["nodes"]
+            else:
+                yield [edge["node"] for edge in connection["edges"]]
             has_next_page = connection["pageInfo"]["hasNextPage"]
             end_cursor = connection["pageInfo"]["endCursor"]
 

@@ -10,6 +10,9 @@ WEBHOOK_EVENTS = [
     "Issue",
     "IssueLabel",
     "Document",
+    "User",
+    "Project",
+    "Cycle",
 ]
 GET_LIVE_EVENTS_WEBHOOKS_QUERY = "GET_LIVE_EVENTS_WEBHOOKS"
 CREATE_LIVE_EVENTS_WEBHOOK_QUERY = "CREATE_LIVE_EVENTS_WEBHOOK"
@@ -31,6 +34,10 @@ class LinearObject(StrEnum):
     LABELS = "LABELS"
     ISSUES = "ISSUES"
     DOCUMENTS = "DOCUMENTS"
+    USERS = "USERS"
+    PROJECTS = "PROJECTS"
+    CYCLES = "CYCLES"
+    TEAM_MEMBERSHIPS = "TEAM_MEMBERSHIPS"
 
 
 CONNECTION_KEYS: dict[LinearObject, str] = {
@@ -38,7 +45,20 @@ CONNECTION_KEYS: dict[LinearObject, str] = {
     LinearObject.LABELS: "issueLabels",
     LinearObject.ISSUES: "issues",
     LinearObject.DOCUMENTS: "documents",
+    LinearObject.USERS: "users",
+    LinearObject.PROJECTS: "projects",
+    LinearObject.CYCLES: "cycles",
+    LinearObject.TEAM_MEMBERSHIPS: "teamMemberships",
 }
+
+NODE_PAGINATION_OBJECTS: frozenset[LinearObject] = frozenset(
+    {
+        LinearObject.USERS,
+        LinearObject.PROJECTS,
+        LinearObject.CYCLES,
+        LinearObject.TEAM_MEMBERSHIPS,
+    }
+)
 
 SINGLE_RESOURCE_CONFIG: dict[LinearObject, SingleResourceConfig] = {
     LinearObject.ISSUES: SingleResourceConfig(
@@ -58,5 +78,23 @@ SINGLE_RESOURCE_CONFIG: dict[LinearObject, SingleResourceConfig] = {
         response_key="issueLabel",
         id_param="label_id",
         log_label="label",
+    ),
+    LinearObject.USERS: SingleResourceConfig(
+        query_key="GET_SINGLE_USER",
+        response_key="user",
+        id_param="user_id",
+        log_label="user",
+    ),
+    LinearObject.PROJECTS: SingleResourceConfig(
+        query_key="GET_SINGLE_PROJECT",
+        response_key="project",
+        id_param="project_id",
+        log_label="project",
+    ),
+    LinearObject.CYCLES: SingleResourceConfig(
+        query_key="GET_SINGLE_CYCLE",
+        response_key="cycle",
+        id_param="cycle_id",
+        log_label="cycle",
     ),
 }
