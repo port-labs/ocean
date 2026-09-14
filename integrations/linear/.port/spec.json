@@ -21,6 +21,18 @@
         },
         {
           "kind": "document"
+        },
+        {
+          "kind": "user"
+        },
+        {
+          "kind": "project"
+        },
+        {
+          "kind": "team-members"
+        },
+        {
+          "kind": "cycle"
         }
       ]
     }

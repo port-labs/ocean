@@ -61,5 +61,36 @@
       "description": "Run only 1 static department instead of the default 5",
       "default": false
     }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "echo_message",
+      "icon": "Cookiecutter",
+      "description": "Echo a message back synchronously",
+      "inputs": [
+        {
+          "name": "message",
+          "title": "Message",
+          "type": "string",
+          "description": "Message to echo back",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "trigger_fake_task",
+      "icon": "Cookiecutter",
+      "description": "Trigger a fake async task that completes via webhook",
+      "inputs": [
+        {
+          "name": "taskName",
+          "title": "Task name",
+          "type": "string",
+          "description": "Name of the fake task to trigger",
+          "required": true
+        }
+      ]
+    }
   ]
 }
