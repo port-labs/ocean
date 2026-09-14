@@ -4,10 +4,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from port_ocean.core.event_listener.base import BaseEventListener
-from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.context.event import EventType, event, event_context
 from port_ocean.core.event_listener.base import BaseEventListener
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.utils.misc import IntegrationStateStatus
 
 
@@ -59,6 +58,8 @@ async def test_resync_fails_when_port_app_config_cannot_be_loaded(
     before_resync.assert_awaited_once()
     after_resync.assert_not_awaited()
     on_resync_failure.assert_awaited_once()
+
+
 @pytest.fixture
 def resync_state_updater() -> SimpleNamespace:
     return SimpleNamespace(
