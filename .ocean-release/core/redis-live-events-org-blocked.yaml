@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Redis live-events stream consumption no longer requires the LIVE_EVENTS_REDIS_STREAM_ENABLED organization feature flag and is disabled for blocked organizations instead.
