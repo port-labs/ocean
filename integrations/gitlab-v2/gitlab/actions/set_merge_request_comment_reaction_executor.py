@@ -73,9 +73,7 @@ class SetMergeRequestCommentReactionExecutor(AbstractGitlabExecutor):
                     f"Could not remove reaction '{emoji_name}' from note {note_id} on merge "
                     f"request !{merge_request_iid} in project '{project}'",
                 )
-            message = (
-                f"Removed reaction '{emoji_name}' from merge request comment (note ID {note_id})"
-            )
+            message = f"Removed reaction '{emoji_name}' from merge request comment (note ID {note_id})"
             output_award_id: str | None = None
         else:
             await ocean.port_client.post_run_log(
