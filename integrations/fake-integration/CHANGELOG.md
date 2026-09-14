@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0-dev (2026-09-14)
+
+
+### Features
+
+- Added sync and async actions to fake-integration for ocean core action and workflow smoke tests
+
+
 ## 0.1.350-dev (2026-09-14)
 
 
