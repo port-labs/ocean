@@ -1,6 +1,14 @@
 import httpx
+import pytest
 
-from github.actions.utils import build_external_id, extract_error_message
+from github.actions.utils import (
+    build_close_issue_patch_body,
+    build_edit_issue_patch_body,
+    build_external_id,
+    extract_error_message,
+    resolve_issue_close_state_reason,
+)
+from github.helpers.exceptions import InvalidActionParametersException
 
 
 class TestBuildExternalId:
@@ -38,3 +46,38 @@ class TestExtractErrorMessage:
         response = httpx.Response(503, text="   ")
 
         assert extract_error_message(response) == "HTTP 503"
+
+
+class TestIssueActionUtils:
+    def test_build_edit_issue_patch_body_scalar_fields(self) -> None:
+        body = build_edit_issue_patch_body(
+            {"title": "New title", "body": "New body", "state": "open"}
+        )
+
+        assert body == {"title": "New title", "body": "New body", "state": "open"}
+
+    def test_build_edit_issue_patch_body_closed_includes_state_reason(self) -> None:
+        body = build_edit_issue_patch_body({"state": "closed"})
+
+        assert body == {"state": "closed", "state_reason": "completed"}
+
+    def test_build_edit_issue_patch_body_closed_with_state_reason(self) -> None:
+        body = build_edit_issue_patch_body(
+            {"state": "closed", "stateReason": "not_planned"}
+        )
+
+        assert body == {"state": "closed", "state_reason": "not_planned"}
+
+    def test_build_edit_issue_patch_body_empty_raises(self) -> None:
+        with pytest.raises(InvalidActionParametersException, match="At least one field"):
+            build_edit_issue_patch_body({})
+
+    def test_resolve_issue_close_state_reason_invalid_raises(self) -> None:
+        with pytest.raises(InvalidActionParametersException, match="stateReason"):
+            resolve_issue_close_state_reason({"stateReason": "invalid"})
+
+    def test_build_close_issue_patch_body(self) -> None:
+        assert build_close_issue_patch_body({}) == {
+            "state": "closed",
+            "state_reason": "completed",
+        }

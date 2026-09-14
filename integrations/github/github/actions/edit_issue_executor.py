@@ -5,6 +5,7 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import IssueActionError
+from github.actions.utils import build_edit_issue_patch_body
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
@@ -31,22 +32,7 @@ class EditIssueExecutor(AbstractGithubExecutor):
             )
 
         # https://docs.github.com/en/rest/issues/issues#update-an-issue
-        patch_body: dict[str, str | list[str]] = {}
-        for key in ("title", "body", "state"):
-            value = run.execution_properties.get(key)
-            if value is not None:
-                patch_body[key] = value
-        labels = run.execution_properties.get("labels")
-        if labels is not None:
-            patch_body["labels"] = labels
-        assignees = run.execution_properties.get("assignees")
-        if assignees is not None:
-            patch_body["assignees"] = assignees
-
-        if not patch_body:
-            raise InvalidActionParametersException(
-                "At least one field to update is required (title, body, state, labels, or assignees)"
-            )
+        patch_body = build_edit_issue_patch_body(run.execution_properties)
 
         rest_client = (await self._get_execution_clients(run))[0]
         if not isinstance(rest_client, GithubRestClient):

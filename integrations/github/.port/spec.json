@@ -419,19 +419,25 @@
           "name": "state",
           "title": "State",
           "type": "string",
-          "description": "The state of the issue (open or closed)"
+          "description": "The state of the issue (open or closed). When closing, use stateReason or prefer the close_issue action."
+        },
+        {
+          "name": "stateReason",
+          "title": "Close reason",
+          "type": "string",
+          "description": "When state is closed: completed or not_planned (defaults to completed). Ignored when state is open."
         },
         {
           "name": "labels",
           "title": "Labels",
           "type": "array",
-          "description": "Labels to set on the issue"
+          "description": "Replaces all labels on the issue (GitHub PATCH is not additive)"
         },
         {
           "name": "assignees",
           "title": "Assignees",
           "type": "array",
-          "description": "GitHub usernames to assign to the issue"
+          "description": "Replaces issue assignees (GitHub PATCH is not additive)"
         }
       ]
     },

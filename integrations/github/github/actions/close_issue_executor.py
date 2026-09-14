@@ -5,6 +5,7 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import IssueActionError
+from github.actions.utils import build_close_issue_patch_body
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
@@ -35,11 +36,11 @@ class CloseIssueExecutor(AbstractGithubExecutor):
             raise InvalidActionParametersException("GitHub REST client is required")
 
         # https://docs.github.com/en/rest/issues/issues#update-an-issue
-        state_reason = run.execution_properties.get("stateReason", "completed")
+        patch_body = build_close_issue_patch_body(run.execution_properties)
 
         await ocean.port_client.post_run_log(
             run,
-            f"Closing issue #{issue_number} in {org}/{repo} as {state_reason}",
+            f"Closing issue #{issue_number} in {org}/{repo} as {patch_body['state_reason']}",
             should_raise=False,
         )
 
@@ -47,7 +48,7 @@ class CloseIssueExecutor(AbstractGithubExecutor):
             issue = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{org}/{repo}/issues/{issue_number}",
                 method="PATCH",
-                json_data={"state": "closed", "state_reason": state_reason},
+                json_data=patch_body,
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:

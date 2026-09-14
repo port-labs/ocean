@@ -103,6 +103,33 @@ class TestEditIssueExecutor:
         )
 
     @pytest.mark.asyncio
+    async def test_close_via_state_includes_state_reason(
+        self,
+        executor: EditIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "state": "closed",
+                "stateReason": "not_planned",
+            }
+        )
+
+        with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        call_kwargs = mock_rest_client.send_api_request.call_args
+        assert call_kwargs.kwargs["json_data"] == {
+            "state": "closed",
+            "state_reason": "not_planned",
+        }
+
+    @pytest.mark.asyncio
     async def test_no_update_fields_raises(
         self,
         executor: EditIssueExecutor,
