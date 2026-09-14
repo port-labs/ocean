@@ -27,7 +27,25 @@ PULL_REQUEST_EVENTS = [
     "closed",
     "labeled",
     "unlabeled",
+    "assigned",
+    "review_requested",
+    "converted_to_draft",
+    "locked",
+    "unlocked",
+    "auto_merge_enabled",
+    "auto_merge_disabled",
+    "milestoned",
+    "demilestoned",
+    "dequeued",
+    "enqueued",
+    "stacked",
 ]
+
+# Pull request review events (separate GitHub event type: pull_request_review)
+PULL_REQUEST_REVIEW_EVENTS = ["submitted", "edited", "dismissed"]
+
+# Check run validation only fires for these PR actions
+CHECK_RUN_PR_ACTIONS = ["opened", "synchronize", "reopened", "edited"]
 
 TEAM_UPSERT_EVENTS = ["created", "edited"]
 TEAM_DELETE_EVENTS = ["deleted"]
@@ -105,6 +123,9 @@ SECRET_SCANNING_ALERT_ACTION_TO_STATE = {
 
 SECRET_SCANNING_ALERT_EVENTS = list(SECRET_SCANNING_ALERT_ACTION_TO_STATE.keys())
 
+PACKAGE_UPSERT_EVENTS = ["published", "updated"]
+PACKAGE_EVENTS = PACKAGE_UPSERT_EVENTS
+
 
 # Collaborator events
 COLLABORATOR_UPSERT_EVENTS = ["added", "created", "edited"]
@@ -127,12 +148,14 @@ ALL_EVENTS = (
     + COLLABORATOR_EVENTS
     + TEAM_COLLABORATOR_EVENTS
     + SECRET_SCANNING_ALERT_EVENTS
+    + PACKAGE_EVENTS
 )
 
 
 WEBHOOK_CREATE_EVENTS = [
     "repository",
     "pull_request",
+    "pull_request_review",
     "issues",
     "release",
     "create",
@@ -148,4 +171,5 @@ WEBHOOK_CREATE_EVENTS = [
     "membership",
     "member",
     "secret_scanning_alert",
+    "package",
 ]

@@ -39,12 +39,53 @@ query OrgMemberQuery(
 }}
 """
 
+LIST_ORG_MEMBER_WITH_VERIFIED_EMAILS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+query OrgMemberQuery(
+  $organization: String!
+  $first: Int = 25
+  $after: String
+) {{
+    organization(login: $organization) {{
+      membersWithRole(
+        first: $first
+        after: $after
+      ) {{
+        nodes {{
+            ... on User {{
+              login
+              id
+              databaseId
+              email
+              name
+              organizationVerifiedDomainEmails(login: $organization)
+            }}
+        }}
+        pageInfo {{
+        ...PageInfoFields
+        }}
+      }}
+    }}
+}}
+"""
+
 FETCH_GITHUB_USER_GQL = """
         query ($login: String!) {
             user(login: $login) {
                 login
                 email
                 name
+            }
+        }
+        """
+
+FETCH_GITHUB_USER_WITH_VERIFIED_EMAILS_GQL = """
+        query ($login: String!, $organization: String!) {
+            user(login: $login) {
+                login
+                email
+                name
+                organizationVerifiedDomainEmails(login: $organization)
             }
         }
         """
@@ -162,6 +203,51 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
             }}
             pageInfo {{
             ...PageInfoFields
+            }}
+          }}
+        }}
+      }}
+    }}
+"""
+
+VIEWER_ENTERPRISE_GQL = """
+    query {
+      viewer {
+        enterprises(first: 1) {
+          nodes {
+            slug
+          }
+        }
+      }
+    }
+"""
+
+LIST_ENTERPRISE_EXTERNAL_IDENTITIES_GQL = f"""
+    {PAGE_INFO_FRAGMENT}
+    query ($enterprise: String!, $first: Int = 25, $after: String) {{
+      enterprise(slug: $enterprise) {{
+        ownerInfo {{
+          samlIdentityProvider {{
+            externalIdentities(first: $first, after: $after) {{
+              edges {{
+                node {{
+                  guid
+                  samlIdentity {{
+                    nameId
+                    emails {{
+                      primary
+                      type
+                      value
+                    }}
+                  }}
+                  user {{
+                    login
+                  }}
+                }}
+              }}
+              pageInfo {{
+              ...PageInfoFields
+              }}
             }}
           }}
         }}

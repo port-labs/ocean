@@ -7,3 +7,8 @@ class ObjectKind(StrEnum):
     TEAM = "team"
     LABEL = "label"
     ISSUE = "issue"
+    DOCUMENT = "document"
+    USER = "user"
+    PROJECT = "project"
+    TEAM_MEMBERS = "team-members"
+    CYCLE = "cycle"

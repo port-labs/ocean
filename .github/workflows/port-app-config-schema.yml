@@ -1,0 +1,114 @@
+name: Port App Config Schema
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+
+  prepare-matrix:
+    name: Prepare integration matrix
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.integrations != '[]' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.core_ci_files_changed == 'true'
+    outputs:
+      integrations: ${{ steps.prepare.outputs.integrations }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Select integrations
+        id: prepare
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
+             [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]; then
+            names=$(find integrations -mindepth 1 -maxdepth 1 -type d ! -name '_infra' -exec basename {} \; \
+              | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          else
+            names='${{ needs.detect-changes.outputs.integrations }}'
+          fi
+
+          filtered=$(echo "$names" | jq -c '[.[] | select(. != "_infra" and . != "")]')
+          echo "Integration candidates: ${filtered}"
+          echo "integrations=${filtered}" >> $GITHUB_OUTPUT
+
+  schema:
+    name: ${{ format('schema / {0}', matrix.folder) }}
+    needs: [detect-changes, prepare-matrix]
+    runs-on: ubuntu-latest
+    if: needs.prepare-matrix.outputs.integrations != '[]'
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        folder: ${{ fromJson(needs.prepare-matrix.outputs.integrations) }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Skip missing integration
+        id: skip
+        run: |
+          if [ ! -f "integrations/${{ matrix.folder }}/pyproject.toml" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "No pyproject.toml for ${{ matrix.folder }}, skipping"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install poetry
+        if: steps.skip.outputs.skip != 'true'
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
+
+      - name: Set up Python 3.12
+        if: steps.skip.outputs.skip != 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Install dependencies with local core
+        if: steps.skip.outputs.skip != 'true'
+        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+        run: |
+          make install/local-core
+          . .venv/bin/activate
+          pip install -e '../../[cli]'
+
+      - name: Generate port-app-config schemas
+        if: steps.skip.outputs.skip != 'true'
+        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+        run: |
+          . .venv/bin/activate
+          ocean port-app-config schema -o /tmp/port-app-config-schema.json
+          ocean port-app-config schema -f ui -o /tmp/port-app-config-ui-schema.json
+
+  # Stable check name for branch protection. Matrix jobs are named
+  # "schema / <integration>" and cannot be required individually.
+  required:
+    name: Port App Config Schema
+    needs: [detect-changes, prepare-matrix, schema]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require schema jobs to pass when they ran
+        run: |
+          detect="${{ needs.detect-changes.result }}"
+          prepare="${{ needs.prepare-matrix.result }}"
+          schema="${{ needs.schema.result }}"
+          echo "detect-changes=$detect prepare-matrix=$prepare schema=$schema"
+          for result in "$detect" "$prepare" "$schema"; do
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              exit 1
+            fi
+          done

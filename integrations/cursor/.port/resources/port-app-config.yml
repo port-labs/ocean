@@ -93,3 +93,20 @@ resources:
             user_email: .userEmail
             model: .item.key
             messages: .item.value.messages
+  - kind: cursor-team-skill-usage
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            ((.event_date + "-" + (.skill_name // "unknown"))
+            | gsub("[^A-Za-z0-9@_.+:\\\\/='-]"; "_"))
+          title: ((.skill_name // "unknown") + " - " + .event_date)
+          blueprint: '"cursorTeamSkillUsage"'
+          properties:
+            event_date: (if .event_date then (.event_date + "T00:00:00Z") else null end)
+            skill_name: .skill_name
+            usage: .usage

@@ -29,16 +29,17 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.time import convert_str_to_utc_datetime
-from typing import Any, Dict, List, Optional, Type, Literal
+from typing import Any, Dict, List, Optional, Type, Literal, ClassVar
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, PackageType
 from github.core.exporters.skill_exporter.utils import DEFAULT_SKILL_PATHS
 from github.core.exporters.plugin_exporter.utils import (
     DEFAULT_PLUGIN_PROVIDERS,
     PluginProvider,
 )
+from github.core.exporters.mcp_exporter.utils import DEFAULT_MCP_PATHS
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
@@ -57,7 +58,21 @@ def _optional_iso_datetime(value: Optional[str]) -> Optional[datetime]:
 FILE_PROPERTY_PREFIX = "file://"
 
 
-class RepoSearchSelector(Selector):
+class ExcludeArchivedSelector(BaseModel):
+    exclude_archived: bool = Field(
+        title="Exclude Archived Repositories",
+        alias="excludeArchived",
+        default=False,
+        description=(
+            "When enabled, archived repositories are excluded during repository "
+            "discovery for this kind, before any per-repository data is fetched. "
+            "Does not affect explicitly listed `repos` entries, which are always "
+            "included regardless of archived status."
+        ),
+    )
+
+
+class RepoSearchSelector(Selector, ExcludeArchivedSelector):
     repo_search: Optional[RepoSearchParams] = Field(
         title="Repositories",
         alias="repoSearch",
@@ -204,6 +219,11 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
 
 
 class GithubRepositoryConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("metadata",),
+    }
+
     selector: GithubRepositorySelector = Field(
         title="Repository Selector",
         description="Selector for the repository resource.",
@@ -229,7 +249,7 @@ class RepositoryBranchMapping(BaseModel):
         extra = "forbid"
 
 
-class RepositorySourceModel(BaseModel):
+class RepositorySourceModel(ExcludeArchivedSelector):
     organization: Optional[str] = Field(
         title="Organization",
         default=None,
@@ -246,7 +266,11 @@ class RepositorySourceModel(BaseModel):
 
 
 class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
-    path: str = Field(default="*")
+    path: str = Field(
+        default="*",
+        title="Path",
+        description="Relative folder path to sync. Supports glob (*) within a path segment.",
+    )
 
     class Config:
         extra = "forbid"
@@ -300,6 +324,11 @@ For more information, see <a target='_blank' href='https://docs.port.io/build-yo
 
 
 class GithubFileResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.FILE] = Field(
         title="Github File",
         description="Github file resource kind.",
@@ -336,11 +365,17 @@ class GithubSkillSelector(Selector):
         def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
             default_paths = model.__fields__["paths"].default
             schema["properties"]["paths"]["default"] = [
-                path.dict(exclude_none=True) for path in default_paths
+                path.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+                for path in default_paths
             ]
 
 
 class GithubSkillResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.SKILL] = Field(
         title="Github Skill",
         description="Agent Skill (SKILL.md) resource kind.",
@@ -371,6 +406,11 @@ class GithubPluginSelector(Selector):
 
 
 class GithubPluginResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.PLUGIN] = Field(
         title="Github Plugin",
         description="Agent plugin package resource kind.",
@@ -378,6 +418,53 @@ class GithubPluginResourceConfig(ResourceConfig):
     selector: GithubPluginSelector = Field(
         title="Plugin selector",
         description="Selector for discovering agent plugin repositories.",
+    )
+
+
+class GithubMcpPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description=(
+            "Path to an MCP server config file (e.g. 'mcp.json' or '.mcp.json'). "
+            "Root-level exact paths are recommended; broadening this to a glob "
+            "(e.g. '**/mcp.json') can pick up unrelated IDE config files such as "
+            "'.cursor/mcp.json' or '.vscode/mcp.json'."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubMcpSelector(Selector):
+    paths: list[GithubMcpPattern] = Field(
+        title="Paths",
+        default=[GithubMcpPattern(path=path) for path in DEFAULT_MCP_PATHS],
+        description=(
+            "Paths for MCP server config discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtering."
+        ),
+    )
+
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+                for path in default_paths
+            ]
+
+
+class GithubMcpResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.MCP] = Field(
+        title="Github MCP Server",
+        description="MCP server (mcp.json/.mcp.json) resource kind.",
+    )
+    selector: GithubMcpSelector = Field(
+        title="MCP selector",
+        description="Selector for discovering and ingesting MCP servers.",
     )
 
 
@@ -395,10 +482,24 @@ class IncludeSAMLEmailSelector(Selector):
 
 
 class GithubUserSelector(IncludeSAMLEmailSelector):
-    pass
+    include_verified_domain_emails: bool = Field(
+        title="Include verified domain emails",
+        alias="includeVerifiedDomainEmails",
+        default=False,
+        description=(
+            "When enabled, the integration will include `organizationVerifiedDomainEmails` "
+            "on exported GitHub users — a list of email addresses matching the organization's "
+            "verified domains. Requires GitHub Enterprise Cloud with at least one verified domain."
+        ),
+    )
 
 
 class GithubUserConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("members",),
+    }
+
     kind: Literal[ObjectKind.USER] = Field(
         title="Github User",
         description="Github user resource kind.",
@@ -410,6 +511,11 @@ class GithubUserConfig(ResourceConfig):
 
 
 class GithubFolderResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     selector: GithubFolderSelector = Field(
         title="Folder selector",
         description="Selector for the folder resource.",
@@ -501,6 +607,11 @@ class GithubPullRequestSelector(RepoSearchSelector):
 
 
 class GithubPullRequestConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("pull_requests",),
+    }
+
     selector: GithubPullRequestSelector = Field(
         title="Pull request selector",
         description="Selector for the pull request resource.",
@@ -542,6 +653,11 @@ class GithubIssueSelector(RepoSearchSelector):
 
 
 class GithubIssueConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("issues",),
+    }
+
     selector: GithubIssueSelector = Field(
         title="Issue selector",
         description="Selector for the issue resource.",
@@ -566,6 +682,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
 
 
 class GithubTeamConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("members",),
+    }
+
     selector: GithubTeamSelector = Field(
         title="Team selector",
         description="Selector for the team resource.",
@@ -632,6 +753,11 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
 
 
 class GithubDependabotAlertConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("vulnerability_alerts",),
+    }
+
     selector: GithubDependabotAlertSelector = Field(
         title="Dependabot alert selector",
         description="Selector for the dependabot alert resource.",
@@ -671,6 +797,11 @@ class GithubCodeScanningAlertSelector(RepoSearchSelector):
 
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("security_events",),
+    }
+
     selector: GithubCodeScanningAlertSelector = Field(
         title="Code scanning alert selector",
         description="Selector for the code scanning alert resource.",
@@ -718,6 +849,11 @@ class GithubDeploymentSelector(RepoSearchSelector):
 
 
 class GithubDeploymentConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("deployments",),
+    }
+
     selector: GithubDeploymentSelector = Field(
         title="Deployment selector",
         description="Selector for the deployment resource.",
@@ -742,6 +878,11 @@ class GithubDeploymentStatusSelector(RepoSearchSelector):
 
 
 class GithubDeploymentStatusConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("deployments",),
+    }
+
     selector: GithubDeploymentStatusSelector = Field(
         title="Deployment status selector",
         description="Selector for the deployment status resource.",
@@ -767,6 +908,11 @@ class GithubSecretScanningAlertSelector(RepoSearchSelector):
 
 
 class GithubSecretScanningAlertConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("secret_scanning_alerts",),
+    }
+
     selector: GithubSecretScanningAlertSelector = Field(
         title="Secret scanning alert selector",
         description="Selector for the secret scanning alert resource.",
@@ -810,6 +956,11 @@ class GithubCollaboratorSelector(
 
 
 class GithubBranchConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.BRANCH] = Field(
         title="Github Branch",
         description="Github branch resource kind.",
@@ -821,6 +972,11 @@ class GithubBranchConfig(ResourceConfig):
 
 
 class GithubOrganizationConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("metadata",),
+    }
+
     kind: Literal[ObjectKind.ORGANIZATION] = Field(
         title="Github Organization",
         description="Github organization resource kind.",
@@ -831,7 +987,67 @@ class GithubOrganizationConfig(ResourceConfig):
     )
 
 
+class GithubPackageSelector(Selector):
+    package_types: list[PackageType] = Field(
+        title="Package Types",
+        alias="packageTypes",
+        default=[PackageType.CONTAINER],
+        min_items=1,
+        description="GitHub package types to ingest.",
+    )
+    visibility: Optional[Literal["public", "private", "internal"]] = Field(
+        title="Visibility",
+        default=None,
+        description=(
+            "Filter packages by visibility. When unset, packages of all "
+            "visibilities are ingested."
+        ),
+    )
+    include_versions: bool = Field(
+        title="Include Versions",
+        alias="includeVersions",
+        default=False,
+        description=(
+            "Fetch package versions (tags and digests) and attach them as "
+            "`__versions`. Enabling this consumes additional GitHub API rate "
+            "limit and may slow down the resync."
+        ),
+    )
+    max_versions: Optional[int] = Field(
+        title="Max Versions",
+        alias="maxVersions",
+        default=10,
+        ge=1,
+        description=(
+            "Maximum number of versions to fetch per package, newest first. "
+            "Only used when includeVersions is true. A larger version history "
+            "consumes additional GitHub API rate limit and may slow down the resync."
+        ),
+    )
+
+
+class GithubPackageConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:packages",),
+        "app": ("organization_packages", "packages"),
+    }
+
+    kind: Literal[ObjectKind.PACKAGE] = Field(
+        title="Github Package",
+        description="GitHub package resource kind.",
+    )
+    selector: GithubPackageSelector = Field(
+        title="Package selector",
+        description="Selector for GitHub packages.",
+    )
+
+
 class GithubWorkflowConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("actions",),
+    }
+
     kind: Literal[ObjectKind.WORKFLOW] = Field(
         title="Github Workflow",
         description="Github workflow resource kind.",
@@ -904,6 +1120,11 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
 
 
 class GithubWorkflowRunConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("actions",),
+    }
+
     kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
         title="Github Workflow Run",
         description="Github workflow run resource kind.",
@@ -931,6 +1152,11 @@ class GithubReleaseSelector(RepoSearchSelector):
 
 
 class GithubReleaseConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.RELEASE] = Field(
         title="Github Release",
         description="Github release resource kind.",
@@ -942,6 +1168,11 @@ class GithubReleaseConfig(ResourceConfig):
 
 
 class GithubTagConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.TAG] = Field(
         title="Github Tag",
         description="Github tag resource kind.",
@@ -953,6 +1184,11 @@ class GithubTagConfig(ResourceConfig):
 
 
 class GithubEnvironmentConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("environments",),
+    }
+
     kind: Literal[ObjectKind.ENVIRONMENT] = Field(
         title="Github Environment",
         description="Github environment resource kind.",
@@ -964,6 +1200,11 @@ class GithubEnvironmentConfig(ResourceConfig):
 
 
 class GithubCollaboratorConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("metadata",),
+    }
+
     kind: Literal[ObjectKind.COLLABORATOR] = Field(
         title="Github Collaborator",
         description="Github collaborator resource kind.",
@@ -1010,6 +1251,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubSkillResourceConfig
         | GithubPluginResourceConfig
+        | GithubMcpResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
@@ -1020,6 +1262,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTagConfig
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
+        | GithubPackageConfig
     ] = Field(
         title="Resources",
         default_factory=list,

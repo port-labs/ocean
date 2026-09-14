@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 from collections import defaultdict
+from enum import StrEnum
 import json
 from pathlib import Path
 import re
@@ -99,11 +100,20 @@ def parse_content(content: str, file_path: str) -> Any:
             return json.loads(content)
         elif file_path.endswith(YAML_FILE_SUFFIX):
             yaml = YAML(typ="safe")
-            return yaml.load(content)
+            documents = [doc for doc in yaml.load_all(content) if doc is not None]
+            if not documents:
+                return content
+            return documents if len(documents) > 1 else documents[0]
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
 
     return content
+
+
+class FileDiffStatus(StrEnum):
+    ADDED = "added"
+    REMOVED = "removed"
+    RENAMED = "renamed"
 
 
 def group_files_by_status(
@@ -113,12 +123,32 @@ def group_files_by_status(
     updated_files: List[Dict[str, Any]] = []
 
     for file in files:
-        if file.get("status") == "removed":
+        if file.get("status") == FileDiffStatus.REMOVED:
             deleted_files.append(file)
         else:
             updated_files.append(file)
 
     return deleted_files, updated_files
+
+
+def split_files_by_content_presence(
+    files: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Return ``(files_with_new_content, files_with_old_content)``.
+
+    New content: not removed (upserts). Old content: not added (deletes).
+    """
+    files_with_new_content: List[Dict[str, Any]] = []
+    files_with_old_content: List[Dict[str, Any]] = []
+
+    for file in files:
+        status = file.get("status")
+        if status != FileDiffStatus.REMOVED:
+            files_with_new_content.append(file)
+        if status != FileDiffStatus.ADDED:
+            files_with_old_content.append(file)
+
+    return files_with_new_content, files_with_old_content
 
 
 def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
@@ -218,6 +248,7 @@ def filter_github_tree_entries_by_pattern(
                 {
                     "path": path,
                     "fetch_method": fetch_method,
+                    "sha": entry.get("sha"),
                 }
             )
 
@@ -225,7 +256,13 @@ def filter_github_tree_entries_by_pattern(
 
 
 def get_graphql_file_metadata(
-    host: str, organization: str, repo_name: str, branch: str, file_path: str, size: int
+    host: str,
+    organization: str,
+    repo_name: str,
+    branch: str,
+    file_path: str,
+    size: int,
+    sha: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Get metadata for a file from the GraphQL API.
@@ -236,6 +273,7 @@ def get_graphql_file_metadata(
         "url": url,
         "path": file_path,
         "size": size,
+        "sha": sha,
     }
 
 
@@ -292,16 +330,18 @@ def extract_file_index(field_name: str) -> Optional[int]:
 
 def extract_file_paths_and_metadata(
     files: List[Dict[str, Any]],
-) -> tuple[list[str], dict[str, bool]]:
+) -> tuple[list[str], dict[str, bool], dict[str, Optional[str]]]:
     file_paths = []
     file_metadata = {}
+    file_shas: dict[str, Optional[str]] = {}
 
     for file in files:
         file_path = file["file_path"]
         file_paths.append(file_path)
         file_metadata[file_path] = file["skip_parsing"]
+        file_shas[file_path] = file.get("sha")
 
-    return file_paths, file_metadata
+    return file_paths, file_metadata, file_shas
 
 
 def deep_dict(d: Union[DefaultDict[str, Any], Dict[str, Any], list[Any], Any]) -> Any:

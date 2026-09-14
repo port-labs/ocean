@@ -7,6 +7,230 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.128 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.5.127 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.5.126 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.5.125 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 0.5.124 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 0.5.123 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 0.5.122 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 0.5.121 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 0.5.120 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 0.5.119 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 0.5.118 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.5.117 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.5.116 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.5.115 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.5.114 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.5.113 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.5.112 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.5.111 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.5.110 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.5.109 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.5.108 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.5.107 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.5.106 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.5.105 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.5.104 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.5.103 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.5.102 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.5.101 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
 ## 0.5.100 (2026-08-10)
 
 
@@ -1206,7 +1430,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.3.20 (2025-12-25)
 
 
-## Bug Fixes
+### Bug Fixes
 
 - Fixed spec.yaml conventions
 
@@ -1498,6 +1722,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.1.90 (2025-11-09)
 
@@ -1822,7 +2047,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.50 (2025-07-03)
 
 
-### Bug Fix
+### Bug Fixes
 
 - Fixed bug in file kind live events where tracked file does not get upserted to port
 - Fixed bug in file kind live event causing tracked file not getting deleted from port when file has been deleted from bitbucket repo.
@@ -2118,6 +2343,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.13 (2025-04-29)
 
+
 ### Improvements
 
 - Removed Bitbucket from the gitops section of the data sources page
@@ -2125,12 +2351,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.12 (2025-04-28)
 
+
 ### Improvements
 
 - Added title to the integration to be viewed in the data sources page
 
 
 ## 0.1.11 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -2208,6 +2436,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.2 (2025-03-27)
 
+
 ### Improvements
 
 - Enabled live events support in the hosted option
@@ -2215,14 +2444,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.1 (2025-03-27)
 
+
 ### Bug Fixes
 
 - Fixed integration icon
 
+
 ## 0.1.0 (2025-03-27)
 
 
-### Improvement
+### Improvements
 
 - Bumped integration version from dev to GA
 

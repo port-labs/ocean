@@ -27,6 +27,7 @@ class FileProcessor:
         branch: str,
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
+        should_resolve_references: bool = True,
     ) -> FileObject:
         """
         Common content processor for GraphQL and REST paths.
@@ -50,6 +51,18 @@ class FileProcessor:
             return result
 
         parsed_content = parse_content(content, file_path)
+
+        if not should_resolve_references:
+            return FileObject(
+                organization=organization,
+                content=parsed_content,
+                repository=repository,
+                branch=branch,
+                path=file_path,
+                name=file_name,
+                metadata=result["metadata"],
+                __base_jq=".content",
+            )
 
         logger.info(f"Resolving file references for: {file_path}")
 
@@ -162,7 +175,7 @@ class FileProcessor:
     async def _process_list_content(
         self,
         organization: str,
-        data: List[Dict[str, Any]],
+        data: List[Any],
         parent_directory: str,
         file_path: str,
         file_name: str,
@@ -170,9 +183,12 @@ class FileProcessor:
         file_info: Dict[str, Any],
         repo_info: Dict[str, Any],
     ) -> FileObject:
-        """Process each dict item in the list concurrently, resolving file references."""
+        """Process list content, resolving file references in dict items only."""
 
-        async def process_item(item: Dict[str, Any]) -> Dict[str, Any]:
+        async def process_item(item: Any) -> Any:
+            if not isinstance(item, dict):
+                return item
+
             keys = list(item.keys())
             values = await asyncio.gather(
                 *[

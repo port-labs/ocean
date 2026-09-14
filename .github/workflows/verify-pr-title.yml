@@ -13,7 +13,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if [[ ! "$PR_TITLE" =~ ^\[(Integration|Core|Docs|CI|Infra)\](\[.*\])?\ .+ ]]; then
+          if [[ ! "$PR_TITLE" =~ ^\[(Integration|Core|Docs|CI|Infra|CoreBump|IntegrationBump)\](\[.*\])?\ .+ ]]; then
             echo "PR title does not match the required convention."
             echo "Examples of acceptable titles:"
             echo "[Integration] Resolve missing team context in board ingestion for non-default teams"
@@ -21,6 +21,8 @@ jobs:
             echo "[Core] Upgrade FastAPI version to improve performance and compatibility"
             echo "[Docs] Correct documentation on Ocean's denial-of-service vulnerability in http-proxy-middleware"
             echo "[Integration] Enable region-specific resource querying support"
+            echo "[CoreBump] Apply version and changelog for ocean-core"
+            echo "[IntegrationBump] Apply version and changelog for github"
             exit 1
           else
             echo "PR title matches the required convention."

@@ -2,7 +2,7 @@ from typing import Callable, TYPE_CHECKING, Any, Union
 
 from fastapi import APIRouter
 from port_ocean.helpers.metric.metric import Metrics
-from pydantic.v1.main import BaseModel
+from pydantic import BaseModel
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
@@ -16,6 +16,7 @@ from port_ocean.core.ocean_types import (
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
     INCREMENTAL_EVENT_LISTENER,
+    ON_PROBE_EVENT_LISTENER,
 )
 from port_ocean.exceptions.context import (
     PortOceanContextNotFoundError,
@@ -67,7 +68,7 @@ class PortOceanContext:
     @property
     def integration_config(self) -> dict[str, Any]:
         if isinstance(self.app.config.integration.config, BaseModel):
-            return self.app.config.integration.config.dict()
+            return self.app.config.integration.config.model_dump(mode="json")
         return self.app.config.integration.config
 
     @property
@@ -144,6 +145,12 @@ class PortOceanContext:
             function: INCREMENTAL_EVENT_LISTENER | None,
         ) -> INCREMENTAL_EVENT_LISTENER | None:
             return self.integration.on_incremental_resync(function, kind)
+
+        return wrapper
+
+    def on_probe(self) -> Callable[[ON_PROBE_EVENT_LISTENER], ON_PROBE_EVENT_LISTENER]:
+        def wrapper(function: ON_PROBE_EVENT_LISTENER) -> ON_PROBE_EVENT_LISTENER:
+            return self.integration.on_probe(function)
 
         return wrapper
 

@@ -93,21 +93,31 @@ class OpencostSelector(Selector):
         ]
         | DatePairField
         | UnixtimePairField
-    ) = Field(default="today")
+    ) = Field(
+        default="today",
+        title="Window",
+        description="Time window for the OpenCost allocation query.",
+    )
     aggregate: AggregationField | None = Field(
+        title="Aggregate",
         description="Field by which to aggregate the results.",
     )
     step: DurationField | None = Field(
+        title="Step",
         description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
     )
     resolution: ResolutionField | None = Field(
+        title="Resolution",
         description="Duration to use as resolution in Prometheus queries",
     )
 
 
 class OpencostResourceConfig(ResourceConfig):
 
-    kind: Literal["cost"]
+    kind: Literal["cost"] = Field(
+        title="OpenCost Cost",
+        description="OpenCost allocation cost resource kind.",
+    )
     selector: OpencostSelector
 
 
@@ -126,16 +136,23 @@ class CloudCostSelector(Selector):
         ]
         | DatePairField
         | UnixtimePairField
-    ) = Field(default="today")
+    ) = Field(
+        default="today",
+        title="Window",
+        description="Time window for the OpenCost cloud cost query.",
+    )
     aggregate: CloudCostAggregateField | None = Field(
+        title="Aggregate",
         description="Field by which to aggregate the results of cloudcost",
     )
     accumulate: Literal["all", "hour", "day", "week", "month", "quarter"] | None = (
         Field(
+            title="Accumulate",
             description="Step size of the accumulation.",
         )
     )
     filter: str | None = Field(
+        title="Filter",
         description=(
             "Filter results by any category which that can be aggregated by,"
             " can support multiple filterable items in the same category in"
@@ -146,7 +163,10 @@ class CloudCostSelector(Selector):
 
 class CloudCostResourceConfig(ResourceConfig):
 
-    kind: Literal["cloudcost"]
+    kind: Literal["cloudcost"] = Field(
+        title="OpenCost Cloud Cost",
+        description="OpenCost cloud cost resource kind.",
+    )
     selector: CloudCostSelector
 
 

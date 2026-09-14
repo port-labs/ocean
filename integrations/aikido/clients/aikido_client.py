@@ -144,18 +144,26 @@ class AikidoClient:
                 logger.error(f"Error fetching {resource_name}: {e}")
                 raise
 
-            if not resources:
-                logger.info(f"No {resource_name} returned for page {params['page']}")
-                break
+            has_next = response.headers.get("x-has-next-page")
 
-            logger.info(f"Fetched {len(resources)} {resource_name} from Aikido API")
             fetched_count = len(resources)
-            yield resources
 
-            if (
-                (has_next := response.headers.get("x-has-next-page")) is not None
-                and has_next.lower() != "true"
-            ) or (has_next is None and fetched_count < page_size):
+            if not resources:
+                logger.info(
+                    f"No {resource_name} returned for page {params['page']} "
+                    f"(x-has-next-page={has_next})"
+                )
+            else:
+                logger.info(
+                    f"Fetched {fetched_count} {resource_name} from Aikido API "
+                    f"(page={params['page']}, x-has-next-page={has_next})"
+                )
+                yield resources
+
+            if has_next is not None:
+                if has_next.lower() != "true":
+                    break
+            elif fetched_count < page_size:
                 break
 
             params["page"] += 1

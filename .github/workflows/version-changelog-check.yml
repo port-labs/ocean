@@ -33,3 +33,15 @@ jobs:
           python3 scripts/ci/validate_ocean_release.py \
             --base "origin/${{ steps.base-branch.outputs.base }}" \
             --head HEAD
+
+      - name: Validate changelog formatting
+        run: |
+          mapfile -t CHANGED < <(
+            git diff --name-only "origin/${{ steps.base-branch.outputs.base }}...HEAD" \
+              | grep -E '(^|/)CHANGELOG\.md$' || true
+          )
+          if [ "${#CHANGED[@]}" -eq 0 ]; then
+            echo "No changelogs to validate; skipping"
+            exit 0
+          fi
+          python3 scripts/validate_changelog.py --paths "${CHANGED[@]}"

@@ -11,7 +11,10 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
-from port_ocean.exceptions.core import IntegrationAlreadyStartedException
+from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
+from port_ocean.core.probe.reporters import REPORTER_MODES
+from port_ocean.exceptions.core import IntegrationAlreadyStartedException, ModeNotSupportedException
+from port_ocean.exceptions.probe import ProbeFailedError
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):
@@ -37,6 +40,8 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             more than once.
         NotImplementedError: Raised if the `on_resync` method is not implemented, and the event
             strategy does not have a custom implementation for resync events.
+        ModeNotSupportedException: Raised if probe mode is invoked but no ``on_probe``
+            handler is registered.
     """
 
     def __init__(self, context: PortOceanContext):
@@ -62,7 +67,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             raise IntegrationAlreadyStartedException("Integration already started")
 
         if (
-            not self.event_strategy["resync"]
+            not self.event_strategy.resync
             and self.__class__._on_resync == BaseIntegration._on_resync
             and self.context.config.event_listener.should_resync
         ):
@@ -72,7 +77,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        if self.event_strategy["start"]:
+        if self.event_strategy.start:
             async def run_on_start_tasks() -> None:
                 try:
                     async with event_context(
@@ -80,7 +85,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                         trigger_type="machine",
                     ):
                         await asyncio.gather(
-                            *(listener() for listener in self.event_strategy["start"])
+                            *(listener() for listener in self.event_strategy.start)
                         )
                 except Exception as e:
                     logger.exception("Error in start event listeners: %s", str(e))
@@ -91,3 +96,41 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         logger.info("Initializing event listener")
         event_listener = await self.event_listener_factory.create_event_listener()
         await event_listener.start()
+
+    async def run_probe(
+        self,
+        probe_id: str | None = None,
+        config: ProbeConfig | None = None,
+    ) -> ProbeContext:
+        """Invoke the registered ``on_probe`` listener."""
+        context = ProbeContext(probe_id)
+
+        listener = self.event_strategy.on_probe
+        if listener is None:
+            config = config or ProbeConfig()
+            context.reporter = REPORTER_MODES[config.reporting_mode](config)
+            error = ModeNotSupportedException(
+                self.context.config.integration.type, "probe"
+            )
+            await context.fail(str(error))
+            raise error
+
+        async with event_context(
+            EventType.ON_PROBE,
+            trigger_type="machine",
+        ):
+            await context.initialize(
+                self.AppConfigHandlerClass.CONFIG_CLASS,
+                config,
+            )
+            try:
+                returned = await listener(context)
+            except Exception as error:
+                await context.fail(str(error))
+                raise
+
+            final_context = returned or context
+            if final_context.status is ProbeStatus.FAILED:
+                raise ProbeFailedError(final_context.message or "Probe failed")
+            await final_context.finalize()
+            return final_context

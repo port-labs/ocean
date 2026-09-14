@@ -17,7 +17,7 @@ Contributing to the framework involves actively participating in its development
 2. **Bug Fixes**: If you encounter any bugs or issues while using the framework, you can contribute by investigating the problem, identifying the root cause, and submitting fixes. By addressing these issues, you ensure a more stable and reliable framework for all users.
 
 3. **Performance Optimization**: Improving the framework's performance is always a priority. You can contribute by optimizing algorithms, reducing resource usage, and implementing caching mechanisms, resulting in faster and more efficient data integration processes.
-CON
+
 4. **Documentation**: Clear and comprehensive documentation is crucial for users to understand and leverage the framework's capabilities. You can help by improving existing documentation, writing new guides, and providing code examples that demonstrate various integration scenarios.
 
 5. **Code Reviews**: Reviewing code submissions from other contributors is an essential part of maintaining code quality. By participating in code reviews, you can provide feedback, suggest improvements, and ensure adherence to coding standards.
@@ -40,10 +40,30 @@ By contributing a new integration, you enable users of the framework to seamless
 
 1. Ensure any install or build dependencies are removed before the end of the layer when doing a
    build.
-2. Create a new change fragment using towncrier. See [here](https://towncrier.readthedocs.io/en/latest/tutorial.html#creating-news-fragments) for more information.
-   ```bash
-    towncrier create --content 'My very important changelog message' <Issue Id / title>.<type (feature / bugfix / etc...)>
-    ```
+2. If your PR changes an integration under `integrations/` or the Ocean framework under
+   `port_ocean/`, declare how the change should be released using one of the following options:
+
+   **Option A — declarative release (recommended):** Add a release intent file (changeset) alongside
+   your code changes:
+
+   - Integration: `integrations/<name>/.ocean-release/<unique-name>.yaml`
+   - Ocean core: `.ocean-release/core/<unique-name>.yaml`
+
+   ```yaml
+   bump: patch
+   changelog-type: bugfix
+   changelog: Describe the change
+   ```
+
+   `bump` must be one of `patch`, `minor`, or `major`. `changelog-type` must be one of `breaking`,
+   `deprecation`, `feature`, `improvement`, `bugfix`, or `doc`.
+
+   After your PR is merged to `main`, CI opens a follow-up PR with the version bump and changelog
+   updates. Review and merge that PR to publish the release.
+
+   **Option B — manual release:** Bump the version in `pyproject.toml` and add an entry to
+   `CHANGELOG.md`. If you update both manually and add a release intent file, the manual changes
+   take priority.
 
 3. You may merge the Pull Request in once you have the sign-off of one of Port developers.
 

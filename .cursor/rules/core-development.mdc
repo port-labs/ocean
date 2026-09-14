@@ -90,17 +90,26 @@ Core Development Guidelines
     - Add linting checks
     - Include performance tests
 
-12. Changelog Management
-    - Document all changes
-    - Include version numbers
-    - Describe new features
-    - Note breaking changes
+12. Release intent (changesets)
+    - Every PR that changes `port_ocean/` MUST declare how to release
+    - **Prefer** a release intent file: add `.ocean-release/core/<feature-related-name>.yaml` alongside your code changes (use a short filename related to the feature or change, e.g. `retry-transport-fix.yaml`)
+    - Only bump `pyproject.toml` or `CHANGELOG.md` manually when explicitly asked — if both a release file and manual bumps are present, manual changes take priority
+    - Example:
+
+      ```yaml
+      bump: patch
+      changelog-type: bugfix
+      changelog: Describe the change
+      ```
+
+    - Write a clear, user-facing `changelog` entry; use `changelog-type: breaking` for breaking changes
+    - `bump` must be `patch`, `minor`, or `major` — use `patch` for fixes and minor improvements, `minor` for new features, `major` for breaking changes
+    - `changelog-type` must be `breaking`, `deprecation`, `feature`, `improvement`, `bugfix`, or `doc`
+    - After the PR merges to `main`, the Apply ocean release workflow opens a follow-up PR with the version bump and changelog updates; review and merge that PR to publish
 
 13. Versioning
-    - Each feature branch need to bump the latest version
-    - In case of merge conflict take the version from the merged branch and bump it
-    - Don't merge versions! existing version need to remain as it is and each branch creates its own version
-    - Don't bump the version on the integrations pyproject.toml
+    - Prefer declarative release intent files (section 12) over manual version bumps in feature branches
+    - Do not edit version in any integration `pyproject.toml` when changing core only
 
 14. Code Quality
     - run `make lint` command on the port_ocean folder before any commit

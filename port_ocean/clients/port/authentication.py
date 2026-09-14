@@ -4,7 +4,8 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic.v1 import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic.alias_generators import to_camel
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import handle_port_status_code
@@ -12,9 +13,11 @@ from port_ocean.utils.misc import get_time
 
 
 class TokenResponse(BaseModel):
-    access_token: str = Field(alias="accessToken")
-    expires_in: int = Field(alias="expiresIn")
-    token_type: str = Field(alias="tokenType")
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    access_token: str
+    expires_in: int
+    token_type: str
     _retrieved_time: int = PrivateAttr(default_factory=lambda: int(get_time()))
 
     @property
@@ -61,7 +64,7 @@ class PortAuthentication:
             extensions={"retryable": True},
         )
         handle_port_status_code(response)
-        return TokenResponse(**response.json())
+        return TokenResponse.model_validate(response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
         user_agent = f"port-ocean/{self.integration_type}/{self.integration_version}/{self.integration_identifier}"

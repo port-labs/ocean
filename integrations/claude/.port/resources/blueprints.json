@@ -338,5 +338,92 @@
     },
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "claude_ai_skill_usage",
+    "description": "Org-level Claude skill usage metrics for a single day",
+    "title": "Claude AI Skill Usage",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Record Date (UTC)"
+        },
+        "skill_name": {
+          "type": "string",
+          "title": "Skill Name"
+        },
+        "skill_display_name": {
+          "type": "string",
+          "title": "Skill Display Name"
+        },
+        "distinct_user_count": {
+          "type": "number",
+          "title": "Distinct Users"
+        },
+        "enable_count": {
+          "type": "number",
+          "title": "Enable Count"
+        },
+        "invocation_count": {
+          "type": "number",
+          "title": "Invocation Count"
+        },
+        "share_status": {
+          "type": "string",
+          "title": "Share Status"
+        },
+        "currency": {
+          "type": "string",
+          "title": "Currency"
+        },
+        "estimated_overage_spend": {
+          "type": "number",
+          "title": "Estimated Overage Spend"
+        },
+        "attributed_list_price": {
+          "type": "number",
+          "title": "Attributed List Price"
+        },
+        "chat_conversation_skill_used_count": {
+          "type": "number",
+          "title": "Chat Conversation Skill Uses"
+        },
+        "code_session_skill_used_count": {
+          "type": "number",
+          "title": "Claude Code Session Skill Uses"
+        },
+        "cowork_session_skill_used_count": {
+          "type": "number",
+          "title": "Cowork Session Skill Uses"
+        },
+        "excel_session_skill_used_count": {
+          "type": "number",
+          "title": "Excel Session Skill Uses"
+        },
+        "powerpoint_session_skill_used_count": {
+          "type": "number",
+          "title": "PowerPoint Session Skill Uses"
+        },
+        "word_session_skill_used_count": {
+          "type": "number",
+          "title": "Word Session Skill Uses"
+        },
+        "outlook_session_skill_used_count": {
+          "type": "number",
+          "title": "Outlook Session Skill Uses"
+        }
+      },
+      "required": [
+        "record_date",
+        "skill_name"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]

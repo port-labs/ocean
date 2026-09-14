@@ -38,13 +38,16 @@ class SearchQuery(BaseModel):
     """A search query to execute against a GitLab project during enrichment."""
 
     name: str = Field(
+        title="Name",
         description="A unique name for this search query, used as the key in __searchQueries",
     )
     scope: str = Field(
         default="blobs",
+        title="Scope",
         description="The GitLab search scope (e.g. blobs, commits, wiki_blobs, etc.)",
     )
     query: str = Field(
+        title="Query",
         description="The search query string (e.g. filename:port.yml)",
     )
 
@@ -361,7 +364,10 @@ class FilesSelector(BaseModel):
 
 
 class GitLabFilesSelector(GroupSelector):
-    files: FilesSelector
+    files: FilesSelector = Field(
+        title="Files",
+        description="File matching configuration for GitLab file resources.",
+    )
     included_files: list[str] = Field(
         alias="includedFiles",
         title="Included Files",

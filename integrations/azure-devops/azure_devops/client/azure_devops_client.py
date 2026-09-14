@@ -40,9 +40,13 @@ from azure_devops.incremental import (
     flatten_advanced_security_params,
     wiql_changed_after_clause,
 )
-from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
+from azure_devops.client.base_client import (
+    CONTINUATION_TOKEN_HEADER,
+    MAX_TIMEMOUT_RETRIES,
+    PAGE_SIZE,
+    HTTPBaseClient,
+)
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
-from azure_devops.client.base_client import PAGE_SIZE
 
 from azure_devops.client.file_processing import (
     PathDescriptor,
@@ -96,6 +100,7 @@ MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
 MAX_CONCURRENT_USER_MEMBERSHIPS = 10
+MAX_CONCURRENT_WIKI_PAGES = 10
 TEST_RUN_QUERY_MAX_WINDOW = timedelta(days=7)
 
 # Webhook subscriptions for Azure DevOps events
@@ -176,6 +181,12 @@ def _parse_change_timestamp(timestamp: str) -> datetime:
         return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
     except ValueError:
         return datetime.max.replace(tzinfo=timezone.utc)
+
+
+def _normalize_git_scope_path(path: str) -> str:
+    """Format ``scopePath`` for the Git Items API (leading ``/``, no trailing ``/``)."""
+    normalized = path.strip().strip("/")
+    return "/" if not normalized else f"/{normalized}"
 
 
 def _normalize_area_path(path: str) -> str:
@@ -1903,6 +1914,121 @@ class AzureDevopsClient(HTTPBaseClient):
         pull_request_data = response.json()
         return pull_request_data
 
+    async def update_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a pull request.
+
+        API: PATCH {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update
+        """
+        update_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        logger.info(
+            f"Updating pull request {pull_request_id} in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "PATCH",
+            update_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to update pull request {pull_request_id} in repository "
+                f"{repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def close_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Abandon a pull request without merging it."""
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {"status": "abandoned"},
+        )
+
+    async def get_repository_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any] | None:
+        """Get a pull request scoped to a project and repository."""
+        get_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        response = await self.send_request(
+            "GET",
+            get_pull_request_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return None
+        return response.json()
+
+    async def merge_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Merge a pull request."""
+        pull_request = await self.get_repository_pull_request(
+            project, repository_id, pull_request_id
+        )
+        if not pull_request:
+            raise RuntimeError(
+                f"Pull request '{pull_request_id}' was not found in repository "
+                f"'{repository_id}'"
+            )
+
+        last_merge_source_commit = pull_request.get("lastMergeSourceCommit")
+        commit_id = (
+            last_merge_source_commit.get("commitId")
+            if isinstance(last_merge_source_commit, dict)
+            else None
+        )
+        if not commit_id:
+            raise RuntimeError(
+                "Pull request is not ready to merge: lastMergeSourceCommit is missing. "
+                "Wait for Azure DevOps to finish computing the merge preview and retry."
+            )
+
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {
+                "status": "completed",
+                "lastMergeSourceCommit": last_merge_source_commit,
+            },
+        )
+
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
@@ -2203,18 +2329,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
         results = await asyncio.gather(
             *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
-            return_exceptions=True,
         )
 
-        subscriptions: list[WebhookSubscription] = []
-        for result in results:
-            if isinstance(result, asyncio.CancelledError):
-                raise result
-            if isinstance(result, BaseException):
-                logger.warning(f"Failed to fetch webhook subscriptions: {result}")
-                continue
-            subscriptions.extend(result)
-        return subscriptions
+        return [sub for batch in results for sub in batch]
 
     async def create_subscription(
         self,
@@ -2359,6 +2476,20 @@ class AzureDevopsClient(HTTPBaseClient):
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
 
+    def _resolve_repository_branch(
+        self,
+        repository: dict[str, Any],
+        branch_override: str | None = None,
+    ) -> str | None:
+        if branch_override:
+            return branch_override
+
+        default_branch = repository.get("defaultBranch")
+        if not default_branch:
+            return None
+
+        return default_branch.replace("refs/heads/", "")
+
     async def _get_repository_files(
         self,
         repository: dict[str, Any],
@@ -2368,14 +2499,12 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Checking repository {repository['name']} for files matching {paths}"
         )
 
-        branch = repository.get("defaultBranch")
+        branch = self._resolve_repository_branch(repository)
         if not branch:
             logger.warning(
                 f"Repository {repository['name']} has no default branch. Skipping."
             )
             return
-
-        branch = branch.replace("refs/heads/", "")
 
         files = []
         literal_paths, glob_patterns = separate_glob_and_literal_paths(paths)
@@ -2638,8 +2767,10 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             existing_sub = sub.get_event_by_subscription(existing_subscriptions)
 
-            if existing_sub and not existing_sub.is_enabled():
-                # Disabled subscription — recreate it.
+            if existing_sub and (
+                not existing_sub.is_enabled()
+                or not existing_sub.has_required_payload_details()
+            ):
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
             elif existing_sub and existing_sub.id:
@@ -2696,7 +2827,7 @@ class AzureDevopsClient(HTTPBaseClient):
         items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
 
         params = {
-            "scopePath": path,
+            "scopePath": _normalize_git_scope_path(path),
             "recursionLevel": recursion_level,
             "$top": PAGE_SIZE,
             "api-version": "7.1",
@@ -2729,16 +2860,16 @@ class AzureDevopsClient(HTTPBaseClient):
         parts = pattern.split("/")
         base_parts = []
         for part in parts:
-            if "*" not in part:
-                base_parts.append(part)
-            else:
+            if "*" in part:
                 break
+            if part:
+                base_parts.append(part)
         base_path = "/".join(base_parts)
 
         return functools.partial(
             self.get_repository_tree,
             repository_id,
-            path=base_path or "/",
+            path=_normalize_git_scope_path(base_path),
             recursion_level="oneLevel",  # Always use oneLevel recursion
         )
 
@@ -2788,20 +2919,27 @@ class AzureDevopsClient(HTTPBaseClient):
         folder_pattern: FolderPattern,
         repo_mapping: RepositoryBranchMapping | None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        branch = repo_mapping.branch if repo_mapping else None
-        if not branch and "defaultBranch" in repo:
-            branch = repo["defaultBranch"].replace("refs/heads/", "")
+        branch = self._resolve_repository_branch(
+            repo, repo_mapping.branch if repo_mapping else None
+        )
+        if not branch:
+            logger.warning(
+                f"Repository {repo['name']} has no default branch. Skipping."
+            )
+            return
 
         async for found_folders in self.get_repository_folders(
             repo["id"], [folder_pattern.path]
         ):
-            processed_folders = []
-            for folder in found_folders:
-                folder_dict = dict(folder)
-                folder_dict["__repository"] = repo
-                folder_dict["__branch"] = branch
-                folder_dict["__pattern"] = folder_pattern.path
-                processed_folders.append(folder_dict)
+            processed_folders = [
+                {
+                    **folder,
+                    "__repository": repo,
+                    "__branch": branch,
+                    "__pattern": folder_pattern.path,
+                }
+                for folder in found_folders
+            ]
             if processed_folders:
                 yield processed_folders
 
@@ -3151,3 +3289,214 @@ class AzureDevopsClient(HTTPBaseClient):
                 all_runs, project_id, include_results, coverage_config
             )
         return all_runs
+
+    async def get_wiki(
+        self, project_id: str, wiki_id: str, api_version: str = "7.1"
+    ) -> dict[str, Any] | None:
+        """Fetch a single wiki by ID.
+
+        API: GET {org}/{project}/_apis/wiki/wikis/{wikiId}?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}"
+        )
+        response = await self.send_request(
+            "GET", url, params={"api-version": api_version}
+        )
+        if not response:
+            logger.warning(f"Wiki {wiki_id} not found in project {project_id}")
+            return None
+        return response.json()
+
+    async def _get_wikis_for_project(
+        self, project: dict[str, Any], api_version: str = "7.1"
+    ) -> list[dict[str, Any]]:
+        """List all wikis for a project.
+
+        API: GET {org}/{project}/_apis/wiki/wikis?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project['id']}"
+            f"/{API_URL_PREFIX}/wiki/wikis"
+        )
+        response = await self.send_request(
+            "GET", url, params={"api-version": api_version}
+        )
+        if not response:
+            logger.warning(
+                f"No response when fetching wikis for project {project['name']}"
+            )
+            return []
+        wikis = response.json()["value"]
+        for wiki in wikis:
+            wiki["__project"] = project
+        return wikis
+
+    async def get_wiki_pages_batch(
+        self,
+        project_id: str,
+        wiki_id: str,
+        wiki_name: str,
+        api_version: str = "7.1",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate through all pages in a wiki using the pages batch endpoint.
+
+        API: POST {org}/{project}/_apis/wiki/wikis/{wikiId}/pagesbatch?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}/pagesbatch"
+        )
+        continuation_token: str | None = None
+
+        while True:
+            body: dict[str, Any] = {"top": PAGE_SIZE}
+            if continuation_token:
+                body["continuationToken"] = continuation_token
+
+            response = await self.send_request(
+                "POST",
+                url,
+                data=json.dumps(body),
+                headers={"Content-Type": "application/json"},
+                params={"api-version": api_version},
+            )
+            if not response:
+                logger.warning(
+                    f"No response when fetching wiki pages batch for wiki {wiki_name} in project {project_id}"
+                )
+                break
+
+            pages = response.json()["value"]
+            if not pages:
+                logger.debug(
+                    f"No more pages found for wiki {wiki_name} in project {project_id}"
+                )
+                break
+
+            logger.info(
+                f"Fetched {len(pages)} wiki pages for wiki {wiki_name} in project {project_id}"
+            )
+            yield pages
+
+            continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
+            if not continuation_token:
+                break
+
+    async def _get_wiki_page_by_id(
+        self,
+        project_id: str,
+        wiki_id: str,
+        wiki_name: str,
+        page_id: int,
+        include_content: bool = False,
+        api_version: str = "7.1",
+    ) -> dict[str, Any] | None:
+        """Fetch a single wiki page by its permanent ID.
+
+        API: GET {org}/{project}/_apis/wiki/wikis/{wikiId}/pages/{id}?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}/pages/{page_id}"
+        )
+        params: dict[str, Any] = {"api-version": api_version}
+        if include_content:
+            params["includeContent"] = "true"
+
+        response = await self.send_request("GET", url, params=params)
+        if not response:
+            logger.warning(
+                f"Wiki page {page_id} not found in wiki {wiki_name} (project {project_id})"
+            )
+            return None
+        return response.json()
+
+    async def _enrich_pages_with_content(
+        self,
+        project_id: str,
+        wiki: dict[str, Any],
+        pages: list[dict[str, Any]],
+        semaphore: asyncio.BoundedSemaphore,
+        api_version: str = "7.1",
+    ) -> list[dict[str, Any]]:
+        project = wiki["__project"]
+        wiki_name = wiki["name"]
+
+        async def fetch_page_with_semaphore(
+            page: dict[str, Any],
+        ) -> dict[str, Any]:
+            async with semaphore:
+                full_page = await self._get_wiki_page_by_id(
+                    project_id,
+                    wiki["id"],
+                    wiki_name,
+                    page["id"],
+                    include_content=True,
+                    api_version=api_version,
+                )
+                enriched_page = full_page if full_page else page
+                enriched_page["__wiki"] = wiki
+                enriched_page["__project"] = project
+                return enriched_page
+
+        results = await asyncio.gather(
+            *[fetch_page_with_semaphore(page) for page in pages],
+            return_exceptions=True,
+        )
+
+        enriched: list[dict[str, Any]] = []
+        for result in results:
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch content for wiki page in wiki {wiki_name} (project {project_id}): {result}"
+                )
+                continue
+            enriched.append(result)
+        return enriched
+
+    async def generate_wiki_pages(
+        self,
+        wiki_type: str | None = None,
+        include_content: bool = False,
+        api_version: str = "7.1",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate wiki pages for all projects in the organization."""
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_WIKI_PAGES)
+
+        async for projects in self.generate_projects():
+            for project in projects:
+                wikis = await self._get_wikis_for_project(
+                    project, api_version=api_version
+                )
+
+                for wiki in wikis:
+                    if wiki_type and wiki["type"] != wiki_type:
+                        logger.debug(
+                            f"Skipping wiki {wiki['name']} (type={wiki['type']}, wanted {wiki_type})"
+                        )
+                        continue
+
+                    async for page_batch in self.get_wiki_pages_batch(
+                        project["id"],
+                        wiki["id"],
+                        wiki["name"],
+                        api_version=api_version,
+                    ):
+                        if include_content:
+                            enriched = await self._enrich_pages_with_content(
+                                project["id"],
+                                wiki,
+                                page_batch,
+                                semaphore,
+                                api_version=api_version,
+                            )
+                        else:
+                            enriched = [
+                                {**page, "__wiki": wiki, "__project": project}
+                                for page in page_batch
+                            ]
+                        yield enriched

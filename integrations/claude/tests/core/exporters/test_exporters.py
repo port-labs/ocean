@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.exporters.claude_ai.skill_usage_exporter import ClaudeAISkillUsageExporter
 from core.exporters.claude_ai.user_activity_exporter import (
     ClaudeAIUserActivityExporter,
 )
@@ -106,6 +107,29 @@ async def test_user_activity_exporter_injects_date() -> None:
     client.send_paginated_request.assert_called_once_with(
         "/v1/organizations/analytics/users",
         {"date": "2026-03-05", "limit": 30},
+        soft_fail_statuses={403},
+    )
+
+
+@pytest.mark.asyncio
+async def test_skill_usage_exporter_injects_date() -> None:
+    client = MagicMock()
+    client.send_paginated_request.return_value = _page_generator(
+        [{"skill_name": "contribute-docs"}]
+    )
+    exporter = ClaudeAISkillUsageExporter(client)
+
+    results = [
+        page
+        async for page in exporter.get_paginated_resources(
+            {"date": "2026-06-01", "limit": 30}
+        )
+    ]
+
+    assert results == [[{"skill_name": "contribute-docs", "__date": "2026-06-01"}]]
+    client.send_paginated_request.assert_called_once_with(
+        "/v1/organizations/analytics/skills",
+        {"date": "2026-06-01", "limit": 30},
         soft_fail_statuses={403},
     )
 

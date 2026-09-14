@@ -106,6 +106,10 @@ def exception_deserializer(record: "loguru.Record") -> None:
         fixed = Exception(str(exception.value))
         record["exception"] = exception._replace(value=fixed)
 
+    for key, value in record["extra"].items():
+        if isinstance(value, BaseException):
+            record["extra"][key] = Exception(str(value))
+
 
 def resolve_hostname() -> str:
     try:

@@ -1,0 +1,179 @@
+{
+  "title": "Jira",
+  "description": "Jira integration for Port Ocean",
+  "icon": "Jira",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/jira",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Project management",
+      "resources": [
+        {
+          "kind": "project"
+        },
+        {
+          "kind": "issue"
+        },
+        {
+          "kind": "team"
+        },
+        {
+          "kind": "user"
+        },
+        {
+          "kind": "release"
+        },
+        {
+          "kind": "board"
+        },
+        {
+          "kind": "backlog"
+        },
+        {
+          "kind": "worklog"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "appHost",
+      "required": false,
+      "type": "url",
+      "description": "This field is deprecated. Please use the OCEAN__BASE_URL field instead."
+    },
+    {
+      "name": "jiraHost",
+      "required": true,
+      "type": "url",
+      "description": "The URL of your Jira, for example: https://example.atlassian.net"
+    },
+    {
+      "name": "atlassianUserEmail",
+      "required": true,
+      "type": "string",
+      "description": "The email of the user used to query Jira",
+      "sensitive": true
+    },
+    {
+      "name": "atlassianUserToken",
+      "required": true,
+      "type": "string",
+      "description": "You can configure the user token on the <a target=\"_blank\" href=\"https://id.atlassian.com/manage-profile/security/api-tokens\">Atlassian account page</a>",
+      "sensitive": true
+    },
+    {
+      "name": "atlassianOrganizationId",
+      "required": false,
+      "type": "string",
+      "description": "To sync teams and team members your Atlassian Organization ID is required . Read <a target=\"_blank\" href=\"https://confluence.atlassian.com/jirakb/what-it-is-the-organization-id-and-where-to-find-it-1207189876.html\">How to find your Atlassian Organization ID</a>",
+      "sensitive": false
+    }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_issue",
+      "icon": "Jira",
+      "description": "Create a new Jira issue",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "The Jira project key where the issue will be created",
+          "required": true
+        },
+        {
+          "name": "issueType",
+          "title": "Issue type",
+          "type": "string",
+          "description": "The name of the issue type to create, for example Task, Bug, or Story",
+          "required": true
+        },
+        {
+          "name": "summary",
+          "title": "Summary",
+          "type": "string",
+          "description": "The issue summary",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "The issue description"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "The issue priority name, for example High or Medium"
+        },
+        {
+          "name": "assigneeAccountId",
+          "title": "Assignee account ID",
+          "type": "string",
+          "description": "The Atlassian account ID of the user to assign the issue to"
+        }
+      ]
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    },
+    "oauthConfiguration": {
+      "requiredSecrets": [
+        {
+          "name": "atlassianUserEmail",
+          "value": ".oauthData.profile.email",
+          "description": "\"Email for Jira OAuth2 integration\""
+        },
+        {
+          "name": "atlassianUserToken",
+          "value": ".oauthData.accessToken",
+          "description": "\"Access Token for Jira OAuth2 integration\""
+        }
+      ],
+      "valuesOverride": {
+        "integrationSpec": {
+          "jiraHost": "\"https://api.atlassian.com/ex/jira/\" + .oauthData.profile.accessibleResources[0].id"
+        },
+        "appSpec": {
+          "minimumScheduledResyncInterval": "2h"
+        }
+      }
+    }
+  },
+  "installationDocs": {
+    "saas": [
+      {
+        "name": "SaasOAuth2",
+        "enabled": false
+      },
+      {
+        "name": "Saas",
+        "enabled": true,
+        "docs": "build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=hosted-by-port&oauth=manual#setup"
+      }
+    ],
+    "githubWorkflow": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&deploy=helm&cicd-method=github#setup"
+    },
+    "gitlabCI": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=one-time-ci&deploy=helm&cicd-method=gitlab#setup"
+    },
+    "helm": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/project-management/jira/?installation-methods=real-time-self-hosted#setup"
+    },
+    "docker": {
+      "enabled": false
+    }
+  }
+}

@@ -59,6 +59,8 @@ class GitContext:
     def discover_targets(self, changed_files: list[str]) -> list[ReleaseTarget]:
         targets: dict[str, ReleaseTarget] = {}
         for file_path in changed_files:
+            if file_path.endswith(".md"):
+                continue
             if file_path.startswith("integrations/"):
                 parts = Path(file_path).parts
                 if len(parts) >= 2:

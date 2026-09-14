@@ -7,6 +7,238 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.34 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.2.33 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.2.32 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.2.31 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 0.2.30 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 0.2.29 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 0.2.28 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 0.2.27 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 0.2.26 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 0.2.25 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 0.2.24 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.2.23 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.2.22 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.2.21 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.2.20 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.2.19 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.2.18 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.2.17 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.2.16 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
+## 0.2.15 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.10
+
+
+## 0.2.14 (2026-08-17)
+
+
+### Improvements
+
+- Add missing Field titles and descriptions required by PortAppConfig schema validation.
+
+
+## 0.2.13 (2026-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.9
+
+
+## 0.2.12 (2026-08-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.8
+
+
+## 0.2.11 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.7
+
+
+## 0.2.10 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.6
+
+
+## 0.2.9 (2026-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.5
+
+
+## 0.2.8 (2026-08-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.4
+
+
+## 0.2.7 (2026-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.3
+
+
+## 0.2.6 (2026-08-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.2
+
+
 ## 0.2.5 (2026-08-10)
 
 
@@ -1244,7 +1476,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.232 (2025-12-25)
 
 
-## Bug Fixes
+### Bug Fixes
 
 - Fixed spec.yaml conventions
 
@@ -1503,6 +1735,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 0.1.199 (2025-11-09)
 
@@ -1895,6 +2128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update dependencies
 
+
 ## 0.1.150 (2025-06-22)
 
 
@@ -2096,6 +2330,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.125 (2025-04-27)
+
 
 ### Bug Fixes
 
@@ -3037,6 +3272,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated the returned response from the GCP integration to reflect the latest known resource version as identified by the GCP Asset Inventory. Removed the need for `.versioned_resources | max_by(.version).resource | .<property_name>`, now only requiring `.<property_name>` (#1)
 
+
 ## 0.1.9 (2024-05-22)
 
 
@@ -3076,6 +3312,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added Terraform deployment method as main deployment method (#1)
 - Added logs for Project/Folder/Org Injestion (#1)
+
 
 ## 0.1.4 (2024-05-01)
 

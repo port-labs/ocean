@@ -1,5 +1,6 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from botocore.exceptions import ClientError
 import pytest
 
 from aws.core.exporters.rds.db_cluster.exporter import RdsDbClusterExporter
@@ -88,23 +89,19 @@ class TestRdsDbClusterExporter:
     @pytest.mark.asyncio
     @patch("aws.core.exporters.rds.db_cluster.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.rds.db_cluster.exporter.ResourceInspector")
-    async def test_get_resource_returns_empty_when_inspector_returns_nothing(
+    async def test_get_resource_raises_when_cluster_not_found(
         self,
         mock_inspector_class: MagicMock,
         mock_proxy_class: MagicMock,
         exporter: RdsDbClusterExporter,
     ) -> None:
-        """Test that an empty dict is returned when the inspector yields no results."""
+        """Test that a missing DB cluster raises so live events can treat it as deleted."""
         mock_proxy = AsyncMock()
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
         mock_client.describe_db_clusters.return_value = {"DBClusters": []}
-
-        mock_inspector = AsyncMock()
-        mock_inspector_class.return_value = mock_inspector
-        mock_inspector.inspect.return_value = []
 
         options = SingleDbClusterRequest(
             region="us-east-1",
@@ -113,9 +110,11 @@ class TestRdsDbClusterExporter:
             include=[],
         )
 
-        result = await exporter.get_resource(options)
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
 
-        assert result == {}
+        assert exc_info.value.response["Error"]["Code"] == "DBClusterNotFoundFault"
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.rds.db_cluster.exporter.AioBaseClientProxy")

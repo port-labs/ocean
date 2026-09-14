@@ -53,6 +53,67 @@ QUERIES = {
         identifier
     }
     """,
+    "BASE_DOCUMENTS_QUERY_FIELDS": """
+    id
+    title
+    summary
+    icon
+    color
+    slugId
+    url
+    content
+    documentContentId
+    createdAt
+    updatedAt
+    archivedAt
+    hiddenAt
+    trashed
+    sortOrder
+    creator {
+        id
+        name
+        email
+    }
+    owner {
+        id
+        name
+        email
+    }
+    updatedBy {
+        id
+        name
+        email
+    }
+    lastAppliedTemplate {
+        id
+        name
+    }
+    project {
+        id
+        name
+    }
+    initiative {
+        id
+        name
+    }
+    team {
+        id
+        name
+        key
+    }
+    issue {
+        id
+        identifier
+        title
+    }
+    release {
+        id
+    }
+    cycle {
+        id
+        number
+    }
+    """,
     "BASE_LABELS_QUERY_FIELDS": """
     id
     createdAt
@@ -73,6 +134,95 @@ QUERIES = {
         }
     }
     """,
+    "BASE_USERS_QUERY_FIELDS": """
+    id
+    name
+    displayName
+    email
+    active
+    admin
+    guest
+    url
+    avatarUrl
+    title
+    createdAt
+    updatedAt
+    teamMemberships {
+        nodes {
+            team {
+                key
+            }
+        }
+    }
+    """,
+    "BASE_PROJECTS_QUERY_FIELDS": """
+    id
+    name
+    description
+    url
+    progress
+    health
+    priority
+    priorityLabel
+    startDate
+    targetDate
+    slugId
+    createdAt
+    updatedAt
+    status {
+        name
+        type
+    }
+    lead {
+        id
+        name
+        email
+    }
+    teams {
+        nodes {
+            id
+            key
+            name
+        }
+    }
+    """,
+    "BASE_CYCLES_QUERY_FIELDS": """
+    id
+    number
+    name
+    description
+    startsAt
+    endsAt
+    completedAt
+    progress
+    isActive
+    isFuture
+    isPast
+    createdAt
+    updatedAt
+    team {
+        id
+        key
+        name
+    }
+    """,
+    "BASE_TEAM_MEMBERSHIPS_QUERY_FIELDS": """
+    id
+    owner
+    createdAt
+    updatedAt
+    team {
+        id
+        key
+        name
+    }
+    user {
+        id
+        name
+        email
+        displayName
+    }
+    """,
     "GET_SINGLE_ISSUE": """
     query Issue {
         issue(id: "{{ issue_identifier }}") {
@@ -80,9 +230,37 @@ QUERIES = {
         }
     }
     """,
+    "GET_SINGLE_DOCUMENT": """
+    query Document {
+        document(id: "{{ document_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
     "GET_SINGLE_LABEL": """
     query IssueLabel {
         issueLabel(id: "{{ label_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_USER": """
+    query User {
+        user(id: "{{ user_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_PROJECT": """
+    query Project {
+        project(id: "{{ project_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_CYCLE": """
+    query Cycle {
+        cycle(id: "{{ cycle_id }}") {
             {{ base_query_fields }}
         }
     }
@@ -119,6 +297,34 @@ QUERIES = {
                         name
                         urlKey
                     }
+                    members {
+                        nodes {
+                            id
+                        }
+                    }
+                    parent {
+                        key
+                    }
+                    children {
+                        key
+                    }
+                }
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_DOCUMENTS_PAGE": """
+    query Documents {
+        documents(first: {{ page_size }}{{ after_cursor }}, includeArchived: false) {
+            edges {
+                cursor
+                node {
+                    {{ base_query_fields }}
                 }
             }
             pageInfo {
@@ -137,6 +343,62 @@ QUERIES = {
                 node {
                     {{ base_query_fields }}
                 }
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_USERS_PAGE": """
+    query Users {
+        users(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_PROJECTS_PAGE": """
+    query Projects {
+        projects(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_CYCLES_PAGE": """
+    query Cycles {
+        cycles(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_TEAM_MEMBERSHIPS_PAGE": """
+    query TeamMemberships {
+        teamMemberships(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
             }
             pageInfo {
                 hasNextPage
@@ -169,6 +431,22 @@ QUERIES = {
                 label: "{{ webhook_label }}"
                 url: "{{ webhook_url }}"
                 allPublicTeams: true
+                resourceTypes: {{ resource_types|tojson() }}
+            }
+        ) {
+            success
+            webhook {
+                id
+                enabled
+            }
+        }
+    }
+    """,
+    "UPDATE_LIVE_EVENTS_WEBHOOK": """
+    mutation {
+        webhookUpdate(
+            id: "{{ webhook_id }}"
+            input: {
                 resourceTypes: {{ resource_types|tojson() }}
             }
         ) {

@@ -1,6 +1,10 @@
 from typing import Any, Generator
 from port_ocean.context import event
 from port_ocean.core.models import Entity
+from port_ocean.core.utils.entity_identifier import (
+    normalize_identifier,
+    relation_target_identifier_keys,
+)
 
 from loguru import logger
 
@@ -45,7 +49,10 @@ class EntityTopologicalSorter:
 
     @staticmethod
     def node(entity: Entity) -> Node:
-        return entity.identifier, entity.blueprint
+        return (
+            normalize_identifier(entity.identifier),
+            entity.blueprint,
+        )
 
     @staticmethod
     def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
@@ -56,24 +63,26 @@ class EntityTopologicalSorter:
             entities_map[EntityTopologicalSorter.node(entity)] = entity
 
         for entity in entities:
-            relation_target_ids: list[str] = sum(
-                [
+            relation_target_ids: set[str] = set()
+            for identifiers in entity.relations.values():
+                if identifiers is None:
+                    continue
+                for identifier in (
                     identifiers if isinstance(identifiers, list) else [identifiers]
-                    for identifiers in entity.relations.values()
-                    if identifiers is not None
-                ],
-                [],
-            )
+                ):
+                    relation_target_ids.update(
+                        relation_target_identifier_keys(identifier)
+                    )
+
             related_entities = [
                 related
                 for related in entities
-                if related.identifier in relation_target_ids
+                if normalize_identifier(related.identifier) in relation_target_ids
             ]
 
             for related_entity in related_entities:
-                if (
-                    entity.blueprint is not related_entity.blueprint
-                    or entity.identifier is not related_entity.identifier
+                if EntityTopologicalSorter.node(entity) != EntityTopologicalSorter.node(
+                    related_entity
                 ):
                     nodes[EntityTopologicalSorter.node(entity)].add(
                         EntityTopologicalSorter.node(related_entity)

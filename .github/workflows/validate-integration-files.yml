@@ -78,15 +78,3 @@ jobs:
               echo "Version format is valid: $version"
             fi
           done
-
-      - name: Validate integration not duplicated
-        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
-        run: |
-          for integration in $(find integrations -name 'pyproject.yaml' -not -path "**/.venv/*"); do
-            type=$(grep -E '^name = ".*"' "$integration" | cut -d'"' -f2)
-
-            if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c ^$integration_type$) -gt 1 ]; then
-              echo "ERROR: $integration_type integration type is duplicated please check your spec.yaml file"
-              exit 1
-            fi
-          done

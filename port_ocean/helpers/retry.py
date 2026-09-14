@@ -25,6 +25,11 @@ from port_ocean.context.ocean import ocean
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
 _RETRY_CONFIG_CALLBACK: Callable[[], "RetryConfig"] | None = None
+SKIP_RETRY_EXTENSION_KEY = "skip_retry"
+"""
+Request extension that overrides the retry decision for a single request.
+Set it to True to opt out of retries entirely.
+"""
 
 
 def register_on_retry_callback(
@@ -98,6 +103,7 @@ class RetryConfig:
         default_status_codes = frozenset(
             [
                 HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.REQUEST_TIMEOUT,
                 HTTPStatus.BAD_GATEWAY,
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 HTTPStatus.GATEWAY_TIMEOUT,
@@ -153,7 +159,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retryable_methods (Iterable[str], optional): The HTTP methods that can be retried. Defaults to
             ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"].
         retry_status_codes (Iterable[int], optional): The HTTP status codes that can be retried. Defaults to
-            [429, 502, 503, 504].
+            [408, 429, 401, 502, 503, 504].
         retry_config (RetryConfig, optional): Configuration for retry behavior. If not provided, uses defaults.
         logger (Any, optional): The logger to use for logging retries.
 
@@ -408,6 +414,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         transport.close()
 
     def _is_retryable_method(self, request: httpx.Request) -> bool:
+        skip_retry = request.extensions.get(SKIP_RETRY_EXTENSION_KEY)
+        if skip_retry:
+            return False
+
         return (
             request.method in self._retry_config.retryable_methods
             or request.extensions.get("retryable", False)

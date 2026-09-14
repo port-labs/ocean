@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import asyncio
 import json
+from functools import partial
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request, Response, HTTPStatusError
@@ -17,7 +18,9 @@ from azure_devops.client.azure_devops_client import (
     AzureDevopsClient,
     _flatten_area_path_tree,
     _normalize_area_path,
+    _normalize_git_scope_path,
 )
+from azure_devops.client.base_client import CONTINUATION_TOKEN_HEADER
 from azure_devops.client.file_processing import PathDescriptor
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
@@ -2632,6 +2635,59 @@ async def test_get_pull_request() -> None:
 
 
 @pytest.mark.asyncio
+async def test_merge_pull_request_includes_last_merge_source_commit() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    project_id = "proj-guid"
+    repository_id = "repo-guid"
+    pull_request_id = "42"
+    last_merge_source_commit = {
+        "commitId": "abc123",
+        "url": "https://example.com/commit/abc123",
+    }
+    pull_request = {
+        "pullRequestId": 42,
+        "lastMergeSourceCommit": last_merge_source_commit,
+    }
+    merged_pull_request = {
+        "pullRequestId": 42,
+        "status": "completed",
+        "lastMergeSourceCommit": last_merge_source_commit,
+    }
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.side_effect = [
+            Response(status_code=200, json=pull_request),
+            Response(status_code=200, json=merged_pull_request),
+        ]
+
+        result = await client.merge_pull_request(
+            project_id, repository_id, pull_request_id
+        )
+
+    assert result == merged_pull_request
+    assert mock_send_request.call_count == 2
+    mock_send_request.assert_any_call(
+        "GET",
+        f"{MOCK_ORG_URL}/{project_id}/_apis/git/repositories/{repository_id}/pullrequests/{pull_request_id}",
+        params=API_PARAMS,
+        raise_on_404=True,
+    )
+    mock_send_request.assert_any_call(
+        "PATCH",
+        f"{MOCK_ORG_URL}/{project_id}/_apis/git/repositories/{repository_id}/pullrequests/{pull_request_id}",
+        data=json.dumps(
+            {
+                "status": "completed",
+                "lastMergeSourceCommit": last_merge_source_commit,
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+        params=API_PARAMS,
+        raise_on_404=True,
+    )
+
+
+@pytest.mark.asyncio
 async def test_get_repository() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
@@ -2872,18 +2928,16 @@ async def test_get_filtered_webhook_subscriptions_bounded_concurrency() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
+async def test_get_filtered_webhook_subscriptions_aborts_on_failure() -> None:
     from azure_devops.webhooks.events import PushEvents
 
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-
-    good_sub = WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)
 
     async def mock_fetch(
         publisher_id: str, event_type: str
     ) -> List[WebhookSubscription]:
         if event_type == PushEvents.PUSH:
-            return [good_sub]
+            return [WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)]
         raise Exception("429 rate limited")
 
     with patch.object(
@@ -2892,9 +2946,8 @@ async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
         new_callable=AsyncMock,
         side_effect=mock_fetch,
     ):
-        result = await client.get_filtered_webhook_subscriptions()
-
-    assert good_sub in result
+        with pytest.raises(Exception, match="429 rate limited"):
+            await client.get_filtered_webhook_subscriptions()
 
 
 @pytest.mark.asyncio
@@ -3228,6 +3281,83 @@ async def test_get_repository_tree_with_deep_path() -> None:
         paths = {folder["path"] for folder in folders}
         assert paths == {"/src/main", "/src/main/api", "/src/test"}
         assert all(folder["gitObjectType"] == "tree" for folder in folders)
+
+
+@pytest.mark.parametrize(
+    ("raw_path", "expected"),
+    [
+        ("/", "/"),
+        ("", "/"),
+        ("App/root/env/region", "/App/root/env/region"),
+        ("/App/root/env/region/", "/App/root/env/region"),
+        ("test/", "/test"),
+        ("/src/**/*.py", "/src/**/*.py"),
+    ],
+)
+def test_normalize_git_scope_path(raw_path: str, expected: str) -> None:
+    assert _normalize_git_scope_path(raw_path) == expected
+
+
+def test_build_tree_fetcher_normalizes_wildcard_base_path() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    fetcher = client._build_tree_fetcher(MOCK_REPOSITORY_ID, "App/root/env/region/*")
+
+    assert isinstance(fetcher, partial)
+    assert fetcher.args == (MOCK_REPOSITORY_ID,)
+    assert fetcher.keywords == {
+        "path": "/App/root/env/region",
+        "recursion_level": "oneLevel",
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_repository_tree_normalizes_scope_path_across_pages() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    captured_params: list[dict[str, Any]] = []
+
+    page_one = AsyncMock(spec=Response)
+    page_one.status_code = 200
+    page_one.headers = {CONTINUATION_TOKEN_HEADER: "token-page-2"}
+    page_one.json.return_value = {
+        "value": [
+            {
+                "objectId": "abc123",
+                "gitObjectType": "tree",
+                "path": "/App/root/env/region/folder-a",
+            }
+        ]
+    }
+
+    page_two = AsyncMock(spec=Response)
+    page_two.status_code = 200
+    page_two.headers = {}
+    page_two.json.return_value = {
+        "value": [
+            {
+                "objectId": "def456",
+                "gitObjectType": "tree",
+                "path": "/App/root/env/region/folder-b",
+            }
+        ]
+    }
+
+    async def capture_send_request(method: str, url: str, **kwargs: Any) -> Response:
+        captured_params.append(dict(kwargs.get("params") or {}))
+        return page_one if len(captured_params) == 1 else page_two
+
+    with patch.object(client, "send_request", side_effect=capture_send_request):
+        folders = []
+        async for batch in client.get_repository_tree(
+            MOCK_REPOSITORY_ID,
+            path="App/root/env/region",
+            recursion_level="oneLevel",
+        ):
+            folders.extend(batch)
+
+    assert len(folders) == 2
+    assert len(captured_params) == 2
+    assert all(p["scopePath"] == "/App/root/env/region" for p in captured_params)
+    assert captured_params[1]["continuationToken"] == "token-page-2"
 
 
 @pytest.mark.asyncio
@@ -6254,3 +6384,373 @@ async def test_run_pipeline_raises_http_status_error_on_404(
         exc_info.value.response.json()["message"]
         == "The pipeline with id 102 does not exist"
     )
+
+
+MOCK_WIKI_PROJECT = {"id": "proj1", "name": "Project One"}
+MOCK_WIKI = {
+    "id": "wiki-guid-1",
+    "name": "Project One.wiki",
+    "type": "projectWiki",
+    "__project": MOCK_WIKI_PROJECT,
+}
+MOCK_CODE_WIKI = {
+    "id": "wiki-guid-2",
+    "name": "Code Docs",
+    "type": "codeWiki",
+    "__project": MOCK_WIKI_PROJECT,
+}
+MOCK_WIKI_PAGES = [
+    {"id": 1, "path": "/Home", "order": 0},
+    {"id": 2, "path": "/Getting-Started", "order": 1},
+]
+
+
+@pytest.mark.asyncio
+async def test_get_wikis_for_project() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "value": [
+            {"id": "wiki-guid-1", "name": "Project One.wiki", "type": "projectWiki"},
+        ]
+    }
+
+    with patch.object(client, "send_request", return_value=mock_response) as mock_send:
+        result = await client._get_wikis_for_project(MOCK_WIKI_PROJECT)
+
+        assert len(result) == 1
+        assert result[0]["id"] == "wiki-guid-1"
+        assert result[0]["__project"] == MOCK_WIKI_PROJECT
+
+        call_args = mock_send.call_args
+        assert call_args.kwargs["params"]["api-version"] == "7.1"
+
+
+@pytest.mark.asyncio
+async def test_get_wikis_for_project_custom_api_version() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"value": []}
+
+    with patch.object(client, "send_request", return_value=mock_response) as mock_send:
+        await client._get_wikis_for_project(MOCK_WIKI_PROJECT, api_version="6.0")
+
+        call_args = mock_send.call_args
+        assert call_args.kwargs["params"]["api-version"] == "6.0"
+
+
+@pytest.mark.asyncio
+async def test_get_wikis_for_project_default_api_version() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"value": []}
+
+    with patch.object(client, "send_request", return_value=mock_response) as mock_send:
+        await client._get_wikis_for_project(MOCK_WIKI_PROJECT)
+
+        call_args = mock_send.call_args
+        assert call_args.kwargs["params"]["api-version"] == "7.1"
+
+
+@pytest.mark.asyncio
+async def test_get_wikis_for_project_no_response() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(client, "send_request", return_value=None):
+        result = await client._get_wikis_for_project(MOCK_WIKI_PROJECT)
+        assert result == []
+
+
+@pytest.mark.asyncio
+async def test_get_wiki_page_by_id() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    expected_page = {"id": 1, "path": "/Home", "content": "# Welcome"}
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = expected_page
+
+    with patch.object(client, "send_request", return_value=mock_response) as mock_send:
+        result = await client._get_wiki_page_by_id(
+            "proj1", "wiki-guid-1", "Project One.wiki", 1, include_content=True
+        )
+
+        assert result == expected_page
+        call_args = mock_send.call_args
+        assert call_args.kwargs["params"]["includeContent"] == "true"
+        assert call_args.kwargs["params"]["api-version"] == "7.1"
+
+
+@pytest.mark.asyncio
+async def test_get_wiki_page_by_id_no_response() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(client, "send_request", return_value=None):
+        result = await client._get_wiki_page_by_id(
+            "proj1", "wiki-guid-1", "Project One.wiki", 999
+        )
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_wiki_pages_batch() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"value": MOCK_WIKI_PAGES}
+    mock_response.headers = {}
+
+    with patch.object(client, "send_request", return_value=mock_response):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in client.get_wiki_pages_batch(
+            "proj1", "wiki-guid-1", "Project One.wiki"
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 1
+        assert len(batches[0]) == 2
+        assert batches[0][0]["path"] == "/Home"
+
+
+@pytest.mark.asyncio
+async def test_get_wiki_pages_batch_pagination() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    page1_response = MagicMock()
+    page1_response.json.return_value = {"value": [{"id": 1, "path": "/Page1"}]}
+    page1_response.headers = {"x-ms-continuationtoken": "token123"}
+
+    page2_response = MagicMock()
+    page2_response.json.return_value = {"value": [{"id": 2, "path": "/Page2"}]}
+    page2_response.headers = {}
+
+    with patch.object(
+        client, "send_request", side_effect=[page1_response, page2_response]
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in client.get_wiki_pages_batch(
+            "proj1", "wiki-guid-1", "Project One.wiki"
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 2
+        assert batches[0][0]["path"] == "/Page1"
+        assert batches[1][0]["path"] == "/Page2"
+
+
+@pytest.mark.asyncio
+async def test_get_wiki_pages_batch_no_response() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(client, "send_request", return_value=None):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in client.get_wiki_pages_batch(
+            "proj1", "wiki-guid-1", "Project One.wiki"
+        ):
+            batches.append(batch)
+
+        assert batches == []
+
+
+@pytest.mark.asyncio
+async def test_generate_wiki_pages(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [MOCK_WIKI_PROJECT]
+
+    mock_wikis_response = MagicMock()
+    mock_wikis_response.json.return_value = {
+        "value": [
+            {"id": "wiki-guid-1", "name": "Project One.wiki", "type": "projectWiki"},
+        ]
+    }
+
+    mock_pages_response = MagicMock()
+    mock_pages_response.json.return_value = {"value": MOCK_WIKI_PAGES}
+    mock_pages_response.headers = {}
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "send_request",
+                side_effect=[mock_wikis_response, mock_pages_response],
+            ),
+        ):
+            pages: List[Dict[str, Any]] = []
+            async for batch in client.generate_wiki_pages():
+                pages.extend(batch)
+
+            assert len(pages) == 2
+            assert pages[0]["path"] == "/Home"
+            assert pages[0]["__wiki"]["name"] == "Project One.wiki"
+            assert pages[0]["__project"] == MOCK_WIKI_PROJECT
+
+
+@pytest.mark.asyncio
+async def test_generate_wiki_pages_filters_by_type(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [MOCK_WIKI_PROJECT]
+
+    mock_wikis_response = MagicMock()
+    mock_wikis_response.json.return_value = {
+        "value": [
+            {"id": "wiki-guid-1", "name": "Project One.wiki", "type": "projectWiki"},
+            {"id": "wiki-guid-2", "name": "Code Docs", "type": "codeWiki"},
+        ]
+    }
+
+    mock_pages_response = MagicMock()
+    mock_pages_response.json.return_value = {
+        "value": [{"id": 1, "path": "/Home"}],
+    }
+    mock_pages_response.headers = {}
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "send_request",
+                side_effect=[mock_wikis_response, mock_pages_response],
+            ),
+        ):
+            pages: List[Dict[str, Any]] = []
+            async for batch in client.generate_wiki_pages(wiki_type="projectWiki"):
+                pages.extend(batch)
+
+            assert len(pages) == 1
+            assert pages[0]["__wiki"]["type"] == "projectWiki"
+
+
+@pytest.mark.asyncio
+async def test_generate_wiki_pages_with_content_enrichment(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [MOCK_WIKI_PROJECT]
+
+    mock_wikis_response = MagicMock()
+    mock_wikis_response.json.return_value = {
+        "value": [
+            {"id": "wiki-guid-1", "name": "Project One.wiki", "type": "projectWiki"},
+        ]
+    }
+
+    mock_pages_response = MagicMock()
+    mock_pages_response.json.return_value = {
+        "value": [{"id": 1, "path": "/Home"}],
+    }
+    mock_pages_response.headers = {}
+
+    mock_content_response = MagicMock()
+    mock_content_response.json.return_value = {
+        "id": 1,
+        "path": "/Home",
+        "content": "# Welcome to the wiki",
+    }
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "send_request",
+                side_effect=[
+                    mock_wikis_response,
+                    mock_pages_response,
+                    mock_content_response,
+                ],
+            ),
+        ):
+            pages: List[Dict[str, Any]] = []
+            async for batch in client.generate_wiki_pages(include_content=True):
+                pages.extend(batch)
+
+            assert len(pages) == 1
+            assert pages[0]["content"] == "# Welcome to the wiki"
+            assert pages[0]["__wiki"]["name"] == "Project One.wiki"
+            assert pages[0]["__project"] == MOCK_WIKI_PROJECT
+
+
+@pytest.mark.asyncio
+async def test_enrich_pages_with_content_handles_failure() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    semaphore = asyncio.BoundedSemaphore(10)
+
+    pages = [{"id": 1, "path": "/Good"}, {"id": 2, "path": "/Bad"}]
+
+    mock_good_response = MagicMock()
+    mock_good_response.json.return_value = {
+        "id": 1,
+        "path": "/Good",
+        "content": "good content",
+    }
+
+    with patch.object(client, "send_request", side_effect=[mock_good_response, None]):
+        result = await client._enrich_pages_with_content(
+            "proj1", MOCK_WIKI, pages, semaphore
+        )
+
+        assert len(result) == 2
+        assert result[0]["content"] == "good content"
+        assert result[1]["path"] == "/Bad"
+        assert result[1]["__wiki"] == MOCK_WIKI
+
+
+@pytest.mark.asyncio
+async def test_generate_wiki_pages_passes_api_version(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [MOCK_WIKI_PROJECT]
+
+    mock_wikis_response = MagicMock()
+    mock_wikis_response.json.return_value = {
+        "value": [
+            {"id": "wiki-guid-1", "name": "Project One.wiki", "type": "projectWiki"},
+        ]
+    }
+
+    mock_pages_response = MagicMock()
+    mock_pages_response.json.return_value = {"value": MOCK_WIKI_PAGES}
+    mock_pages_response.headers = {}
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "send_request",
+                side_effect=[mock_wikis_response, mock_pages_response],
+            ) as mock_send,
+        ):
+            async for _ in client.generate_wiki_pages(api_version="6.0"):
+                pass
+
+            wikis_call = mock_send.call_args_list[0]
+            assert wikis_call.kwargs["params"]["api-version"] == "6.0"
+
+            pages_call = mock_send.call_args_list[1]
+            assert pages_call.kwargs["params"]["api-version"] == "6.0"

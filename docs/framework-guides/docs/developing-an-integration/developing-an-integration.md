@@ -42,7 +42,7 @@ These steps do not follow a specific order. Some steps only become relevant near
 5. **Define resource mappings** in the [`.port/resources`](./defining-configuration-files.md) directory including blueprints, entity mappings, and selectors for resource filtering.
 6. **Test your integration** thoroughly with unit tests, integration tests, webhook processing tests, and resync functionality tests as described in [testing guide](./testing-the-integration.md).
 7. **Document** your integration including README with setup instructions, CHANGELOG for version history, API documentation, and example configurations.
-8. **Publish** your [integration](./publishing-your-integration.md) for others to use by creating a changelog, bumping version in `pyproject.toml`, and submitting a pull request to the Ocean repository.
+8. **Publish** your [integration](./publishing-your-integration.md) for others to use by adding a release intent file (changeset) or manually bumping the version in `pyproject.toml` and submitting a pull request to the Ocean repository.
 
 :::tip Integration Performance
 Be sure to review the integration [performance](./performance.md) and [code guidelines](./guidelines.md) to ensure your integration is efficient and well-written. Consider handling rate limiting, implementing pagination, using async code, supporting multi-account scenarios, managing webhook processing, and optimizing resync operations.

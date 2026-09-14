@@ -2,9 +2,9 @@ from typing import Any, Literal
 
 from fastapi import APIRouter
 from loguru import logger
-from pydantic.v1 import AnyHttpUrl
-from pydantic.v1.fields import Field
 
+from port_ocean.config.base import sensitive_field
+from port_ocean.config.dynamic import NoTrailingSlashUrl
 from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
@@ -21,12 +21,11 @@ class HttpEventListenerSettings(EventListenerSettings):
 
     Attributes:
         type (EventListenerType): A literal indicating the type of the event listener, which is set to "WEBHOOK" for this class.
-        app_host (AnyHttpUrl): The base URL of the application hosting the webhook.
-                               The "AnyHttpUrl" type indicates that the value must be a valid HTTP/HTTPS URL.
+        app_host (NoTrailingSlashUrl): The base URL of the application hosting the webhook.
     """
 
     type: Literal[EventListenerType.WEBHOOK]
-    app_host: AnyHttpUrl = Field(..., sensitive=True)
+    app_host: NoTrailingSlashUrl = sensitive_field()
 
     def get_changelog_destination_details(self) -> dict[str, Any]:
         """
@@ -39,7 +38,7 @@ class HttpEventListenerSettings(EventListenerSettings):
         """
         return {
             "type": self.type,
-            "url": self.app_host + "/resync",
+            "url": f"{self.app_host}/resync",
         }
 
 

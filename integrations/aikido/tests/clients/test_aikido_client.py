@@ -369,6 +369,127 @@ async def test_get_paginated_resource_falls_back_to_count_heuristic_when_no_head
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_resource_continues_on_empty_page_when_has_next_header_true(
+    aikido_client: AikidoClient,
+) -> None:
+    """An empty page must not end pagination while x-has-next-page is true.
+
+    Aikido documents that a filtered request (e.g. filter_team_id) can return an empty
+    body while the header still reports another page. Stopping here truncates the
+    extract and lets reconciliation delete live entities.
+    """
+    populated_page = [{"id": "1"}, {"id": "2"}]
+    responses: list[list[dict[str, Any]]] = [[], populated_page]
+    headers_per_call = [{"x-has-next-page": "true"}, {"x-has-next-page": "false"}]
+    captured_params: list[dict[str, Any]] = []
+
+    with patch.object(
+        aikido_client, "_execute_request", new_callable=AsyncMock
+    ) as mock_exec:
+
+        async def _side_effect(
+            endpoint: str,
+            method: str = "GET",
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> MagicMock:
+            if params is not None:
+                captured_params.append(params.copy())
+            mock_resp = MagicMock(spec=Response)
+            mock_resp.json.return_value = responses.pop(0)
+            mock_resp.headers = headers_per_call.pop(0)
+            return mock_resp
+
+        mock_exec.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_paginated_resource(
+            endpoint="api/public/v1/open-issue-groups",
+            resource_name="open issue groups",
+            page_size=20,
+        ):
+            batches.append(batch)
+
+    assert batches == [populated_page]
+    assert mock_exec.call_count == 2
+    assert captured_params == [
+        {"per_page": 20, "page": 0},
+        {"per_page": 20, "page": 1},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resource_stops_on_empty_page_when_has_next_header_false(
+    aikido_client: AikidoClient,
+) -> None:
+    """An empty page with x-has-next-page: false ends pagination without yielding."""
+
+    with patch.object(
+        aikido_client, "_execute_request", new_callable=AsyncMock
+    ) as mock_exec:
+
+        async def _side_effect(
+            endpoint: str,
+            method: str = "GET",
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> MagicMock:
+            mock_resp = MagicMock(spec=Response)
+            mock_resp.json.return_value = []
+            mock_resp.headers = {"x-has-next-page": "false"}
+            return mock_resp
+
+        mock_exec.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_paginated_resource(
+            endpoint="api/public/v1/open-issue-groups",
+            resource_name="open issue groups",
+            page_size=20,
+        ):
+            batches.append(batch)
+
+    assert batches == []
+    assert mock_exec.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resource_stops_on_empty_page_when_no_header(
+    aikido_client: AikidoClient,
+) -> None:
+    """Endpoints that send no header (/teams, /repositories/code, /containers,
+    /issues/export) must still stop on an empty page."""
+
+    with patch.object(
+        aikido_client, "_execute_request", new_callable=AsyncMock
+    ) as mock_exec:
+
+        async def _side_effect(
+            endpoint: str,
+            method: str = "GET",
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> MagicMock:
+            mock_resp = MagicMock(spec=Response)
+            mock_resp.json.return_value = []
+            mock_resp.headers = {}
+            return mock_resp
+
+        mock_exec.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_paginated_resource(
+            endpoint="api/public/v1/teams",
+            resource_name="teams",
+            page_size=20,
+        ):
+            batches.append(batch)
+
+    assert batches == []
+    assert mock_exec.call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_get_open_issue_groups_paginates(aikido_client: AikidoClient) -> None:
     page1 = [{"id": str(i)} for i in range(1, 21)]
     page2 = [{"id": "21"}]

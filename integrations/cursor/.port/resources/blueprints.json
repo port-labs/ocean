@@ -255,5 +255,33 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "cursorTeamSkillUsage",
+    "description": "Daily team-level skill adoption metrics from the Cursor Analytics API",
+    "title": "Cursor Team Skill Usage",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "event_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Event Date"
+        },
+        "skill_name": {
+          "type": "string",
+          "title": "Skill Name"
+        },
+        "usage": {
+          "type": "number",
+          "title": "Usage Count"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]

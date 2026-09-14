@@ -1,4 +1,8 @@
-from core.options_builder import build_admin_options, build_analytics_options
+from core.options_builder import (
+    build_admin_options,
+    build_analytics_options,
+    build_team_skill_usage_options,
+)
 
 
 def test_build_analytics_options() -> None:
@@ -6,6 +10,22 @@ def test_build_analytics_options() -> None:
     assert result["startDate"] == "30d"
     assert result["endDate"] == "0d"
     assert set(result.keys()) == {"startDate", "endDate"}
+
+
+def test_build_team_skill_usage_options_omits_users_when_unset() -> None:
+    result = build_team_skill_usage_options("30d", "0d")
+    assert result == {"startDate": "30d", "endDate": "0d"}
+
+
+def test_build_team_skill_usage_options_passes_users_filter() -> None:
+    result = build_team_skill_usage_options(
+        "14d", "0d", users="alice@example.com,user_abc123"
+    )
+    assert result == {
+        "startDate": "14d",
+        "endDate": "0d",
+        "users": "alice@example.com,user_abc123",
+    }
 
 
 def test_build_admin_options_converts_to_epoch_ms() -> None:

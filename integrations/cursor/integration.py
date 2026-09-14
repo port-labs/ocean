@@ -17,6 +17,7 @@ class ObjectKind(StrEnum):
     CURSOR_USAGE_EVENT = "cursor-usage-event"
     CURSOR_TEAM_MODEL_USAGE = "cursor-team-model-usage"
     CURSOR_USER_MODEL_USAGE = "cursor-user-model-usage"
+    CURSOR_TEAM_SKILL_USAGE = "cursor-team-skill-usage"
 
 
 class CursorRelativeDateSelector(Selector):
@@ -79,6 +80,28 @@ class CursorUserModelUsageResourceConfig(ResourceConfig):
     )
 
 
+class CursorTeamSkillUsageSelector(CursorRelativeDateSelector):
+    users: str | None = Field(
+        default=None,
+        title="Users Filter",
+        description=(
+            "Optional comma-separated user emails or user IDs "
+            "(e.g. alice@example.com,user_abc123)."
+        ),
+    )
+
+
+class CursorTeamSkillUsageResourceConfig(ResourceConfig):
+    kind: Literal["cursor-team-skill-usage"] = Field(
+        description="Cursor team-level skill usage resource kind",
+        title="Cursor Team Skill Usage",
+    )
+    selector: CursorTeamSkillUsageSelector = Field(
+        description="Relative date window and optional user filter for skill usage analytics.",
+        title="Team Skill Usage Selector",
+    )
+
+
 class CursorDailyUsageResourceConfig(ResourceConfig):
     kind: Literal["cursor-daily-usage"] = Field(
         description="Cursor daily usage data resource kind",
@@ -105,6 +128,7 @@ class CursorPortAppConfig(PortAppConfig):
     resources: list[
         CursorTeamModelUsageResourceConfig
         | CursorUserModelUsageResourceConfig
+        | CursorTeamSkillUsageResourceConfig
         | CursorDailyUsageResourceConfig
         | CursorUsageEventResourceConfig
     ] = Field(

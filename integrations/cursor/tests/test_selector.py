@@ -1,6 +1,6 @@
 import pytest
 
-from integration import CursorRelativeDateSelector
+from integration import CursorRelativeDateSelector, CursorTeamSkillUsageSelector
 
 
 def test_selector_defaults_are_valid() -> None:
@@ -28,3 +28,11 @@ def test_selector_rejects_start_before_end() -> None:
 def test_selector_rejects_non_relative_format() -> None:
     with pytest.raises(ValueError):
         CursorRelativeDateSelector(query="true", startDate="2026-01-01", endDate="0d")
+
+
+def test_team_skill_usage_selector_accepts_optional_users_filter() -> None:
+    selector = CursorTeamSkillUsageSelector(
+        query="true",
+        users="alice@example.com,user_abc123",
+    )
+    assert selector.users == "alice@example.com,user_abc123"

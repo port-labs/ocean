@@ -123,7 +123,10 @@ class GCPCloudFunctionSelector(Selector):
 
 
 class GCPCloudFunctionResourceConfig(ResourceConfig):
-    kind: Literal["gcpCloudFunction"] = "gcpCloudFunction"
+    kind: Literal["gcpCloudFunction"] = Field(
+        title="GCP Cloud Function",
+        description="GCP cloud-function sync protocol resource kind.",
+    )
     selector: GCPCloudFunctionSelector = Field(
         title="Cloud Function Selector",
         description="Selector for a resource served by the cloud-function sync protocol.",

@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import re
 from contextlib import contextmanager
@@ -16,7 +17,6 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
-    RESYNC_EVENT_LISTENER,
     RESYNC_RESULT,
 )
 from port_ocean.core.utils.utils import validate_result
@@ -70,16 +70,37 @@ def selector_query_from_resource(resource: ResourceConfig) -> str | None:
     return trimmed if trimmed else None
 
 
-def selector_hash_from_query(query: str) -> str:
-    return hashlib.sha256(query.encode("utf-8")).hexdigest()
+def selector_hash_from_selector(selector: str) -> str:
+    return hashlib.sha256(selector.encode("utf-8")).hexdigest()
+
+
+def _selector_without_query(resource: ResourceConfig) -> dict[str, Any] | None:
+    selector = getattr(resource, "selector", None)
+    if selector is None:
+        return None
+
+    if hasattr(selector, "dict"):
+        selector_payload = selector.dict(
+            by_alias=True, exclude_none=True, exclude_unset=True
+        )
+    elif isinstance(selector, dict):
+        selector_payload = dict(selector)
+    else:
+        selector_payload = dict(getattr(selector, "__dict__", {}))
+
+    selector_payload.pop("query", None)
+    return selector_payload
 
 
 def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
-    query = selector_query_from_resource(resource)
-    if not query:
+    selector_without_query = _selector_without_query(resource)
+    if selector_without_query is None:
         return None
 
-    return selector_hash_from_query(query)
+    normalized_selector = json.dumps(
+        selector_without_query, sort_keys=True, separators=(",", ":")
+    )
+    return selector_hash_from_selector(normalized_selector)
 
 
 async def is_lakehouse_data_enabled() -> bool:
@@ -149,8 +170,9 @@ async def is_dsp_mode_enabled() -> bool:
 async def is_redis_live_events_enabled() -> bool:
     """Check if live events should be consumed from a Redis stream.
 
-    Gated by the organization feature flag and the integration-level
-    ``OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED`` setting (default false).
+    Gated by the integration-level
+    ``OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED`` setting (default false)
+    and whether the organization is blocked.
     Errors are swallowed so this never blocks core flows.
 
     Returns:
@@ -159,11 +181,12 @@ async def is_redis_live_events_enabled() -> bool:
     try:
         if not ocean.config.live_events.is_redis_stream_consumer_enabled:
             return False
-        flags = await ocean.port_client.get_organization_feature_flags()
-        return IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED in flags
+        if await ocean.port_client.is_organization_blocked():
+            return False
+        return True
     except Exception as e:
         logger.bind(local_only=True).warning(
-            f"Failed to check Redis live events feature flags, assuming disabled: {e}"
+            f"Failed to check Redis live events settings, assuming disabled: {e}"
         )
         return False
 
@@ -351,11 +374,6 @@ async def resync_generator_wrapper(
                 "At least one of the resync generator iterations failed", errors
             )
 
-
-def is_resource_supported(
-    kind: str, resync_event_mapping: dict[str | None, list[RESYNC_EVENT_LISTENER]]
-) -> bool:
-    return bool(resync_event_mapping[kind] or resync_event_mapping[None])
 
 def unsupported_kind_response(
     kind: str, available_resync_kinds: list[str]

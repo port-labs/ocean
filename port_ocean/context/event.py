@@ -44,6 +44,7 @@ class EventType:
     HTTP_REQUEST = "http_request"
     ACTION_RUN = "action_run"
     INCREMENTAL_RESYNC = "incremental_resync"
+    ON_PROBE = "on_probe"
 
 
 @dataclass
