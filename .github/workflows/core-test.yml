@@ -58,39 +58,30 @@ jobs:
           load-created-image: 'true'
           skip-login: 'true'
 
-      - name: Run fake integration for core test
+      - name: Smoke tests
         if: env.RUN_SMOKE_TESTS == 'true'
         env:
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append
           PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
           SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
+          SMOKE_JUNIT_DIR: junit/smoke-test-results-ocean
           OCEAN__CACHING_STORAGE_MODE: memory
         run: |
-          ./scripts/run-smoke-test.sh
-
-      - name: Smoke Test Core
-        if: env.RUN_SMOKE_TESTS == 'true'
-        env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
-        run: |
-          make smoke/test
+          chmod +x ./scripts/smoke-integration.sh
+          ./scripts/smoke-integration.sh run-all
 
       - name: Cleanup Smoke Test
         if: always() && env.RUN_SMOKE_TESTS == 'true'
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
         run: |
-          make smoke/clean
+          ./scripts/smoke-integration.sh clean-all
 
       - name: List integrations with tests
         id: list-integrations
