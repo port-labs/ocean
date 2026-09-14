@@ -31,23 +31,23 @@ class CreatePullRequestExecutor(AbstractPullRequestExecutor):
             should_raise=False,
         )
 
-        body: dict[str, str | bool] = {
+        request_body: dict[str, str | bool] = {
             "title": title,
             "head": head,
             "base": base,
         }
         pr_body = run.execution_properties.get("body")
         if pr_body:
-            body["body"] = pr_body
+            request_body["body"] = pr_body
         draft = run.execution_properties.get("draft")
         if draft is not None:
-            body["draft"] = draft
+            request_body["draft"] = draft
 
         try:
             pr = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{org}/{repo}/pulls",
                 method="POST",
-                json_data=body,
+                json_data=request_body,
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:

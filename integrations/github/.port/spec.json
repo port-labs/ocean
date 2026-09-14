@@ -428,7 +428,8 @@
           "name": "state",
           "title": "State",
           "type": "string",
-          "description": "The state of the pull request (open or closed)"
+          "description": "The state of the pull request (open or closed)",
+          "enum": ["open", "closed"]
         },
         {
           "name": "base",
@@ -497,7 +498,8 @@
           "title": "Merge method",
           "type": "string",
           "description": "The merge method to use: merge, squash, or rebase",
-          "default": "merge"
+          "enum": ["merge", "squash", "rebase"],
+          "required": true
         },
         {
           "name": "commitTitle",
@@ -544,6 +546,7 @@
           "title": "Review event",
           "type": "string",
           "description": "The review action: APPROVE, REQUEST_CHANGES, or COMMENT",
+          "enum": ["APPROVE", "REQUEST_CHANGES", "COMMENT"],
           "required": true
         },
         {

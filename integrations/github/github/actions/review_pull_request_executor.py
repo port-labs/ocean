@@ -19,6 +19,7 @@ class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
         repo = run.execution_properties.get("repo")
         pr_number = run.execution_properties.get("prNumber")
         event = run.execution_properties.get("event")
+        comment = run.execution_properties.get("body")
 
         if not (org and repo and pr_number and event):
             raise InvalidActionParametersException(
@@ -30,12 +31,10 @@ class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
                 f"event must be one of: {', '.join(sorted(VALID_REVIEW_EVENTS))}"
             )
 
-        if event == "REQUEST_CHANGES":
-            body = run.execution_properties.get("body")
-            if not body:
-                raise InvalidActionParametersException(
-                    "body is required when event is REQUEST_CHANGES"
-                )
+        if event == "REQUEST_CHANGES" and not comment:
+            raise InvalidActionParametersException(
+                "body is required when event is REQUEST_CHANGES"
+            )
 
         rest_client = await self._get_rest_client(run)
 
@@ -46,9 +45,8 @@ class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
         )
 
         review_body: dict[str, str] = {"event": event}
-        body = run.execution_properties.get("body")
-        if body:
-            review_body["body"] = body
+        if comment:
+            review_body["body"] = comment
 
         try:
             result = await rest_client.send_api_request(
