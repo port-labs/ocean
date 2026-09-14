@@ -5,20 +5,13 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import IssueActionError
-from github.clients.http.rest_client import GithubRestClient
+from github.actions.utils import validate_issue_state_reason
 from github.helpers.exceptions import InvalidActionParametersException
 
 
 class CloseIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "close_issue"
     WEBHOOK_PROCESSOR_CLASS = None
-
-    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
-        org = run.execution_properties.get("org")
-        repo = run.execution_properties.get("repo")
-        if not org or not repo:
-            return None
-        return f"{org}/{repo}"
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -30,12 +23,15 @@ class CloseIssueExecutor(AbstractGithubExecutor):
                 "org, repo, and issueNumber are required"
             )
 
-        rest_client = (await self._get_execution_clients(run))[0]
-        if not isinstance(rest_client, GithubRestClient):
-            raise InvalidActionParametersException("GitHub REST client is required")
+        state_reason = run.execution_properties.get("stateReason")
+        if not state_reason:
+            raise InvalidActionParametersException("stateReason is required")
+        try:
+            validate_issue_state_reason(state_reason)
+        except ValueError as e:
+            raise InvalidActionParametersException(str(e))
 
-        # https://docs.github.com/en/rest/issues/issues#update-an-issue
-        state_reason = run.execution_properties.get("stateReason", "completed")
+        rest_client = await self._get_rest_client(run)
 
         await ocean.port_client.post_run_log(
             run,
