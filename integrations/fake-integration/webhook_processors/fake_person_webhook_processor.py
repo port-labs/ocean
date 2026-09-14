@@ -1,4 +1,3 @@
-from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -26,6 +25,5 @@ class FakePersonWebhookProcessor(AbstractFakeWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         person = await get_random_person_from_batch()
-        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-            await ocean.register_raw(ObjectKind.PERSON, [person])
+        await ocean.register_raw(ObjectKind.PERSON, [person])
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
