@@ -20,18 +20,22 @@ class AzureDevopsActionError(ActionExecutionError):
 
     @staticmethod
     def _response_detail(response: httpx.Response) -> str:
-        try:
-            body = response.json()
-        except Exception:
-            body = None
+        return _azure_devops_response_detail(response)
 
-        if isinstance(body, dict):
-            message = body.get("message")
-            if message is not None:
-                return message if isinstance(message, str) else json.dumps(message)
 
-        text = response.text.strip()
-        return text or f"HTTP {response.status_code}"
+def _azure_devops_response_detail(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+    except Exception:
+        body = None
+
+    if isinstance(body, dict):
+        message = body.get("message")
+        if message is not None:
+            return message if isinstance(message, str) else json.dumps(message)
+
+    text = response.text.strip()
+    return text or f"HTTP {response.status_code}"
 
 
 class InvalidActionParametersError(AzureDevopsActionError):
@@ -52,7 +56,25 @@ class TriggerPipelineError(AzureDevopsActionError):
     DEFAULT_STATUS_LABEL = "Trigger failed"
 
 
+class CreatePullRequestError(AzureDevopsActionError):
+    """Raised when the Azure DevOps API returns an error while creating a pull request."""
+
+    DEFAULT_STATUS_LABEL = "Create Pull Request failed"
+
+
+class MergePullRequestError(AzureDevopsActionError):
+    """Raised when the Azure DevOps API returns an error while merging a pull request."""
+
+    DEFAULT_STATUS_LABEL = "Merge Pull Request failed"
+
+
 class UpdatePullRequestError(AzureDevopsActionError):
     """Raised when the Azure DevOps API returns an error while updating a pull request."""
 
-    DEFAULT_STATUS_LABEL = "Update failed"
+    DEFAULT_STATUS_LABEL = "Update Pull Request failed"
+
+
+class ClosePullRequestError(AzureDevopsActionError):
+    """Raised when the Azure DevOps API returns an error while closing a pull request."""
+
+    DEFAULT_STATUS_LABEL = "Close Pull Request failed"

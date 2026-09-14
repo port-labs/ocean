@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.51.3 (2026-09-14)
+
+
+### Improvements
+
+- Redis live-events stream consumption no longer requires the LIVE_EVENTS_REDIS_STREAM_ENABLED organization feature flag and is disabled for blocked organizations instead.
+
+
+## 0.51.2 (2026-09-10)
+
+
+### Bug Fixes
+
+- Cancel in-flight polling resyncs when a newer resync request arrives, without blocking the polling loop
+
+
 ## 0.51.1 (2026-09-07)
 
 
