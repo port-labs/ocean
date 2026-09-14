@@ -115,6 +115,25 @@ def test_skill_usage_selector_rejects_malformed_starting_date() -> None:
         ClaudeAISkillUsageSelector(query="true", startingDate="not-a-date")
 
 
+def test_skill_usage_selector_defaults_group_by_empty() -> None:
+    sel = ClaudeAISkillUsageSelector(query="true")
+    assert sel.group_by == []
+
+
+def test_skill_usage_selector_accepts_group_by() -> None:
+    sel = ClaudeAISkillUsageSelector(
+        query="true", timeFrame=7, groupBy=["user_id", "product", "rbac_group_id"]
+    )
+    assert sel.group_by == ["user_id", "product", "rbac_group_id"]
+
+
+def test_skill_usage_selector_rejects_unknown_group_by() -> None:
+    with pytest.raises(ValidationError):
+        ClaudeAISkillUsageSelector(
+            query="true", groupBy=["workspace_id"]  # type: ignore[list-item]
+        )
+
+
 # ---------------------------------------------------------------------------
 # Claude AI user report selector (shared by usage and cost)
 # ---------------------------------------------------------------------------
