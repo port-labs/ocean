@@ -143,8 +143,7 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
             title="Changed After",
             description=(
                 "Only include work items changed on or after this date (ISO 8601; "
-                "date precision only)."
-                + _INCREMENTAL_SYNC_SELECTOR_NOTE
+                "date precision only)." + _INCREMENTAL_SYNC_SELECTOR_NOTE
             ),
         )
 
