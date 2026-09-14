@@ -20,6 +20,7 @@ class ResyncStateUpdater:
         # TODO: remove this once we separate the state from the integration
         self.last_integration_state_updated_at: str = ""
         self.last_resync_request_updated_at: str | None = None
+        self.supersede_in_progress: bool = False
 
     def _calculate_next_scheduled_resync(
         self,

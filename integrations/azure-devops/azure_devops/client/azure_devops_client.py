@@ -1900,6 +1900,121 @@ class AzureDevopsClient(HTTPBaseClient):
         pull_request_data = response.json()
         return pull_request_data
 
+    async def update_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a pull request.
+
+        API: PATCH {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update
+        """
+        update_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        logger.info(
+            f"Updating pull request {pull_request_id} in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "PATCH",
+            update_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to update pull request {pull_request_id} in repository "
+                f"{repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def close_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Abandon a pull request without merging it."""
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {"status": "abandoned"},
+        )
+
+    async def get_repository_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any] | None:
+        """Get a pull request scoped to a project and repository."""
+        get_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        response = await self.send_request(
+            "GET",
+            get_pull_request_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return None
+        return response.json()
+
+    async def merge_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Merge a pull request."""
+        pull_request = await self.get_repository_pull_request(
+            project, repository_id, pull_request_id
+        )
+        if not pull_request:
+            raise RuntimeError(
+                f"Pull request '{pull_request_id}' was not found in repository "
+                f"'{repository_id}'"
+            )
+
+        last_merge_source_commit = pull_request.get("lastMergeSourceCommit")
+        commit_id = (
+            last_merge_source_commit.get("commitId")
+            if isinstance(last_merge_source_commit, dict)
+            else None
+        )
+        if not commit_id:
+            raise RuntimeError(
+                "Pull request is not ready to merge: lastMergeSourceCommit is missing. "
+                "Wait for Azure DevOps to finish computing the merge preview and retry."
+            )
+
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {
+                "status": "completed",
+                "lastMergeSourceCommit": last_merge_source_commit,
+            },
+        )
+
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
