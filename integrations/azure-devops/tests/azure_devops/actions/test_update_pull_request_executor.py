@@ -20,7 +20,6 @@ from azure_devops.actions.update_pull_request_executor import (
     _has_update_fields,
     _normalize_optional_string_inputs,
     _parse_policy_config_ids,
-    _parse_update_pull_request_inputs,
 )
 
 PULL_REQUEST_URL = "https://dev.azure.com/org/proj/_git/repo/pullrequest/42"
@@ -89,8 +88,10 @@ def _valid_props(**overrides: Any) -> dict[str, Any]:
     return props
 
 
-def test_parse_update_pull_request_inputs_accepts_valid_strings() -> None:
-    inputs = _parse_update_pull_request_inputs(
+def test_update_pull_request_inputs_from_execution_properties_accepts_valid_strings() -> (
+    None
+):
+    inputs = UpdatePullRequestInputs.from_execution_properties(
         {
             "project": "proj-guid",
             "repositoryId": "repo-guid",
@@ -258,7 +259,9 @@ def test_has_update_fields_ignores_blank_strings_without_normalization() -> None
     assert _has_update_fields(inputs, None, None) is False
 
 
-def test_build_update_pull_request_body_ignores_blank_strings_without_normalization() -> None:
+def test_build_update_pull_request_body_ignores_blank_strings_without_normalization() -> (
+    None
+):
     inputs = UpdatePullRequestInputs(
         project="proj-guid",
         repositoryId="repo-guid",
@@ -290,16 +293,18 @@ def test_build_update_pull_request_body_ignores_blank_strings_without_normalizat
         },
     ],
 )
-def test_parse_update_pull_request_inputs_rejects_missing_or_empty_values(
+def test_update_pull_request_inputs_from_execution_properties_rejects_missing_or_empty_values(
     properties: dict[str, str],
 ) -> None:
-    with pytest.raises(ValueError):
-        _parse_update_pull_request_inputs(properties)
+    with pytest.raises(InvalidActionParametersError):
+        UpdatePullRequestInputs.from_execution_properties(properties)
 
 
-def test_parse_update_pull_request_inputs_rejects_non_string_values() -> None:
-    with pytest.raises(ValueError):
-        _parse_update_pull_request_inputs(
+def test_update_pull_request_inputs_from_execution_properties_rejects_non_string_values() -> (
+    None
+):
+    with pytest.raises(InvalidActionParametersError):
+        UpdatePullRequestInputs.from_execution_properties(
             {
                 "project": "proj-guid",
                 "repositoryId": "repo-guid",

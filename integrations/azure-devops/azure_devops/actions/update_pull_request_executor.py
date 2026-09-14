@@ -2,10 +2,13 @@ from typing import Any, Optional, Sequence
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import Field
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
+from azure_devops.actions.abstract_ado_action_input import (
+    AbstractAzureDevopsActionInput,
+)
 from azure_devops.actions.abstract_ado_executor import AbstractAzureDevopsExecutor
 from azure_devops.actions.exceptions import (
     InvalidActionParametersError,
@@ -37,9 +40,7 @@ UPDATE_FIELD_NAMES = (
 )
 
 
-class UpdatePullRequestInputs(BaseModel):
-    model_config = ConfigDict(extra="ignore", strict=True)
-
+class UpdatePullRequestInputs(AbstractAzureDevopsActionInput):
     project: str = Field(min_length=1)
     repositoryId: str = Field(min_length=1)
     pullRequestId: str = Field(min_length=1)
@@ -58,19 +59,6 @@ class UpdatePullRequestInputs(BaseModel):
     conflictAuthorshipCommits: bool | None = None
     detectRenameFalsePositives: bool | None = None
     autoCompleteSetById: str | None = None
-
-
-def _parse_update_pull_request_inputs(
-    execution_properties: dict[str, Any],
-) -> UpdatePullRequestInputs:
-    try:
-        return UpdatePullRequestInputs.model_validate(execution_properties)
-    except ValidationError as error:
-        messages = [
-            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
-            for err in error.errors()
-        ]
-        raise ValueError("; ".join(messages)) from error
 
 
 OPTIONAL_STRING_FIELDS = (
@@ -100,7 +88,9 @@ def _normalize_optional_string_inputs(
         field: _blank_to_none(getattr(inputs, field))
         for field in OPTIONAL_STRING_FIELDS
     }
-    if all(getattr(inputs, field) == updates[field] for field in OPTIONAL_STRING_FIELDS):
+    if all(
+        getattr(inputs, field) == updates[field] for field in OPTIONAL_STRING_FIELDS
+    ):
         return inputs
     return inputs.model_copy(update=updates)
 
@@ -241,14 +231,16 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
     async def execute(self, run: IntegrationRun) -> None:
         logger.info(f"Updating pull request for action run {run.id}", run_id=run.id)
         try:
-            inputs = _parse_update_pull_request_inputs(run.execution_properties)
-        except ValueError as error:
+            inputs = UpdatePullRequestInputs.from_execution_properties(
+                run.execution_properties
+            )
+        except InvalidActionParametersError as error:
             logger.warning(
                 f"Invalid parameters for action run {run.id}",
                 run_id=run.id,
                 error=str(error),
             )
-            raise InvalidActionParametersError(str(error)) from error
+            raise
 
         inputs = _normalize_optional_string_inputs(inputs)
 
@@ -362,7 +354,6 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
             run,
             success=True,
             message=message,
-            status_label="Updated",
         )
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
