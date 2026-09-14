@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added sync and async actions to fake-integration for ocean core action and workflow smoke tests
