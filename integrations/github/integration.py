@@ -1297,8 +1297,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
                 logger.debug("Using Port integration config from API")
                 return raw_config
 
-            logger.warning(
-                "Integration Port app config is empty and no repoManagedMapping "
-                "flag was specified; resync will be skipped until resources are configured"
+            logger.info(
+                "The integration port app config is empty; "
+                "resync will be skipped until resources are configured."
             )
             return {}
