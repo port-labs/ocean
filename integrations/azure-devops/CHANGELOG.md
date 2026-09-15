@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.16.0 (2026-09-15)
+
+
+### Features
+
+- Added an update_pull_request action that updates an Azure DevOps pull request's title, description, target branch or status, so a pull request can be completed, abandoned or reactivated from Port.
+
+
+## 0.15.3 (2026-09-14)
+
+
+### Features
+
+- Added a create_pull_request action that creates an Azure DevOps pull request
+
+
 ## 0.15.2 (2026-09-14)
 
 

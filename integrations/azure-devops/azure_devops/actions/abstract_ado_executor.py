@@ -6,10 +6,19 @@ from azure_devops.actions.exceptions import MultipleOrganizationsNotSupportedErr
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.client.client_manager import AzureDevopsClientManager
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
 from port_ocean.core.models import IntegrationRun
 
 
 class AbstractAzureDevopsExecutor(AbstractExecutor):
+    # `AbstractExecutor` declares this as an annotation only, so executors that
+    # complete synchronously rely on this default when `register_executor` reads
+    # it. The explicit type keeps mypy happy when a subclass overrides it with a
+    # processor class.
+    WEBHOOK_PROCESSOR_CLASS: Optional[type[AbstractWebhookProcessor]] = None
+
     def __init__(self) -> None:
         self._client: Optional[AzureDevopsClient] = None
 
