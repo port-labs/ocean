@@ -68,7 +68,9 @@ class MergePullRequestExecutor(AbstractPullRequestExecutor):
                 f"Failed to merge pull request #{pr_number}: {message}"
             )
 
-        base_url = rest_client.base_url.replace("api.github.com", "github.com").replace("/api/v3", "")
+        base_url = rest_client.base_url.replace("api.github.com", "github.com").replace(
+            "/api/v3", ""
+        )
         pr_url = f"{base_url}/{org}/{repo}/pull/{pr_number}"
         logger.info(
             f"Merged pull request #{pr_number} in {org}/{repo}",
