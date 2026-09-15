@@ -7,6 +7,7 @@ from linear.actions.types.base import LinearActionPayload, MutationPayloadT
 from linear.actions.types.issue import (
     CreateIssuePayload,
     CreateSubIssuePayload,
+    DelegateIssuePayload,
     UpdateIssuePayload,
 )
 from linear.core.mutations.issue_mutation_payload import (
@@ -98,6 +99,13 @@ ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
                 "labelIds": ["label-1"],
             },
             id="update_issue",
+        ),
+        pytest.param(
+            DelegateIssuePayload,
+            {"issueId": "ENG-1", "delegateId": "agent-1"},
+            IssueUpdateMutationPayload,
+            {"delegateId": "agent-1"},
+            id="delegate_issue_to_agent",
         ),
     ],
 )
