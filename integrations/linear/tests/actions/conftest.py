@@ -10,6 +10,8 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
+from linear.core.mutations.issue.types import MutationIssue
+
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> WorkflowNodeRun:
     return WorkflowNodeRun(
@@ -43,21 +45,21 @@ def mock_linear_client() -> MagicMock:
 def mock_issue_mutations() -> MagicMock:
     mutations = MagicMock()
     mutations.create_issue = AsyncMock(
-        return_value={
-            "id": "issue-1",
-            "identifier": "ENG-1",
-            "title": "Test issue",
-            "url": "https://linear.app/test/issue/ENG-1",
-        }
+        return_value=MutationIssue(
+            id="issue-1",
+            identifier="ENG-1",
+            title="Test issue",
+            url="https://linear.app/test/issue/ENG-1",
+        )
     )
     mutations.update_issue = AsyncMock(
-        return_value={
-            "id": "issue-1",
-            "identifier": "ENG-1",
-            "title": "Updated issue",
-            "url": "https://linear.app/test/issue/ENG-1",
-            "state": {"id": "state-1", "name": "In Progress"},
-        }
+        return_value=MutationIssue(
+            id="issue-1",
+            identifier="ENG-1",
+            title="Updated issue",
+            url="https://linear.app/test/issue/ENG-1",
+            state={"id": "state-1", "name": "In Progress"},
+        )
     )
     mutations.resolve_state_id = AsyncMock(return_value="state-1")
     mutations.archive_issue = AsyncMock(return_value=None)

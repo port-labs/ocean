@@ -9,7 +9,7 @@ from linear.actions.types.issue import (
     CreateSubIssuePayload,
     UpdateIssuePayload,
 )
-from linear.core.mutations.issue_mutation_payload import (
+from linear.core.mutations.issue.types import (
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )

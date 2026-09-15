@@ -23,13 +23,13 @@ class CreateIssueExecutor(AbstractLinearExecutor):
 
         mutations = IssueMutations(self.client)
         issue = await mutations.create_issue(payload.to_mutation())
-        message = f"Created issue {issue['identifier']}: {issue['url']}"
+        message = f"Created issue {issue.identifier}: {issue.url}"
         set_issue_run_output(run, issue)
 
         logger.info(
             "Created Linear issue",
-            issue_id=issue["id"],
-            identifier=issue.get("identifier"),
+            issue_id=issue.id,
+            identifier=issue.identifier,
         )
         await ocean.port_client.report_run_completed(
             run,

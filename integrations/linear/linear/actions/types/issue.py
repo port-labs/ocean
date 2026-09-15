@@ -3,7 +3,7 @@ from typing import Annotated, Generic
 from pydantic import ConfigDict, Field
 
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT, NonEmptyStr
-from linear.core.mutations.issue_mutation_payload import (
+from linear.core.mutations.issue.types import (
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
