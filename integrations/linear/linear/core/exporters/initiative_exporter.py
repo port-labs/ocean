@@ -19,5 +19,7 @@ class GetInitiativeOptions(GetOptions["InitiativeResourceConfig"]):
         return cls(resource_id=resource_id)
 
 
-class InitiativeExporter(PaginatedExporter, SingleResourceExporter[GetInitiativeOptions]):
+class InitiativeExporter(
+    PaginatedExporter, SingleResourceExporter[GetInitiativeOptions]
+):
     object_type = LinearObject.INITIATIVES

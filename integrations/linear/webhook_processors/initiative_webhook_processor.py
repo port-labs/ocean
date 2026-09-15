@@ -37,9 +37,7 @@ class InitiativeWebhookProcessor(_LinearAbstractWebhookProcessor):
         initiative_id = event_data["id"]
         action = payload["action"]
 
-        logger.info(
-            f"Processing webhook event for initiative with ID: {initiative_id}"
-        )
+        logger.info(f"Processing webhook event for initiative with ID: {initiative_id}")
 
         if action == "remove":
             return WebhookEventRawResults(
