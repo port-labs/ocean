@@ -112,5 +112,5 @@ def test_issue_payload_to_mutation_contract(
     mutation_payload = action_payload.to_mutation()
 
     assert isinstance(mutation_payload, mutation_cls)
-    assert action_cls.mutation_payload_type() is mutation_cls
+    assert action_cls.MUTATION_PAYLOAD_TYPE is mutation_cls
     assert mutation_payload.model_dump(exclude_none=True) == expected
