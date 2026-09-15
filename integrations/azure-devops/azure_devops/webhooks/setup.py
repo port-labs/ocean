@@ -38,8 +38,13 @@ async def setup_webhooks_for_all_orgs() -> None:
     for client in clients:
         org_url = client._organization_base_url
         try:
-            existing_subscriptions = await client.get_filtered_webhook_subscriptions()
-            if ocean.integration_config.get("is_projects_limited"):
+            is_projects_limited = (
+                ocean.integration_config.get("is_projects_limited") is True
+            )
+            existing_subscriptions = await client.get_filtered_webhook_subscriptions(
+                org_level=not is_projects_limited,
+            )
+            if is_projects_limited:
                 sub_ids: list[str] = []
                 async for projects in client.generate_projects():
                     for project in projects:
