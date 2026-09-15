@@ -33,7 +33,9 @@ class ResyncStateUpdater:
             interval * 60, custom_start_time or self.initiated_at
         ).isoformat()
 
-    async def update_after_superseded_resync(self, resync_id: str | None = None) -> None:
+    async def update_after_superseded_resync(
+        self, resync_id: str | None = None
+    ) -> None:
         """Aborted resyncState for a cancelled run, plus lifecycle when DSP is on."""
         await self.update_after_resync(IntegrationStateStatus.Aborted)
 
