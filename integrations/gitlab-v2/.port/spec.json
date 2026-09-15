@@ -150,6 +150,34 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "create_merge_request_comment",
+      "icon": "GitLab",
+      "description": "Post a comment on a GitLab merge request",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "GitLab project path (e.g., \"my-group/my-project\") or numeric ID",
+          "required": true
+        },
+        {
+          "name": "mergeRequestIid",
+          "title": "Merge request IID",
+          "type": "string",
+          "description": "Internal merge request ID (the number in !42)",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Comment body",
+          "type": "string",
+          "description": "Text of the merge request comment",
+          "required": true
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [
