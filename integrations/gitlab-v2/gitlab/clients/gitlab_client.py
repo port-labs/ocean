@@ -1570,11 +1570,11 @@ class GitLabClient:
         
     async def create_merge_request_note(
         self,
-        project_id: str | int,
+        project_id: str,
         merge_request_iid: int,
         body: str,
     ) -> dict[str, Any]:
-        encoded_id = quote(str(project_id), safe="")
+        encoded_id = quote(project_id, safe="")
         path = f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes"
         return await self.rest.send_api_request("POST", path, data={"body": body})
 
