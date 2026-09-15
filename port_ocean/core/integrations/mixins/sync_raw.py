@@ -1118,7 +1118,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
                 ocean.metrics.inc_metric(
                     name=MetricType.INCREMENTAL_RUN_ERRORS_TOTAL_NAME,
-                    labels=[integration_type],
+                    labels=[integration_type, "kind_errors"],
                     value=1,
                 )
                 logger.error(
@@ -1158,7 +1158,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             ocean.metrics.inc_metric(
                 name=MetricType.INCREMENTAL_RUN_ERRORS_TOTAL_NAME,
-                labels=[integration_type],
+                labels=[integration_type, "kind_exception"],
                 value=1,
             )
             logger.error(
@@ -1331,7 +1331,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError:
                 ocean.metrics.inc_metric(
                     name=MetricType.INCREMENTAL_RUN_INTERRUPTED_TOTAL_NAME,
-                    labels=[integration_type],
+                    labels=[integration_type, "cancelled"],
                     value=1,
                 )
                 logger.warning(
