@@ -67,7 +67,9 @@ class TestIssueActionUtils:
         assert body == {"title": "T"}
 
     def test_build_edit_issue_patch_body_empty_raises(self) -> None:
-        with pytest.raises(InvalidActionParametersException, match="At least one field"):
+        with pytest.raises(
+            InvalidActionParametersException, match="At least one field"
+        ):
             build_edit_issue_patch_body({})
 
     def test_resolve_close_reason_invalid_raises(self) -> None:
