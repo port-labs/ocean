@@ -44,12 +44,12 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
 
         mutations = IssueMutations(self.client)
         issue = await mutations.create_issue(payload.to_mutation())
-        message = f"Created sub-issue {issue['identifier']}: {issue['url']}"
+        message = f"Created sub-issue {issue.identifier}: {issue.url}"
         set_issue_run_output(run, issue)
 
         logger.info(
             "Created Linear sub-issue",
-            issue_id=issue["id"],
+            issue_id=issue.id,
             parent_id=payload.parentId,
         )
         await ocean.port_client.report_run_completed(
