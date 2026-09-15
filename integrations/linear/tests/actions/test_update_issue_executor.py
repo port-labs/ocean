@@ -35,7 +35,9 @@ class TestUpdateIssueExecutor:
         update_call = mock_issue_mutations.update_issue.await_args
         assert update_call.args[0] == "ENG-1"
         assert isinstance(update_call.args[1], IssueUpdateMutationPayload)
-        assert update_call.args[1].model_dump(exclude_none=True) == {"title": "Updated title"}
+        assert update_call.args[1].model_dump(exclude_none=True) == {
+            "title": "Updated title"
+        }
         assert run.output == {
             "identifier": "ENG-1",
             "issueId": "issue-1",
