@@ -119,3 +119,14 @@ class ArchiveIssuePayload(IssueIdPayload):
 
 class DeleteIssuePayload(IssueIdPayload):
     pass
+
+
+class DelegateIssuePayload(LinearActionPayload[IssueUpdateMutationPayload]):
+    MUTATION_PAYLOAD_TYPE = IssueUpdateMutationPayload
+    payload_exclude = {"issueId"}
+
+    issueId: NonEmptyStr
+    agentAppId: NonEmptyStr
+
+    def to_mutation(self) -> IssueUpdateMutationPayload:
+        return IssueUpdateMutationPayload(delegateId=self.agentAppId)

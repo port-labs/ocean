@@ -9,6 +9,7 @@ from linear.actions.types.issue import (
     AddReactionPayload,
     CreateIssuePayload,
     CreateSubIssuePayload,
+    DelegateIssuePayload,
     UpdateIssuePayload,
 )
 from linear.core.mutations.issue.types import (
@@ -116,6 +117,13 @@ ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
             ReactionCreateMutationPayload,
             {"issueId": "ENG-1", "emoji": "+1"},
             id="add_reaction_to_issue",
+        ),
+        pytest.param(
+            DelegateIssuePayload,
+            {"issueId": "ENG-1", "agentAppId": "agent-1"},
+            IssueUpdateMutationPayload,
+            {"delegateId": "agent-1"},
+            id="delegate_issue_to_agent",
         ),
     ],
 )
