@@ -1,12 +1,17 @@
 from os import environ
 from typing import Tuple
+
 import pytest
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.tests.helpers.smoke_test import SmokeTestDetails
+from port_ocean.tests.smoke.helpers.details import SmokeTestDetails
 
-pytestmark = pytest.mark.smoke
+pytestmark = [
+    pytest.mark.smoke,
+    pytest.mark.smoke_profile("once"),
+    pytest.mark.smoke_profile("polling"),
+]
 
 
 @pytest.mark.skipif(

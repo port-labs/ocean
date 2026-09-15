@@ -1,0 +1,11 @@
+# Run fake-integration with polling (ocean sail) for action processing.
+mode: polling
+host_port: 18080
+resource_kinds:
+  - fake-department
+  - fake-person
+integration:
+  entity_amount: -1
+  entity_kb_size: -1
+  third_party_batch_size: -1
+  third_party_latency_ms: -1
