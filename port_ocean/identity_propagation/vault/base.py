@@ -2,7 +2,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import VaultSettings
@@ -57,7 +57,7 @@ def build_vault_client(settings: "VaultSettings") -> "VaultClient | None":
         aws_settings = (
             settings
             if isinstance(settings, AWSSecretsManagerVaultSettings)
-            else AWSSecretsManagerVaultSettings.parse_obj(settings.dict())
+            else AWSSecretsManagerVaultSettings.model_validate(settings.model_dump())
         )
         return AWSSecretsManagerVaultClient(
             region_name=aws_settings.aws_region,

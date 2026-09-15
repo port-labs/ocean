@@ -13,6 +13,7 @@ from port_ocean.exceptions.identity_propagation import (
 from port_ocean.identity_propagation.oauth_broker.providers import require_provider
 from port_ocean.identity_propagation.oauth_broker.state import (
     InvalidStateError,
+    OAuthState,
     sign_state,
     verify_state,
 )
@@ -53,6 +54,59 @@ async def _verify_actor(run_id: str, actor_id: str, org_id: str | None) -> str:
         raise HTTPException(status_code=403, detail=str(e)) from e
 
 
+async def _exchange_and_store_token(payload: OAuthState, code: str) -> str:
+    try:
+        provider = require_provider()
+    except OAuthProviderNotConfiguredError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    await _verify_actor(payload.run_id, payload.actor_id, payload.org_id)
+
+    try:
+        record = await provider.exchange_code(code, _redirect_uri())
+    except OAuthError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+    vault_client = ocean.app.vault_client
+    if vault_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Vault client is not configured. Set ocean.app.vault_client during integration startup.",
+        )
+
+    # Keyed by this process's own identity (there is no caller-supplied target anymore) —
+    # matches what token_exchanger.py reads on the other side.
+    try:
+        await vault_client.write(
+            payload.org_id, payload.actor_id, provider.target, record
+        )
+    except VaultError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    return provider.target
+
+
+async def _resume_run(payload: OAuthState) -> None:
+    # x-port-reserved-usage marks this as a Port-operated caller (mirrors verifier.py and
+    # the claim-pending mixins) — workflow-service's resume endpoint requires it from machine
+    # callers instead of an installationId/clientId ownership lookup.
+    headers = {
+        **await ocean.port_client.auth.headers(),
+        "x-port-reserved-usage": "true",
+    }
+    response = await http_async_client.post(
+        _resume_api_url(payload.node_run_id), headers=headers
+    )
+    if response.status_code >= 400:
+        logger.warning(
+            f"Failed to resume the run: status_code={response.status_code} "
+            f"response_body={response.text!r} run_id={payload.run_id} "
+            f"node_run_id={payload.node_run_id}"
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to resume the workflow run after authentication",
+        )
+
+
 def register_oauth_broker() -> None:
     router = APIRouter()
 
@@ -86,58 +140,13 @@ def register_oauth_broker() -> None:
         except InvalidStateError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
-        try:
-            provider = require_provider()
-        except OAuthProviderNotConfiguredError as e:
-            raise HTTPException(status_code=404, detail=str(e)) from e
-        await _verify_actor(payload.run_id, payload.actor_id, payload.org_id)
-
-        try:
-            record = await provider.exchange_code(code, _redirect_uri())
-        except OAuthError as e:
-            raise HTTPException(status_code=502, detail=str(e)) from e
-
-        vault_client = ocean.app.vault_client
-        if vault_client is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Vault client is not configured. Set ocean.app.vault_client during integration startup.",
-            )
-
-        # Keyed by this process's own identity (there is no caller-supplied target anymore) —
-        # matches what token_exchanger.py reads on the other side.
-        try:
-            await vault_client.write(
-                payload.org_id, payload.actor_id, provider.target, record
-            )
-        except VaultError as e:
-            raise HTTPException(status_code=502, detail=str(e)) from e
-
-        # x-port-reserved-usage marks this as a Port-operated caller (mirrors verifier.py and
-        # the claim-pending mixins) — workflow-service's resume endpoint requires it from machine
-        # callers instead of an installationId/clientId ownership lookup.
-        headers = {
-            **await ocean.port_client.auth.headers(),
-            "x-port-reserved-usage": "true",
-        }
-        response = await http_async_client.post(
-            _resume_api_url(payload.node_run_id), headers=headers
-        )
-        if response.status_code >= 400:
-            logger.warning(
-                f"Failed to resume the run: status_code={response.status_code} "
-                f"response_body={response.text!r} run_id={payload.run_id} "
-                f"node_run_id={payload.node_run_id}"
-            )
-            raise HTTPException(
-                status_code=502,
-                detail="Failed to resume the workflow run after authentication",
-            )
+        target = await _exchange_and_store_token(payload, code)
+        await _resume_run(payload)
 
         logger.info(
             "Stored the user's token, resuming the run",
             run_id=payload.run_id,
-            target=provider.target,
+            target=target,
         )
         return RedirectResponse(
             _run_view_url(payload.org_id, payload.run_id), status_code=302

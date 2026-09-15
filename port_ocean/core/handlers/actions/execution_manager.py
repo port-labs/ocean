@@ -476,6 +476,15 @@ class ExecutionManager:
                 await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
+    async def _pause_run_for_user_auth(self, run: IntegrationRun) -> None:
+        logger.info(
+            "Run is waiting for the user to authenticate",
+            node_run_id=run.id,
+        )
+        await ocean.port_client.patch_run(
+            run, {"reauthRequired": True}, should_raise=False
+        )
+
     async def _execute_run(self, run: IntegrationRun) -> None:
         """
         Execute a run using its registered executor.
@@ -531,13 +540,7 @@ class ExecutionManager:
                     # Can also be raised here: the rate-limit check above resolves the user's
                     # token too (same code path as actual execution), so a vault miss can
                     # surface before the run is even acknowledged.
-                    logger.info(
-                        "Run is waiting for the user to authenticate",
-                        node_run_id=run.id,
-                    )
-                    await ocean.port_client.patch_run(
-                        run, {"reauthRequired": True}, should_raise=False
-                    )
+                    await self._pause_run_for_user_auth(run)
                     return
                 except Exception as e:
                     logger.exception(
@@ -556,13 +559,7 @@ class ExecutionManager:
                         elapsed_ms=(time.monotonic() - start_time) * 1000,
                     )
                 except UserAuthRequiredError:
-                    logger.info(
-                        "Run is waiting for the user to authenticate",
-                        node_run_id=run.id,
-                    )
-                    await ocean.port_client.patch_run(
-                        run, {"reauthRequired": True}, should_raise=False
-                    )
+                    await self._pause_run_for_user_auth(run)
                     logger.info(
                         "Sent reauthRequired signal to Port (see preceding line for "
                         "an error if this PATCH failed)",

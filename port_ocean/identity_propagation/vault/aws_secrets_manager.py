@@ -64,7 +64,7 @@ class AWSSecretsManagerVaultClient(VaultClient):
             raise VaultError(f"Failed to read secret '{secret_name}': {e}") from e
 
         try:
-            return TokenRecord.parse_obj(json.loads(response["SecretString"]))
+            return TokenRecord.model_validate(json.loads(response["SecretString"]))
         except Exception as e:
             raise VaultError(f"Malformed token record in '{secret_name}': {e}") from e
 
@@ -72,7 +72,7 @@ class AWSSecretsManagerVaultClient(VaultClient):
         self, org_id: str, actor_id: str, target: str, record: TokenRecord
     ) -> None:
         secret_name = self.secret_name(org_id, actor_id, target)
-        secret_string = record.json(exclude_none=True)
+        secret_string = record.model_dump_json(exclude_none=True)
         try:
             try:
                 await asyncio.to_thread(

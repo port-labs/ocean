@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import jwt
 from jwt import PyJWKClient
 from loguru import logger
-from pydantic.v1 import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError
 
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.identity_propagation import (
