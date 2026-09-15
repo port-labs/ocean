@@ -31,6 +31,10 @@ class GitHubToken(BaseModel):
         return datetime.now(timezone.utc) >= (expires_at_dt - self._time_buffer)
 
 
+class GitHubAppToken(GitHubToken):
+    permissions: dict[str, str] | None = None
+
+
 class GitHubHeaders(BaseModel):
     authorization: str = Field(alias="Authorization")
     accept: str = Field(alias="Accept", default="application/vnd.github+json")

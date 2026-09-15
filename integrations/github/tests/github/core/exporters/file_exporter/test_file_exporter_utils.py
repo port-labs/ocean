@@ -1,6 +1,10 @@
 import base64
 import pytest
-from github.core.exporters.file_exporter.utils import decode_content
+from github.core.exporters.file_exporter.utils import (
+    FileDiffStatus,
+    decode_content,
+    split_files_by_content_presence,
+)
 
 
 def test_decode_content_removes_null_bytes() -> None:
@@ -77,3 +81,21 @@ def test_decode_content_utf16_fallback() -> None:
     result = decode_content(encoded_bad, "base64")
     # \xff is replaced by U+FFFD
     assert result == "hello\ufffdworld"
+
+
+def test_split_files_by_content_presence() -> None:
+    added = {"filename": "new.yaml", "status": FileDiffStatus.ADDED}
+    modified = {"filename": "changed.yaml", "status": "modified"}
+    removed = {"filename": "gone.yaml", "status": FileDiffStatus.REMOVED}
+    renamed = {
+        "filename": "new-name.yaml",
+        "previous_filename": "old-name.yaml",
+        "status": FileDiffStatus.RENAMED,
+    }
+
+    files_with_new_content, files_with_old_content = split_files_by_content_presence(
+        [added, modified, removed, renamed]
+    )
+
+    assert files_with_new_content == [added, modified, renamed]
+    assert files_with_old_content == [modified, removed, renamed]

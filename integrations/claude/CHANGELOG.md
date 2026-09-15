@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2026-09-15)
+
+
+### Features
+
+- Add optional groupBy (user_id, product, rbac_group_id) to claude-ai-skill-usage so skill invocations can be broken down by user, team, or product
+
+
+## 0.2.68 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.2.67 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
 ## 0.2.66 (2026-09-07)
 
 

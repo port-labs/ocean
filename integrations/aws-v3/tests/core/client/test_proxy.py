@@ -1,8 +1,19 @@
 from unittest.mock import AsyncMock, MagicMock
 import pytest
+from aiobotocore.config import AioConfig
 
-from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.client.proxy import AWS_CLIENT_CONFIG, AioBaseClientProxy
 from aws.core.client.paginator import AsyncPaginator
+
+
+def assert_create_client_called_with(
+    mock_session: MagicMock, *, service_name: str, region_name: str
+) -> None:
+    mock_session.create_client.assert_called_with(
+        service_name=service_name,
+        region_name=region_name,
+        config=AWS_CLIENT_CONFIG,
+    )
 
 
 class TestAioBaseClientProxy:
@@ -63,9 +74,12 @@ class TestAioBaseClientProxy:
             assert proxy.client is mock_client
 
             # Verify create_client was called with correct parameters
-            isolated_mock_session.create_client.assert_called_once_with(
-                service_name="ec2", region_name="us-east-1"
+            assert_create_client_called_with(
+                isolated_mock_session,
+                service_name="ec2",
+                region_name="us-east-1",
             )
+            isolated_mock_session.create_client.assert_called_once()
             mock_client_cm.__aenter__.assert_called_once()
 
         # Test that __aexit__ was called on the client
@@ -215,8 +229,10 @@ class TestAioBaseClientProxy:
                 assert proxy.client is mock_client
 
                 # Verify create_client was called with the correct service
-                isolated_mock_session.create_client.assert_called_with(
-                    service_name=service, region_name="us-east-1"
+                assert_create_client_called_with(
+                    isolated_mock_session,
+                    service_name=service,
+                    region_name="us-east-1",
                 )
 
             # Reset the mock for next iteration
@@ -289,3 +305,32 @@ class TestAioBaseClientProxy:
 
         # Verify create_client was called twice
         assert isolated_mock_session.create_client.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_context_manager_uses_custom_client_config(
+        self, isolated_mock_session: AsyncMock
+    ) -> None:
+        """Test that a per-resource client config can be supplied when entering."""
+        custom_config = AioConfig(retries={"mode": "standard", "max_attempts": 3})
+        mock_client = AsyncMock()
+        mock_client_cm = AsyncMock()
+        mock_client_cm.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cm.__aexit__ = AsyncMock()
+
+        isolated_mock_session.create_client.return_value = mock_client_cm
+
+        proxy = AioBaseClientProxy(
+            session=isolated_mock_session,
+            region="us-east-1",
+            service_name="ecs",
+        )
+
+        await proxy.__aenter__(config=custom_config)
+        try:
+            isolated_mock_session.create_client.assert_called_once_with(
+                service_name="ecs",
+                region_name="us-east-1",
+                config=custom_config,
+            )
+        finally:
+            await proxy.__aexit__(None, None, None)
