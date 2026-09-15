@@ -6,15 +6,20 @@ from linear.actions.types.issue import (
     CreateSubIssuePayload,
     UpdateIssuePayload,
 )
+from linear.actions.types.issue_id import ArchiveIssuePayload, DeleteIssuePayload
+from linear.actions.types.reaction import AddReactionPayload
 from linear.actions.types.status import ChangeStatusPayload
 from linear.utils import PriorityLabel
 
 __all__ = [
     "AddCommentPayload",
     "AddDocumentPayload",
+    "AddReactionPayload",
+    "ArchiveIssuePayload",
     "ChangeStatusPayload",
     "CreateIssuePayload",
     "CreateSubIssuePayload",
+    "DeleteIssuePayload",
     "LinearActionPayload",
     "NonEmptyStr",
     "PriorityLabel",
