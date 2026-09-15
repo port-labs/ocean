@@ -28,6 +28,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     search_params: NotRequired[Optional[RepoSearchParams]]
     exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -82,6 +83,7 @@ class ListIssueOptions(RepositoryIdentifier):
 
     state: Required[str]
     labels: NotRequired[Optional[str]]
+    since: NotRequired[Optional[datetime]]
 
 
 class BaseUserOptions(SingleOrganizationOptions):
@@ -135,6 +137,8 @@ class SingleReleaseOptions(RepositoryIdentifier):
 class ListReleaseOptions(RepositoryIdentifier):
     """Options for listing releases."""
 
+    created_since: NotRequired[Optional[datetime]]
+
 
 class SingleTagOptions(RepositoryIdentifier):
     """Options for fetching a single tag."""
@@ -187,6 +191,7 @@ class ListDeploymentsOptions(RepositoryIdentifier):
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
     enrich_with_first_commit: NotRequired[bool]
+    created_since: NotRequired[Optional[datetime]]
 
 
 class SingleDeploymentStatusOptions(RepositoryIdentifier):
@@ -214,6 +219,7 @@ class ListDependabotAlertOptions(RepositoryIdentifier):
     state: Required[list[str]]
     severity: NotRequired[Optional[str]]
     ecosystem: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -227,6 +233,7 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
 
     state: Required[str]
     severity: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class FileContentOptions(RepositoryIdentifier):

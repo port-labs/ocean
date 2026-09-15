@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Added time-based selectors for incremental-sync kinds and ignore them during incremental runs so the stored cursor controls the sync window
