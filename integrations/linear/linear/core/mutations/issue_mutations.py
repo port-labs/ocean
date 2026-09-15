@@ -11,7 +11,9 @@ from linear.helpers.exceptions import CreateIssueError, UpdateIssueError
 class IssueMutations(LinearExporter):
     object_type = LinearObject.ISSUES
 
-    async def create_issue(self, payload: IssueCreateMutationPayload) -> dict[str, object]:
+    async def create_issue(
+        self, payload: IssueCreateMutationPayload
+    ) -> dict[str, object]:
         result = await self.graphql.execute_mutation(
             queries.ISSUE_CREATE,
             {"input": payload.model_dump(exclude_none=True)},
