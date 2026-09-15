@@ -118,6 +118,27 @@
           "description": "The Atlassian account ID of the user to assign the issue to"
         }
       ]
+    },
+    {
+      "name": "change_issue_status",
+      "icon": "Jira",
+      "description": "Change the status of a Jira issue",
+      "inputs": [
+        {
+          "name": "issueKey",
+          "title": "Issue key",
+          "type": "string",
+          "description": "The Jira issue key to update, for example PORT-123",
+          "required": true
+        },
+        {
+          "name": "status",
+          "title": "Status",
+          "type": "string",
+          "description": "The target Jira status name, for example In Progress or Done",
+          "required": true
+        }
+      ]
     }
   ],
   "saas": {
