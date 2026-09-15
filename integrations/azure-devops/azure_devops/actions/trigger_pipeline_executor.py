@@ -14,6 +14,9 @@ from azure_devops.webhooks.webhook_processors.pipeline_run_action_webhook_proces
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
+TRIGGERING_STATUS_LABEL = "Triggering pipeline"
+PIPELINE_RUNNING_STATUS_LABEL = "Pipeline running"
+
 
 class TriggerPipelineExecutor(AbstractAzureDevopsExecutor):
     """Executor for triggering Azure DevOps pipeline runs and tracking them.
@@ -66,7 +69,9 @@ class TriggerPipelineExecutor(AbstractAzureDevopsExecutor):
             branch=options.branch,
         )
         await ocean.port_client.post_run_log(
-            run, f"Triggering pipeline {pipeline_id} in project '{project_input}'"
+            run,
+            f"Triggering pipeline {pipeline_id} in project '{project_input}'",
+            status_label=TRIGGERING_STATUS_LABEL,
         )
         try:
             pipeline_run = await self.client.run_pipeline(
@@ -100,10 +105,11 @@ class TriggerPipelineExecutor(AbstractAzureDevopsExecutor):
         run_started_message = (
             f"Pipeline run started: {link}" if link else "Pipeline run started"
         )
-        await ocean.port_client.post_run_log(run, run_started_message)
         await ocean.port_client.update_run_started(
             run,
             link,
             external_id,
             extra_output={"pipelineRunId": pipeline_run["id"]},
+            status_label=PIPELINE_RUNNING_STATUS_LABEL,
         )
+        await ocean.port_client.post_run_log(run, run_started_message)

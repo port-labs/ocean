@@ -6,6 +6,7 @@ import pytest
 from azure_devops.client.azure_devops_client import PIPELINES_PUBLISHER_ID
 from azure_devops.webhooks.events import PipelineRunEvents
 from azure_devops.webhooks.webhook_processors.pipeline_run_action_webhook_processor import (
+    PIPELINE_RESULT_STATUS_LABELS,
     PipelineRunActionWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -112,6 +113,10 @@ async def test_handle_event_reports_success(
     completed_call = mock_ocean.port_client.report_run_completed.await_args
     assert completed_call.args[0] is port_run
     assert completed_call.args[1] is True
+    assert (
+        completed_call.kwargs["status_label"]
+        == PIPELINE_RESULT_STATUS_LABELS["succeeded"]
+    )
     assert results.updated_raw_results == []
 
 
@@ -125,7 +130,11 @@ async def test_handle_event_reports_failure(
 
     await processor._handle_webhook_event(_payload(result="failed"), MagicMock())
 
-    assert mock_ocean.port_client.report_run_completed.await_args.args[1] is False
+    completed_call = mock_ocean.port_client.report_run_completed.await_args
+    assert completed_call.args[1] is False
+    assert (
+        completed_call.kwargs["status_label"] == PIPELINE_RESULT_STATUS_LABELS["failed"]
+    )
 
 
 @pytest.mark.asyncio
@@ -166,3 +175,25 @@ async def test_handle_event_reports_when_status_flag_missing(
     await processor._handle_webhook_event(_payload(), MagicMock())
 
     assert mock_ocean.port_client.report_run_completed.await_args.args[1] is True
+
+
+@pytest.mark.asyncio
+async def test_unmapped_result_falls_back_to_raw_result(
+    processor: PipelineRunActionWebhookProcessor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A result Azure DevOps adds later should still yield a short label."""
+    port_run = MagicMock()
+    port_run.execution_properties = {"reportPipelineStatus": True}
+    mock_ocean = _mock_ocean(monkeypatch, port_run=port_run)
+
+    await processor._handle_webhook_event(_payload(result="abandoned"), MagicMock())
+
+    assert (
+        mock_ocean.port_client.report_run_completed.await_args.kwargs["status_label"]
+        == "Pipeline abandoned"
+    )
+
+
+def test_status_labels_are_two_words_max() -> None:
+    for label in PIPELINE_RESULT_STATUS_LABELS.values():
+        assert len(label.split()) <= 2, label
