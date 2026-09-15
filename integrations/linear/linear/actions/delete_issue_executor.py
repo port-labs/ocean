@@ -3,7 +3,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
-from linear.actions.utils import require_property
+from linear.actions.types import DeleteIssuePayload
 from linear.core.mutations import IssueMutations
 
 
@@ -15,20 +15,22 @@ class DeleteIssueExecutor(AbstractLinearExecutor):
         return str(issue_id) if issue_id else None
 
     async def execute(self, run: IntegrationRun) -> None:
-        issue_id = require_property(run, "issueId")
+        payload = DeleteIssuePayload.from_execution_properties(run.execution_properties)
 
         await ocean.port_client.post_run_log(
             run,
-            f"Deleting issue {issue_id}",
+            f"Deleting issue {payload.issueId}",
+            status_label="Deleting issue",
             should_raise=False,
         )
 
         mutations = IssueMutations(self.client)
-        await mutations.delete_issue(issue_id)
+        await mutations.delete_issue(payload.issueId)
 
+        logger.info("Deleted Linear issue", issue_id=payload.issueId)
         await ocean.port_client.report_run_completed(
             run,
             success=True,
-            message=f"Deleted issue {issue_id}",
+            message=f"Deleted issue {payload.issueId}",
+            status_label="Issue deleted",
         )
-        logger.info("Deleted Linear issue", issue_id=issue_id)
