@@ -10,5 +10,6 @@ class ObjectKind(StrEnum):
     DOCUMENT = "document"
     USER = "user"
     PROJECT = "project"
+    INITIATIVE = "initiative"
     TEAM_MEMBERS = "team-members"
     CYCLE = "cycle"

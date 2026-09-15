@@ -123,6 +123,35 @@ resources:
           relations:
             teams: "[.teams.nodes[].key]"
             leadUser: .lead.id
+  - kind: initiative
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"linearInitiative"'
+          properties:
+            url: .url
+            description: .description
+            status: .status
+            health: .health
+            priority: .priority
+            targetDate: if .targetDate then (.targetDate | if test("T") then . else . + "T00:00:00Z" end) else null end
+            startedAt: .startedAt
+            completedAt: .completedAt
+            slugId: .slugId
+            creator: .creator.email
+            owner: .owner.email
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            leadTeam: .leadTeam.key
+            ownerUser: .owner.id
+            parentInitiative: .parentInitiative.id
+            subInitiatives: "[.subInitiatives.nodes[].id]"
+            projects: "[.projects.nodes[].id]"
   - kind: cycle
     selector:
       query: "true"
