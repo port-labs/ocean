@@ -15,7 +15,9 @@ def mock_context() -> MagicMock:
 
 
 @pytest.fixture
-def app_config_handler(mock_context: MagicMock) -> GithubIntegration.AppConfigHandlerClass:
+def app_config_handler(
+    mock_context: MagicMock,
+) -> GithubIntegration.AppConfigHandlerClass:
     return GithubIntegration.AppConfigHandlerClass(mock_context)
 
 
