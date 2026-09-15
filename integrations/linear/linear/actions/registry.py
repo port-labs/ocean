@@ -5,6 +5,9 @@ from linear.actions.add_document_executor import AddDocumentExecutor
 from linear.actions.add_reaction_to_issue_executor import AddReactionToIssueExecutor
 from linear.actions.archive_issue_executor import ArchiveIssueExecutor
 from linear.actions.change_status_executor import ChangeStatusExecutor
+from linear.actions.delegate_issue_to_agent_executor import (
+    DelegateIssueToAgentExecutor,
+)
 from linear.actions.delete_issue_executor import DeleteIssueExecutor
 from linear.actions.create_issue_executor import CreateIssueExecutor
 from linear.actions.create_sub_issue_executor import CreateSubIssueExecutor
@@ -22,3 +25,4 @@ def register_actions_executors() -> None:
     ocean.register_action_executor(AddReactionToIssueExecutor())
     ocean.register_action_executor(ArchiveIssueExecutor())
     ocean.register_action_executor(DeleteIssueExecutor())
+    ocean.register_action_executor(DelegateIssueToAgentExecutor())

@@ -72,3 +72,11 @@ class UpdateIssuePayload(IssueActionPayload[IssueUpdateMutationPayload]):
     priority: PriorityField = None
     delegateId: NonEmptyStr | None = None
     labelIds: list[str] | None = None
+
+
+class DelegateIssuePayload(LinearActionPayload[IssueUpdateMutationPayload]):
+    MUTATION_PAYLOAD_TYPE = IssueUpdateMutationPayload
+    payload_exclude = {"issueId"}
+
+    issueId: NonEmptyStr
+    delegateId: NonEmptyStr

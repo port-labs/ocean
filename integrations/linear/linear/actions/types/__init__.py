@@ -4,6 +4,7 @@ from linear.actions.types.document import AddDocumentPayload
 from linear.actions.types.issue import (
     CreateIssuePayload,
     CreateSubIssuePayload,
+    DelegateIssuePayload,
     UpdateIssuePayload,
 )
 from linear.actions.types.issue_id import ArchiveIssuePayload, DeleteIssuePayload
@@ -19,6 +20,7 @@ __all__ = [
     "ChangeStatusPayload",
     "CreateIssuePayload",
     "CreateSubIssuePayload",
+    "DelegateIssuePayload",
     "DeleteIssuePayload",
     "LinearActionPayload",
     "NonEmptyStr",
