@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Log empty API port app config at info level instead of warning so an unset mapping is treated as expected operational state rather than a warning condition.
