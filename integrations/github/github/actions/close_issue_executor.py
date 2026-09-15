@@ -6,20 +6,12 @@ from port_ocean.core.models import IntegrationRun
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import IssueActionError
 from github.actions.utils import build_close_issue_patch_body
-from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
 
 class CloseIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "close_issue"
     WEBHOOK_PROCESSOR_CLASS = None
-
-    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
-        org = run.execution_properties.get("org")
-        repo = run.execution_properties.get("repo")
-        if not isinstance(org, str) or not isinstance(repo, str):
-            return None
-        return f"{org}/{repo}"
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -31,11 +23,8 @@ class CloseIssueExecutor(AbstractGithubExecutor):
                 "org, repo, and issueNumber are required"
             )
 
-        rest_client = (await self._get_execution_clients(run))[0]
-        if not isinstance(rest_client, GithubRestClient):
-            raise InvalidActionParametersException("GitHub REST client is required")
+        rest_client = await self._get_rest_client(run)
 
-        # https://docs.github.com/en/rest/issues/issues#update-an-issue
         patch_body = build_close_issue_patch_body(run.execution_properties)
 
         await ocean.port_client.post_run_log(
@@ -55,6 +44,10 @@ class CloseIssueExecutor(AbstractGithubExecutor):
             raise IssueActionError.from_response(
                 e.response,
                 f"Could not close issue #{issue_number} in {org}/{repo}",
+            )
+        except Exception as e:
+            raise IssueActionError(
+                f"Could not close issue #{issue_number} in {org}/{repo}: {e}"
             )
 
         if not issue or "number" not in issue or "html_url" not in issue:

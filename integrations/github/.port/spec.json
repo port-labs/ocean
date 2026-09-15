@@ -408,7 +408,7 @@
         {
           "name": "issueNumber",
           "title": "Issue number",
-          "type": "string",
+          "type": "number",
           "description": "The number of the issue to edit",
           "required": true
         },
@@ -466,7 +466,7 @@
         {
           "name": "issueNumber",
           "title": "Issue number",
-          "type": "string",
+          "type": "number",
           "description": "The number of the issue to close",
           "required": true
         },

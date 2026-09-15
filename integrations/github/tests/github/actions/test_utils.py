@@ -3,6 +3,7 @@ import pytest
 
 from github.actions.utils import (
     build_close_issue_patch_body,
+    build_create_issue_body,
     build_edit_issue_patch_body,
     build_external_id,
     extract_error_message,
@@ -46,6 +47,37 @@ class TestExtractErrorMessage:
         response = httpx.Response(503, text="   ")
 
         assert extract_error_message(response) == "HTTP 503"
+
+
+class TestBuildCreateIssueBody:
+    def test_title_only(self) -> None:
+        assert build_create_issue_body({"title": "Bug report"}) == {
+            "title": "Bug report"
+        }
+
+    def test_all_optional_fields(self) -> None:
+        body = build_create_issue_body(
+            {
+                "title": "Bug",
+                "body": "Details",
+                "labels": ["bug"],
+                "assignees": ["user1"],
+                "milestone": 3,
+            }
+        )
+        assert body == {
+            "title": "Bug",
+            "body": "Details",
+            "labels": ["bug"],
+            "assignees": ["user1"],
+            "milestone": 3,
+        }
+
+    def test_ignores_non_issue_fields(self) -> None:
+        body = build_create_issue_body(
+            {"title": "T", "org": "port-labs", "repo": "ocean"}
+        )
+        assert body == {"title": "T"}
 
 
 class TestIssueActionUtils:

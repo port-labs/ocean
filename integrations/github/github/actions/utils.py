@@ -38,6 +38,27 @@ def extract_error_message(response: httpx.Response) -> str:
     return response.text.strip() or f"HTTP {response.status_code}"
 
 
+def build_create_issue_body(
+    execution_properties: Mapping[str, Any],
+) -> dict[str, str | int | list[str]]:
+    issue_body: dict[str, str | int | list[str]] = {
+        "title": execution_properties["title"]
+    }
+    body = execution_properties.get("body")
+    if body:
+        issue_body["body"] = body
+    labels = execution_properties.get("labels")
+    if labels:
+        issue_body["labels"] = labels
+    assignees = execution_properties.get("assignees")
+    if assignees:
+        issue_body["assignees"] = assignees
+    milestone = execution_properties.get("milestone")
+    if milestone is not None:
+        issue_body["milestone"] = milestone
+    return issue_body
+
+
 def resolve_close_reason(
     execution_properties: Mapping[str, Any],
 ) -> str:
@@ -63,9 +84,8 @@ def build_edit_issue_patch_body(
     assignees = execution_properties.get("assignees")
     if assignees is not None:
         patch_body["assignees"] = assignees
-    milestone = execution_properties.get("milestone")
-    if milestone is not None:
-        patch_body["milestone"] = milestone
+    if "milestone" in execution_properties:
+        patch_body["milestone"] = execution_properties["milestone"]
 
     if not patch_body:
         raise InvalidActionParametersException(
@@ -90,11 +110,6 @@ def build_close_issue_patch_body(
             raise InvalidActionParametersException(
                 "duplicateIssueId is required when stateReason is 'duplicate'"
             )
-        try:
-            json_data["duplicate_issue_id"] = int(duplicate_issue_id)
-        except (ValueError, TypeError):
-            raise InvalidActionParametersException(
-                "duplicateIssueId must be a valid integer"
-            )
+        json_data["duplicate_issue_id"] = duplicate_issue_id
 
     return json_data
