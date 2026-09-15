@@ -270,7 +270,7 @@
         }
       ]
     },
-        {
+    {
       "name": "create_pull_request_thread",
       "icon": "AzureDevops",
       "description": "Create a comment thread on an Azure DevOps pull request",
