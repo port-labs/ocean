@@ -23,7 +23,6 @@ class EditIssueExecutor(AbstractGithubExecutor):
                 "org, repo, and issueNumber are required"
             )
 
-        # https://docs.github.com/en/rest/issues/issues#update-an-issue
         patch_body = build_edit_issue_patch_body(run.execution_properties)
 
         rest_client = await self._get_rest_client(run)
