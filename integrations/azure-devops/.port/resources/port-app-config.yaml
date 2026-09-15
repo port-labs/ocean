@@ -36,6 +36,26 @@ resources:
             codeowners: .__includedFiles["CODEOWNERS"]
           relations:
             project: .project.id | gsub(" "; "")
+  - kind: repository-policy
+    selector:
+      query: '.type.displayName=="Minimum number of reviewers"'
+    port:
+      entity:
+        mappings:
+          identifier: .__repository.id
+          blueprint: '"azureDevopsRepository"'
+          properties:
+            minimumApproverCount: .settings.minimumApproverCount
+  - kind: repository-policy
+    selector:
+      query: '.type.displayName=="Work item linking"'
+    port:
+      entity:
+        mappings:
+          identifier: .__repository.id
+          blueprint: '"azureDevopsRepository"'
+          properties:
+            workItemLinking: .isEnabled and .isBlocking
   - kind: pull-request
     selector:
       query: 'true'
