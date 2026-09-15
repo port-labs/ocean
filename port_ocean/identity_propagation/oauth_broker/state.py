@@ -5,7 +5,7 @@ import json
 import time
 from typing import Any
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.base import BaseOceanException
@@ -57,7 +57,9 @@ def sign_state(
         org_id=org_id,
         exp=int(time.time()) + ttl_seconds,
     )
-    encoded = _b64encode(payload.json(sort_keys=True).encode())
+    encoded = _b64encode(
+        json.dumps(payload.model_dump(), sort_keys=True, separators=(",", ":")).encode()
+    )
     signature = hmac.new(_signing_key(), encoded.encode(), hashlib.sha256).digest()
     return f"{encoded}.{_b64encode(signature)}"
 
@@ -79,7 +81,7 @@ def verify_state(state: str) -> OAuthState:
 
     try:
         payload: dict[str, Any] = json.loads(_b64decode(encoded))
-        parsed = OAuthState.parse_obj(payload)
+        parsed = OAuthState.model_validate(payload)
     except Exception as e:
         raise InvalidStateError("Malformed state payload") from e
 

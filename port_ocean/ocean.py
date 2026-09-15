@@ -1,8 +1,10 @@
 import asyncio
+import ipaddress
 import sys
 import threading
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Callable, Dict, Type
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
@@ -42,6 +44,8 @@ from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
+
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 class Ocean:
@@ -306,20 +310,17 @@ class Ocean:
 
     @staticmethod
     def _is_public_url(url: str) -> bool:
-        import ipaddress
-        from urllib.parse import urlparse
-
         try:
             host = urlparse(url).hostname or ""
         except Exception:
             return False
-        if host in ("localhost", "127.0.0.1", "::1") or host.endswith(".local"):
+        if host in _LOOPBACK_HOSTS or host.endswith(".local"):
             return False
         try:
             addr = ipaddress.ip_address(host)
             return addr.is_global
         except ValueError:
-            return True  # hostname, not an IP — assume public
+            return True  # hostname, not an IP - assume public
 
     async def _register_addons(self) -> None:
         if self.base_url and self.config.event_listener.should_process_webhooks:
