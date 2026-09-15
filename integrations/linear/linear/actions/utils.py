@@ -1,13 +1,32 @@
-from typing import Any, Self
+from typing import Annotated, Any, ClassVar, Self
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 
 from linear.helpers.exceptions import MissingExecutionPropertyError
 
 
-class LinearActionInput(BaseModel):
+def _empty_to_none(value: Any) -> Any:
+    if value == "":
+        return None
+    return value
+
+
+NonEmptyStr = Annotated[str, Field(min_length=1)]
+OptionalStr = Annotated[str | None, BeforeValidator(_empty_to_none)]
+Priority = Annotated[int, Field(ge=0, le=4)]
+OptionalPriority = Annotated[Priority | None, BeforeValidator(_empty_to_none)]
+
+
+class LinearActionPayload(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
+    api_payload_exclude: ClassVar[frozenset[str]] = frozenset()
+
+    def to_api_payload(self) -> dict[str, Any]:
+        return self.model_dump(
+            exclude=self.api_payload_exclude,
+            exclude_none=True,
+        )
 
     @classmethod
     def from_execution_properties(cls, execution_properties: dict[str, Any]) -> Self:
@@ -15,45 +34,6 @@ class LinearActionInput(BaseModel):
             return cls.model_validate(execution_properties)
         except ValidationError as error:
             raise MissingExecutionPropertyError(str(error)) from error
-
-
-def require_non_empty_str(value: Any) -> str:
-    if value is None or (isinstance(value, str) and not str(value).strip()):
-        raise ValueError("is required")
-    return str(value)
-
-
-def parse_priority(value: Any) -> int | None:
-    if value is None or value == "":
-        return None
-    try:
-        priority = int(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError("priority must be an integer from 0 to 4") from error
-    if priority not in range(5):
-        raise ValueError("priority must be an integer from 0 to 4")
-    return priority
-
-
-def require_property(
-    run: IntegrationRun, name: str, *, title: str | None = None
-) -> Any:
-    value = run.execution_properties.get(name)
-    if value is None or value == "":
-        raise MissingExecutionPropertyError(f"{title or name} is required")
-    return value
-
-
-def optional_string(value: Any) -> str | None:
-    if value is None or value == "":
-        return None
-    return str(value)
-
-
-def optional_payload_fields(**fields: Any) -> dict[str, Any]:
-    return {
-        key: value for key, value in fields.items() if value is not None and value != ""
-    }
 
 
 def set_issue_run_output(run: IntegrationRun, issue: dict[str, Any]) -> None:
