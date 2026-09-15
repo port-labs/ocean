@@ -16,7 +16,7 @@ class CreateIssueExecutor(AbstractGithubExecutor):
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         org = run.execution_properties.get("org")
         repo = run.execution_properties.get("repo")
-        if not org or not repo:
+        if not isinstance(org, str) or not isinstance(repo, str):
             return None
         return f"{org}/{repo}"
 
