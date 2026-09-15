@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Annotated, Any, ClassVar, Generic, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -21,8 +21,8 @@ class LinearActionPayload(BaseModel, Generic[MutationPayloadT], ABC):
             exclude_none=True,
         )
 
-    @abstractmethod
-    def to_mutation(self) -> MutationPayloadT: ...
+    def to_mutation(self) -> MutationPayloadT:
+        return self.MUTATION_PAYLOAD_TYPE(**self.to_payload())
 
     @classmethod
     def from_execution_properties(cls, execution_properties: dict[str, Any]) -> Self:
