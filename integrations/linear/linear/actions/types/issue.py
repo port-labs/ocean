@@ -29,13 +29,11 @@ class IssueActionPayload(
                 else PriorityLabel(priority)
             )
             data["priority"] = PRIORITY_BY_LABEL[priority_label]
-        return self.mutation_payload_type()(**data)
+        return self.MUTATION_PAYLOAD_TYPE(**data)
 
 
 class CreateIssuePayload(IssueActionPayload[IssueCreateMutationPayload]):
-    @classmethod
-    def mutation_payload_type(cls) -> type[IssueCreateMutationPayload]:
-        return IssueCreateMutationPayload
+    MUTATION_PAYLOAD_TYPE = IssueCreateMutationPayload
 
     teamId: NonEmptyStr
     title: NonEmptyStr
@@ -49,9 +47,7 @@ class CreateIssuePayload(IssueActionPayload[IssueCreateMutationPayload]):
 
 
 class CreateSubIssuePayload(IssueActionPayload[IssueCreateMutationPayload]):
-    @classmethod
-    def mutation_payload_type(cls) -> type[IssueCreateMutationPayload]:
-        return IssueCreateMutationPayload
+    MUTATION_PAYLOAD_TYPE = IssueCreateMutationPayload
 
     parentId: NonEmptyStr
     title: NonEmptyStr
@@ -63,10 +59,7 @@ class CreateSubIssuePayload(IssueActionPayload[IssueCreateMutationPayload]):
 
 
 class UpdateIssuePayload(IssueActionPayload[IssueUpdateMutationPayload]):
-    @classmethod
-    def mutation_payload_type(cls) -> type[IssueUpdateMutationPayload]:
-        return IssueUpdateMutationPayload
-
+    MUTATION_PAYLOAD_TYPE = IssueUpdateMutationPayload
     payload_exclude = {"issueId"}
 
     issueId: NonEmptyStr

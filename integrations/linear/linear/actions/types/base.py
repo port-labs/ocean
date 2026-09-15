@@ -13,16 +13,13 @@ MutationPayloadT = TypeVar("MutationPayloadT", bound=BaseModel)
 class LinearActionPayload(BaseModel, Generic[MutationPayloadT], ABC):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
     payload_exclude: ClassVar[set[str]] = set()
+    MUTATION_PAYLOAD_TYPE: ClassVar[type[MutationPayloadT]]
 
     def to_payload(self) -> dict[str, Any]:
         return self.model_dump(
             exclude=self.payload_exclude,
             exclude_none=True,
         )
-
-    @classmethod
-    @abstractmethod
-    def mutation_payload_type(cls) -> type[MutationPayloadT]: ...
 
     @abstractmethod
     def to_mutation(self) -> MutationPayloadT: ...
