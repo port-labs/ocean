@@ -113,7 +113,7 @@
           "name": "priority",
           "title": "Priority",
           "type": "string",
-          "description": "Issue priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low)"
+          "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
         },
         {
           "name": "labelIds",
@@ -170,7 +170,7 @@
           "name": "priority",
           "title": "Priority",
           "type": "string",
-          "description": "Issue priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low)"
+          "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
         }
       ]
     },
@@ -226,7 +226,7 @@
           "name": "priority",
           "title": "Priority",
           "type": "string",
-          "description": "Issue priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low)"
+          "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
         },
         {
           "name": "delegateId",

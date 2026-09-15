@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from linear.actions.create_sub_issue_executor import CreateSubIssueExecutor
+from linear.core.mutations.issue_mutation_payload import IssueCreateMutationPayload
 from linear.helpers.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
@@ -40,11 +41,12 @@ class TestCreateSubIssueExecutor:
             await executor.execute(run)
 
         mock_issue_exporter.get_resource.assert_awaited_once()
-        create_call = mock_issue_mutations.create_issue.await_args
-        assert create_call is not None
-        assert create_call.args[0]["teamId"] == "team-1"
-        assert create_call.args[0]["parentId"] == "ENG-1"
-        assert "projectId" not in create_call.args[0]
+        create_payload = mock_issue_mutations.create_issue.await_args.args[0]
+        assert isinstance(create_payload, IssueCreateMutationPayload)
+        mutation_payload = create_payload.model_dump(exclude_none=True)
+        assert mutation_payload["teamId"] == "team-1"
+        assert mutation_payload["parentId"] == "ENG-1"
+        assert "projectId" not in mutation_payload
         assert run.output == {
             "identifier": "ENG-1",
             "issueId": "issue-1",
