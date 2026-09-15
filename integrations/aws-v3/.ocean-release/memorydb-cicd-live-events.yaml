@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added CloudTrail live events support for AWS::MemoryDB::User, AWS::CodeBuild::Project, and AWS::CodePipeline::Pipeline.

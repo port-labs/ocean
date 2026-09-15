@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.26.0-beta (2026-09-15)
+
+
+### Features
+
+- Added CloudTrail live events support for AWS::MemoryDB::User, AWS::CodeBuild::Project, and AWS::CodePipeline::Pipeline.
+
+
 ## 2.25.2-beta (2026-09-14)
 
 
