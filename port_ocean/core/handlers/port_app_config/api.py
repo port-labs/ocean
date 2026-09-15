@@ -18,7 +18,7 @@ class APIPortAppConfig(BasePortAppConfig):
         config = integration["config"]
 
         if not config:
-            logger.warning(
+            logger.info(
                 "The integration port app config is empty; "
                 "resync will be skipped until resources are configured."
             )

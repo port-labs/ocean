@@ -62,8 +62,8 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
 
     content = file_response.get("content")
     if not content:
-        logger.warning(
-            "The GitHub Port app config file is empty; "
+        logger.info(
+            "The integration port app config is empty; "
             "resync will be skipped until resources are configured.",
             extra={
                 "github_org": github_org,
@@ -84,8 +84,8 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
         raise EmptyPortAppConfigError("Port app config is invalid") from exc
 
     if file_config is None:
-        logger.warning(
-            "The GitHub Port app config file is empty; "
+        logger.info(
+            "The integration port app config is empty; "
             "resync will be skipped until resources are configured."
         )
         return {}

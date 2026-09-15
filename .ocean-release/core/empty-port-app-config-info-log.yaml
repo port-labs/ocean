@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Log empty Port app mapping at info level (expected no-op) instead of warning.
