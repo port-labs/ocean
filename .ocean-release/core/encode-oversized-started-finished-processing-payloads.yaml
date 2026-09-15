@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Base64-encode oversized Started/Finished processing payloads, and set trace_id on Redis stream message received to the Redis event id.

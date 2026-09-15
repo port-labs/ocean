@@ -187,6 +187,88 @@ def test_setTimestamp_addedToQueue_base64EncodesOversizedPayload() -> None:
     assert "payload_b64" in extra
 
 
+def _capture_set_timestamp_extra(
+    event: WebhookEvent, timestamp: LiveEventTimestamp
+) -> dict[str, object]:
+    queue: Queue[LogRecord] = Queue()
+    queue_handler = QueueHandler(queue)
+    logger_id = logger.add(
+        queue_handler,
+        level="DEBUG",
+        format="{message}",
+        diagnose=False,
+        enqueue=True,
+    )
+    try:
+        event.set_timestamp(timestamp)
+        logger.complete()
+        record = queue.get()
+        assert queue.empty()
+    finally:
+        logger.remove(logger_id)
+
+    extra: dict[str, object] = _serialize_record(record)["extra"]
+    return extra
+
+
+def test_setTimestamp_startedProcessing_logsNestedPayloadForSmallPayload(
+    sample_payload: EventPayload, sample_headers: EventHeaders
+) -> None:
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=sample_payload,
+        headers=sample_headers,
+        original_request=None,
+    )
+
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["timestamp_type"] == "Started Processing"
+    assert extra["payload"] == sample_payload
+    assert extra["headers"] == sample_headers
+    assert "payload_b64" not in extra
+
+
+def test_setTimestamp_startedProcessing_base64EncodesOversizedPayload() -> None:
+    payload = {f"key_{index}": {"nested": index} for index in range(250)}
+    headers = {"x-github-event": "pull_request"}
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=payload,
+        headers=headers,
+        original_request=None,
+    )
+
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["headers"] == headers
+    assert "payload" not in extra
+    assert "payload_b64" in extra
+
+
+def test_setTimestamp_finishedProcessing_base64EncodesOversizedPayload() -> None:
+    payload = {f"key_{index}": {"nested": index} for index in range(250)}
+    headers = {"x-github-event": "pull_request"}
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=payload,
+        headers=headers,
+        original_request=None,
+    )
+
+    extra = _capture_set_timestamp_extra(
+        event, LiveEventTimestamp.FinishedProcessingSuccessfully
+    )
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["timestamp_type"] == "Finished Processing Successfully"
+    assert extra["headers"] == headers
+    assert "payload" not in extra
+    assert "payload_b64" in extra
+
+
 class TestWebhookRequestAdapter:
     @pytest.mark.asyncio
     async def test_body_returns_raw_bytes(self) -> None:
