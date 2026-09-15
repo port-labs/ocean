@@ -3,9 +3,9 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
-from linear.actions.utils import optional_string, require_property
+from linear.actions.types import ChangeStatusPayload
+from linear.actions.utils import set_issue_run_output
 from linear.core.mutations import IssueMutations
-from linear.helpers.exceptions import MissingExecutionPropertyError
 
 
 class ChangeStatusExecutor(AbstractLinearExecutor):
@@ -16,34 +16,37 @@ class ChangeStatusExecutor(AbstractLinearExecutor):
         return str(issue_id) if issue_id else None
 
     async def execute(self, run: IntegrationRun) -> None:
-        issue_id = require_property(run, "issueId")
-        state_id = optional_string(run.execution_properties.get("stateId"))
-        state_name = optional_string(run.execution_properties.get("stateName"))
-
-        if not state_id and not state_name:
-            raise MissingExecutionPropertyError("stateId or stateName is required")
+        payload = ChangeStatusPayload.from_execution_properties(
+            run.execution_properties
+        )
 
         mutations = IssueMutations(self.client)
-        if not state_id and state_name:
-            state_id = await mutations.resolve_state_id(issue_id, state_name)
+        if not payload.stateId and payload.stateName:
+            payload.stateId = await mutations.resolve_state_id(
+                payload.issueId, payload.stateName
+            )
 
         await ocean.port_client.post_run_log(
             run,
-            f"Changing status of issue {issue_id}",
+            f"Changing status of issue {payload.issueId}",
+            status_label="Changing status",
             should_raise=False,
         )
 
-        issue = await mutations.update_issue(issue_id, {"stateId": state_id})
+        issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
         state = issue.get("state", {})
-        state_label = state.get("name") if isinstance(state, dict) else state_id
+        state_label = state.get("name") if isinstance(state, dict) else payload.stateId
+        message = f"Changed issue {issue['identifier']} status to {state_label}"
+        set_issue_run_output(run, issue)
 
-        await ocean.port_client.report_run_completed(
-            run,
-            success=True,
-            message=f"Changed issue {issue['identifier']} status to {state_label}",
-        )
         logger.info(
             "Changed Linear issue status",
             issue_id=issue["id"],
-            state_id=state_id,
+            state_id=payload.stateId,
+        )
+        await ocean.port_client.report_run_completed(
+            run,
+            success=True,
+            message=message,
+            status_label="Status changed",
         )

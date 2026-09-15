@@ -5,7 +5,11 @@ from linear.core.mutations.issue_mutation_payload import (
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
-from linear.helpers.exceptions import CreateIssueError, UpdateIssueError
+from linear.helpers.exceptions import (
+    CreateIssueError,
+    LinearActionError,
+    UpdateIssueError,
+)
 
 
 class IssueMutations(LinearExporter):
