@@ -29,7 +29,6 @@ class CreateIssueExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        # https://docs.github.com/en/rest/issues/issues#create-an-issue
         issue_body = build_create_issue_body(run.execution_properties)
 
         try:
