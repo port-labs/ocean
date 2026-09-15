@@ -221,9 +221,7 @@ def test_setTimestamp_startedProcessing_logsNestedPayloadForSmallPayload(
         original_request=None,
     )
 
-    extra = _capture_set_timestamp_extra(
-        event, LiveEventTimestamp.StartedProcessing
-    )
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Started Processing"
@@ -242,9 +240,7 @@ def test_setTimestamp_startedProcessing_base64EncodesOversizedPayload() -> None:
         original_request=None,
     )
 
-    extra = _capture_set_timestamp_extra(
-        event, LiveEventTimestamp.StartedProcessing
-    )
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["headers"] == headers
