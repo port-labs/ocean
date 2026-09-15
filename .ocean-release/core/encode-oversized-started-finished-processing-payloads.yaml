@@ -1,3 +1,4 @@
 bump: patch
 changelog-type: bugfix
-changelog: Log oversized Event Started Processing and Event Finished Processing webhook payloads as a single base64 field so nested JSON is not flattened into too many log attributes.
+changelog: Base64-encode oversized Started/Finished processing payloads, and set trace_id on Redis stream message received to the Redis event id.
+
