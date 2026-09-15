@@ -1,16 +1,13 @@
-from typing import Any
-
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
-from pydantic import field_validator
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.utils import (
-    LinearActionInput,
-    optional_payload_fields,
-    parse_priority,
-    require_non_empty_str,
+    LinearActionPayload,
+    NonEmptyStr,
+    OptionalPriority,
+    OptionalStr,
     set_issue_run_output,
 )
 from linear.core.exporters import IssueExporter
@@ -19,41 +16,14 @@ from linear.core.mutations import IssueMutations
 from linear.helpers.exceptions import MissingExecutionPropertyError
 
 
-class CreateSubIssueInput(LinearActionInput):
-    parentId: str
-    title: str
-    teamId: str | None = None
-    description: str | None = None
-    assigneeId: str | None = None
-    stateId: str | None = None
-    priority: int | None = None
-
-    @field_validator("parentId", "title", mode="before")
-    @classmethod
-    def require_required_fields(cls, value: Any) -> str:
-        return require_non_empty_str(value)
-
-    @field_validator("priority", mode="before")
-    @classmethod
-    def validate_priority(cls, value: Any) -> int | None:
-        return parse_priority(value)
-
-    def to_api_payload(self, *, team_id: str) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "title": self.title,
-            "parentId": self.parentId,
-            "teamId": team_id,
-        }
-        payload.update(
-            optional_payload_fields(
-                description=self.description,
-                assigneeId=self.assigneeId,
-                stateId=self.stateId,
-            )
-        )
-        if self.priority is not None:
-            payload["priority"] = self.priority
-        return payload
+class CreateSubIssueInput(LinearActionPayload):
+    parentId: NonEmptyStr
+    title: NonEmptyStr
+    teamId: OptionalStr = None
+    description: OptionalStr = None
+    assigneeId: OptionalStr = None
+    stateId: OptionalStr = None
+    priority: OptionalPriority = None
 
 
 class CreateSubIssueExecutor(AbstractLinearExecutor):
@@ -61,8 +31,7 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CreateSubIssueInput.from_execution_properties(run.execution_properties)
-        team_id = inputs.teamId
-        if not team_id:
+        if not inputs.teamId:
             exporter = IssueExporter(self.client)
             parent_issue = await exporter.get_resource(
                 GetIssueOptions(resource_id=str(inputs.parentId))
@@ -72,30 +41,30 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
                 raise MissingExecutionPropertyError(
                     "teamId is required when the parent issue team cannot be resolved"
                 )
-            team_id = str(team["id"])
+            inputs.teamId = str(team["id"])
 
-        issue_input = inputs.to_api_payload(team_id=team_id)
+        payload = inputs.to_api_payload()
 
         await ocean.port_client.post_run_log(
             run,
-            f"Creating sub-issue '{issue_input['title']}' under {inputs.parentId}",
+            f"Creating sub-issue '{payload['title']}' under {inputs.parentId}",
             status_label="Creating issue",
             should_raise=False,
         )
 
         mutations = IssueMutations(self.client)
-        issue = await mutations.create_issue(issue_input)
+        issue = await mutations.create_issue(payload)
         message = f"Created sub-issue {issue['identifier']}: {issue['url']}"
         set_issue_run_output(run, issue)
 
+        logger.info(
+            "Created Linear sub-issue",
+            issue_id=issue["id"],
+            parent_id=inputs.parentId,
+        )
         await ocean.port_client.report_run_completed(
             run,
             success=True,
             message=message,
             status_label="Issue created",
-        )
-        logger.info(
-            "Created Linear sub-issue",
-            issue_id=issue["id"],
-            parent_id=inputs.parentId,
         )

@@ -9,10 +9,10 @@ from linear.helpers.exceptions import CreateIssueError, UpdateIssueError
 class IssueMutations(LinearExporter):
     object_type = LinearObject.ISSUES
 
-    async def create_issue(self, issue_input: dict[str, Any]) -> dict[str, Any]:
+    async def create_issue(self, payload: dict[str, Any]) -> dict[str, Any]:
         result = await self.graphql.execute_mutation(
             queries.ISSUE_CREATE,
-            {"input": issue_input},
+            {"input": payload},
             result_key="issueCreate",
         )
         issue = result.get("issue")
@@ -25,11 +25,11 @@ class IssueMutations(LinearExporter):
         return issue
 
     async def update_issue(
-        self, issue_id: str, issue_input: dict[str, Any]
+        self, issue_id: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
         result = await self.graphql.execute_mutation(
             queries.ISSUE_UPDATE,
-            {"id": issue_id, "input": issue_input},
+            {"id": issue_id, "input": payload},
             result_key="issueUpdate",
         )
         issue = result.get("issue")
