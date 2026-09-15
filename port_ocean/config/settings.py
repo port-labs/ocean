@@ -117,7 +117,6 @@ class IdentityPropagationSettings(BaseOceanModel):
     model_config = ConfigDict(extra="allow")
 
     enabled: bool = False
-    mock_verification: bool = False
     vault: VaultSettings = Field(default_factory=AWSSecretsManagerVaultSettings)
     oauth: IdentityPropagationOAuthSettings = Field(
         default_factory=IdentityPropagationOAuthSettings

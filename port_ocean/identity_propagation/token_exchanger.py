@@ -46,7 +46,7 @@ async def resolve_user_token(run: IntegrationRun) -> str | None:
     except OAuthProviderNotConfiguredError as e:
         raise ActionExecutionError(str(e)) from e
 
-    # This process's own identity, not `run.integration_config.integrationProvider` — Ocean
+    # This process's own identity, not `run.integration_config.integrationProvider` - Ocean
     # always verifies/stores as itself rather than trusting a caller-supplied field. One
     # process hosts exactly one integration, so there's nothing to look up.
     target = provider.target
@@ -62,11 +62,16 @@ async def resolve_user_token(run: IntegrationRun) -> str | None:
     except IdentityPropagationError as e:
         raise ActionExecutionError(f"Identity token verification failed: {e}") from e
 
+    if claims.node_run_id != run.id:
+        raise ActionExecutionError(
+            "Identity token does not belong to this workflow node run"
+        )
+
     vault = _require_vault()
     record = await _read(vault, claims, target)
     if record is None:
         logger.info(
-            "No vault record for this user/target — pausing for reauth",
+            "No vault record for this user/target - pausing for reauth",
             org_id=claims.org_id,
             actor=claims.sub,
             target=target,

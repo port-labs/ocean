@@ -901,6 +901,28 @@ class TestExecutionManager:
         mock_port_client.report_run_completed.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_execute_run_pauses_before_ack_when_rate_limit_check_requires_auth(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = generate_mock_wf_node_run()
+        executor = execution_manager._actions_executors["test_action"]
+
+        with patch.object(
+            executor,
+            "is_close_to_rate_limit",
+            side_effect=UserAuthRequiredError(),
+        ):
+            await execution_manager._execute_run(run)
+
+        mock_port_client.patch_run.assert_called_once_with(
+            run, {"reauthRequired": True}, should_raise=False
+        )
+        mock_port_client.acknowledge_run.assert_not_called()
+        mock_port_client.report_run_completed.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_execute_run_handles_acknowledge_run_api_error(
         self,
         execution_manager: ExecutionManager,

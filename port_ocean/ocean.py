@@ -122,7 +122,7 @@ class Ocean:
         if self.config.identity_propagation.enabled:
             self.vault_client: VaultClient | None = build_vault_client(
                 self.config.identity_propagation.vault
-            )
+            ) or getattr(self, "vault_client", None)
             self.identity_verifier: IdentityTokenVerifier = PortIdentityTokenVerifier()
             self.oauth_provider: OAuth2Provider | None = None
             if self.vault_client is None:
