@@ -5,31 +5,24 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
-from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
-from github.actions.exceptions import MergePullRequestError
+from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.exceptions import PullRequestActionError
 from github.helpers.exceptions import InvalidActionParametersException
 
-# https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request
-VALID_MERGE_METHODS = frozenset({"merge", "squash", "rebase"})
 
-
-class MergePullRequestExecutor(AbstractPullRequestExecutor):
+class MergePullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "merge_pull_request"
+    WEBHOOK_PROCESSOR_CLASS = None
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
         repo = run.execution_properties.get("repo")
         pr_number = run.execution_properties.get("prNumber")
-
-        if not (org and repo and pr_number):
-            raise InvalidActionParametersException(
-                "org, repo, and prNumber are required"
-            )
-
         merge_method = run.execution_properties.get("mergeMethod")
-        if not merge_method or merge_method not in VALID_MERGE_METHODS:
+
+        if not (org and repo and pr_number and merge_method):
             raise InvalidActionParametersException(
-                f"mergeMethod is required and must be one of: {', '.join(sorted(VALID_MERGE_METHODS))}"
+                "org, repo, prNumber, and mergeMethod are required"
             )
 
         rest_client = await self._get_rest_client(run)
@@ -56,30 +49,27 @@ class MergePullRequestExecutor(AbstractPullRequestExecutor):
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
-            raise MergePullRequestError.from_response(
+            raise PullRequestActionError.from_response(
                 e.response, f"Could not merge pull request #{pr_number} in {org}/{repo}"
             )
-
-        if not result or not result.get("merged"):
-            message = (
-                result.get("message", "Unknown error") if result else "Empty response"
-            )
-            raise MergePullRequestError(
-                f"Failed to merge pull request #{pr_number}: {message}"
+        except Exception as e:
+            raise PullRequestActionError(
+                f"Could not merge pull request #{pr_number} in {org}/{repo}: {e}"
             )
 
-        base_url = rest_client.base_url.replace("api.github.com", "github.com").replace(
-            "/api/v3", ""
-        )
-        pr_url = f"{base_url}/{org}/{repo}/pull/{pr_number}"
+        if not result["merged"]:
+            raise PullRequestActionError(
+                f"Failed to merge pull request #{pr_number}: {result['message']}"
+            )
+
         logger.info(
             f"Merged pull request #{pr_number} in {org}/{repo}",
             pr_number=pr_number,
-            merge_sha=result.get("sha"),
+            merge_sha=result["sha"],
         )
 
         await ocean.port_client.report_run_completed(
             run,
             success=True,
-            message=f"Pull request #{pr_number} merged: {pr_url}",
+            message=f"Pull request #{pr_number} merged via {merge_method}",
         )

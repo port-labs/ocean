@@ -7,7 +7,7 @@ import pytest
 from github.actions.update_pull_request_executor import (
     UpdatePullRequestExecutor,
 )
-from github.actions.exceptions import UpdatePullRequestError
+from github.actions.exceptions import PullRequestActionError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -68,7 +68,7 @@ def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[UpdatePullRequestExecutor, None, None]:
     with patch(
-        "github.actions.abstract_pull_request_executor.create_github_client_for_org",
+        "github.actions.abstract_github_executor.create_github_client_for_org",
         new=AsyncMock(return_value=mock_rest_client),
     ):
         yield UpdatePullRequestExecutor()
@@ -161,25 +161,7 @@ class TestUpdatePullRequestExecutor:
                 "title": "t",
             }
         )
-        with pytest.raises(UpdatePullRequestError, match="Not Found"):
-            await executor.execute(run)
-
-    @pytest.mark.asyncio
-    async def test_malformed_response(
-        self,
-        executor: UpdatePullRequestExecutor,
-        mock_rest_client: MagicMock,
-    ) -> None:
-        mock_rest_client.send_api_request = AsyncMock(return_value={})
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "prNumber": "42",
-                "title": "t",
-            }
-        )
-        with pytest.raises(UpdatePullRequestError, match="empty or incomplete"):
+        with pytest.raises(PullRequestActionError, match="Not Found"):
             await executor.execute(run)
 
     @pytest.mark.asyncio

@@ -3,13 +3,14 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
-from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
-from github.actions.exceptions import CreatePullRequestError
+from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.exceptions import PullRequestActionError
 from github.helpers.exceptions import InvalidActionParametersException
 
 
-class CreatePullRequestExecutor(AbstractPullRequestExecutor):
+class CreatePullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "create_pull_request"
+    WEBHOOK_PROCESSOR_CLASS = None
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -51,18 +52,12 @@ class CreatePullRequestExecutor(AbstractPullRequestExecutor):
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
-            raise CreatePullRequestError.from_response(
+            raise PullRequestActionError.from_response(
                 e.response, f"Could not create pull request in {org}/{repo}"
             )
-
-        if not pr or "number" not in pr or "html_url" not in pr:
-            logger.warning(
-                f"Received empty or incomplete response from GitHub for pull request creation in {org}/{repo}",
-                org=org,
-                repo=repo,
-            )
-            raise CreatePullRequestError(
-                "Failed to create pull request: upstream returned an empty or incomplete response"
+        except Exception as e:
+            raise PullRequestActionError(
+                f"Could not create pull request in {org}/{repo}: {e}"
             )
 
         logger.info(

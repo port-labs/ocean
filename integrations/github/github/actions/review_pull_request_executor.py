@@ -3,16 +3,14 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
-from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
-from github.actions.exceptions import ReviewPullRequestError
+from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.exceptions import PullRequestActionError
 from github.helpers.exceptions import InvalidActionParametersException
 
-# https://docs.github.com/en/rest/pulls/reviews#create-a-review-for-a-pull-request
-VALID_REVIEW_EVENTS = frozenset({"APPROVE", "REQUEST_CHANGES", "COMMENT"})
 
-
-class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
+class ReviewPullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "review_pull_request"
+    WEBHOOK_PROCESSOR_CLASS = None
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -24,11 +22,6 @@ class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
         if not (org and repo and pr_number and event):
             raise InvalidActionParametersException(
                 "org, repo, prNumber, and event are required"
-            )
-
-        if event not in VALID_REVIEW_EVENTS:
-            raise InvalidActionParametersException(
-                f"event must be one of: {', '.join(sorted(VALID_REVIEW_EVENTS))}"
             )
 
         if event == "REQUEST_CHANGES" and not comment:
@@ -56,20 +49,13 @@ class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
-            raise ReviewPullRequestError.from_response(
+            raise PullRequestActionError.from_response(
                 e.response,
                 f"Could not submit review on pull request #{pr_number} in {org}/{repo}",
             )
-
-        if not result or "id" not in result:
-            logger.warning(
-                f"Received empty or incomplete response from GitHub for pull request review in {org}/{repo}",
-                org=org,
-                repo=repo,
-                pr_number=pr_number,
-            )
-            raise ReviewPullRequestError(
-                "Failed to submit review: upstream returned an empty or incomplete response"
+        except Exception as e:
+            raise PullRequestActionError(
+                f"Could not submit review on pull request #{pr_number} in {org}/{repo}: {e}"
             )
 
         logger.info(
@@ -81,5 +67,5 @@ class ReviewPullRequestExecutor(AbstractPullRequestExecutor):
         await ocean.port_client.report_run_completed(
             run,
             success=True,
-            message=f"Review ({event}) submitted on pull request #{pr_number}: {result.get('html_url', '')}",
+            message=f"Review ({event}) submitted on pull request #{pr_number}: {result['html_url']}",
         )

@@ -3,13 +3,14 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
-from github.actions.abstract_pull_request_executor import AbstractPullRequestExecutor
-from github.actions.exceptions import ClosePullRequestError
+from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.exceptions import PullRequestActionError
 from github.helpers.exceptions import InvalidActionParametersException
 
 
-class ClosePullRequestExecutor(AbstractPullRequestExecutor):
+class ClosePullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "close_pull_request"
+    WEBHOOK_PROCESSOR_CLASS = None
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -37,19 +38,12 @@ class ClosePullRequestExecutor(AbstractPullRequestExecutor):
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
-            raise ClosePullRequestError.from_response(
+            raise PullRequestActionError.from_response(
                 e.response, f"Could not close pull request #{pr_number} in {org}/{repo}"
             )
-
-        if not pr or "number" not in pr or "html_url" not in pr:
-            logger.warning(
-                f"Received empty or incomplete response from GitHub for pull request close in {org}/{repo}",
-                org=org,
-                repo=repo,
-                pr_number=pr_number,
-            )
-            raise ClosePullRequestError(
-                "Failed to close pull request: upstream returned an empty or incomplete response"
+        except Exception as e:
+            raise PullRequestActionError(
+                f"Could not close pull request #{pr_number} in {org}/{repo}: {e}"
             )
 
         logger.info(

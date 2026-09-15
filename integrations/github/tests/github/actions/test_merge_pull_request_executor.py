@@ -7,7 +7,7 @@ import pytest
 from github.actions.merge_pull_request_executor import (
     MergePullRequestExecutor,
 )
-from github.actions.exceptions import MergePullRequestError
+from github.actions.exceptions import PullRequestActionError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -66,7 +66,7 @@ def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[MergePullRequestExecutor, None, None]:
     with patch(
-        "github.actions.abstract_pull_request_executor.create_github_client_for_org",
+        "github.actions.abstract_github_executor.create_github_client_for_org",
         new=AsyncMock(return_value=mock_rest_client),
     ):
         yield MergePullRequestExecutor()
@@ -99,7 +99,7 @@ class TestMergePullRequestExecutor:
         mock_port_client.report_run_completed.assert_called_once_with(
             run,
             success=True,
-            message="Pull request #42 merged: https://github.com/port-labs/ocean/pull/42",
+            message="Pull request #42 merged via merge",
         )
 
     @pytest.mark.asyncio
@@ -143,28 +143,7 @@ class TestMergePullRequestExecutor:
                 "prNumber": "42",
             }
         )
-        with pytest.raises(
-            InvalidActionParametersException,
-            match="mergeMethod is required",
-        ):
-            await executor.execute(run)
-
-    @pytest.mark.asyncio
-    async def test_invalid_merge_method(
-        self, executor: MergePullRequestExecutor
-    ) -> None:
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "prNumber": "42",
-                "mergeMethod": "fast-forward",
-            }
-        )
-        with pytest.raises(
-            InvalidActionParametersException,
-            match="mergeMethod is required and must be one of",
-        ):
+        with pytest.raises(InvalidActionParametersException):
             await executor.execute(run)
 
     @pytest.mark.asyncio
@@ -206,7 +185,7 @@ class TestMergePullRequestExecutor:
                 "mergeMethod": "merge",
             }
         )
-        with pytest.raises(MergePullRequestError, match="Head branch is out of date"):
+        with pytest.raises(PullRequestActionError, match="Head branch is out of date"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
@@ -226,25 +205,7 @@ class TestMergePullRequestExecutor:
                 "mergeMethod": "merge",
             }
         )
-        with pytest.raises(MergePullRequestError, match="Not mergeable"):
-            await executor.execute(run)
-
-    @pytest.mark.asyncio
-    async def test_malformed_response(
-        self,
-        executor: MergePullRequestExecutor,
-        mock_rest_client: MagicMock,
-    ) -> None:
-        mock_rest_client.send_api_request = AsyncMock(return_value={})
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "prNumber": "42",
-                "mergeMethod": "merge",
-            }
-        )
-        with pytest.raises(MergePullRequestError, match="Failed to merge"):
+        with pytest.raises(PullRequestActionError, match="Not mergeable"):
             await executor.execute(run)
 
     @pytest.mark.asyncio

@@ -7,7 +7,7 @@ import pytest
 from github.actions.review_pull_request_executor import (
     ReviewPullRequestExecutor,
 )
-from github.actions.exceptions import ReviewPullRequestError
+from github.actions.exceptions import PullRequestActionError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -66,7 +66,7 @@ def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[ReviewPullRequestExecutor, None, None]:
     with patch(
-        "github.actions.abstract_pull_request_executor.create_github_client_for_org",
+        "github.actions.abstract_github_executor.create_github_client_for_org",
         new=AsyncMock(return_value=mock_rest_client),
     ):
         yield ReviewPullRequestExecutor()
@@ -138,21 +138,6 @@ class TestReviewPullRequestExecutor:
             await executor.execute(run)
 
     @pytest.mark.asyncio
-    async def test_invalid_event(self, executor: ReviewPullRequestExecutor) -> None:
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "prNumber": "42",
-                "event": "REJECT",
-            }
-        )
-        with pytest.raises(
-            InvalidActionParametersException, match="event must be one of"
-        ):
-            await executor.execute(run)
-
-    @pytest.mark.asyncio
     async def test_missing_required_inputs(
         self, executor: ReviewPullRequestExecutor
     ) -> None:
@@ -192,25 +177,7 @@ class TestReviewPullRequestExecutor:
                 "event": "APPROVE",
             }
         )
-        with pytest.raises(ReviewPullRequestError, match="Validation Failed"):
-            await executor.execute(run)
-
-    @pytest.mark.asyncio
-    async def test_malformed_response(
-        self,
-        executor: ReviewPullRequestExecutor,
-        mock_rest_client: MagicMock,
-    ) -> None:
-        mock_rest_client.send_api_request = AsyncMock(return_value={})
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "prNumber": "42",
-                "event": "APPROVE",
-            }
-        )
-        with pytest.raises(ReviewPullRequestError, match="empty or incomplete"):
+        with pytest.raises(PullRequestActionError, match="Validation Failed"):
             await executor.execute(run)
 
     @pytest.mark.asyncio

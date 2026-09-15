@@ -411,7 +411,7 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "string",
+          "type": "number",
           "description": "The number of the pull request to update",
           "required": true
         },
@@ -457,7 +457,7 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "string",
+          "type": "number",
           "description": "The number of the pull request to close",
           "required": true
         }
@@ -485,7 +485,7 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "string",
+          "type": "number",
           "description": "The number of the pull request to merge",
           "required": true
         },
@@ -533,7 +533,7 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "string",
+          "type": "number",
           "description": "The number of the pull request to review",
           "required": true
         },
