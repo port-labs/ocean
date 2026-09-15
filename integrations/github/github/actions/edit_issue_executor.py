@@ -5,13 +5,21 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import IssueActionError
-from github.actions.utils import build_issue_patch_body
+from github.actions.utils import build_edit_issue_patch_body
+from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
 
 class EditIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "edit_issue"
     WEBHOOK_PROCESSOR_CLASS = None
+
+    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
+        org = run.execution_properties.get("org")
+        repo = run.execution_properties.get("repo")
+        if not org or not repo:
+            return None
+        return f"{org}/{repo}"
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -23,17 +31,12 @@ class EditIssueExecutor(AbstractGithubExecutor):
                 "org, repo, and issueNumber are required"
             )
 
-        try:
-            patch_body = build_issue_patch_body(run)
-        except ValueError as e:
-            raise InvalidActionParametersException(str(e))
+        # https://docs.github.com/en/rest/issues/issues#update-an-issue
+        patch_body = build_edit_issue_patch_body(run.execution_properties)
 
-        if not patch_body:
-            raise InvalidActionParametersException(
-                "At least one field to update is required (title, body, state, labels, assignees, or stateReason)"
-            )
-
-        rest_client = await self._get_rest_client(run)
+        rest_client = (await self._get_execution_clients(run))[0]
+        if not isinstance(rest_client, GithubRestClient):
+            raise InvalidActionParametersException("GitHub REST client is required")
 
         await ocean.port_client.post_run_log(
             run,

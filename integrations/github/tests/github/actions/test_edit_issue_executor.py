@@ -101,6 +101,54 @@ class TestEditIssueExecutor:
         )
 
     @pytest.mark.asyncio
+    async def test_milestone(
+        self,
+        executor: EditIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "milestone": 3,
+            }
+        )
+
+        with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        call_kwargs = mock_rest_client.send_api_request.call_args
+        assert call_kwargs.kwargs["json_data"] == {"milestone": 3}
+
+    @pytest.mark.asyncio
+    async def test_state_and_state_reason_ignored(
+        self,
+        executor: EditIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "title": "Updated",
+                "state": "closed",
+                "stateReason": "not_planned",
+            }
+        )
+
+        with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        call_kwargs = mock_rest_client.send_api_request.call_args
+        assert call_kwargs.kwargs["json_data"] == {"title": "Updated"}
+
+    @pytest.mark.asyncio
     async def test_no_update_fields_raises(
         self,
         executor: EditIssueExecutor,
@@ -232,82 +280,6 @@ class TestEditIssueExecutor:
     async def test_partition_key_missing(self, executor: EditIssueExecutor) -> None:
         run = make_run({"issueNumber": 7})
         assert await executor._get_partition_key(run) is None
-
-    @pytest.mark.asyncio
-    async def test_close_via_edit_defaults_state_reason(
-        self,
-        executor: EditIssueExecutor,
-        mock_rest_client: MagicMock,
-        mock_port_client: MagicMock,
-    ) -> None:
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "issueNumber": 7,
-                "state": "closed",
-            }
-        )
-
-        with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
-            mock_ocean.port_client = mock_port_client
-            await executor.execute(run)
-
-        call_kwargs = mock_rest_client.send_api_request.call_args
-        assert call_kwargs.kwargs["json_data"] == {
-            "state": "closed",
-            "state_reason": "completed",
-        }
-
-    @pytest.mark.asyncio
-    async def test_invalid_state_reason_raises(
-        self,
-        executor: EditIssueExecutor,
-        mock_rest_client: MagicMock,
-        mock_port_client: MagicMock,
-    ) -> None:
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "issueNumber": 7,
-                "stateReason": "invalid",
-            }
-        )
-
-        with pytest.raises(InvalidActionParametersException, match="stateReason"):
-            with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
-                mock_ocean.port_client = mock_port_client
-                await executor.execute(run)
-
-        mock_rest_client.send_api_request.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_explicit_state_reason(
-        self,
-        executor: EditIssueExecutor,
-        mock_rest_client: MagicMock,
-        mock_port_client: MagicMock,
-    ) -> None:
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "issueNumber": 7,
-                "state": "closed",
-                "stateReason": "not_planned",
-            }
-        )
-
-        with patch("github.actions.edit_issue_executor.ocean") as mock_ocean:
-            mock_ocean.port_client = mock_port_client
-            await executor.execute(run)
-
-        call_kwargs = mock_rest_client.send_api_request.call_args
-        assert call_kwargs.kwargs["json_data"] == {
-            "state": "closed",
-            "state_reason": "not_planned",
-        }
 
     def test_action_name(self, executor: EditIssueExecutor) -> None:
         assert executor.ACTION_NAME == ACTION

@@ -5,12 +5,20 @@ from port_ocean.core.models import IntegrationRun
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import IssueActionError
+from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 
 
 class CreateIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "create_issue"
     WEBHOOK_PROCESSOR_CLASS = None
+
+    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
+        org = run.execution_properties.get("org")
+        repo = run.execution_properties.get("repo")
+        if not org or not repo:
+            return None
+        return f"{org}/{repo}"
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -20,7 +28,9 @@ class CreateIssueExecutor(AbstractGithubExecutor):
         if not (org and repo and title):
             raise InvalidActionParametersException("org, repo, and title are required")
 
-        rest_client = await self._get_rest_client(run)
+        rest_client = (await self._get_execution_clients(run))[0]
+        if not isinstance(rest_client, GithubRestClient):
+            raise InvalidActionParametersException("GitHub REST client is required")
 
         await ocean.port_client.post_run_log(
             run,
@@ -28,7 +38,8 @@ class CreateIssueExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        issue_body: dict[str, str | list[str]] = {"title": title}
+        # https://docs.github.com/en/rest/issues/issues#create-an-issue
+        issue_body: dict[str, str | int | list[str]] = {"title": title}
         body = run.execution_properties.get("body")
         if body:
             issue_body["body"] = body
@@ -38,6 +49,9 @@ class CreateIssueExecutor(AbstractGithubExecutor):
         assignees = run.execution_properties.get("assignees")
         if assignees:
             issue_body["assignees"] = assignees
+        milestone = run.execution_properties.get("milestone")
+        if milestone:
+            issue_body["milestone"] = int(milestone)
 
         try:
             issue = await rest_client.send_api_request(

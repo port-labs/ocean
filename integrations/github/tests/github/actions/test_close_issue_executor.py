@@ -130,6 +130,29 @@ class TestCloseIssueExecutor:
         }
 
     @pytest.mark.asyncio
+    async def test_invalid_state_reason_raises(
+        self,
+        executor: CloseIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "stateReason": "invalid",
+            }
+        )
+
+        with pytest.raises(InvalidActionParametersException, match="stateReason"):
+            with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
+
+        mock_rest_client.send_api_request.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_missing_org_raises(
         self,
         executor: CloseIssueExecutor,
@@ -245,7 +268,7 @@ class TestCloseIssueExecutor:
         assert await executor._get_partition_key(run) is None
 
     @pytest.mark.asyncio
-    async def test_invalid_state_reason_raises(
+    async def test_duplicate_with_issue_id(
         self,
         executor: CloseIssueExecutor,
         mock_rest_client: MagicMock,
@@ -256,11 +279,41 @@ class TestCloseIssueExecutor:
                 "org": "port-labs",
                 "repo": "ocean",
                 "issueNumber": 7,
-                "stateReason": "invalid",
+                "stateReason": "duplicate",
+                "duplicateIssueId": 42,
             }
         )
 
-        with pytest.raises(InvalidActionParametersException, match="stateReason"):
+        with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        call_kwargs = mock_rest_client.send_api_request.call_args
+        assert call_kwargs.kwargs["json_data"] == {
+            "state": "closed",
+            "state_reason": "duplicate",
+            "duplicate_issue_id": 42,
+        }
+
+    @pytest.mark.asyncio
+    async def test_duplicate_without_issue_id_raises(
+        self,
+        executor: CloseIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+                "stateReason": "duplicate",
+            }
+        )
+
+        with pytest.raises(
+            InvalidActionParametersException, match="duplicateIssueId is required"
+        ):
             with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)

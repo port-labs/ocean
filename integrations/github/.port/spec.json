@@ -374,6 +374,12 @@
           "title": "Assignees",
           "type": "array",
           "description": "GitHub usernames to assign to the issue"
+        },
+        {
+          "name": "milestone",
+          "title": "Milestone",
+          "type": "number",
+          "description": "Milestone number to associate with the issue"
         }
       ]
     },
@@ -416,30 +422,22 @@
           "description": "The new description of the issue"
         },
         {
-          "name": "state",
-          "title": "State",
-          "type": "string",
-          "description": "The state of the issue",
-          "enum": ["open", "closed"]
-        },
-        {
-          "name": "stateReason",
-          "title": "State reason",
-          "type": "string",
-          "description": "The reason for the state change",
-          "enum": ["completed", "not_planned", "reopened"]
-        },
-        {
           "name": "labels",
           "title": "Labels",
           "type": "array",
-          "description": "Labels to set on the issue (replaces all existing labels)"
+          "description": "Replaces all labels on the issue (GitHub PATCH is not additive)"
         },
         {
           "name": "assignees",
           "title": "Assignees",
           "type": "array",
-          "description": "GitHub usernames to assign to the issue (replaces all existing assignees)"
+          "description": "Replaces issue assignees (GitHub PATCH is not additive)"
+        },
+        {
+          "name": "milestone",
+          "title": "Milestone",
+          "type": "number",
+          "description": "Milestone number to associate with the issue (null to remove)"
         }
       ]
     },
@@ -473,9 +471,15 @@
           "name": "stateReason",
           "title": "Close reason",
           "type": "string",
-          "description": "The reason for closing the issue",
-          "enum": ["completed", "not_planned"],
+          "description": "The reason for closing: completed, not_planned, or duplicate",
+          "enum": ["completed", "not_planned", "duplicate"],
           "default": "completed"
+        },
+        {
+          "name": "duplicateIssueId",
+          "title": "Duplicate of issue ID",
+          "type": "number",
+          "description": "The ID of the issue this is a duplicate of (required when close reason is 'duplicate')"
         }
       ]
     }

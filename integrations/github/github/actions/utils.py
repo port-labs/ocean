@@ -1,12 +1,17 @@
 import json
+from collections.abc import Mapping
 from typing import Any
 
 import httpx
-from port_ocean.core.models import IntegrationRun
+
+from github.helpers.exceptions import InvalidActionParametersException
 
 # https://docs.github.com/en/rest/issues/issues#update-an-issue
-EDITABLE_ISSUE_STRING_FIELDS = ("title", "body", "state")
-VALID_ISSUE_STATE_REASONS = frozenset({"completed", "not_planned", "reopened"})
+EDIT_ISSUE_SCALAR_PROPERTY_KEYS = ("title", "body")
+
+VALID_CLOSE_REASONS = frozenset({"completed", "not_planned", "duplicate"})
+
+DEFAULT_CLOSE_REASON = "completed"
 
 
 def build_external_id(workflow_run: dict[str, Any]) -> str:
@@ -33,31 +38,61 @@ def extract_error_message(response: httpx.Response) -> str:
     return response.text.strip() or f"HTTP {response.status_code}"
 
 
-def validate_issue_state_reason(state_reason: str) -> None:
-    if state_reason not in VALID_ISSUE_STATE_REASONS:
-        raise ValueError(
-            f"stateReason must be one of: {', '.join(sorted(VALID_ISSUE_STATE_REASONS))}"
+def resolve_close_reason(
+    execution_properties: Mapping[str, Any],
+    *,
+    key: str = "stateReason",
+    default: str = DEFAULT_CLOSE_REASON,
+) -> str:
+    state_reason = execution_properties.get(key, default)
+    if state_reason not in VALID_CLOSE_REASONS:
+        raise InvalidActionParametersException(
+            f"stateReason must be one of: {', '.join(sorted(VALID_CLOSE_REASONS))}"
         )
+    return state_reason
 
 
-def build_issue_patch_body(
-    run: IntegrationRun,
-) -> dict[str, str | list[str]]:
-    patch_body: dict[str, str | list[str]] = {}
-    for key in EDITABLE_ISSUE_STRING_FIELDS:
-        value = run.execution_properties.get(key)
+def build_edit_issue_patch_body(
+    execution_properties: Mapping[str, Any],
+) -> dict[str, str | int | list[str] | None]:
+    patch_body: dict[str, str | int | list[str] | None] = {}
+    for key in EDIT_ISSUE_SCALAR_PROPERTY_KEYS:
+        value = execution_properties.get(key)
         if value is not None:
             patch_body[key] = value
-    labels = run.execution_properties.get("labels")
+    labels = execution_properties.get("labels")
     if labels is not None:
         patch_body["labels"] = labels
-    assignees = run.execution_properties.get("assignees")
+    assignees = execution_properties.get("assignees")
     if assignees is not None:
         patch_body["assignees"] = assignees
-    state_reason = run.execution_properties.get("stateReason")
-    if state_reason is not None:
-        validate_issue_state_reason(state_reason)
-        patch_body["state_reason"] = state_reason
-    elif patch_body.get("state") == "closed":
-        patch_body["state_reason"] = "completed"
+    milestone = execution_properties.get("milestone")
+    if milestone is not None:
+        patch_body["milestone"] = milestone
+
+    if not patch_body:
+        raise InvalidActionParametersException(
+            "At least one field to update is required (title, body, labels, assignees, or milestone)"
+        )
+
     return patch_body
+
+
+def build_close_issue_patch_body(
+    execution_properties: Mapping[str, Any],
+) -> dict[str, str | int]:
+    state_reason = resolve_close_reason(execution_properties)
+    json_data: dict[str, str | int] = {
+        "state": "closed",
+        "state_reason": state_reason,
+    }
+
+    if state_reason == "duplicate":
+        duplicate_issue_id = execution_properties.get("duplicateIssueId")
+        if not duplicate_issue_id:
+            raise InvalidActionParametersException(
+                "duplicateIssueId is required when stateReason is 'duplicate'"
+            )
+        json_data["duplicate_issue_id"] = int(duplicate_issue_id)
+
+    return json_data
