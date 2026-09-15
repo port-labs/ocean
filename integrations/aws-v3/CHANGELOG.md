@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.25.3-beta (2026-09-15)
+
+
+### Bug Fixes
+
+- Fix: AWS v3 integration now properly handles throttled API calls with retry logic and bounded concurrency (max 20 concurrent operations) to prevent silent entity count divergence
+
+
 ## 2.25.2-beta (2026-09-14)
 
 
