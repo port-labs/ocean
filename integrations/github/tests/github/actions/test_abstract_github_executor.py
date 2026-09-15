@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from github.actions.abstract_github_executor import (
-    MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW,
+    MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS,
     AbstractGithubExecutor,
 )
 from github.clients.rate_limiter.utils import RateLimitInfo
@@ -60,7 +60,7 @@ class TestAbstractGithubExecutorRateLimits:
     ) -> None:
         executor = StubGithubExecutor(
             [
-                make_client(MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW - 1, 30),
+                make_client(MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS - 1, 30),
                 make_client(100, 10),
             ]
         )
@@ -73,7 +73,7 @@ class TestAbstractGithubExecutorRateLimits:
     ) -> None:
         executor = StubGithubExecutor(
             [
-                make_client(MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW, 30),
+                make_client(MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS, 30),
                 make_client(100, 10),
             ]
         )
