@@ -18,8 +18,7 @@ from azure_devops.actions.update_pull_request_executor import (
     UpdatePullRequestInputs,
     _build_update_pull_request_body,
     _has_update_fields,
-    _normalize_optional_string_inputs,
-    _parse_policy_config_ids,
+    _parse_policy_config_ids_from_string,
 )
 
 PULL_REQUEST_URL = "https://dev.azure.com/org/proj/_git/repo/pullrequest/42"
@@ -141,6 +140,8 @@ def test_build_update_pull_request_body_maps_all_optional_fields() -> None:
         project="proj-guid",
         repositoryId="repo-guid",
         pullRequestId="42",
+        status="completed",
+        mergeStrategy="squash",
         bypassPolicy=True,
         bypassReason="Approved by release manager",
         transitionWorkItems=True,
@@ -151,7 +152,7 @@ def test_build_update_pull_request_body_maps_all_optional_fields() -> None:
         autoCompleteSetById="user-guid",
     )
 
-    body = _build_update_pull_request_body(inputs, "completed", "squash")
+    body = _build_update_pull_request_body(inputs)
 
     assert body == {
         "status": "completed",
@@ -172,26 +173,24 @@ def test_build_update_pull_request_body_maps_all_optional_fields() -> None:
 
 
 def test_parse_policy_config_ids_rejects_invalid_values() -> None:
-    with pytest.raises(InvalidActionParametersError):
-        _parse_policy_config_ids("12,abc")
+    with pytest.raises(ValueError):
+        _parse_policy_config_ids_from_string("12,abc")
 
 
-def test_normalize_optional_string_inputs_treats_blank_strings_as_omitted() -> None:
-    inputs = _normalize_optional_string_inputs(
-        UpdatePullRequestInputs(
-            project="proj-guid",
-            repositoryId="repo-guid",
-            pullRequestId="42",
-            title="",
-            description="",
-            status="",
-            targetBranch="",
-            mergeStrategy="",
-            mergeCommitMessage="",
-            bypassReason="",
-            autoCompleteIgnoreConfigIds="",
-            autoCompleteSetById="",
-        )
+def test_update_pull_request_inputs_treats_blank_strings_as_omitted() -> None:
+    inputs = UpdatePullRequestInputs(
+        project="proj-guid",
+        repositoryId="repo-guid",
+        pullRequestId="42",
+        title="",
+        description="",
+        status="",
+        targetBranch="",
+        mergeStrategy="",
+        mergeCommitMessage="",
+        bypassReason="",
+        autoCompleteIgnoreConfigIds="",
+        autoCompleteSetById="",
     )
 
     assert inputs.title is None
@@ -206,62 +205,6 @@ def test_normalize_optional_string_inputs_treats_blank_strings_as_omitted() -> N
 
 
 def test_build_update_pull_request_body_omits_blank_optional_strings() -> None:
-    inputs = _normalize_optional_string_inputs(
-        UpdatePullRequestInputs(
-            project="proj-guid",
-            repositoryId="repo-guid",
-            pullRequestId="42",
-            title="Updated title",
-            description="",
-            targetBranch="",
-            mergeCommitMessage="",
-            bypassReason="",
-            autoCompleteSetById="",
-        )
-    )
-
-    body = _build_update_pull_request_body(inputs, None, None)
-
-    assert body == {"title": "Updated title"}
-
-
-def test_has_update_fields_ignores_blank_optional_strings() -> None:
-    inputs = _normalize_optional_string_inputs(
-        UpdatePullRequestInputs(
-            project="proj-guid",
-            repositoryId="repo-guid",
-            pullRequestId="42",
-            title="",
-            description="",
-            status="",
-            mergeStrategy="",
-            autoCompleteIgnoreConfigIds=" , ",
-        )
-    )
-
-    assert _has_update_fields(inputs, None, None) is False
-
-
-def test_has_update_fields_ignores_blank_strings_without_normalization() -> None:
-    inputs = UpdatePullRequestInputs(
-        project="proj-guid",
-        repositoryId="repo-guid",
-        pullRequestId="42",
-        title="",
-        description="",
-        status="",
-        mergeStrategy="",
-        mergeCommitMessage="",
-        bypassReason="",
-        autoCompleteSetById="",
-    )
-
-    assert _has_update_fields(inputs, None, None) is False
-
-
-def test_build_update_pull_request_body_ignores_blank_strings_without_normalization() -> (
-    None
-):
     inputs = UpdatePullRequestInputs(
         project="proj-guid",
         repositoryId="repo-guid",
@@ -274,9 +217,24 @@ def test_build_update_pull_request_body_ignores_blank_strings_without_normalizat
         autoCompleteSetById="",
     )
 
-    body = _build_update_pull_request_body(inputs, None, None)
+    body = _build_update_pull_request_body(inputs)
 
     assert body == {"title": "Updated title"}
+
+
+def test_has_update_fields_ignores_blank_optional_strings() -> None:
+    inputs = UpdatePullRequestInputs(
+        project="proj-guid",
+        repositoryId="repo-guid",
+        pullRequestId="42",
+        title="",
+        description="",
+        status="",
+        mergeStrategy="",
+        autoCompleteIgnoreConfigIds=" , ",
+    )
+
+    assert _has_update_fields(inputs) is False
 
 
 @pytest.mark.parametrize(

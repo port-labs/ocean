@@ -15,8 +15,8 @@ from azure_devops.actions.update_pull_request_executor import UpdatePullRequestE
 
 def register_actions_executors() -> None:
     """Register all Azure DevOps action executors."""
-    ocean.register_action_executor(TriggerPipelineExecutor())
+    ocean.register_action_executor(ClosePullRequestExecutor())
     ocean.register_action_executor(CreatePullRequestExecutor())
     ocean.register_action_executor(MergePullRequestExecutor())
+    ocean.register_action_executor(TriggerPipelineExecutor())
     ocean.register_action_executor(UpdatePullRequestExecutor())
-    ocean.register_action_executor(ClosePullRequestExecutor())
