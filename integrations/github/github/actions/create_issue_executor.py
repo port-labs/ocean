@@ -43,9 +43,7 @@ class CreateIssueExecutor(AbstractGithubExecutor):
                 e.response, f"Could not create issue in {org}/{repo}"
             )
         except Exception as e:
-            raise IssueActionError(
-                f"Could not create issue in {org}/{repo}: {e}"
-            )
+            raise IssueActionError(f"Could not create issue in {org}/{repo}: {e}")
 
         if not issue or "number" not in issue or "html_url" not in issue:
             logger.warning(
