@@ -67,16 +67,6 @@
           "type": "string",
           "format": "markdown"
         },
-        "workItemLinking": {
-          "title": "Work Item Linking",
-          "default": false,
-          "type": "boolean"
-        },
-        "minimumApproverCount": {
-          "title": "Minimum Approver Count",
-          "default": 0,
-          "type": "number"
-        },
         "slack": {
           "icon": "Slack",
           "type": "string",
@@ -180,14 +170,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": true,
-        "many": false
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "azureDevopsPipeline",
@@ -215,12 +198,6 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": false,
-        "many": false
-      },
       "repository": {
         "title": "Repository",
         "target": "azureDevopsRepository",
@@ -306,12 +283,6 @@
         "target": "azureDevopsRepository",
         "required": false,
         "many": false
-      },
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": false,
-        "many": false
       }
     }
   },
@@ -384,15 +355,9 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": true,
-        "many": false
-      },
-      "repository": {
-        "title": "Repository",
-        "target": "azureDevopsRepository",
+      "pipeline": {
+        "title": "Pipeline",
+        "target": "azureDevopsPipeline",
         "required": false,
         "many": false
       }
@@ -433,12 +398,6 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": false,
-        "many": false
-      },
       "pipeline": {
         "title": "Pipeline",
         "target": "azureDevopsPipeline",
@@ -498,16 +457,16 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": true,
-        "many": false
-      },
       "build": {
         "title": "Build",
         "target": "azureDevopsBuild",
-        "required": true,
+        "required": false,
+        "many": false
+      },
+      "pipelineRun": {
+        "title": "Pipeline Run",
+        "target": "azureDevopsPipelineRun",
+        "required": false,
         "many": false
       }
     }
@@ -538,14 +497,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": true,
-        "many": false
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "azureDevopsPipelineDeployment",
@@ -586,16 +538,16 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": true,
-        "many": false
-      },
       "environment": {
         "title": "Environment",
         "target": "azureDevopsEnvironment",
-        "required": true,
+        "required": false,
+        "many": false
+      },
+      "build": {
+        "title": "Build",
+        "target": "azureDevopsBuild",
+        "required": false,
         "many": false
       }
     }
@@ -649,16 +601,10 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "project": {
-        "title": "Project",
-        "target": "azureDevopsProject",
-        "required": false,
-        "many": false
-      },
       "release": {
         "title": "Release",
         "target": "azureDevopsRelease",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
