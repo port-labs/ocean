@@ -246,7 +246,7 @@ class PortOceanContext:
         """Register this process's OAuth provider for identity propagation.
 
         Each Ocean process hosts exactly one integration, so there's exactly one provider to
-        register — no target string needed, this process already knows who it is via its own
+        register - no target string needed, this process already knows who it is via its own
         `integration.type`. Call once at startup, e.g. from the integration's own
         `oauth/registry.py`, alongside `register_action_executor`.
         """
@@ -265,7 +265,7 @@ class PortOceanContext:
 
         if self.app.oauth_provider is not None:
             raise DuplicateOAuthProviderError(
-                "An OAuth provider is already registered for this process — "
+                "An OAuth provider is already registered for this process - "
                 "each Ocean process hosts exactly one integration and one provider"
             )
 

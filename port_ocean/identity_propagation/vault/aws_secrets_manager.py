@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import Any
 
-import boto3
+import boto3  # type: ignore[import-untyped]
 from loguru import logger
 
 from port_ocean.identity_propagation.vault.base import (
@@ -34,7 +34,7 @@ class AWSSecretsManagerVaultClient(VaultClient):
     def _client(self) -> Any:
         if self._boto_client is None:
             # Explicit kwargs, even when None, take priority over AWS_PROFILE/SSO in boto3's
-            # default credential chain — passing them here is what lets a developer point this
+            # default credential chain - passing them here is what lets a developer point this
             # at LocalStack without touching an unrelated AWS_PROFILE they need for other work.
             logger.info(
                 "Constructing Secrets Manager vault client",

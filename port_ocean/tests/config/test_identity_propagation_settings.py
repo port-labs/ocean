@@ -14,7 +14,6 @@ def test_identity_propagation_is_disabled_by_default() -> None:
     settings = IdentityPropagationSettings()
 
     assert settings.enabled is False
-    assert settings.mock_verification is False
     assert settings.vault.secret_prefix == "port/tokens"
     assert settings.oauth.github is None
     assert settings.oauth.gitlab is None

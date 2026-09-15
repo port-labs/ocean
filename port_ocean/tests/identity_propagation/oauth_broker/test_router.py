@@ -185,7 +185,7 @@ def test_callback_stores_the_token_and_resumes_the_run(
         "https://api.getport.io/v1/workflows/nodes/runs/wfnr_1/resume",
         headers={"Authorization": "Bearer token", "x-port-reserved-usage": "true"},
     )
-    # Vault is keyed by the provider's own identity — no target is sent by the caller at all.
+    # Vault is keyed by the provider's own identity - no target is sent by the caller at all.
     org_id, actor_id, target, record = mock_vault.write.await_args.args
     assert (org_id, actor_id, target) == ("org_1", "jane@acme.com", "github-ocean")
     assert record.access_token == "gho_token"

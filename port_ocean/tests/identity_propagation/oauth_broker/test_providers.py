@@ -11,7 +11,7 @@ from port_ocean.identity_propagation.oauth_broker.providers import (
     ProviderDefaults,
 )
 
-# Mirrors what used to live in the deleted central PROVIDER_DEFAULTS dict — now these values
+# Mirrors what used to live in the deleted central PROVIDER_DEFAULTS dict - now these values
 # live in each integration's own oauth/registry.py; tests construct them directly.
 GITHUB_DEFAULTS = ProviderDefaults(
     authorize_url="https://github.com/login/oauth/authorize",

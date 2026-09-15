@@ -36,7 +36,7 @@ def _run_view_url(org_id: str, run_id: str) -> str:
         app_url = str(configured_app_url).rstrip("/")
     else:
         # Fallback: guess the app URL from the API URL (api.getport.io -> app.getport.io).
-        # Set OCEAN__PORT__APP_URL to skip this guess — it breaks if the app domain doesn't
+        # Set OCEAN__PORT__APP_URL to skip this guess - it breaks if the app domain doesn't
         # follow that exact convention (e.g. api.stg-01.getport.io vs app.stg-01.port.io).
         api_url = ocean.port_client.api_url.rstrip("/")
         app_url = api_url.replace("api.", "app.").removesuffix("/v1")
@@ -73,7 +73,7 @@ async def _exchange_and_store_token(payload: OAuthState, code: str) -> str:
             detail="Vault client is not configured. Set ocean.app.vault_client during integration startup.",
         )
 
-    # Keyed by this process's own identity (there is no caller-supplied target anymore) —
+    # Keyed by this process's own identity (there is no caller-supplied target anymore) -
     # matches what token_exchanger.py reads on the other side.
     try:
         await vault_client.write(
@@ -86,7 +86,7 @@ async def _exchange_and_store_token(payload: OAuthState, code: str) -> str:
 
 async def _resume_run(payload: OAuthState) -> None:
     # x-port-reserved-usage marks this as a Port-operated caller (mirrors verifier.py and
-    # the claim-pending mixins) — workflow-service's resume endpoint requires it from machine
+    # the claim-pending mixins) - workflow-service's resume endpoint requires it from machine
     # callers instead of an installationId/clientId ownership lookup.
     headers = {
         **await ocean.port_client.auth.headers(),

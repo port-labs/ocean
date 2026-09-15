@@ -25,7 +25,11 @@ from port_ocean.exceptions.identity_propagation import (
     VaultError,
 )
 
-CLAIMS = IdentityClaims(sub="jane@acme.com", org_id="org_1", node_run_id="node_run_1")
+CLAIMS = IdentityClaims(
+    sub="jane@acme.com",
+    org_id="org_1",
+    node_run_id="test-wf-node-run-id",
+)
 EXPIRED_AT = int(time.time()) - 3600
 VALID_UNTIL = int(time.time()) + 3600
 
@@ -83,7 +87,7 @@ def mock_provider() -> MagicMock:
 @pytest.fixture(autouse=True)
 def identity_environment(
     monkeypatch: pytest.MonkeyPatch, mock_vault: MagicMock, mock_provider: MagicMock
-) -> None:
+) -> MagicMock:
     verifier = MagicMock()
     verifier.verify = AsyncMock(return_value=CLAIMS)
 
@@ -95,6 +99,7 @@ def identity_environment(
     monkeypatch.setattr(exchanger, "ocean", mock_ocean)
     monkeypatch.setattr(exchanger, "require_provider", lambda: mock_provider)
     exchanger._refresh_locks.clear()
+    return verifier
 
 
 async def test_returns_none_for_a_run_without_an_identity_token(
@@ -116,6 +121,22 @@ async def test_returns_the_stored_token_on_a_vault_hit(mock_vault: MagicMock) ->
 
     assert await resolve_user_token(generate_identity_run()) == "gho_live"
     mock_vault.read.assert_awaited_once_with("org_1", "jane@acme.com", "github")
+
+
+async def test_rejects_an_identity_token_for_another_node_run(
+    mock_vault: MagicMock,
+    identity_environment: MagicMock,
+) -> None:
+    identity_environment.verify.return_value = IdentityClaims(
+        sub="jane@acme.com",
+        org_id="org_1",
+        node_run_id="another-node-run",
+    )
+
+    with pytest.raises(ActionExecutionError, match="does not belong"):
+        await resolve_user_token(generate_identity_run())
+
+    mock_vault.read.assert_not_called()
 
 
 async def test_vault_miss_asks_the_user_to_authenticate(mock_vault: MagicMock) -> None:
