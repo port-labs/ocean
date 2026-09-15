@@ -50,7 +50,7 @@ class CreateIssueExecutor(AbstractGithubExecutor):
         if assignees:
             issue_body["assignees"] = assignees
         milestone = run.execution_properties.get("milestone")
-        if milestone:
+        if milestone is not None:
             issue_body["milestone"] = int(milestone)
 
         try:

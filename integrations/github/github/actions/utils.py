@@ -40,11 +40,8 @@ def extract_error_message(response: httpx.Response) -> str:
 
 def resolve_close_reason(
     execution_properties: Mapping[str, Any],
-    *,
-    key: str = "stateReason",
-    default: str = DEFAULT_CLOSE_REASON,
 ) -> str:
-    state_reason = execution_properties.get(key, default)
+    state_reason = execution_properties.get("stateReason", DEFAULT_CLOSE_REASON)
     if state_reason not in VALID_CLOSE_REASONS:
         raise InvalidActionParametersException(
             f"stateReason must be one of: {', '.join(sorted(VALID_CLOSE_REASONS))}"
@@ -89,10 +86,15 @@ def build_close_issue_patch_body(
 
     if state_reason == "duplicate":
         duplicate_issue_id = execution_properties.get("duplicateIssueId")
-        if not duplicate_issue_id:
+        if duplicate_issue_id is None:
             raise InvalidActionParametersException(
                 "duplicateIssueId is required when stateReason is 'duplicate'"
             )
-        json_data["duplicate_issue_id"] = int(duplicate_issue_id)
+        try:
+            json_data["duplicate_issue_id"] = int(duplicate_issue_id)
+        except (ValueError, TypeError):
+            raise InvalidActionParametersException(
+                "duplicateIssueId must be a valid integer"
+            )
 
     return json_data
