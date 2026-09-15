@@ -146,7 +146,7 @@ class PollingEventListener(BaseEventListener):
                 await self._current_resync_task
             except asyncio.CancelledError:
                 pass
-            await ocean.app.resync_state_updater.report_superseded_resync(
+            await ocean.app.resync_state_updater.update_after_superseded_resync(
                 superseded_resync_id or None
             )
         finally:

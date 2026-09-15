@@ -257,7 +257,7 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
         supersede_in_progress=False,
         update_before_resync=AsyncMock(),
         update_after_resync=AsyncMock(),
-        report_superseded_resync=AsyncMock(),
+        update_after_superseded_resync=AsyncMock(),
     )
 
     app = SimpleNamespace(
@@ -318,7 +318,7 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
     assert listener._current_resync_task is None
 
     assert len(resync_calls) == 2
-    resync_state_updater.report_superseded_resync.assert_called_once_with(
+    resync_state_updater.update_after_superseded_resync.assert_called_once_with(
         "superseded-resync-id"
     )
 
