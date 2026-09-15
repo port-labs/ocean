@@ -14,11 +14,19 @@ class ObjectKind(StrEnum):
     CYCLE = "cycle"
 
 
+class PriorityLabel(StrEnum):
+    NO_PRIORITY = "No priority"
+    URGENT = "Urgent"
+    HIGH = "High"
+    NORMAL = "Normal"
+    LOW = "Low"
+
+
 # Linear GraphQL priority is Int 0-4; Port actions use the label.
-PRIORITY_BY_LABEL = {
-    "No priority": 0,
-    "Urgent": 1,
-    "High": 2,
-    "Normal": 3,
-    "Low": 4,
+PRIORITY_BY_LABEL: dict[PriorityLabel, int] = {
+    PriorityLabel.NO_PRIORITY: 0,
+    PriorityLabel.URGENT: 1,
+    PriorityLabel.HIGH: 2,
+    PriorityLabel.NORMAL: 3,
+    PriorityLabel.LOW: 4,
 }

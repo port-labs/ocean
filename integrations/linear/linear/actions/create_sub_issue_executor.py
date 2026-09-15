@@ -30,7 +30,9 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
         payload.teamId = str(team["id"])
 
     async def execute(self, run: IntegrationRun) -> None:
-        payload = CreateSubIssuePayload.from_execution_properties(run.execution_properties)
+        payload = CreateSubIssuePayload.from_execution_properties(
+            run.execution_properties
+        )
         await self._resolve_team_id(payload)
 
         await ocean.port_client.post_run_log(

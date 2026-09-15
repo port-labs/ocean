@@ -31,9 +31,7 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
         )
 
         mutations = IssueMutations(self.client)
-        issue = await mutations.update_issue(
-            payload.issueId, payload.to_mutation()
-        )
+        issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
         message = f"Updated issue {issue['identifier']}: {issue['url']}"
         set_issue_run_output(run, issue)
 
