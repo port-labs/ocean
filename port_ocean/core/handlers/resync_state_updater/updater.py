@@ -21,6 +21,7 @@ class ResyncStateUpdater:
         self.last_integration_state_updated_at: str = ""
         self.last_resync_request_updated_at: str | None = None
         self.supersede_in_progress: bool = False
+        self._last_superseded_lifecycle_resync_id: str | None = None
 
     def _calculate_next_scheduled_resync(
         self,
@@ -32,6 +33,31 @@ class ResyncStateUpdater:
         return get_next_occurrence(
             interval * 60, custom_start_time or self.initiated_at
         ).isoformat()
+
+    async def report_superseded_resync(self, resync_id: str | None = None) -> None:
+        """
+        Mark a superseded in-flight resync as aborted in lifecycle (when DSP is on)
+        and integration resyncState.
+        """
+        resync_id_normalized = resync_id.strip() if resync_id else ""
+        if (
+            resync_id_normalized
+            and resync_id_normalized == self._last_superseded_lifecycle_resync_id
+        ):
+            return
+
+        if resync_id_normalized and await is_dsp_mode_enabled():
+            try:
+                await ocean.app.lifecycle_client.notify_resync_aborted(
+                    resync_id=resync_id_normalized,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                )
+                self._last_superseded_lifecycle_resync_id = resync_id_normalized
+            except Exception:
+                pass
+
+        await self.update_after_resync(IntegrationStateStatus.Aborted)
 
     async def update_before_resync(
         self,
