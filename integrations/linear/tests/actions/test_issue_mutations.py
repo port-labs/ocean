@@ -3,6 +3,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from linear.core.mutations import IssueMutations
+from linear.core.mutations.issue_mutation_payload import (
+    IssueCreateMutationPayload,
+    IssueUpdateMutationPayload,
+)
 from linear.helpers.exceptions import LinearActionError
 
 
@@ -17,6 +21,13 @@ async def test_issue_mutation_rejects_incomplete_response(operation: str) -> Non
 
     with pytest.raises(LinearActionError, match="incomplete"):
         if operation == "create":
-            await mutations.create_issue({"teamId": "team-1", "title": "Bug"})
+            await mutations.create_issue(
+                IssueCreateMutationPayload.model_validate(
+                    {"teamId": "team-1", "title": "Bug"}
+                )
+            )
         else:
-            await mutations.update_issue("ENG-1", {"title": "Bug"})
+            await mutations.update_issue(
+                "ENG-1",
+                IssueUpdateMutationPayload.model_validate({"title": "Bug"}),
+            )

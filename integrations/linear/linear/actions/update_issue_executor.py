@@ -3,30 +3,10 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
-from linear.actions.utils import (
-    LinearActionPayload,
-    NonEmptyStr,
-    OptionalPriority,
-    OptionalStr,
-    set_issue_run_output,
-)
+from linear.actions.types import UpdateIssuePayload
+from linear.actions.utils import set_issue_run_output
 from linear.core.mutations import IssueMutations
 from linear.helpers.exceptions import MissingExecutionPropertyError
-
-
-class UpdateIssueInput(LinearActionPayload):
-    api_payload_exclude = frozenset({"issueId"})
-
-    issueId: NonEmptyStr
-    title: OptionalStr = None
-    description: OptionalStr = None
-    assigneeId: OptionalStr = None
-    stateId: OptionalStr = None
-    projectId: OptionalStr = None
-    cycleId: OptionalStr = None
-    priority: OptionalPriority = None
-    delegateId: OptionalStr = None
-    labelIds: list[str] | None = None
 
 
 class UpdateIssueExecutor(AbstractLinearExecutor):
@@ -37,22 +17,23 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
         return str(issue_id) if issue_id else None
 
     async def execute(self, run: IntegrationRun) -> None:
-        inputs = UpdateIssueInput.from_execution_properties(run.execution_properties)
-        payload = inputs.to_api_payload()
-        if not payload:
+        payload = UpdateIssuePayload.from_execution_properties(run.execution_properties)
+        if not payload.to_payload():
             raise MissingExecutionPropertyError(
                 "At least one update field is required (title, description, assigneeId, stateId, projectId, cycleId, priority, delegateId, or labelIds)"
             )
 
         await ocean.port_client.post_run_log(
             run,
-            f"Updating issue {inputs.issueId}",
+            f"Updating issue {payload.issueId}",
             status_label="Updating issue",
             should_raise=False,
         )
 
         mutations = IssueMutations(self.client)
-        issue = await mutations.update_issue(inputs.issueId, payload)
+        issue = await mutations.update_issue(
+            payload.issueId, payload.to_mutation()
+        )
         message = f"Updated issue {issue['identifier']}: {issue['url']}"
         set_issue_run_output(run, issue)
 

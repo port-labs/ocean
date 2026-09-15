@@ -1,18 +1,20 @@
-from typing import Any
-
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import LinearExporter
 from linear.core.mutations import queries
+from linear.core.mutations.issue_mutation_payload import (
+    IssueCreateMutationPayload,
+    IssueUpdateMutationPayload,
+)
 from linear.helpers.exceptions import CreateIssueError, UpdateIssueError
 
 
 class IssueMutations(LinearExporter):
     object_type = LinearObject.ISSUES
 
-    async def create_issue(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def create_issue(self, payload: IssueCreateMutationPayload) -> dict[str, object]:
         result = await self.graphql.execute_mutation(
             queries.ISSUE_CREATE,
-            {"input": payload},
+            {"input": payload.model_dump(exclude_none=True)},
             result_key="issueCreate",
         )
         issue = result.get("issue")
@@ -25,11 +27,11 @@ class IssueMutations(LinearExporter):
         return issue
 
     async def update_issue(
-        self, issue_id: str, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+        self, issue_id: str, payload: IssueUpdateMutationPayload
+    ) -> dict[str, object]:
         result = await self.graphql.execute_mutation(
             queries.ISSUE_UPDATE,
-            {"id": issue_id, "input": payload},
+            {"id": issue_id, "input": payload.model_dump(exclude_none=True)},
             result_key="issueUpdate",
         )
         issue = result.get("issue")

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from linear.actions.update_issue_executor import UpdateIssueExecutor
+from linear.core.mutations.issue_mutation_payload import IssueUpdateMutationPayload
 from linear.helpers.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
@@ -30,9 +31,11 @@ class TestUpdateIssueExecutor:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-        mock_issue_mutations.update_issue.assert_awaited_once_with(
-            "ENG-1", {"title": "Updated title"}
-        )
+        mock_issue_mutations.update_issue.assert_awaited_once()
+        update_call = mock_issue_mutations.update_issue.await_args
+        assert update_call.args[0] == "ENG-1"
+        assert isinstance(update_call.args[1], IssueUpdateMutationPayload)
+        assert update_call.args[1].model_dump(exclude_none=True) == {"title": "Updated title"}
         assert run.output == {
             "identifier": "ENG-1",
             "issueId": "issue-1",

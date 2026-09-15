@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from linear.actions.create_issue_executor import CreateIssueExecutor
+from linear.actions.types import CreateIssuePayload
+from linear.core.mutations.issue_mutation_payload import IssueCreateMutationPayload
 from linear.helpers.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
@@ -22,7 +24,7 @@ class TestCreateIssueExecutor:
                 "teamId": "team-1",
                 "title": "Bug report",
                 "description": "Details",
-                "priority": "2",
+                "priority": "High",
                 "labelIds": ["label-1"],
             },
         )
@@ -36,15 +38,16 @@ class TestCreateIssueExecutor:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-        mock_issue_mutations.create_issue.assert_awaited_once_with(
-            {
-                "teamId": "team-1",
-                "title": "Bug report",
-                "description": "Details",
-                "priority": 2,
-                "labelIds": ["label-1"],
-            }
-        )
+        mock_issue_mutations.create_issue.assert_awaited_once()
+        create_payload = mock_issue_mutations.create_issue.await_args.args[0]
+        assert isinstance(create_payload, IssueCreateMutationPayload)
+        assert create_payload.model_dump(exclude_none=True) == {
+            "teamId": "team-1",
+            "title": "Bug report",
+            "description": "Details",
+            "priority": 2,
+            "labelIds": ["label-1"],
+        }
         assert run.output == {
             "identifier": "ENG-1",
             "issueId": "issue-1",
