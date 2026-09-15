@@ -30,17 +30,18 @@ mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
 }
 """
 
-RESOLVE_STATE_BY_NAME = """
-query ResolveStateByName($issueId: String!, $stateName: String!) {
-    issue(id: $issueId) {
-        team {
-            states(filter: { name: { eq: $stateName } }, first: 1) {
-                nodes {
-                    id
-                    name
-                }
-            }
-        }
+ISSUE_ARCHIVE = """
+mutation IssueArchive($id: String!) {
+    issueArchive(id: $id) {
+        success
+    }
+}
+"""
+
+ISSUE_DELETE = """
+mutation IssueDelete($id: String!) {
+    issueDelete(id: $id) {
+        success
     }
 }
 """
@@ -66,6 +67,33 @@ mutation DocumentCreate($input: DocumentCreateInput!) {
             id
             title
             url
+        }
+    }
+}
+"""
+
+REACTION_CREATE = """
+mutation ReactionCreate($input: ReactionCreateInput!) {
+    reactionCreate(input: $input) {
+        success
+        reaction {
+            id
+            emoji
+        }
+    }
+}
+"""
+
+RESOLVE_STATE_BY_NAME = """
+query ResolveStateByName($issueId: String!, $stateName: String!) {
+    issue(id: $issueId) {
+        team {
+            states(filter: { name: { eq: $stateName } }, first: 1) {
+                nodes {
+                    id
+                    name
+                }
+            }
         }
     }
 }

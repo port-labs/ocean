@@ -320,6 +320,55 @@
           "description": "UUID of the related project. Provide issueId or projectId."
         }
       ]
+    },
+    {
+      "name": "add_reaction_to_issue",
+      "icon": "Linear",
+      "description": "Add an emoji reaction to a Linear issue",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "emoji",
+          "title": "Emoji",
+          "type": "string",
+          "description": "Emoji shortcode to add (e.g. +1, thumbsup, eyes)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "archive_issue",
+      "icon": "Linear",
+      "description": "Archive a Linear issue",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to archive (e.g. ENG-123)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "delete_issue",
+      "icon": "Linear",
+      "description": "Move a Linear issue to trash",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to delete (e.g. ENG-123)",
+          "required": true
+        }
+      ]
     }
   ]
 }
