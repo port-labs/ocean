@@ -2,10 +2,13 @@ from typing import Any, Optional, Sequence
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import Field
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
+from azure_devops.actions.abstract_ado_action_input import (
+    AbstractAzureDevopsActionInput,
+)
 from azure_devops.actions.abstract_ado_executor import AbstractAzureDevopsExecutor
 from azure_devops.actions.exceptions import (
     CreatePullRequestThreadError,
@@ -40,9 +43,7 @@ OPTIONAL_STRING_FIELDS = (
 )
 
 
-class CreatePullRequestThreadInputs(BaseModel):
-    model_config = ConfigDict(extra="ignore", strict=True)
-
+class CreatePullRequestThreadInputs(AbstractAzureDevopsActionInput):
     project: str = Field(min_length=1)
     repositoryId: str = Field(min_length=1)
     pullRequestId: str = Field(min_length=1)
@@ -50,19 +51,6 @@ class CreatePullRequestThreadInputs(BaseModel):
     status: str | None = None
     filePath: str | None = None
     line: str | None = None
-
-
-def _parse_create_pull_request_thread_inputs(
-    execution_properties: dict[str, Any],
-) -> CreatePullRequestThreadInputs:
-    try:
-        return CreatePullRequestThreadInputs.model_validate(execution_properties)
-    except ValidationError as error:
-        messages = [
-            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
-            for err in error.errors()
-        ]
-        raise ValueError("; ".join(messages)) from error
 
 
 def _blank_to_none(value: str | None) -> str | None:
@@ -172,14 +160,16 @@ class CreatePullRequestThreadExecutor(AbstractAzureDevopsExecutor):
             run_id=run.id,
         )
         try:
-            inputs = _parse_create_pull_request_thread_inputs(run.execution_properties)
-        except ValueError as error:
+            inputs = CreatePullRequestThreadInputs.from_execution_properties(
+                run.execution_properties
+            )
+        except InvalidActionParametersError as error:
             logger.warning(
                 f"Invalid parameters for action run {run.id}",
                 run_id=run.id,
                 error=str(error),
             )
-            raise InvalidActionParametersError(str(error)) from error
+            raise
 
         inputs = _normalize_optional_string_inputs(inputs)
 
@@ -259,5 +249,4 @@ class CreatePullRequestThreadExecutor(AbstractAzureDevopsExecutor):
             run,
             success=True,
             message=message,
-            status_label="Created",
         )
