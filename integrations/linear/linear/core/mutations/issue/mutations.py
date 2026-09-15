@@ -42,3 +42,17 @@ class IssueMutations(LinearExporter):
             result_key="commentCreate",
         )
         return MutationCommentResult.model_validate(result).comment
+
+    async def archive_issue(self, issue_id: str) -> None:
+        await self.graphql.execute_mutation(
+            queries.ISSUE_ARCHIVE,
+            {"id": issue_id},
+            result_key="issueArchive",
+        )
+
+    async def delete_issue(self, issue_id: str) -> None:
+        await self.graphql.execute_mutation(
+            queries.ISSUE_DELETE,
+            {"id": issue_id},
+            result_key="issueDelete",
+        )

@@ -12,6 +12,7 @@ from port_ocean.core.models import (
 
 from linear.core.mutations.document.types import MutationDocument
 from linear.core.mutations.issue.types import MutationComment, MutationIssue
+from linear.core.mutations.reaction.types import MutationReaction
 
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -90,7 +91,7 @@ def mock_document_mutations() -> MagicMock:
 def mock_reaction_mutations() -> MagicMock:
     mutations = MagicMock()
     mutations.create_reaction = AsyncMock(
-        return_value={"id": "reaction-1", "emoji": "+1"}
+        return_value=MutationReaction(id="reaction-1", emoji="+1")
     )
     return mutations
 

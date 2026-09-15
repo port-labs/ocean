@@ -8,6 +8,19 @@ from linear.actions.exceptions import MissingExecutionPropertyError
 MutationPayloadT = TypeVar("MutationPayloadT", bound=BaseModel)
 
 
+class LinearIssueIdActionPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    issueId: NonEmptyStr
+
+    @classmethod
+    def from_execution_properties(cls, execution_properties: dict[str, Any]) -> Self:
+        try:
+            return cls.model_validate(execution_properties)
+        except ValidationError as error:
+            raise MissingExecutionPropertyError(str(error)) from error
+
+
 class LinearActionPayload(BaseModel, Generic[MutationPayloadT], ABC):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
     payload_exclude: ClassVar[set[str]] = set()
