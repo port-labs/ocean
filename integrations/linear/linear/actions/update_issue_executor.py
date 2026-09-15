@@ -32,10 +32,10 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
 
         mutations = IssueMutations(self.client)
         issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
-        message = f"Updated issue {issue['identifier']}: {issue['url']}"
+        message = f"Updated issue {issue.identifier}: {issue.url}"
         set_issue_run_output(run, issue)
 
-        logger.info("Updated Linear issue", issue_id=issue["id"])
+        logger.info("Updated Linear issue", issue_id=issue.id)
         await ocean.port_client.report_run_completed(
             run,
             success=True,
