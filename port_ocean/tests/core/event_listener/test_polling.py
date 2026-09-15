@@ -264,7 +264,9 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
         port_client=port_client,
         resync_state_updater=resync_state_updater,
     )
-    ocean = SimpleNamespace(app=app, metrics=SimpleNamespace(event_id="superseded-resync-id"))
+    ocean = SimpleNamespace(
+        app=app, metrics=SimpleNamespace(event_id="superseded-resync-id")
+    )
     monkeypatch.setattr(polling_module, "ocean", ocean)
 
     # Also need to patch ocean in base module for CancelledError handling
