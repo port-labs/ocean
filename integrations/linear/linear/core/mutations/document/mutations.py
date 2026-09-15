@@ -1,23 +1,30 @@
-from typing import Any
+from pydantic import ValidationError
 
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import LinearExporter
 from linear.core.mutations.document import queries
+from linear.core.mutations.document.types import (
+    DocumentCreateMutationPayload,
+    MutationDocument,
+    MutationDocumentResult,
+)
 from linear.helpers.exceptions import LinearActionError
 
 
 class DocumentMutations(LinearExporter):
     object_type = LinearObject.DOCUMENTS
 
-    async def create_document(self, document_input: dict[str, Any]) -> dict[str, Any]:
+    async def create_document(
+        self, payload: DocumentCreateMutationPayload
+    ) -> MutationDocument:
         result = await self.graphql.execute_mutation(
             queries.DOCUMENT_CREATE,
-            {"input": document_input},
+            {"input": payload.model_dump(exclude_none=True)},
             result_key="documentCreate",
         )
-        document = result.get("document")
-        if not isinstance(document, dict) or not document.get("id"):
+        try:
+            return MutationDocumentResult.model_validate(result).document
+        except ValidationError as validation_error:
             raise LinearActionError(
                 "Could not create document: Linear returned an empty or incomplete response"
-            )
-        return document
+            ) from validation_error

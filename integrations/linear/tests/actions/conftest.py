@@ -10,6 +10,8 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
+from linear.core.mutations.comment.types import MutationComment
+from linear.core.mutations.document.types import MutationDocument
 from linear.core.mutations.issue.types import MutationIssue, _IssueState
 
 
@@ -71,7 +73,11 @@ def mock_issue_mutations() -> MagicMock:
 def mock_comment_mutations() -> MagicMock:
     mutations = MagicMock()
     mutations.create_comment = AsyncMock(
-        return_value={"id": "comment-1", "body": "Hello", "createdAt": "2026-01-01"}
+        return_value=MutationComment(
+            id="comment-1",
+            body="Hello",
+            createdAt="2026-01-01",
+        )
     )
     return mutations
 
@@ -80,11 +86,11 @@ def mock_comment_mutations() -> MagicMock:
 def mock_document_mutations() -> MagicMock:
     mutations = MagicMock()
     mutations.create_document = AsyncMock(
-        return_value={
-            "id": "doc-1",
-            "title": "Notes",
-            "url": "https://linear.app/test/document/doc-1",
-        }
+        return_value=MutationDocument(
+            id="doc-1",
+            title="Notes",
+            url="https://linear.app/test/document/doc-1",
+        )
     )
     return mutations
 
