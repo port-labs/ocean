@@ -2635,6 +2635,59 @@ async def test_get_pull_request() -> None:
 
 
 @pytest.mark.asyncio
+async def test_merge_pull_request_includes_last_merge_source_commit() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    project_id = "proj-guid"
+    repository_id = "repo-guid"
+    pull_request_id = "42"
+    last_merge_source_commit = {
+        "commitId": "abc123",
+        "url": "https://example.com/commit/abc123",
+    }
+    pull_request = {
+        "pullRequestId": 42,
+        "lastMergeSourceCommit": last_merge_source_commit,
+    }
+    merged_pull_request = {
+        "pullRequestId": 42,
+        "status": "completed",
+        "lastMergeSourceCommit": last_merge_source_commit,
+    }
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.side_effect = [
+            Response(status_code=200, json=pull_request),
+            Response(status_code=200, json=merged_pull_request),
+        ]
+
+        result = await client.merge_pull_request(
+            project_id, repository_id, pull_request_id
+        )
+
+    assert result == merged_pull_request
+    assert mock_send_request.call_count == 2
+    mock_send_request.assert_any_call(
+        "GET",
+        f"{MOCK_ORG_URL}/{project_id}/_apis/git/repositories/{repository_id}/pullrequests/{pull_request_id}",
+        params=API_PARAMS,
+        raise_on_404=True,
+    )
+    mock_send_request.assert_any_call(
+        "PATCH",
+        f"{MOCK_ORG_URL}/{project_id}/_apis/git/repositories/{repository_id}/pullrequests/{pull_request_id}",
+        data=json.dumps(
+            {
+                "status": "completed",
+                "lastMergeSourceCommit": last_merge_source_commit,
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+        params=API_PARAMS,
+        raise_on_404=True,
+    )
+
+
+@pytest.mark.asyncio
 async def test_get_repository() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 

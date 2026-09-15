@@ -1,11 +1,14 @@
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import Field, field_validator
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
+from azure_devops.actions.abstract_ado_action_input import (
+    AbstractAzureDevopsActionInput,
+)
 from azure_devops.actions.abstract_ado_executor import AbstractAzureDevopsExecutor
 from azure_devops.actions.exceptions import (
     InvalidActionParametersError,
@@ -35,16 +38,39 @@ UPDATE_FIELD_NAMES = (
     "detectRenameFalsePositives",
     "autoCompleteSetById",
 )
+BLANK_OPTIONAL_STRING_FIELDS = (
+    "title",
+    "description",
+    "status",
+    "targetBranch",
+    "mergeStrategy",
+    "mergeCommitMessage",
+    "bypassReason",
+    "autoCompleteIgnoreConfigIds",
+    "autoCompleteSetById",
+)
 
 
-class UpdatePullRequestInputs(BaseModel):
-    model_config = ConfigDict(extra="ignore", strict=True)
+def _normalize_choice_value(
+    value: str | None, allowed: Sequence[str], field_name: str
+) -> str | None:
+    """Match a user-supplied value against the API's casing, or reject it."""
+    if value is None:
+        return None
+    for candidate in allowed:
+        if value.lower() == candidate.lower():
+            return candidate
+    raise ValueError(
+        f"Invalid {field_name} '{value}'. Allowed values are: {', '.join(allowed)}"
+    )
 
+
+class UpdatePullRequestInputs(AbstractAzureDevopsActionInput):
     project: str = Field(min_length=1)
     repositoryId: str = Field(min_length=1)
     pullRequestId: str = Field(min_length=1)
     title: str | None = None
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
     status: str | None = None
     targetBranch: str | None = None
     mergeStrategy: str | None = None
@@ -59,72 +85,33 @@ class UpdatePullRequestInputs(BaseModel):
     detectRenameFalsePositives: bool | None = None
     autoCompleteSetById: str | None = None
 
+    @field_validator(*BLANK_OPTIONAL_STRING_FIELDS, mode="before")
+    @classmethod
+    def _blank_optional_strings_to_none(cls, value: object) -> object:
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
-def _parse_update_pull_request_inputs(
-    execution_properties: dict[str, Any],
-) -> UpdatePullRequestInputs:
-    try:
-        return UpdatePullRequestInputs.model_validate(execution_properties)
-    except ValidationError as error:
-        messages = [
-            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
-            for err in error.errors()
-        ]
-        raise ValueError("; ".join(messages)) from error
+    @field_validator("status")
+    @classmethod
+    def _normalize_status(cls, value: str | None) -> str | None:
+        return _normalize_choice_value(value, VALID_STATUSES, "status")
 
+    @field_validator("mergeStrategy")
+    @classmethod
+    def _normalize_merge_strategy(cls, value: str | None) -> str | None:
+        return _normalize_choice_value(value, VALID_MERGE_STRATEGIES, "mergeStrategy")
 
-OPTIONAL_STRING_FIELDS = (
-    "title",
-    "description",
-    "status",
-    "targetBranch",
-    "mergeStrategy",
-    "mergeCommitMessage",
-    "bypassReason",
-    "autoCompleteIgnoreConfigIds",
-    "autoCompleteSetById",
-)
-
-
-def _blank_to_none(value: str | None) -> str | None:
-    """Treat blank optional strings as omitted, matching the action spec."""
-    if value is None or value == "":
-        return None
-    return value
+    @field_validator("autoCompleteIgnoreConfigIds")
+    @classmethod
+    def _validate_policy_config_ids(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        _parse_policy_config_ids_from_string(value)
+        return value
 
 
-def _normalize_optional_string_inputs(
-    inputs: UpdatePullRequestInputs,
-) -> UpdatePullRequestInputs:
-    updates = {
-        field: _blank_to_none(getattr(inputs, field))
-        for field in OPTIONAL_STRING_FIELDS
-    }
-    if all(
-        getattr(inputs, field) == updates[field] for field in OPTIONAL_STRING_FIELDS
-    ):
-        return inputs
-    return inputs.model_copy(update=updates)
-
-
-def _normalize_choice(
-    value: str | None, allowed: Sequence[str], field_name: str
-) -> Optional[str]:
-    """Match a user-supplied value against the API's casing, or reject it."""
-    normalized = _blank_to_none(value)
-    if normalized is None:
-        return None
-    for candidate in allowed:
-        if normalized.lower() == candidate.lower():
-            return candidate
-    raise InvalidActionParametersError(
-        f"Invalid {field_name} '{normalized}'. Allowed values are: {', '.join(allowed)}"
-    )
-
-
-def _parse_policy_config_ids(value: str | None) -> list[int] | None:
-    if value is None or value.strip() == "":
-        return None
+def _parse_policy_config_ids_from_string(value: str) -> list[int] | None:
     policy_config_ids: list[int] = []
     for part in value.split(","):
         stripped = part.strip()
@@ -133,7 +120,7 @@ def _parse_policy_config_ids(value: str | None) -> list[int] | None:
         try:
             policy_config_ids.append(int(stripped))
         except ValueError as error:
-            raise InvalidActionParametersError(
+            raise ValueError(
                 "autoCompleteIgnoreConfigIds must be a comma-separated list of "
                 f"integers, got invalid value '{stripped}'"
             ) from error
@@ -142,33 +129,33 @@ def _parse_policy_config_ids(value: str | None) -> list[int] | None:
     return policy_config_ids
 
 
+def _parse_policy_config_ids(value: str | None) -> list[int] | None:
+    if value is None:
+        return None
+    return _parse_policy_config_ids_from_string(value)
+
+
 def _build_update_pull_request_body(
     inputs: UpdatePullRequestInputs,
-    status: str | None,
-    merge_strategy: str | None,
     last_merge_source_commit: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {}
-    title = _blank_to_none(inputs.title)
-    if title is not None:
-        body["title"] = title
-    description = _blank_to_none(inputs.description)
-    if description is not None:
-        body["description"] = description
-    if status is not None:
-        body["status"] = status
-    target_branch = _blank_to_none(inputs.targetBranch)
-    if target_branch is not None:
+    if inputs.title is not None:
+        body["title"] = inputs.title
+    if inputs.description is not None:
+        body["description"] = inputs.description
+    if inputs.status is not None:
+        body["status"] = inputs.status
+    if inputs.targetBranch is not None:
         body["targetRefName"] = (
-            target_branch
-            if target_branch.startswith("refs/")
-            else f"refs/heads/{target_branch}"
+            inputs.targetBranch
+            if inputs.targetBranch.startswith("refs/")
+            else f"refs/heads/{inputs.targetBranch}"
         )
     if last_merge_source_commit:
         body["lastMergeSourceCommit"] = last_merge_source_commit
-    auto_complete_set_by_id = _blank_to_none(inputs.autoCompleteSetById)
-    if auto_complete_set_by_id is not None:
-        body["autoCompleteSetBy"] = {"id": auto_complete_set_by_id}
+    if inputs.autoCompleteSetById is not None:
+        body["autoCompleteSetBy"] = {"id": inputs.autoCompleteSetById}
 
     merge_options: dict[str, Any] = {}
     if inputs.disableRenames is not None:
@@ -181,18 +168,16 @@ def _build_update_pull_request_body(
         body["mergeOptions"] = merge_options
 
     completion_options: dict[str, Any] = {}
-    if merge_strategy is not None:
-        completion_options["mergeStrategy"] = merge_strategy
+    if inputs.mergeStrategy is not None:
+        completion_options["mergeStrategy"] = inputs.mergeStrategy
     if inputs.deleteSourceBranch is not None:
         completion_options["deleteSourceBranch"] = inputs.deleteSourceBranch
-    merge_commit_message = _blank_to_none(inputs.mergeCommitMessage)
-    if merge_commit_message is not None:
-        completion_options["mergeCommitMessage"] = merge_commit_message
+    if inputs.mergeCommitMessage is not None:
+        completion_options["mergeCommitMessage"] = inputs.mergeCommitMessage
     if inputs.bypassPolicy is not None:
         completion_options["bypassPolicy"] = inputs.bypassPolicy
-    bypass_reason = _blank_to_none(inputs.bypassReason)
-    if bypass_reason is not None:
-        completion_options["bypassReason"] = bypass_reason
+    if inputs.bypassReason is not None:
+        completion_options["bypassReason"] = inputs.bypassReason
     if inputs.transitionWorkItems is not None:
         completion_options["transitionWorkItems"] = inputs.transitionWorkItems
     policy_config_ids = _parse_policy_config_ids(inputs.autoCompleteIgnoreConfigIds)
@@ -203,29 +188,25 @@ def _build_update_pull_request_body(
     return body
 
 
-def _has_update_fields(
-    inputs: UpdatePullRequestInputs,
-    status: str | None,
-    merge_strategy: str | None,
-) -> bool:
+def _has_update_fields(inputs: UpdatePullRequestInputs) -> bool:
     return any(
         value is not None
         for value in (
-            _blank_to_none(inputs.title),
-            _blank_to_none(inputs.description),
-            status,
-            _blank_to_none(inputs.targetBranch),
-            merge_strategy,
+            inputs.title,
+            inputs.description,
+            inputs.status,
+            inputs.targetBranch,
+            inputs.mergeStrategy,
             inputs.deleteSourceBranch,
-            _blank_to_none(inputs.mergeCommitMessage),
+            inputs.mergeCommitMessage,
             inputs.bypassPolicy,
-            _blank_to_none(inputs.bypassReason),
+            inputs.bypassReason,
             inputs.transitionWorkItems,
             _parse_policy_config_ids(inputs.autoCompleteIgnoreConfigIds),
             inputs.disableRenames,
             inputs.conflictAuthorshipCommits,
             inputs.detectRenameFalsePositives,
-            _blank_to_none(inputs.autoCompleteSetById),
+            inputs.autoCompleteSetById,
         )
     )
 
@@ -243,38 +224,18 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
     async def execute(self, run: IntegrationRun) -> None:
         logger.info(f"Updating pull request for action run {run.id}", run_id=run.id)
         try:
-            inputs = _parse_update_pull_request_inputs(run.execution_properties)
-        except ValueError as error:
+            inputs = UpdatePullRequestInputs.from_execution_properties(
+                run.execution_properties
+            )
+        except InvalidActionParametersError as error:
             logger.warning(
                 f"Invalid parameters for action run {run.id}",
                 run_id=run.id,
                 error=str(error),
             )
-            raise InvalidActionParametersError(str(error)) from error
+            raise
 
-        inputs = _normalize_optional_string_inputs(inputs)
-
-        if (
-            inputs.description is not None
-            and len(inputs.description) > MAX_DESCRIPTION_LENGTH
-        ):
-            logger.warning(
-                f"Description exceeds the maximum length for action run {run.id}",
-                run_id=run.id,
-                description_length=len(inputs.description),
-            )
-            raise InvalidActionParametersError(
-                f"description must be at most {MAX_DESCRIPTION_LENGTH} characters, "
-                f"got {len(inputs.description)}"
-            )
-
-        status = _normalize_choice(inputs.status, VALID_STATUSES, "status")
-        merge_strategy = _normalize_choice(
-            inputs.mergeStrategy,
-            VALID_MERGE_STRATEGIES,
-            "mergeStrategy",
-        )
-        if not _has_update_fields(inputs, status, merge_strategy):
+        if not _has_update_fields(inputs):
             logger.warning(
                 f"No fields to update were provided for action run {run.id}",
                 run_id=run.id,
@@ -286,22 +247,14 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
             )
 
         last_merge_source_commit: dict[str, Any] | None = None
-        if status == COMPLETED_STATUS:
+        if inputs.status == COMPLETED_STATUS:
             last_merge_source_commit = await self._resolve_last_merge_source_commit(
                 inputs.project,
                 inputs.repositoryId,
                 inputs.pullRequestId,
             )
 
-        try:
-            body = _build_update_pull_request_body(
-                inputs,
-                status,
-                merge_strategy,
-                last_merge_source_commit,
-            )
-        except InvalidActionParametersError:
-            raise
+        body = _build_update_pull_request_body(inputs, last_merge_source_commit)
 
         await ocean.port_client.post_run_log(
             run,
@@ -364,7 +317,6 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
             run,
             success=True,
             message=message,
-            status_label="Updated",
         )
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
