@@ -68,11 +68,12 @@ class MergePullRequestExecutor(AbstractPullRequestExecutor):
                 f"Failed to merge pull request #{pr_number}: {message}"
             )
 
-        pr_url = f"https://github.com/{org}/{repo}/pull/{pr_number}"
+        base_url = rest_client.base_url.replace("api.github.com", "github.com").replace("/api/v3", "")
+        pr_url = f"{base_url}/{org}/{repo}/pull/{pr_number}"
         logger.info(
             f"Merged pull request #{pr_number} in {org}/{repo}",
             pr_number=pr_number,
-            merge_sha=result["sha"],
+            merge_sha=result.get("sha"),
         )
 
         await ocean.port_client.report_run_completed(

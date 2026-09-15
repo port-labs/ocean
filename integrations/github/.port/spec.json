@@ -428,13 +428,6 @@
           "description": "The new description of the pull request"
         },
         {
-          "name": "state",
-          "title": "State",
-          "type": "string",
-          "description": "The state of the pull request (open or closed)",
-          "enum": ["open", "closed"]
-        },
-        {
           "name": "base",
           "title": "Base branch",
           "type": "string",

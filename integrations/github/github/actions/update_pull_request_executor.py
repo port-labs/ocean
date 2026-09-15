@@ -7,7 +7,7 @@ from github.actions.abstract_pull_request_executor import AbstractPullRequestExe
 from github.actions.exceptions import UpdatePullRequestError
 from github.helpers.exceptions import InvalidActionParametersException
 
-UPDATABLE_PR_FIELDS = ("title", "body", "state", "base")
+UPDATABLE_PR_FIELDS = ("title", "body", "base")
 
 
 class UpdatePullRequestExecutor(AbstractPullRequestExecutor):
@@ -31,7 +31,7 @@ class UpdatePullRequestExecutor(AbstractPullRequestExecutor):
 
         if not patch_body:
             raise InvalidActionParametersException(
-                "At least one field to update is required (title, body, state, or base)"
+                "At least one field to update is required (title, body, or base)"
             )
 
         rest_client = await self._get_rest_client(run)

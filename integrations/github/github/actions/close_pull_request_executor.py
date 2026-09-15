@@ -41,7 +41,7 @@ class ClosePullRequestExecutor(AbstractPullRequestExecutor):
                 e.response, f"Could not close pull request #{pr_number} in {org}/{repo}"
             )
 
-        if not pr or "number" not in pr:
+        if not pr or "number" not in pr or "html_url" not in pr:
             logger.warning(
                 f"Received empty or incomplete response from GitHub for pull request close in {org}/{repo}",
                 org=org,
