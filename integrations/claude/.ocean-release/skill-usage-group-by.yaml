@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Add optional groupBy (user_id, product, rbac_group_id) to claude-ai-skill-usage so skill invocations can be broken down by user, team, or product
