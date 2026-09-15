@@ -10,7 +10,10 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from gitlab.actions.trigger_pipeline_executor import TriggerPipelineExecutor
+from gitlab.actions.trigger_pipeline_executor import (
+    PIPELINE_RUNNING_STATUS_LABEL,
+    TriggerPipelineExecutor,
+)
 from gitlab.helpers.exceptions import (
     GitlabTriggerPipelineError,
     MissingExecutionPropertyError,
@@ -73,6 +76,7 @@ class TestTriggerPipelineExecutor:
             run,
             PIPELINE_RESPONSE["web_url"],
             "gl_42_99",
+            status_label=PIPELINE_RUNNING_STATUS_LABEL,
         )
         assert mock_port_client.post_run_log.await_count == 2
         mock_port_client.report_run_completed.assert_not_called()

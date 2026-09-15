@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.4 (2026-09-15)
+
+
+### Bug Fixes
+
+- Treat empty Port mapping as a valid no-op during resync so the integration stays alive, marks resync as completed, and actions continue to work.
+
+
+## 6.13.3 (2026-09-14)
+
+
+### Improvements
+
+- Expose GitHub workflow conclusion on workflow node run output when dispatch_workflow completes, so downstream workflow JQ can reference it
+
+
+## 6.13.2 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 6.13.1 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 6.13.0 (2026-09-09)
+
+
+### Features
+
+- Add a dedicated `mcp` kind to discover MCP servers from `mcp.json`/`.mcp.json` files bundled with agent plugins, emitting one entity per server with derived transport (http/stdio) and full create/update/delete parity on live push events.
+
+
+## 6.12.1 (2026-09-09)
+
+
+### Bug Fixes
+
+- Restore live-event deletes for file-kind itemsToParse item removals, whole-file deletes, and renames. Modified files with itemsToParse emit old content as deletes and new content as upserts; DSP keeps entities that appear in both lists.
+
+
 ## 6.12.0 (2026-09-08)
 
 
