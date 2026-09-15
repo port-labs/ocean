@@ -2807,7 +2807,11 @@ class AzureDevopsClient(HTTPBaseClient):
         self, matching_subscriptions: list[WebhookSubscription]
     ) -> Optional[WebhookSubscription]:
         for subscription in matching_subscriptions:
-            if subscription.is_enabled() and subscription.id:
+            if (
+                subscription.is_enabled()
+                and subscription.id
+                and subscription.has_required_payload_details()
+            ):
                 return subscription
         return None
 

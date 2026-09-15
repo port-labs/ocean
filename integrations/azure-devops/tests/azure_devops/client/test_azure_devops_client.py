@@ -22,7 +22,10 @@ from azure_devops.client.azure_devops_client import (
 )
 from azure_devops.client.base_client import CONTINUATION_TOKEN_HEADER
 from azure_devops.client.file_processing import PathDescriptor
-from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.webhook_event import (
+    FULL_PAYLOAD_CONSUMER_INPUTS,
+    WebhookSubscription,
+)
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 
 MOCK_ORG_URL = "https://your_organization_url.com"
@@ -3054,7 +3057,10 @@ async def test_create_webhook_subscriptions_keeps_one_enabled_match_and_deletes_
             id="enabled-1",
             publisherId="tfs",
             eventType="git.push",
-            consumerInputs={"url": webhook_url},
+            consumerInputs={
+                "url": webhook_url,
+                **FULL_PAYLOAD_CONSUMER_INPUTS,
+            },
             status="enabled",
         ),
         WebhookSubscription(
@@ -3075,7 +3081,10 @@ async def test_create_webhook_subscriptions_keeps_one_enabled_match_and_deletes_
             id="different-url",
             publisherId="tfs",
             eventType="git.push",
-            consumerInputs={"url": "https://other.example.com/integration/webhook"},
+            consumerInputs={
+                "url": "https://other.example.com/integration/webhook",
+                **FULL_PAYLOAD_CONSUMER_INPUTS,
+            },
             status="enabled",
         ),
     ]
@@ -3106,6 +3115,99 @@ async def test_create_webhook_subscriptions_keeps_one_enabled_match_and_deletes_
 
 
 @pytest.mark.asyncio
+async def test_create_webhook_subscriptions_keeps_complete_push_match() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    desired_subscription = WebhookSubscription(publisherId="tfs", eventType="git.push")
+    webhook_url = "https://example.com/integration/webhook"
+    existing_subscriptions = [
+        WebhookSubscription(
+            id="incomplete-push",
+            publisherId="tfs",
+            eventType="git.push",
+            consumerInputs={"url": webhook_url},
+            status="enabled",
+        ),
+        WebhookSubscription(
+            id="complete-push",
+            publisherId="tfs",
+            eventType="git.push",
+            consumerInputs={
+                "url": webhook_url,
+                **FULL_PAYLOAD_CONSUMER_INPUTS,
+            },
+            status="enabled",
+        ),
+    ]
+
+    with (
+        patch(
+            "azure_devops.client.azure_devops_client.AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS",
+            [desired_subscription],
+        ),
+        patch.object(
+            client, "create_subscription", new_callable=AsyncMock
+        ) as mock_create,
+        patch.object(
+            client, "delete_subscription", new_callable=AsyncMock
+        ) as mock_delete,
+    ):
+        sub_ids = await client.create_webhook_subscriptions(
+            "https://example.com",
+            existing_subscriptions=existing_subscriptions,
+        )
+
+    assert sub_ids == ["complete-push"]
+    mock_create.assert_not_called()
+    assert [call.args[0].id for call in mock_delete.call_args_list] == [
+        "incomplete-push"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_subscriptions_replaces_incomplete_push_match_before_delete() -> (
+    None
+):
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    desired_subscription = WebhookSubscription(publisherId="tfs", eventType="git.push")
+    webhook_url = "https://example.com/integration/webhook"
+    existing_subscription = WebhookSubscription(
+        id="incomplete-push",
+        publisherId="tfs",
+        eventType="git.push",
+        consumerInputs={"url": webhook_url},
+        status="enabled",
+    )
+    call_order: list[str] = []
+
+    async def create_subscription(subscription: WebhookSubscription) -> str:
+        call_order.append("create")
+        assert subscription.consumerInputs == {
+            "url": webhook_url,
+            **FULL_PAYLOAD_CONSUMER_INPUTS,
+        }
+        return "created-1"
+
+    async def delete_subscription(subscription: WebhookSubscription) -> None:
+        call_order.append(f"delete:{subscription.id}")
+
+    with (
+        patch(
+            "azure_devops.client.azure_devops_client.AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS",
+            [desired_subscription],
+        ),
+        patch.object(client, "create_subscription", side_effect=create_subscription),
+        patch.object(client, "delete_subscription", side_effect=delete_subscription),
+    ):
+        sub_ids = await client.create_webhook_subscriptions(
+            "https://example.com",
+            existing_subscriptions=[existing_subscription],
+        )
+
+    assert sub_ids == ["created-1"]
+    assert call_order == ["create", "delete:incomplete-push"]
+
+
+@pytest.mark.asyncio
 async def test_create_webhook_subscriptions_caps_duplicate_deletes() -> None:
     from azure_devops.client.azure_devops_client import (
         MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION,
@@ -3120,7 +3222,10 @@ async def test_create_webhook_subscriptions_caps_duplicate_deletes() -> None:
             id="enabled-1",
             publisherId="tfs",
             eventType="git.push",
-            consumerInputs={"url": webhook_url},
+            consumerInputs={
+                "url": webhook_url,
+                **FULL_PAYLOAD_CONSUMER_INPUTS,
+            },
             status="enabled",
         ),
         *[
