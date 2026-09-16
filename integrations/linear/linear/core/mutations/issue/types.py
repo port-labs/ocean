@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from linear.core.mutations.types import NonEmptyStr
+from linear.types import NonEmptyStr
 
 
 class _IssueMutationPayload(BaseModel):
