@@ -52,6 +52,7 @@ resources:
             updated: .updatedAt
           relations:
             team: .team.id
+            workflowState: .state.id
             labels: .labelIds
             parentIssue: .parent.identifier
   - kind: document
@@ -153,6 +154,24 @@ resources:
             parentInitiative: .parentInitiative.id
             subInitiatives: "[.subInitiatives.nodes[].id]"
             projects: "[.projects.nodes[].id]"
+  - kind: workflow-state
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"linearWorkflowState"'
+          properties:
+            type: .type
+            color: .color
+            position: .position
+            description: .description
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.id
   - kind: cycle
     selector:
       query: "true"
