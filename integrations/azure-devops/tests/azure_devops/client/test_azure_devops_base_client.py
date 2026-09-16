@@ -450,6 +450,6 @@ async def test_send_request_signals_throttle_on_read_timeout(
 
 @pytest.mark.asyncio
 async def test_aclose_closes_httpx_client(mock_client: HTTPBaseClient) -> None:
-    mock_client._client.aclose = AsyncMock()
+    mock_client._client.aclose = AsyncMock()  # type: ignore[method-assign]
     await mock_client.aclose()
     mock_client._client.aclose.assert_awaited_once()
