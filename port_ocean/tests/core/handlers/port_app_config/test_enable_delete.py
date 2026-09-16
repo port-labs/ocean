@@ -1,8 +1,10 @@
+from typing import Any
+
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
-def _resource(enable_delete: bool | None = None) -> dict:
-    resource: dict = {
+def _resource(enable_delete: bool | None = None) -> dict[str, Any]:
+    resource: dict[str, Any] = {
         "kind": "namespace",
         "selector": {"query": "true"},
         "port": {
