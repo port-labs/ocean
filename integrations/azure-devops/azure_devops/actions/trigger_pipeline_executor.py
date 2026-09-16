@@ -94,6 +94,9 @@ class TriggerPipelineExecutor(AbstractAzureDevopsExecutor):
                 e.response,
                 f"Error triggering pipeline {pipeline_id} in project '{project_input}'",
             )
+        finally:
+            if user_token:
+                await pipeline_client.aclose()
 
         external_id = build_external_id(
             project_id, str(pipeline_id), str(pipeline_run["id"])

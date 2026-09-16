@@ -157,6 +157,40 @@ async def test_execute_wraps_http_error_as_trigger_pipeline_error(
 
 
 @pytest.mark.asyncio
+async def test_identity_http_error_still_closes_user_client(
+    executor: TriggerPipelineExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client.get_single_project.return_value = {"id": "proj-guid"}
+    user_pipeline_client = MagicMock()
+    user_pipeline_client.run_pipeline = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "boom",
+            request=httpx.Request("POST", "https://dev.azure.com"),
+            response=httpx.Response(status_code=400, json={"message": "bad pipeline"}),
+        )
+    )
+    user_pipeline_client.aclose = AsyncMock()
+    monkeypatch.setattr(
+        executor, "_client_for_token", MagicMock(return_value=user_pipeline_client)
+    )
+    monkeypatch.setattr(
+        "azure_devops.actions.trigger_pipeline_executor.resolve_user_token",
+        AsyncMock(return_value="entra-user-token"),
+    )
+    monkeypatch.setattr(
+        "azure_devops.actions.trigger_pipeline_executor.ocean", _make_mock_ocean()
+    )
+
+    with pytest.raises(TriggerPipelineError):
+        await executor.execute(_make_run({"project": "proj", "pipelineId": "12"}))
+
+    user_pipeline_client.aclose.assert_awaited_once()
+    client.aclose.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_identity_run_uses_user_token_client(
     executor: TriggerPipelineExecutor,
     client: MagicMock,
@@ -174,6 +208,7 @@ async def test_identity_run_uses_user_token_client(
             "_links": {"web": {"href": "https://dev.azure.com/run/99"}},
         }
     )
+    user_pipeline_client.aclose = AsyncMock()
     mock_client_for_token = MagicMock(return_value=user_pipeline_client)
     monkeypatch.setattr(executor, "_client_for_token", mock_client_for_token)
     monkeypatch.setattr(
@@ -189,7 +224,9 @@ async def test_identity_run_uses_user_token_client(
 
     mock_client_for_token.assert_called_once_with("entra-user-token")
     user_pipeline_client.run_pipeline.assert_awaited_once()
+    user_pipeline_client.aclose.assert_awaited_once()
     client.run_pipeline.assert_not_awaited()
+    client.aclose.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -214,9 +251,11 @@ async def test_non_identity_run_uses_default_client(
 
     mock_client_for_token.assert_not_called()
     client.run_pipeline.assert_awaited_once()
+    client.aclose.assert_not_called()
 
 
-def test_client_for_token_builds_azure_devops_client_with_bearer_auth(
+@pytest.mark.asyncio
+async def test_client_for_token_builds_azure_devops_client_with_bearer_auth(
     executor: TriggerPipelineExecutor,
     client: MagicMock,
     mock_context: PortOceanContext,
@@ -235,3 +274,4 @@ def test_client_for_token_builds_azure_devops_client_with_bearer_auth(
     assert token_client.webhook_auth_username == "hook-user"
     assert token_client.excluded_tags == ["tag1"]
     assert isinstance(token_client._auth_provider, BearerAuthProvider)
+    await token_client.aclose()
