@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.5 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 6.13.4 (2026-09-15)
+
+
+### Bug Fixes
+
+- Treat empty Port mapping as a valid no-op during resync so the integration stays alive, marks resync as completed, and actions continue to work.
+
+
 ## 6.13.3 (2026-09-14)
 
 

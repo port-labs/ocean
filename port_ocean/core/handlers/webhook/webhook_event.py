@@ -131,24 +131,12 @@ class WebhookEvent(LiveEvent):
         self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event"""
-        if timestamp == LiveEventTimestamp.AddedToQueue:
-            super().set_timestamp(
-                timestamp,
-                params={
-                    "trace_id": self.trace_id,
-                    "headers": self.headers,
-                    **build_added_to_queue_payload_log_fields(self.payload),
-                    **(params or {}),
-                },
-            )
-            return
-
         super().set_timestamp(
             timestamp,
             params={
                 "trace_id": self.trace_id,
-                "payload": self.payload,
                 "headers": self.headers,
+                **build_added_to_queue_payload_log_fields(self.payload),
                 **(params or {}),
             },
         )

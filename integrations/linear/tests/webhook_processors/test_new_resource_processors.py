@@ -13,6 +13,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from webhook_processors.cycle_webhook_processor import CycleWebhookProcessor
+from webhook_processors.initiative_webhook_processor import InitiativeWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
 
@@ -34,6 +35,15 @@ PROCESSOR_CASES = [
         "ProjectExporter",
         {"id": "project-1", "name": "Payments"},
         id="project",
+    ),
+    pytest.param(
+        InitiativeWebhookProcessor,
+        ObjectKind.INITIATIVE,
+        "Initiative",
+        "initiative-1",
+        "InitiativeExporter",
+        {"id": "initiative-1", "name": "Platform Strategy"},
+        id="initiative",
     ),
     pytest.param(
         CycleWebhookProcessor,

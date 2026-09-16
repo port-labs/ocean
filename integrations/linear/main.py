@@ -5,6 +5,7 @@ from linear.client import LinearClient
 from linear.core.exporters import (
     CycleExporter,
     DocumentExporter,
+    InitiativeExporter,
     IssueExporter,
     LabelExporter,
     ProjectExporter,
@@ -19,6 +20,7 @@ from linear.utils import ObjectKind
 from webhook_processors import (
     CycleWebhookProcessor,
     DocumentWebhookProcessor,
+    InitiativeWebhookProcessor,
     IssueWebhookProcessor,
     LabelWebhookProcessor,
     ProjectWebhookProcessor,
@@ -89,6 +91,15 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
+@ocean.on_resync(ObjectKind.INITIATIVE)
+async def on_resync_initiatives(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for initiatives in InitiativeExporter(client).get_paginated_resources():
+        logger.info(f"Received initiative batch with {len(initiatives)} initiatives")
+        yield initiatives
+
+
 @ocean.on_resync(ObjectKind.TEAM_MEMBERS)
 async def on_resync_team_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
@@ -123,6 +134,7 @@ ocean.add_webhook_processor("/webhook", LabelWebhookProcessor)
 ocean.add_webhook_processor("/webhook", DocumentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", InitiativeWebhookProcessor)
 ocean.add_webhook_processor("/webhook", CycleWebhookProcessor)
 
 register_actions_executors()
