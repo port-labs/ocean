@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.6 (2026-09-16)
+
+
+### Features
+
+- Added pull request CRUD actions (create, update, close, merge, review), enabling Port Workflows to manage GitHub pull requests with full lifecycle support
+
+
 ## 6.13.5 (2026-09-15)
 
 
