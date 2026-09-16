@@ -78,3 +78,9 @@ class ClosePullRequestError(AzureDevopsActionError):
     """Raised when the Azure DevOps API returns an error while closing a pull request."""
 
     DEFAULT_STATUS_LABEL = "Close Pull Request failed"
+
+
+class CreatePullRequestThreadError(AzureDevopsActionError):
+    """Raised when the Azure DevOps API returns an error while creating a thread."""
+
+    DEFAULT_STATUS_LABEL = "Create failed"

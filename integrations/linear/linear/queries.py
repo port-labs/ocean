@@ -249,6 +249,21 @@ QUERIES = {
         name
     }
     """,
+    "BASE_WORKFLOW_STATES_QUERY_FIELDS": """
+    id
+    name
+    type
+    color
+    position
+    description
+    createdAt
+    updatedAt
+    team {
+        id
+        key
+        name
+    }
+    """,
     "BASE_TEAM_MEMBERSHIPS_QUERY_FIELDS": """
     id
     owner
@@ -304,6 +319,13 @@ QUERIES = {
     "GET_SINGLE_CYCLE": """
     query Cycle {
         cycle(id: "{{ cycle_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_WORKFLOW_STATE": """
+    query WorkflowState {
+        workflowState(id: "{{ workflow_state_id }}") {
             {{ base_query_fields }}
         }
     }
@@ -447,6 +469,20 @@ QUERIES = {
     "GET_CYCLES_PAGE": """
     query Cycles {
         cycles(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_WORKFLOW_STATES_PAGE": """
+    query WorkflowStates {
+        workflowStates(first: {{ page_size }}{{ after_cursor }}) {
             nodes {
                 {{ base_query_fields }}
             }
