@@ -1,7 +1,11 @@
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 
 from linear.core.mutations.document.types import MutationDocument
-from linear.core.mutations.issue.types import MutationComment, MutationIssue, MutationReaction
+from linear.core.mutations.issue.types import (
+    MutationComment,
+    MutationIssue,
+    MutationReaction,
+)
 
 
 def set_issue_run_output(run: IntegrationRun, issue: MutationIssue) -> None:
