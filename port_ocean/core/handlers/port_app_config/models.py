@@ -118,15 +118,21 @@ class ResourceConfig(BaseModel):
         description=(
             "When true (default), reconciliation may delete stale entities for this "
             "resource. When false, upserts still run but reconciliation deletes for "
-            "this resource are skipped."
+            "this resource are skipped. Omit the key to keep the default (true); "
+            "do not set null — omit instead. YAML-only in v1 (hidden from mapping form UI)."
         ),
+        extra={"ui_schema": {"hidden": True}},
     )
 
     @validator("enable_delete", pre=True)
     def _enable_delete_must_be_bool(cls, value: object) -> object:
         # Reject string/number coercion so YAML `"false"` / 0 / 1 fail validation.
+        # Explicit null is rejected — omit the key for default true (Port omitempty parity).
         if value is None:
-            return value
+            raise ValueError(
+                "enableDelete must be a boolean (true or false). "
+                "Omit the key to keep the default (true); null is not allowed."
+            )
         if not isinstance(value, bool):
             raise ValueError(
                 "enableDelete must be a boolean (true or false). "
