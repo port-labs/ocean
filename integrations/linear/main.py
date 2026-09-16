@@ -4,6 +4,7 @@ from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
 from linear.core.exporters import (
     CycleExporter,
+    StateExporter,
     DocumentExporter,
     InitiativeExporter,
     IssueExporter,
@@ -116,6 +117,15 @@ async def on_resync_cycles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for cycles in CycleExporter(client).get_paginated_resources():
         logger.info(f"Received cycle batch with {len(cycles)} cycles")
         yield cycles
+
+
+@ocean.on_resync(ObjectKind.STATE)
+async def on_resync_states(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for states in StateExporter(client).get_paginated_resources():
+        logger.info(f"Received workflow state batch with {len(states)} states")
+        yield states
 
 
 # Listen to the start event of the integration. Called once when the integration starts.

@@ -152,6 +152,13 @@
         "title": "Labels",
         "required": false,
         "many": true
+      },
+      "state": {
+        "target": "linearState",
+        "title": "State",
+        "description": "The workflow state of this issue",
+        "required": false,
+        "many": false
       }
     }
   },
@@ -585,6 +592,59 @@
         "target": "linearUser",
         "title": "User",
         "description": "The Linear user in this membership",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "linearState",
+    "title": "Linear State",
+    "icon": "Linear",
+    "description": "A Linear workflow state",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "The workflow state category",
+          "enum": ["backlog", "unstarted", "started", "completed", "canceled", "triage"]
+        },
+        "color": {
+          "type": "string",
+          "title": "Color",
+          "description": "The color of the workflow state"
+        },
+        "position": {
+          "type": "number",
+          "title": "Position",
+          "description": "The position of the workflow state in the team workflow"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the workflow state"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the workflow state was created"
+        },
+        "updated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time",
+          "description": "When the workflow state was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "team": {
+        "target": "linearTeam",
+        "title": "Team",
+        "description": "The Linear team this workflow state belongs to",
         "required": false,
         "many": false
       }
