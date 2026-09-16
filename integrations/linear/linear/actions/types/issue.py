@@ -2,7 +2,8 @@ from typing import Annotated, Generic, Self
 
 from pydantic import ConfigDict, Field, model_validator
 
-from linear.actions.types.base import LinearActionPayload, MutationPayloadT, NonEmptyStr
+from linear.actions.types.base import LinearActionPayload, MutationPayloadT
+from linear.types import NonEmptyStr
 from linear.core.mutations.issue.types import (
     CommentCreateMutationPayload,
     IssueCreateMutationPayload,

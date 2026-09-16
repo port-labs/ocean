@@ -2,7 +2,8 @@ from typing import Self
 
 from pydantic import model_validator
 
-from linear.actions.types.base import LinearActionPayload, NonEmptyStr
+from linear.actions.types.base import LinearActionPayload
+from linear.types import NonEmptyStr
 from linear.core.mutations.document.types import DocumentCreateMutationPayload
 
 
