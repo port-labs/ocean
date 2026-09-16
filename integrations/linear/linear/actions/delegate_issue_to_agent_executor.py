@@ -22,20 +22,20 @@ class DelegateIssueToAgentExecutor(AbstractLinearExecutor):
 
         await ocean.port_client.post_run_log(
             run,
-            f"Delegating issue {payload.issueId} to agent {payload.agentAppId}",
+            f"Delegating issue {payload.issueId} to agent {payload.delegateId}",
             status_label="Delegating issue",
             should_raise=False,
         )
 
         mutations = IssueMutations(self.client)
         issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
-        message = f"Delegated issue {issue.identifier} to agent {payload.agentAppId}"
+        message = f"Delegated issue {issue.identifier} to agent {payload.delegateId}"
         set_issue_run_output(run, issue)
 
         logger.info(
             "Delegated Linear issue to agent",
             issue_id=issue.id,
-            agent_app_id=payload.agentAppId,
+            delegate_id=payload.delegateId,
         )
         await ocean.port_client.report_run_completed(
             run,

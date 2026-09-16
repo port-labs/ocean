@@ -74,14 +74,13 @@ class UpdateIssuePayload(IssueActionPayload[IssueUpdateMutationPayload]):
     projectId: NonEmptyStr | None = None
     cycleId: NonEmptyStr | None = None
     priority: PriorityField = None
-    delegateId: NonEmptyStr | None = None
     labelIds: list[str] | None = None
 
     @model_validator(mode="after")
     def validate_at_least_one_update_field(self) -> Self:
         if not self.to_payload():
             raise ValueError(
-                "At least one update field is required (title, description, assigneeId, stateId, projectId, cycleId, priority, delegateId, or labelIds)"
+                "At least one update field is required (title, description, assigneeId, stateId, projectId, cycleId, priority, or labelIds)"
             )
         return self
 
@@ -126,7 +125,4 @@ class DelegateIssuePayload(LinearActionPayload[IssueUpdateMutationPayload]):
     payload_exclude = {"issueId"}
 
     issueId: NonEmptyStr
-    agentAppId: NonEmptyStr
-
-    def to_mutation(self) -> IssueUpdateMutationPayload:
-        return IssueUpdateMutationPayload(delegateId=self.agentAppId)
+    delegateId: NonEmptyStr

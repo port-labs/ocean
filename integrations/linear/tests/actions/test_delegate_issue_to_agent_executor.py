@@ -21,7 +21,7 @@ class TestDelegateIssueToAgentExecutor:
         executor = create_executor(DelegateIssueToAgentExecutor, mock_linear_client)
         run = make_run(
             "delegate_issue_to_agent",
-            {"issueId": "ENG-1", "agentAppId": "agent-1"},
+            {"issueId": "ENG-1", "delegateId": "agent-1"},
         )
         with (
             patch(
@@ -54,7 +54,7 @@ class TestDelegateIssueToAgentExecutor:
             status_label="Issue delegated",
         )
 
-    async def test_missing_agent_app_id(
+    async def test_missing_delegate_id(
         self, mock_port_client: MagicMock, mock_linear_client: MagicMock
     ) -> None:
         executor = create_executor(DelegateIssueToAgentExecutor, mock_linear_client)

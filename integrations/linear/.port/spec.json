@@ -232,12 +232,6 @@
           "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
         },
         {
-          "name": "delegateId",
-          "title": "Delegate ID",
-          "type": "string",
-          "description": "UUID of the agent app user to delegate the issue to"
-        },
-        {
           "name": "labelIds",
           "title": "Label IDs",
           "type": "array",
@@ -384,8 +378,8 @@
           "required": true
         },
         {
-          "name": "agentAppId",
-          "title": "Agent App ID",
+          "name": "delegateId",
+          "title": "Delegate ID",
           "type": "string",
           "description": "UUID of the agent app user to delegate the issue to",
           "required": true
