@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 from pydantic.v1 import BaseModel, ValidationError, root_validator, validator
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
 from gitlab.helpers.exceptions import (
@@ -140,6 +140,7 @@ class UpdateMergeRequestExecutor(AbstractGitlabExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Updating merge request !{inputs.mergeRequestIid} in project {inputs.id}",
+            status_label="Updating MR",
             should_raise=False,
         )
 
@@ -159,10 +160,17 @@ class UpdateMergeRequestExecutor(AbstractGitlabExecutor):
                 "Failed to update merge request: GitLab returned an empty or incomplete response"
             )
 
+        if isinstance(run, WorkflowNodeRun):
+            run.output = {
+                "mergeRequestIid": str(merge_request["iid"]),
+                "mergeRequestUrl": merge_request["web_url"],
+            }
+
         await ocean.port_client.report_run_completed(
             run,
             success=True,
             message=f"Updated merge request: {merge_request['web_url']}",
+            status_label="MR updated",
         )
         logger.info(
             f"Updated merge request !{merge_request['iid']} in project {inputs.id}",

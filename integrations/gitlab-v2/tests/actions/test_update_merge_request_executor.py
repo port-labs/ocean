@@ -90,15 +90,24 @@ class TestUpdateMergeRequestExecutor:
             run,
             success=True,
             message=f"Updated merge request: {MR_RESPONSE['web_url']}",
+            status_label="MR updated",
         )
+        assert run.output == {
+            "mergeRequestIid": "18",
+            "mergeRequestUrl": MR_RESPONSE["web_url"],
+        }
         mock_port_client.update_run_started.assert_not_called()
 
     async def test_missing_id_raises(
         self, executor: UpdateMergeRequestExecutor
     ) -> None:
         run = make_run({"mergeRequestIid": "18", "title": "x"})
-        with pytest.raises(MissingExecutionPropertyError, match=r"id\s+field required"):
+        with pytest.raises(
+            MissingExecutionPropertyError, match=r"id\s+field required"
+        ) as exc_info:
             await executor.execute(run)
+
+        assert exc_info.value.status_label == "Invalid inputs"
 
     async def test_missing_merge_request_iid_raises(
         self, executor: UpdateMergeRequestExecutor
@@ -177,13 +186,15 @@ class TestUpdateMergeRequestExecutor:
         run = make_run(
             {"id": "my-group/my-project", "mergeRequestIid": "18", "title": "x"}
         )
-        with (
-            patch("gitlab.actions.update_merge_request_executor.ocean") as mock_ocean,
-            pytest.raises(GitlabUpdateMergeRequestError, match="404 Not Found"),
-        ):
+        with patch("gitlab.actions.update_merge_request_executor.ocean") as mock_ocean:
             mock_ocean.port_client = MagicMock()
             mock_ocean.port_client.post_run_log = AsyncMock()
-            await executor.execute(run)
+            with pytest.raises(
+                GitlabUpdateMergeRequestError, match="404 Not Found"
+            ) as exc_info:
+                await executor.execute(run)
+
+        assert exc_info.value.status_label == "Update failed"
 
     async def test_incomplete_response_raises(
         self, executor: UpdateMergeRequestExecutor
