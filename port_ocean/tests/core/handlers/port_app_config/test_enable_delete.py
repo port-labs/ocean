@@ -27,6 +27,14 @@ def test_enable_delete_defaults_true_when_omitted() -> None:
     assert config.resources[0].enable_delete is True
 
 
+def test_enable_delete_omitted_absent_from_to_request() -> None:
+    """Omit → default true in-memory, but key stays absent in to_request (exclude_unset)."""
+    config = PortAppConfig.parse_obj({"resources": [_resource()]})
+    assert config.resources[0].enable_delete is True
+    payload = config.to_request()
+    assert "enableDelete" not in payload["resources"][0]
+
+
 def test_enable_delete_false_round_trips_in_to_request() -> None:
     config = PortAppConfig.parse_obj({"resources": [_resource(enable_delete=False)]})
     assert config.resources[0].enable_delete is False
@@ -48,3 +56,14 @@ def test_enable_delete_rejects_non_boolean() -> None:
 
     with pytest.raises(ValidationError):
         PortAppConfig.parse_obj({"resources": [_resource(enable_delete="false")]})  # type: ignore[arg-type]
+
+
+def test_enable_delete_rejects_null() -> None:
+    """null is not omit — reject so callers omit the key for default true."""
+    import pytest
+    from pydantic.v1 import ValidationError
+
+    resource = _resource()
+    resource["enableDelete"] = None
+    with pytest.raises(ValidationError):
+        PortAppConfig.parse_obj({"resources": [resource]})
