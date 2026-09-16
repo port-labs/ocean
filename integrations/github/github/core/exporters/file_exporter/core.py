@@ -119,6 +119,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             yield result
 
         if fetch_errors:
+            yield []
             raise OceanAbortException(
                 f"File fetch failed with {len(fetch_errors)} error(s): "
                 f"Kind will be marked as synced with issues, entities preserved."
