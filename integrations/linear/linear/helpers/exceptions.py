@@ -47,3 +47,15 @@ class LinearActionError(ActionExecutionError):
 
         text = response.text.strip()
         return text or f"HTTP {response.status_code}"
+
+
+class CreateIssueError(LinearActionError):
+    """Raised when creating a Linear issue fails."""
+
+    DEFAULT_STATUS_LABEL = "Create failed"
+
+
+class UpdateIssueError(LinearActionError):
+    """Raised when updating a Linear issue fails."""
+
+    DEFAULT_STATUS_LABEL = "Update failed"
