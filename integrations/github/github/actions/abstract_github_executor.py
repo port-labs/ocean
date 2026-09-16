@@ -1,14 +1,19 @@
+from typing import Optional, Type
+
 from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
 from port_ocean.core.models import IntegrationRun
 
 MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS = 20
 
 
 class AbstractGithubExecutor(AbstractExecutor):
-    WEBHOOK_PROCESSOR_CLASS = None
+    WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]] = None
 
     async def _get_rest_client(self, run: IntegrationRun) -> GithubRestClient:
         organization = run.execution_properties.get("org")
