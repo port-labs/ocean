@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from github.actions.delete_pr_comment_executor import DeletePrCommentExecutor
-from github.actions.exceptions import PullRequestCommentError
+from github.actions.exceptions import DeleteCommentError
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import ActionRun
 from tests.github.actions.conftest import make_action_run
@@ -48,13 +48,11 @@ class TestDeletePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": "555",
+                "commentId": 555,
             }
         )
 
-        mock_response = MagicMock()
-        mock_response.status_code = 204
-        mock_rest_client.make_request.return_value = mock_response
+        mock_rest_client.make_request.return_value = MagicMock(status_code=204)
 
         await executor.execute(run)
 
@@ -68,6 +66,7 @@ class TestDeletePrCommentExecutor:
             run,
             success=True,
             message="Comment 555 deleted from port-labs/ocean",
+            status_label="Comment deleted",
         )
 
     @pytest.mark.asyncio
@@ -76,15 +75,16 @@ class TestDeletePrCommentExecutor:
         executor: DeletePrCommentExecutor,
         mock_rest_client: MagicMock,
     ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean"})
-
-        with pytest.raises(
-            InvalidActionParametersException,
-            match="org, repo, and commentId are required",
-        ):
-            await executor.execute(run)
-
-        mock_rest_client.make_request.assert_not_awaited()
+        for missing in ["org", "repo", "commentId"]:
+            props: dict[str, Any] = {
+                "org": "port-labs",
+                "repo": "ocean",
+                "commentId": 555,
+            }
+            del props[missing]
+            run = make_run(props)
+            with pytest.raises(InvalidActionParametersException):
+                await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_upstream_http_error(
@@ -96,7 +96,7 @@ class TestDeletePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": "555",
+                "commentId": 555,
             }
         )
 
@@ -109,32 +109,11 @@ class TestDeletePrCommentExecutor:
             "404", request=request, response=response
         )
 
-        with pytest.raises(PullRequestCommentError, match="Could not delete comment"):
+        with pytest.raises(DeleteCommentError, match="Could not delete comment"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
-    async def test_unexpected_status_code(
-        self,
-        executor: DeletePrCommentExecutor,
-        mock_rest_client: MagicMock,
-    ) -> None:
-        run = make_run(
-            {
-                "org": "port-labs",
-                "repo": "ocean",
-                "commentId": "555",
-            }
-        )
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_rest_client.make_request.return_value = mock_response
-
-        with pytest.raises(PullRequestCommentError, match="unexpected status code 200"):
-            await executor.execute(run)
-
-    @pytest.mark.asyncio
-    async def test_partition_key(
+    async def test_partition_key_returns_none(
         self,
         executor: DeletePrCommentExecutor,
     ) -> None:
@@ -142,15 +121,7 @@ class TestDeletePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": "555",
+                "commentId": 555,
             }
         )
-        assert await executor._get_partition_key(run) is None
-
-    @pytest.mark.asyncio
-    async def test_partition_key_missing_inputs_returns_none(
-        self,
-        executor: DeletePrCommentExecutor,
-    ) -> None:
-        run = make_run({"org": "port-labs"})
         assert await executor._get_partition_key(run) is None

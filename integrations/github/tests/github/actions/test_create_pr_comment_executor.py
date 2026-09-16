@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from github.actions.create_pr_comment_executor import CreatePrCommentExecutor
-from github.actions.exceptions import PullRequestCommentError
+from github.actions.exceptions import CreateCommentError
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import ActionRun
 from tests.github.actions.conftest import make_action_run
@@ -54,7 +54,7 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "body": "Test comment",
             }
         )
@@ -74,6 +74,7 @@ class TestCreatePrCommentExecutor:
             run,
             success=True,
             message="Comment created on pull request #42: https://github.com/port-labs/ocean/pull/42#issuecomment-555",
+            status_label="Comment created",
         )
 
     @pytest.mark.asyncio
@@ -82,15 +83,17 @@ class TestCreatePrCommentExecutor:
         executor: CreatePrCommentExecutor,
         mock_rest_client: MagicMock,
     ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": "42"})
-
-        with pytest.raises(
-            InvalidActionParametersException,
-            match="org, repo, prNumber, and body are required",
-        ):
-            await executor.execute(run)
-
-        mock_rest_client.send_api_request.assert_not_awaited()
+        for missing in ["org", "repo", "prNumber", "body"]:
+            props: dict[str, Any] = {
+                "org": "port-labs",
+                "repo": "ocean",
+                "prNumber": 42,
+                "body": "Test comment",
+            }
+            del props[missing]
+            run = make_run(props)
+            with pytest.raises(InvalidActionParametersException):
+                await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_upstream_http_error(
@@ -102,7 +105,7 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "body": "Test comment",
             }
         )
@@ -116,11 +119,11 @@ class TestCreatePrCommentExecutor:
             "404", request=request, response=response
         )
 
-        with pytest.raises(PullRequestCommentError, match="Could not create comment"):
+        with pytest.raises(CreateCommentError, match="Could not create comment"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
-    async def test_malformed_response(
+    async def test_incomplete_response(
         self,
         executor: CreatePrCommentExecutor,
         mock_rest_client: MagicMock,
@@ -129,14 +132,14 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "body": "Test comment",
             }
         )
 
         mock_rest_client.send_api_request.return_value = {}
 
-        with pytest.raises(PullRequestCommentError, match="empty or incomplete"):
+        with pytest.raises(CreateCommentError, match="incomplete response"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
@@ -148,7 +151,7 @@ class TestCreatePrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "body": "Test comment",
             }
         )

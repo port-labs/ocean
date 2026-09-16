@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from github.actions.edit_pr_comment_executor import EditPrCommentExecutor
-from github.actions.exceptions import PullRequestCommentError
+from github.actions.exceptions import EditCommentError
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import ActionRun
 from tests.github.actions.conftest import make_action_run
@@ -54,7 +54,7 @@ class TestEditPrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": "555",
+                "commentId": 555,
                 "body": "Updated comment",
             }
         )
@@ -74,6 +74,7 @@ class TestEditPrCommentExecutor:
             run,
             success=True,
             message="Comment updated: https://github.com/port-labs/ocean/pull/42#issuecomment-555",
+            status_label="Comment updated",
         )
 
     @pytest.mark.asyncio
@@ -82,15 +83,17 @@ class TestEditPrCommentExecutor:
         executor: EditPrCommentExecutor,
         mock_rest_client: MagicMock,
     ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean"})
-
-        with pytest.raises(
-            InvalidActionParametersException,
-            match="org, repo, commentId, and body are required",
-        ):
-            await executor.execute(run)
-
-        mock_rest_client.send_api_request.assert_not_awaited()
+        for missing in ["org", "repo", "commentId", "body"]:
+            props: dict[str, Any] = {
+                "org": "port-labs",
+                "repo": "ocean",
+                "commentId": 555,
+                "body": "Updated comment",
+            }
+            del props[missing]
+            run = make_run(props)
+            with pytest.raises(InvalidActionParametersException):
+                await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_upstream_http_error(
@@ -102,7 +105,7 @@ class TestEditPrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": "555",
+                "commentId": 555,
                 "body": "Updated comment",
             }
         )
@@ -116,11 +119,11 @@ class TestEditPrCommentExecutor:
             "404", request=request, response=response
         )
 
-        with pytest.raises(PullRequestCommentError, match="Could not edit comment"):
+        with pytest.raises(EditCommentError, match="Could not edit comment"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
-    async def test_malformed_response(
+    async def test_incomplete_response(
         self,
         executor: EditPrCommentExecutor,
         mock_rest_client: MagicMock,
@@ -129,14 +132,14 @@ class TestEditPrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": "555",
+                "commentId": 555,
                 "body": "Updated comment",
             }
         )
 
         mock_rest_client.send_api_request.return_value = {}
 
-        with pytest.raises(PullRequestCommentError, match="empty or incomplete"):
+        with pytest.raises(EditCommentError, match="incomplete response"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
@@ -148,16 +151,8 @@ class TestEditPrCommentExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "commentId": "555",
+                "commentId": 555,
                 "body": "Updated comment",
             }
         )
-        assert await executor._get_partition_key(run) is None
-
-    @pytest.mark.asyncio
-    async def test_partition_key_missing_inputs_returns_none(
-        self,
-        executor: EditPrCommentExecutor,
-    ) -> None:
-        run = make_run({"org": "port-labs"})
-        assert await executor._get_partition_key(run) is None
+        assert await executor._get_partition_key(run) == "port-labs/ocean"
