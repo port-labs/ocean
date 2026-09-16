@@ -8,6 +8,8 @@ MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS = 20
 
 
 class AbstractGithubExecutor(AbstractExecutor):
+    WEBHOOK_PROCESSOR_CLASS = None
+
     async def _get_rest_client(self, run: IntegrationRun) -> GithubRestClient:
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
