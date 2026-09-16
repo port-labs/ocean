@@ -17,6 +17,7 @@ class AddReactionToIssueExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Adding reaction '{payload.emoji}' to issue {payload.issueId}",
+            status_label="Adding reaction",
             should_raise=False,
         )
 

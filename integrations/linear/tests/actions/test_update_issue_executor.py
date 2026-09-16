@@ -46,6 +46,7 @@ class TestUpdateIssueExecutor:
         mock_port_client.post_run_log.assert_any_call(
             run,
             "Updating issue ENG-1",
+            status_label="Updating issue",
             should_raise=False,
         )
         mock_port_client.report_run_completed.assert_awaited_once_with(

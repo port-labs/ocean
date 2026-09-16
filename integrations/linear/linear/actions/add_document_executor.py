@@ -18,6 +18,7 @@ class AddDocumentExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Creating document '{payload.title}'",
+            status_label="Creating document",
             should_raise=False,
         )
 

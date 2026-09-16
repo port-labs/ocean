@@ -21,6 +21,7 @@ class DeleteIssueExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Deleting issue {payload.issueId}",
+            status_label="Deleting issue",
             should_raise=False,
         )
 

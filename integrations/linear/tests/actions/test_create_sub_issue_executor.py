@@ -55,6 +55,7 @@ class TestCreateSubIssueExecutor:
         mock_port_client.post_run_log.assert_any_call(
             run,
             "Creating sub-issue 'Sub task' under ENG-1",
+            status_label="Creating issue",
             should_raise=False,
         )
         mock_port_client.report_run_completed.assert_awaited_once_with(
