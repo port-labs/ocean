@@ -1,0 +1,178 @@
+name: Trigger Load Test
+
+permissions:
+  contents: read
+  statuses: write
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'integrations/**'
+      - 'port_ocean/**'
+
+concurrency:
+  group: trigger-load-test-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+
+  resolve-targets:
+    name: Resolve load test targets
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.resolve.outputs.should_run }}
+      integration_arg: ${{ steps.resolve.outputs.integration_arg }}
+      targets_json: ${{ steps.resolve.outputs.targets_json }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Check out ocean-load-tests harness list
+        uses: actions/checkout@v7
+        with:
+          repository: port-labs/ocean-load-tests
+          ref: main
+          path: ocean-load-tests
+          sparse-checkout: |
+            integrations
+          sparse-checkout-cone-mode: false
+          token: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve targets
+        id: resolve
+        env:
+          CHANGED_INTEGRATIONS_JSON: ${{ needs.detect-changes.outputs.integrations }}
+          HAS_CORE_CODE_CHANGES: ${{ needs.detect-changes.outputs.has_core_code_changes }}
+          HAS_CODE_CHANGES: ${{ needs.detect-changes.outputs.has_code_changes }}
+          LOAD_TEST_REPO_ROOT: ocean-load-tests
+        run: python scripts/ci/load_test_targets.py
+
+  run-load-test:
+    name: Run shallow load test
+    needs: [detect-changes, resolve-targets]
+    if: needs.resolve-targets.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Post pending commit status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'pending',
+              context: 'load-test/shallow',
+              description: 'Shallow integration load test in progress',
+            });
+
+      - name: Dispatch load test
+        id: dispatch
+        env:
+          GH_TOKEN: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
+          INTEGRATION_ARG: ${{ needs.resolve-targets.outputs.integration_arg }}
+        run: |
+          echo "dispatched_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          gh workflow run "Integration Load Test" \
+            --repo port-labs/ocean-load-tests \
+            --ref main \
+            -f "integration=${INTEGRATION_ARG}" \
+            -f "ocean_version=${{ github.sha }}" \
+            -f "rate_limit_mode=shallow"
+
+      - name: Resolve remote run ID
+        id: find_run
+        env:
+          GH_TOKEN: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
+          DISPATCHED_AT: ${{ steps.dispatch.outputs.dispatched_at }}
+        run: |
+          RUN_ID=""
+          for _ in $(seq 1 24); do
+            RUN_ID="$(gh run list \
+              --repo port-labs/ocean-load-tests \
+              --workflow "Integration Load Test" \
+              --event workflow_dispatch \
+              --limit 15 \
+              --json databaseId,createdAt \
+              --jq "[.[] | select(.createdAt >= \"${DISPATCHED_AT}\")] | sort_by(.createdAt) | reverse | .[0].databaseId // empty")"
+            if [ -n "$RUN_ID" ]; then
+              echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "run_url=https://github.com/port-labs/ocean-load-tests/actions/runs/$RUN_ID" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Could not find ocean-load-tests workflow run after dispatch"
+          exit 1
+
+      - name: Wait for load test
+        id: wait
+        env:
+          GH_TOKEN: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
+        run: |
+          gh run watch "${{ steps.find_run.outputs.run_id }}" \
+            --repo port-labs/ocean-load-tests \
+            --exit-status
+
+      - name: Post final commit status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RUN_URL: ${{ steps.find_run.outputs.run_url }}
+          DISPATCH_OUTCOME: ${{ steps.dispatch.outcome }}
+          FIND_OUTCOME: ${{ steps.find_run.outcome }}
+          WAIT_OUTCOME: ${{ steps.wait.outcome }}
+        with:
+          script: |
+            const passed =
+              process.env.DISPATCH_OUTCOME === 'success' &&
+              process.env.FIND_OUTCOME === 'success' &&
+              process.env.WAIT_OUTCOME === 'success';
+            const runUrl = process.env.RUN_URL || undefined;
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: passed ? 'success' : 'failure',
+              context: 'load-test/shallow',
+              description: passed
+                ? 'Shallow load test passed'
+                : 'Shallow load test failed',
+              target_url: runUrl,
+            });
+            if (!passed) {
+              core.setFailed('Load test did not pass');
+            }
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "### Shallow load test"
+            echo "- **Integrations:** \`${{ needs.resolve-targets.outputs.integration_arg }}\`"
+            echo "- **Ocean SHA:** \`${{ github.sha }}\`"
+            echo "- **Run:** ${{ steps.find_run.outputs.run_url }}"
+            echo "- **Result:** ${{ steps.wait.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  skip-load-test:
+    name: Skip load test
+    needs: resolve-targets
+    if: needs.resolve-targets.outputs.should_run != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log skip reason
+        run: |
+          echo "Load test skipped — no harness for the changed integrations on this commit."
+          echo "targets_json=${{ needs.resolve-targets.outputs.targets_json }}"
