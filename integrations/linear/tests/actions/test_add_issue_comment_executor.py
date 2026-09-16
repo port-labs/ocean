@@ -38,6 +38,11 @@ class TestAddIssueCommentExecutor:
             "issueId": "ENG-1",
             "body": "Looks good",
         }
+        assert run.output == {
+            "commentId": "comment-1",
+            "issueId": "ENG-1",
+            "body": "Hello",
+        }
         mock_port_client.post_run_log.assert_any_call(
             run,
             "Adding comment to issue ENG-1",

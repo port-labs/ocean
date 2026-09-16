@@ -39,6 +39,11 @@ class TestAddDocumentExecutor:
             "content": "Details",
             "issueId": "ENG-1",
         }
+        assert run.output == {
+            "documentId": "doc-1",
+            "documentUrl": "https://linear.app/test/document/doc-1",
+            "title": "Notes",
+        }
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
