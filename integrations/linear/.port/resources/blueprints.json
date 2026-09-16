@@ -153,9 +153,9 @@
         "required": false,
         "many": true
       },
-      "state": {
-        "target": "linearState",
-        "title": "State",
+      "workflowState": {
+        "target": "linearWorkflowState",
+        "title": "Workflow State",
         "description": "The workflow state of this issue",
         "required": false,
         "many": false
@@ -598,8 +598,8 @@
     }
   },
   {
-    "identifier": "linearState",
-    "title": "Linear State",
+    "identifier": "linearWorkflowState",
+    "title": "Linear Workflow State",
     "icon": "Linear",
     "description": "A Linear workflow state",
     "schema": {

@@ -74,8 +74,8 @@ class CycleResourceConfig(ResourceConfig):
     )
 
 
-class StateResourceConfig(ResourceConfig):
-    kind: Literal[ObjectKind.STATE] = Field(
+class WorkflowStateResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.WORKFLOW_STATE] = Field(
         title="Linear Workflow State",
         description="Linear workflow state resource kind.",
     )
@@ -92,7 +92,7 @@ class LinearPortAppConfig(PortAppConfig):
         | InitiativeResourceConfig
         | TeamMembersResourceConfig
         | CycleResourceConfig
-        | StateResourceConfig
+        | WorkflowStateResourceConfig
     ] = Field(
         default_factory=list,
     )  # type: ignore[assignment]

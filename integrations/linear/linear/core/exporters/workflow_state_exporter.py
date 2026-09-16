@@ -8,16 +8,18 @@ from linear.core.exporters.base_exporter import (
 )
 
 if TYPE_CHECKING:
-    from integration import StateResourceConfig
+    from integration import WorkflowStateResourceConfig
 
 
-class GetStateOptions(GetOptions["StateResourceConfig"]):
+class GetWorkflowStateOptions(GetOptions["WorkflowStateResourceConfig"]):
     @classmethod
     def from_resource_config(
-        cls, resource_config: "StateResourceConfig", *, resource_id: str
-    ) -> "GetStateOptions":
+        cls, resource_config: "WorkflowStateResourceConfig", *, resource_id: str
+    ) -> "GetWorkflowStateOptions":
         return cls(resource_id=resource_id)
 
 
-class StateExporter(PaginatedExporter, SingleResourceExporter[GetStateOptions]):
+class WorkflowStateExporter(
+    PaginatedExporter, SingleResourceExporter[GetWorkflowStateOptions]
+):
     object_type = LinearObject.WORKFLOW_STATES
