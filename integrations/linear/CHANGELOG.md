@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.0 (2026-09-16)
+
+
+### Features
+
+- Added initiative resource kind with default blueprint and mappings, including live event support via Linear webhooks.
+
+
+## 0.7.0 (2026-09-16)
+
+
+### Features
+
+- Added create_issue, create_sub_issue, and update_issue Linear integration actions
+
+
 ## 0.6.3 (2026-09-15)
 
 
