@@ -1,4 +1,5 @@
-from linear.actions.types.base import LinearActionPayload, NonEmptyStr
+from linear.actions.types.base import LinearActionPayload
+from linear.types import NonEmptyStr
 from linear.core.mutations.reaction.types import ReactionCreateMutationPayload
 
 

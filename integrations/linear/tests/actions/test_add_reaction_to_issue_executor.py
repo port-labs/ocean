@@ -4,7 +4,7 @@ import pytest
 
 from linear.actions.add_reaction_to_issue_executor import AddReactionToIssueExecutor
 from linear.core.mutations.reaction.types import ReactionCreateMutationPayload
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 

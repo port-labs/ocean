@@ -8,7 +8,7 @@ from linear.core.mutations.reaction.types import (
     MutationReactionResult,
     ReactionCreateMutationPayload,
 )
-from linear.helpers.exceptions import LinearActionError
+from linear.actions.exceptions import LinearActionError
 
 
 class ReactionMutations(LinearExporter):

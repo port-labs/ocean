@@ -4,6 +4,7 @@ from typing import Any, ClassVar, Generic, Self, TypeVar
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from linear.actions.exceptions import MissingExecutionPropertyError
+from linear.types import NonEmptyStr
 
 MutationPayloadT = TypeVar("MutationPayloadT", bound=BaseModel)
 

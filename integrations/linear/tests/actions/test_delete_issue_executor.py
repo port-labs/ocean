@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from linear.actions.delete_issue_executor import DeleteIssueExecutor
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 
