@@ -151,6 +151,7 @@ QUERIES = {
     teamMemberships {
         nodes {
             team {
+                id
                 key
             }
         }
