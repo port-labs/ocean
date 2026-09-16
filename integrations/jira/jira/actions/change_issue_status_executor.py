@@ -93,8 +93,7 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
             action_input.issue_key, action_input.status
         )
         message = (
-            f"Changed issue {action_input.issue_key} to status "
-            f"'{resolved_status}'"
+            f"Changed issue {action_input.issue_key} to status " f"'{resolved_status}'"
         )
         await self._complete_run(run, action_input, resolved_status, message)
         logger.info(

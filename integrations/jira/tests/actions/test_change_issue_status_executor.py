@@ -125,10 +125,8 @@ async def test_happy_path(
         await executor.execute(run)
 
     # Assert
-    assert executor.client.get_single_issue.await_count == 2  # type: ignore[attr-defined]
-    executor.client.get_single_issue.assert_any_await(  # type: ignore[attr-defined]
-        "PORT-42", fields="status"
-    )
+    assert executor.client.get_single_issue.await_count == 2
+    executor.client.get_single_issue.assert_any_await("PORT-42", fields="status")
     executor.client.get_issue_transitions.assert_awaited_once_with("PORT-42")  # type: ignore[attr-defined]
     executor.client.transition_issue.assert_awaited_once_with("PORT-42", "21")  # type: ignore[attr-defined]
     assert run.output == {
