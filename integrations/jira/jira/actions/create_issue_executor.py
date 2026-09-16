@@ -9,6 +9,7 @@ from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import CreateIssueError
+from jira.actions.utils import get_issue_browse_url
 
 
 class CreateIssueInput(AbstractJiraActionInput):
@@ -76,9 +77,15 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             )
 
         message = f"Created issue {issue_key}"
-        issue_link = ""
-        if not self.client.is_oauth_enabled():
-            issue_link = f"{self.client.jira_url.rstrip('/')}/browse/{issue_key}"
+        issue_link = (
+            get_issue_browse_url(
+                self.client.jira_url,
+                issue_key,
+                oauth_enabled=self.client.is_oauth_enabled(),
+            )
+            or ""
+        )
+        if issue_link:
             message = f"{message}: {issue_link}"
 
         await ocean.port_client.post_run_log(
