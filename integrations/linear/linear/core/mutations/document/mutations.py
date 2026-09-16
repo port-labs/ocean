@@ -1,5 +1,3 @@
-from pydantic import ValidationError
-
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import LinearExporter
 from linear.core.mutations.document import queries
@@ -8,7 +6,6 @@ from linear.core.mutations.document.types import (
     MutationDocument,
     MutationDocumentResult,
 )
-from linear.helpers.exceptions import LinearActionError
 
 
 class DocumentMutations(LinearExporter):
@@ -22,9 +19,4 @@ class DocumentMutations(LinearExporter):
             {"input": payload.model_dump(exclude_none=True)},
             result_key="documentCreate",
         )
-        try:
-            return MutationDocumentResult.model_validate(result).document
-        except ValidationError as validation_error:
-            raise LinearActionError(
-                "Could not create document: Linear returned an empty or incomplete response"
-            ) from validation_error
+        return MutationDocumentResult.model_validate(result).document

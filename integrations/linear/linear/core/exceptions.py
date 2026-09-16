@@ -2,26 +2,17 @@ import json
 from typing import Any
 
 import httpx
-from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
-class MissingExecutionPropertyError(ActionExecutionError):
-    """Raised when a required execution property is absent from the action run."""
-
-    DEFAULT_STATUS_LABEL = "Invalid inputs"
-
-
-class LinearActionError(ActionExecutionError):
-    """Raised when the Linear API returns an error while executing an action."""
-
-    DEFAULT_STATUS_LABEL = "Linear failed"
+class LinearApiError(Exception):
+    """Raised when the Linear API returns an HTTP or GraphQL transport error."""
 
     @classmethod
-    def from_response(cls, response: httpx.Response) -> "LinearActionError":
+    def from_response(cls, response: httpx.Response) -> "LinearApiError":
         return cls(cls._response_detail(response))
 
     @classmethod
-    def from_graphql_errors(cls, errors: list[dict[str, Any]]) -> "LinearActionError":
+    def from_graphql_errors(cls, errors: list[dict[str, Any]]) -> "LinearApiError":
         messages = [
             error.get("message", json.dumps(error)) for error in errors if error
         ]
@@ -47,15 +38,3 @@ class LinearActionError(ActionExecutionError):
 
         text = response.text.strip()
         return text or f"HTTP {response.status_code}"
-
-
-class CreateIssueError(LinearActionError):
-    """Raised when creating a Linear issue fails."""
-
-    DEFAULT_STATUS_LABEL = "Create failed"
-
-
-class UpdateIssueError(LinearActionError):
-    """Raised when updating a Linear issue fails."""
-
-    DEFAULT_STATUS_LABEL = "Update failed"

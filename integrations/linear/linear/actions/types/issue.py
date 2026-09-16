@@ -1,6 +1,6 @@
-from typing import Annotated, Generic
+from typing import Annotated, Generic, Self
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT, NonEmptyStr
 from linear.core.mutations.issue.types import (
@@ -73,6 +73,14 @@ class UpdateIssuePayload(IssueActionPayload[IssueUpdateMutationPayload]):
     priority: PriorityField = None
     delegateId: NonEmptyStr | None = None
     labelIds: list[str] | None = None
+
+    @model_validator(mode="after")
+    def validate_at_least_one_update_field(self) -> Self:
+        if not self.to_payload():
+            raise ValueError(
+                "At least one update field is required (title, description, assigneeId, stateId, projectId, cycleId, priority, delegateId, or labelIds)"
+            )
+        return self
 
 
 class AddIssueCommentPayload(LinearActionPayload[CommentCreateMutationPayload]):

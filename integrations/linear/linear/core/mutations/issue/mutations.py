@@ -1,5 +1,3 @@
-from pydantic import ValidationError
-
 from linear.client.constants import LinearObject
 from linear.core.exporters.base_exporter import LinearExporter
 from linear.core.mutations.issue import queries
@@ -12,11 +10,6 @@ from linear.core.mutations.issue.types import (
     MutationIssue,
     MutationIssueResult,
 )
-from linear.helpers.exceptions import (
-    CreateIssueError,
-    LinearActionError,
-    UpdateIssueError,
-)
 
 
 class IssueMutations(LinearExporter):
@@ -28,12 +21,7 @@ class IssueMutations(LinearExporter):
             {"input": payload.model_dump(exclude_none=True)},
             result_key="issueCreate",
         )
-        try:
-            return MutationIssueResult.model_validate(result).issue
-        except ValidationError as validation_error:
-            raise CreateIssueError(
-                "Linear returned an empty or incomplete issue create response"
-            ) from validation_error
+        return MutationIssueResult.model_validate(result).issue
 
     async def update_issue(
         self, issue_id: str, payload: IssueUpdateMutationPayload
@@ -43,12 +31,7 @@ class IssueMutations(LinearExporter):
             {"id": issue_id, "input": payload.model_dump(exclude_none=True)},
             result_key="issueUpdate",
         )
-        try:
-            return MutationIssueResult.model_validate(result).issue
-        except ValidationError as validation_error:
-            raise UpdateIssueError(
-                "Linear returned an empty or incomplete issue update response"
-            ) from validation_error
+        return MutationIssueResult.model_validate(result).issue
 
     async def create_comment(
         self, payload: CommentCreateMutationPayload
@@ -58,9 +41,4 @@ class IssueMutations(LinearExporter):
             {"input": payload.model_dump(exclude_none=True)},
             result_key="commentCreate",
         )
-        try:
-            return MutationCommentResult.model_validate(result).comment
-        except ValidationError as validation_error:
-            raise LinearActionError(
-                f"Could not add comment to issue '{payload.issueId}': Linear returned an empty or incomplete response"
-            ) from validation_error
+        return MutationCommentResult.model_validate(result).comment

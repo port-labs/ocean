@@ -1,11 +1,10 @@
 from abc import ABC
-from typing import Annotated, Any, ClassVar, Generic, Self, TypeVar
+from typing import Any, ClassVar, Generic, Self, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
-from linear.helpers.exceptions import MissingExecutionPropertyError
-
-NonEmptyStr = Annotated[str, Field(min_length=1)]
+from linear.core.mutations.types import NonEmptyStr
+from linear.actions.exceptions import MissingExecutionPropertyError
 
 MutationPayloadT = TypeVar("MutationPayloadT", bound=BaseModel)
 

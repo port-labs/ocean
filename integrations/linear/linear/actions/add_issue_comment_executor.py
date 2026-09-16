@@ -5,6 +5,7 @@ from port_ocean.core.models import IntegrationRun
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.types import AddIssueCommentPayload
 from linear.core.mutations import IssueMutations
+from linear.actions.exceptions import LinearActionError
 
 
 class AddIssueCommentExecutor(AbstractLinearExecutor):
@@ -23,7 +24,10 @@ class AddIssueCommentExecutor(AbstractLinearExecutor):
         )
 
         mutations = IssueMutations(self.client)
-        comment = await mutations.create_comment(payload.to_mutation())
+        try:
+            comment = await mutations.create_comment(payload.to_mutation())
+        except Exception as error:
+            raise LinearActionError(str(error), status_label="Comment failed") from error
 
         logger.info(
             "Added Linear issue comment",

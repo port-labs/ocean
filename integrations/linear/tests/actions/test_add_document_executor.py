@@ -4,7 +4,7 @@ import pytest
 
 from linear.actions.add_document_executor import AddDocumentExecutor
 from linear.core.mutations.document.types import DocumentCreateMutationPayload
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 

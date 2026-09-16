@@ -4,7 +4,7 @@ import pytest
 
 from linear.actions.add_issue_comment_executor import AddIssueCommentExecutor
 from linear.core.mutations.issue.types import CommentCreateMutationPayload
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 

@@ -1,8 +1,6 @@
-from typing import Annotated
+from pydantic import BaseModel
 
-from pydantic import BaseModel, Field
-
-NonEmptyStr = Annotated[str, Field(min_length=1)]
+from linear.core.mutations.types import NonEmptyStr
 
 
 class DocumentCreateMutationPayload(BaseModel):
