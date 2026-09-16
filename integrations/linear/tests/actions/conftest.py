@@ -11,11 +11,7 @@ from port_ocean.core.models import (
 )
 
 from linear.core.mutations.document.types import MutationDocument
-from linear.core.mutations.issue.types import (
-    MutationComment,
-    MutationIssue,
-    _IssueState,
-)
+from linear.core.mutations.issue.types import MutationComment, MutationIssue
 
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -63,10 +59,8 @@ def mock_issue_mutations() -> MagicMock:
             identifier="ENG-1",
             title="Updated issue",
             url="https://linear.app/test/issue/ENG-1",
-            state=_IssueState(id="state-1", name="In Progress"),
         )
     )
-    mutations.resolve_state_id = AsyncMock(return_value="state-1")
     mutations.create_comment = AsyncMock(
         return_value=MutationComment(
             id="comment-1",

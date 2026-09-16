@@ -50,22 +50,6 @@ class MutationIssueResult(BaseModel):
     issue: MutationIssue
 
 
-class _TeamWorkflowStates(BaseModel):
-    nodes: list[_IssueState]
-
-
-class _TeamWithWorkflowStates(BaseModel):
-    states: _TeamWorkflowStates
-
-
-class _IssueWithTeamStates(BaseModel):
-    team: _TeamWithWorkflowStates
-
-
-class ResolveStateByNameData(BaseModel):
-    issue: _IssueWithTeamStates
-
-
 class CommentCreateMutationPayload(BaseModel):
     issueId: str
     body: str

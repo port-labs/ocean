@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT
 from linear.actions.types.issue import (
     AddIssueCommentPayload,
-    ChangeIssueStatusPayload,
     CreateIssuePayload,
     CreateSubIssuePayload,
     UpdateIssuePayload,
@@ -124,15 +123,3 @@ def test_issue_payload_to_mutation_contract(
     assert isinstance(mutation_payload, mutation_cls)
     assert action_cls.MUTATION_PAYLOAD_TYPE is mutation_cls
     assert mutation_payload.model_dump(exclude_none=True) == expected
-
-
-def test_change_issue_status_payload_builds_mutation_from_resolved_state_id() -> None:
-    payload = ChangeIssueStatusPayload.from_execution_properties(
-        {"issueId": "ENG-1", "stateName": "In Progress"}
-    )
-
-    mutation_payload = payload.build_mutation("state-1")
-
-    assert isinstance(mutation_payload, IssueUpdateMutationPayload)
-    assert ChangeIssueStatusPayload.MUTATION_PAYLOAD_TYPE is IssueUpdateMutationPayload
-    assert mutation_payload.model_dump(exclude_none=True) == {"stateId": "state-1"}

@@ -2,7 +2,6 @@ from linear.actions.types.base import LinearActionPayload, NonEmptyStr
 from linear.actions.types.document import AddDocumentPayload
 from linear.actions.types.issue import (
     AddIssueCommentPayload,
-    ChangeIssueStatusPayload,
     CreateIssuePayload,
     CreateSubIssuePayload,
     UpdateIssuePayload,
@@ -10,9 +9,8 @@ from linear.actions.types.issue import (
 from linear.utils import PriorityLabel
 
 __all__ = [
-    "AddIssueCommentPayload",
     "AddDocumentPayload",
-    "ChangeIssueStatusPayload",
+    "AddIssueCommentPayload",
     "CreateIssuePayload",
     "CreateSubIssuePayload",
     "LinearActionPayload",

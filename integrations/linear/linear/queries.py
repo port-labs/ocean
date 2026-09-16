@@ -38,6 +38,7 @@ QUERIES = {
         key
     }
     state {
+        id
         name
     }
     creator {

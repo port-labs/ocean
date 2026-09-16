@@ -75,17 +75,6 @@ class UpdateIssuePayload(IssueActionPayload[IssueUpdateMutationPayload]):
     labelIds: list[str] | None = None
 
 
-class ChangeIssueStatusPayload(LinearActionPayload[IssueUpdateMutationPayload]):
-    MUTATION_PAYLOAD_TYPE = IssueUpdateMutationPayload
-    payload_exclude = {"issueId", "stateName"}
-
-    issueId: NonEmptyStr
-    stateName: NonEmptyStr
-
-    def build_mutation(self, state_id: str) -> IssueUpdateMutationPayload:
-        return IssueUpdateMutationPayload(stateId=state_id)
-
-
 class AddIssueCommentPayload(LinearActionPayload[CommentCreateMutationPayload]):
     MUTATION_PAYLOAD_TYPE = CommentCreateMutationPayload
 
