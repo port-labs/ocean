@@ -7,7 +7,7 @@ import pytest
 from github.actions.merge_pull_request_executor import (
     MergePullRequestExecutor,
 )
-from github.actions.exceptions import PullRequestActionError
+from github.actions.exceptions import MergePullRequestError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -84,7 +84,7 @@ class TestMergePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "mergeMethod": "merge",
             }
         )
@@ -100,6 +100,7 @@ class TestMergePullRequestExecutor:
             run,
             success=True,
             message="Pull request #42 merged via merge",
+            status_label="Pull request merged",
         )
 
     @pytest.mark.asyncio
@@ -113,7 +114,7 @@ class TestMergePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "mergeMethod": "squash",
                 "commitTitle": "feat: my feature",
                 "commitMessage": "Full description",
@@ -140,7 +141,7 @@ class TestMergePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
             }
         )
         with pytest.raises(InvalidActionParametersException):
@@ -151,10 +152,11 @@ class TestMergePullRequestExecutor:
         self, executor: MergePullRequestExecutor
     ) -> None:
         for missing in ["org", "repo", "prNumber"]:
-            props: dict[str, str] = {
+            props: dict[str, Any] = {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
+                "mergeMethod": "merge",
             }
             del props[missing]
             run = make_run(props)
@@ -181,11 +183,11 @@ class TestMergePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "mergeMethod": "merge",
             }
         )
-        with pytest.raises(PullRequestActionError, match="Head branch is out of date"):
+        with pytest.raises(MergePullRequestError, match="Head branch is out of date"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
@@ -201,16 +203,16 @@ class TestMergePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "mergeMethod": "merge",
             }
         )
-        with pytest.raises(PullRequestActionError, match="Not mergeable"):
+        with pytest.raises(MergePullRequestError, match="Not mergeable"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_partition_key(self, executor: MergePullRequestExecutor) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": "42"})
+        run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": 42})
         assert await executor._get_partition_key(run) == "port-labs/ocean"
 
     @pytest.mark.asyncio

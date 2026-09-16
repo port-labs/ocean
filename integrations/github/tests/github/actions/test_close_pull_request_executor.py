@@ -7,7 +7,7 @@ import pytest
 from github.actions.close_pull_request_executor import (
     ClosePullRequestExecutor,
 )
-from github.actions.exceptions import PullRequestActionError
+from github.actions.exceptions import ClosePullRequestError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -87,7 +87,7 @@ class TestClosePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
             }
         )
         await executor.execute(run)
@@ -102,6 +102,7 @@ class TestClosePullRequestExecutor:
             run,
             success=True,
             message="Pull request #42 closed: https://github.com/port-labs/ocean/pull/42",
+            status_label="Pull request closed",
         )
 
     @pytest.mark.asyncio
@@ -109,10 +110,10 @@ class TestClosePullRequestExecutor:
         self, executor: ClosePullRequestExecutor
     ) -> None:
         for missing in ["org", "repo", "prNumber"]:
-            props: dict[str, str] = {
+            props: dict[str, Any] = {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
             }
             del props[missing]
             run = make_run(props)
@@ -139,15 +140,32 @@ class TestClosePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "999",
+                "prNumber": 999,
             }
         )
-        with pytest.raises(PullRequestActionError, match="Not Found"):
+        with pytest.raises(ClosePullRequestError, match="Not Found"):
+            await executor.execute(run)
+
+    @pytest.mark.asyncio
+    async def test_incomplete_response(
+        self,
+        executor: ClosePullRequestExecutor,
+        mock_rest_client: MagicMock,
+    ) -> None:
+        mock_rest_client.send_api_request = AsyncMock(return_value={})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "prNumber": 42,
+            }
+        )
+        with pytest.raises(ClosePullRequestError, match="incomplete response"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_partition_key(self, executor: ClosePullRequestExecutor) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": "42"})
+        run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": 42})
         assert await executor._get_partition_key(run) == "port-labs/ocean"
 
     @pytest.mark.asyncio

@@ -7,7 +7,7 @@ import pytest
 from github.actions.create_pull_request_executor import (
     CreatePullRequestExecutor,
 )
-from github.actions.exceptions import PullRequestActionError
+from github.actions.exceptions import CreatePullRequestError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -113,6 +113,7 @@ class TestCreatePullRequestExecutor:
             run,
             success=True,
             message="Pull request #42 created: https://github.com/port-labs/ocean/pull/42",
+            status_label="Pull request created",
         )
 
     @pytest.mark.asyncio
@@ -186,7 +187,26 @@ class TestCreatePullRequestExecutor:
                 "base": "main",
             }
         )
-        with pytest.raises(PullRequestActionError, match="Validation Failed"):
+        with pytest.raises(CreatePullRequestError, match="Validation Failed"):
+            await executor.execute(run)
+
+    @pytest.mark.asyncio
+    async def test_incomplete_response(
+        self,
+        executor: CreatePullRequestExecutor,
+        mock_rest_client: MagicMock,
+    ) -> None:
+        mock_rest_client.send_api_request = AsyncMock(return_value={})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "title": "Add feature",
+                "head": "feature-branch",
+                "base": "main",
+            }
+        )
+        with pytest.raises(CreatePullRequestError, match="incomplete response"):
             await executor.execute(run)
 
     @pytest.mark.asyncio

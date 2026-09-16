@@ -7,7 +7,7 @@ import pytest
 from github.actions.update_pull_request_executor import (
     UpdatePullRequestExecutor,
 )
-from github.actions.exceptions import PullRequestActionError
+from github.actions.exceptions import UpdatePullRequestError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -86,7 +86,7 @@ class TestUpdatePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "title": "Updated title",
                 "body": "Updated body",
             }
@@ -103,6 +103,7 @@ class TestUpdatePullRequestExecutor:
             run,
             success=True,
             message="Pull request #42 updated: https://github.com/port-labs/ocean/pull/42",
+            status_label="Pull request updated",
         )
 
     @pytest.mark.asyncio
@@ -110,10 +111,10 @@ class TestUpdatePullRequestExecutor:
         self, executor: UpdatePullRequestExecutor
     ) -> None:
         for missing in ["org", "repo", "prNumber"]:
-            props: dict[str, str] = {
+            props: dict[str, Any] = {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "title": "t",
             }
             del props[missing]
@@ -129,7 +130,7 @@ class TestUpdatePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
             }
         )
         with pytest.raises(
@@ -157,17 +158,35 @@ class TestUpdatePullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "999",
+                "prNumber": 999,
                 "title": "t",
             }
         )
-        with pytest.raises(PullRequestActionError, match="Not Found"):
+        with pytest.raises(UpdatePullRequestError, match="Not Found"):
+            await executor.execute(run)
+
+    @pytest.mark.asyncio
+    async def test_incomplete_response(
+        self,
+        executor: UpdatePullRequestExecutor,
+        mock_rest_client: MagicMock,
+    ) -> None:
+        mock_rest_client.send_api_request = AsyncMock(return_value={})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "prNumber": 42,
+                "title": "t",
+            }
+        )
+        with pytest.raises(UpdatePullRequestError, match="incomplete response"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_partition_key(self, executor: UpdatePullRequestExecutor) -> None:
         run = make_run(
-            {"org": "port-labs", "repo": "ocean", "prNumber": "42", "title": "t"}
+            {"org": "port-labs", "repo": "ocean", "prNumber": 42, "title": "t"}
         )
         assert await executor._get_partition_key(run) == "port-labs/ocean"
 

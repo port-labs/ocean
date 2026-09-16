@@ -7,7 +7,7 @@ import pytest
 from github.actions.review_pull_request_executor import (
     ReviewPullRequestExecutor,
 )
-from github.actions.exceptions import PullRequestActionError
+from github.actions.exceptions import ReviewPullRequestError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -84,7 +84,7 @@ class TestReviewPullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "event": "APPROVE",
             }
         )
@@ -108,7 +108,7 @@ class TestReviewPullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "event": "REQUEST_CHANGES",
                 "body": "Please fix the tests",
             }
@@ -130,7 +130,7 @@ class TestReviewPullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "event": "REQUEST_CHANGES",
             }
         )
@@ -142,10 +142,10 @@ class TestReviewPullRequestExecutor:
         self, executor: ReviewPullRequestExecutor
     ) -> None:
         for missing in ["org", "repo", "prNumber", "event"]:
-            props: dict[str, str] = {
+            props: dict[str, Any] = {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "event": "APPROVE",
             }
             del props[missing]
@@ -173,16 +173,34 @@ class TestReviewPullRequestExecutor:
             {
                 "org": "port-labs",
                 "repo": "ocean",
-                "prNumber": "42",
+                "prNumber": 42,
                 "event": "APPROVE",
             }
         )
-        with pytest.raises(PullRequestActionError, match="Validation Failed"):
+        with pytest.raises(ReviewPullRequestError, match="Validation Failed"):
+            await executor.execute(run)
+
+    @pytest.mark.asyncio
+    async def test_incomplete_response(
+        self,
+        executor: ReviewPullRequestExecutor,
+        mock_rest_client: MagicMock,
+    ) -> None:
+        mock_rest_client.send_api_request = AsyncMock(return_value={})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "prNumber": 42,
+                "event": "APPROVE",
+            }
+        )
+        with pytest.raises(ReviewPullRequestError, match="incomplete response"):
             await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_partition_key(self, executor: ReviewPullRequestExecutor) -> None:
         run = make_run(
-            {"org": "port-labs", "repo": "ocean", "prNumber": "42", "event": "APPROVE"}
+            {"org": "port-labs", "repo": "ocean", "prNumber": 42, "event": "APPROVE"}
         )
         assert await executor._get_partition_key(run) == "port-labs/ocean"

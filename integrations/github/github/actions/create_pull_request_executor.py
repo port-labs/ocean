@@ -1,73 +1,81 @@
 import httpx
 from loguru import logger
+from pydantic import Field
+
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
+from github.actions.abstract_github_action_input import AbstractGithubActionInput
 from github.actions.abstract_github_executor import AbstractGithubExecutor
-from github.actions.exceptions import PullRequestActionError
-from github.helpers.exceptions import InvalidActionParametersException
+from github.actions.exceptions import CreatePullRequestError
+
+
+class CreatePullRequestInputs(AbstractGithubActionInput):
+    org: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    head: str = Field(min_length=1)
+    base: str = Field(min_length=1)
+    body: str | None = None
+    draft: bool | None = None
 
 
 class CreatePullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "create_pull_request"
-    WEBHOOK_PROCESSOR_CLASS = None
 
     async def execute(self, run: IntegrationRun) -> None:
-        org = run.execution_properties.get("org")
-        repo = run.execution_properties.get("repo")
-        title = run.execution_properties.get("title")
-        head = run.execution_properties.get("head")
-        base = run.execution_properties.get("base")
-
-        if not (org and repo and title and head and base):
-            raise InvalidActionParametersException(
-                "org, repo, title, head, and base are required"
-            )
+        inputs = CreatePullRequestInputs.from_execution_properties(
+            run.execution_properties
+        )
 
         rest_client = await self._get_rest_client(run)
 
         await ocean.port_client.post_run_log(
             run,
-            f"Creating pull request '{title}' in {org}/{repo} ({head} → {base})",
+            f"Creating pull request '{inputs.title}' in {inputs.org}/{inputs.repo} ({inputs.head} → {inputs.base})",
+            status_label="Creating pull request",
             should_raise=False,
         )
 
         request_body: dict[str, str | bool] = {
-            "title": title,
-            "head": head,
-            "base": base,
+            "title": inputs.title,
+            "head": inputs.head,
+            "base": inputs.base,
         }
-        pr_body = run.execution_properties.get("body")
-        if pr_body:
-            request_body["body"] = pr_body
-        draft = run.execution_properties.get("draft")
-        if draft is not None:
-            request_body["draft"] = draft
+        if inputs.body is not None:
+            request_body["body"] = inputs.body
+        if inputs.draft is not None:
+            request_body["draft"] = inputs.draft
 
         try:
             pr = await rest_client.send_api_request(
-                f"{rest_client.base_url}/repos/{org}/{repo}/pulls",
+                f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/pulls",
                 method="POST",
                 json_data=request_body,
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
-            raise PullRequestActionError.from_response(
-                e.response, f"Could not create pull request in {org}/{repo}"
-            )
-        except Exception as e:
-            raise PullRequestActionError(
-                f"Could not create pull request in {org}/{repo}: {e}"
+            raise CreatePullRequestError.from_response(
+                e.response,
+                f"Could not create pull request in {inputs.org}/{inputs.repo}",
             )
 
+        pr_number = pr.get("number")
+        if pr_number is None:
+            raise CreatePullRequestError(
+                "Failed to create pull request: GitHub returned an empty or incomplete response"
+            )
+
+        message = f"Pull request #{pr_number} created: {pr['html_url']}"
         logger.info(
-            f"Created pull request #{pr['number']} in {org}/{repo}",
-            pr_number=pr["number"],
+            f"Created pull request #{pr_number} in {inputs.org}/{inputs.repo}",
+            pr_number=pr_number,
             html_url=pr["html_url"],
         )
 
         await ocean.port_client.report_run_completed(
             run,
             success=True,
-            message=f"Pull request #{pr['number']} created: {pr['html_url']}",
+            message=message,
+            status_label="Pull request created",
         )

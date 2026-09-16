@@ -1,30 +1,32 @@
 import httpx
 from loguru import logger
+
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
+from github.actions.abstract_github_action_input import AbstractGithubActionInput
 from github.actions.abstract_github_executor import AbstractGithubExecutor
-from github.actions.exceptions import PullRequestActionError
+from github.actions.exceptions import ReviewPullRequestError
 from github.helpers.exceptions import InvalidActionParametersException
+
+
+class ReviewPullRequestInputs(AbstractGithubActionInput):
+    org: str
+    repo: str
+    prNumber: int
+    event: str
+    body: str | None = None
 
 
 class ReviewPullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "review_pull_request"
-    WEBHOOK_PROCESSOR_CLASS = None
 
     async def execute(self, run: IntegrationRun) -> None:
-        org = run.execution_properties.get("org")
-        repo = run.execution_properties.get("repo")
-        pr_number = run.execution_properties.get("prNumber")
-        event = run.execution_properties.get("event")
-        comment = run.execution_properties.get("body")
+        inputs = ReviewPullRequestInputs.from_execution_properties(
+            run.execution_properties
+        )
 
-        if not (org and repo and pr_number and event):
-            raise InvalidActionParametersException(
-                "org, repo, prNumber, and event are required"
-            )
-
-        if event == "REQUEST_CHANGES" and not comment:
+        if inputs.event == "REQUEST_CHANGES" and not inputs.body:
             raise InvalidActionParametersException(
                 "body is required when event is REQUEST_CHANGES"
             )
@@ -33,39 +35,43 @@ class ReviewPullRequestExecutor(AbstractGithubExecutor):
 
         await ocean.port_client.post_run_log(
             run,
-            f"Submitting {event} review on pull request #{pr_number} in {org}/{repo}",
+            f"Submitting {inputs.event} review on pull request #{inputs.prNumber} in {inputs.org}/{inputs.repo}",
+            status_label="Submitting review",
             should_raise=False,
         )
 
-        review_body: dict[str, str] = {"event": event}
-        if comment:
-            review_body["body"] = comment
+        review_body: dict[str, str] = {"event": inputs.event}
+        if inputs.body:
+            review_body["body"] = inputs.body
 
         try:
             result = await rest_client.send_api_request(
-                f"{rest_client.base_url}/repos/{org}/{repo}/pulls/{pr_number}/reviews",
+                f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/pulls/{inputs.prNumber}/reviews",
                 method="POST",
                 json_data=review_body,
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
-            raise PullRequestActionError.from_response(
+            raise ReviewPullRequestError.from_response(
                 e.response,
-                f"Could not submit review on pull request #{pr_number} in {org}/{repo}",
+                f"Could not submit review on pull request #{inputs.prNumber} in {inputs.org}/{inputs.repo}",
             )
-        except Exception as e:
-            raise PullRequestActionError(
-                f"Could not submit review on pull request #{pr_number} in {org}/{repo}: {e}"
+
+        review_id = result.get("id")
+        if review_id is None:
+            raise ReviewPullRequestError(
+                "Failed to submit review: GitHub returned an empty or incomplete response"
             )
 
         logger.info(
-            f"Submitted {event} review on pull request #{pr_number} in {org}/{repo}",
-            pr_number=pr_number,
-            review_id=result["id"],
+            f"Submitted {inputs.event} review on pull request #{inputs.prNumber} in {inputs.org}/{inputs.repo}",
+            pr_number=inputs.prNumber,
+            review_id=review_id,
         )
 
         await ocean.port_client.report_run_completed(
             run,
             success=True,
-            message=f"Review ({event}) submitted on pull request #{pr_number}: {result['html_url']}",
+            message=f"Review ({inputs.event}) submitted on pull request #{inputs.prNumber}: {result['html_url']}",
+            status_label="Review submitted",
         )
