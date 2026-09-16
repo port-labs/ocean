@@ -26,6 +26,7 @@ from github.core.options import (
 )
 from github.helpers.utils import GithubClientType, IgnoredError
 from port_ocean.context.event import event_context
+from port_ocean.exceptions.core import OceanAbortException
 from typing import AsyncGenerator, List, Dict, Any
 
 from integration import GithubFilePattern, RepositoryBranchMapping
@@ -640,6 +641,92 @@ class TestRestFileExporter:
             # Verify error message includes useful context
             assert "Permission denied" in str(exc_info.value) or "GitHub unavailable" in str(exc_info.value)
             assert "repo1@main" in str(exc_info.value)
+
+    async def test_get_paginated_resources_mixed_403_and_valid_repos(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When multiple repos are processed and one fails with 403, the error is collected
+        but other repos are still processed. OceanAbortException is raised at the end with
+        the collected errors, preventing reconciliation deletes while allowing partial data.
+        See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
+        """
+        exporter = RestFileExporter(rest_client)
+        organization = "test-org"
+
+        # Mock 403 error for first repo
+        mock_response_403 = httpx.Response(
+            status_code=403,
+            content=b'{"message": "Forbidden"}',
+            request=httpx.Request("GET", "https://api.github.com/repos/test-org/broken-repo/git/trees/main"),
+        )
+        http_error_403 = httpx.HTTPStatusError(
+            "Forbidden", request=mock_response_403.request, response=mock_response_403
+        )
+
+        options = [
+            ListFileSearchOptions(
+                organization=organization,
+                repo_name="broken-repo",  # Will fail with 403
+                files=[
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.yaml",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            ),
+            ListFileSearchOptions(
+                organization=organization,
+                repo_name="working-repo",  # Should succeed
+                files=[
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.txt",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            ),
+        ]
+
+        # Create async generators for results
+        async def mock_graphql_generator() -> AsyncGenerator[list[str], None]:
+            yield ["file_from_working_repo"]
+
+        async def mock_rest_generator() -> AsyncGenerator[list[str], None]:
+            yield []
+
+        def tree_side_effect(org: str, repo: str, branch: str) -> tuple[List[Dict[str, Any]], bool]:
+            if repo == "broken-repo":
+                raise GitHubTreeFetchError(f"Tree fetch failed for {org}/{repo}@{branch}: Permission denied or GitHub unavailable (403). Entities will be preserved until next successful resync.")
+            return (TEST_TREE_ENTRIES, False)
+
+        with (
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
+            ),
+            patch.object(
+                exporter,
+                "get_tree_recursive",
+                side_effect=tree_side_effect,
+            ),
+            patch.object(
+                exporter, "process_graphql_files", return_value=mock_graphql_generator()
+            ),
+            patch.object(
+                exporter, "process_rest_api_files", return_value=mock_rest_generator()
+            ),
+        ):
+            async with event_context("test_event"):
+                with pytest.raises(OceanAbortException) as exc_info:
+                    async for _ in exporter.get_paginated_resources(options):
+                        pass
+
+                # Error message should indicate files were processed but there's an error
+                assert "File fetch failed with 1 error(s)" in str(exc_info.value)
+                assert "synced with issues" in str(exc_info.value)
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
