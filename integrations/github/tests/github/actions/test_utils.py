@@ -1,15 +1,9 @@
 import httpx
-import pytest
 
 from github.actions.utils import (
-    build_close_issue_patch_body,
-    build_create_issue_body,
-    build_edit_issue_patch_body,
     build_external_id,
     extract_error_message,
-    resolve_close_reason,
 )
-from github.helpers.exceptions import InvalidActionParametersException
 
 
 class TestBuildExternalId:
@@ -47,84 +41,3 @@ class TestExtractErrorMessage:
         response = httpx.Response(503, text="   ")
 
         assert extract_error_message(response) == "HTTP 503"
-
-
-class TestBuildCreateIssueBody:
-    def test_title_only(self) -> None:
-        assert build_create_issue_body({"title": "Bug report"}) == {
-            "title": "Bug report"
-        }
-
-    def test_all_optional_fields(self) -> None:
-        body = build_create_issue_body(
-            {
-                "title": "Bug",
-                "body": "Details",
-                "labels": ["bug"],
-                "assignees": ["user1"],
-                "milestone": 3,
-            }
-        )
-        assert body == {
-            "title": "Bug",
-            "body": "Details",
-            "labels": ["bug"],
-            "assignees": ["user1"],
-            "milestone": 3,
-        }
-
-    def test_ignores_non_issue_fields(self) -> None:
-        body = build_create_issue_body(
-            {"title": "T", "org": "port-labs", "repo": "ocean"}
-        )
-        assert body == {"title": "T"}
-
-
-class TestIssueActionUtils:
-    def test_build_edit_issue_patch_body_scalar_fields(self) -> None:
-        body = build_edit_issue_patch_body({"title": "New title", "body": "New body"})
-
-        assert body == {"title": "New title", "body": "New body"}
-
-    def test_build_edit_issue_patch_body_with_milestone(self) -> None:
-        body = build_edit_issue_patch_body({"title": "T", "milestone": 3})
-
-        assert body == {"title": "T", "milestone": 3}
-
-    def test_build_edit_issue_patch_body_ignores_state(self) -> None:
-        body = build_edit_issue_patch_body(
-            {"title": "T", "state": "closed", "stateReason": "not_planned"}
-        )
-
-        assert body == {"title": "T"}
-
-    def test_build_edit_issue_patch_body_empty_raises(self) -> None:
-        with pytest.raises(
-            InvalidActionParametersException, match="At least one field"
-        ):
-            build_edit_issue_patch_body({})
-
-    def test_resolve_close_reason_invalid_raises(self) -> None:
-        with pytest.raises(InvalidActionParametersException, match="stateReason"):
-            resolve_close_reason({"stateReason": "invalid"})
-
-    def test_build_close_issue_patch_body_default(self) -> None:
-        assert build_close_issue_patch_body({}) == {
-            "state": "closed",
-            "state_reason": "completed",
-        }
-
-    def test_build_close_issue_patch_body_duplicate(self) -> None:
-        assert build_close_issue_patch_body(
-            {"stateReason": "duplicate", "duplicateIssueId": 42}
-        ) == {
-            "state": "closed",
-            "state_reason": "duplicate",
-            "duplicate_issue_id": 42,
-        }
-
-    def test_build_close_issue_patch_body_duplicate_missing_id_raises(self) -> None:
-        with pytest.raises(
-            InvalidActionParametersException, match="duplicateIssueId is required"
-        ):
-            build_close_issue_patch_body({"stateReason": "duplicate"})

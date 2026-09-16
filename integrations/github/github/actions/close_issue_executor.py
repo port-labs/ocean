@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 from loguru import logger
@@ -27,6 +27,15 @@ class CloseIssueInputs(AbstractGithubActionInput):
             )
         return self
 
+    def to_api_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "state": "closed",
+            "state_reason": self.stateReason,
+        }
+        if self.stateReason == "duplicate" and self.duplicateIssueId is not None:
+            payload["duplicate_issue_id"] = self.duplicateIssueId
+        return payload
+
 
 class CloseIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "close_issue"
@@ -45,18 +54,11 @@ class CloseIssueExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        patch_body: dict[str, str | int] = {
-            "state": "closed",
-            "state_reason": inputs.stateReason,
-        }
-        if inputs.stateReason == "duplicate" and inputs.duplicateIssueId is not None:
-            patch_body["duplicate_issue_id"] = inputs.duplicateIssueId
-
         try:
             issue = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/issues/{inputs.issueNumber}",
                 method="PATCH",
-                json_data=patch_body,
+                json_data=inputs.to_api_payload(),
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:

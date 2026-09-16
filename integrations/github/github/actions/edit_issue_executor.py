@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 from loguru import logger
 from pydantic import model_validator
@@ -8,6 +10,7 @@ from port_ocean.core.models import IntegrationRun
 from github.actions.abstract_github_action_input import AbstractGithubActionInput
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import EditIssueError
+
 
 class EditIssueInputs(AbstractGithubActionInput):
     org: str
@@ -33,6 +36,20 @@ class EditIssueInputs(AbstractGithubActionInput):
             )
         return self
 
+    def to_api_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if self.title is not None:
+            payload["title"] = self.title
+        if self.body is not None:
+            payload["body"] = self.body
+        if self.labels is not None:
+            payload["labels"] = self.labels
+        if self.assignees is not None:
+            payload["assignees"] = self.assignees
+        if self.milestone is not None:
+            payload["milestone"] = self.milestone
+        return payload
+
 
 class EditIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "edit_issue"
@@ -51,23 +68,11 @@ class EditIssueExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        patch_body: dict[str, str | int | list[str] | None] = {}
-        if inputs.title is not None:
-            patch_body["title"] = inputs.title
-        if inputs.body is not None:
-            patch_body["body"] = inputs.body
-        if inputs.labels is not None:
-            patch_body["labels"] = inputs.labels
-        if inputs.assignees is not None:
-            patch_body["assignees"] = inputs.assignees
-        if inputs.milestone is not None:
-            patch_body["milestone"] = inputs.milestone
-
         try:
             issue = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/issues/{inputs.issueNumber}",
                 method="PATCH",
-                json_data=patch_body,
+                json_data=inputs.to_api_payload(),
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:

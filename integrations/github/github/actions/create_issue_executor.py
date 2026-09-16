@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 from loguru import logger
 from pydantic import Field
@@ -19,6 +21,18 @@ class CreateIssueInputs(AbstractGithubActionInput):
     assignees: list[str] | None = None
     milestone: int | None = None
 
+    def to_api_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"title": self.title}
+        if self.body is not None:
+            payload["body"] = self.body
+        if self.labels is not None:
+            payload["labels"] = self.labels
+        if self.assignees is not None:
+            payload["assignees"] = self.assignees
+        if self.milestone is not None:
+            payload["milestone"] = self.milestone
+        return payload
+
 
 class CreateIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "create_issue"
@@ -37,21 +51,11 @@ class CreateIssueExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        issue_body: dict[str, str | int | list[str]] = {"title": inputs.title}
-        if inputs.body is not None:
-            issue_body["body"] = inputs.body
-        if inputs.labels is not None:
-            issue_body["labels"] = inputs.labels
-        if inputs.assignees is not None:
-            issue_body["assignees"] = inputs.assignees
-        if inputs.milestone is not None:
-            issue_body["milestone"] = inputs.milestone
-
         try:
             issue = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/issues",
                 method="POST",
-                json_data=issue_body,
+                json_data=inputs.to_api_payload(),
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
