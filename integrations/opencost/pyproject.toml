@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "opencost"
-version = "0.2.226"
+version = "0.2.227"
 description = "Ocean integration for OpenCost"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
