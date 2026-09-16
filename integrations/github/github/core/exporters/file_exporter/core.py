@@ -426,7 +426,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"Permission denied or GitHub unavailable (403). "
                     f"Entities will be preserved until next successful resync."
                 ) from e
-            raise
+            logger.warning(
+                f"Tree fetch returned {e.response.status_code} for {organization}/{repo}@{branch}, returning empty"
+            )
+            return [], False
 
         if not response:
             logger.warning(
