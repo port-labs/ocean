@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.51.5 (2026-09-16)
+
+
+### Bug Fixes
+
+- Base64-encode oversized Started/Finished processing payloads, and set trace_id on Redis stream message received to the Redis event id.
+
+
 ## 0.51.4 (2026-09-15)
 
 
