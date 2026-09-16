@@ -41,9 +41,7 @@ class CloseIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "close_issue"
 
     async def execute(self, run: IntegrationRun) -> None:
-        inputs = CloseIssueInputs.from_execution_properties(
-            run.execution_properties
-        )
+        inputs = CloseIssueInputs.from_execution_properties(run.execution_properties)
 
         rest_client = await self._get_rest_client(run)
 

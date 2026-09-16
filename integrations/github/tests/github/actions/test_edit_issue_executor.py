@@ -168,9 +168,7 @@ class TestEditIssueExecutor:
         mock_rest_client.send_api_request.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_missing_required_inputs(
-        self, executor: EditIssueExecutor
-    ) -> None:
+    async def test_missing_required_inputs(self, executor: EditIssueExecutor) -> None:
         for missing in ["org", "repo", "issueNumber"]:
             props: dict[str, Any] = {
                 "org": "port-labs",

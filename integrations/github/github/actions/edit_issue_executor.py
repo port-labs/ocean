@@ -24,13 +24,15 @@ class EditIssueInputs(AbstractGithubActionInput):
 
     @model_validator(mode="after")
     def check_at_least_one_update_field(self) -> "EditIssueInputs":
-        if not any([
-            self.title is not None,
-            self.body is not None,
-            self.labels is not None,
-            self.assignees is not None,
-            self.milestone is not None,
-        ]):
+        if not any(
+            [
+                self.title is not None,
+                self.body is not None,
+                self.labels is not None,
+                self.assignees is not None,
+                self.milestone is not None,
+            ]
+        ):
             raise ValueError(
                 "At least one field to update is required (title, body, labels, assignees, or milestone)"
             )
@@ -55,9 +57,7 @@ class EditIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "edit_issue"
 
     async def execute(self, run: IntegrationRun) -> None:
-        inputs = EditIssueInputs.from_execution_properties(
-            run.execution_properties
-        )
+        inputs = EditIssueInputs.from_execution_properties(run.execution_properties)
 
         rest_client = await self._get_rest_client(run)
 

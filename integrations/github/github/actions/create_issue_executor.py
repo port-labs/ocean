@@ -38,9 +38,7 @@ class CreateIssueExecutor(AbstractGithubExecutor):
     ACTION_NAME = "create_issue"
 
     async def execute(self, run: IntegrationRun) -> None:
-        inputs = CreateIssueInputs.from_execution_properties(
-            run.execution_properties
-        )
+        inputs = CreateIssueInputs.from_execution_properties(run.execution_properties)
 
         rest_client = await self._get_rest_client(run)
 

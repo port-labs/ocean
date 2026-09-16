@@ -125,9 +125,7 @@ class TestCreateIssueExecutor:
         }
 
     @pytest.mark.asyncio
-    async def test_missing_required_inputs(
-        self, executor: CreateIssueExecutor
-    ) -> None:
+    async def test_missing_required_inputs(self, executor: CreateIssueExecutor) -> None:
         for missing in ["org", "repo", "title"]:
             props = {
                 "org": "port-labs",
