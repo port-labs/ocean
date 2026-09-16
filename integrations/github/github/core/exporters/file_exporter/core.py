@@ -9,6 +9,7 @@ from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
 )
+from port_ocean.exceptions.core import OceanAbortException
 from loguru import logger
 from github.core.options import (
     FileContentOptions,
@@ -99,9 +100,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing repository {repo_name} with {len(files)} file patterns"
             )
 
-            gql, rest = await self.collect_matched_files(repo_name, files)
-            graphql_files.extend(gql)
-            rest_files.extend(rest)
+            try:
+                gql, rest = await self.collect_matched_files(repo_name, files)
+                graphql_files.extend(gql)
+                rest_files.extend(rest)
+            except GitHubTreeFetchError as e:
+                raise OceanAbortException(str(e)) from e
 
         logger.info(f"Processing {len(graphql_files)} GraphQL files")
         async for result in self.process_graphql_files(graphql_files):
