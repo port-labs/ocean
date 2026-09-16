@@ -46,7 +46,6 @@ class TestAddIssueCommentExecutor:
         mock_port_client.post_run_log.assert_any_call(
             run,
             "Adding comment to issue ENG-1",
-            status_label="Adding comment",
             should_raise=False,
         )
         mock_port_client.report_run_completed.assert_awaited_once_with(

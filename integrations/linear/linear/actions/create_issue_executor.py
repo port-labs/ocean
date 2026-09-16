@@ -18,7 +18,6 @@ class CreateIssueExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Creating issue '{payload.title}' in team {payload.teamId}",
-            status_label="Creating issue",
             should_raise=False,
         )
 

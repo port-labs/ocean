@@ -20,7 +20,6 @@ class AddIssueCommentExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Adding comment to issue {payload.issueId}",
-            status_label="Adding comment",
             should_raise=False,
         )
 

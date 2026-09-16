@@ -23,7 +23,6 @@ class DelegateIssueToAgentExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Delegating issue {payload.issueId} to agent {payload.delegateId}",
-            status_label="Delegating issue",
             should_raise=False,
         )
 

@@ -38,7 +38,6 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Creating sub-issue '{payload.title}' under {payload.parentId}",
-            status_label="Creating issue",
             should_raise=False,
         )
 

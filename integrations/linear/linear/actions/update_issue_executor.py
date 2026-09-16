@@ -22,7 +22,6 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Updating issue {payload.issueId}",
-            status_label="Updating issue",
             should_raise=False,
         )
 

@@ -23,7 +23,6 @@ class ArchiveIssueExecutor(AbstractLinearExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Archiving issue {payload.issueId}",
-            status_label="Archiving issue",
             should_raise=False,
         )
 
