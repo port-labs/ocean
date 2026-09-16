@@ -16,7 +16,7 @@ from linear.core.mutations.issue.types import (
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
-from linear.core.mutations.reaction.types import ReactionCreateMutationPayload
+from linear.core.mutations.issue.types import ReactionCreateMutationPayload
 from linear.utils import PRIORITY_BY_LABEL, PriorityLabel
 
 ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])

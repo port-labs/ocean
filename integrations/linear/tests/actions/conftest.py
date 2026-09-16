@@ -11,8 +11,11 @@ from port_ocean.core.models import (
 )
 
 from linear.core.mutations.document.types import MutationDocument
-from linear.core.mutations.issue.types import MutationComment, MutationIssue
-from linear.core.mutations.reaction.types import MutationReaction
+from linear.core.mutations.issue.types import (
+    MutationComment,
+    MutationIssue,
+    MutationReaction,
+)
 
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -71,6 +74,9 @@ def mock_issue_mutations() -> MagicMock:
     )
     mutations.archive_issue = AsyncMock(return_value=None)
     mutations.delete_issue = AsyncMock(return_value=None)
+    mutations.create_reaction = AsyncMock(
+        return_value=MutationReaction(id="reaction-1", emoji="+1")
+    )
     return mutations
 
 
@@ -83,15 +89,6 @@ def mock_document_mutations() -> MagicMock:
             title="Notes",
             url="https://linear.app/test/document/doc-1",
         )
-    )
-    return mutations
-
-
-@pytest.fixture
-def mock_reaction_mutations() -> MagicMock:
-    mutations = MagicMock()
-    mutations.create_reaction = AsyncMock(
-        return_value=MutationReaction(id="reaction-1", emoji="+1")
     )
     return mutations
 
