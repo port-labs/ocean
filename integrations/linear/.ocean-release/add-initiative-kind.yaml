@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added initiative resource kind with default blueprint and mappings, including live event support via Linear webhooks.
