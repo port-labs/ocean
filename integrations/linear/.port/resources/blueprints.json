@@ -607,8 +607,7 @@
         "type": {
           "type": "string",
           "title": "Type",
-          "description": "The workflow state category",
-          "enum": ["backlog", "unstarted", "started", "completed", "canceled", "triage"]
+          "description": "The workflow state category"
         },
         "color": {
           "type": "string",
