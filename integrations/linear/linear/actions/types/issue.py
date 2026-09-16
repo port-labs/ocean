@@ -4,6 +4,7 @@ from pydantic import ConfigDict, Field
 
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT, NonEmptyStr
 from linear.core.mutations.issue.types import (
+    CommentCreateMutationPayload,
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
@@ -72,3 +73,21 @@ class UpdateIssuePayload(IssueActionPayload[IssueUpdateMutationPayload]):
     priority: PriorityField = None
     delegateId: NonEmptyStr | None = None
     labelIds: list[str] | None = None
+
+
+class ChangeIssueStatusPayload(LinearActionPayload[IssueUpdateMutationPayload]):
+    MUTATION_PAYLOAD_TYPE = IssueUpdateMutationPayload
+    payload_exclude = {"issueId", "stateName"}
+
+    issueId: NonEmptyStr
+    stateName: NonEmptyStr
+
+    def build_mutation(self, state_id: str) -> IssueUpdateMutationPayload:
+        return IssueUpdateMutationPayload(stateId=state_id)
+
+
+class AddIssueCommentPayload(LinearActionPayload[CommentCreateMutationPayload]):
+    MUTATION_PAYLOAD_TYPE = CommentCreateMutationPayload
+
+    issueId: NonEmptyStr
+    body: NonEmptyStr

@@ -2,29 +2,29 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from linear.actions.change_status_executor import ChangeStatusExecutor
+from linear.actions.change_issue_status_executor import ChangeIssueStatusExecutor
 from linear.core.mutations.issue.types import IssueUpdateMutationPayload
 from linear.helpers.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 
 @pytest.mark.asyncio
-class TestChangeStatusExecutor:
+class TestChangeIssueStatusExecutor:
     async def test_resolves_state_name(
         self,
         mock_port_client: MagicMock,
         mock_linear_client: MagicMock,
         mock_issue_mutations: MagicMock,
     ) -> None:
-        executor = create_executor(ChangeStatusExecutor, mock_linear_client)
+        executor = create_executor(ChangeIssueStatusExecutor, mock_linear_client)
         run = make_run(
-            "change_status",
+            "change_issue_status",
             {"issueId": "ENG-1", "stateName": "In Progress"},
         )
         with (
-            patch("linear.actions.change_status_executor.ocean") as mock_ocean,
+            patch("linear.actions.change_issue_status_executor.ocean") as mock_ocean,
             patch(
-                "linear.actions.change_status_executor.IssueMutations",
+                "linear.actions.change_issue_status_executor.IssueMutations",
                 return_value=mock_issue_mutations,
             ),
         ):
@@ -53,18 +53,23 @@ class TestChangeStatusExecutor:
             status_label="Status changed",
         )
 
-    async def test_missing_state(
+    async def test_missing_state_name(
         self, mock_port_client: MagicMock, mock_linear_client: MagicMock
     ) -> None:
-        executor = create_executor(ChangeStatusExecutor, mock_linear_client)
-        run = make_run("change_status", {"issueId": "ENG-1"})
-        with patch("linear.actions.change_status_executor.ocean") as mock_ocean:
+        executor = create_executor(ChangeIssueStatusExecutor, mock_linear_client)
+        run = make_run("change_issue_status", {"issueId": "ENG-1"})
+        with patch("linear.actions.change_issue_status_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             with pytest.raises(MissingExecutionPropertyError):
                 await executor.execute(run)
 
     async def test_partition_key(self, mock_linear_client: MagicMock) -> None:
-        executor = create_executor(ChangeStatusExecutor, mock_linear_client)
-        run = make_run("change_status", {"issueId": "ENG-1", "stateId": "state-1"})
+        executor = create_executor(ChangeIssueStatusExecutor, mock_linear_client)
+        run = make_run(
+            "change_issue_status", {"issueId": "ENG-1", "stateName": "In Progress"}
+        )
         assert await executor._get_partition_key(run) == "ENG-1"
-        assert await executor._get_partition_key(make_run("change_status", {})) is None
+        assert (
+            await executor._get_partition_key(make_run("change_issue_status", {}))
+            is None
+        )

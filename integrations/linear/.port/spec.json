@@ -246,7 +246,7 @@
       ]
     },
     {
-      "name": "change_status",
+      "name": "change_issue_status",
       "icon": "Linear",
       "description": "Move a Linear issue to a different workflow state",
       "inputs": [
@@ -258,21 +258,16 @@
           "required": true
         },
         {
-          "name": "stateId",
-          "title": "State ID",
-          "type": "string",
-          "description": "UUID of the target workflow state"
-        },
-        {
           "name": "stateName",
           "title": "State name",
           "type": "string",
-          "description": "Name of the target workflow state in the issue's team. Provide stateId or stateName."
+          "description": "Name of the target workflow state in the issue's team (e.g. In Progress, Done). Use update_issue with stateId when you already have the workflow state UUID.",
+          "required": true
         }
       ]
     },
     {
-      "name": "add_comment",
+      "name": "add_issue_comment",
       "icon": "Linear",
       "description": "Add a comment to a Linear issue",
       "inputs": [

@@ -48,3 +48,35 @@ class MutationIssue(BaseModel):
 class MutationIssueResult(BaseModel):
     success: bool
     issue: MutationIssue
+
+
+class _TeamWorkflowStates(BaseModel):
+    nodes: list[_IssueState]
+
+
+class _TeamWithWorkflowStates(BaseModel):
+    states: _TeamWorkflowStates
+
+
+class _IssueWithTeamStates(BaseModel):
+    team: _TeamWithWorkflowStates
+
+
+class ResolveStateByNameData(BaseModel):
+    issue: _IssueWithTeamStates
+
+
+class CommentCreateMutationPayload(BaseModel):
+    issueId: str
+    body: str
+
+
+class MutationComment(BaseModel):
+    id: NonEmptyStr
+    body: NonEmptyStr
+    createdAt: NonEmptyStr
+
+
+class MutationCommentResult(BaseModel):
+    success: bool
+    comment: MutationComment

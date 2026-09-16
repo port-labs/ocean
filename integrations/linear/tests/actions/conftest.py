@@ -10,9 +10,12 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from linear.core.mutations.comment.types import MutationComment
 from linear.core.mutations.document.types import MutationDocument
-from linear.core.mutations.issue.types import MutationIssue, _IssueState
+from linear.core.mutations.issue.types import (
+    MutationComment,
+    MutationIssue,
+    _IssueState,
+)
 
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -64,14 +67,6 @@ def mock_issue_mutations() -> MagicMock:
         )
     )
     mutations.resolve_state_id = AsyncMock(return_value="state-1")
-    mutations.archive_issue = AsyncMock(return_value=None)
-    mutations.delete_issue = AsyncMock(return_value=None)
-    return mutations
-
-
-@pytest.fixture
-def mock_comment_mutations() -> MagicMock:
-    mutations = MagicMock()
     mutations.create_comment = AsyncMock(
         return_value=MutationComment(
             id="comment-1",
@@ -79,6 +74,8 @@ def mock_comment_mutations() -> MagicMock:
             createdAt="2026-01-01",
         )
     )
+    mutations.archive_issue = AsyncMock(return_value=None)
+    mutations.delete_issue = AsyncMock(return_value=None)
     return mutations
 
 

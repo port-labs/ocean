@@ -2,37 +2,37 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from linear.actions.add_comment_executor import AddCommentExecutor
-from linear.core.mutations.comment.types import CommentCreateMutationPayload
+from linear.actions.add_issue_comment_executor import AddIssueCommentExecutor
+from linear.core.mutations.issue.types import CommentCreateMutationPayload
 from linear.helpers.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 
 @pytest.mark.asyncio
-class TestAddCommentExecutor:
+class TestAddIssueCommentExecutor:
     async def test_happy_path(
         self,
         mock_port_client: MagicMock,
         mock_linear_client: MagicMock,
-        mock_comment_mutations: MagicMock,
+        mock_issue_mutations: MagicMock,
     ) -> None:
-        executor = create_executor(AddCommentExecutor, mock_linear_client)
+        executor = create_executor(AddIssueCommentExecutor, mock_linear_client)
         run = make_run(
-            "add_comment",
+            "add_issue_comment",
             {"issueId": "ENG-1", "body": "Looks good"},
         )
         with (
-            patch("linear.actions.add_comment_executor.ocean") as mock_ocean,
+            patch("linear.actions.add_issue_comment_executor.ocean") as mock_ocean,
             patch(
-                "linear.actions.add_comment_executor.CommentMutations",
-                return_value=mock_comment_mutations,
+                "linear.actions.add_issue_comment_executor.IssueMutations",
+                return_value=mock_issue_mutations,
             ),
         ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
-        mock_comment_mutations.create_comment.assert_awaited_once()
-        create_payload = mock_comment_mutations.create_comment.await_args.args[0]
+        mock_issue_mutations.create_comment.assert_awaited_once()
+        create_payload = mock_issue_mutations.create_comment.await_args.args[0]
         assert isinstance(create_payload, CommentCreateMutationPayload)
         assert create_payload.model_dump(exclude_none=True) == {
             "issueId": "ENG-1",
@@ -54,9 +54,9 @@ class TestAddCommentExecutor:
     async def test_missing_body(
         self, mock_port_client: MagicMock, mock_linear_client: MagicMock
     ) -> None:
-        executor = create_executor(AddCommentExecutor, mock_linear_client)
-        run = make_run("add_comment", {"issueId": "ENG-1"})
-        with patch("linear.actions.add_comment_executor.ocean") as mock_ocean:
+        executor = create_executor(AddIssueCommentExecutor, mock_linear_client)
+        run = make_run("add_issue_comment", {"issueId": "ENG-1"})
+        with patch("linear.actions.add_issue_comment_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             with pytest.raises(MissingExecutionPropertyError):
                 await executor.execute(run)

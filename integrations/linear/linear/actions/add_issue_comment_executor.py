@@ -3,15 +3,17 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
-from linear.actions.types import AddCommentPayload
-from linear.core.mutations import CommentMutations
+from linear.actions.types import AddIssueCommentPayload
+from linear.core.mutations import IssueMutations
 
 
-class AddCommentExecutor(AbstractLinearExecutor):
-    ACTION_NAME = "add_comment"
+class AddIssueCommentExecutor(AbstractLinearExecutor):
+    ACTION_NAME = "add_issue_comment"
 
     async def execute(self, run: IntegrationRun) -> None:
-        payload = AddCommentPayload.from_execution_properties(run.execution_properties)
+        payload = AddIssueCommentPayload.from_execution_properties(
+            run.execution_properties
+        )
 
         await ocean.port_client.post_run_log(
             run,
@@ -20,7 +22,7 @@ class AddCommentExecutor(AbstractLinearExecutor):
             should_raise=False,
         )
 
-        mutations = CommentMutations(self.client)
+        mutations = IssueMutations(self.client)
         comment = await mutations.create_comment(payload.to_mutation())
 
         logger.info(
