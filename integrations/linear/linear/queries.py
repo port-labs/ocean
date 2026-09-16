@@ -186,6 +186,49 @@ QUERIES = {
         }
     }
     """,
+    "BASE_INITIATIVES_QUERY_FIELDS": """
+    id
+    name
+    description
+    url
+    slugId
+    status
+    health
+    priority
+    targetDate
+    startedAt
+    completedAt
+    createdAt
+    updatedAt
+    creator {
+        id
+        name
+        email
+    }
+    owner {
+        id
+        name
+        email
+    }
+    leadTeam {
+        id
+        key
+        name
+    }
+    parentInitiative {
+        id
+    }
+    subInitiatives {
+        nodes {
+            id
+        }
+    }
+    projects {
+        nodes {
+            id
+        }
+    }
+    """,
     "BASE_CYCLES_QUERY_FIELDS": """
     id
     number
@@ -261,6 +304,13 @@ QUERIES = {
     "GET_SINGLE_CYCLE": """
     query Cycle {
         cycle(id: "{{ cycle_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_INITIATIVE": """
+    query Initiative {
+        initiative(id: "{{ initiative_id }}") {
             {{ base_query_fields }}
         }
     }
@@ -369,6 +419,20 @@ QUERIES = {
     "GET_PROJECTS_PAGE": """
     query Projects {
         projects(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_INITIATIVES_PAGE": """
+    query Initiatives {
+        initiatives(first: {{ page_size }}{{ after_cursor }}) {
             nodes {
                 {{ base_query_fields }}
             }

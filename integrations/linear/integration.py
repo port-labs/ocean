@@ -53,6 +53,13 @@ class ProjectResourceConfig(ResourceConfig):
     )
 
 
+class InitiativeResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.INITIATIVE] = Field(
+        title="Linear Initiative",
+        description="Linear initiative resource kind.",
+    )
+
+
 class TeamMembersResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.TEAM_MEMBERS] = Field(
         title="Linear Team Members",
@@ -75,6 +82,7 @@ class LinearPortAppConfig(PortAppConfig):
         | DocumentResourceConfig
         | UserResourceConfig
         | ProjectResourceConfig
+        | InitiativeResourceConfig
         | TeamMembersResourceConfig
         | CycleResourceConfig
     ] = Field(
