@@ -626,7 +626,9 @@ class TestRestFileExporter:
         mock_response = httpx.Response(
             status_code=403,
             content=b'{"message": "API rate limit exceeded"}',
-            request=httpx.Request("GET", "https://api.github.com/repos/test-org/repo1/git/trees/main"),
+            request=httpx.Request(
+                "GET", "https://api.github.com/repos/test-org/repo1/git/trees/main"
+            ),
         )
         http_error = httpx.HTTPStatusError(
             "Forbidden", request=mock_response.request, response=mock_response
@@ -639,7 +641,9 @@ class TestRestFileExporter:
                 await exporter.get_tree_recursive(organization, "repo1", "main")
 
             # Verify error message includes useful context
-            assert "Permission denied" in str(exc_info.value) or "GitHub unavailable" in str(exc_info.value)
+            assert "Permission denied" in str(
+                exc_info.value
+            ) or "GitHub unavailable" in str(exc_info.value)
             assert "repo1@main" in str(exc_info.value)
 
     async def test_get_paginated_resources_mixed_403_and_valid_repos(
@@ -657,7 +661,10 @@ class TestRestFileExporter:
         mock_response_403 = httpx.Response(
             status_code=403,
             content=b'{"message": "Forbidden"}',
-            request=httpx.Request("GET", "https://api.github.com/repos/test-org/broken-repo/git/trees/main"),
+            request=httpx.Request(
+                "GET",
+                "https://api.github.com/repos/test-org/broken-repo/git/trees/main",
+            ),
         )
         http_error_403 = httpx.HTTPStatusError(
             "Forbidden", request=mock_response_403.request, response=mock_response_403
@@ -697,9 +704,13 @@ class TestRestFileExporter:
         async def mock_rest_generator() -> AsyncGenerator[list[str], None]:
             yield []
 
-        def tree_side_effect(org: str, repo: str, branch: str) -> tuple[List[Dict[str, Any]], bool]:
+        def tree_side_effect(
+            org: str, repo: str, branch: str
+        ) -> tuple[List[Dict[str, Any]], bool]:
             if repo == "broken-repo":
-                raise GitHubTreeFetchError(f"Tree fetch failed for {org}/{repo}@{branch}: Permission denied or GitHub unavailable (403). Entities will be preserved until next successful resync.")
+                raise GitHubTreeFetchError(
+                    f"Tree fetch failed for {org}/{repo}@{branch}: Permission denied or GitHub unavailable (403). Entities will be preserved until next successful resync."
+                )
             return (TEST_TREE_ENTRIES, False)
 
         with (

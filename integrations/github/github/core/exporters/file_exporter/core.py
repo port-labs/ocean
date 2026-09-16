@@ -415,7 +415,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             response = await self.client.send_api_request(
                 tree_url,
                 ignored_errors=self._IGNORED_ERRORS,
-                ignore_default_errors=False
+                ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
