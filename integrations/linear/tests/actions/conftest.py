@@ -10,7 +10,7 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from linear.core.mutations.issue.types import MutationIssue
+from linear.core.mutations.issue.types import MutationIssue, _IssueState
 
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -58,7 +58,7 @@ def mock_issue_mutations() -> MagicMock:
             identifier="ENG-1",
             title="Updated issue",
             url="https://linear.app/test/issue/ENG-1",
-            state={"id": "state-1", "name": "In Progress"},
+            state=_IssueState(id="state-1", name="In Progress"),
         )
     )
     mutations.resolve_state_id = AsyncMock(return_value="state-1")
