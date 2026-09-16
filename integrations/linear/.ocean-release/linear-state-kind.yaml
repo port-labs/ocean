@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added workflow state kind to the Linear integration

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.0 (2026-09-16)
+
+
+### Features
+
+- Added workflow state kind to the Linear integration
+
+
 ## 0.8.0 (2026-09-16)
 
 
