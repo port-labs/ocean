@@ -28,9 +28,7 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
 
         mutations = IssueMutations(self.client)
         try:
-            issue = await mutations.update_issue(
-                payload.issueId, payload.to_mutation()
-            )
+            issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
         except Exception as error:
             raise LinearActionError(str(error), status_label="Update failed") from error
         message = f"Updated issue {issue.identifier}: {issue.url}"

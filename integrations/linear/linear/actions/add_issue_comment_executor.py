@@ -27,7 +27,9 @@ class AddIssueCommentExecutor(AbstractLinearExecutor):
         try:
             comment = await mutations.create_comment(payload.to_mutation())
         except Exception as error:
-            raise LinearActionError(str(error), status_label="Comment failed") from error
+            raise LinearActionError(
+                str(error), status_label="Comment failed"
+            ) from error
 
         logger.info(
             "Added Linear issue comment",
