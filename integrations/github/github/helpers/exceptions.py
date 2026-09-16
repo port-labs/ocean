@@ -74,3 +74,7 @@ class RateLimitException(Exception):
             f"Rate limit exceeded. Reset at {rate_limit_info.reset_time}. "
             f"Remaining: {rate_limit_info.remaining}/{rate_limit_info.limit}"
         )
+
+
+class GitHubTreeFetchError(Exception):
+    """Raised on tree-fetch 403 to prevent reconciliation deletes and preserve entities until next resync."""

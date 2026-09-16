@@ -77,3 +77,28 @@ resources:
                 (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
             repository: .__repository
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        # This repo has permission issues (403) - entities will be preserved
+        - organization: noa-mashevich5
+          repos:
+            - name: tree-403-test[REDACTED]
+              branch: main
+          path: '**/*'
+          skipParsing: false
+        # This repo should work fine
+        - organization: noa-mashevich5
+          repos:
+            - name: ocean
+              branch: main
+          path: '**/*.md'
+          skipParsing: false
+    port:
+      entity:
+        mappings:
+          identifier: .path
+          title: .path
+          blueprint: '"githubRepository"'
+          properties: {}
