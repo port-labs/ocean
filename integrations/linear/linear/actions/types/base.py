@@ -4,22 +4,8 @@ from typing import Any, ClassVar, Generic, Self, TypeVar
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from linear.actions.exceptions import MissingExecutionPropertyError
-from linear.types import NonEmptyStr
 
 MutationPayloadT = TypeVar("MutationPayloadT", bound=BaseModel)
-
-
-class LinearIssueIdActionPayload(BaseModel):
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
-
-    issueId: NonEmptyStr
-
-    @classmethod
-    def from_execution_properties(cls, execution_properties: dict[str, Any]) -> Self:
-        try:
-            return cls.model_validate(execution_properties)
-        except ValidationError as error:
-            raise MissingExecutionPropertyError(str(error)) from error
 
 
 class LinearActionPayload(BaseModel, Generic[MutationPayloadT], ABC):

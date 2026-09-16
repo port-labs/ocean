@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT
 from linear.actions.types.issue import (
     AddIssueCommentPayload,
+    AddReactionPayload,
     CreateIssuePayload,
     CreateSubIssuePayload,
     UpdateIssuePayload,
@@ -15,6 +16,7 @@ from linear.core.mutations.issue.types import (
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
+from linear.core.mutations.reaction.types import ReactionCreateMutationPayload
 from linear.utils import PRIORITY_BY_LABEL, PriorityLabel
 
 ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
@@ -107,6 +109,13 @@ ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
             CommentCreateMutationPayload,
             {"issueId": "ENG-1", "body": "Looks good"},
             id="add_issue_comment",
+        ),
+        pytest.param(
+            AddReactionPayload,
+            {"issueId": "ENG-1", "emoji": "+1"},
+            ReactionCreateMutationPayload,
+            {"issueId": "ENG-1", "emoji": "+1"},
+            id="add_reaction_to_issue",
         ),
     ],
 )

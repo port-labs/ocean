@@ -325,7 +325,7 @@
     {
       "name": "add_reaction_to_issue",
       "icon": "Linear",
-      "description": "Add an emoji reaction to a Linear issue",
+      "description": "Add an emoji reaction to a Linear issue. Each user can have at most one reaction per emoji on an issue.",
       "inputs": [
         {
           "name": "issueId",
