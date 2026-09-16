@@ -657,19 +657,6 @@ class TestRestFileExporter:
         exporter = RestFileExporter(rest_client)
         organization = "test-org"
 
-        # Mock 403 error for first repo
-        mock_response_403 = httpx.Response(
-            status_code=403,
-            content=b'{"message": "Forbidden"}',
-            request=httpx.Request(
-                "GET",
-                "https://api.github.com/repos/test-org/broken-repo/git/trees/main",
-            ),
-        )
-        http_error_403 = httpx.HTTPStatusError(
-            "Forbidden", request=mock_response_403.request, response=mock_response_403
-        )
-
         options = [
             ListFileSearchOptions(
                 organization=organization,
