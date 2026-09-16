@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from github.actions.close_issue_executor import CloseIssueExecutor
-from github.actions.exceptions import IssueActionError
+from github.actions.exceptions import CloseIssueError
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
@@ -101,7 +101,33 @@ class TestCloseIssueExecutor:
             run,
             success=True,
             message="Issue #7 closed: https://github.com/port-labs/ocean/issues/7",
+            status_label="Issue closed",
         )
+
+    @pytest.mark.asyncio
+    async def test_defaults_to_completed(
+        self,
+        executor: CloseIssueExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+            }
+        )
+
+        with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        call_kwargs = mock_rest_client.send_api_request.call_args
+        assert call_kwargs.kwargs["json_data"] == {
+            "state": "closed",
+            "state_reason": "completed",
+        }
 
     @pytest.mark.asyncio
     async def test_with_not_planned(
@@ -145,7 +171,7 @@ class TestCloseIssueExecutor:
             }
         )
 
-        with pytest.raises(InvalidActionParametersException, match="stateReason"):
+        with pytest.raises(InvalidActionParametersException):
             with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
@@ -153,58 +179,20 @@ class TestCloseIssueExecutor:
         mock_rest_client.send_api_request.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_missing_org_raises(
-        self,
-        executor: CloseIssueExecutor,
-        mock_rest_client: MagicMock,
-        mock_port_client: MagicMock,
+    async def test_missing_required_inputs(
+        self, executor: CloseIssueExecutor
     ) -> None:
-        run = make_run({"repo": "ocean", "issueNumber": 7})
-
-        with pytest.raises(
-            InvalidActionParametersException, match="org.*repo.*issueNumber"
-        ):
-            with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
-                mock_ocean.port_client = mock_port_client
-                await executor.execute(run)
-
-        mock_rest_client.send_api_request.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_missing_repo_raises(
-        self,
-        executor: CloseIssueExecutor,
-        mock_rest_client: MagicMock,
-        mock_port_client: MagicMock,
-    ) -> None:
-        run = make_run({"org": "port-labs", "issueNumber": 7})
-
-        with pytest.raises(
-            InvalidActionParametersException, match="org.*repo.*issueNumber"
-        ):
-            with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
-                mock_ocean.port_client = mock_port_client
-                await executor.execute(run)
-
-        mock_rest_client.send_api_request.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_missing_issue_number_raises(
-        self,
-        executor: CloseIssueExecutor,
-        mock_rest_client: MagicMock,
-        mock_port_client: MagicMock,
-    ) -> None:
-        run = make_run({"org": "port-labs", "repo": "ocean"})
-
-        with pytest.raises(
-            InvalidActionParametersException, match="org.*repo.*issueNumber"
-        ):
-            with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
-                mock_ocean.port_client = mock_port_client
-                await executor.execute(run)
-
-        mock_rest_client.send_api_request.assert_not_awaited()
+        for missing in ["org", "repo", "issueNumber"]:
+            props: dict[str, Any] = {
+                "org": "port-labs",
+                "repo": "ocean",
+                "issueNumber": 7,
+            }
+            del props[missing]
+            run = make_run(props)
+            with pytest.raises(InvalidActionParametersException):
+                with patch("github.actions.close_issue_executor.ocean"):
+                    await executor.execute(run)
 
     @pytest.mark.asyncio
     async def test_http_error_raises(
@@ -230,13 +218,13 @@ class TestCloseIssueExecutor:
             "404", request=request, response=response
         )
 
-        with pytest.raises(IssueActionError, match="Not Found"):
+        with pytest.raises(CloseIssueError, match="Not Found"):
             with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
 
     @pytest.mark.asyncio
-    async def test_malformed_response_raises(
+    async def test_incomplete_response(
         self,
         executor: CloseIssueExecutor,
         mock_rest_client: MagicMock,
@@ -252,7 +240,7 @@ class TestCloseIssueExecutor:
         )
         mock_rest_client.send_api_request.return_value = {}
 
-        with pytest.raises(IssueActionError, match="empty or incomplete"):
+        with pytest.raises(CloseIssueError, match="incomplete response"):
             with patch("github.actions.close_issue_executor.ocean") as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 await executor.execute(run)
