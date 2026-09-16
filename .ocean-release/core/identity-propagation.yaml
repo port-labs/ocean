@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add identity propagation (OAuth broker, vault, JWT verifier) so actions can run as the triggering user.
