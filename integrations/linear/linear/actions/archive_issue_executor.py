@@ -4,6 +4,7 @@ from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.types import ArchiveIssuePayload
+from linear.actions.utils import set_issue_id_run_output
 from linear.core.mutations import IssueMutations
 
 
@@ -29,6 +30,7 @@ class ArchiveIssueExecutor(AbstractLinearExecutor):
         mutations = IssueMutations(self.client)
         await mutations.archive_issue(payload.issueId)
 
+        set_issue_id_run_output(run, payload.issueId)
         logger.info("Archived Linear issue", issue_id=payload.issueId)
         await ocean.port_client.report_run_completed(
             run,

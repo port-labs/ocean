@@ -38,6 +38,11 @@ class TestAddReactionToIssueExecutor:
             "issueId": "ENG-1",
             "emoji": "+1",
         }
+        assert run.output == {
+            "reactionId": "reaction-1",
+            "issueId": "ENG-1",
+            "emoji": "+1",
+        }
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,

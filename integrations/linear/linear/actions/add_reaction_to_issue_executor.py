@@ -4,6 +4,7 @@ from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.types import AddReactionPayload
+from linear.actions.utils import set_reaction_run_output
 from linear.core.mutations import IssueMutations
 
 
@@ -23,6 +24,7 @@ class AddReactionToIssueExecutor(AbstractLinearExecutor):
         mutations = IssueMutations(self.client)
         reaction = await mutations.create_reaction(payload.to_mutation())
 
+        set_reaction_run_output(run, payload.issueId, reaction)
         logger.info(
             "Added Linear issue reaction",
             issue_id=payload.issueId,

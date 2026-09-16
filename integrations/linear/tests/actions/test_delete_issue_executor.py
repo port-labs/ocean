@@ -28,6 +28,7 @@ class TestDeleteIssueExecutor:
             await executor.execute(run)
 
         mock_issue_mutations.delete_issue.assert_awaited_once_with("ENG-1")
+        assert run.output == {"issueId": "ENG-1"}
         mock_port_client.report_run_completed.assert_awaited_once_with(
             run,
             success=True,
