@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 from loguru import logger
 from pydantic import model_validator
@@ -8,8 +10,6 @@ from port_ocean.core.models import IntegrationRun
 from github.actions.abstract_github_action_input import AbstractGithubActionInput
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import UpdatePullRequestError
-
-UPDATABLE_PR_FIELDS = ("title", "body", "base")
 
 
 class UpdatePullRequestInputs(AbstractGithubActionInput):
@@ -23,12 +23,26 @@ class UpdatePullRequestInputs(AbstractGithubActionInput):
     @model_validator(mode="after")
     def check_at_least_one_update_field(self) -> "UpdatePullRequestInputs":
         if not any(
-            getattr(self, field) is not None for field in UPDATABLE_PR_FIELDS
+            [
+                self.title is not None,
+                self.body is not None,
+                self.base is not None,
+            ]
         ):
             raise ValueError(
                 "At least one field to update is required (title, body, or base)"
             )
         return self
+
+    def to_api_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if self.title is not None:
+            payload["title"] = self.title
+        if self.body is not None:
+            payload["body"] = self.body
+        if self.base is not None:
+            payload["base"] = self.base
+        return payload
 
 
 class UpdatePullRequestExecutor(AbstractGithubExecutor):
@@ -48,17 +62,11 @@ class UpdatePullRequestExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        patch_body: dict[str, str] = {}
-        for key in UPDATABLE_PR_FIELDS:
-            value = getattr(inputs, key)
-            if value is not None:
-                patch_body[key] = value
-
         try:
             pr = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/pulls/{inputs.prNumber}",
                 method="PATCH",
-                json_data=patch_body,
+                json_data=inputs.to_api_payload(),
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:

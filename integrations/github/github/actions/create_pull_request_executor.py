@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 from loguru import logger
 from pydantic import Field
@@ -19,6 +21,18 @@ class CreatePullRequestInputs(AbstractGithubActionInput):
     body: str | None = None
     draft: bool | None = None
 
+    def to_api_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "title": self.title,
+            "head": self.head,
+            "base": self.base,
+        }
+        if self.body is not None:
+            payload["body"] = self.body
+        if self.draft is not None:
+            payload["draft"] = self.draft
+        return payload
+
 
 class CreatePullRequestExecutor(AbstractGithubExecutor):
     ACTION_NAME = "create_pull_request"
@@ -37,21 +51,11 @@ class CreatePullRequestExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        request_body: dict[str, str | bool] = {
-            "title": inputs.title,
-            "head": inputs.head,
-            "base": inputs.base,
-        }
-        if inputs.body is not None:
-            request_body["body"] = inputs.body
-        if inputs.draft is not None:
-            request_body["draft"] = inputs.draft
-
         try:
             pr = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/pulls",
                 method="POST",
-                json_data=request_body,
+                json_data=inputs.to_api_payload(),
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:

@@ -1,5 +1,8 @@
+from typing import Any, Literal
+
 import httpx
 from loguru import logger
+from pydantic import model_validator
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
@@ -7,15 +10,26 @@ from port_ocean.core.models import IntegrationRun
 from github.actions.abstract_github_action_input import AbstractGithubActionInput
 from github.actions.abstract_github_executor import AbstractGithubExecutor
 from github.actions.exceptions import ReviewPullRequestError
-from github.helpers.exceptions import InvalidActionParametersException
 
 
 class ReviewPullRequestInputs(AbstractGithubActionInput):
     org: str
     repo: str
     prNumber: int
-    event: str
+    event: Literal["APPROVE", "REQUEST_CHANGES", "COMMENT"]
     body: str | None = None
+
+    @model_validator(mode="after")
+    def check_request_changes_requires_body(self) -> "ReviewPullRequestInputs":
+        if self.event == "REQUEST_CHANGES" and not self.body:
+            raise ValueError("body is required when event is REQUEST_CHANGES")
+        return self
+
+    def to_api_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"event": self.event}
+        if self.body:
+            payload["body"] = self.body
+        return payload
 
 
 class ReviewPullRequestExecutor(AbstractGithubExecutor):
@@ -26,11 +40,6 @@ class ReviewPullRequestExecutor(AbstractGithubExecutor):
             run.execution_properties
         )
 
-        if inputs.event == "REQUEST_CHANGES" and not inputs.body:
-            raise InvalidActionParametersException(
-                "body is required when event is REQUEST_CHANGES"
-            )
-
         rest_client = await self._get_rest_client(run)
 
         await ocean.port_client.post_run_log(
@@ -40,15 +49,11 @@ class ReviewPullRequestExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        review_body: dict[str, str] = {"event": inputs.event}
-        if inputs.body:
-            review_body["body"] = inputs.body
-
         try:
             result = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/pulls/{inputs.prNumber}/reviews",
                 method="POST",
-                json_data=review_body,
+                json_data=inputs.to_api_payload(),
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from loguru import logger
@@ -15,9 +15,17 @@ class MergePullRequestInputs(AbstractGithubActionInput):
     org: str
     repo: str
     prNumber: int
-    mergeMethod: str
+    mergeMethod: Literal["merge", "squash", "rebase"]
     commitTitle: str | None = None
     commitMessage: str | None = None
+
+    def to_api_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"merge_method": self.mergeMethod}
+        if self.commitTitle is not None:
+            payload["commit_title"] = self.commitTitle
+        if self.commitMessage is not None:
+            payload["commit_message"] = self.commitMessage
+        return payload
 
 
 class MergePullRequestExecutor(AbstractGithubExecutor):
@@ -37,17 +45,11 @@ class MergePullRequestExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        merge_body: dict[str, Any] = {"merge_method": inputs.mergeMethod}
-        if inputs.commitTitle is not None:
-            merge_body["commit_title"] = inputs.commitTitle
-        if inputs.commitMessage is not None:
-            merge_body["commit_message"] = inputs.commitMessage
-
         try:
             result = await rest_client.send_api_request(
                 f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/pulls/{inputs.prNumber}/merge",
                 method="PUT",
-                json_data=merge_body,
+                json_data=inputs.to_api_payload(),
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
