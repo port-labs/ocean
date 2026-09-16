@@ -5,6 +5,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: release-integrations-main
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
