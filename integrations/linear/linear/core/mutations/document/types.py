@@ -6,7 +6,11 @@ from linear.types import NonEmptyStr
 class DocumentCreateMutationPayload(BaseModel):
     title: str
     content: str | None = None
+    initiativeId: str | None = None
+    teamId: str | None = None
     issueId: str | None = None
+    releaseId: str | None = None
+    cycleId: str | None = None
     projectId: str | None = None
 
 

@@ -269,7 +269,7 @@
     {
       "name": "add_document",
       "icon": "Linear",
-      "description": "Create a Linear document linked to an issue or project",
+      "description": "Create a Linear document linked to exactly one parent resource",
       "inputs": [
         {
           "name": "title",
@@ -285,16 +285,40 @@
           "description": "Document content in Markdown"
         },
         {
+          "name": "initiativeId",
+          "title": "Initiative ID",
+          "type": "string",
+          "description": "UUID of the related initiative"
+        },
+        {
+          "name": "teamId",
+          "title": "Team ID",
+          "type": "string",
+          "description": "UUID of the related team"
+        },
+        {
           "name": "issueId",
           "title": "Issue ID",
           "type": "string",
-          "description": "UUID or identifier of the related issue. Provide issueId or projectId."
+          "description": "UUID or identifier of the related issue"
+        },
+        {
+          "name": "releaseId",
+          "title": "Release ID",
+          "type": "string",
+          "description": "UUID of the related release"
+        },
+        {
+          "name": "cycleId",
+          "title": "Cycle ID",
+          "type": "string",
+          "description": "UUID of the related cycle"
         },
         {
           "name": "projectId",
           "title": "Project ID",
           "type": "string",
-          "description": "UUID of the related project. Provide issueId or projectId."
+          "description": "UUID of the related project"
         }
       ]
     }

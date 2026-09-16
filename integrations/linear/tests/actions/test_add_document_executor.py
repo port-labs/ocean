@@ -46,12 +46,27 @@ class TestAddDocumentExecutor:
             status_label="Document created",
         )
 
-    async def test_requires_issue_or_project(
+    async def test_requires_exactly_one_target(
         self, mock_port_client: MagicMock, mock_linear_client: MagicMock
     ) -> None:
         executor = create_executor(AddDocumentExecutor, mock_linear_client)
         run = make_run("add_document", {"title": "Notes"})
         with patch("linear.actions.add_document_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
-            with pytest.raises(MissingExecutionPropertyError):
+            with pytest.raises(MissingExecutionPropertyError, match="Exactly one of"):
+                await executor.execute(run)
+
+    async def test_rejects_multiple_targets(
+        self, mock_port_client: MagicMock, mock_linear_client: MagicMock
+    ) -> None:
+        executor = create_executor(AddDocumentExecutor, mock_linear_client)
+        run = make_run(
+            "add_document",
+            {"title": "Notes", "issueId": "ENG-1", "projectId": "proj-1"},
+        )
+        with patch("linear.actions.add_document_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            with pytest.raises(
+                MissingExecutionPropertyError, match="Only one document"
+            ):
                 await executor.execute(run)
