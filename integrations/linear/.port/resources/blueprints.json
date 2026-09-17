@@ -152,6 +152,13 @@
         "title": "Labels",
         "required": false,
         "many": true
+      },
+      "workflowState": {
+        "target": "linearWorkflowState",
+        "title": "Workflow State",
+        "description": "The workflow state of this issue",
+        "required": false,
+        "many": false
       }
     }
   },
@@ -413,6 +420,134 @@
     }
   },
   {
+    "identifier": "linearInitiative",
+    "title": "Linear Initiative",
+    "icon": "Linear",
+    "description": "A Linear initiative",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Initiative URL",
+          "format": "url",
+          "description": "URL to the initiative in Linear"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The initiative description"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The lifecycle status of the initiative",
+          "enum": ["Proposed", "Planned", "Active", "Completed", "Canceled"]
+        },
+        "health": {
+          "type": "string",
+          "title": "Health",
+          "description": "The overall health of the initiative",
+          "enum": ["onTrack", "atRisk", "offTrack"],
+          "enumColors": {
+            "onTrack": "green",
+            "atRisk": "yellow",
+            "offTrack": "red"
+          }
+        },
+        "priority": {
+          "type": "number",
+          "title": "Priority",
+          "description": "The priority of the initiative (0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low)"
+        },
+        "targetDate": {
+          "type": "string",
+          "title": "Target Date",
+          "format": "date-time",
+          "description": "The estimated completion date of the initiative"
+        },
+        "startedAt": {
+          "type": "string",
+          "title": "Started At",
+          "format": "date-time",
+          "description": "When the initiative was moved into Active status"
+        },
+        "completedAt": {
+          "type": "string",
+          "title": "Completed At",
+          "format": "date-time",
+          "description": "When the initiative was completed"
+        },
+        "slugId": {
+          "type": "string",
+          "title": "Slug ID",
+          "description": "The unique URL slug of the initiative"
+        },
+        "creator": {
+          "type": "string",
+          "title": "Creator",
+          "format": "user",
+          "description": "The email of the user who created the initiative"
+        },
+        "owner": {
+          "type": "string",
+          "title": "Owner",
+          "format": "user",
+          "description": "The email of the initiative owner"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the initiative was created"
+        },
+        "updated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time",
+          "description": "When the initiative was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "leadTeam": {
+        "target": "linearTeam",
+        "title": "Lead Team",
+        "description": "The team that leads this initiative",
+        "required": false,
+        "many": false
+      },
+      "ownerUser": {
+        "target": "linearUser",
+        "title": "Owner",
+        "description": "The user who owns this initiative",
+        "required": false,
+        "many": false
+      },
+      "parentInitiative": {
+        "target": "linearInitiative",
+        "title": "Parent Initiative",
+        "description": "The parent initiative in Linear's initiative hierarchy",
+        "required": false,
+        "many": false
+      },
+      "subInitiatives": {
+        "target": "linearInitiative",
+        "title": "Sub-initiatives",
+        "description": "Sub-initiatives nested under this initiative",
+        "required": false,
+        "many": true
+      },
+      "projects": {
+        "target": "linearProject",
+        "title": "Projects",
+        "description": "Projects associated with this initiative",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
     "identifier": "linearTeamMember",
     "title": "Linear Team Member",
     "icon": "Linear",
@@ -457,6 +592,58 @@
         "target": "linearUser",
         "title": "User",
         "description": "The Linear user in this membership",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "linearWorkflowState",
+    "title": "Linear Workflow State",
+    "icon": "Linear",
+    "description": "A Linear workflow state",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "The workflow state category"
+        },
+        "color": {
+          "type": "string",
+          "title": "Color",
+          "description": "The color of the workflow state"
+        },
+        "position": {
+          "type": "number",
+          "title": "Position",
+          "description": "The position of the workflow state in the team workflow"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the workflow state"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the workflow state was created"
+        },
+        "updated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time",
+          "description": "When the workflow state was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "team": {
+        "target": "linearTeam",
+        "title": "Team",
+        "description": "The Linear team this workflow state belongs to",
         "required": false,
         "many": false
       }
