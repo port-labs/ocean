@@ -191,6 +191,19 @@ class ClaudeAISkillUsageSelector(Selector):
         ),
         gt=0,
     )
+    group_by: list[Literal["user_id", "product", "rbac_group_id"]] = Field(
+        alias="groupBy",
+        default_factory=list,
+        title="Group By",
+        description=(
+            "Optional dimensions to break skill usage out by. Supported values: "
+            "user_id, product, rbac_group_id. Leave empty for org-level totals. "
+            "product is one of chat, claude_code, cowork, or office_agent. "
+            "When grouping by rbac_group_id, a user is attributed to every group "
+            "they held during that UTC day, so grouped rows are not an exclusive "
+            "partition and can sum above org-level totals."
+        ),
+    )
 
     @root_validator
     @classmethod
@@ -357,7 +370,10 @@ class ClaudeAIUserCostResourceConfig(ResourceConfig):
 
 class ClaudeAISkillUsageResourceConfig(ResourceConfig):
     kind: Literal["claude-ai-skill-usage"] = Field(
-        description="Claude AI org-level skill usage resource kind",
+        description=(
+            "Claude AI skill usage resource kind, optionally grouped by user, "
+            "product, or RBAC group"
+        ),
         title="Claude AI Skill Usage",
     )
     selector: ClaudeAISkillUsageSelector

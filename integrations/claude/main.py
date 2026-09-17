@@ -97,7 +97,7 @@ async def on_resync_skill_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for day in dates:
         try:
             async for page in exporter.get_paginated_resources(
-                build_skill_usage_options(date=day)
+                build_skill_usage_options(date=day, group_by=selector.group_by)
             ):
                 if page:
                     yield page

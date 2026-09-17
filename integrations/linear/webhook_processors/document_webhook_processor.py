@@ -1,3 +1,5 @@
+from typing import cast
+
 from webhook_processors.linear_abstract_webhook_processor import (
     _LinearAbstractWebhookProcessor,
 )
@@ -8,6 +10,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from linear.client import LinearClient
+from linear.core.exporters import DocumentExporter
+from linear.core.exporters.document_exporter import GetDocumentOptions
+from integration import DocumentResourceConfig
 from linear.utils import ObjectKind
 from loguru import logger
 
@@ -48,7 +53,11 @@ class DocumentWebhookProcessor(_LinearAbstractWebhookProcessor):
             )
 
         client = LinearClient.create_from_ocean_configuration()
-        data_to_update = await client.get_single_document(document_id)
+        document_exporter = DocumentExporter(client)
+        options = GetDocumentOptions.from_resource_config(
+            cast(DocumentResourceConfig, resource_config), resource_id=document_id
+        )
+        data_to_update = await document_exporter.get_resource(options)
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]
