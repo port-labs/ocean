@@ -501,6 +501,26 @@ class GitlabMergeRequestSelector(GroupSelector):
         ),
         default=90,
     )
+    enrich_with_first_commit: bool = Field(
+        default=False,
+        alias="enrichWithFirstCommit",
+        title="Enrich With First Commit",
+        description=(
+            "Fetch and attach the merge request's commits under __commits as returned by "
+            "GitLab. Derive first-commit fields in mapping JQ. Adds one extra GitLab API "
+            "call per merge request on resync and live events. Defaults to false."
+        ),
+    )
+    enrich_with_review_discussion: bool = Field(
+        default=False,
+        alias="enrichWithReviewDiscussion",
+        title="Enrich With Review Discussion",
+        description=(
+            "Fetch and attach the merge request's notes under __notes as returned by "
+            "GitLab. Derive review and approval fields in mapping JQ. Adds one extra "
+            "GitLab API call per merge request on resync and live events. Defaults to false."
+        ),
+    )
 
     @property
     def updated_after_datetime(self) -> datetime:
