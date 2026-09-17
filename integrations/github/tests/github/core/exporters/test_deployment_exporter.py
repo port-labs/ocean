@@ -9,7 +9,6 @@ from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_DEPLOYMENTS = [
     {

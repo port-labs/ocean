@@ -24,7 +24,10 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.relative_time import days_ago
-from port_ocean.utils.time import ISO_8601_SELECTOR_REGEX, parse_selector_iso_datetime
+from azure_devops.helpers.datetime_selectors import (
+    ISO_8601_SELECTOR_REGEX,
+    parse_selector_iso_datetime,
+)
 
 _INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
 

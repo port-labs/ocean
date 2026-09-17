@@ -6,7 +6,6 @@ import httpx
 from github.core.exporters.release_exporter import RestReleaseExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from github.core.options import SingleReleaseOptions, ListReleaseOptions
 from github.clients.http.rest_client import GithubRestClient
 

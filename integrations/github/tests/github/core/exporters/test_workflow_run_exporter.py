@@ -14,7 +14,6 @@ from github.core.options import (
 )
 from integration import GithubWorkflowRunSelector
 from port_ocean.context.event import event_context
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_DATA: dict[str, Any] = {
     "total_count": 1,
@@ -148,7 +147,7 @@ async def test_get_paginated_resources_with_incremental_cursor(
         "repo_name": "test",
         "max_runs": None,
         "workflow_id": 159038,
-        "created": ">=2026-06-01T12:00:00Z",
+        "created": f">={cursor.strftime('%Y-%m-%dT%H:%M:%SZ')}",
         "incremental_active": True,
     }
     exporter = RestWorkflowRunExporter(rest_client)

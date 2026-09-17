@@ -12,7 +12,6 @@ from pydantic.v1 import ValidationError
 from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from github.helpers.models import RepoSearchParams
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubRepositorySelector

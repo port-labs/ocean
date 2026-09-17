@@ -9,7 +9,6 @@ from github.core.exporters.pull_request_exporter import (
 from github.clients.http.rest_client import GithubRestClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from port_ocean.context.event import event_context
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from github.core.options import (
     SinglePullRequestOptions,
     ListPullRequestOptions,

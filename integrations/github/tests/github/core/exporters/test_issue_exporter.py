@@ -5,7 +5,6 @@ from unittest.mock import patch, AsyncMock
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.clients.http.rest_client import GithubRestClient
 from github.core.options import SingleIssueOptions, ListIssueOptions
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_ISSUES = [
     {

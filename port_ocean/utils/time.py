@@ -1,32 +1,5 @@
 import datetime
-import re
-
 from loguru import logger
-
-ISO_8601_DATE_REGEX = r"^\d{4}-\d{2}-\d{2}$"
-ISO_8601_DATETIME_REGEX = (
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$"
-)
-ISO_8601_SELECTOR_REGEX = (
-    r"^("
-    r"\d{4}-\d{2}-\d{2}"
-    r"|"
-    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$"
-    r")$"
-)
-
-
-def parse_selector_iso_datetime(time_str: str) -> datetime.datetime:
-    """Parse an ISO 8601 date or datetime selector value as UTC.
-
-    Date-only values (``YYYY-MM-DD``) are interpreted as UTC midnight.
-    """
-    stripped = time_str.strip()
-    if re.fullmatch(ISO_8601_DATE_REGEX, stripped):
-        return datetime.datetime.fromisoformat(f"{stripped}T00:00:00+00:00").astimezone(
-            datetime.timezone.utc
-        )
-    return convert_str_to_utc_datetime(stripped)
 
 
 def convert_str_to_utc_datetime(time_str: str) -> datetime.datetime:

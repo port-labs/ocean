@@ -11,10 +11,8 @@ from github.clients.auth.abstract_authenticator import (
 from github.probe import GitHubAppPermissionProbe, GitHubPatPermissionProbe
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.core.incremental.cursor_context import (
-    active_incremental_cursor,
-    resolve_effective_datetime,
-)
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+from github.helpers.incremental import resolve_effective_datetime
 from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.probe import ProbeContext
