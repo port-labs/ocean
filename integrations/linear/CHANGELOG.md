@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.0 (2026-09-17)
+
+
+### Features
+
+- Added delegate_issue_to_agent Linear integration action
+
+
+## 0.11.0 (2026-09-17)
+
+
+### Features
+
+- Added add_reaction_to_issue, archive_issue, and delete_issue Linear integration actions
+
+
+## 0.10.0 (2026-09-17)
+
+
+### Features
+
+- Added add_issue_comment and add_document Linear integration actions
+
+
 ## 0.9.2 (2026-09-17)
 
 

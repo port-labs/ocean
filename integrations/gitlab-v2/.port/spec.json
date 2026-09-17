@@ -150,6 +150,67 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "update_merge_request",
+      "icon": "GitLab",
+      "description": "Update a GitLab merge request",
+      "inputs": [
+        {
+          "name": "id",
+          "title": "Project",
+          "type": "string",
+          "description": "GitLab project path (e.g., \"my-group/my-project\") or numeric ID",
+          "required": true
+        },
+        {
+          "name": "mergeRequestIid",
+          "title": "Merge request IID",
+          "type": "string",
+          "description": "The internal ID shown in the merge request URL (for example, !42 → enter \"42\"). This is the project-scoped IID, not the global ID.",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "New title for the merge request"
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "New description for the merge request"
+        },
+        {
+          "name": "stateEvent",
+          "title": "State event",
+          "type": "string",
+          "enum": [
+            "close",
+            "reopen"
+          ],
+          "description": "Close or reopen the merge request"
+        },
+        {
+          "name": "targetBranch",
+          "title": "Target branch",
+          "type": "string",
+          "description": "New target branch for the merge request"
+        },
+        {
+          "name": "assigneeIds",
+          "title": "Assignee IDs",
+          "type": "array",
+          "description": "GitLab user IDs to assign to the merge request. An empty array unassigns all assignees. Example: [1, 2]"
+        },
+        {
+          "name": "reviewerIds",
+          "title": "Reviewer IDs",
+          "type": "array",
+          "description": "GitLab user IDs to set as reviewers. An empty array unassigns all reviewers. Example: [3, 4]"
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [

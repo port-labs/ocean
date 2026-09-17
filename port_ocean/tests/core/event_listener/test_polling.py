@@ -254,18 +254,23 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
     resync_state_updater = SimpleNamespace(
         last_integration_state_updated_at="2024-01-01T00:00:00Z",
         last_resync_request_updated_at=None,
+        supersede_in_progress=False,
         update_before_resync=AsyncMock(),
         update_after_resync=AsyncMock(),
+        update_after_superseded_resync=AsyncMock(),
     )
 
     app = SimpleNamespace(
         port_client=port_client,
         resync_state_updater=resync_state_updater,
     )
-    monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
+    ocean = SimpleNamespace(
+        app=app, metrics=SimpleNamespace(event_id="superseded-resync-id")
+    )
+    monkeypatch.setattr(polling_module, "ocean", ocean)
 
     # Also need to patch ocean in base module for CancelledError handling
-    monkeypatch.setattr(base_module, "ocean", SimpleNamespace(app=app))
+    monkeypatch.setattr(base_module, "ocean", ocean)
 
     monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(2))
     monkeypatch.setattr(
@@ -313,12 +318,9 @@ async def test_polling_cancels_current_resync_when_new_request_arrives(
     assert listener._current_resync_task is None
 
     assert len(resync_calls) == 2
-    aborted_status_updates = [
-        call
-        for call in resync_state_updater.update_after_resync.call_args_list
-        if call.args and call.args[0] == IntegrationStateStatus.Aborted
-    ]
-    assert aborted_status_updates == []
+    resync_state_updater.update_after_superseded_resync.assert_called_once_with(
+        "superseded-resync-id"
+    )
 
 
 @pytest.mark.asyncio
