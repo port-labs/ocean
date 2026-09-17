@@ -457,9 +457,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.TEST_RUN)
 async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
-    options = TestRunQueryOptions.from_selector(
-        selector, active_incremental_cursor()
-    )
+    options = TestRunQueryOptions.from_selector(selector, active_incremental_cursor())
     async for test_runs in resync.iter_test_runs(options):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs

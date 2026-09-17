@@ -60,7 +60,9 @@ class BuildFetchOptions:
     ) -> BuildFetchOptions:
         return cls(
             enrich_with_first_commit=selector.enrich_with_first_commit,
-            min_time=resolve_effective_datetime(cursor, selector.updated_since_datetime),
+            min_time=resolve_effective_datetime(
+                cursor, selector.updated_since_datetime
+            ),
         )
 
 
