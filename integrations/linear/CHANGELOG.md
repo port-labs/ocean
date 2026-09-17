@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.2 (2026-09-17)
+
+
+### Bug Fixes
+
+- Removed enum constraint from linearWorkflowState type property to support arbitrary Linear workflow state categories
+
+
+## 0.9.1 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 0.9.0 (2026-09-16)
+
+
+### Features
+
+- Added workflow state kind to the Linear integration
+
+
 ## 0.8.0 (2026-09-16)
 
 

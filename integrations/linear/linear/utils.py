@@ -13,6 +13,7 @@ class ObjectKind(StrEnum):
     INITIATIVE = "initiative"
     TEAM_MEMBERS = "team-members"
     CYCLE = "cycle"
+    WORKFLOW_STATE = "workflow-state"
 
 
 class PriorityLabel(StrEnum):
