@@ -267,6 +267,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             webhook_path=fields.get("webhookPath"),
             queued_at=fields.get("queuedAt"),
             time_until_consumed_ms=time_until_consumed_ms,
+            trace_id=redis_event_id,
         )
         try:
             raw_webhook_path = fields.get("webhookPath")

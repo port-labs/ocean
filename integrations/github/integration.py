@@ -1376,8 +1376,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
               and load the Port app config from a GitHub organization config
               repository (global mapping).
             - Otherwise, if `config` is non-empty, use it as-is (standard mapping).
-            - If `config` is empty and no repo source is specified, treat it as an
-              invalid/empty mapping.
+            - If `config` is empty and no repo source is specified, return an empty
+              mapping; resync will no-op until resources are configured in Port.
             """
             logger.info("Fetching GitHub Port app config")
 
@@ -1399,8 +1399,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
                 logger.debug("Using Port integration config from API")
                 return raw_config
 
-            logger.error(
-                "Integration Port app config is empty and no repoManagedMapping "
-                "flag was specified"
+            logger.info(
+                "The integration port app config is empty; "
+                "resync will be skipped until resources are configured."
             )
-            raise EmptyPortAppConfigError()
+            return {}
