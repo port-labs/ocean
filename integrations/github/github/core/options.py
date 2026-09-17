@@ -55,6 +55,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
 
     states: Required[list[str]]
     max_results: Required[Optional[int]]
+    incremental_cursor: NotRequired[Optional[datetime]]
     updated_after: NotRequired[Optional[datetime]]
     closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
@@ -83,7 +84,7 @@ class ListIssueOptions(RepositoryIdentifier):
 
     state: Required[str]
     labels: NotRequired[Optional[str]]
-    since: NotRequired[Optional[datetime]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class BaseUserOptions(SingleOrganizationOptions):
@@ -119,9 +120,10 @@ class ListWorkflowRunOptions(RepositoryIdentifier):
     """Options for workflow runs"""
 
     workflow_id: Required[int]
-    max_runs: Required[int]
+    max_runs: NotRequired[Optional[int]]
     status: NotRequired[Optional[str]]
     created: NotRequired[Optional[str]]
+    incremental_active: NotRequired[bool]
 
 
 class SingleWorkflowRunOptions(RepositoryIdentifier):

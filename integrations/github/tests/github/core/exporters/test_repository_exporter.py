@@ -600,14 +600,13 @@ class TestRestRepositoryExporter:
                     organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                     search_params=RepoSearchParams(query="code in:name"),
+                    updated_since=cursor,
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
-                with with_active_incremental_cursor(cursor):
-                    repos: list[list[dict[str, Any]]] = [
-                        batch
-                        async for batch in exporter.get_paginated_resources(options)
-                    ]
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
 
                 assert len(repos) == 1
                 assert [repo["name"] for repo in repos[0]] == ["fresh-repo"]

@@ -8,7 +8,6 @@ from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
 )
-from github.helpers.incremental import resolve_incremental_cursor
 from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
@@ -49,7 +48,7 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all releases in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = resolve_incremental_cursor(options, "created_since")
+        incremental_cursor = params.pop("created_since", None)
         request_params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
 
         async for releases in paginate_with_strategy(

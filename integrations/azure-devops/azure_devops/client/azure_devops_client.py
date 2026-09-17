@@ -33,11 +33,7 @@ from azure_devops.incremental import (
     ANALYTICS_PIPELINE_RUNS_ODATA_PATH,
     ANALYTICS_PIPELINE_RUNS_PAGE_SIZE,
     BUILD_INCREMENTAL,
-    RELEASE_DEPLOYMENT_INCREMENTAL,
-    RELEASE_INCREMENTAL,
     build_pipeline_runs_analytics_filter,
-    ADVANCED_SECURITY_INCREMENTAL,
-    flatten_advanced_security_params,
     wiql_changed_after_clause,
 )
 from azure_devops.client.base_client import (
@@ -430,8 +426,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_advanced_security_alerts(
         self,
         repository: dict[str, Any],
-        params: Optional[dict[str, Any]] = None,
-        incremental_cursor: Optional[datetime] = None,
+        additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate security alerts from GitHub Advanced Security (GHAS) in Azure DevOps.
@@ -441,21 +436,13 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id = repository["project"]["id"]
         repository_id = repository["id"]
         security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
-        flattened_params = flatten_advanced_security_params(
-            {**ADVANCED_SECURITY_API_PARAMS, **(params or {})}
-        )
-        if incremental_cursor is not None:
-            flattened_params.pop("criteria.modifiedSince", None)
-        additional_params = ADVANCED_SECURITY_INCREMENTAL.merge_params(
-            flattened_params,
-            incremental_cursor,
-        )
+        query_params = {**ADVANCED_SECURITY_API_PARAMS, **(additional_params or {})}
         try:
             async for (
                 security_alerts
             ) in self._get_paginated_by_top_and_continuation_token(
                 security_alerts_url,
-                additional_params=additional_params,
+                additional_params=query_params,
             ):
                 enriched_alerts = [
                     self._enrich_security_alert(
@@ -1003,12 +990,8 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_releases(
         self,
         additional_params: dict[str, str] | None = None,
-        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = dict(additional_params or {})
-        if incremental_cursor is not None:
-            params.pop("minCreatedTime", None)
-            params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
@@ -1353,7 +1336,6 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_builds(
         self,
         enrich_with_first_commit: bool = False,
-        incremental_cursor: Optional[datetime] = None,
         min_time: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
@@ -1361,12 +1343,9 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses continuation token pagination as per Azure DevOps Builds API.
         https://learn.microsoft.com/en-us/rest/api/azure/devops/build/builds/list?view=azure-devops-rest-7.1
         """
-        effective_min_time = (
-            incremental_cursor if incremental_cursor is not None else min_time
-        )
         async for projects in self.generate_projects():
             tasks = [
-                self._generate_builds_for_project(project, min_time=effective_min_time)
+                self._generate_builds_for_project(project, min_time=min_time)
                 for project in projects
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
@@ -1559,14 +1538,8 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_release_deployments(
         self,
         additional_params: dict[str, Any] | None = None,
-        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if incremental_cursor is not None:
-            additional_params = RELEASE_DEPLOYMENT_INCREMENTAL.build_params(
-                incremental_cursor
-            )
-        else:
-            additional_params = additional_params or {}
+        additional_params = additional_params or {}
         async for projects in self.generate_projects():
             for project in projects:
                 deployments_url = (
@@ -1664,8 +1637,8 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         wiql: Optional[str],
         expand: str,
-        incremental_cursor: Optional[datetime] = None,
         changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -1673,10 +1646,6 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
         of 20,000 results per query.
         """
-        effective_changed_after = (
-            incremental_cursor if incremental_cursor is not None else changed_after
-        )
-        wiql_time_precision = incremental_cursor is not None
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
             tasks = [
@@ -1687,7 +1656,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         project,
                         wiql,
                         expand,
-                        effective_changed_after,
+                        changed_after,
                         wiql_time_precision=wiql_time_precision,
                     ),
                 )
@@ -3185,46 +3154,43 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"],
-        incremental_cursor: Optional[datetime] = None,
-        min_last_updated_date: Optional[str] = None,
-        max_last_updated_date: Optional[str] = None,
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        if incremental_cursor is None:
+        if min_last_updated_date is None and max_last_updated_date is None:
             params: dict[str, Any] = {"includeRunDetails": True, **API_PARAMS}
-            if min_last_updated_date:
-                params["minLastUpdatedDate"] = min_last_updated_date
-            if max_last_updated_date:
-                params["maxLastUpdatedDate"] = max_last_updated_date
             async for runs in self._get_paginated_by_top_and_skip(url, params=params):
                 yield await self._enrich_test_runs(
                     runs, project_id, include_results, coverage_config
                 )
             return
 
-        window_start = incremental_cursor
-        now = datetime.now(timezone.utc)
-        while window_start < now:
-            window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
+        window_start = min_last_updated_date
+        window_end = max_last_updated_date or datetime.now(timezone.utc)
+        if window_start is None:
+            window_start = window_end - TEST_RUN_QUERY_MAX_WINDOW
+
+        while window_start < window_end:
+            chunk_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, window_end)
             params = {
                 "includeRunDetails": True,
                 **API_PARAMS,
                 "minLastUpdatedDate": window_start.isoformat(),
-                "maxLastUpdatedDate": window_end.isoformat(),
+                "maxLastUpdatedDate": chunk_end.isoformat(),
             }
             async for runs in self._get_paginated_by_top_and_skip(url, params=params):
                 yield await self._enrich_test_runs(
                     runs, project_id, include_results, coverage_config
                 )
-            window_start = window_end
+            window_start = chunk_end
 
     async def fetch_test_runs(
         self,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"] = None,
-        incremental_cursor: Optional[datetime] = None,
-        min_last_updated_date: Optional[str] = None,
-        max_last_updated_date: Optional[str] = None,
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
@@ -3240,7 +3206,6 @@ class AzureDevopsClient(HTTPBaseClient):
                         project["id"],
                         include_results,
                         coverage_config,
-                        incremental_cursor,
                         min_last_updated_date,
                         max_last_updated_date,
                     ),

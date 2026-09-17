@@ -12,7 +12,6 @@ from github.core.options import (
     SingleCodeScanningAlertOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
-from github.helpers.incremental import resolve_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -55,7 +54,7 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all code scanning alerts in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = resolve_incremental_cursor(options, "updated_since")
+        incremental_cursor = params.pop("updated_since", None)
         request_params = CODE_SCANNING_INCREMENTAL.merge_params(
             params, incremental_cursor
         )

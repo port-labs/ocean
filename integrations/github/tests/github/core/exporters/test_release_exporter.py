@@ -119,16 +119,16 @@ class TestRestReleaseExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 exporter = RestReleaseExporter(rest_client)
-                with with_active_incremental_cursor(cursor):
-                    releases = [
-                        batch
-                        async for batch in exporter.get_paginated_resources(
-                            ListReleaseOptions(
-                                organization="test-org",
-                                repo_name="repo1",
-                            )
+                releases = [
+                    batch
+                    async for batch in exporter.get_paginated_resources(
+                        ListReleaseOptions(
+                            organization="test-org",
+                            repo_name="repo1",
+                            created_since=cursor,
                         )
-                    ]
+                    )
+                ]
 
             assert len(releases) == 1
             assert len(releases[0]) == 1

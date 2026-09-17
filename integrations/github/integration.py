@@ -28,7 +28,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
-from port_ocean.utils.time import convert_str_to_utc_datetime
+from port_ocean.utils.time import ISO_8601_SELECTOR_REGEX, parse_selector_iso_datetime
 from typing import Any, Dict, List, Optional, Type, Literal, ClassVar
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
@@ -52,7 +52,7 @@ _INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
 def _optional_iso_datetime(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
-    return convert_str_to_utc_datetime(value)
+    return parse_selector_iso_datetime(value)
 
 
 FILE_PROPERTY_PREFIX = "file://"
@@ -186,6 +186,7 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
     updated_since: Optional[str] = Field(
         default=None,
         alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
         title="Updated Since",
         description=(
             "Only include repositories updated after this date (ISO 8601)."
@@ -633,9 +634,11 @@ class GithubIssueSelector(RepoSearchSelector):
         default=None,
         description="Filter issues by labels; issues must have ALL specified labels (e.g. ['bug', 'enhancement']).",
     )
-    since: Optional[str] = Field(
+    updated_since: Optional[str] = Field(
         default=None,
-        title="Since",
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
         description=(
             "Only include issues updated after this date (ISO 8601)."
             + _INCREMENTAL_SYNC_SELECTOR_NOTE
@@ -648,8 +651,8 @@ class GithubIssueSelector(RepoSearchSelector):
         return ",".join(self.labels) if self.labels else None
 
     @property
-    def since_datetime(self) -> Optional[datetime]:
-        return _optional_iso_datetime(self.since)
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubIssueConfig(ResourceConfig):
@@ -730,6 +733,7 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
     updated_since: Optional[str] = Field(
         default=None,
         alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
         title="Updated Since",
         description=(
             "Only include alerts updated after this date (ISO 8601)."
@@ -784,6 +788,7 @@ class GithubCodeScanningAlertSelector(RepoSearchSelector):
     updated_since: Optional[str] = Field(
         default=None,
         alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
         title="Updated Since",
         description=(
             "Only include alerts updated after this date (ISO 8601)."
@@ -836,6 +841,7 @@ class GithubDeploymentSelector(RepoSearchSelector):
     created_since: Optional[str] = Field(
         default=None,
         alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
         title="Created Since",
         description=(
             "Only include deployments created after this date (ISO 8601)."
@@ -1139,6 +1145,7 @@ class GithubReleaseSelector(RepoSearchSelector):
     created_since: Optional[str] = Field(
         default=None,
         alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
         title="Created Since",
         description=(
             "Only include releases created after this date (ISO 8601)."

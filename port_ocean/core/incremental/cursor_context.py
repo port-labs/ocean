@@ -21,6 +21,16 @@ def active_incremental_cursor() -> datetime | None:
     return _incremental_cursor.get()
 
 
+def resolve_effective_datetime(
+    cursor: datetime | None,
+    selector_value: datetime | None,
+) -> datetime | None:
+    """Prefer the incremental cursor over a selector-derived datetime."""
+    if cursor is not None:
+        return cursor
+    return selector_value
+
+
 @contextmanager
 def with_active_incremental_cursor(cursor: datetime) -> Iterator[None]:
     """Bind *cursor* for the current async task until the block exits."""

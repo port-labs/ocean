@@ -22,7 +22,6 @@ from github.core.options import (
     SingleRepositoryOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
-from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -97,11 +96,11 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         options_dict = dict(options)
         included_relations = options_dict.pop("included_relations", None)
+        incremental_cursor = options_dict.pop("updated_since", None)
 
         async for repos in self._fetch_repositories(
             cast(ListRepositoryOptions, options_dict),
-            incremental_cursor=active_incremental_cursor()
-            or options.get("updated_since"),
+            incremental_cursor=incremental_cursor,
         ):
             if not included_relations:
                 yield repos

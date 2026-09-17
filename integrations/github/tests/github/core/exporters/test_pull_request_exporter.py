@@ -151,12 +151,11 @@ class TestPullRequestExporter:
                     repo_name="repo1",
                     states=["open"],
                     max_results=10,
+                    incremental_cursor=cursor,
                 )
-                with with_active_incremental_cursor(cursor):
-                    results = [
-                        batch
-                        async for batch in exporter.get_paginated_resources(options)
-                    ]
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
 
             assert len(results) == 1
             assert len(results[0]) == 1

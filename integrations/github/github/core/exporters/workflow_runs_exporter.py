@@ -1,7 +1,6 @@
 from typing import Any, cast, Optional
 from loguru import logger
 
-from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.rest_client import GithubRestClient
@@ -57,12 +56,11 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
         workflow_id = params.pop("workflow_id")
         max_runs = params.pop("max_runs")
-        request_params = WORKFLOW_RUN_INCREMENTAL.merge_params(
-            build_workflow_run_params(cast(ListWorkflowRunOptions, params)),
-            incremental_cursor,
+        incremental_active = bool(params.pop("incremental_active", False))
+        request_params = build_workflow_run_params(
+            cast(ListWorkflowRunOptions, params)
         )
 
         url = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/workflows/{workflow_id}/runs"
@@ -86,7 +84,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             yield batch
 
             fetched_batch = fetched_batch + len(workflow_runs)
-            if incremental_cursor is None and fetched_batch >= max_runs:
+            if not incremental_active and max_runs is not None and fetched_batch >= max_runs:
                 logger.info(
                     f"Reached maximum limit of {max_runs} workflow runs"
                     f"for workflow {workflow_id} in {repo_name} from {organization}"

@@ -9,7 +9,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListDependabotAlertOptions, SingleDependabotAlertOptions
 from github.clients.http.rest_client import GithubRestClient
-from github.helpers.incremental import resolve_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -52,7 +51,7 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all Dependabot alerts in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = resolve_incremental_cursor(options, "updated_since")
+        incremental_cursor = params.pop("updated_since", None)
         params["state"] = ",".join(params["state"])
         request_params = DEPENDABOT_INCREMENTAL.merge_params(params, incremental_cursor)
 

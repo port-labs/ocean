@@ -136,15 +136,15 @@ class TestIssueExporter:
         with patch.object(
             rest_client, "send_paginated_request", return_value=mock_issues_generator()
         ) as mock_paginated:
-            with with_active_incremental_cursor(cursor):
-                async for _ in exporter.get_paginated_resources(
-                    ListIssueOptions(
-                        organization="test-org",
-                        repo_name="repo1",
-                        state="open",
-                    )
-                ):
-                    pass
+            async for _ in exporter.get_paginated_resources(
+                ListIssueOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    state="open",
+                    updated_since=cursor,
+                )
+            ):
+                pass
 
             mock_paginated.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/repo1/issues",
