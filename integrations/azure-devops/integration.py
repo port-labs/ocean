@@ -24,6 +24,18 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.relative_time import days_ago
+from azure_devops.helpers.datetime_selectors import (
+    ISO_8601_SELECTOR_REGEX,
+    parse_selector_iso_datetime,
+)
+
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
+def _optional_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    return parse_selector_iso_datetime(value)
 
 
 class AzureDevopsSelector(Selector):
@@ -69,6 +81,16 @@ class AdvancedSecurityFilter(BaseModel):
         title="Alert Type",
         description="Type of alerts to filter by. If not provided, all alerts will be fetched.",
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts modified after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
 
     @property
     def as_params(self) -> dict[str, Any]:
@@ -79,6 +101,8 @@ class AdvancedSecurityFilter(BaseModel):
             params["criteria"]["severity"] = ",".join(self.severities)
         if self.alert_type:
             params["criteria"]["alertType"] = self.alert_type
+        if self.updated_since:
+            params["criteria"]["modifiedSince"] = self.updated_since
         return params
 
     class Config:
@@ -117,6 +141,20 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
             title="Expand",
             description="Expand options for work items. Allowed values are 'None', 'Fields', 'Relations', 'Links' and 'All'. Default value is 'All'.",
         )
+        updated_since: Optional[str] = Field(
+            default=None,
+            alias="updatedSince",
+            regex=ISO_8601_SELECTOR_REGEX,
+            title="Updated Since",
+            description=(
+                "Only include work items changed on or after this date (ISO 8601; "
+                "date precision only)." + _INCREMENTAL_SYNC_SELECTOR_NOTE
+            ),
+        )
+
+        @property
+        def updated_since_datetime(self) -> Optional[datetime]:
+            return _optional_iso_datetime(self.updated_since)
 
     kind: Literal["work-item"] = Field(
         title="Azure Devops Work Item",
@@ -238,6 +276,34 @@ class AzureDevopsTestRunSelector(Selector):
         title="Code Coverage",
         description="Whether to include code coverage data for each test run, defaults to None",
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include test runs updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+    updated_until: Optional[str] = Field(
+        default=None,
+        alias="updatedUntil",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Until",
+        description=(
+            "Only include test runs updated before this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
+
+    @property
+    def updated_until_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_until)
 
 
 class AzureDevopsTestRunResourceConfig(ResourceConfig):
@@ -457,12 +523,17 @@ class AzureDevopsReleaseSelector(Selector):
     min_created_time: Optional[str] = Field(
         alias="minCreatedTime",
         default=None,
+        regex=ISO_8601_SELECTOR_REGEX,
         title="Min Created Time",
-        description="Only include releases created after this date (ISO 8601 format, e.g. '2025-01-01').",
+        description=(
+            "Only include releases created after this date (ISO 8601 format, e.g. '2025-01-01')."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     max_created_time: Optional[str] = Field(
         alias="maxCreatedTime",
         default=None,
+        regex=ISO_8601_SELECTOR_REGEX,
         title="Max Created Time",
         description="Only include releases created before this date (ISO 8601 format, e.g. '2026-01-01').",
     )
@@ -501,6 +572,20 @@ class AzureDevopsBuildSelector(AzureDevopsSelector):
             "shipped (__sha, __timestamp in UTC, __commitCount). Defaults to false."
         ),
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include builds queued after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class AzureDevopsBuildConfig(ResourceConfig):
@@ -588,13 +673,52 @@ class AzureDevopsReleaseDefinitionConfig(ResourceConfig):
     )
 
 
+class AzureDevopsReleaseDeploymentSelector(Selector):
+    updated_since: Optional[str] = Field(
+        alias="updatedSince",
+        default=None,
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include release deployments modified after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+    updated_until: Optional[str] = Field(
+        alias="updatedUntil",
+        default=None,
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Until",
+        description=(
+            "Only include release deployments modified before this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
+
+    @property
+    def updated_until_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_until)
+
+    def to_api_params(self) -> dict[str, str]:
+        params: dict[str, str] = {}
+        if self.updated_since:
+            params["minModifiedTime"] = self.updated_since
+        if self.updated_until:
+            params["maxModifiedTime"] = self.updated_until
+        return params
+
+
 class AzureDevopsReleaseDeploymentConfig(ResourceConfig):
     kind: Literal[Kind.RELEASE_DEPLOYMENT] = Field(
         default=Kind.RELEASE_DEPLOYMENT,
         title="Azure Devops Release Deployment",
         description="Resource kind (release-deployment).",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsReleaseDeploymentSelector = Field(
         title="Release deployment selector",
         description="Selector for the release deployment resource.",
     )

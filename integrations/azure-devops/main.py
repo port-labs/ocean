@@ -11,6 +11,14 @@ from azure_devops.enrichments.included_files import (
     RepositoryIncludedFilesStrategy,
 )
 from azure_devops.helpers import resync
+from azure_devops.options import (
+    AdvancedSecurityFetchOptions,
+    BuildFetchOptions,
+    ReleaseDeploymentFetchOptions,
+    ReleaseFetchOptions,
+    TestRunQueryOptions,
+    WorkItemFetchOptions,
+)
 from azure_devops.helpers.multi_org import iterate_per_organization
 from azure_devops.misc import (
     ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
@@ -76,6 +84,7 @@ from integration import (
     AzureDevopsFileResourceConfig,
     AzureDevopsReleaseConfig,
     AzureDevopsReleaseDefinitionConfig,
+    AzureDevopsReleaseDeploymentConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
@@ -276,12 +285,10 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.WORK_ITEM)
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
-    cursor = active_incremental_cursor()
-    async for work_items in resync.iter_work_items(
-        wiql=config.selector.wiql,
-        expand=config.selector.expand,
-        incremental_cursor=cursor,
-    ):
+    options = WorkItemFetchOptions.from_selector(
+        config.selector, active_incremental_cursor()
+    )
+    async for work_items in resync.iter_work_items(options):
         logger.info(f"Resyncing {len(work_items)} work items")
         yield work_items
 
@@ -304,11 +311,10 @@ async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsReleaseConfig, event.resource_config)
-    cursor = active_incremental_cursor()
-    async for releases in resync.iter_releases(
-        additional_params=config.selector.to_params(),
-        incremental_cursor=cursor,
-    ):
+    options = ReleaseFetchOptions.from_selector(
+        config.selector, active_incremental_cursor()
+    )
+    async for releases in resync.iter_releases(options):
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases
 
@@ -327,11 +333,10 @@ async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.BUILD)
 async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsBuildConfig, event.resource_config)
-    cursor = active_incremental_cursor()
-    async for builds in resync.iter_builds(
-        enrich_with_first_commit=config.selector.enrich_with_first_commit,
-        incremental_cursor=cursor,
-    ):
+    options = BuildFetchOptions.from_selector(
+        config.selector, active_incremental_cursor()
+    )
+    async for builds in resync.iter_builds(options):
         logger.info(f"Resyncing {len(builds)} builds")
         yield builds
 
@@ -353,8 +358,11 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_incremental_resync(Kind.RELEASE_DEPLOYMENT)
 @ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
 async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    cursor = active_incremental_cursor()
-    async for deployments in resync.iter_release_deployments(incremental_cursor=cursor):
+    config = cast(AzureDevopsReleaseDeploymentConfig, event.resource_config)
+    options = ReleaseDeploymentFetchOptions.from_selector(
+        config.selector, active_incremental_cursor()
+    )
+    async for deployments in resync.iter_release_deployments(options):
         logger.info(f"Fetched {len(deployments)} release deployments")
         yield deployments
 
@@ -449,12 +457,8 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.TEST_RUN)
 async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
-    cursor = active_incremental_cursor()
-    async for test_runs in resync.iter_test_runs(
-        selector.include_results,
-        selector.code_coverage,
-        incremental_cursor=cursor,
-    ):
+    options = TestRunQueryOptions.from_selector(selector, active_incremental_cursor())
+    async for test_runs in resync.iter_test_runs(options):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs
 
@@ -480,14 +484,10 @@ async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_T
     selector = cast(
         AzureDevopsAdvancedSecurityResourceConfig, event.resource_config
     ).selector
-    cursor = active_incremental_cursor()
-    params: dict[str, Any] = {}
-    if selector.criteria:
-        params = selector.criteria.as_params
-
-    async for security_alerts in resync.iter_advanced_security_alerts(
-        params, incremental_cursor=cursor
-    ):
+    options = AdvancedSecurityFetchOptions.from_selector(
+        selector, active_incremental_cursor()
+    )
+    async for security_alerts in resync.iter_advanced_security_alerts(options):
         logger.info(f"Resyncing {len(security_alerts)} security alerts")
         yield security_alerts
 
