@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Removed enum constraint from linearWorkflowState type property to support arbitrary Linear workflow state categories
