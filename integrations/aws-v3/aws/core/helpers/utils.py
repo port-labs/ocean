@@ -61,6 +61,8 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         "InvalidVolume.NotFound",
         "AWS.SimpleQueueService.NonExistentQueue",
         "PipelineNotFoundException",
+        "PipelineExecutionNotFoundException",
+        "DeploymentDoesNotExistException",
         "UserNotFoundFault",
         "404",
     ]
