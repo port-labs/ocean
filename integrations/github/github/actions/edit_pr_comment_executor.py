@@ -51,16 +51,17 @@ class EditPrCommentExecutor(AbstractGithubExecutor):
             )
 
         comment_id = comment.get("id")
-        if comment_id is None:
+        html_url = comment.get("html_url")
+        if comment_id is None or html_url is None:
             raise EditCommentError(
                 "Failed to edit comment: GitHub returned an empty or incomplete response"
             )
 
-        message = f"Comment updated: {comment['html_url']}"
+        message = f"Comment updated: {html_url}"
         logger.info(
             f"Edited comment {comment_id} in {inputs.org}/{inputs.repo}",
             comment_id=comment_id,
-            html_url=comment["html_url"],
+            html_url=html_url,
         )
 
         await ocean.port_client.report_run_completed(

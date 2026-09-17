@@ -53,18 +53,17 @@ class CreatePrCommentExecutor(AbstractGithubExecutor):
             )
 
         comment_id = comment.get("id")
-        if comment_id is None:
+        html_url = comment.get("html_url")
+        if comment_id is None or html_url is None:
             raise CreateCommentError(
                 "Failed to create comment: GitHub returned an empty or incomplete response"
             )
 
-        message = (
-            f"Comment created on pull request #{inputs.prNumber}: {comment['html_url']}"
-        )
+        message = f"Comment created on pull request #{inputs.prNumber}: {html_url}"
         logger.info(
             f"Created comment {comment_id} on pull request #{inputs.prNumber} in {inputs.org}/{inputs.repo}",
             comment_id=comment_id,
-            html_url=comment["html_url"],
+            html_url=html_url,
         )
 
         await ocean.port_client.report_run_completed(

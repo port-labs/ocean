@@ -1,5 +1,6 @@
 import httpx
 from loguru import logger
+from pydantic import Field
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
@@ -10,8 +11,8 @@ from github.actions.exceptions import DeleteCommentError
 
 
 class DeletePrCommentInputs(AbstractGithubActionInput):
-    org: str
-    repo: str
+    org: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
     commentId: int
 
 
