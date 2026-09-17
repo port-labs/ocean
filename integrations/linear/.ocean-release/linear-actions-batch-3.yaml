@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added add_reaction_to_issue, archive_issue, and delete_issue Linear integration actions
