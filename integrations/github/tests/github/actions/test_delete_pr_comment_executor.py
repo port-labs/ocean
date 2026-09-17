@@ -113,7 +113,7 @@ class TestDeletePrCommentExecutor:
             await executor.execute(run)
 
     @pytest.mark.asyncio
-    async def test_partition_key_returns_none(
+    async def test_partition_key(
         self,
         executor: DeletePrCommentExecutor,
     ) -> None:
@@ -124,4 +124,4 @@ class TestDeletePrCommentExecutor:
                 "commentId": 555,
             }
         )
-        assert await executor._get_partition_key(run) is None
+        assert await executor._get_partition_key(run) == "port-labs/ocean"

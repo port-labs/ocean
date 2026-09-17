@@ -19,9 +19,6 @@ class DeletePrCommentInputs(AbstractGithubActionInput):
 class DeletePrCommentExecutor(AbstractGithubExecutor):
     ACTION_NAME = "delete_pr_comment"
 
-    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
-        return None
-
     async def execute(self, run: IntegrationRun) -> None:
         inputs = DeletePrCommentInputs.from_execution_properties(
             run.execution_properties
