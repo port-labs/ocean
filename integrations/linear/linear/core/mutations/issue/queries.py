@@ -42,3 +42,31 @@ mutation CommentCreate($input: CommentCreateInput!) {
     }
 }
 """
+
+ISSUE_ARCHIVE = """
+mutation IssueArchive($id: String!) {
+    issueArchive(id: $id) {
+        success
+    }
+}
+"""
+
+ISSUE_DELETE = """
+mutation IssueDelete($id: String!) {
+    issueDelete(id: $id) {
+        success
+    }
+}
+"""
+
+REACTION_CREATE = """
+mutation ReactionCreate($input: ReactionCreateInput!) {
+    reactionCreate(input: $input) {
+        success
+        reaction {
+            id
+            emoji
+        }
+    }
+}
+"""

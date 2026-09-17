@@ -62,3 +62,18 @@ class MutationComment(BaseModel):
 class MutationCommentResult(BaseModel):
     success: bool
     comment: MutationComment
+
+
+class ReactionCreateMutationPayload(BaseModel):
+    issueId: str
+    emoji: str
+
+
+class MutationReaction(BaseModel):
+    id: NonEmptyStr
+    emoji: NonEmptyStr
+
+
+class MutationReactionResult(BaseModel):
+    success: bool
+    reaction: MutationReaction

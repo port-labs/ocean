@@ -1,7 +1,8 @@
-from typing import Annotated, Generic, Self
+from typing import Annotated, Any, Generic, Self
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from linear.actions.exceptions import MissingExecutionPropertyError
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT
 from linear.types import NonEmptyStr
 from linear.core.mutations.issue.types import (
@@ -9,6 +10,7 @@ from linear.core.mutations.issue.types import (
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
+from linear.core.mutations.issue.types import ReactionCreateMutationPayload
 from linear.utils import PRIORITY_BY_LABEL, PriorityLabel
 
 PriorityField = Annotated[
@@ -89,3 +91,31 @@ class AddIssueCommentPayload(LinearActionPayload[CommentCreateMutationPayload]):
 
     issueId: NonEmptyStr
     body: NonEmptyStr
+
+
+class IssueIdPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    issueId: NonEmptyStr
+
+    @classmethod
+    def from_execution_properties(cls, execution_properties: dict[str, Any]) -> Self:
+        try:
+            return cls.model_validate(execution_properties)
+        except ValidationError as error:
+            raise MissingExecutionPropertyError(str(error)) from error
+
+
+class AddReactionPayload(LinearActionPayload[ReactionCreateMutationPayload]):
+    MUTATION_PAYLOAD_TYPE = ReactionCreateMutationPayload
+
+    issueId: NonEmptyStr
+    emoji: NonEmptyStr
+
+
+class ArchiveIssuePayload(IssueIdPayload):
+    pass
+
+
+class DeleteIssuePayload(IssueIdPayload):
+    pass
