@@ -6,6 +6,7 @@ from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.types import CreateIssuePayload
 from linear.actions.utils import set_issue_run_output
 from linear.core.mutations import IssueMutations
+from linear.actions.exceptions import LinearActionError
 
 
 class CreateIssueExecutor(AbstractLinearExecutor):
@@ -22,7 +23,10 @@ class CreateIssueExecutor(AbstractLinearExecutor):
         )
 
         mutations = IssueMutations(self.client)
-        issue = await mutations.create_issue(payload.to_mutation())
+        try:
+            issue = await mutations.create_issue(payload.to_mutation())
+        except Exception as error:
+            raise LinearActionError(str(error), status_label="Create failed") from error
         message = f"Created issue {issue.identifier}: {issue.url}"
         set_issue_run_output(run, issue)
 
