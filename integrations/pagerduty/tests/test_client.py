@@ -438,6 +438,112 @@ class TestPagerDutyClient:
         assert result.headers["Authorization"] == "Token token=mock-token"
 
     @pytest.mark.asyncio
+    async def test_update_incident_acknowledge(self, client: PagerDutyClient) -> None:
+        incident_response = {
+            "incidents": [
+                {
+                    "id": "PIJ90N7",
+                    "status": "acknowledged",
+                    "html_url": "https://example.pagerduty.com/incidents/PIJ90N7",
+                }
+            ]
+        }
+        mock_response = MagicMock()
+        mock_response.json.return_value = incident_response
+        mock_response.raise_for_status.return_value = None
+
+        with patch.object(
+            client.http_client, "request", return_value=mock_response
+        ) as mock_request:
+            result = await client.update_incident(
+                incident_id="PIJ90N7",
+                status="acknowledged",
+                from_email="oncall@example.com",
+            )
+
+        assert result == incident_response["incidents"][0]
+        mock_request.assert_awaited_once()
+        assert mock_request.await_args is not None
+        call_kwargs = mock_request.await_args.kwargs
+        assert call_kwargs["method"] == "PUT"
+        assert call_kwargs["url"] == "https://api.pagerduty.com/incidents"
+        assert call_kwargs["json"] == {
+            "incidents": [
+                {
+                    "id": "PIJ90N7",
+                    "type": "incident_reference",
+                    "status": "acknowledged",
+                }
+            ]
+        }
+        assert call_kwargs["headers"] == {"From": "oncall@example.com"}
+
+    @pytest.mark.asyncio
+    async def test_update_incident_resolve(self, client: PagerDutyClient) -> None:
+        incident_response = {
+            "incidents": [
+                {
+                    "id": "PIJ90N7",
+                    "status": "resolved",
+                    "html_url": "https://example.pagerduty.com/incidents/PIJ90N7",
+                }
+            ]
+        }
+        mock_response = MagicMock()
+        mock_response.json.return_value = incident_response
+        mock_response.raise_for_status.return_value = None
+
+        with patch.object(
+            client.http_client, "request", return_value=mock_response
+        ) as mock_request:
+            result = await client.update_incident(
+                incident_id="PIJ90N7",
+                status="resolved",
+                from_email="oncall@example.com",
+            )
+
+        assert result == incident_response["incidents"][0]
+        assert mock_request.await_args is not None
+        call_kwargs = mock_request.await_args.kwargs
+        assert call_kwargs["json"] == {
+            "incidents": [
+                {
+                    "id": "PIJ90N7",
+                    "type": "incident_reference",
+                    "status": "resolved",
+                }
+            ]
+        }
+
+    @pytest.mark.asyncio
+    async def test_create_incident_note(self, client: PagerDutyClient) -> None:
+        note_response = {
+            "note": {
+                "id": "PWL7QXS",
+                "content": "Restarted the service",
+            }
+        }
+        mock_response = MagicMock()
+        mock_response.json.return_value = note_response
+        mock_response.raise_for_status.return_value = None
+
+        with patch.object(
+            client.http_client, "request", return_value=mock_response
+        ) as mock_request:
+            result = await client.create_incident_note(
+                incident_id="PIJ90N7",
+                from_email="oncall@example.com",
+                content="Restarted the service",
+            )
+
+        assert result == note_response["note"]
+        assert mock_request.await_args is not None
+        call_kwargs = mock_request.await_args.kwargs
+        assert call_kwargs["method"] == "POST"
+        assert call_kwargs["url"] == "https://api.pagerduty.com/incidents/PIJ90N7/notes"
+        assert call_kwargs["json"] == {"note": {"content": "Restarted the service"}}
+
+    @pytest.mark.asyncio
     async def test_get_entity_custom_fields(self, client: PagerDutyClient) -> None:
         """Test fetching custom fields for a single entity."""
         custom_fields_response = {
