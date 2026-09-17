@@ -232,12 +232,6 @@
           "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
         },
         {
-          "name": "delegateId",
-          "title": "Delegate ID",
-          "type": "string",
-          "description": "UUID of the agent app user to delegate the issue to"
-        },
-        {
           "name": "labelIds",
           "title": "Label IDs",
           "type": "array",
@@ -367,6 +361,27 @@
           "title": "Issue ID",
           "type": "string",
           "description": "UUID or identifier of the issue to delete (e.g. ENG-123)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "delegate_issue_to_agent",
+      "icon": "Linear",
+      "description": "Delegate a Linear issue to an agent app user",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to delegate (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "delegateId",
+          "title": "Delegate ID",
+          "type": "string",
+          "description": "UUID of the agent app user to delegate the issue to",
           "required": true
         }
       ]

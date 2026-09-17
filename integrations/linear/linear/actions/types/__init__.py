@@ -7,6 +7,7 @@ from linear.actions.types.issue import (
     CreateIssuePayload,
     CreateSubIssuePayload,
     DeleteIssuePayload,
+    DelegateIssuePayload,
     UpdateIssuePayload,
 )
 
@@ -17,6 +18,7 @@ __all__ = [
     "ArchiveIssuePayload",
     "CreateIssuePayload",
     "CreateSubIssuePayload",
+    "DelegateIssuePayload",
     "DeleteIssuePayload",
     "LinearActionPayload",
     "UpdateIssuePayload",
