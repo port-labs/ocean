@@ -29,3 +29,44 @@ mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
     }
 }
 """
+
+COMMENT_CREATE = """
+mutation CommentCreate($input: CommentCreateInput!) {
+    commentCreate(input: $input) {
+        success
+        comment {
+            id
+            body
+            createdAt
+        }
+    }
+}
+"""
+
+ISSUE_ARCHIVE = """
+mutation IssueArchive($id: String!) {
+    issueArchive(id: $id) {
+        success
+    }
+}
+"""
+
+ISSUE_DELETE = """
+mutation IssueDelete($id: String!) {
+    issueDelete(id: $id) {
+        success
+    }
+}
+"""
+
+REACTION_CREATE = """
+mutation ReactionCreate($input: ReactionCreateInput!) {
+    reactionCreate(input: $input) {
+        success
+        reaction {
+            id
+            emoji
+        }
+    }
+}
+"""

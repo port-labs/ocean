@@ -100,7 +100,7 @@ resources:
             created: .createdAt
             updated: .updatedAt
           relations:
-            teams: "[.teamMemberships.nodes[].team.key]"
+            teams: "[.teamMemberships.nodes[].team.id]"
   - kind: project
     selector:
       query: "true"
@@ -123,7 +123,7 @@ resources:
             created: .createdAt
             updated: .updatedAt
           relations:
-            teams: "[.teams.nodes[].key]"
+            teams: "[.teams.nodes[].id]"
             leadUser: .lead.id
   - kind: initiative
     selector:
@@ -194,4 +194,4 @@ resources:
             created: .createdAt
             updated: .updatedAt
           relations:
-            team: .team.key
+            team: .team.id

@@ -1,8 +1,6 @@
-from typing import Annotated
+from pydantic import BaseModel
 
-from pydantic import BaseModel, Field
-
-NonEmptyStr = Annotated[str, Field(min_length=1)]
+from linear.types import NonEmptyStr
 
 
 class _IssueMutationPayload(BaseModel):
@@ -48,3 +46,34 @@ class MutationIssue(BaseModel):
 class MutationIssueResult(BaseModel):
     success: bool
     issue: MutationIssue
+
+
+class CommentCreateMutationPayload(BaseModel):
+    issueId: str
+    body: str
+
+
+class MutationComment(BaseModel):
+    id: NonEmptyStr
+    body: NonEmptyStr
+    createdAt: NonEmptyStr
+
+
+class MutationCommentResult(BaseModel):
+    success: bool
+    comment: MutationComment
+
+
+class ReactionCreateMutationPayload(BaseModel):
+    issueId: str
+    emoji: str
+
+
+class MutationReaction(BaseModel):
+    id: NonEmptyStr
+    emoji: NonEmptyStr
+
+
+class MutationReactionResult(BaseModel):
+    success: bool
+    reaction: MutationReaction
