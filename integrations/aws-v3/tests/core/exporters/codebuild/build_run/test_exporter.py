@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 
 import pytest
+from botocore.exceptions import ClientError
 from unittest.mock import AsyncMock, patch, MagicMock
 from aws.core.exporters.codebuild.build_run.exporter import CodeBuildBuildRunExporter
 from aws.core.exporters.codebuild.build_run.models import (
@@ -41,6 +42,9 @@ async def test_get_resource(
 
     mock_inspector_instance = AsyncMock()
     mock_inspector_class.return_value = mock_inspector_instance
+    mock_proxy_instance.client.batch_get_builds = AsyncMock(
+        return_value={"builds": [{"id": single_build_run_options.build_id}]}
+    )
 
     expected_result = MagicMock()
     mock_inspector_instance.inspect.return_value = [expected_result]
@@ -54,8 +58,16 @@ async def test_get_resource(
     mock_proxy_class.assert_called_once_with(
         mock_session, single_build_run_options.region, "codebuild"
     )
+    mock_proxy_instance.client.batch_get_builds.assert_called_once_with(
+        ids=[single_build_run_options.build_id]
+    )
     mock_inspector_instance.inspect.assert_called_once_with(
-        [single_build_run_options.build_id], single_build_run_options.include
+        [single_build_run_options.build_id],
+        single_build_run_options.include,
+        extra_context={
+            "AccountId": single_build_run_options.account_id,
+            "Region": single_build_run_options.region,
+        },
     )
 
 
@@ -72,16 +84,16 @@ async def test_get_resource_empty_response(
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
 
-    mock_inspector_instance = AsyncMock()
-    mock_inspector_class.return_value = mock_inspector_instance
-    mock_inspector_instance.inspect.return_value = []
+    mock_proxy_instance.client.batch_get_builds = AsyncMock(return_value={"builds": []})
 
     # Act
     exporter = CodeBuildBuildRunExporter(mock_session)
-    result = await exporter.get_resource(single_build_run_options)
+    with pytest.raises(ClientError) as error:
+        await exporter.get_resource(single_build_run_options)
 
     # Assert
-    assert result == {}
+    assert error.value.response["Error"]["Code"] == "ResourceNotFoundException"
+    mock_inspector_class.return_value.inspect.assert_not_called()
 
 
 @pytest.mark.asyncio
