@@ -4,7 +4,7 @@ import pytest
 
 from linear.actions.update_issue_executor import UpdateIssueExecutor
 from linear.core.mutations.issue.types import IssueUpdateMutationPayload
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 

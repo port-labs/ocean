@@ -5,14 +5,19 @@ from pydantic import BaseModel
 
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT
 from linear.actions.types.issue import (
+    AddIssueCommentPayload,
+    AddReactionPayload,
     CreateIssuePayload,
     CreateSubIssuePayload,
+    DelegateIssuePayload,
     UpdateIssuePayload,
 )
 from linear.core.mutations.issue.types import (
+    CommentCreateMutationPayload,
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
+from linear.core.mutations.issue.types import ReactionCreateMutationPayload
 from linear.utils import PRIORITY_BY_LABEL, PriorityLabel
 
 ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
@@ -82,7 +87,6 @@ ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
                 "projectId": "proj-1",
                 "cycleId": "cycle-1",
                 "priority": PriorityLabel.LOW,
-                "delegateId": "delegate-1",
                 "labelIds": ["label-1"],
             },
             IssueUpdateMutationPayload,
@@ -94,10 +98,30 @@ ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
                 "projectId": "proj-1",
                 "cycleId": "cycle-1",
                 "priority": PRIORITY_BY_LABEL[PriorityLabel.LOW],
-                "delegateId": "delegate-1",
                 "labelIds": ["label-1"],
             },
             id="update_issue",
+        ),
+        pytest.param(
+            AddIssueCommentPayload,
+            {"issueId": "ENG-1", "body": "Looks good"},
+            CommentCreateMutationPayload,
+            {"issueId": "ENG-1", "body": "Looks good"},
+            id="add_issue_comment",
+        ),
+        pytest.param(
+            AddReactionPayload,
+            {"issueId": "ENG-1", "emoji": "+1"},
+            ReactionCreateMutationPayload,
+            {"issueId": "ENG-1", "emoji": "+1"},
+            id="add_reaction_to_issue",
+        ),
+        pytest.param(
+            DelegateIssuePayload,
+            {"issueId": "ENG-1", "delegateId": "agent-1"},
+            IssueUpdateMutationPayload,
+            {"delegateId": "agent-1"},
+            id="delegate_issue_to_agent",
         ),
     ],
 )
@@ -114,3 +138,15 @@ def test_issue_payload_to_mutation_contract(
     assert isinstance(mutation_payload, mutation_cls)
     assert action_cls.MUTATION_PAYLOAD_TYPE is mutation_cls
     assert mutation_payload.model_dump(exclude_none=True) == expected
+
+
+def test_update_issue_payload_ignores_delegate_id() -> None:
+    payload = UpdateIssuePayload.from_execution_properties(
+        {
+            "issueId": "ENG-1",
+            "title": "Updated",
+            "delegateId": "agent-1",
+        }
+    )
+
+    assert payload.to_mutation().model_dump(exclude_none=True) == {"title": "Updated"}

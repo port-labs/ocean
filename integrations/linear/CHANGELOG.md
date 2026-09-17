@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.0 (2026-09-17)
+
+
+### Features
+
+- Added delegate_issue_to_agent Linear integration action
+
+
+## 0.11.0 (2026-09-17)
+
+
+### Features
+
+- Added add_reaction_to_issue, archive_issue, and delete_issue Linear integration actions
+
+
+## 0.10.0 (2026-09-17)
+
+
+### Features
+
+- Added add_issue_comment and add_document Linear integration actions
+
+
+## 0.9.2 (2026-09-17)
+
+
+### Bug Fixes
+
+- Removed enum constraint from linearWorkflowState type property to support arbitrary Linear workflow state categories
+
+
+## 0.9.1 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 0.9.0 (2026-09-16)
+
+
+### Features
+
+- Added workflow state kind to the Linear integration
+
+
 ## 0.8.0 (2026-09-16)
 
 

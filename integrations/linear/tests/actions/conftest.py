@@ -10,7 +10,12 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from linear.core.mutations.issue.types import MutationIssue, _IssueState
+from linear.core.mutations.document.types import MutationDocument
+from linear.core.mutations.issue.types import (
+    MutationComment,
+    MutationIssue,
+    MutationReaction,
+)
 
 
 def make_run(action_name: str, execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -58,20 +63,19 @@ def mock_issue_mutations() -> MagicMock:
             identifier="ENG-1",
             title="Updated issue",
             url="https://linear.app/test/issue/ENG-1",
-            state=_IssueState(id="state-1", name="In Progress"),
         )
     )
-    mutations.resolve_state_id = AsyncMock(return_value="state-1")
+    mutations.create_comment = AsyncMock(
+        return_value=MutationComment(
+            id="comment-1",
+            body="Hello",
+            createdAt="2026-01-01",
+        )
+    )
     mutations.archive_issue = AsyncMock(return_value=None)
     mutations.delete_issue = AsyncMock(return_value=None)
-    return mutations
-
-
-@pytest.fixture
-def mock_comment_mutations() -> MagicMock:
-    mutations = MagicMock()
-    mutations.create_comment = AsyncMock(
-        return_value={"id": "comment-1", "body": "Hello", "createdAt": "2026-01-01"}
+    mutations.create_reaction = AsyncMock(
+        return_value=MutationReaction(id="reaction-1", emoji="+1")
     )
     return mutations
 
@@ -80,20 +84,11 @@ def mock_comment_mutations() -> MagicMock:
 def mock_document_mutations() -> MagicMock:
     mutations = MagicMock()
     mutations.create_document = AsyncMock(
-        return_value={
-            "id": "doc-1",
-            "title": "Notes",
-            "url": "https://linear.app/test/document/doc-1",
-        }
-    )
-    return mutations
-
-
-@pytest.fixture
-def mock_reaction_mutations() -> MagicMock:
-    mutations = MagicMock()
-    mutations.create_reaction = AsyncMock(
-        return_value={"id": "reaction-1", "emoji": "+1"}
+        return_value=MutationDocument(
+            id="doc-1",
+            title="Notes",
+            url="https://linear.app/test/document/doc-1",
+        )
     )
     return mutations
 
