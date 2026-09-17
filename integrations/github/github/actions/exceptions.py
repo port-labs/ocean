@@ -48,6 +48,7 @@ class MergePullRequestError(PullRequestActionError):
 class ReviewPullRequestError(PullRequestActionError):
     DEFAULT_STATUS_LABEL = "Review failed"
 
+
 class CommentActionError(ActionExecutionError):
     @classmethod
     def from_response(cls, response: httpx.Response, prefix: str) -> Self:

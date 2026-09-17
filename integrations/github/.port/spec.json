@@ -727,7 +727,7 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "string",
+          "type": "number",
           "description": "The number of the pull request to comment on",
           "required": true
         },
@@ -762,7 +762,7 @@
         {
           "name": "commentId",
           "title": "Comment ID",
-          "type": "string",
+          "type": "number",
           "description": "The ID of the comment to edit",
           "required": true
         },
@@ -797,7 +797,7 @@
         {
           "name": "commentId",
           "title": "Comment ID",
-          "type": "string",
+          "type": "number",
           "description": "The ID of the comment to delete",
           "required": true
         }
