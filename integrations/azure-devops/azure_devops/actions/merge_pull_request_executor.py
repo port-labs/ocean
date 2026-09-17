@@ -73,29 +73,30 @@ class MergePullRequestExecutor(AbstractAzureDevopsExecutor):
             should_raise=False,
         )
 
-        try:
-            pull_request = await self.client.merge_pull_request(
-                inputs.project,
-                inputs.repositoryId,
-                inputs.pullRequestId,
-            )
-        except httpx.HTTPStatusError as error:
-            logger.error(
-                f"Azure DevOps rejected pull request merge for action run {run.id}: "
-                f"HTTP {error.response.status_code}",
-                run_id=run.id,
-                project_id=inputs.project,
-                repository_id=inputs.repositoryId,
-                pull_request_id=inputs.pullRequestId,
-                status_code=error.response.status_code,
-            )
-            raise MergePullRequestError.from_response(
-                error.response,
-                f"Could not merge pull request '{inputs.pullRequestId}' in repository "
-                f"'{inputs.repositoryId}'",
-            )
-        except RuntimeError as error:
-            raise MergePullRequestError(str(error)) from error
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                pull_request = await api_client.merge_pull_request(
+                    inputs.project,
+                    inputs.repositoryId,
+                    inputs.pullRequestId,
+                )
+            except httpx.HTTPStatusError as error:
+                logger.error(
+                    f"Azure DevOps rejected pull request merge for action run {run.id}: "
+                    f"HTTP {error.response.status_code}",
+                    run_id=run.id,
+                    project_id=inputs.project,
+                    repository_id=inputs.repositoryId,
+                    pull_request_id=inputs.pullRequestId,
+                    status_code=error.response.status_code,
+                )
+                raise MergePullRequestError.from_response(
+                    error.response,
+                    f"Could not merge pull request '{inputs.pullRequestId}' in repository "
+                    f"'{inputs.repositoryId}'",
+                )
+            except RuntimeError as error:
+                raise MergePullRequestError(str(error)) from error
 
         merged_id = pull_request.get("pullRequestId")
         if merged_id is None:

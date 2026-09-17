@@ -194,29 +194,30 @@ class CreatePullRequestThreadExecutor(AbstractAzureDevopsExecutor):
             f"repository '{inputs.repositoryId}'",
         )
 
-        try:
-            thread = await self.client.create_pull_request_thread(
-                inputs.project,
-                inputs.repositoryId,
-                inputs.pullRequestId,
-                body,
-            )
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Azure DevOps rejected the comment thread on pull request "
-                f"{inputs.pullRequestId} for action run {run.id}: "
-                f"HTTP {e.response.status_code}",
-                run_id=run.id,
-                project_id=inputs.project,
-                repository_id=inputs.repositoryId,
-                pull_request_id=inputs.pullRequestId,
-                status_code=e.response.status_code,
-            )
-            raise CreatePullRequestThreadError.from_response(
-                e.response,
-                f"Error creating a comment thread on pull request "
-                f"{inputs.pullRequestId} in repository '{inputs.repositoryId}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                thread = await api_client.create_pull_request_thread(
+                    inputs.project,
+                    inputs.repositoryId,
+                    inputs.pullRequestId,
+                    body,
+                )
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Azure DevOps rejected the comment thread on pull request "
+                    f"{inputs.pullRequestId} for action run {run.id}: "
+                    f"HTTP {e.response.status_code}",
+                    run_id=run.id,
+                    project_id=inputs.project,
+                    repository_id=inputs.repositoryId,
+                    pull_request_id=inputs.pullRequestId,
+                    status_code=e.response.status_code,
+                )
+                raise CreatePullRequestThreadError.from_response(
+                    e.response,
+                    f"Error creating a comment thread on pull request "
+                    f"{inputs.pullRequestId} in repository '{inputs.repositoryId}'",
+                )
 
         if not thread or "id" not in thread:
             logger.error(
