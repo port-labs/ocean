@@ -6,7 +6,7 @@ from linear.actions.abstract_linear_executor import AbstractLinearExecutor
 from linear.actions.types import UpdateIssuePayload
 from linear.actions.utils import set_issue_run_output
 from linear.core.mutations import IssueMutations
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import LinearActionError
 
 
 class UpdateIssueExecutor(AbstractLinearExecutor):
@@ -18,10 +18,6 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         payload = UpdateIssuePayload.from_execution_properties(run.execution_properties)
-        if not payload.to_payload():
-            raise MissingExecutionPropertyError(
-                "At least one update field is required (title, description, assigneeId, stateId, projectId, cycleId, priority, delegateId, or labelIds)"
-            )
 
         await ocean.port_client.post_run_log(
             run,
@@ -31,7 +27,10 @@ class UpdateIssueExecutor(AbstractLinearExecutor):
         )
 
         mutations = IssueMutations(self.client)
-        issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
+        try:
+            issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
+        except Exception as error:
+            raise LinearActionError(str(error), status_label="Update failed") from error
         message = f"Updated issue {issue.identifier}: {issue.url}"
         set_issue_run_output(run, issue)
 

@@ -5,11 +5,13 @@ from pydantic import BaseModel
 
 from linear.actions.types.base import LinearActionPayload, MutationPayloadT
 from linear.actions.types.issue import (
+    AddIssueCommentPayload,
     CreateIssuePayload,
     CreateSubIssuePayload,
     UpdateIssuePayload,
 )
 from linear.core.mutations.issue.types import (
+    CommentCreateMutationPayload,
     IssueCreateMutationPayload,
     IssueUpdateMutationPayload,
 )
@@ -98,6 +100,13 @@ ActionPayloadT = TypeVar("ActionPayloadT", bound=LinearActionPayload[BaseModel])
                 "labelIds": ["label-1"],
             },
             id="update_issue",
+        ),
+        pytest.param(
+            AddIssueCommentPayload,
+            {"issueId": "ENG-1", "body": "Looks good"},
+            CommentCreateMutationPayload,
+            {"issueId": "ENG-1", "body": "Looks good"},
+            id="add_issue_comment",
         ),
     ],
 )
