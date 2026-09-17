@@ -5,6 +5,24 @@ from github.actions.utils import extract_error_message
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
+class IssueActionError(ActionExecutionError):
+    @classmethod
+    def from_response(cls, response: httpx.Response, prefix: str) -> Self:
+        return cls(f"{prefix}: {extract_error_message(response)}")
+
+
+class CreateIssueError(IssueActionError):
+    DEFAULT_STATUS_LABEL = "Create failed"
+
+
+class EditIssueError(IssueActionError):
+    DEFAULT_STATUS_LABEL = "Edit failed"
+
+
+class CloseIssueError(IssueActionError):
+    DEFAULT_STATUS_LABEL = "Close failed"
+
+
 class PullRequestActionError(ActionExecutionError):
     @classmethod
     def from_response(cls, response: httpx.Response, prefix: str) -> Self:
