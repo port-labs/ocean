@@ -1,0 +1,22 @@
+title: ScaleQuality
+description: Ingest ScaleQuality measured quality signals (AI code durability, engineering maturity, code maturity and tech radar) for every organization, business unit and team as Port entities.
+icon: Deployment
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: scale-quality-entity
+saas:
+  enabled: false
+configurations:
+  - name: scaleQualityApiUrl
+    type: url
+    required: true
+    default: https://app.scalequality.io/v1
+    description: Base URL of the ScaleQuality Platform API. Use https://app.scalequality.io/v1 for production.
+  - name: scaleQualityApiKey
+    type: string
+    required: true
+    sensitive: true
+    description: A read-only ScaleQuality API key (starts with sq_live_), created under Developers in the ScaleQuality app.
