@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added delegate_issue_to_agent Linear integration action
