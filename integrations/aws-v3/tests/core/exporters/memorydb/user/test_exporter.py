@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
 from aws.core.exporters.memorydb.user.models import (
@@ -167,7 +168,7 @@ async def test_get_resource_returns_single_user(
     mock_client.describe_users.assert_awaited_once_with(UserName="alice")
 
 
-async def test_get_resource_returns_empty_when_no_users(
+async def test_get_resource_raises_when_user_not_found(
     mock_session: MagicMock,
     single_options: SingleMemoryDbUserRequest,
 ) -> None:
@@ -181,14 +182,6 @@ async def test_get_resource_returns_empty_when_no_users(
     mock_proxy.__aexit__ = AsyncMock(return_value=None)
     mock_proxy.client = mock_client
 
-    async def fake_inspect(
-        identifiers: Any, include: Any, extra_context: Any = None
-    ) -> list[dict[str, Any]]:
-        return []
-
-    mock_inspector = MagicMock()
-    mock_inspector.inspect = fake_inspect
-
     with (
         patch(
             "aws.core.exporters.memorydb.user.exporter.AioBaseClientProxy",
@@ -196,9 +189,10 @@ async def test_get_resource_returns_empty_when_no_users(
         ),
         patch(
             "aws.core.exporters.memorydb.user.exporter.ResourceInspector",
-            return_value=mock_inspector,
+            return_value=MagicMock(),
         ),
     ):
-        result = await exporter.get_resource(single_options)
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(single_options)
 
-    assert result == {}
+    assert exc_info.value.response["Error"]["Code"] == "UserNotFoundFault"

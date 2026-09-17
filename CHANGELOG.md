@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.0 (2026-09-16)
+
+
+### Features
+
+- Add identity propagation (OAuth broker, vault, JWT verifier) so actions can run as the triggering user.
+
+
+## 0.51.4 (2026-09-15)
+
+
+### Improvements
+
+- Added incremental sync observability with Prometheus metrics and structured logs for run health, cursor lag, and kind duration
+
+
 ## 0.51.3 (2026-09-14)
 
 

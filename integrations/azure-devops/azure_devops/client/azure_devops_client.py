@@ -231,6 +231,22 @@ class RunPipelineOptions:
     variables: Optional[dict[str, Any]] = None
 
 
+@dataclass
+class CreatePullRequestOptions:
+    """Inputs for creating a pull request."""
+
+    title: str
+    source_ref_name: str
+    target_ref_name: str
+    description: Optional[str] = None
+
+
+def _normalize_git_ref(ref: str) -> str:
+    if ref.startswith("refs/"):
+        return ref
+    return f"refs/heads/{ref}"
+
+
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
@@ -1900,6 +1916,48 @@ class AzureDevopsClient(HTTPBaseClient):
         pull_request_data = response.json()
         return pull_request_data
 
+    async def create_pull_request_thread(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment thread on a pull request.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/create
+        """
+        create_thread_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/threads"
+        )
+        logger.info(
+            f"Creating comment thread on pull request {pull_request_id} in repository "
+            f"{repository_id} for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "POST",
+            create_thread_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create a comment thread on pull request {pull_request_id} "
+                f"in repository {repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
     async def update_pull_request(
         self,
         project: str,
@@ -2014,6 +2072,55 @@ class AzureDevopsClient(HTTPBaseClient):
                 "lastMergeSourceCommit": last_merge_source_commit,
             },
         )
+
+    async def create_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        options: CreatePullRequestOptions,
+    ) -> dict[str, Any]:
+        """Create a pull request in the given repository.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/create
+        """
+        create_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests"
+        )
+        body: dict[str, Any] = {
+            "title": options.title,
+            "sourceRefName": _normalize_git_ref(options.source_ref_name),
+            "targetRefName": _normalize_git_ref(options.target_ref_name),
+        }
+        if options.description:
+            body["description"] = options.description
+
+        logger.info(
+            f"Creating pull request '{options.title}' in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            source_ref_name=body["sourceRefName"],
+            target_ref_name=body["targetRefName"],
+        )
+        response = await self.send_request(
+            "POST",
+            create_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create pull request in repository {repository_id}: "
+                "no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+            )
+            return {}
+        return response.json()
 
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
