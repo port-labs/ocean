@@ -76,5 +76,5 @@ class RateLimitException(Exception):
         )
 
 
-class GitHubTreeFetchError(Exception):
-    """Raised on tree-fetch 403 to prevent reconciliation deletes and preserve entities until next resync."""
+class GitHubTreeFetchError(OceanAbortException):
+    """Raised when git tree fetch fails so the file kind aborts without reconciliation deletes."""

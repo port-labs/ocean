@@ -5,11 +5,11 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client_for_org
 from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
 from github.helpers.exceptions import GitHubTreeFetchError
+from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
 )
-from port_ocean.exceptions.core import OceanAbortException
 from loguru import logger
 from github.core.options import (
     FileContentOptions,
@@ -421,13 +421,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             if e.response.status_code == 403:
                 raise GitHubTreeFetchError(
                     f"Tree fetch failed for {organization}/{repo}@{branch}: "
-                    f"Permission denied or GitHub unavailable (403). "
+                    f"GitHub API returned {e.response.status_code}. "
                     f"Entities will be preserved until next successful resync."
                 ) from e
-            logger.error(
-                f"Tree fetch returned {e.response.status_code} for {organization}/{repo}@{branch}, returning empty"
-            )
-            return [], False
+    
 
         if not response:
             logger.warning(

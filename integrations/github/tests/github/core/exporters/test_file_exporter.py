@@ -26,7 +26,6 @@ from github.core.options import (
 )
 from github.helpers.utils import GithubClientType, IgnoredError
 from port_ocean.context.event import event_context
-from port_ocean.exceptions.core import OceanAbortException
 from typing import AsyncGenerator, List, Dict, Any
 
 from integration import GithubFilePattern, RepositoryBranchMapping
@@ -640,18 +639,14 @@ class TestRestFileExporter:
             with pytest.raises(GitHubTreeFetchError) as exc_info:
                 await exporter.get_tree_recursive(organization, "repo1", "main")
 
-            # Verify error message includes useful context
-            assert "Permission denied" in str(
-                exc_info.value
-            ) or "GitHub unavailable" in str(exc_info.value)
+            assert "GitHub API returned 403" in str(exc_info.value)
             assert "repo1@main" in str(exc_info.value)
 
     async def test_get_paginated_resources_mixed_403_and_valid_repos(
         self, rest_client: GithubRestClient
     ) -> None:
         """When multiple repos are processed and one fails with 403, the error is collected
-        but other repos are still processed. OceanAbortException is raised at the end with
-        the collected errors, preventing reconciliation deletes while allowing partial data.
+        but other repos are still processed. The first tree-fetch error is re-raised at the end.
         See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
         """
         exporter = RestFileExporter(rest_client)
@@ -696,7 +691,9 @@ class TestRestFileExporter:
         ) -> tuple[List[Dict[str, Any]], bool]:
             if repo == "broken-repo":
                 raise GitHubTreeFetchError(
-                    f"Tree fetch failed for {org}/{repo}@{branch}: Permission denied or GitHub unavailable (403). Entities will be preserved until next successful resync."
+                    f"Tree fetch failed for {org}/{repo}@{branch}: "
+                    f"GitHub API returned 403. "
+                    f"Entities will be preserved until next successful resync."
                 )
             return (TEST_TREE_ENTRIES, False)
 
@@ -718,13 +715,11 @@ class TestRestFileExporter:
             ),
         ):
             async with event_context("test_event"):
-                with pytest.raises(OceanAbortException) as exc_info:
+                with pytest.raises(GitHubTreeFetchError) as exc_info:
                     async for _ in exporter.get_paginated_resources(options):
                         pass
 
-                # Error message should indicate files were processed but there's an error
-                assert "File fetch failed with 1 error(s)" in str(exc_info.value)
-                assert "synced with issues" in str(exc_info.value)
+                assert "broken-repo@main" in str(exc_info.value)
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
