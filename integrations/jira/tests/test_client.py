@@ -615,6 +615,56 @@ async def test_create_issue(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_single_issue_with_fields(mock_jira_client: JiraClient) -> None:
+    issue_data = {"key": "TEST-1", "fields": {"status": {"name": "Done"}}}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = issue_data
+        result = await mock_jira_client.get_single_issue("TEST-1", fields="status")
+
+        mock_request.assert_called_once_with(
+            "GET",
+            f"{mock_jira_client.api_url}/issue/TEST-1",
+            params={"fields": "status"},
+        )
+        assert result == issue_data
+
+
+@pytest.mark.asyncio
+async def test_get_issue_transitions(mock_jira_client: JiraClient) -> None:
+    transitions = {"transitions": [{"id": "21", "to": {"name": "In Progress"}}]}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = transitions
+        result = await mock_jira_client.get_issue_transitions("TEST-1")
+
+        mock_request.assert_called_once_with(
+            "GET",
+            f"{mock_jira_client.api_url}/issue/TEST-1/transitions",
+        )
+        assert result == transitions
+
+
+@pytest.mark.asyncio
+async def test_transition_issue(mock_jira_client: JiraClient) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = None
+        await mock_jira_client.transition_issue("TEST-1", "21")
+
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{mock_jira_client.api_url}/issue/TEST-1/transitions",
+            json={"transition": {"id": "21"}},
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_issues with params including JQL filtering"""
 
