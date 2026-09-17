@@ -101,7 +101,7 @@ class TestDispatchWorkflowExecutor:
         )
 
         with patch(
-            "github.actions.dispatch_workflow_executor.create_github_client_for_org",
+            "github.actions.abstract_github_executor.create_github_client_for_org",
             new=AsyncMock(return_value=mock_rest_client),
         ) as create_client:
             executor = DispatchWorkflowExecutor()
