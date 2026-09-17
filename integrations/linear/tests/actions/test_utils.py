@@ -1,7 +1,7 @@
 import pytest
 
 from linear.actions.types import CreateIssuePayload, UpdateIssuePayload
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import MissingExecutionPropertyError
 
 
 def test_create_issue_payload_keeps_priority_label() -> None:

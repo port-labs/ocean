@@ -4,7 +4,7 @@ import pytest
 
 from linear.actions.create_sub_issue_executor import CreateSubIssueExecutor
 from linear.core.mutations.issue.types import IssueCreateMutationPayload
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
 
 
