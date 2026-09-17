@@ -1,12 +1,15 @@
 from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
 from urllib.parse import quote
+import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client_for_org
 from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
+from github.helpers.exceptions import GitHubTreeFetchError
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
 )
+from port_ocean.exceptions.core import OceanAbortException
 from loguru import logger
 from github.core.options import (
     FileContentOptions,
@@ -87,6 +90,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         graphql_files = []
         rest_files = []
+        fetch_errors = []
 
         for repo_options in options:
             data = dict(repo_options)
@@ -97,9 +101,14 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing repository {repo_name} with {len(files)} file patterns"
             )
 
-            gql, rest = await self.collect_matched_files(repo_name, files)
-            graphql_files.extend(gql)
-            rest_files.extend(rest)
+            try:
+                gql, rest = await self.collect_matched_files(repo_name, files)
+                graphql_files.extend(gql)
+                rest_files.extend(rest)
+            except GitHubTreeFetchError as e:
+                logger.warning(f"Skipping {repo_name}: {e}")
+                fetch_errors.append(e)
+                continue
 
         logger.info(f"Processing {len(graphql_files)} GraphQL files")
         async for result in self.process_graphql_files(graphql_files):
@@ -108,6 +117,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(f"Processing {len(rest_files)} REST API files")
         async for result in self.process_rest_api_files(rest_files):
             yield result
+
+        if fetch_errors:
+            raise OceanAbortException(
+                f"File fetch failed with {len(fetch_errors)} error(s): "
+                f"Kind will be marked as synced with issues, entities preserved."
+            ) from fetch_errors[0]
 
     async def collect_matched_files(
         self, repo_name: str, file_patterns: List[FileSearchOptions]
@@ -396,9 +411,24 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> tuple[List[Dict[str, Any]], bool]:
         """Retrieve the recursive tree and whether GitHub truncated the response."""
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
-        response = await self.client.send_api_request(
-            tree_url, ignored_errors=self._IGNORED_ERRORS
-        )
+        try:
+            response = await self.client.send_api_request(
+                tree_url,
+                ignored_errors=self._IGNORED_ERRORS,
+                ignore_default_errors=False,
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                raise GitHubTreeFetchError(
+                    f"Tree fetch failed for {organization}/{repo}@{branch}: "
+                    f"Permission denied or GitHub unavailable (403). "
+                    f"Entities will be preserved until next successful resync."
+                ) from e
+            logger.error(
+                f"Tree fetch returned {e.response.status_code} for {organization}/{repo}@{branch}, returning empty"
+            )
+            return [], False
+
         if not response:
             logger.warning(
                 f"Did not retrieve tree from {repo}@{branch} from {organization}"

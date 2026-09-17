@@ -89,9 +89,11 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-target-version = "py311"
 
 [tool.ruff.lint.per-file-ignores]
 # Ignore unused imports in __init__ files
