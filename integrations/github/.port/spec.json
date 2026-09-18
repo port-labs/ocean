@@ -335,6 +335,158 @@
       ]
     },
     {
+      "name": "create_issue",
+      "icon": "Github",
+      "description": "Create a GitHub Issue",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The title of the issue",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Body",
+          "type": "string",
+          "description": "The description of the issue"
+        },
+        {
+          "name": "labels",
+          "title": "Labels",
+          "type": "array",
+          "description": "Labels to apply to the issue"
+        },
+        {
+          "name": "assignees",
+          "title": "Assignees",
+          "type": "array",
+          "description": "GitHub usernames to assign to the issue"
+        },
+        {
+          "name": "milestone",
+          "title": "Milestone",
+          "type": "number",
+          "description": "Milestone number to associate with the issue"
+        }
+      ]
+    },
+    {
+      "name": "edit_issue",
+      "icon": "Github",
+      "description": "Edit a GitHub Issue",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "issueNumber",
+          "title": "Issue number",
+          "type": "number",
+          "description": "The number of the issue to edit",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The new title of the issue"
+        },
+        {
+          "name": "body",
+          "title": "Body",
+          "type": "string",
+          "description": "The new description of the issue"
+        },
+        {
+          "name": "labels",
+          "title": "Labels",
+          "type": "array",
+          "description": "Replaces all labels on the issue (GitHub PATCH is not additive)"
+        },
+        {
+          "name": "assignees",
+          "title": "Assignees",
+          "type": "array",
+          "description": "Replaces issue assignees (GitHub PATCH is not additive)"
+        },
+        {
+          "name": "milestone",
+          "title": "Milestone",
+          "type": "number",
+          "description": "Milestone number to associate with the issue (null to remove)"
+        }
+      ]
+    },
+    {
+      "name": "close_issue",
+      "icon": "Github",
+      "description": "Close a GitHub Issue",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "issueNumber",
+          "title": "Issue number",
+          "type": "number",
+          "description": "The number of the issue to close",
+          "required": true
+        },
+        {
+          "name": "stateReason",
+          "title": "Close reason",
+          "type": "string",
+          "description": "The reason for closing: completed, not_planned, or duplicate",
+          "enum": ["completed", "not_planned", "duplicate"],
+          "default": "completed"
+        },
+        {
+          "name": "duplicateIssueId",
+          "title": "Duplicate of issue ID",
+          "type": "number",
+          "description": "The ID of the issue this is a duplicate of (required when close reason is 'duplicate')"
+        }
+      ]
+    },
+    {
       "name": "create_pull_request",
       "icon": "Github",
       "description": "Open a GitHub Pull Request",
