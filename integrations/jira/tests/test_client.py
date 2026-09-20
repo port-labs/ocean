@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from jira.api_models import JiraIssueTransitionsResponse
+from jira.api_models import JiraIssueComment, JiraIssueTransitionsResponse
 from jira.client import (
     PAGE_SIZE,
     WEBHOOK_EVENTS,
@@ -695,7 +695,22 @@ async def test_add_comment(mock_jira_client: JiraClient) -> None:
             f"{mock_jira_client.api_url}/issue/PORT-1/comment",
             json=payload,
         )
-        assert result == created_comment
+        assert result == JiraIssueComment.model_validate(created_comment)
+
+
+@pytest.mark.asyncio
+async def test_add_comment_raises_for_invalid_payload(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {}
+
+        with pytest.raises(ValidationError):
+            await mock_jira_client.add_comment(
+                "PORT-1", {"body": {"type": "doc", "version": 1, "content": []}}
+            )
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic import Field
+from pydantic import Field, ValidationError
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 
@@ -46,12 +46,10 @@ class AddCommentExecutor(AbstractJiraExecutor):
                 error.response,
                 f"Could not add comment to issue '{action_input.issue_key}'",
             )
-
-        comment_id = created_comment.get("id")
-        if comment_id is None:
+        except ValidationError as error:
             raise AddCommentError(
                 "Failed to add comment: Jira returned an empty or incomplete response"
-            )
+            ) from error
 
         issue_url = get_issue_browse_url(
             self.client.jira_url,
@@ -70,13 +68,13 @@ class AddCommentExecutor(AbstractJiraExecutor):
         logger.info(
             "Added Jira comment",
             issue_key=action_input.issue_key,
-            comment_id=comment_id,
+            comment_id=created_comment.id,
         )
 
         if isinstance(run, WorkflowNodeRun):
             run.output = {
                 "issueKey": action_input.issue_key,
-                "commentId": str(comment_id),
+                "commentId": created_comment.id,
                 "issueUrl": issue_url or "",
             }
         await ocean.port_client.report_run_completed(

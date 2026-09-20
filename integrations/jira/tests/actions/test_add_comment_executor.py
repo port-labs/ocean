@@ -12,11 +12,14 @@ from port_ocean.core.models import (
 
 from jira.actions.add_comment_executor import AddCommentExecutor, AddCommentInput
 from jira.actions.exceptions import AddCommentError, MissingExecutionPropertyError
+from jira.api_models import JiraIssueComment
 
-ADD_COMMENT_RESPONSE = {
-    "id": "10050",
-    "self": "https://example.atlassian.net/rest/api/3/issue/10001/comment/10050",
-}
+ADD_COMMENT_RESPONSE = JiraIssueComment.model_validate(
+    {
+        "id": "10050",
+        "self": "https://example.atlassian.net/rest/api/3/issue/10001/comment/10050",
+    }
+)
 
 
 def make_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -173,7 +176,9 @@ async def test_add_comment_malformed_upstream_response(
     executor: AddCommentExecutor, mock_port_client: MagicMock
 ) -> None:
     # Arrange
-    executor.client.add_comment = AsyncMock(return_value={})  # type: ignore[method-assign]
+    executor.client.add_comment = AsyncMock(  # type: ignore[method-assign]
+        side_effect=ValidationError.from_exception_data("JiraIssueComment", [])
+    )
     run = make_run({"issueKey": "PORT-42", "comment": "Looks good to me"})
 
     # Act + Assert
