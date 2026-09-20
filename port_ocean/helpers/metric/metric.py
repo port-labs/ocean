@@ -89,6 +89,11 @@ class MetricType:
     RESPONSE_SIZE_AVG_NAME = "response_size_avg_bytes"
     RESPONSE_SIZE_MEDIAN_NAME = "response_size_median_bytes"
 
+    INCREMENTAL_CURSOR_AGE_NAME = "incremental_sync_cursor_age_seconds"
+    INCREMENTAL_KIND_DURATION_NAME = "incremental_sync_kind_duration_seconds"
+    INCREMENTAL_RUN_ERRORS_TOTAL_NAME = "incremental_sync_run_errors_total"
+    INCREMENTAL_RUN_INTERRUPTED_TOTAL_NAME = "incremental_sync_run_interrupted_total"
+
 
 class SyncState:
     SYNCING = "syncing"
@@ -189,6 +194,26 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         MetricType.RESPONSE_SIZE_MEDIAN_NAME,
         "Median size of HTTP responses received during kind processing",
         ["kind"],
+    ),
+    MetricType.INCREMENTAL_CURSOR_AGE_NAME: (
+        MetricType.INCREMENTAL_CURSOR_AGE_NAME,
+        "Cursor age in seconds at the start of incremental sync for a kind",
+        ["integration_type", "kind"],
+    ),
+    MetricType.INCREMENTAL_KIND_DURATION_NAME: (
+        MetricType.INCREMENTAL_KIND_DURATION_NAME,
+        "Wall-clock duration in seconds to sync one kind incrementally",
+        ["integration_type", "kind"],
+    ),
+    MetricType.INCREMENTAL_RUN_ERRORS_TOTAL_NAME: (
+        MetricType.INCREMENTAL_RUN_ERRORS_TOTAL_NAME,
+        "Failed incremental sync runs by reason",
+        ["integration_type", "reason"],
+    ),
+    MetricType.INCREMENTAL_RUN_INTERRUPTED_TOTAL_NAME: (
+        MetricType.INCREMENTAL_RUN_INTERRUPTED_TOTAL_NAME,
+        "Incremental sync runs interrupted before completion",
+        ["integration_type", "reason"],
     ),
 }
 

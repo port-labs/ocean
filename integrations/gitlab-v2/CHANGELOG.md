@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.3 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 0.11.2 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 0.11.1 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.11.0 (2026-09-14)
+
+
+### Features
+
+- Added a create_merge_request action that creates a GitLab merge request
+
+
+## 0.10.1 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.10.0 (2026-09-09)
+
+
+### Improvements
+
+- Added status labels to the trigger_pipeline action, so Port shows when a pipeline is being triggered, running, or finished with its GitLab status
+
+
 ## 0.9.47 (2026-09-07)
 
 

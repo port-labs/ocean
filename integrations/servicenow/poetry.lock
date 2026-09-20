@@ -1648,14 +1648,14 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.51.1"
+version = "0.52.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "port_ocean-0.51.1-py3-none-any.whl", hash = "sha256:c1ca4e8812d1adcca23d717697964203a6c2cc788d78df5601c577b3ca7e2263"},
-    {file = "port_ocean-0.51.1.tar.gz", hash = "sha256:c154459860d9dddf3cbc1a4402b7ba7b70ce299135864bf5c868d30f02cc7a5d"},
+    {file = "port_ocean-0.52.0-py3-none-any.whl", hash = "sha256:e1e7494a65c4102a213a79745f51d634258845f07800246efc0cb04400be927b"},
+    {file = "port_ocean-0.52.0.tar.gz", hash = "sha256:63f93bf535c067a1e53c5c3c46d13866bfa289dae39350decc6af43fab496578"},
 ]
 
 [package.dependencies]
@@ -1698,6 +1698,7 @@ virtualenv = ">=20.36.1,<21.0.0"
 werkzeug = ">=3.1.6,<4.0.0"
 
 [package.extras]
+aws-vault = ["boto3 (>=1.43.64,<2.0.0)"]
 cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-strcase (>=0.0.2,<0.0.3)", "jinja2-time (>=0.2.0,<0.3.0)", "jsonref (>=1.1.0,<2.0.0)", "rich (>=13.4.1,<14.0.0)"]
 
 [[package]]
@@ -2682,4 +2683,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "ruff", "sph
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "5cafaf42b3409702a4f4007e9dfda8d9a6eaaba97039da45fb38edad6e057461"
+content-hash = "70357d99c3b059cd173462ab213257a24fce9d2fde7ab207691174b6db72fdf0"
