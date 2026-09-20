@@ -174,7 +174,7 @@
   "saas": {
     "enabled": true,
     "liveEvents": {
-      "enabled": false
+      "enabled": true
     }
   }
 }

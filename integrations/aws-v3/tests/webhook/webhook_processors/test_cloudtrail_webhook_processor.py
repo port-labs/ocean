@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Generator, cast
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -334,14 +334,6 @@ def _delete_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
     }
 
 
-@pytest.fixture(autouse=True)
-def _live_events_feature_flag_enabled() -> Generator[None, None, None]:
-    with patch(
-        f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-    ):
-        yield
-
-
 @pytest.fixture
 def processor() -> CloudTrailWebhookProcessor:
     return CloudTrailWebhookProcessor(
@@ -376,28 +368,10 @@ async def test_get_matching_kinds_returns_s3_bucket(
 
 
 @pytest.mark.asyncio
-async def test_authenticate_fails_when_feature_flag_disabled(
-    processor: CloudTrailWebhookProcessor,
-) -> None:
-    with patch(
-        f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=False)
-    ):
-        result = await processor.authenticate(
-            {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
-        )
-    assert result is False
-
-
-@pytest.mark.asyncio
 async def test_authenticate_succeeds_with_matching_api_key(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with (
-        patch(
-            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-        ),
-        patch(f"{MODULE}.get_live_events_api_key", return_value="secret"),
-    ):
+    with patch(f"{MODULE}.get_live_events_api_key", return_value="secret"):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
         )
@@ -408,12 +382,7 @@ async def test_authenticate_succeeds_with_matching_api_key(
 async def test_authenticate_fails_with_wrong_api_key(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with (
-        patch(
-            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-        ),
-        patch(f"{MODULE}.get_live_events_api_key", return_value="secret"),
-    ):
+    with patch(f"{MODULE}.get_live_events_api_key", return_value="secret"):
         result = await processor.authenticate({}, {LIVE_EVENTS_API_KEY_HEADER: "wrong"})
     assert result is False
 
@@ -422,12 +391,7 @@ async def test_authenticate_fails_with_wrong_api_key(
 async def test_authenticate_fails_when_not_configured(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with (
-        patch(
-            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-        ),
-        patch(f"{MODULE}.get_live_events_api_key", return_value=None),
-    ):
+    with patch(f"{MODULE}.get_live_events_api_key", return_value=None):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "anything"}
         )

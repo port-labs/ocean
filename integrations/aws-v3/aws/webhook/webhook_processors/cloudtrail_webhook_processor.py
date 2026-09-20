@@ -42,7 +42,6 @@ from aws.webhook.cloudtrail_parser import (
 )
 from aws.config.live_events import get_live_events_api_key
 from aws.webhook.consts import LIVE_EVENTS_API_KEY_HEADER
-from aws.utils.feature_flags import is_aws_v3_live_events_enabled
 
 _EMPTY_RESULTS = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
@@ -64,10 +63,6 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
-        if not await is_aws_v3_live_events_enabled():
-            logger.debug("AWS-v3 live events are disabled by organization feature flag")
-            return False
-
         expected_api_key = get_live_events_api_key()
         if not expected_api_key:
             logger.warning(
