@@ -1,11 +1,15 @@
+import asyncio
 from collections import Counter
-from collections.abc import Collection
+from collections.abc import Awaitable, Callable, Collection
 from dataclasses import dataclass
 from typing import Optional
 
 from loguru import logger
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
+
+CreateSubscription = Callable[[WebhookSubscription], Awaitable[Optional[str]]]
+DeleteSubscription = Callable[[WebhookSubscription], Awaitable[None]]
 
 
 @dataclass(frozen=True)
@@ -97,6 +101,100 @@ def plan_webhook_subscription_reconciliation(
         subs_to_delete=subs_to_delete,
         action_counts=action_counts,
         skipped_project_scoped_count=skipped_project_scoped_count,
+    )
+
+
+async def create_webhook_subscription_batch(
+    subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]],
+    create_subscription: CreateSubscription,
+    max_concurrent_requests: int,
+) -> tuple[list[str], list[WebhookSubscription], int]:
+    created_sub_ids: list[str] = []
+    stale_subscriptions_to_delete: list[WebhookSubscription] = []
+    failed_create_count = 0
+
+    if not subs_to_create:
+        return created_sub_ids, stale_subscriptions_to_delete, failed_create_count
+
+    semaphore = asyncio.BoundedSemaphore(max_concurrent_requests)
+
+    async def create(subscription: WebhookSubscription) -> Optional[str]:
+        async with semaphore:
+            try:
+                return await create_subscription(subscription)
+            except Exception as e:
+                logger.error(
+                    f"Failed to create webhook subscription: "
+                    f"subscription={subscription.json()}, "
+                    f"errorType={type(e).__name__}, error={e}"
+                )
+                raise
+
+    results = await asyncio.gather(
+        *[create(sub) for sub, _ in subs_to_create],
+        return_exceptions=True,
+    )
+
+    for (_, subscriptions_to_replace), result in zip(subs_to_create, results):
+        if isinstance(result, Exception):
+            failed_create_count += 1
+            logger.error(f"Failed to create webhook: {type(result).__name__}: {result}")
+        elif isinstance(result, str):
+            created_sub_ids.append(result)
+            stale_subscriptions_to_delete.extend(subscriptions_to_replace)
+
+    return created_sub_ids, stale_subscriptions_to_delete, failed_create_count
+
+
+async def delete_webhook_subscriptions(
+    subscriptions: list[WebhookSubscription],
+    delete_subscription: DeleteSubscription,
+    max_deletes_per_reconciliation: int,
+    max_concurrent_requests: int,
+) -> None:
+    subscriptions = dedupe_subscriptions_by_id(subscriptions)
+    if not subscriptions:
+        return
+
+    total_subscription_count = len(subscriptions)
+    subscriptions = subscriptions[:max_deletes_per_reconciliation]
+    deferred_delete_count = total_subscription_count - len(subscriptions)
+    if deferred_delete_count:
+        logger.info(
+            f"Deferring duplicate/stale webhook subscription deletes: "
+            f"deferred={deferred_delete_count}, "
+            f"maxPerRun={max_deletes_per_reconciliation}"
+        )
+
+    logger.info(
+        f"Deleting duplicate/stale webhook subscriptions: count={len(subscriptions)}"
+    )
+    semaphore = asyncio.BoundedSemaphore(max_concurrent_requests)
+
+    async def delete(subscription: WebhookSubscription) -> None:
+        async with semaphore:
+            await delete_subscription(subscription)
+
+    results = await asyncio.gather(
+        *[delete(subscription) for subscription in subscriptions],
+        return_exceptions=True,
+    )
+
+    failed_delete_count = 0
+    for subscription, result in zip(subscriptions, results):
+        if isinstance(result, Exception):
+            failed_delete_count += 1
+            logger.error(
+                f"Failed to delete duplicate webhook subscription: "
+                f"subscription={subscription.json()}, "
+                f"errorType={type(result).__name__}, error={result}"
+            )
+    logger.info(
+        f"Finished deleting duplicate/stale webhook subscriptions: "
+        f"requested={len(subscriptions)}, "
+        f"deleted={len(subscriptions) - failed_delete_count}, "
+        f"failed={failed_delete_count}, "
+        f"deferred={deferred_delete_count}"
     )
 
 

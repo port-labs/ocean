@@ -1,5 +1,9 @@
-from azure_devops.webhooks.subscription_reconciler import (
+import pytest
+
+from azure_devops.webhooks.subscription_reconciliation import (
+    create_webhook_subscription_batch,
     dedupe_subscriptions_by_id,
+    delete_webhook_subscriptions,
     plan_webhook_subscription_reconciliation,
 )
 from azure_devops.webhooks.webhook_event import (
@@ -155,3 +159,77 @@ def test_dedupe_subscriptions_by_id() -> None:
     assert dedupe_subscriptions_by_id(
         [subscription, duplicate_subscription, subscription_without_id]
     ) == [subscription]
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_subscription_batch_returns_created_and_stale() -> None:
+    desired_subscription = WebhookSubscription(publisherId="tfs", eventType="git.push")
+    stale_subscription = WebhookSubscription(
+        id="stale-subscription-id",
+        publisherId="tfs",
+        eventType="git.push",
+    )
+
+    async def create_subscription(_: WebhookSubscription) -> str:
+        return "created-subscription-id"
+
+    created_sub_ids, stale_subscriptions, failed_create_count = (
+        await create_webhook_subscription_batch(
+            subs_to_create=[(desired_subscription, [stale_subscription])],
+            create_subscription=create_subscription,
+            max_concurrent_requests=1,
+        )
+    )
+
+    assert created_sub_ids == ["created-subscription-id"]
+    assert stale_subscriptions == [stale_subscription]
+    assert failed_create_count == 0
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_subscription_batch_tracks_failures() -> None:
+    desired_subscription = WebhookSubscription(publisherId="tfs", eventType="git.push")
+    stale_subscription = WebhookSubscription(
+        id="stale-subscription-id",
+        publisherId="tfs",
+        eventType="git.push",
+    )
+
+    async def create_subscription(_: WebhookSubscription) -> str:
+        raise RuntimeError("failed")
+
+    created_sub_ids, stale_subscriptions, failed_create_count = (
+        await create_webhook_subscription_batch(
+            subs_to_create=[(desired_subscription, [stale_subscription])],
+            create_subscription=create_subscription,
+            max_concurrent_requests=1,
+        )
+    )
+
+    assert created_sub_ids == []
+    assert stale_subscriptions == []
+    assert failed_create_count == 1
+
+
+@pytest.mark.asyncio
+async def test_delete_webhook_subscriptions_caps_and_dedupes() -> None:
+    deleted_subscription_ids: list[str] = []
+    subscriptions = [
+        WebhookSubscription(id="sub-1", publisherId="tfs", eventType="git.push"),
+        WebhookSubscription(id="sub-1", publisherId="tfs", eventType="git.push"),
+        WebhookSubscription(id="sub-2", publisherId="tfs", eventType="git.push"),
+        WebhookSubscription(id="sub-3", publisherId="tfs", eventType="git.push"),
+    ]
+
+    async def delete_subscription(subscription: WebhookSubscription) -> None:
+        assert subscription.id is not None
+        deleted_subscription_ids.append(subscription.id)
+
+    await delete_webhook_subscriptions(
+        subscriptions=subscriptions,
+        delete_subscription=delete_subscription,
+        max_deletes_per_reconciliation=2,
+        max_concurrent_requests=1,
+    )
+
+    assert deleted_subscription_ids == ["sub-1", "sub-2"]

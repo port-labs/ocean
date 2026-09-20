@@ -15,7 +15,9 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
-from azure_devops.webhooks.subscription_reconciler import (
+from azure_devops.webhooks.subscription_reconciliation import (
+    create_webhook_subscription_batch,
+    delete_webhook_subscriptions,
     dedupe_subscriptions_by_id,
     plan_webhook_subscription_reconciliation,
 )
@@ -2893,97 +2895,6 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", url, params=API_PARAMS)
         return response.json() if response else {}
 
-    async def _create_webhook_subscription_batch(
-        self,
-        subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]],
-    ) -> tuple[list[str], list[WebhookSubscription], int]:
-        created_sub_ids: list[str] = []
-        stale_subscriptions_to_delete: list[WebhookSubscription] = []
-        failed_create_count = 0
-
-        if not subs_to_create:
-            return created_sub_ids, stale_subscriptions_to_delete, failed_create_count
-
-        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
-
-        async def create(subscription: WebhookSubscription) -> Optional[str]:
-            async with semaphore:
-                try:
-                    return await self.create_subscription(subscription)
-                except Exception as e:
-                    logger.error(
-                        f"Failed to create webhook subscription: "
-                        f"subscription={subscription.json()}, "
-                        f"errorType={type(e).__name__}, error={e}"
-                    )
-                    raise
-
-        results = await asyncio.gather(
-            *[create(sub) for sub, _ in subs_to_create],
-            return_exceptions=True,
-        )
-
-        for (_, subscriptions_to_replace), result in zip(subs_to_create, results):
-            if isinstance(result, Exception):
-                failed_create_count += 1
-                logger.error(
-                    f"Failed to create webhook: {type(result).__name__}: {result}"
-                )
-            elif isinstance(result, str):
-                created_sub_ids.append(result)
-                stale_subscriptions_to_delete.extend(subscriptions_to_replace)
-
-        return created_sub_ids, stale_subscriptions_to_delete, failed_create_count
-
-    async def _delete_webhook_subscriptions(
-        self,
-        subscriptions: list[WebhookSubscription],
-    ) -> None:
-        subscriptions = dedupe_subscriptions_by_id(subscriptions)
-        if not subscriptions:
-            return
-
-        total_subscription_count = len(subscriptions)
-        subscriptions = subscriptions[:MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION]
-        deferred_delete_count = total_subscription_count - len(subscriptions)
-        if deferred_delete_count:
-            logger.info(
-                f"Deferring duplicate/stale webhook subscription deletes: "
-                f"deferred={deferred_delete_count}, "
-                f"maxPerRun={MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION}"
-            )
-
-        logger.info(
-            f"Deleting duplicate/stale webhook subscriptions: "
-            f"count={len(subscriptions)}"
-        )
-        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
-
-        async def delete(subscription: WebhookSubscription) -> None:
-            async with semaphore:
-                await self.delete_subscription(subscription)
-
-        results = await asyncio.gather(
-            *[delete(sub) for sub in subscriptions], return_exceptions=True
-        )
-
-        failed_delete_count = 0
-        for subscription, result in zip(subscriptions, results):
-            if isinstance(result, Exception):
-                failed_delete_count += 1
-                logger.error(
-                    f"Failed to delete duplicate webhook subscription: "
-                    f"subscription={subscription.json()}, "
-                    f"errorType={type(result).__name__}, error={result}"
-                )
-        logger.info(
-            f"Finished deleting duplicate/stale webhook subscriptions: "
-            f"requested={len(subscriptions)}, "
-            f"deleted={len(subscriptions) - failed_delete_count}, "
-            f"failed={failed_delete_count}, "
-            f"deferred={deferred_delete_count}"
-        )
-
     async def create_webhook_subscriptions(
         self,
         base_url: str,
@@ -3010,7 +2921,11 @@ class AzureDevopsClient(HTTPBaseClient):
             created_sub_ids,
             stale_subscriptions_to_delete,
             failed_create_count,
-        ) = await self._create_webhook_subscription_batch(plan.subs_to_create)
+        ) = await create_webhook_subscription_batch(
+            subs_to_create=plan.subs_to_create,
+            create_subscription=self.create_subscription,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
 
         subscriptions_to_delete = plan.subs_to_delete + stale_subscriptions_to_delete
         delete_candidate_count = len(
@@ -3025,7 +2940,12 @@ class AzureDevopsClient(HTTPBaseClient):
             f"actions={dict(plan.action_counts)}"
         )
 
-        await self._delete_webhook_subscriptions(subscriptions_to_delete)
+        await delete_webhook_subscriptions(
+            subscriptions=subscriptions_to_delete,
+            delete_subscription=self.delete_subscription,
+            max_deletes_per_reconciliation=MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
 
         # Return all active subscription IDs so the caller can populate the
         # subscription registry for webhook event routing.
