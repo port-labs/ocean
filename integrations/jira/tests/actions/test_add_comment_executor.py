@@ -96,7 +96,10 @@ async def test_add_comment_happy_path(
     run = make_run({"issueKey": "PORT-42", "comment": "Looks good to me"})
 
     # Act
-    with patch("jira.actions.add_comment_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.add_comment_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         await executor.execute(run)
 
@@ -137,7 +140,10 @@ async def test_add_comment_missing_required_input(
     run = make_run({"comment": "Looks good to me"})
 
     # Act + Assert
-    with patch("jira.actions.add_comment_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.add_comment_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         with pytest.raises(MissingExecutionPropertyError) as exc_info:
             await executor.execute(run)
@@ -163,7 +169,10 @@ async def test_add_comment_upstream_http_error(
     run = make_run({"issueKey": "PORT-42", "comment": "Looks good to me"})
 
     # Act + Assert
-    with patch("jira.actions.add_comment_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.add_comment_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         with pytest.raises(AddCommentError, match="Issue does not exist") as exc_info:
             await executor.execute(run)
@@ -182,7 +191,10 @@ async def test_add_comment_malformed_upstream_response(
     run = make_run({"issueKey": "PORT-42", "comment": "Looks good to me"})
 
     # Act + Assert
-    with patch("jira.actions.add_comment_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.add_comment_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         with pytest.raises(AddCommentError, match="empty or incomplete"):
             await executor.execute(run)

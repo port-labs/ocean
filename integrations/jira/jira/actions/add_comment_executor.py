@@ -4,12 +4,12 @@ import httpx
 from loguru import logger
 from pydantic import Field, ValidationError
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import AddCommentError
-from jira.actions.utils import get_issue_browse_url, plain_text_adf
+from jira.actions.utils import plain_text_adf
 
 
 class AddCommentInput(AbstractJiraActionInput):
@@ -51,35 +51,16 @@ class AddCommentExecutor(AbstractJiraExecutor):
                 "Failed to add comment: Jira returned an empty or incomplete response"
             ) from error
 
-        issue_url = get_issue_browse_url(
-            self.client.jira_url,
-            action_input.issue_key,
-            oauth_enabled=self.client.is_oauth_enabled(),
-        )
-        message = f"Added comment to {action_input.issue_key}"
-        if issue_url:
-            message = f"{message}: {issue_url}"
-
-        await ocean.port_client.post_run_log(
-            run,
-            message,
-            should_raise=False,
-        )
         logger.info(
             "Added Jira comment",
             issue_key=action_input.issue_key,
             comment_id=created_comment.id,
         )
 
-        if isinstance(run, WorkflowNodeRun):
-            run.output = {
-                "issueKey": action_input.issue_key,
-                "commentId": created_comment.id,
-                "issueUrl": issue_url or "",
-            }
-        await ocean.port_client.report_run_completed(
+        await self._complete_issue_action(
             run,
-            success=True,
-            message=message,
+            issue_key=action_input.issue_key,
+            message=f"Added comment to {action_input.issue_key}",
             status_label="Comment added",
+            output={"commentId": created_comment.id},
         )

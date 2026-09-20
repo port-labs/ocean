@@ -4,12 +4,11 @@ import httpx
 from loguru import logger
 from pydantic import Field
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import CreateIssueError
-from jira.actions.utils import get_issue_browse_url
 
 
 class CreateIssueInput(AbstractJiraActionInput):
@@ -76,23 +75,6 @@ class CreateIssueExecutor(AbstractJiraExecutor):
                 "Failed to create issue: Jira returned an empty or incomplete response"
             )
 
-        message = f"Created issue {issue_key}"
-        issue_link = (
-            get_issue_browse_url(
-                self.client.jira_url,
-                issue_key,
-                oauth_enabled=self.client.is_oauth_enabled(),
-            )
-            or ""
-        )
-        if issue_link:
-            message = f"{message}: {issue_link}"
-
-        await ocean.port_client.post_run_log(
-            run,
-            message,
-            should_raise=False,
-        )
         logger.info(
             "Created Jira issue",
             issue_key=issue_key,
@@ -100,15 +82,10 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             issue_type=action_input.issue_type,
         )
 
-        if isinstance(run, WorkflowNodeRun):
-            run.output = {
-                "issueKey": issue_key,
-                "issueId": str(created_issue.get("id")),
-                "issueUrl": issue_link,
-            }
-        await ocean.port_client.report_run_completed(
+        await self._complete_issue_action(
             run,
-            success=True,
-            message=message,
+            issue_key=issue_key,
+            message=f"Created issue {issue_key}",
             status_label="Issue created",
+            output={"issueId": str(created_issue.get("id"))},
         )
