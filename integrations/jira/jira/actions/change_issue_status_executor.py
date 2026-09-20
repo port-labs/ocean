@@ -90,7 +90,7 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
             run,
             action_input,
             resolved_status,
-            message=f"Changed issue {action_input.issue_key} to status '{resolved_status}'"
+            message=f"Changed issue {action_input.issue_key} to status '{resolved_status}'",
         )
 
         logger.info(
