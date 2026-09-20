@@ -615,6 +615,25 @@ async def test_create_issue(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_add_comment(mock_jira_client: JiraClient) -> None:
+    payload = {"body": {"type": "doc", "version": 1, "content": []}}
+    created_comment = {"id": "10050"}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = created_comment
+        result = await mock_jira_client.add_comment("PORT-1", payload)
+
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{mock_jira_client.api_url}/issue/PORT-1/comment",
+            json=payload,
+        )
+        assert result == created_comment
+
+
+@pytest.mark.asyncio
 async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_issues with params including JQL filtering"""
 

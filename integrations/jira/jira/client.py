@@ -622,6 +622,15 @@ class JiraClient(OAuthClient):
             json=payload,
         )
 
+    async def add_comment(
+        self, issue_key: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        return await self._send_api_request(
+            "POST",
+            f"{self.api_url}/issue/{issue_key}/comment",
+            json=payload,
+        )
+
     @staticmethod
     def _build_issue_search_body(
         jql: str,
