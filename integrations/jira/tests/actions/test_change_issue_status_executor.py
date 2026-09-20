@@ -294,12 +294,29 @@ def test_find_transition_for_status_matches_case_insensitively() -> None:
 
     # Act + Assert
     assert ChangeIssueStatusExecutor._find_transition_for_status(
-        transitions, "done"
+        transitions, "done", "PORT-42"
     ) == JiraIssueTransition(id="31", to=JiraTransitionStatus(name="Done"))
-    assert (
-        ChangeIssueStatusExecutor._find_transition_for_status(transitions, "Unknown")
-        is None
+
+
+def test_find_transition_for_status_raises_when_no_match() -> None:
+    # Arrange
+    transitions = JiraIssueTransitionsResponse.model_validate(
+        {
+            "transitions": [
+                {"id": "21", "to": {"name": "In Progress"}},
+                {"id": "31", "to": {"name": "Done"}},
+            ]
+        }
     )
+
+    # Act + Assert
+    with pytest.raises(
+        ChangeIssueStatusError,
+        match="Available target statuses: In Progress, Done",
+    ):
+        ChangeIssueStatusExecutor._find_transition_for_status(
+            transitions, "Unknown", "PORT-42"
+        )
 
 
 def test_get_available_transition_statuses() -> None:

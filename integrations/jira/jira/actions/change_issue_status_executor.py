@@ -73,19 +73,10 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
                 f"'{action_input.issue_key}'"
             ) from error
 
-        transition = self._find_transition_for_status(transitions, action_input.status)
-        if not transition:
-            available_statuses = self._get_available_transition_statuses(transitions)
-            available_statuses_text = (
-                ", ".join(available_statuses) if available_statuses else "none"
-            )
-            raise ChangeIssueStatusError(
-                f"No transition found to status '{action_input.status}' for issue "
-                f"'{action_input.issue_key}'. Available target statuses: "
-                f"{available_statuses_text}"
-            )
+        transition = self._find_transition_for_status(
+            transitions, action_input.status, action_input.issue_key
+        )
 
-        resolved_status = transition.to.name
         try:
             await self.client.transition_issue(action_input.issue_key, transition.id)
         except httpx.HTTPStatusError as error:
@@ -94,10 +85,14 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
                 f"Could not change status of issue '{action_input.issue_key}'",
             )
 
-        message = (
-            f"Changed issue {action_input.issue_key} to status '{resolved_status}'"
+        resolved_status = transition.to.name
+        await self._complete_run(
+            run,
+            action_input,
+            resolved_status,
+            message=f"Changed issue {action_input.issue_key} to status '{resolved_status}'"
         )
-        await self._complete_run(run, action_input, resolved_status, message)
+
         logger.info(
             "Changed Jira issue status",
             issue_key=action_input.issue_key,
@@ -160,12 +155,24 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
         cls,
         transitions_response: JiraIssueTransitionsResponse,
         target_status: str,
-    ) -> JiraIssueTransition | None:
+        issue_key: str,
+    ) -> JiraIssueTransition:
         normalized_target = cls._normalize_status_name(target_status)
         for transition in transitions_response.transitions:
             if cls._normalize_status_name(transition.to.name) == normalized_target:
                 return transition
-        return None
+
+        available_statuses = cls._get_available_transition_statuses(
+            transitions_response
+        )
+        available_statuses_text = (
+            ", ".join(available_statuses) if available_statuses else "none"
+        )
+        raise ChangeIssueStatusError(
+            f"No transition found to status '{target_status}' for issue "
+            f"'{issue_key}'. Available target statuses: "
+            f"{available_statuses_text}"
+        )
 
     @staticmethod
     def _get_available_transition_statuses(
