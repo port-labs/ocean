@@ -160,9 +160,7 @@ class TestCollaboratorTeamWebhookProcessor:
         payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
         payload["action"] = "added_to_repository"
 
-        rest_team_members_batch = [
-            {"id": 1, "login": "test-user", "site_admin": False}
-        ]
+        rest_team_members_batch = [{"id": 1, "login": "test-user", "site_admin": False}]
 
         with patch(
             "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
@@ -175,9 +173,7 @@ class TestCollaboratorTeamWebhookProcessor:
             ):
                 yield rest_team_members_batch
 
-            mock_client.send_paginated_request.return_value = (
-                mock_paginated_generator()
-            )
+            mock_client.send_paginated_request.return_value = mock_paginated_generator()
 
             result = await team_webhook_processor.handle_event(payload, resource_config)
 
@@ -225,9 +221,7 @@ class TestCollaboratorTeamWebhookProcessor:
             ):
                 yield rest_team_members_batch
 
-            mock_client.send_paginated_request.return_value = (
-                mock_paginated_generator()
-            )
+            mock_client.send_paginated_request.return_value = mock_paginated_generator()
 
             with patch(
                 "github.webhook.webhook_processors.collaborator_webhook_processor.utils.RestCollaboratorExporter"
@@ -252,7 +246,9 @@ class TestCollaboratorTeamWebhookProcessor:
             assert len(result.updated_raw_results) == 1
             assert result.updated_raw_results[0] == still_collaborator_data
             assert len(result.deleted_raw_results) == 1
-            assert result.deleted_raw_results[0]["login"] == "user-no-longer-collaborator"
+            assert (
+                result.deleted_raw_results[0]["login"] == "user-no-longer-collaborator"
+            )
             assert result.deleted_raw_results[0]["id"] == 2
             assert result.deleted_raw_results[0]["__repository"] == "test-repo"
             assert result.deleted_raw_results[0]["__organization"] == "test-org"
@@ -281,9 +277,7 @@ class TestCollaboratorTeamWebhookProcessor:
             ):
                 yield rest_team_members_batch
 
-            mock_client.send_paginated_request.return_value = (
-                mock_paginated_generator()
-            )
+            mock_client.send_paginated_request.return_value = mock_paginated_generator()
 
             with patch(
                 "github.webhook.webhook_processors.collaborator_webhook_processor.utils.RestCollaboratorExporter"

@@ -104,8 +104,12 @@ class CollaboratorTeamWebhookProcessor(
                 )
             )
 
-            updated = [item for result in results for item in result.updated_raw_results]
-            deleted = [item for result in results for item in result.deleted_raw_results]
+            updated = [
+                item for result in results for item in result.updated_raw_results
+            ]
+            deleted = [
+                item for result in results for item in result.deleted_raw_results
+            ]
 
             logger.info(
                 f"Reconciled {len(members)} members of team {team_slug} for "
