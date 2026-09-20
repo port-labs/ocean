@@ -89,17 +89,29 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
                 f"Could not change status of issue '{action_input.issue_key}'",
             )
 
-        message = (
-            f"Changed issue {action_input.issue_key} to status "
-            f"'{action_input.status}'"
+        resolved_status = await self._resolve_issue_status_after_transition(
+            action_input.issue_key, action_input.status
         )
-        await self._complete_run(run, action_input, action_input.status, message)
+        message = (
+            f"Changed issue {action_input.issue_key} to status " f"'{resolved_status}'"
+        )
+        await self._complete_run(run, action_input, resolved_status, message)
         logger.info(
             "Changed Jira issue status",
             issue_key=action_input.issue_key,
-            status=action_input.status,
+            status=resolved_status,
             transition_id=transition_id,
         )
+
+    async def _resolve_issue_status_after_transition(
+        self, issue_key: str, fallback_status: str
+    ) -> str:
+        try:
+            issue = await self.client.get_single_issue(issue_key, fields="status")
+        except httpx.HTTPStatusError:
+            return fallback_status
+        status_name = self._get_issue_status_name(issue)
+        return status_name if status_name else fallback_status
 
     async def _complete_run(
         self,

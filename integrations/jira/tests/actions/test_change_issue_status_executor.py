@@ -111,6 +111,12 @@ async def test_happy_path(
     executor: ChangeIssueStatusExecutor, mock_port_client: MagicMock
 ) -> None:
     # Arrange
+    executor.client.get_single_issue = AsyncMock(  # type: ignore[method-assign]
+        side_effect=[
+            {"fields": {"status": {"name": "To Do"}}},
+            {"fields": {"status": {"name": "In Progress"}}},
+        ]
+    )
     run = make_run({"issueKey": "PORT-42", "status": "In Progress"})
 
     # Act
@@ -119,9 +125,8 @@ async def test_happy_path(
         await executor.execute(run)
 
     # Assert
-    executor.client.get_single_issue.assert_awaited_once_with(  # type: ignore[attr-defined]
-        "PORT-42", fields="status"
-    )
+    assert executor.client.get_single_issue.await_count == 2
+    executor.client.get_single_issue.assert_any_await("PORT-42", fields="status")
     executor.client.get_issue_transitions.assert_awaited_once_with("PORT-42")  # type: ignore[attr-defined]
     executor.client.transition_issue.assert_awaited_once_with("PORT-42", "21")  # type: ignore[attr-defined]
     assert run.output == {
@@ -158,6 +163,11 @@ async def test_already_in_target_status(
     # Assert
     executor.client.get_issue_transitions.assert_not_awaited()  # type: ignore[attr-defined]
     executor.client.transition_issue.assert_not_awaited()  # type: ignore[attr-defined]
+    assert run.output == {
+        "issueKey": "PORT-42",
+        "status": "Done",
+        "issueUrl": "https://example.atlassian.net/browse/PORT-42",
+    }
     mock_port_client.report_run_completed.assert_called_once_with(
         run,
         success=True,
@@ -228,6 +238,30 @@ async def test_no_matching_transition(
             match="Available target statuses: In Progress, Done",
         ):
             await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_resolve_issue_status_after_transition_falls_back_on_http_error(
+    executor: ChangeIssueStatusExecutor,
+) -> None:
+    # Arrange
+    response = httpx.Response(
+        500,
+        request=httpx.Request("GET", "http://x"),
+    )
+    executor.client.get_single_issue = AsyncMock(  # type: ignore[method-assign]
+        side_effect=httpx.HTTPStatusError(
+            "500", request=response.request, response=response
+        )
+    )
+
+    # Act
+    resolved = await executor._resolve_issue_status_after_transition(
+        "PORT-42", "In Progress"
+    )
+
+    # Assert
+    assert resolved == "In Progress"
 
 
 @pytest.mark.asyncio
