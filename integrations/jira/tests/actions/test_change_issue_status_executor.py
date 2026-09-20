@@ -18,22 +18,28 @@ from jira.actions.exceptions import (
     ChangeIssueStatusError,
     MissingExecutionPropertyError,
 )
-from jira.api_models import JiraIssueTransitionsResponse
+from jira.api_models import (
+    JiraIssueTransition,
+    JiraIssueTransitionsResponse,
+    JiraTransitionStatus,
+)
 
-TRANSITIONS_RESPONSE = {
-    "transitions": [
-        {
-            "id": "21",
-            "name": "In Progress",
-            "to": {"name": "In Progress"},
-        },
-        {
-            "id": "31",
-            "name": "Done",
-            "to": {"name": "Done"},
-        },
-    ]
-}
+TRANSITIONS_RESPONSE = JiraIssueTransitionsResponse.model_validate(
+    {
+        "transitions": [
+            {
+                "id": "21",
+                "name": "In Progress",
+                "to": {"name": "In Progress"},
+            },
+            {
+                "id": "31",
+                "name": "Done",
+                "to": {"name": "Done"},
+            },
+        ]
+    }
+)
 
 
 def make_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
@@ -277,17 +283,19 @@ def test_get_issue_status_name() -> None:
 
 def test_find_transition_for_status_matches_case_insensitively() -> None:
     # Arrange
-    transitions: JiraIssueTransitionsResponse = {
-        "transitions": [
-            {"id": "21", "to": {"name": "In Progress"}},
-            {"id": "31", "to": {"name": "Done"}},
-        ]
-    }
+    transitions = JiraIssueTransitionsResponse.model_validate(
+        {
+            "transitions": [
+                {"id": "21", "to": {"name": "In Progress"}},
+                {"id": "31", "to": {"name": "Done"}},
+            ]
+        }
+    )
 
     # Act + Assert
     assert ChangeIssueStatusExecutor._find_transition_for_status(
         transitions, "done"
-    ) == {"id": "31", "to": {"name": "Done"}}
+    ) == JiraIssueTransition(id="31", to=JiraTransitionStatus(name="Done"))
     assert (
         ChangeIssueStatusExecutor._find_transition_for_status(transitions, "Unknown")
         is None
@@ -296,13 +304,15 @@ def test_find_transition_for_status_matches_case_insensitively() -> None:
 
 def test_get_available_transition_statuses() -> None:
     # Arrange
-    transitions: JiraIssueTransitionsResponse = {
-        "transitions": [
-            {"id": "21", "to": {"name": "In Progress"}},
-            {"id": "31", "to": {"name": "Done"}},
-            {"id": "41", "to": {"name": "Done"}},
-        ]
-    }
+    transitions = JiraIssueTransitionsResponse.model_validate(
+        {
+            "transitions": [
+                {"id": "21", "to": {"name": "In Progress"}},
+                {"id": "31", "to": {"name": "Done"}},
+                {"id": "41", "to": {"name": "Done"}},
+            ]
+        }
+    )
 
     # Act + Assert
     assert ChangeIssueStatusExecutor._get_available_transition_statuses(

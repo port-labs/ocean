@@ -1,14 +1,14 @@
-from typing import TypedDict
+from pydantic import BaseModel
 
 
-class JiraTransitionStatus(TypedDict):
+class JiraTransitionStatus(BaseModel):
     name: str
 
 
-class JiraIssueTransition(TypedDict):
+class JiraIssueTransition(BaseModel):
     id: str
     to: JiraTransitionStatus
 
 
-class JiraIssueTransitionsResponse(TypedDict):
+class JiraIssueTransitionsResponse(BaseModel):
     transitions: list[JiraIssueTransition]

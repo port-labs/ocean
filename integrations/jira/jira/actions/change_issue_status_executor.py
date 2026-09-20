@@ -1,6 +1,6 @@
 import httpx
 from loguru import logger
-from pydantic import Field
+from pydantic import Field, ValidationError
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from typing import Any
@@ -67,6 +67,11 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
                 error.response,
                 f"Could not load transitions for issue '{action_input.issue_key}'",
             )
+        except ValidationError as error:
+            raise ChangeIssueStatusError(
+                f"Received an unexpected transitions response for issue "
+                f"'{action_input.issue_key}'"
+            ) from error
 
         transition = self._find_transition_for_status(transitions, action_input.status)
         if not transition:
@@ -80,9 +85,9 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
                 f"{available_statuses_text}"
             )
 
-        resolved_status = transition["to"]["name"]
+        resolved_status = transition.to.name
         try:
-            await self.client.transition_issue(action_input.issue_key, transition["id"])
+            await self.client.transition_issue(action_input.issue_key, transition.id)
         except httpx.HTTPStatusError as error:
             raise ChangeIssueStatusError.from_response(
                 error.response,
@@ -97,7 +102,7 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
             "Changed Jira issue status",
             issue_key=action_input.issue_key,
             status=resolved_status,
-            transition_id=transition["id"],
+            transition_id=transition.id,
         )
 
     async def _complete_run(
@@ -157,27 +162,9 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
         target_status: str,
     ) -> JiraIssueTransition | None:
         normalized_target = cls._normalize_status_name(target_status)
-        transitions = transitions_response.get("transitions")
-        if not isinstance(transitions, list):
-            return None
-
-        for transition in transitions:
-            if not isinstance(transition, dict):
-                continue
-            to_status = transition.get("to")
-            if not isinstance(to_status, dict):
-                continue
-            to_status_name = to_status.get("name")
-            if (
-                isinstance(to_status_name, str)
-                and cls._normalize_status_name(to_status_name) == normalized_target
-            ):
-                transition_id = transition.get("id")
-                if transition_id is not None:
-                    return {
-                        "id": str(transition_id),
-                        "to": {"name": to_status_name},
-                    }
+        for transition in transitions_response.transitions:
+            if cls._normalize_status_name(transition.to.name) == normalized_target:
+                return transition
         return None
 
     @staticmethod
@@ -186,18 +173,9 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
     ) -> list[str]:
         statuses: list[str] = []
         seen: set[str] = set()
-        transitions = transitions_response.get("transitions")
-        if not isinstance(transitions, list):
-            return statuses
-
-        for transition in transitions:
-            if not isinstance(transition, dict):
-                continue
-            to_status = transition.get("to")
-            if not isinstance(to_status, dict):
-                continue
-            to_status_name = to_status.get("name")
-            if isinstance(to_status_name, str) and to_status_name not in seen:
+        for transition in transitions_response.transitions:
+            to_status_name = transition.to.name
+            if to_status_name not in seen:
                 seen.add(to_status_name)
                 statuses.append(to_status_name)
         return statuses

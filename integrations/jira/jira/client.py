@@ -634,10 +634,11 @@ class JiraClient(OAuthClient):
     async def get_issue_transitions(
         self, issue_key: str
     ) -> JiraIssueTransitionsResponse:
-        return await self._send_api_request(
+        response = await self._send_api_request(
             "GET",
             f"{self.api_url}/issue/{issue_key}/transitions",
         )
+        return JiraIssueTransitionsResponse.model_validate(response)
 
     async def transition_issue(self, issue_key: str, transition_id: str) -> None:
         await self._send_api_request(

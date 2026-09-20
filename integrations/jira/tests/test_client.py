@@ -8,9 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import BasicAuth, Request, Response
+from pydantic import ValidationError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
+from jira.api_models import JiraIssueTransitionsResponse
 from jira.client import (
     PAGE_SIZE,
     WEBHOOK_EVENTS,
@@ -646,7 +648,20 @@ async def test_get_issue_transitions(mock_jira_client: JiraClient) -> None:
             "GET",
             f"{mock_jira_client.api_url}/issue/TEST-1/transitions",
         )
-        assert result == transitions
+        assert result == JiraIssueTransitionsResponse.model_validate(transitions)
+
+
+@pytest.mark.asyncio
+async def test_get_issue_transitions_raises_for_invalid_payload(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"transitions": [{"id": "21"}]}
+
+        with pytest.raises(ValidationError):
+            await mock_jira_client.get_issue_transitions("TEST-1")
 
 
 @pytest.mark.asyncio
