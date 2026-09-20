@@ -3,7 +3,7 @@ import asyncio
 import functools
 import json
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from itertools import batched
@@ -15,6 +15,10 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.subscription_reconciler import (
+    dedupe_subscriptions_by_id,
+    plan_webhook_subscription_reconciliation,
+)
 from azure_devops.webhooks.events import (
     BuildEvents,
     RepositoryEvents,
@@ -191,15 +195,6 @@ PROJECT_SCOPED_ONLY_EVENT_TYPES = {
     PipelineStageEvents.PIPELINE_STAGE_APPROVAL_COMPLETED,
     PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
 }
-
-
-@dataclass
-class WebhookSubscriptionReconciliationPlan:
-    kept_sub_ids: list[str]
-    subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]]
-    subs_to_delete: list[WebhookSubscription]
-    action_counts: Counter[str]
-    skipped_project_scoped_count: int
 
 
 def _parse_change_timestamp(timestamp: str) -> datetime:
@@ -2856,125 +2851,6 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", url, params=API_PARAMS)
         return response.json() if response else {}
 
-    def _dedupe_subscriptions_by_id(
-        self, subscriptions: list[WebhookSubscription]
-    ) -> list[WebhookSubscription]:
-        seen_ids: set[str] = set()
-        deduped_subscriptions: list[WebhookSubscription] = []
-        for subscription in subscriptions:
-            if not subscription.id or subscription.id in seen_ids:
-                continue
-            seen_ids.add(subscription.id)
-            deduped_subscriptions.append(subscription)
-        return deduped_subscriptions
-
-    def _select_subscription_to_keep(
-        self, matching_subscriptions: list[WebhookSubscription]
-    ) -> Optional[WebhookSubscription]:
-        for subscription in matching_subscriptions:
-            if (
-                subscription.is_enabled()
-                and subscription.id
-                and subscription.has_required_payload_details()
-            ):
-                return subscription
-        return None
-
-    def _plan_webhook_subscription_reconciliation(
-        self,
-        base_url: str,
-        auth_username: Optional[str],
-        webhook_secret: Optional[str],
-        project_id: Optional[str],
-        existing_subscriptions: list[WebhookSubscription],
-    ) -> WebhookSubscriptionReconciliationPlan:
-        subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]] = []
-        subs_to_delete: list[WebhookSubscription] = []
-        kept_sub_ids: list[str] = []
-        action_counts: Counter[str] = Counter()
-        skipped_project_scoped_count = 0
-
-        for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS:
-            if not project_id and sub.eventType in PROJECT_SCOPED_ONLY_EVENT_TYPES:
-                skipped_project_scoped_count += 1
-                logger.debug(
-                    f"Skipping webhook subscription not supported at org level: "
-                    f"publisherId={sub.publisherId}, eventType={sub.eventType}"
-                )
-                continue
-
-            sub.set_webhook_details(
-                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
-                auth_username=auth_username,
-                webhook_secret=webhook_secret,
-                project_id=project_id,
-            )
-            matching_subscriptions = sub.get_matching_subscriptions(
-                existing_subscriptions
-            )
-            subscription_to_keep = self._select_subscription_to_keep(
-                matching_subscriptions
-            )
-
-            action = "create"
-            if subscription_to_keep and subscription_to_keep.id:
-                kept_subscription_id = subscription_to_keep.id
-                duplicate_subscriptions = [
-                    matching_sub
-                    for matching_sub in matching_subscriptions
-                    if matching_sub.id != kept_subscription_id
-                ]
-                action = (
-                    "keep_and_delete_duplicates" if duplicate_subscriptions else "keep"
-                )
-                kept_sub_ids.append(kept_subscription_id)
-                subs_to_delete.extend(duplicate_subscriptions)
-            elif matching_subscriptions:
-                action = "create_before_delete"
-                subs_to_create.append((sub, matching_subscriptions))
-            else:
-                subs_to_create.append((sub, []))
-
-            action_counts[action] += 1
-            self._log_webhook_reconciliation_decision(
-                sub, matching_subscriptions, subscription_to_keep, action
-            )
-
-        return WebhookSubscriptionReconciliationPlan(
-            kept_sub_ids=kept_sub_ids,
-            subs_to_create=subs_to_create,
-            subs_to_delete=subs_to_delete,
-            action_counts=action_counts,
-            skipped_project_scoped_count=skipped_project_scoped_count,
-        )
-
-    def _log_webhook_reconciliation_decision(
-        self,
-        desired_subscription: WebhookSubscription,
-        matching_subscriptions: list[WebhookSubscription],
-        kept_subscription: Optional[WebhookSubscription],
-        action: str,
-    ) -> None:
-        selected_subscription = kept_subscription or (
-            matching_subscriptions[0] if matching_subscriptions else None
-        )
-        has_required_payload = (
-            selected_subscription.has_required_payload_details()
-            if selected_subscription
-            else None
-        )
-        enabled_matching_count = sum(
-            1 for subscription in matching_subscriptions if subscription.is_enabled()
-        )
-        logger.debug(
-            f"Webhook subscription reconciliation decision: "
-            f"desiredSubscription={desired_subscription.json()}, "
-            f"selectedSubscription={selected_subscription.json() if selected_subscription else None}, "
-            f"matchingSubscriptions={len(matching_subscriptions)}, "
-            f"enabledMatchingSubscriptions={enabled_matching_count}, "
-            f"hasRequiredPayload={has_required_payload}, action={action}"
-        )
-
     async def _create_webhook_subscription_batch(
         self,
         subs_to_create: list[tuple[WebhookSubscription, list[WebhookSubscription]]],
@@ -3021,7 +2897,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         subscriptions: list[WebhookSubscription],
     ) -> None:
-        subscriptions = self._dedupe_subscriptions_by_id(subscriptions)
+        subscriptions = dedupe_subscriptions_by_id(subscriptions)
         if not subscriptions:
             return
 
@@ -3079,12 +2955,14 @@ class AzureDevopsClient(HTTPBaseClient):
                 org_level=not bool(project_id),
             )
 
-        plan = self._plan_webhook_subscription_reconciliation(
-            base_url=base_url,
+        plan = plan_webhook_subscription_reconciliation(
+            webhook_subscriptions=AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS,
+            webhook_url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
             auth_username=self.webhook_auth_username,
             webhook_secret=webhook_secret,
             project_id=project_id,
             existing_subscriptions=existing_subscriptions,
+            project_scoped_only_event_types=PROJECT_SCOPED_ONLY_EVENT_TYPES,
         )
         (
             created_sub_ids,
@@ -3094,7 +2972,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
         subscriptions_to_delete = plan.subs_to_delete + stale_subscriptions_to_delete
         delete_candidate_count = len(
-            self._dedupe_subscriptions_by_id(subscriptions_to_delete)
+            dedupe_subscriptions_by_id(subscriptions_to_delete)
         )
         logger.info(
             f"Webhook subscription reconciliation summary: "
