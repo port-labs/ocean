@@ -371,7 +371,9 @@ async def test_get_matching_kinds_returns_s3_bucket(
 async def test_authenticate_succeeds_with_matching_api_key(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with patch(f"{MODULE}.get_live_events_api_key", return_value="secret"):
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"live_events_api_key": "secret"}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
         )
@@ -382,7 +384,9 @@ async def test_authenticate_succeeds_with_matching_api_key(
 async def test_authenticate_fails_with_wrong_api_key(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with patch(f"{MODULE}.get_live_events_api_key", return_value="secret"):
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"live_events_api_key": "secret"}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         result = await processor.authenticate({}, {LIVE_EVENTS_API_KEY_HEADER: "wrong"})
     assert result is False
 
@@ -391,7 +395,9 @@ async def test_authenticate_fails_with_wrong_api_key(
 async def test_authenticate_fails_when_not_configured(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with patch(f"{MODULE}.get_live_events_api_key", return_value=None):
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "anything"}
         )
