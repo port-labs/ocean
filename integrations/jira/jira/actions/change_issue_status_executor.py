@@ -9,6 +9,7 @@ from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import ChangeIssueStatusError
 from jira.actions.utils import get_issue_browse_url
+from jira.api_models import JiraIssueTransition, JiraIssueTransitionsResponse
 
 
 class ChangeIssueStatusInput(AbstractJiraActionInput):
@@ -67,10 +68,8 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
                 f"Could not load transitions for issue '{action_input.issue_key}'",
             )
 
-        transition_id = self._find_transition_id_for_status(
-            transitions, action_input.status
-        )
-        if not transition_id:
+        transition = self._find_transition_for_status(transitions, action_input.status)
+        if not transition:
             available_statuses = self._get_available_transition_statuses(transitions)
             available_statuses_text = (
                 ", ".join(available_statuses) if available_statuses else "none"
@@ -81,37 +80,25 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
                 f"{available_statuses_text}"
             )
 
+        resolved_status = transition["to"]["name"]
         try:
-            await self.client.transition_issue(action_input.issue_key, transition_id)
+            await self.client.transition_issue(action_input.issue_key, transition["id"])
         except httpx.HTTPStatusError as error:
             raise ChangeIssueStatusError.from_response(
                 error.response,
                 f"Could not change status of issue '{action_input.issue_key}'",
             )
 
-        resolved_status = await self._resolve_issue_status_after_transition(
-            action_input.issue_key, action_input.status
-        )
         message = (
-            f"Changed issue {action_input.issue_key} to status " f"'{resolved_status}'"
+            f"Changed issue {action_input.issue_key} to status '{resolved_status}'"
         )
         await self._complete_run(run, action_input, resolved_status, message)
         logger.info(
             "Changed Jira issue status",
             issue_key=action_input.issue_key,
             status=resolved_status,
-            transition_id=transition_id,
+            transition_id=transition["id"],
         )
-
-    async def _resolve_issue_status_after_transition(
-        self, issue_key: str, fallback_status: str
-    ) -> str:
-        try:
-            issue = await self.client.get_single_issue(issue_key, fields="status")
-        except httpx.HTTPStatusError:
-            return fallback_status
-        status_name = self._get_issue_status_name(issue)
-        return status_name if status_name else fallback_status
 
     async def _complete_run(
         self,
@@ -164,9 +151,11 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
         return status_name if isinstance(status_name, str) else None
 
     @classmethod
-    def _find_transition_id_for_status(
-        cls, transitions_response: dict[str, Any], target_status: str
-    ) -> str | None:
+    def _find_transition_for_status(
+        cls,
+        transitions_response: JiraIssueTransitionsResponse,
+        target_status: str,
+    ) -> JiraIssueTransition | None:
         normalized_target = cls._normalize_status_name(target_status)
         transitions = transitions_response.get("transitions")
         if not isinstance(transitions, list):
@@ -185,12 +174,15 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
             ):
                 transition_id = transition.get("id")
                 if transition_id is not None:
-                    return str(transition_id)
+                    return {
+                        "id": str(transition_id),
+                        "to": {"name": to_status_name},
+                    }
         return None
 
     @staticmethod
     def _get_available_transition_statuses(
-        transitions_response: dict[str, Any],
+        transitions_response: JiraIssueTransitionsResponse,
     ) -> list[str]:
         statuses: list[str] = []
         seen: set[str] = set()

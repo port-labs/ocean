@@ -18,6 +18,7 @@ from jira.actions.exceptions import (
     ChangeIssueStatusError,
     MissingExecutionPropertyError,
 )
+from jira.api_models import JiraIssueTransitionsResponse
 
 TRANSITIONS_RESPONSE = {
     "transitions": [
@@ -111,13 +112,7 @@ async def test_happy_path(
     executor: ChangeIssueStatusExecutor, mock_port_client: MagicMock
 ) -> None:
     # Arrange
-    executor.client.get_single_issue = AsyncMock(  # type: ignore[method-assign]
-        side_effect=[
-            {"fields": {"status": {"name": "To Do"}}},
-            {"fields": {"status": {"name": "In Progress"}}},
-        ]
-    )
-    run = make_run({"issueKey": "PORT-42", "status": "In Progress"})
+    run = make_run({"issueKey": "PORT-42", "status": "in progress"})
 
     # Act
     with patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean:
@@ -125,8 +120,9 @@ async def test_happy_path(
         await executor.execute(run)
 
     # Assert
-    assert executor.client.get_single_issue.await_count == 2
-    executor.client.get_single_issue.assert_any_await("PORT-42", fields="status")
+    executor.client.get_single_issue.assert_awaited_once_with(  # type: ignore[attr-defined]
+        "PORT-42", fields="status"
+    )
     executor.client.get_issue_transitions.assert_awaited_once_with("PORT-42")  # type: ignore[attr-defined]
     executor.client.transition_issue.assert_awaited_once_with("PORT-42", "21")  # type: ignore[attr-defined]
     assert run.output == {
@@ -241,30 +237,6 @@ async def test_no_matching_transition(
 
 
 @pytest.mark.asyncio
-async def test_resolve_issue_status_after_transition_falls_back_on_http_error(
-    executor: ChangeIssueStatusExecutor,
-) -> None:
-    # Arrange
-    response = httpx.Response(
-        500,
-        request=httpx.Request("GET", "http://x"),
-    )
-    executor.client.get_single_issue = AsyncMock(  # type: ignore[method-assign]
-        side_effect=httpx.HTTPStatusError(
-            "500", request=response.request, response=response
-        )
-    )
-
-    # Act
-    resolved = await executor._resolve_issue_status_after_transition(
-        "PORT-42", "In Progress"
-    )
-
-    # Assert
-    assert resolved == "In Progress"
-
-
-@pytest.mark.asyncio
 async def test_get_partition_key_returns_issue_key(
     executor: ChangeIssueStatusExecutor,
 ) -> None:
@@ -303,9 +275,9 @@ def test_get_issue_status_name() -> None:
     assert ChangeIssueStatusExecutor._get_issue_status_name({"fields": {}}) is None
 
 
-def test_find_transition_id_for_status_matches_case_insensitively() -> None:
+def test_find_transition_for_status_matches_case_insensitively() -> None:
     # Arrange
-    transitions = {
+    transitions: JiraIssueTransitionsResponse = {
         "transitions": [
             {"id": "21", "to": {"name": "In Progress"}},
             {"id": "31", "to": {"name": "Done"}},
@@ -313,23 +285,22 @@ def test_find_transition_id_for_status_matches_case_insensitively() -> None:
     }
 
     # Act + Assert
+    assert ChangeIssueStatusExecutor._find_transition_for_status(
+        transitions, "done"
+    ) == {"id": "31", "to": {"name": "Done"}}
     assert (
-        ChangeIssueStatusExecutor._find_transition_id_for_status(transitions, "done")
-        == "31"
-    )
-    assert (
-        ChangeIssueStatusExecutor._find_transition_id_for_status(transitions, "Unknown")
+        ChangeIssueStatusExecutor._find_transition_for_status(transitions, "Unknown")
         is None
     )
 
 
 def test_get_available_transition_statuses() -> None:
     # Arrange
-    transitions = {
+    transitions: JiraIssueTransitionsResponse = {
         "transitions": [
-            {"to": {"name": "In Progress"}},
-            {"to": {"name": "Done"}},
-            {"to": {"name": "Done"}},
+            {"id": "21", "to": {"name": "In Progress"}},
+            {"id": "31", "to": {"name": "Done"}},
+            {"id": "41", "to": {"name": "Done"}},
         ]
     }
 
