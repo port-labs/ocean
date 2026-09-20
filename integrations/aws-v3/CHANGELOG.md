@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.27.0-beta (2026-09-17)
+
+
+### Features
+
+- Added live events support for CodeBuild build runs (including RetryBuild), CodeDeploy deployments, and CodePipeline pipeline executions via CloudTrail start/stop events. Build run live-event fetches now raise not-found when batch_get_builds omits the build instead of upserting an empty entity.
+
+
 ## 2.26.3-beta (2026-09-16)
 
 

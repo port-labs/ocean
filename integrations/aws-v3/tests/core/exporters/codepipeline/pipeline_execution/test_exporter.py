@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.codepipeline.pipeline_execution.exporter import (
     CodePipelinePipelineExecutionExporter,
@@ -45,6 +46,19 @@ async def test_get_resource_success(
 ) -> None:
     # Arrange
     exporter = CodePipelinePipelineExecutionExporter(AsyncMock())
+    mock_client = AsyncMock()
+    mock_client.get_pipeline_execution = AsyncMock(
+        return_value={
+            "pipelineExecution": {
+                "pipelineName": single_options.pipeline_name,
+                "pipelineExecutionId": single_options.pipeline_execution_id,
+            }
+        }
+    )
+    mock_proxy = AsyncMock()
+    mock_proxy.client = mock_client
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
     mock_inspector = AsyncMock()
     mock_inspector_class.return_value = mock_inspector
 
@@ -58,6 +72,10 @@ async def test_get_resource_success(
     assert result == mock_response
     mock_proxy_class.assert_called_once_with(
         exporter.session, single_options.region, "codepipeline"
+    )
+    mock_client.get_pipeline_execution.assert_called_once_with(
+        pipelineName=single_options.pipeline_name,
+        pipelineExecutionId=single_options.pipeline_execution_id,
     )
     mock_input.assert_called_once_with(
         items=[
@@ -82,7 +100,7 @@ async def test_get_resource_success(
 @patch(f"{patch_prefix}.CodePipelineExecutionActionInput")
 @patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
-async def test_get_resource_empty_response(
+async def test_get_resource_raises_when_pipeline_execution_not_found(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
     mock_input: MagicMock,
@@ -90,35 +108,20 @@ async def test_get_resource_empty_response(
 ) -> None:
     # Arrange
     exporter = CodePipelinePipelineExecutionExporter(AsyncMock())
-    mock_inspector = AsyncMock()
-    mock_inspector_class.return_value = mock_inspector
-    mock_inspector.inspect.return_value = []
+    mock_client = AsyncMock()
+    mock_client.get_pipeline_execution = AsyncMock(return_value={})
+    mock_proxy = AsyncMock()
+    mock_proxy.client = mock_client
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
     # Act
-    result = await exporter.get_resource(single_options)
+    with pytest.raises(ClientError) as error:
+        await exporter.get_resource(single_options)
 
     # Assert
-    assert result == {}
-    mock_proxy_class.assert_called_once_with(
-        exporter.session, single_options.region, "codepipeline"
-    )
-    mock_input.assert_called_once_with(
-        items=[
-            {
-                "pipelineName": single_options.pipeline_name,
-                "pipelineExecutionId": single_options.pipeline_execution_id,
-            }
-        ],
-        pipeline_name=single_options.pipeline_name,
-    )
-    mock_inspector.inspect.assert_called_once_with(
-        mock_input.return_value,
-        single_options.include,
-        extra_context={
-            "AccountId": single_options.account_id,
-            "Region": single_options.region,
-        },
-    )
+    assert error.value.response["Error"]["Code"] == "PipelineExecutionNotFoundException"
+    mock_input.assert_not_called()
+    mock_inspector_class.return_value.inspect.assert_not_called()
 
 
 @pytest.mark.asyncio
