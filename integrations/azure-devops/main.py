@@ -69,6 +69,7 @@ from azure_devops.webhooks.webhook_processors.wiki_webhook_processor import (
     WikiWebhookProcessor,
 )
 from azure_devops.actions.registry import register_actions_executors
+from azure_devops.oauth.registry import register_oauth_provider
 from integration import (
     AzureDevopsBuildConfig,
     AzureDevopsPipelineResourceConfig,
@@ -522,3 +523,6 @@ ocean.add_webhook_processor("/webhook", TestRunWebhookProcessor)
 ocean.add_webhook_processor("/webhook", WikiWebhookProcessor)
 
 register_actions_executors()
+
+# Register identity-propagation OAuth provider (no-op if not configured)
+register_oauth_provider()

@@ -9,6 +9,7 @@ from aws.core.exporters.codedeploy.deployment.models import (
     PaginatedCodeDeployDeploymentRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -25,6 +26,20 @@ class CodeDeployDeploymentExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-deployment fetch only has a deployment id from CloudTrail.
+            # The inspector actions swallow get_deployment failures and still emit a
+            # deploymentId stub. Confirm the deployment exists before inspecting.
+            deployment_response = await proxy.client.get_deployment(  # type: ignore[attr-defined]
+                deploymentId=options.deployment_id
+            )
+            deployment_info = deployment_response.get("deploymentInfo")
+            require_aws_resource(
+                [deployment_info] if deployment_info else [],
+                error_code="DeploymentDoesNotExistException",
+                message=f"Deployment not found: {options.deployment_id}",
+                operation_name="GetDeployment",
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
