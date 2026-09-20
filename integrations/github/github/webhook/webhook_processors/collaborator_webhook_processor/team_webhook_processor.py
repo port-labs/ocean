@@ -1,4 +1,6 @@
+import asyncio
 from typing import Any
+
 from loguru import logger
 
 from github.clients.client_factory import create_github_client_for_org
@@ -10,6 +12,7 @@ from github.helpers.utils import (
 )
 from github.webhook.events import (
     TEAM_COLLABORATOR_EVENTS,
+    TEAM_COLLABORATOR_DELETE_EVENTS,
 )
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -23,6 +26,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from github.core.options import SingleTeamOptions
 from github.webhook.webhook_processors.collaborator_webhook_processor.utils import (
+    RECONCILIATION_CONCURRENCY_LIMIT,
+    reconcile_collaborator_repos,
     skip_if_affiliation_filtered,
 )
 
@@ -80,6 +85,35 @@ class CollaboratorTeamWebhookProcessor(
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if action in TEAM_COLLABORATOR_DELETE_EVENTS:
+            semaphore = asyncio.BoundedSemaphore(RECONCILIATION_CONCURRENCY_LIMIT)
+
+            results = await asyncio.gather(
+                *(
+                    reconcile_collaborator_repos(
+                        rest_client=rest_client,
+                        organization=organization,
+                        member_login=member["login"],
+                        member_id=member["id"],
+                        repositories=[repository],
+                        semaphore=semaphore,
+                    )
+                    for member in members
+                )
+            )
+
+            updated = [item for result in results for item in result.updated_raw_results]
+            deleted = [item for result in results for item in result.deleted_raw_results]
+
+            logger.info(
+                f"Reconciled {len(members)} members of team {team_slug} for "
+                f"repository {repository['name']} in {organization}: "
+                f"{len(updated)} still collaborators, {len(deleted)} removed"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=updated, deleted_raw_results=deleted
             )
 
         data_to_upsert = [
