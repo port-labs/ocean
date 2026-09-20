@@ -220,4 +220,25 @@ KIND_EXPECTATIONS: dict[str, KindExpectation] = {
             title_fn=lambda _repo, i: f"user-{i}",
         ),
     ),
+    "package": KindExpectation(
+        count=2,
+        entities=(
+            EntityExpectation(
+                identifier="5001",
+                title="hello-docker",
+                properties={
+                    "visibility": "private",
+                },
+                relations={"repository": "test-repo-1"},
+            ),
+            EntityExpectation(
+                identifier="5002",
+                title="api/service",
+                properties={
+                    "visibility": "public",
+                },
+                relations={"repository": "test-repo-2"},
+            ),
+        ),
+    ),
 }

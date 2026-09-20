@@ -7,6 +7,246 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.17.1 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 0.17.0 (2026-09-16)
+
+
+### Features
+
+- Added a create_pull_request_thread action that opens a comment thread on an Azure DevOps pull request, either on the pull request overview or anchored to a file and line.
+
+
+## 0.16.1 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 0.16.0 (2026-09-15)
+
+
+### Features
+
+- Added an update_pull_request action that updates an Azure DevOps pull request's title, description, target branch or status, so a pull request can be completed, abandoned or reactivated from Port.
+
+
+## 0.15.3 (2026-09-14)
+
+
+### Features
+
+- Added a create_pull_request action that creates an Azure DevOps pull request
+
+
+## 0.15.2 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.15.1 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.15.0 (2026-09-10)
+
+
+### Features
+
+- Added a merge_pull_request action that merges an Azure DevOps pull request
+
+
+## 0.14.0 (2026-09-10)
+
+
+### Features
+
+- Added a close_pull_request action that abandons an Azure DevOps pull request
+
+
+## 0.13.13 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.13.12 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 0.13.11 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 0.13.10 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 0.13.9 (2026-09-03)
+
+
+### Bug Fixes
+
+- Normalize Git Items API scopePath for folder sync so pagination continuation tokens remain valid when listing more than 50 folders under a path.
+
+
+## 0.13.8 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 0.13.7 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 0.13.6 (2026-09-02)
+
+
+### Bug Fixes
+
+- Skip Azure DevOps repos with no default branch during folder sync
+
+
+## 0.13.5 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 0.13.4 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 0.13.3 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.13.2 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.13.1 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.13.0 (2026-08-26)
+
+
+### Features
+
+- Expanded default mapping with 8 new resource kinds (build, pipeline, pipeline-run, pipeline-stage, environment, pipeline-deployment, release-deployment, pull-request), enabling out-of-the-box CI/CD and PR visibility without manual mapping configuration
+
+
+## 0.12.8 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.12.7 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.12.6 (2026-08-25)
+
+
+### Bug Fixes
+
+- Fixed Azure DevOps org-level git.push webhook subscriptions to request full payload details and avoid duplicate subscription creation during reconciliation.
+
+
+## 0.12.5 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.12.4 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.12.3 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.12.2 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
 ## 0.12.1 (2026-08-17)
 
 

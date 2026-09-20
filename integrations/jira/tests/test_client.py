@@ -8,9 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import BasicAuth, Request, Response
+from pydantic import ValidationError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
+from jira.api_models import JiraIssueTransitionsResponse
 from jira.client import (
     PAGE_SIZE,
     WEBHOOK_EVENTS,
@@ -405,6 +407,112 @@ async def test_send_api_request_failure(mock_jira_client: JiraClient) -> None:
             await mock_jira_client._send_api_request("GET", "http://example.com")
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "kwargs, expected_extensions",
+    [
+        ({}, None),
+        ({"retryable": True}, {"retryable": True}),
+        ({"skip_retry": True}, {"skip_retry": True}),
+        (
+            {"retryable": True, "skip_retry": True},
+            {"retryable": True, "skip_retry": True},
+        ),
+    ],
+)
+async def test_send_api_request_forwards_retry_extensions(
+    mock_jira_client: JiraClient,
+    kwargs: dict[str, bool],
+    expected_extensions: dict[str, bool] | None,
+) -> None:
+    with patch.object(
+        mock_jira_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = Response(
+            200, request=Request("GET", "http://example.com"), json={}
+        )
+        await mock_jira_client._send_api_request(
+            "GET", "http://example.com", **kwargs  # type: ignore[arg-type]
+        )
+
+    await_args = mock_request.await_args
+    assert await_args is not None
+    assert await_args.kwargs["extensions"] == expected_extensions
+
+
+@pytest.mark.asyncio
+async def test_verify_current_user(mock_jira_client: JiraClient) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"accountId": "account-id"}
+
+        await mock_jira_client.verify_current_user()
+
+    mock_request.assert_awaited_once_with(
+        "GET", f"{mock_jira_client.api_url}/myself", skip_retry=True
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_permissions_returns_empty_dict_for_no_keys(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        permissions = await mock_jira_client.get_current_user_permissions([])
+
+    assert permissions == {}
+    mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_permissions_fetches_and_parses_permissions(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "permissions": {
+                "BROWSE_PROJECTS": {"havePermission": True},
+                "USER_PICKER": {"havePermission": False},
+            }
+        }
+
+        permissions = await mock_jira_client.get_current_user_permissions(
+            ["BROWSE_PROJECTS", "USER_PICKER"]
+        )
+
+    assert permissions == {
+        "BROWSE_PROJECTS": True,
+        "USER_PICKER": False,
+    }
+    mock_request.assert_awaited_once_with(
+        "GET",
+        f"{mock_jira_client.api_url}/mypermissions",
+        params={"permissions": "BROWSE_PROJECTS,USER_PICKER"},
+        skip_retry=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_verify_teams_access(mock_jira_client: JiraClient) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"entities": []}
+
+        await mock_jira_client.verify_teams_access("test_org_id")
+
+    mock_request.assert_awaited_once_with(
+        "GET",
+        f"{mock_jira_client.teams_base_url}/test_org_id/teams",
+        skip_retry=True,
+    )
+
+
 def test_refresh_request_auth_creds_updates_global_auth(
     mock_jira_client: JiraClient,
 ) -> None:
@@ -478,9 +586,97 @@ async def test_get_single_issue(mock_jira_client: JiraClient) -> None:
         result = await mock_jira_client.get_single_issue("TEST-1")
 
         mock_request.assert_called_once_with(
-            "GET", f"{mock_jira_client.api_url}/issue/TEST-1"
+            "GET", f"{mock_jira_client.api_url}/issue/TEST-1", params=None
         )
         assert result == issue_data
+
+
+@pytest.mark.asyncio
+async def test_create_issue(mock_jira_client: JiraClient) -> None:
+    payload = {
+        "fields": {
+            "project": {"key": "PORT"},
+            "issuetype": {"name": "Task"},
+            "summary": "New task",
+        }
+    }
+    created_issue = {"id": "10001", "key": "PORT-1"}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = created_issue
+        result = await mock_jira_client.create_issue(payload)
+
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{mock_jira_client.api_url}/issue",
+            json=payload,
+        )
+        assert result == created_issue
+
+
+@pytest.mark.asyncio
+async def test_get_single_issue_with_fields(mock_jira_client: JiraClient) -> None:
+    issue_data = {"key": "TEST-1", "fields": {"status": {"name": "Done"}}}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = issue_data
+        result = await mock_jira_client.get_single_issue("TEST-1", fields="status")
+
+        mock_request.assert_called_once_with(
+            "GET",
+            f"{mock_jira_client.api_url}/issue/TEST-1",
+            params={"fields": "status"},
+        )
+        assert result == issue_data
+
+
+@pytest.mark.asyncio
+async def test_get_issue_transitions(mock_jira_client: JiraClient) -> None:
+    transitions = {"transitions": [{"id": "21", "to": {"name": "In Progress"}}]}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = transitions
+        result = await mock_jira_client.get_issue_transitions("TEST-1")
+
+        mock_request.assert_called_once_with(
+            "GET",
+            f"{mock_jira_client.api_url}/issue/TEST-1/transitions",
+        )
+        assert result == JiraIssueTransitionsResponse.model_validate(transitions)
+
+
+@pytest.mark.asyncio
+async def test_get_issue_transitions_raises_for_invalid_payload(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"transitions": [{"id": "21"}]}
+
+        with pytest.raises(ValidationError):
+            await mock_jira_client.get_issue_transitions("TEST-1")
+
+
+@pytest.mark.asyncio
+async def test_transition_issue(mock_jira_client: JiraClient) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = None
+        await mock_jira_client.transition_issue("TEST-1", "21")
+
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{mock_jira_client.api_url}/issue/TEST-1/transitions",
+            json={"transition": {"id": "21"}},
+        )
 
 
 @pytest.mark.asyncio

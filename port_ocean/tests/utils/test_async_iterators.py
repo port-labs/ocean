@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncGenerator
+from functools import partial
 from typing import Any
 
 import pytest
@@ -8,6 +9,7 @@ from port_ocean.utils import async_iterators
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_independent_async_iterators,
+    throttle_batch_operation,
 )
 
 
@@ -51,6 +53,43 @@ async def _slow_to_cancel() -> AsyncGenerator[int, None]:
         await asyncio.sleep(3600)
     except asyncio.CancelledError:
         await asyncio.sleep(0.1)
+
+
+@pytest.mark.asyncio
+async def test_throttle_batch_operation_limits_concurrency() -> None:
+    max_concurrency = 3
+    concurrent_tasks = 0
+    max_concurrent_tasks = 0
+    lock = asyncio.Lock()
+
+    async def operation(value: int) -> int:
+        nonlocal concurrent_tasks, max_concurrent_tasks
+
+        async with lock:
+            concurrent_tasks += 1
+            max_concurrent_tasks = max(max_concurrent_tasks, concurrent_tasks)
+
+        await asyncio.sleep(0.05)
+
+        async with lock:
+            concurrent_tasks -= 1
+
+        return value
+
+    results = await throttle_batch_operation(
+        [partial(operation, value) for value in range(10)],
+        max_concurrency,
+    )
+
+    assert results == list(range(10))
+    assert max_concurrent_tasks <= max_concurrency
+    assert concurrent_tasks == 0
+
+
+@pytest.mark.asyncio
+async def test_throttle_batch_operation_rejects_invalid_concurrency() -> None:
+    with pytest.raises(ValueError, match="concurrency must be at least 1"):
+        await throttle_batch_operation([], 0)
 
 
 @pytest.mark.asyncio

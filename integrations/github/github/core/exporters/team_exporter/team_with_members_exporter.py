@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Optional
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -6,6 +7,7 @@ from loguru import logger
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions, ListTeamOptions
+from github.helpers.exceptions import GraphQLErrorGroup
 from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
 )
@@ -17,6 +19,7 @@ from github.helpers.utils import (
 
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
     MEMBER_PAGE_SIZE = 30
+    MAX_GRAPHQL_RETRIES = 3
 
     async def get_resource[ExporterOptionT: SingleTeamOptions](
         self, options: ExporterOptionT
@@ -149,7 +152,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         options: ListTeamOptions,
     ) -> list[dict[str, Any]]:
         for team in teams:
-            team_extras = await self.get_resource(
+            team_extras = await self._get_resource_with_retry(
                 SingleTeamOptions(
                     slug=team["slug"],
                     organization=options["organization"],
@@ -161,3 +164,26 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
             team.update({k: v for k, v in team_extras.items() if k not in team})
         return teams
+
+    async def _get_resource_with_retry(
+        self, options: SingleTeamOptions
+    ) -> Optional[RAW_ITEM]:
+        for attempt in range(self.MAX_GRAPHQL_RETRIES):
+            try:
+                return await self.get_resource(options)
+            except GraphQLErrorGroup as exc:
+                if attempt < self.MAX_GRAPHQL_RETRIES - 1:
+                    sleep_time = 2 ** (attempt + 1)
+                    logger.warning(
+                        f"GraphQL error enriching team '{options['slug']}' in "
+                        f"'{options['organization']}' (attempt {attempt + 1}/{self.MAX_GRAPHQL_RETRIES}), "
+                        f"retrying in {sleep_time}s: {exc}"
+                    )
+                    await asyncio.sleep(sleep_time)
+                else:
+                    logger.error(
+                        f"GraphQL error enriching team '{options['slug']}' in "
+                        f"'{options['organization']}' after {self.MAX_GRAPHQL_RETRIES} attempts: {exc}"
+                    )
+                    raise
+        raise AssertionError("Retry loop should not exit normally")

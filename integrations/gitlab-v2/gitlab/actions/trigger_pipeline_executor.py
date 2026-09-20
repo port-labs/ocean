@@ -16,6 +16,9 @@ from gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor import
     TriggerPipelineWebhookProcessor,
 )
 
+TRIGGERING_STATUS_LABEL = "Triggering pipeline"
+PIPELINE_RUNNING_STATUS_LABEL = "Pipeline running"
+
 
 class TriggerPipelineExecutor(AbstractGitlabExecutor):
     ACTION_NAME = "trigger_pipeline"
@@ -44,6 +47,7 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
         await ocean.port_client.post_run_log(
             run,
             f"Triggering GitLab pipeline for {project} on ref {ref}",
+            status_label=TRIGGERING_STATUS_LABEL,
             should_raise=False,
         )
 
@@ -67,6 +71,7 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             run,
             pipeline["web_url"],
             external_id,
+            status_label=PIPELINE_RUNNING_STATUS_LABEL,
         )
         await ocean.port_client.post_run_log(
             run,

@@ -16,7 +16,11 @@ class InternalServerException(BaseAPIException):
 
 
 class EmptyPortAppConfigError(Exception):
-    """Exception raised when the Port app configuration is empty."""
+    """Raised when the Port app configuration cannot be loaded (e.g. repo-managed source missing).
+
+    Intentionally empty mappings (``config: {}`` / ``resources: []``) are valid and must not
+    raise this error — they are handled as a resync no-op instead.
+    """
 
     def __init__(self, message: str = "Port app config is empty") -> None:
         super().__init__(message)

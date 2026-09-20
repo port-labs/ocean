@@ -52,7 +52,13 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
             },
         )
 
-        return hmac.compare_digest(signature, computed_signature)
+        if not hmac.compare_digest(signature, computed_signature):
+            logger.error(
+                f"Invalid webhook signature. Webhook authentication failed on {identifier}."
+            )
+            return False
+
+        return True
 
     @abstractmethod
     async def _should_process_event(self, event: WebhookEvent) -> bool: ...

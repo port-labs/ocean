@@ -7,6 +7,174 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.79 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 0.6.78 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 0.6.77 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.6.76 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.6.75 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.6.74 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 0.6.73 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 0.6.72 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 0.6.71 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 0.6.70 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 0.6.69 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 0.6.68 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 0.6.67 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.6.66 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.6.65 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.6.64 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.6.63 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.6.62 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.6.61 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.6.60 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.6.59 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
 ## 0.6.58 (2026-08-17)
 
 

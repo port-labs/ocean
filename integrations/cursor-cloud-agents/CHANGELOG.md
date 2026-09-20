@@ -7,6 +7,190 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.41 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 0.1.40 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 0.1.39 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.1.38 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.1.37 (2026-09-10)
+
+
+### Bug Fixes
+
+- Add IDLE to the cursor_agent blueprint and map v0 run lifecycle statuses to v1 agent lifecycle values on webhook and action upserts.
+
+
+## 0.1.36 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.1.35 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 0.1.34 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 0.1.33 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 0.1.32 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 0.1.31 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 0.1.30 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 0.1.29 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 0.1.28 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.1.27 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.1.26 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.1.25 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.1.24 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.1.23 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.1.22 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.1.21 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.1.20 (2026-08-20)
+
+
+### Bug Fixes
+
+- Use a static /integration/webhook URL and the configured webhookSigningSecret so SaaS Redis live-events can complete reportCompletion runs.
+
+
+## 0.1.19 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
 ## 0.1.18 (2026-08-17)
 
 

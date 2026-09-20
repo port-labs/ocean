@@ -8,21 +8,6 @@ from loguru import logger
 from exporter_factory import create_runs_exporter
 
 
-def extract_port_run_id_from_request(request: object) -> str | None:
-    """Read the Port workflow node run id from the callback URL for HMAC verification.
-
-    The v0 webhook URL is registered once at ``create_agent`` launch and is not
-    used to correlate which Port run to complete.
-    """
-    path_params = getattr(request, "path_params", None)
-    if not isinstance(path_params, dict):
-        return None
-    run_id = path_params.get("run_id")
-    if isinstance(run_id, str) and run_id:
-        return run_id
-    return None
-
-
 def _parse_iso8601(value: object) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None

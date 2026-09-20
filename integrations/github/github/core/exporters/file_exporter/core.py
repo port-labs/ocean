@@ -152,6 +152,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     "file_path": path,
                     "skip_parsing": skip_parsing,
                     "branch": branch,
+                    "sha": match.get("sha"),
                 }
 
                 logger.debug(
@@ -241,7 +242,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Retrieved {len(retrieved_files)} files from GraphQL batch from {organization}"
             )
 
-            file_paths, file_metadata = extract_file_paths_and_metadata(
+            file_paths, file_metadata, file_shas = extract_file_paths_and_metadata(
                 batch_result["batch_files"]
             )
 
@@ -250,6 +251,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 retrieved_files,
                 file_paths,
                 file_metadata,
+                file_shas,
                 repository_metadata,
                 repo_name,
                 branch,
@@ -315,6 +317,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         retrieved_files: Dict[str, Any],
         file_paths: List[str],
         file_metadata: Dict[str, bool],
+        file_shas: Dict[str, Optional[str]],
         repository_metadata: Dict[str, Any],
         repo_name: str,
         branch: str,
@@ -340,7 +343,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             size = file_data.get("byteSize", 0)
             skip_parsing = file_metadata.get(file_path, False)
 
-            if not content:
+            if content is None:
                 logger.warning(f"File {file_path} has no content from {organization}")
                 continue
 
@@ -358,6 +361,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     branch,
                     file_path,
                     size,
+                    sha=file_shas.get(file_path),
                 ),
             )
 

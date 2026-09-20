@@ -147,9 +147,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                     trigger_type="machine",
                 ):
 
-                    await ocean.integration.port_app_config_handler.get_port_app_config(
-                        use_cache=False
-                    )
+                    await ocean.integration.port_app_config_handler.get_port_app_config()
                     matching_processors = await self._extract_matching_processors(
                         event, path
                     )

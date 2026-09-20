@@ -7,13 +7,18 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .key
+          identifier: .id
           title: .name
           blueprint: '"linearTeam"'
           properties:
+            key: .key
             description: .description
             workspaceName: .organization.name
             url: "\"https://linear.app/\" + .organization.urlKey + \"/team/\" + .key"
+          relations:
+            members: "[.members.nodes[].id]"
+            parentTeam: .parent.key
+            subTeams: "[.children[].key]"
   - kind: label
     selector:
       query: "true"
@@ -46,6 +51,147 @@ resources:
             created: .createdAt
             updated: .updatedAt
           relations:
-            team: .team.key
+            team: .team.id
+            workflowState: .state.id
             labels: .labelIds
             parentIssue: .parent.identifier
+  - kind: document
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"linearDocument"'
+          properties:
+            url: .url
+            summary: .summary
+            content: .content
+            slugId: .slugId
+            parentType: 'if .project then "project" elif .issue then "issue" elif .team then "team" elif .initiative then "initiative" elif .cycle then "cycle" elif .release then "release" else null end'
+            project: .project.name
+            initiative: .initiative.name
+            cycle: .cycle.number
+            creator: .creator.email
+            owner: .owner.email
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.id
+            issue: .issue.identifier
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .displayName // .name
+          blueprint: '"linearUser"'
+          properties:
+            name: .name
+            email: .email
+            url: .url
+            title: .title
+            active: .active
+            admin: .admin
+            guest: .guest
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            teams: "[.teamMemberships.nodes[].team.id]"
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"linearProject"'
+          properties:
+            url: .url
+            description: .description
+            status: .status.name
+            health: .health
+            progress: .progress
+            priority: .priorityLabel
+            startDate: .startDate
+            targetDate: .targetDate
+            lead: .lead.email
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            teams: "[.teams.nodes[].id]"
+            leadUser: .lead.id
+  - kind: initiative
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"linearInitiative"'
+          properties:
+            url: .url
+            description: .description
+            status: .status
+            health: .health
+            priority: .priority
+            targetDate: if .targetDate then (.targetDate | if test("T") then . else . + "T00:00:00Z" end) else null end
+            startedAt: .startedAt
+            completedAt: .completedAt
+            slugId: .slugId
+            creator: .creator.email
+            owner: .owner.email
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            leadTeam: .leadTeam.key
+            ownerUser: .owner.id
+            parentInitiative: .parentInitiative.id
+            subInitiatives: "[.subInitiatives.nodes[].id]"
+            projects: "[.projects.nodes[].id]"
+  - kind: workflow-state
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"linearWorkflowState"'
+          properties:
+            type: .type
+            color: .color
+            position: .position
+            description: .description
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.id
+  - kind: cycle
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name // "Cycle " + (.number | tostring)
+          blueprint: '"linearCycle"'
+          properties:
+            number: .number
+            description: .description
+            progress: .progress
+            startsAt: .startsAt
+            endsAt: .endsAt
+            completedAt: .completedAt
+            isActive: .isActive
+            isFuture: .isFuture
+            isPast: .isPast
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.id

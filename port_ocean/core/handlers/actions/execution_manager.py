@@ -16,11 +16,14 @@ from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
     RunAlreadyAcknowledgedError,
 )
+from port_ocean.exceptions.identity_propagation import UserAuthRequiredError
 from port_ocean.utils.signal import SignalHandler
 
 RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
 QUEUE_GET_TIMEOUT_SECONDS = 1
 GLOBAL_SOURCE = "__global__"
+DEFAULT_FAILURE_STATUS_LABEL = "Execution failed"
+RATE_LIMITED_STATUS_LABEL = "Rate limited"
 
 
 class ExecutionManager:
@@ -473,6 +476,15 @@ class ExecutionManager:
                 await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
+    async def _pause_run_for_user_auth(self, run: IntegrationRun) -> None:
+        logger.info(
+            "Run is waiting for the user to authenticate",
+            node_run_id=run.id,
+        )
+        await ocean.port_client.patch_run(
+            run, {"reauthRequired": True}, should_raise=False
+        )
+
     async def _execute_run(self, run: IntegrationRun) -> None:
         """
         Execute a run using its registered executor.
@@ -486,7 +498,6 @@ class ExecutionManager:
                 "run_kind": run.run_kind.value,
             },
         ):
-            await ocean.integration.port_app_config_handler.get_port_app_config()
             with logger.contextualize(run_id=run.id, action=run.action_type):
                 try:
                     executor = self._actions_executors[run.action_type]
@@ -504,7 +515,11 @@ class ExecutionManager:
                         )
                         msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
                         await ocean.port_client.post_run_log(
-                            run, msg, level="WARNING", should_raise=False
+                            run,
+                            msg,
+                            level="WARNING",
+                            status_label=RATE_LIMITED_STATUS_LABEL,
+                            should_raise=False,
                         )
                         await asyncio.sleep(backoff_seconds)
 
@@ -521,6 +536,12 @@ class ExecutionManager:
                         "Run already being processed by another worker, skipping execution",
                     )
                     return
+                except UserAuthRequiredError:
+                    # Can also be raised here: the rate-limit check above resolves the user's
+                    # token too (same code path as actual execution), so a vault miss can
+                    # surface before the run is even acknowledged.
+                    await self._pause_run_for_user_auth(run)
+                    return
                 except Exception as e:
                     logger.exception(
                         "Error occurred while trying to acknowledge run",
@@ -529,6 +550,7 @@ class ExecutionManager:
                     raise
 
                 error_summary: str | None = None
+                error_status_label: str = DEFAULT_FAILURE_STATUS_LABEL
                 try:
                     start_time = time.monotonic()
                     await executor.execute(run)
@@ -536,16 +558,30 @@ class ExecutionManager:
                         "Run executed successfully",
                         elapsed_ms=(time.monotonic() - start_time) * 1000,
                     )
+                except UserAuthRequiredError:
+                    await self._pause_run_for_user_auth(run)
+                    logger.info(
+                        "Sent reauthRequired signal to Port (see preceding line for "
+                        "an error if this PATCH failed)",
+                        node_run_id=run.id,
+                    )
+                    return
                 except ActionExecutionError as e:
                     logger.warning("Action run failed: {}", str(e))
                     error_summary = str(e)
+                    if e.status_label:
+                        error_status_label = e.status_label
                 except Exception as e:
                     logger.exception("Error executing run", error=str(e))
                     error_summary = f"Failed to execute run: {str(e)}"
 
                 if error_summary:
                     await ocean.port_client.report_run_completed(
-                        run, success=False, message=error_summary, should_raise=False
+                        run,
+                        success=False,
+                        message=error_summary,
+                        status_label=error_status_label,
+                        should_raise=False,
                     )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:

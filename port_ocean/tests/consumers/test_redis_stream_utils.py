@@ -96,6 +96,25 @@ class TestEnsureConsumerGroup:
         )
 
         redis.expire.assert_awaited_once_with("stream", 3600)
+        assert redis.xgroup_create.await_args is not None
+        assert redis.xgroup_create.await_args.kwargs["id"] == "$"
+
+    @pytest.mark.asyncio
+    async def test_uses_start_id_zero_when_stream_already_exists(self) -> None:
+        redis = AsyncMock()
+        redis.exists = AsyncMock(return_value=1)
+        redis.xgroup_create = AsyncMock()
+        redis.expire = AsyncMock()
+
+        await ensure_consumer_group(
+            redis,
+            stream_key="stream",
+            consumer_group="test.integration",
+            stream_ttl_seconds=3600,
+        )
+
+        assert redis.xgroup_create.await_args is not None
+        assert redis.xgroup_create.await_args.kwargs["id"] == "0"
 
     @pytest.mark.asyncio
     async def test_skips_ttl_when_stream_already_exists(self) -> None:

@@ -205,6 +205,12 @@ ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ```
 </details>
 
+:::warning Static webhook paths only (Redis live events)
+Register processors at **fixed paths** (e.g. `/webhook`), not dynamic FastAPI patterns (e.g. `/webhook/{run_id}`).
+
+With the Redis live-events consumer, incoming `webhookPath` values are matched exactly against registered paths. Dynamic templates are not expanded, so events hit a concrete path like `/webhook/run_1` while the integration only registered `/webhook/{run_id}` — the message is acknowledged and dropped. Use one static callback URL and extract correlation ids from the event body or headers.
+:::
+
 For an overview of live events and when to use processors vs direct endpoints, see the [Live Events](../framework/features/live-events.md) guide.
 
 ## How Live Events Work in Ocean

@@ -38,7 +38,6 @@ class CursorAgentWebhookProcessor(AbstractCursorWebhookProcessor):
     The same payload best-effort upserts ``cursor_agent`` and ``cursor_run``
     catalog entities (v0 fields normalized to the v1 mapping shape).
 
-    The callback URL embeds the create Port run id for HMAC verification only.
     Port run correlation resolves the Cursor run id from the first page of List
     Runs (newest first) at or before the webhook timestamp, then looks up the
     in-progress Port run by Cursor run id (``trigger_agent``) or agent id

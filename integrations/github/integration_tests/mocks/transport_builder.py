@@ -36,6 +36,7 @@ from mocks.payloads import (
     workflow_id_for_index,
     workflow_list_response,
     workflow_run_list_response,
+    packages_list_response,
 )
 
 GRAPHQL_UNKNOWN_ERROR: dict[str, Any] = {
@@ -244,6 +245,14 @@ class GithubMockTransportBuilder:
             {"status_code": 200, "json": teams_list_response()},
         )
         self.add_graphql_route("getTeam", team_with_members_graphql_response)
+        return self
+
+    def with_package_routes(self) -> "GithubMockTransportBuilder":
+        self._transport.add_route(
+            "GET",
+            f"/orgs/{ORG_LOGIN}/packages",
+            {"status_code": 200, "json": packages_list_response()},
+        )
         return self
 
     def with_pull_request_graphql_routes(self) -> "GithubMockTransportBuilder":

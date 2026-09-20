@@ -78,6 +78,14 @@ class RepositoryWebhookProcessor(
             f"Processing repository event: {action} for {name} from {organization}"
         )
 
+        if resource_config.selector.exclude_archived and repo.get("archived"):
+            logger.info(
+                f"Repository {name} is archived and this kind excludes archived repositories. Deleting repository."
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[repo]
+            )
+
         if not await self.should_process_repo_search(payload, resource_config):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]

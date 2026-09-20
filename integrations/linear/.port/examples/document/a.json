@@ -1,0 +1,42 @@
+{
+  "id": "50e3e770-03ef-4c12-9f5a-e3122a768bc4",
+  "title": "payment-service-prd",
+  "summary": "",
+  "icon": null,
+  "color": null,
+  "slugId": "66165efe01cd",
+  "url": "https://linear.app/domain/document/payment-service-prd-66165efe01cd",
+  "content": "Here goes the actual content\n\n1. Intro\n2. Body\n3. Conclusion",
+  "documentContentId": "c8d7bbd8-218d-472f-a831-ab14b0d06cda",
+  "createdAt": "2026-08-18T14:41:42.691Z",
+  "updatedAt": "2026-08-18T14:42:25.011Z",
+  "archivedAt": null,
+  "hiddenAt": null,
+  "trashed": null,
+  "sortOrder": 83.28,
+  "creator": {
+    "id": "2791218c-1df6-4dcc-9eaf-2c2becd9ed05",
+    "name": "Port Developer",
+    "email": "developer@getport.io"
+  },
+  "owner": {
+    "id": "2791218c-1df6-4dcc-9eaf-2c2becd9ed05",
+    "name": "Port Developer",
+    "email": "developer@getport.io"
+  },
+  "updatedBy": {
+    "id": "2791218c-1df6-4dcc-9eaf-2c2becd9ed05",
+    "name": "Port Developer",
+    "email": "developer@getport.io"
+  },
+  "lastAppliedTemplate": null,
+  "project": {
+    "id": "800b565e-1885-4c0b-af43-d0226e55f7bb",
+    "name": "Surveys"
+  },
+  "initiative": null,
+  "team": null,
+  "issue": null,
+  "release": null,
+  "cycle": null
+}

@@ -40,9 +40,13 @@ from azure_devops.incremental import (
     flatten_advanced_security_params,
     wiql_changed_after_clause,
 )
-from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
+from azure_devops.client.base_client import (
+    CONTINUATION_TOKEN_HEADER,
+    MAX_TIMEMOUT_RETRIES,
+    PAGE_SIZE,
+    HTTPBaseClient,
+)
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
-from azure_devops.client.base_client import CONTINUATION_TOKEN_HEADER, PAGE_SIZE
 
 from azure_devops.client.file_processing import (
     PathDescriptor,
@@ -179,6 +183,12 @@ def _parse_change_timestamp(timestamp: str) -> datetime:
         return datetime.max.replace(tzinfo=timezone.utc)
 
 
+def _normalize_git_scope_path(path: str) -> str:
+    """Format ``scopePath`` for the Git Items API (leading ``/``, no trailing ``/``)."""
+    normalized = path.strip().strip("/")
+    return "/" if not normalized else f"/{normalized}"
+
+
 def _normalize_area_path(path: str) -> str:
     """Convert a classification-node path to work-item ``System.AreaPath`` format.
 
@@ -219,6 +229,22 @@ class RunPipelineOptions:
     branch: Optional[str] = None
     template_parameters: Optional[dict[str, Any]] = None
     variables: Optional[dict[str, Any]] = None
+
+
+@dataclass
+class CreatePullRequestOptions:
+    """Inputs for creating a pull request."""
+
+    title: str
+    source_ref_name: str
+    target_ref_name: str
+    description: Optional[str] = None
+
+
+def _normalize_git_ref(ref: str) -> str:
+    if ref.startswith("refs/"):
+        return ref
+    return f"refs/heads/{ref}"
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -1890,6 +1916,212 @@ class AzureDevopsClient(HTTPBaseClient):
         pull_request_data = response.json()
         return pull_request_data
 
+    async def create_pull_request_thread(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment thread on a pull request.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/create
+        """
+        create_thread_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/threads"
+        )
+        logger.info(
+            f"Creating comment thread on pull request {pull_request_id} in repository "
+            f"{repository_id} for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "POST",
+            create_thread_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create a comment thread on pull request {pull_request_id} "
+                f"in repository {repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def update_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a pull request.
+
+        API: PATCH {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update
+        """
+        update_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        logger.info(
+            f"Updating pull request {pull_request_id} in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "PATCH",
+            update_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to update pull request {pull_request_id} in repository "
+                f"{repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def close_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Abandon a pull request without merging it."""
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {"status": "abandoned"},
+        )
+
+    async def get_repository_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any] | None:
+        """Get a pull request scoped to a project and repository."""
+        get_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        response = await self.send_request(
+            "GET",
+            get_pull_request_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return None
+        return response.json()
+
+    async def merge_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Merge a pull request."""
+        pull_request = await self.get_repository_pull_request(
+            project, repository_id, pull_request_id
+        )
+        if not pull_request:
+            raise RuntimeError(
+                f"Pull request '{pull_request_id}' was not found in repository "
+                f"'{repository_id}'"
+            )
+
+        last_merge_source_commit = pull_request.get("lastMergeSourceCommit")
+        commit_id = (
+            last_merge_source_commit.get("commitId")
+            if isinstance(last_merge_source_commit, dict)
+            else None
+        )
+        if not commit_id:
+            raise RuntimeError(
+                "Pull request is not ready to merge: lastMergeSourceCommit is missing. "
+                "Wait for Azure DevOps to finish computing the merge preview and retry."
+            )
+
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {
+                "status": "completed",
+                "lastMergeSourceCommit": last_merge_source_commit,
+            },
+        )
+
+    async def create_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        options: CreatePullRequestOptions,
+    ) -> dict[str, Any]:
+        """Create a pull request in the given repository.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/create
+        """
+        create_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests"
+        )
+        body: dict[str, Any] = {
+            "title": options.title,
+            "sourceRefName": _normalize_git_ref(options.source_ref_name),
+            "targetRefName": _normalize_git_ref(options.target_ref_name),
+        }
+        if options.description:
+            body["description"] = options.description
+
+        logger.info(
+            f"Creating pull request '{options.title}' in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            source_ref_name=body["sourceRefName"],
+            target_ref_name=body["targetRefName"],
+        )
+        response = await self.send_request(
+            "POST",
+            create_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create pull request in repository {repository_id}: "
+                "no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+            )
+            return {}
+        return response.json()
+
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
         response = await self.send_request("GET", get_single_repository_url)
@@ -2337,6 +2569,20 @@ class AzureDevopsClient(HTTPBaseClient):
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
 
+    def _resolve_repository_branch(
+        self,
+        repository: dict[str, Any],
+        branch_override: str | None = None,
+    ) -> str | None:
+        if branch_override:
+            return branch_override
+
+        default_branch = repository.get("defaultBranch")
+        if not default_branch:
+            return None
+
+        return default_branch.replace("refs/heads/", "")
+
     async def _get_repository_files(
         self,
         repository: dict[str, Any],
@@ -2346,14 +2592,12 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Checking repository {repository['name']} for files matching {paths}"
         )
 
-        branch = repository.get("defaultBranch")
+        branch = self._resolve_repository_branch(repository)
         if not branch:
             logger.warning(
                 f"Repository {repository['name']} has no default branch. Skipping."
             )
             return
-
-        branch = branch.replace("refs/heads/", "")
 
         files = []
         literal_paths, glob_patterns = separate_glob_and_literal_paths(paths)
@@ -2616,7 +2860,10 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             existing_sub = sub.get_event_by_subscription(existing_subscriptions)
 
-            if existing_sub and not existing_sub.is_enabled():
+            if existing_sub and (
+                not existing_sub.is_enabled()
+                or not existing_sub.has_required_payload_details()
+            ):
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
             elif existing_sub and existing_sub.id:
@@ -2673,7 +2920,7 @@ class AzureDevopsClient(HTTPBaseClient):
         items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
 
         params = {
-            "scopePath": path,
+            "scopePath": _normalize_git_scope_path(path),
             "recursionLevel": recursion_level,
             "$top": PAGE_SIZE,
             "api-version": "7.1",
@@ -2706,16 +2953,16 @@ class AzureDevopsClient(HTTPBaseClient):
         parts = pattern.split("/")
         base_parts = []
         for part in parts:
-            if "*" not in part:
-                base_parts.append(part)
-            else:
+            if "*" in part:
                 break
+            if part:
+                base_parts.append(part)
         base_path = "/".join(base_parts)
 
         return functools.partial(
             self.get_repository_tree,
             repository_id,
-            path=base_path or "/",
+            path=_normalize_git_scope_path(base_path),
             recursion_level="oneLevel",  # Always use oneLevel recursion
         )
 
@@ -2765,20 +3012,27 @@ class AzureDevopsClient(HTTPBaseClient):
         folder_pattern: FolderPattern,
         repo_mapping: RepositoryBranchMapping | None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        branch = repo_mapping.branch if repo_mapping else None
-        if not branch and "defaultBranch" in repo:
-            branch = repo["defaultBranch"].replace("refs/heads/", "")
+        branch = self._resolve_repository_branch(
+            repo, repo_mapping.branch if repo_mapping else None
+        )
+        if not branch:
+            logger.warning(
+                f"Repository {repo['name']} has no default branch. Skipping."
+            )
+            return
 
         async for found_folders in self.get_repository_folders(
             repo["id"], [folder_pattern.path]
         ):
-            processed_folders = []
-            for folder in found_folders:
-                folder_dict = dict(folder)
-                folder_dict["__repository"] = repo
-                folder_dict["__branch"] = branch
-                folder_dict["__pattern"] = folder_pattern.path
-                processed_folders.append(folder_dict)
+            processed_folders = [
+                {
+                    **folder,
+                    "__repository": repo,
+                    "__branch": branch,
+                    "__pattern": folder_pattern.path,
+                }
+                for folder in found_folders
+            ]
             if processed_folders:
                 yield processed_folders
 

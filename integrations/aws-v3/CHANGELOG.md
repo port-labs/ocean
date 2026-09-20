@@ -7,6 +7,246 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.27.0-beta (2026-09-17)
+
+
+### Features
+
+- Added live events support for CodeBuild build runs (including RetryBuild), CodeDeploy deployments, and CodePipeline pipeline executions via CloudTrail start/stop events. Build run live-event fetches now raise not-found when batch_get_builds omits the build instead of upserting an empty entity.
+
+
+## 2.26.3-beta (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 2.26.2-beta (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 2.26.1-beta (2026-09-15)
+
+
+### Bug Fixes
+
+- Fix: AWS v3 integration now properly handles throttled API calls with retry logic and bounded concurrency (max 20 concurrent operations) to prevent silent entity count divergence
+
+
+## 2.26.0-beta (2026-09-15)
+
+
+### Features
+
+- Added CloudTrail live events support for AWS::MemoryDB::User, AWS::CodeBuild::Project, and AWS::CodePipeline::Pipeline.
+
+
+## 2.25.2-beta (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 2.25.1-beta (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 2.25.0-beta (2026-09-07)
+
+
+### Features
+
+- Add live events support for ECS Service and ECS Task Definition
+
+
+## 2.24.5-beta (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 2.24.4-beta (2026-09-06)
+
+
+### Bug Fixes
+
+- Include ExtraContext on CloudTrail live-event delete payloads so custom port-app-config identifier mappings resolve on deletes, not just upserts.
+
+
+## 2.24.3-beta (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 2.24.2-beta (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 2.24.1-beta (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 2.24.0-beta (2026-09-03)
+
+
+### Features
+
+- Add CloudTrail live events support for SES email identities and configuration sets.
+
+
+## 2.23.1-beta (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 2.23.0-beta (2026-09-02)
+
+
+### Features
+
+- Add CloudTrail live events support for RDS DB clusters, SNS topics, SQS queues, EC2 instances, EC2 volumes, and ElastiCache clusters.
+
+
+## 2.22.5-beta (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 2.22.4-beta (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 2.22.3-beta (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 2.22.2-beta (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 2.22.1-beta (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 2.22.0-beta (2026-08-30)
+
+
+### Features
+
+- Add CloudTrail live events for ECR repositories, ECS clusters, and EKS clusters
+
+
+## 2.21.1-beta (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 2.21.0-beta (2026-08-26)
+
+
+### Features
+
+- Add CloudTrail live events support for DynamoDB tables and RDS DB instances.
+
+
+## 2.20.16-beta (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 2.20.15-beta (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 2.20.14-beta (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 2.20.13-beta (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 2.20.12-beta (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 2.20.11-beta (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
 ## 2.20.10-beta (2026-08-17)
 
 

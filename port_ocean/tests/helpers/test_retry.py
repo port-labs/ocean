@@ -8,6 +8,7 @@ import httpx
 from port_ocean.helpers.retry import (
     RetryConfig,
     RetryTransport,
+    SKIP_RETRY_EXTENSION_KEY,
     register_retry_config_callback,
     register_on_retry_callback,
 )
@@ -255,6 +256,28 @@ class TestRetryTransport:
 
         # Test with retryable extension
         mock_request.extensions = {"retryable": True}
+        assert transport._is_retryable_method(mock_request) is True
+
+    def test_is_retryable_method_with_skip_retry_true(self) -> None:
+        """Test that skip_retry=True opts out of retries for retryable methods."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_request.extensions = {SKIP_RETRY_EXTENSION_KEY: True}
+
+        assert transport._is_retryable_method(mock_request) is False
+
+    def test_is_retryable_method_with_skip_retry_false(self) -> None:
+        """Test that skip_retry=False does not opt out of retries."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_request.extensions = {SKIP_RETRY_EXTENSION_KEY: False}
+
         assert transport._is_retryable_method(mock_request) is True
 
     def test_should_retry(self) -> None:

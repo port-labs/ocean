@@ -1,0 +1,561 @@
+{
+  "title": "Azure Devops",
+  "description": "Azure Devops integration for Port Ocean",
+  "icon": "AzureDevops",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/azure-devops",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "gitops",
+      "section": "GitOps"
+    },
+    {
+      "type": "exporter",
+      "section": "Git Providers"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "accountMode",
+      "description": "How to authenticate to Azure DevOps. \"Single Account\" uses a personal access token against one organization. \"Multiple Accounts\" uses an Azure AD service principal across many organizations.",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "Single Account",
+        "Multiple Accounts"
+      ],
+      "format": "tabSwitcher",
+      "default": "Single Account"
+    },
+    {
+      "name": "organizationUrl",
+      "description": "The URL of your Azure DevOps organization (e.g., \"https://dev.azure.com/{your-organization}\"). To find your organization URL, refer to the <a target=\"_blank\" href=\"https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http\">Azure DevOps documentation</a>.",
+      "required": false,
+      "type": "url",
+      "sensitive": true,
+      "dependencies": [
+        {
+          "on": "accountMode",
+          "when": {
+            "equals": "Single Account"
+          },
+          "then": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "personalAccessToken",
+      "description": "A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target=\"_blank\" href=\"https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops\">Azure DevOps documentation</a>.",
+      "required": false,
+      "type": "string",
+      "sensitive": true,
+      "dependencies": [
+        {
+          "on": "accountMode",
+          "when": {
+            "equals": "Single Account"
+          },
+          "then": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "clientId",
+      "description": "Azure AD application (client) ID used to authenticate across multiple Azure DevOps organizations.",
+      "type": "string",
+      "required": false,
+      "dependencies": [
+        {
+          "on": "accountMode",
+          "when": {
+            "equals": "Multiple Accounts"
+          },
+          "then": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "clientSecret",
+      "description": "Azure AD application client secret.",
+      "type": "string",
+      "required": false,
+      "sensitive": true,
+      "dependencies": [
+        {
+          "on": "accountMode",
+          "when": {
+            "equals": "Multiple Accounts"
+          },
+          "then": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "tenantId",
+      "description": "Azure AD tenant ID.",
+      "type": "string",
+      "required": false,
+      "dependencies": [
+        {
+          "on": "accountMode",
+          "when": {
+            "equals": "Multiple Accounts"
+          },
+          "then": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "organizationUrls",
+      "description": "List of Azure DevOps organization URLs to sync (e.g. \"https://dev.azure.com/{your-organization}\").",
+      "type": "array",
+      "required": false,
+      "dependencies": [
+        {
+          "on": "accountMode",
+          "when": {
+            "equals": "Multiple Accounts"
+          },
+          "then": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "isProjectsLimited",
+      "description": "Set to true if the personal access token's scope is limited to specific projects within your organization.",
+      "required": false,
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "appHost",
+      "required": false,
+      "type": "url",
+      "description": "The URL of the Port Ocean app. This is required for real-time event processing, ensuring Port always reflects the latest state of your Azure DevOps resources."
+    },
+    {
+      "name": "webhookSecret",
+      "description": "Optional secret token for securing webhook communication between Azure DevOps and Port. This ensures that only legitimate events from Azure DevOps are accepted. To learn more, see the <a target=\"_blank\" href=\"https://learn.microsoft.com/en-us/azure/devops/service-hooks/services/webhooks?view=azure-devops\">Azure DevOps webhook documentation</a>.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "webhookAuthUsername",
+      "description": "The username used by Azure DevOps to authenticate webhook requests.",
+      "type": "string",
+      "required": false,
+      "default": "port"
+    },
+    {
+      "name": "excludedTags",
+      "title": "Excluded Tags",
+      "description": "A list of tags used to exclude projects and resources that belong to them from syncing.",
+      "type": "array",
+      "required": false
+    }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "trigger_pipeline",
+      "icon": "AzureDevops",
+      "description": "Trigger an Azure DevOps pipeline run",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "The name or ID of the Azure DevOps project that contains the target pipeline",
+          "required": true
+        },
+        {
+          "name": "pipelineId",
+          "title": "Pipeline ID",
+          "type": "string",
+          "description": "The numeric ID of the pipeline to run. It can be found in the pipeline URL, for example - \"12\" for https://dev.azure.com/org/project/_build?definitionId=12",
+          "required": true
+        },
+        {
+          "name": "branch",
+          "title": "Branch",
+          "type": "string",
+          "description": "The branch (ref) to run the pipeline on, for example - \"main\". When omitted, the pipeline's default branch is used."
+        },
+        {
+          "name": "reportPipelineStatus",
+          "title": "Report pipeline status",
+          "type": "boolean",
+          "description": "Whether to report the pipeline run status back to Port once it completes",
+          "default": true
+        },
+        {
+          "name": "templateParameters",
+          "title": "Template parameters",
+          "type": "jqObject",
+          "description": "Runtime template parameters declared in the pipeline YAML. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. <a href=\"https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload\" target=\"_blank\">Learn more</a>"
+        },
+        {
+          "name": "variables",
+          "title": "Variables",
+          "type": "jqObject",
+          "description": "Queue-time variables to pass to the pipeline run. Each value is sent as { \"value\": <value> }."
+        }
+      ]
+    },
+    {
+      "name": "create_pull_request",
+      "icon": "AzureDevops",
+      "description": "Create an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "organization",
+          "title": "Organization",
+          "type": "string",
+          "description": "The Azure DevOps organization name. Must match the organization configured on the integration.",
+          "required": true
+        },
+        {
+          "name": "project",
+          "title": "Project ID",
+          "type": "string",
+          "description": "The ID of the Azure DevOps project that contains the repository",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the Git repository where the pull request will be created",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The title of the pull request",
+          "required": true
+        },
+        {
+          "name": "sourceRefName",
+          "title": "Source branch",
+          "type": "string",
+          "description": "The source branch containing the changes, for example - \"feature/my-change\" or \"refs/heads/feature/my-change\"",
+          "required": true
+        },
+        {
+          "name": "targetRefName",
+          "title": "Target branch",
+          "type": "string",
+          "description": "The target branch to merge into, for example - \"main\" or \"refs/heads/main\"",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Optional description for the pull request"
+        }
+      ]
+    },
+    {
+      "name": "create_pull_request_thread",
+      "icon": "AzureDevops",
+      "description": "Create a comment thread on an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project ID",
+          "type": "string",
+          "description": "The ID of the Azure DevOps project that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to comment on, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        },
+        {
+          "name": "content",
+          "title": "Comment",
+          "type": "string",
+          "description": "The text of the first comment in the thread. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. <a href=\"https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload\" target=\"_blank\">Learn more</a>",
+          "required": true
+        },
+        {
+          "name": "status",
+          "title": "Status",
+          "type": "string",
+          "description": "The status to open the thread with. One of \"active\", \"fixed\", \"wontFix\", \"closed\", \"byDesign\" or \"pending\". Defaults to \"active\".",
+          "default": "active"
+        },
+        {
+          "name": "filePath",
+          "title": "File path",
+          "type": "string",
+          "description": "Anchor the thread to a file in the pull request, for example - \"/src/main.py\". The path is relative to the root of the repository. When omitted, the comment is left on the pull request overview instead of a file."
+        },
+        {
+          "name": "line",
+          "title": "Line",
+          "type": "string",
+          "description": "The line number in the file's right-hand (post-change) side to anchor the thread to, starting at 1. Requires a file path. When omitted, the thread is anchored to the file as a whole."
+        }
+      ]
+    },
+    {
+      "name": "close_pull_request",
+      "icon": "AzureDevops",
+      "description": "Close an Azure DevOps pull request by abandoning it",
+      "inputs": [
+        {
+          "name": "organization",
+          "title": "Organization",
+          "type": "string",
+          "description": "The Azure DevOps organization name. Must match the organization configured on the integration.",
+          "required": true
+        },
+        {
+          "name": "project",
+          "title": "Project ID",
+          "type": "string",
+          "description": "The ID of the Azure DevOps project that contains the repository",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the Git repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to close. It can be found in the pull request URL, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "merge_pull_request",
+      "icon": "AzureDevops",
+      "description": "Merge an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "organization",
+          "title": "Organization",
+          "type": "string",
+          "description": "The Azure DevOps organization name. Must match the organization configured on the integration.",
+          "required": true
+        },
+        {
+          "name": "project",
+          "title": "Project ID",
+          "type": "string",
+          "description": "The ID of the Azure DevOps project that contains the repository",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the Git repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to merge. It can be found in the pull request URL, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "update_pull_request",
+      "icon": "AzureDevops",
+      "description": "Update an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project ID",
+          "type": "string",
+          "description": "The ID of the Azure DevOps project that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to update, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "A new title for the pull request. When omitted, the title is left unchanged."
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "A new description for the pull request, up to 4000 characters. When omitted, the description is left unchanged."
+        },
+        {
+          "name": "status",
+          "title": "Status",
+          "type": "string",
+          "description": "The status to set on the pull request. One of \"active\", \"abandoned\" or \"completed\". Use \"completed\" to merge it, \"abandoned\" to close it without merging, and \"active\" to reactivate an abandoned pull request."
+        },
+        {
+          "name": "targetBranch",
+          "title": "Target branch",
+          "type": "string",
+          "description": "A new target branch for the pull request, for example - \"main\" or \"refs/heads/main\". Requires the pull request retargeting feature to be enabled in Azure DevOps."
+        },
+        {
+          "name": "mergeStrategy",
+          "title": "Merge strategy",
+          "type": "string",
+          "description": "The merge strategy to use when completing the pull request. One of \"noFastForward\", \"squash\", \"rebase\" or \"rebaseMerge\"."
+        },
+        {
+          "name": "deleteSourceBranch",
+          "title": "Delete source branch",
+          "type": "boolean",
+          "description": "Whether to delete the source branch after the pull request is completed."
+        },
+        {
+          "name": "mergeCommitMessage",
+          "title": "Merge commit message",
+          "type": "string",
+          "description": "The commit message to use for the merge commit when completing the pull request."
+        },
+        {
+          "name": "bypassPolicy",
+          "title": "Bypass policy",
+          "type": "boolean",
+          "description": "Whether to bypass branch policies while completing the pull request."
+        },
+        {
+          "name": "bypassReason",
+          "title": "Bypass reason",
+          "type": "string",
+          "description": "The reason policies were bypassed when completing the pull request."
+        },
+        {
+          "name": "transitionWorkItems",
+          "title": "Transition work items",
+          "type": "boolean",
+          "description": "Whether to transition linked work items to the next logical state when completing the pull request."
+        },
+        {
+          "name": "autoCompleteIgnoreConfigIds",
+          "title": "Auto-complete ignore policy config IDs",
+          "type": "string",
+          "description": "Comma-separated optional policy configuration IDs that auto-complete should not wait for, for example - \"12,34\"."
+        },
+        {
+          "name": "disableRenames",
+          "title": "Disable renames",
+          "type": "boolean",
+          "description": "Whether to skip rename detection during the pull request merge."
+        },
+        {
+          "name": "conflictAuthorshipCommits",
+          "title": "Conflict authorship commits",
+          "type": "boolean",
+          "description": "Whether conflict resolutions applied during the merge should be placed in separate commits to preserve authorship information."
+        },
+        {
+          "name": "detectRenameFalsePositives",
+          "title": "Detect rename false positives",
+          "type": "boolean",
+          "description": "Whether rename false positives should be detected during the pull request merge."
+        },
+        {
+          "name": "autoCompleteSetById",
+          "title": "Auto-complete set by ID",
+          "type": "string",
+          "description": "The identity ID of the user enabling auto-complete for this pull request."
+        }
+      ]
+    }
+  ],
+  "deploymentMethodOverride": [
+    {
+      "type": "helm"
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    },
+    "incrementalSync": {
+      "enabled": true
+    }
+  },
+  "installationDocs": {
+    "saas": [
+      {
+        "name": "SaasOAuth2",
+        "enabled": false
+      },
+      {
+        "name": "Saas",
+        "enabled": false
+      }
+    ],
+    "githubWorkflow": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=github#setup"
+    },
+    "gitlabCI": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=gitlab#setup"
+    },
+    "azurePipeline": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=azure#setup"
+    },
+    "helm": {
+      "enabled": true,
+      "docs": "build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=real-time-self-hosted#setup"
+    },
+    "docker": {
+      "enabled": false
+    }
+  }
+}

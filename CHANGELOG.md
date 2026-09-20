@@ -7,6 +7,185 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.0 (2026-09-16)
+
+
+### Features
+
+- Add identity propagation (OAuth broker, vault, JWT verifier) so actions can run as the triggering user.
+
+
+## 0.51.4 (2026-09-15)
+
+
+### Improvements
+
+- Added incremental sync observability with Prometheus metrics and structured logs for run health, cursor lag, and kind duration
+
+
+## 0.51.3 (2026-09-14)
+
+
+### Improvements
+
+- Redis live-events stream consumption no longer requires the LIVE_EVENTS_REDIS_STREAM_ENABLED organization feature flag and is disabled for blocked organizations instead.
+
+
+## 0.51.2 (2026-09-10)
+
+
+### Bug Fixes
+
+- Cancel in-flight polling resyncs when a newer resync request arrives, without blocking the polling loop
+
+
+## 0.51.1 (2026-09-07)
+
+
+### Bug Fixes
+
+- Fix workflow node run status labels to use the object shape Port expects
+
+
+## 0.51.0 (2026-09-06)
+
+
+### Features
+
+- Added status label support to run logs and status updates for both action runs and workflow node runs, so integration actions can report which lifecycle stage a run is in
+
+
+## 0.50.11 (2026-09-06)
+
+
+### Improvements
+
+- Use cached port app config for live events to reduce port-api load between TTL refreshes.
+
+
+## 0.50.10 (2026-09-06)
+
+
+### Features
+
+- Add ProbeContext.setup_unscoped_checks to register one unscoped check per available kind
+
+
+## 0.50.9 (2026-09-02)
+
+
+### Bug Fixes
+
+- Log oversized "Event Added To Queue" webhook payloads as a single base64 field so nested JSON is not flattened into too many log attributes
+
+
+## 0.50.8 (2026-09-02)
+
+
+### Features
+
+- Probe discovers supported resource kinds from the integration PortAppConfig
+
+
+## 0.50.7 (2026-09-01)
+
+
+### Features
+
+- Add async Port probe reporter that sends incremental probe health results to Port during probe runs
+
+
+## 0.50.6 (2026-09-01)
+
+
+### Features
+
+- Add on_probe decorator, run_probe entry point, and ocean probe CLI with kind filtering and validation
+
+
+## 0.50.5 (2026-08-31)
+
+
+### Improvements
+
+- Readiness probe returns 503 until Ocean finishes startup, enabling faster Kubernetes rollouts with lower initialDelaySeconds.
+
+
+## 0.50.4 (2026-08-30)
+
+
+### Features
+
+- Allow individual HTTP requests to opt out of retries via the skip_retry request extension (#74233718)
+
+
+## 0.50.3 (2026-08-30)
+
+
+### Features
+
+- Add probe context, config, and result models for integration probing
+
+
+## 0.50.2 (2026-08-27)
+
+
+### Features
+
+- Add get_spec_kinds utility to read resource kinds from an integration spec file
+
+
+## 0.50.1 (2026-08-26)
+
+
+### Bug Fixes
+
+- Normalize selector hashing behavior.
+
+
+## 0.50.0 (2026-08-26)
+
+
+### Improvements
+
+- Converted IntegrationEventsCallbacks from TypedDict to dataclass for easier IDE tracing.
+  Breaking (internal): custom integrations that mutate `integration.event_strategy` as a dict
+  (e.g. `event_strategy["resync"][kind]`) must use attribute access instead
+  (e.g. `event_strategy.resync[kind]`); `@ocean.on_resync()` and other registration APIs are unchanged.
+
+
+## 0.49.1 (2026-08-24)
+
+
+### Improvements
+
+- Added `throttle_batch_operation` util for running multiple async callables with bounded concurrency.
+
+
+## 0.49.0 (2026-08-24)
+
+
+### Improvements
+
+- Migrate Ocean core settings models from Pydantic v1 to v2, keeping integration config as a JSON-mode dict of primitives.
+
+
+## 0.48.13 (2026-08-24)
+
+
+### Bug Fixes
+
+- Fix HTTPStatusError unpickling failure in Loguru async queue by converting to safe serializable format
+
+
+## 0.48.12 (2026-08-18)
+
+
+### Bug Fixes
+
+- Start Redis live-events consumer groups from the beginning of the stream when the stream already exists, so messages published before the group was created are no longer skipped.
+
+
 ## 0.48.11 (2026-08-18)
 
 

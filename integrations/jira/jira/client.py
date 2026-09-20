@@ -12,6 +12,7 @@ from jira.overrides import (
     JiraWorklogAPIQueryParams,
     ComponentSource,
 )
+from jira.api_models import JiraIssueTransitionsResponse
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -232,8 +233,14 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         retryable: bool = False,
+        skip_retry: bool = False,
     ) -> Any:
-        response: httpx.Response | None = None
+        extensions: dict[str, Any] = {}
+        if retryable:
+            extensions["retryable"] = True
+        if skip_retry:
+            extensions["skip_retry"] = True
+
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
@@ -242,10 +249,12 @@ class JiraClient(OAuthClient):
                     params=params,
                     json=json,
                     headers=headers,
-                    extensions={"retryable": retryable} if retryable else None,
+                    extensions=extensions or None,
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
+                if not response.content:
+                    return None
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
@@ -459,14 +468,39 @@ class JiraClient(OAuthClient):
 
     async def has_webhook_permission(self) -> bool:
         logger.info(f"Checking webhook permissions for Jira instance: {self.jira_url}")
-        response = await self._send_api_request(
-            method="GET",
-            url=f"{self.api_url}/mypermissions",
-            params={"permissions": "ADMINISTER"},
+        permissions = await self.get_current_user_permissions(
+            ["ADMINISTER"], skip_retry=False
         )
-        has_permission = response["permissions"]["ADMINISTER"]["havePermission"]
+        return permissions.get("ADMINISTER", False)
 
-        return has_permission
+    async def verify_current_user(self) -> None:
+        """Validate that the configured credentials identify a real Jira user."""
+        await self._send_api_request("GET", f"{self.api_url}/myself", skip_retry=True)
+
+    async def get_current_user_permissions(
+        self, permission_keys: list[str], *, skip_retry: bool = True
+    ) -> dict[str, bool]:
+        """Return the current user's effective permissions for the given keys."""
+        if not permission_keys:
+            return {}
+
+        response = await self._send_api_request(
+            "GET",
+            f"{self.api_url}/mypermissions",
+            params={"permissions": ",".join(permission_keys)},
+            skip_retry=skip_retry,
+        )
+        return {
+            key: bool(permission.get("havePermission"))
+            for key, permission in response.get("permissions", {}).items()
+        }
+
+    async def verify_teams_access(self, org_id: str) -> None:
+        await self._send_api_request(
+            "GET",
+            f"{self.teams_base_url}/{org_id}/teams",
+            skip_retry=True,
+        )
 
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
@@ -581,8 +615,37 @@ class JiraClient(OAuthClient):
         ):
             yield projects
 
-    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
-        return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
+    async def get_single_issue(
+        self, issue_key: str, *, fields: str | None = None
+    ) -> dict[str, Any]:
+        return await self._send_api_request(
+            "GET",
+            f"{self.api_url}/issue/{issue_key}",
+            params={"fields": fields} if fields else None,
+        )
+
+    async def create_issue(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._send_api_request(
+            "POST",
+            f"{self.api_url}/issue",
+            json=payload,
+        )
+
+    async def get_issue_transitions(
+        self, issue_key: str
+    ) -> JiraIssueTransitionsResponse:
+        response = await self._send_api_request(
+            "GET",
+            f"{self.api_url}/issue/{issue_key}/transitions",
+        )
+        return JiraIssueTransitionsResponse.model_validate(response)
+
+    async def transition_issue(self, issue_key: str, transition_id: str) -> None:
+        await self._send_api_request(
+            "POST",
+            f"{self.api_url}/issue/{issue_key}/transitions",
+            json={"transition": {"id": transition_id}},
+        )
 
     @staticmethod
     def _build_issue_search_body(

@@ -247,7 +247,7 @@ resources:
           identifier: >-
             .__project.id + "-" + (.__pipeline.id | tostring) + "-" + (.id |
             tostring) | gsub(" "; "")
-          title: .name // .runNumber // (.id | tostring)
+          title: .name
           blueprint: '"pipeline-run"'
           properties:
             state: .state
@@ -257,6 +257,7 @@ resources:
             pipelineName: .pipeline.name
           relations:
             project: .__project.id | gsub(" "; "")
+            pipeline: .__project.id + "/" + (.__pipeline.id | tostring)
   - kind: iteration
     selector:
       query: 'true'

@@ -1,11 +1,20 @@
 import asyncio
-from typing import Any, Awaitable, Callable, cast, Optional
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    cast,
+    Optional,
+)
 from datetime import datetime
 
 import httpx
 from loguru import logger
 
-from github.clients.http.graphql_client import GithubGraphQLClient, GraphQLFallback
+from github.clients.http.graphql_client import (
+    GithubGraphQLClient,
+    GraphQLFallback,
+)
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
@@ -448,11 +457,26 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         primary_query, fallbacks = self._build_pr_queries(
             organization, repo_name, pr_gql_options, order_by_field
         )
+
+        accumulated_excluded: set[str] = set(pr_gql_options.exclude_graphql_fields)
+
+        async def regenerate_open_pr_query(forbidden_fields: set[str]) -> str:
+            nonlocal accumulated_excluded
+            accumulated_excluded.update(forbidden_fields)
+            updated_options = pr_gql_options.copy(
+                update={"exclude_graphql_fields": sorted(accumulated_excluded)}
+            )
+            new_query, _ = self._build_pr_queries(
+                organization, repo_name, updated_options, order_by_field
+            )
+            return new_query
+
         async for pr_nodes in paginate_with_strategy(
             self.client.send_paginated_request(
                 primary_query,
                 variables,
                 fallbacks=fallbacks,
+                regenerate_query=regenerate_open_pr_query,
             ),
             cursor=incremental_cursor,
             strategy=OPEN_PULL_REQUEST_INCREMENTAL_GRAPHQL,
@@ -508,11 +532,28 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         primary_query, fallbacks = self._build_pr_queries(
             organization, repo_name, pr_gql_options, GRAPHQL_ORDER_BY_UPDATED_AT
         )
+
+        accumulated_excluded_closed: set[str] = set(
+            pr_gql_options.exclude_graphql_fields
+        )
+
+        async def regenerate_closed_pr_query(forbidden_fields: set[str]) -> str:
+            nonlocal accumulated_excluded_closed
+            accumulated_excluded_closed.update(forbidden_fields)
+            updated_options = pr_gql_options.copy(
+                update={"exclude_graphql_fields": sorted(accumulated_excluded_closed)}
+            )
+            new_query, _ = self._build_pr_queries(
+                organization, repo_name, updated_options, GRAPHQL_ORDER_BY_UPDATED_AT
+            )
+            return new_query
+
         async for batch in paginate_closed_pull_requests(
             self.client.send_paginated_request(
                 primary_query,
                 variables,
                 fallbacks=fallbacks,
+                regenerate_query=regenerate_closed_pr_query,
             ),
             enrich=enrich,
             max_results=max_results,

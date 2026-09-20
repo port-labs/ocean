@@ -7,6 +7,254 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.0 (2026-09-17)
+
+
+### Features
+
+- Added delegate_issue_to_agent Linear integration action
+
+
+## 0.11.0 (2026-09-17)
+
+
+### Features
+
+- Added add_reaction_to_issue, archive_issue, and delete_issue Linear integration actions
+
+
+## 0.10.0 (2026-09-17)
+
+
+### Features
+
+- Added add_issue_comment and add_document Linear integration actions
+
+
+## 0.9.2 (2026-09-17)
+
+
+### Bug Fixes
+
+- Removed enum constraint from linearWorkflowState type property to support arbitrary Linear workflow state categories
+
+
+## 0.9.1 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 0.9.0 (2026-09-16)
+
+
+### Features
+
+- Added workflow state kind to the Linear integration
+
+
+## 0.8.0 (2026-09-16)
+
+
+### Features
+
+- Added initiative resource kind with default blueprint and mappings, including live event support via Linear webhooks.
+
+
+## 0.7.0 (2026-09-16)
+
+
+### Features
+
+- Added create_issue, create_sub_issue, and update_issue Linear integration actions
+
+
+## 0.6.3 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 0.6.2 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 0.6.1 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 0.6.0 (2026-09-09)
+
+
+### Features
+
+- Added user, project, team-members, and cycle resource kinds with default blueprints and mappings. In addition, Added live event support for user, project, and cycle kinds via Linear webhooks.
+
+
+## 0.5.0 (2026-09-09)
+
+
+### Features
+
+- Introduce Linear actions infrastructure with rate-limit aware GraphQL client and resource-config driven exporters for resync and webhooks
+
+
+## 0.4.16 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 0.4.15 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 0.4.14 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 0.4.13 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 0.4.12 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 0.4.11 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 0.4.10 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 0.4.9 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 0.4.8 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 0.4.7 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 0.4.6 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 0.4.5 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 0.4.4 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 0.4.3 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 0.4.2 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 0.4.1 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 0.4.0 (2026-08-24)
+
+
+### Features
+
+- Added a Linear document kind with default blueprint, mapping, and live-event support for specs and PRDs. Existing Ocean webhooks are updated to subscribe to Document events. (#23811486)
+
+
+## 0.3.97 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
 ## 0.3.96 (2026-08-17)
 
 

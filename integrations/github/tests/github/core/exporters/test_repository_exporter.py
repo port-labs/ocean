@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.core.exporters.repository_exporter import (
+    ARCHIVED_QUALIFIER_PATTERN,
     ENRICHMENT_BATCH_SIZE,
     RestRepositoryExporter,
 )
@@ -29,6 +30,21 @@ TEST_REPOS = [
         "name": "repo2",
         "full_name": "test-org/repo2",
         "description": "Test repository 2",
+    },
+]
+
+TEST_REPOS_WITH_ARCHIVED = [
+    {
+        "id": 1,
+        "name": "active-repo",
+        "full_name": "test-org/active-repo",
+        "archived": False,
+    },
+    {
+        "id": 2,
+        "name": "archived-repo",
+        "full_name": "test-org/archived-repo",
+        "archived": True,
     },
 ]
 
@@ -307,6 +323,258 @@ class TestRestRepositoryExporter:
                     f"{rest_client.base_url}/search/repositories",
                     {"q": "org:test-org code in:name"},
                 )
+
+    async def test_get_paginated_resources_excludes_archived_repositories_list_strategy(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_REPOS_WITH_ARCHIVED
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    exclude_archived=True,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == ["active-repo"]
+
+    async def test_get_paginated_resources_excludes_archived_repositories_search_strategy(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            if "search" in url:
+                yield {"items": TEST_REPOS_WITH_ARCHIVED}
+            else:
+                yield TEST_REPOS_WITH_ARCHIVED
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                    exclude_archived=True,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == ["active-repo"]
+
+    async def test_search_strategy_appends_archived_false_qualifier_when_enabled(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """When exclude_archived is enabled and repoSearch has no archived:
+        qualifier, archived:false is appended to the search query to reduce
+        wasted search pages/rate limit usage. The client-side filter (see
+        above) remains the safety net regardless."""
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            yield {"items": TEST_REPOS_WITH_ARCHIVED}
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                    exclude_archived=True,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                [batch async for batch in exporter.get_paginated_resources(options)]
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {"q": "org:test-org code in:name archived:false"},
+                )
+
+    async def test_search_strategy_overrides_conflicting_archived_qualifier_when_enabled(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """excludeArchived is an explicit selector-level opt-in, so it takes
+        precedence over a conflicting archived:true qualifier a user has set
+        directly in repoSearch: the query qualifier is overridden, and the
+        client-side filter still excludes any archived repo that comes
+        back."""
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            yield {"items": TEST_REPOS_WITH_ARCHIVED}
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name archived:true"),
+                    exclude_archived=True,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {"q": "org:test-org code in:name archived:false"},
+                )
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == ["active-repo"]
+
+    async def test_search_strategy_leaves_query_untouched_when_exclude_archived_disabled(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """exclude_archived defaults to False, so an explicit archived:true
+        qualifier in repoSearch passes through unchanged - nothing is
+        overridden when the feature is off, and archived repos are still
+        returned (backward compatible)."""
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            yield {"items": TEST_REPOS_WITH_ARCHIVED}
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name archived:true"),
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {"q": "org:test-org code in:name archived:true"},
+                )
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == [
+                    "active-repo",
+                    "archived-repo",
+                ]
+
+    async def test_search_strategy_appends_archived_false_alongside_forced_qualifiers(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """When the search strategy runs without an explicit repoSearch (e.g.
+        GitHub App auth against a personal account), exclude_archived still
+        appends archived:false alongside the forced qualifiers."""
+        from github.clients.auth.github_app.installation_authenticator import (
+            GitHubAppInstallationAuthenticator,
+        )
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            yield {"items": TEST_REPOS_WITH_ARCHIVED}
+
+        # rest_client is a process-wide cached instance (keyed by rate limit
+        # scope), so the authenticator swap below must be reverted afterward
+        # to avoid leaking App-auth state into other tests.
+        original_authenticator = rest_client.authenticator
+        try:
+            with patch.object(
+                rest_client,
+                "send_paginated_request",
+                side_effect=mock_paginated_request,
+            ) as mock_request:
+                rest_client.authenticator = GitHubAppInstallationAuthenticator(
+                    app_auth=GitHubAppAuthenticator(
+                        app_id="app",
+                        private_key="key",
+                        github_host=rest_client.base_url,
+                    ),
+                    organization="test-org",
+                    installation_id="123",
+                )
+
+                async with event_context("test_event"):
+                    options = ListRepositoryOptions(
+                        organization="test-org",
+                        organization_type="User",
+                        type=mock_port_app_config.repository_type,
+                        exclude_archived=True,
+                    )
+                    exporter = RestRepositoryExporter(rest_client)
+
+                    [batch async for batch in exporter.get_paginated_resources(options)]
+
+                    mock_request.assert_called_once_with(
+                        f"{rest_client.base_url}/search/repositories",
+                        {"q": "org:test-org fork:true is:all archived:false"},
+                    )
+        finally:
+            rest_client.authenticator = original_authenticator
+
+    async def test_get_paginated_resources_keeps_archived_repositories_by_default(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """`exclude_archived` defaults to False, so archived repos are still returned."""
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_REPOS_WITH_ARCHIVED
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == [
+                    "active-repo",
+                    "archived-repo",
+                ]
 
     async def test_search_strategy_applies_incremental_cursor(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
@@ -653,3 +921,24 @@ def test_included_relations_forbids_unknown_keys() -> None:
         GithubRepositorySelector.parse_obj(
             {"query": "true", "includedRelations": {"unknown": True}}
         )
+
+
+@pytest.mark.parametrize(
+    "query,should_match",
+    [
+        ("archived:true", True),
+        ("archived:false", True),
+        ("ARCHIVED:TRUE", True),
+        ("code in:name archived:true", True),
+        ("archived:true code in:name", True),
+        ("fork:true is:all", False),
+        ("", False),
+        # A substring that merely contains "archived:" as part of another
+        # token must not be mistaken for the qualifier.
+        ("unarchived:true", False),
+    ],
+)
+def test_archived_qualifier_pattern_matches_standalone_qualifier_only(
+    query: str, should_match: bool
+) -> None:
+    assert bool(ARCHIVED_QUALIFIER_PATTERN.search(query)) is should_match

@@ -7,6 +7,334 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.6 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 6.13.5 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 6.13.4 (2026-09-15)
+
+
+### Bug Fixes
+
+- Treat empty Port mapping as a valid no-op during resync so the integration stays alive, marks resync as completed, and actions continue to work.
+
+
+## 6.13.3 (2026-09-14)
+
+
+### Improvements
+
+- Expose GitHub workflow conclusion on workflow node run output when dispatch_workflow completes, so downstream workflow JQ can reference it
+
+
+## 6.13.2 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 6.13.1 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 6.13.0 (2026-09-09)
+
+
+### Features
+
+- Add a dedicated `mcp` kind to discover MCP servers from `mcp.json`/`.mcp.json` files bundled with agent plugins, emitting one entity per server with derived transport (http/stdio) and full create/update/delete parity on live push events.
+
+
+## 6.12.1 (2026-09-09)
+
+
+### Bug Fixes
+
+- Restore live-event deletes for file-kind itemsToParse item removals, whole-file deletes, and renames. Modified files with itemsToParse emit old content as deletes and new content as upserts; DSP keeps entities that appear in both lists.
+
+
+## 6.12.0 (2026-09-08)
+
+
+### Features
+
+- Add GitHub permission probing for PAT and GitHub App authentication
+
+
+## 6.11.1 (2026-09-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.1
+
+
+## 6.11.0 (2026-09-07)
+
+
+### Improvements
+
+- Added run logs and status labels to the dispatch_workflow action, so Port shows when a workflow is being dispatched, running, or finished with its GitHub conclusion. Dispatch failures now report GitHub's error message even when the response body is not JSON
+
+
+## 6.10.17 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.0
+
+
+## 6.10.16 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.11
+
+
+## 6.10.15 (2026-09-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.10
+
+
+## 6.10.14 (2026-09-03)
+
+
+### Bug Fixes
+
+- Fixed multi-document YAML parsing in the GitHub file exporter
+
+
+## 6.10.13 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.9
+
+
+## 6.10.12 (2026-09-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.8
+
+
+## 6.10.11 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.7
+
+
+## 6.10.10 (2026-09-01)
+
+
+### Improvements
+
+- Rename debug.py to debug_resync.py and add debug_probe.py for local probe runs
+
+
+## 6.10.9 (2026-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.6
+
+
+## 6.10.8 (2026-08-31)
+
+
+### Features
+
+- Expanded SAML email enrichment to support enterprise-level SAML SSO by automatically falling back to the enterprise identity provider when org-level SAML is not configured, enabling __SAMLEmail population for customers who centralize SAML at the enterprise level. Requires a classic PAT from an enterprise owner with read:enterprise scope.
+
+
+## 6.10.7 (2026-08-31)
+
+
+### Improvements
+
+- Expanded pull request live events to support all webhook actions and added pull request review live events with automatic webhook configuration updates
+
+
+## 6.10.6 (2026-08-31)
+
+
+### Features
+
+- Expanded user email enrichment by adding includeVerifiedDomainEmails selector, enabling customers on GitHub Enterprise Cloud with verified domains to include organizationVerifiedDomainEmails on exported users. No N+1 API calls; the field is inlined into the existing member list query.
+
+
+## 6.10.5 (2026-08-31)
+
+
+### Bug Fixes
+
+- Added retry with exponential backoff for GraphQL errors during team member enrichment. GitHub server-side errors like "Something went wrong while executing your query" are retried up to 3 times before failing, preventing a single error from aborting the entire team resync.
+
+
+## 6.10.4 (2026-08-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.5
+
+
+## 6.10.3 (2026-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.4
+
+
+## 6.10.2 (2026-08-28)
+
+
+### Bug Fixes
+
+- Fixed user sync abort when SAML identity query returns FORBIDDEN by handling GraphQLForbiddenFieldError gracefully, restoring pre-6.9.6 behavior of continuing with empty SAML map
+
+
+## 6.10.1 (2026-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.2
+
+
+## 6.10.0 (2026-08-26)
+
+
+### Features
+
+- Add an `excludeArchived` selector to skip archived repositories during repository discovery for pull request, issue, workflow, release, file, folder, skill, and other per-repository kinds.
+
+
+## 6.9.7 (2026-08-26)
+
+
+### Improvements
+
+- Converted specs from yaml to json
+
+
+## 6.9.6 (2026-08-26)
+
+
+### Bug Fixes
+
+- Fix: Retry GraphQL queries without forbidden fields when field-level permission errors occur
+
+
+## 6.9.5 (2026-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.50.1
+
+
+## 6.9.4 (2026-08-24)
+
+
+### Features
+
+- Add bulk update and bulk delete actions for GitHub external custom property values APIs, with automatic 100-repo batching and multi-org support.
+
+
+## 6.9.3 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.1
+
+
+## 6.9.2 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.49.0
+
+
+## 6.9.1 (2026-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.13
+
+
+## 6.9.0 (2026-08-23)
+
+
+### Features
+
+- Added a `package` kind that ingests GitHub Container Registry (GHCR) packages.
+
+
+## 6.8.2 (2026-08-23)
+
+
+### Improvements
+
+- Log an error when GitHub webhook signature verification fails
+
+
+## 6.8.1 (2026-08-19)
+
+
+### Bug Fixes
+
+- Allow empty files in GraphQL resync to align with REST/webhook paths
+
+
+## 6.8.0 (2026-08-19)
+
+
+### Features
+
+- Added the git blob SHA (`blob_sha`) of each `SKILL.md` file to the `skill` kind's raw payload, enabling content-addressed duplicate/change detection without diffing full file text.
+
+
+## 6.7.29 (2026-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.48.12
+
+
 ## 6.7.28 (2026-08-18)
 
 

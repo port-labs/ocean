@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from confluent_kafka import Message
 from loguru import logger
+from pydantic import field_validator
 
 from port_ocean.consumers.kafka_consumer import (
     KafkaConsumer,
@@ -20,7 +21,6 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from pydantic.v1 import validator
 from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 
@@ -52,7 +52,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
     kafka_security_enabled: bool = True
     consumer_poll_timeout: int = 1
 
-    @validator("brokers")
+    @field_validator("brokers")
     @classmethod
     def parse_brokers(cls, v: str) -> str:
         # If it's a JSON array string, parse and join
@@ -116,13 +116,13 @@ class KafkaEventListener(BaseEventListener):
         if self.event_listener_config.kafka_security_enabled:
             creds = await ocean.port_client.get_kafka_creds()
             return KafkaConsumerConfig(
-                **self.event_listener_config.dict(),
+                **self.event_listener_config.model_dump(),
                 username=creds.get("username"),
                 password=creds.get("password"),
                 group_name=f"{self.integration_type}.{self.integration_identifier}",
             )
 
-        return KafkaConsumerConfig.parse_obj(self.event_listener_config.dict())
+        return KafkaConsumerConfig.parse_obj(self.event_listener_config.model_dump())
 
     async def _should_use_integration_resync_requests_consumer(self) -> bool:
         try:

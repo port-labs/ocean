@@ -1000,6 +1000,35 @@ class TestRestFileExporterRepoNotFound:
         assert len(results) == 1
         assert results[0]["name"] == "readme.txt"
 
+    async def test_process_retrieved_graphql_files_passes_tree_sha_as_metadata_sha(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """The git tree's blob `sha` (collected during tree traversal) must be
+        threaded through to the metadata passed to `file_processor.process_file`,
+        so downstream exporters (e.g. the skill kind) can surface it without
+        extending the GraphQL query."""
+        exporter = RestFileExporter(rest_client)
+
+        process_file_mock = AsyncMock(
+            return_value={"name": "readme.txt", "content": "hello"}
+        )
+        with patch.object(exporter.file_processor, "process_file", process_file_mock):
+            await exporter._process_retrieved_graphql_files(
+                organization="test-org",
+                retrieved_files={"file_0": {"text": "hello", "byteSize": 5}},
+                file_paths=["readme.txt"],
+                file_metadata={"readme.txt": True},
+                file_shas={"readme.txt": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"},
+                repository_metadata=TEST_REPO_METADATA,
+                repo_name="live-repo",
+                branch="main",
+            )
+
+        process_file_mock.assert_awaited_once()
+        assert process_file_mock.await_args is not None
+        metadata = process_file_mock.await_args.kwargs["metadata"]
+        assert metadata["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
 
 class TestFileExporterUtils:
     @pytest.mark.asyncio
@@ -1154,6 +1183,20 @@ class TestFileExporterUtils:
         content = parse_content("invalid: yaml: content:", "config.yaml")
         assert content == "invalid: yaml: content:"
 
+    def test_parse_content_multi_document_yaml(self) -> None:
+        content = parse_content(
+            "name: service-a\nversion: 1.0.0\n---\nname: service-b\nversion: 2.0.0\n",
+            "services.yaml",
+        )
+        assert content == [
+            {"name": "service-a", "version": "1.0.0"},
+            {"name": "service-b", "version": "2.0.0"},
+        ]
+
+    def test_parse_content_single_document_yaml_with_leading_marker(self) -> None:
+        content = parse_content("---\nname: test\nvalue: 123\n", "config.yaml")
+        assert content == {"name": "test", "value": 123}
+
     def test_match_file_path_against_glob_pattern_exact(self) -> None:
         assert match_file_path_against_glob_pattern("test.txt", "test.txt") is True
 
@@ -1203,6 +1246,7 @@ class TestFileExporterUtils:
         assert len(matched) == 1
         assert matched[0]["path"] == "test.txt"
         assert matched[0]["fetch_method"] == GithubClientType.GRAPHQL
+        assert matched[0]["sha"] == "abc123"
 
     def test_filter_github_tree_entries_by_pattern_no_matches(self) -> None:
         matched = filter_github_tree_entries_by_pattern(TEST_TREE_ENTRIES, "*.py")
@@ -1236,6 +1280,20 @@ class TestFileExporterUtils:
             == "https://api.github.com/repos/test-org/repo1/contents/src/test.txt?ref=main"
         )
         assert metadata["size"] == 100
+        assert metadata["sha"] is None
+
+    def test_get_graphql_file_metadata_with_sha(self) -> None:
+        metadata = get_graphql_file_metadata(
+            "https://api.github.com",
+            "test-org",
+            "repo1",
+            "main",
+            "src/test.txt",
+            100,
+            sha="e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        )
+
+        assert metadata["sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
     def test_build_batch_file_query(self) -> None:
         query = build_batch_file_query(
@@ -1262,3 +1320,63 @@ class TestFileExporterUtils:
         assert 'repository(owner: "test-org", name: "repo1")' in query["query"]
         # Should not contain any file objects
         assert "file_0: object" not in query["query"]
+
+
+@pytest.mark.asyncio
+class TestFileProcessorMultiDocumentYaml:
+    async def test_process_file_returns_list_for_multi_document_yaml(self) -> None:
+        """Resync and webhook file processing both route through FileProcessor."""
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+        multi_doc_yaml = (
+            "name: service-a\nversion: 1.0.0\n---\nname: service-b\nversion: 2.0.0\n"
+        )
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="services.yaml",
+            skip_parsing=False,
+            branch="main",
+            content=multi_doc_yaml,
+            metadata={},
+        )
+
+        assert result["content"] == [
+            {"name": "service-a", "version": "1.0.0"},
+            {"name": "service-b", "version": "2.0.0"},
+        ]
+
+    async def test_process_file_passes_through_non_mapping_documents(self) -> None:
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+        mixed_doc_yaml = "name: service-a\n---\njust a string\n---\n42\n"
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="services.yaml",
+            skip_parsing=False,
+            branch="main",
+            content=mixed_doc_yaml,
+            metadata={},
+        )
+
+        assert result["content"] == [
+            {"name": "service-a"},
+            "just a string",
+            42,
+        ]
+
+    async def test_process_file_passes_through_top_level_yaml_list(self) -> None:
+        exporter = RestFileExporter(MagicMock(spec=GithubRestClient))
+
+        result = await exporter.file_processor.process_file(
+            organization="test-org",
+            repository={"name": "test-repo", "owner": {"login": "test-org"}},
+            file_path="items.yaml",
+            skip_parsing=False,
+            branch="main",
+            content="- item1\n- item2\n",
+            metadata={},
+        )
+
+        assert result["content"] == ["item1", "item2"]

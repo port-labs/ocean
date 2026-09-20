@@ -1,0 +1,59 @@
+version: 1
+# Ocean framework docs (Docusaurus) live under docs/framework-guides and deploy to
+# https://ocean.getport.io via AWS Amplify Hosting.
+#
+# PR previews: skip npm install/build when the PR does not touch docs-related paths.
+applications:
+  - appRoot: docs/framework-guides
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - |
+              set -euo pipefail
+
+              DOCS_CHANGES_REGEX='^(docs/framework-guides/|LICENSE\.md$)'
+
+              if [ -n "${AWS_PULL_REQUEST_ID:-}" ]; then
+                git fetch origin main --depth=200 2>/dev/null || git fetch origin main 2>/dev/null || true
+                CHANGED_FILES="$(git diff --name-only origin/main...HEAD)"
+              else
+                CHANGED_FILES="$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git show --name-only --pretty="" HEAD)"
+              fi
+
+              echo "Changed files:"
+              echo "$CHANGED_FILES"
+
+              if echo "$CHANGED_FILES" | grep -qE "$DOCS_CHANGES_REGEX"; then
+                echo "Docs-related changes detected — running full build."
+              elif [ -n "${AWS_PULL_REQUEST_ID:-}" ]; then
+                echo "No docs-related changes in this PR — skipping npm install/build."
+                touch /tmp/skip_amplify_build
+              else
+                echo "No docs-related changes on main — building anyway."
+              fi
+
+              if [ ! -f /tmp/skip_amplify_build ]; then
+                npm ci
+              fi
+        build:
+          commands:
+            - |
+              if [ -f /tmp/skip_amplify_build ]; then
+                mkdir -p build
+                printf '%s\n' \
+                  '<!DOCTYPE html>' \
+                  '<html lang="en">' \
+                  '<head><meta charset="utf-8"><title>Ocean docs preview skipped</title></head>' \
+                  '<body><p>No <code>docs/framework-guides/</code> changes in this PR. Amplify preview build was skipped.</p></body>' \
+                  '</html>' > build/index.html
+              else
+                npm run build
+              fi
+      artifacts:
+        baseDirectory: build
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
