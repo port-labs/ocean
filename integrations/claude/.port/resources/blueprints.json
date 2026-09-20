@@ -341,7 +341,7 @@
   },
   {
     "identifier": "claude_ai_skill_usage",
-    "description": "Org-level Claude skill usage metrics for a single day",
+    "description": "Claude skill usage metrics for a single day, optionally grouped by user, team, or product",
     "title": "Claude AI Skill Usage",
     "icon": "Claude",
     "schema": {

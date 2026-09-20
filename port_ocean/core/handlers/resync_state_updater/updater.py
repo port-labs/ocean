@@ -33,6 +33,22 @@ class ResyncStateUpdater:
             interval * 60, custom_start_time or self.initiated_at
         ).isoformat()
 
+    async def update_after_superseded_resync(
+        self, resync_id: str | None = None
+    ) -> None:
+        """Aborted resyncState for a cancelled run, plus lifecycle when DSP is on."""
+        await self.update_after_resync(IntegrationStateStatus.Aborted)
+
+        resync_id_normalized = resync_id.strip() if resync_id else ""
+        if not resync_id_normalized or not await is_dsp_mode_enabled():
+            return
+
+        await ocean.app.lifecycle_client.notify_resync_aborted(
+            resync_id=resync_id_normalized,
+            integration_id=ocean.config.integration.identifier,
+            integration_type=ocean.config.integration.type,
+        )
+
     async def update_before_resync(
         self,
         interval: int | None = None,

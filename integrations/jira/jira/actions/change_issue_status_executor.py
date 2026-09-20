@@ -1,0 +1,188 @@
+import httpx
+from loguru import logger
+from pydantic import Field, ValidationError
+from port_ocean.context.ocean import ocean
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from typing import Any
+
+from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
+from jira.actions.abstract_jira_executor import AbstractJiraExecutor
+from jira.actions.exceptions import ChangeIssueStatusError
+from jira.actions.utils import get_issue_browse_url
+from jira.api_models import JiraIssueTransition, JiraIssueTransitionsResponse
+
+
+class ChangeIssueStatusInput(AbstractJiraActionInput):
+    issue_key: str = Field(..., alias="issueKey", min_length=1)
+    status: str = Field(..., min_length=1)
+
+
+class ChangeIssueStatusExecutor(AbstractJiraExecutor):
+    ACTION_NAME = "change_issue_status"
+    WEBHOOK_PROCESSOR_CLASS = None
+
+    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
+        issue_key = run.execution_properties.get("issueKey")
+        return str(issue_key) if issue_key else None
+
+    async def execute(self, run: IntegrationRun) -> None:
+        action_input = ChangeIssueStatusInput.from_execution_properties(
+            run.execution_properties
+        )
+
+        await ocean.port_client.post_run_log(
+            run,
+            f"Changing status of {action_input.issue_key} to {action_input.status}",
+            status_label="Changing status",
+            should_raise=False,
+        )
+
+        try:
+            issue = await self.client.get_single_issue(
+                action_input.issue_key, fields="status"
+            )
+        except httpx.HTTPStatusError as error:
+            raise ChangeIssueStatusError.from_response(
+                error.response,
+                f"Could not load issue '{action_input.issue_key}'",
+            )
+
+        current_status = self._get_issue_status_name(issue)
+        if current_status and self._normalize_status_name(
+            current_status
+        ) == self._normalize_status_name(action_input.status):
+            message = (
+                f"Issue {action_input.issue_key} is already in status "
+                f"'{current_status}'"
+            )
+            await self._complete_run(run, action_input, current_status, message)
+            return
+
+        try:
+            transitions = await self.client.get_issue_transitions(
+                action_input.issue_key
+            )
+        except httpx.HTTPStatusError as error:
+            raise ChangeIssueStatusError.from_response(
+                error.response,
+                f"Could not load transitions for issue '{action_input.issue_key}'",
+            )
+        except ValidationError as error:
+            raise ChangeIssueStatusError(
+                f"Received an unexpected transitions response for issue "
+                f"'{action_input.issue_key}'"
+            ) from error
+
+        transition = self._find_transition_for_status(
+            transitions, action_input.status, action_input.issue_key
+        )
+
+        try:
+            await self.client.transition_issue(action_input.issue_key, transition.id)
+        except httpx.HTTPStatusError as error:
+            raise ChangeIssueStatusError.from_response(
+                error.response,
+                f"Could not change status of issue '{action_input.issue_key}'",
+            )
+
+        resolved_status = transition.to.name
+        await self._complete_run(
+            run,
+            action_input,
+            resolved_status,
+            message=f"Changed issue {action_input.issue_key} to status '{resolved_status}'",
+        )
+
+        logger.info(
+            "Changed Jira issue status",
+            issue_key=action_input.issue_key,
+            status=resolved_status,
+            transition_id=transition.id,
+        )
+
+    async def _complete_run(
+        self,
+        run: IntegrationRun,
+        action_input: ChangeIssueStatusInput,
+        status: str,
+        message: str,
+    ) -> None:
+        issue_link = get_issue_browse_url(
+            self.client.jira_url,
+            action_input.issue_key,
+            oauth_enabled=self.client.is_oauth_enabled(),
+        )
+        if issue_link:
+            message = f"{message}: {issue_link}"
+
+        await ocean.port_client.post_run_log(
+            run,
+            message,
+            should_raise=False,
+        )
+
+        if isinstance(run, WorkflowNodeRun):
+            run.output = {
+                "issueKey": action_input.issue_key,
+                "status": status,
+                "issueUrl": issue_link or "",
+            }
+
+        await ocean.port_client.report_run_completed(
+            run,
+            success=True,
+            message=message,
+            status_label="Status changed",
+        )
+
+    @staticmethod
+    def _normalize_status_name(status: str) -> str:
+        return status.casefold().strip()
+
+    @staticmethod
+    def _get_issue_status_name(issue: dict[str, Any]) -> str | None:
+        fields = issue.get("fields")
+        if not isinstance(fields, dict):
+            return None
+        status = fields.get("status")
+        if not isinstance(status, dict):
+            return None
+        status_name = status.get("name")
+        return status_name if isinstance(status_name, str) else None
+
+    @classmethod
+    def _find_transition_for_status(
+        cls,
+        transitions_response: JiraIssueTransitionsResponse,
+        target_status: str,
+        issue_key: str,
+    ) -> JiraIssueTransition:
+        normalized_target = cls._normalize_status_name(target_status)
+        for transition in transitions_response.transitions:
+            if cls._normalize_status_name(transition.to.name) == normalized_target:
+                return transition
+
+        available_statuses = cls._get_available_transition_statuses(
+            transitions_response
+        )
+        available_statuses_text = (
+            ", ".join(available_statuses) if available_statuses else "none"
+        )
+        raise ChangeIssueStatusError(
+            f"No transition found to status '{target_status}' for issue "
+            f"'{issue_key}'. Available target statuses: "
+            f"{available_statuses_text}"
+        )
+
+    @staticmethod
+    def _get_available_transition_statuses(
+        transitions_response: JiraIssueTransitionsResponse,
+    ) -> list[str]:
+        statuses: list[str] = []
+        seen: set[str] = set()
+        for transition in transitions_response.transitions:
+            to_status_name = transition.to.name
+            if to_status_name not in seen:
+                seen.add(to_status_name)
+                statuses.append(to_status_name)
+        return statuses
