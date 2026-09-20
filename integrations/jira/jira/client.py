@@ -12,6 +12,7 @@ from jira.overrides import (
     JiraWorklogAPIQueryParams,
     ComponentSource,
 )
+from jira.api_models import JiraIssueTransitionsResponse
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -630,7 +631,9 @@ class JiraClient(OAuthClient):
             json=payload,
         )
 
-    async def get_issue_transitions(self, issue_key: str) -> dict[str, Any]:
+    async def get_issue_transitions(
+        self, issue_key: str
+    ) -> JiraIssueTransitionsResponse:
         return await self._send_api_request(
             "GET",
             f"{self.api_url}/issue/{issue_key}/transitions",
