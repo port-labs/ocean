@@ -584,7 +584,7 @@ async def test_get_single_issue(mock_jira_client: JiraClient) -> None:
         result = await mock_jira_client.get_single_issue("TEST-1")
 
         mock_request.assert_called_once_with(
-            "GET", f"{mock_jira_client.api_url}/issue/TEST-1"
+            "GET", f"{mock_jira_client.api_url}/issue/TEST-1", params=None
         )
         assert result == issue_data
 
