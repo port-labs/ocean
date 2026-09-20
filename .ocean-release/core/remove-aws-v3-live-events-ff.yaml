@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Remove the AWS_V3_LIVE_EVENTS_ENABLED organization feature flag now that live events are generally available.
