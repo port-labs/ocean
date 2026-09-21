@@ -9,6 +9,7 @@ from aws.core.exporters.codebuild.build_run.models import (
     PaginatedBuildRunRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -23,10 +24,30 @@ class CodeBuildBuildRunExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-build fetch only has a build id from CloudTrail.
+            # batch_get_builds omits missing builds instead of erroring. Confirm
+            # it exists so the live-event handler can treat a stale update as delete.
+            batch_response = await proxy.client.batch_get_builds(  # type: ignore[attr-defined]
+                ids=[options.build_id]
+            )
+            require_aws_resource(
+                batch_response.get("builds"),
+                error_code="ResourceNotFoundException",
+                message=f"Build not found: {options.build_id}",
+                operation_name="BatchGetBuilds",
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect([options.build_id], options.include)
+            response = await inspector.inspect(
+                [options.build_id],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
             return response[0] if response else {}
 
     async def get_paginated_resources(
