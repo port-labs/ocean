@@ -67,6 +67,11 @@ class LakehouseBuffer:
         )
         event_id = str(uuid.uuid4())
         extract_duration_ms = int(round(self._pending_extract_duration_sec * 1000))
+        logger.info(
+            "[duration-debug] flushing lakehouse buffer with extract duration",
+            kind=self.kind,
+            extract_duration_ms=extract_duration_ms,
+        )
         event: LakehouseDataEntryBatch = {
             "event_id": event_id,
             "type": self.event_type.value,

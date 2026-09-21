@@ -466,6 +466,13 @@ class IntegrationClientMixin:
             body["eventId"] = event["event_id"]
         if "extract_duration_ms" in event:
             body["extractDurationMs"] = event["extract_duration_ms"]
+        logger.info(
+            "[duration-debug] posting raw data batch to lakehouse-writer",
+            sync_id=sync_id,
+            kind=event["kind"],
+            event_id=body.get("eventId"),
+            extract_duration_ms=body.get("extractDurationMs"),
+        )
 
         response = await self.client.post(
             f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
