@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.14.0 (2026-09-21)
+
+
+### Features
+
+- Added organization live events for lifecycle changes (deleted, renamed), enabling immediate entity updates on org rename or removal
+
+
 ## 6.13.6 (2026-09-16)
 
 
