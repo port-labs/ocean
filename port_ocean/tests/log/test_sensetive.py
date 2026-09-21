@@ -1,5 +1,6 @@
 """Tests for the SensitiveLogFilter class."""
 
+import time
 from typing import Any, Generator
 
 import pytest
@@ -160,3 +161,81 @@ class TestHideSensitiveStrings:
         log_filter.hide_sensitive_strings("", "  ", "valid")
 
         assert len(log_filter.compiled_patterns) == initial_count + 1
+
+
+class TestFirebaseUrlPattern:
+    """Tests for the built-in "Firebase URL" pattern.
+
+    These exercise the default secret_patterns, so they do not call
+    hide_sensitive_strings.
+    """
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            '{"url": "https://myproj.firebaseio.com/data.json"}',
+            "firebaseio.com",
+            "notfirebaseio.com",
+            "a.b.c-d.firebaseio.com",
+            "x.firebaseio.com and y.firebaseio.com",
+        ],
+    )
+    def test_firebase_urls_are_masked(self, message: str) -> None:
+        """Test that Firebase hosts are redacted wherever they appear."""
+        log_filter = SensitiveLogFilter()
+
+        result = log_filter.mask_string(message, full_hide=True)
+
+        assert "firebaseio.com" not in result
+        assert "[REDACTED]" in result
+
+    def test_firebase_url_masks_the_project_subdomain(self) -> None:
+        """Test that the subdomain, which is the actual secret, is hidden."""
+        log_filter = SensitiveLogFilter()
+
+        result = log_filter.mask_string(
+            "https://myproject-1234.firebaseio.com/data.json", full_hide=True
+        )
+
+        assert result == "https://[REDACTED]/data.json"
+
+    def test_firebase_url_masked_when_subdomain_exceeds_prefix_bound(self) -> None:
+        """Test that an over-long subdomain still gets the host redacted.
+
+        The prefix quantifier is bounded, so the match covers only the tail of a
+        very long subdomain. The host itself must never survive scrubbing.
+        """
+        log_filter = SensitiveLogFilter()
+        message = f"https://{'x' * 400}.firebaseio.com/data.json"
+
+        result = log_filter.mask_string(message, full_hide=True)
+
+        assert "firebaseio.com" not in result
+        assert "[REDACTED]" in result
+
+    def test_unrelated_message_is_unchanged(self) -> None:
+        """Test that a message with no secrets passes through untouched."""
+        log_filter = SensitiveLogFilter()
+
+        original = "fetched 42 merge requests for group my-group"
+        assert log_filter.mask_string(original, full_hide=True) == original
+
+    def test_masking_large_single_line_message_is_not_quadratic(self) -> None:
+        """Test that scrubbing a large single-line message stays fast.
+
+        The Firebase pattern used to be unbounded, which made it quadratic in
+        the message length: a 200KB single-line payload took roughly 18 seconds
+        and blocked the event loop long enough to fail liveness probes. The
+        bounded pattern is linear and finishes in well under 100ms, so this
+        threshold leaves a wide margin against CI jitter.
+        """
+        log_filter = SensitiveLogFilter()
+        # Digits break up [a-zA-Z]+ runs so this targets the [\w.-] prefix only.
+        message = "A1b2C3d4" * 25_000
+
+        start = time.perf_counter()
+        result = log_filter.mask_string(message, full_hide=True)
+        elapsed = time.perf_counter() - start
+
+        assert result == message
+        assert elapsed < 2.0, f"scrubbing 200KB took {elapsed:.2f}s"
