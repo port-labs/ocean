@@ -41,6 +41,9 @@ jobs:
           sparse-checkout: |
             integrations
           sparse-checkout-cone-mode: false
+          # Only needs read access to this private repo's tree — no longer
+          # needs actions:write now that run-load-test calls it via
+          # workflow_call instead of `gh workflow run`/`gh run watch`.
           token: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
 
       - name: Setup Python
@@ -57,12 +60,11 @@ jobs:
           LOAD_TEST_REPO_ROOT: ocean-load-tests
         run: python scripts/ci/load_test_targets.py
 
-  run-load-test:
-    name: Run shallow load test
-    needs: [detect-changes, resolve-targets]
+  mark-load-test-pending:
+    name: Mark load test pending
+    needs: resolve-targets
     if: needs.resolve-targets.outputs.should_run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - name: Post pending commit status
         uses: actions/github-script@v7
@@ -77,69 +79,38 @@ jobs:
               description: 'Shallow integration load test in progress',
             });
 
-      - name: Dispatch load test
-        id: dispatch
-        env:
-          GH_TOKEN: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
-          INTEGRATION_ARG: ${{ needs.resolve-targets.outputs.integration_arg }}
-        run: |
-          echo "dispatched_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-          gh workflow run "Integration Load Test" \
-            --repo port-labs/ocean-load-tests \
-            --ref main \
-            -f "integration=${INTEGRATION_ARG}" \
-            -f "ocean_version=${{ github.sha }}" \
-            -f "rate_limit_mode=shallow"
+  # Calls ocean-load-tests directly as a reusable workflow (workflow_call)
+  # instead of a disconnected `gh workflow run` + polling loop: this job's
+  # own pass/fail *is* the load test's pass/fail, with no run-ID lookup race
+  # condition and no PAT needed for the dispatch itself (secrets: inherit
+  # works because both repos are in the port-labs org). Only reachable in
+  # ocean-load-tests' shallow (GHA) path — deep/K8s mode stays gated on
+  # workflow_dispatch there and isn't invoked from here.
+  run-load-test:
+    name: Run shallow load test
+    needs: [resolve-targets, mark-load-test-pending]
+    if: needs.resolve-targets.outputs.should_run == 'true'
+    uses: port-labs/ocean-load-tests/.github/workflows/load-test.yml@main
+    with:
+      integration: ${{ needs.resolve-targets.outputs.integration_arg }}
+      ocean_version: ${{ github.sha }}
+      rate_limit_mode: shallow
+    secrets: inherit
 
-      - name: Resolve remote run ID
-        id: find_run
-        env:
-          GH_TOKEN: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
-          DISPATCHED_AT: ${{ steps.dispatch.outputs.dispatched_at }}
-        run: |
-          RUN_ID=""
-          for _ in $(seq 1 24); do
-            RUN_ID="$(gh run list \
-              --repo port-labs/ocean-load-tests \
-              --workflow "Integration Load Test" \
-              --event workflow_dispatch \
-              --limit 15 \
-              --json databaseId,createdAt \
-              --jq "[.[] | select(.createdAt >= \"${DISPATCHED_AT}\")] | sort_by(.createdAt) | reverse | .[0].databaseId // empty")"
-            if [ -n "$RUN_ID" ]; then
-              echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-              echo "run_url=https://github.com/port-labs/ocean-load-tests/actions/runs/$RUN_ID" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "::error::Could not find ocean-load-tests workflow run after dispatch"
-          exit 1
-
-      - name: Wait for load test
-        id: wait
-        env:
-          GH_TOKEN: ${{ secrets.OCEAN_LOAD_TEST_DISPATCH_TOKEN }}
-        run: |
-          gh run watch "${{ steps.find_run.outputs.run_id }}" \
-            --repo port-labs/ocean-load-tests \
-            --exit-status
-
+  report-load-test:
+    name: Report load test result
+    needs: [resolve-targets, run-load-test]
+    if: always() && needs.resolve-targets.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
       - name: Post final commit status
-        if: always()
         uses: actions/github-script@v7
         env:
-          RUN_URL: ${{ steps.find_run.outputs.run_url }}
-          DISPATCH_OUTCOME: ${{ steps.dispatch.outcome }}
-          FIND_OUTCOME: ${{ steps.find_run.outcome }}
-          WAIT_OUTCOME: ${{ steps.wait.outcome }}
+          RUN_RESULT: ${{ needs.run-load-test.result }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
-            const passed =
-              process.env.DISPATCH_OUTCOME === 'success' &&
-              process.env.FIND_OUTCOME === 'success' &&
-              process.env.WAIT_OUTCOME === 'success';
-            const runUrl = process.env.RUN_URL || undefined;
+            const passed = process.env.RUN_RESULT === 'success';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -149,21 +120,19 @@ jobs:
               description: passed
                 ? 'Shallow load test passed'
                 : 'Shallow load test failed',
-              target_url: runUrl,
+              target_url: process.env.TARGET_URL,
             });
             if (!passed) {
-              core.setFailed('Load test did not pass');
+              core.setFailed(`Load test did not pass (result: ${process.env.RUN_RESULT})`);
             }
 
       - name: Write job summary
-        if: always()
         run: |
           {
             echo "### Shallow load test"
             echo "- **Integrations:** \`${{ needs.resolve-targets.outputs.integration_arg }}\`"
             echo "- **Ocean SHA:** \`${{ github.sha }}\`"
-            echo "- **Run:** ${{ steps.find_run.outputs.run_url }}"
-            echo "- **Result:** ${{ steps.wait.outcome }}"
+            echo "- **Result:** ${{ needs.run-load-test.result }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   skip-load-test:
