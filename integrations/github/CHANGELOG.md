@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.13.7 (2026-09-17)
+
+
+### Features
+
+- Added issue actions (create, edit, close), enabling Port Workflows to create, update, and close GitHub issues with labels and assignee support
+
+
 ## 6.13.6 (2026-09-16)
 
 
