@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Measure extraction duration for full and incremental resyncs and send it to Port so integration events can report extract-phase timing.
