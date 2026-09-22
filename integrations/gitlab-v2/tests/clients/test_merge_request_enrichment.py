@@ -166,9 +166,7 @@ class TestEnrichMergeRequests:
             ) as mock_commits,
             patch.object(client, "get_merge_request_notes", AsyncMock()) as mock_notes,
         ):
-            result = await client.enrich_merge_requests(
-                batch, enrich_with_commits=True
-            )
+            result = await client.enrich_merge_requests(batch, enrich_with_commits=True)
 
         assert result[0]["__commits"] == [later, earlier]
         assert "__notes" not in result[0]
@@ -301,9 +299,7 @@ class TestEnrichMergeRequests:
             ) as mock_commits,
             patch.object(client, "get_merge_request_notes", AsyncMock()) as mock_notes,
         ):
-            result = await client.enrich_merge_requests(
-                batch, enrich_with_commits=True
-            )
+            result = await client.enrich_merge_requests(batch, enrich_with_commits=True)
 
         assert "__commits" not in result[0]
         mock_commits.assert_not_called()
