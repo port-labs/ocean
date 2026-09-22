@@ -5,6 +5,7 @@ import base64
 import httpx
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.helpers.exceptions import GitHubTreeFetchError
+from port_ocean.exceptions.core import OceanAbortException
 import github.helpers.utils as helpers_utils
 from github.core.exporters.file_exporter.utils import (
     decode_content,
@@ -646,7 +647,8 @@ class TestRestFileExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         """When multiple repos are processed and one fails with 403, the error is collected
-        but other repos are still processed. The first tree-fetch error is re-raised at the end.
+        but other repos are still processed. OceanAbortException is raised at the end so
+        reconciliation is skipped and entities are preserved.
         See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
         """
         exporter = RestFileExporter(rest_client)
@@ -715,11 +717,15 @@ class TestRestFileExporter:
             ),
         ):
             async with event_context("test_event"):
-                with pytest.raises(GitHubTreeFetchError) as exc_info:
-                    async for _ in exporter.get_paginated_resources(options):
-                        pass
+                results: list[Any] = []
+                with pytest.raises(OceanAbortException) as exc_info:
+                    async for batch in exporter.get_paginated_resources(options):
+                        results.append(batch)
 
-                assert "broken-repo@main" in str(exc_info.value)
+                assert results == [["file_from_working_repo"], []]
+                assert "synced with issues" in str(exc_info.value)
+                assert isinstance(exc_info.value.__cause__, GitHubTreeFetchError)
+                assert "broken-repo@main" in str(exc_info.value.__cause__)
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
