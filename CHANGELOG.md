@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.2 (2026-09-22)
+
+
+### Bug Fixes
+
+- Re-raise OceanAbortException from resync generators so integrations can signal synced-with-issues without wrapping the error.
+
+
 ## 0.52.1 (2026-09-22)
 
 
