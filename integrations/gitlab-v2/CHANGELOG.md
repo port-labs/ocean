@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.0 (2026-09-22)
+
+
+### Features
+
+- Added optional enrichWithCommits and enrichWithReviewDiscussion selectors on merge-request to attach raw GitLab commits and notes during resync
+
+
 ## 0.11.4 (2026-09-22)
 
 
