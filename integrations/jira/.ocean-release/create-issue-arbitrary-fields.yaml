@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added parentKey and arbitrary fields support to the create_issue action

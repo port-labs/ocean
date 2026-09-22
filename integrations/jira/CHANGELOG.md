@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.13.0 (2026-09-22)
+
+
+### Features
+
+- Added parentKey and arbitrary fields support to the create_issue action
+
+
 ## 0.12.1 (2026-09-22)
 
 
