@@ -118,6 +118,50 @@
           "description": "The Atlassian account ID of the user to assign the issue to"
         }
       ]
+    },
+    {
+      "name": "update_issue",
+      "icon": "Jira",
+      "description": "Update fields on an existing Jira issue",
+      "inputs": [
+        {
+          "name": "issueKey",
+          "title": "Issue key",
+          "type": "string",
+          "description": "The Jira issue key to update, for example PORT-123",
+          "required": true
+        },
+        {
+          "name": "summary",
+          "title": "Summary",
+          "type": "string",
+          "description": "The new issue summary"
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "The new issue description"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "The new issue priority name, for example High or Medium"
+        },
+        {
+          "name": "assigneeAccountId",
+          "title": "Assignee account ID",
+          "type": "string",
+          "description": "The Atlassian account ID of the user to assign the issue to"
+        },
+        {
+          "name": "fields",
+          "title": "Fields",
+          "type": "jqObject",
+          "description": "Additional Jira issue fields to update using the Jira REST API field format. You can reference trigger data with {{ .trigger.by.user.email }}"
+        }
+      ]
     }
   ],
   "saas": {
