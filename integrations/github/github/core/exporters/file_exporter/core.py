@@ -424,12 +424,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"GitHub API returned {e.response.status_code}. "
                     f"Entities will be preserved until next successful resync."
                 ) from e
-            else:
-                logger.error(
-                    f"Tree fetch returned {e.response.status_code} for "
-                    f"{organization}/{repo}@{branch}, returning empty"
-                )
-                return [], False
+            raise
 
         if not response:
             logger.warning(

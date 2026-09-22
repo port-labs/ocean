@@ -615,17 +615,13 @@ class TestRestFileExporter:
     async def test_get_tree_recursive_403_raises_exception(
         self, rest_client: GithubRestClient
     ) -> None:
-        """When tree-fetch returns 403 (permission denied or GitHub outage),
-        GitHubTreeFetchError should be raised to prevent reconciliation deletes.
-        See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
+        """When tree-fetch returns 403, GitHubTreeFetchError is raised so
+        reconciliation does not treat it as an empty catalog. See PORT-18430.
         """
         exporter = RestFileExporter(rest_client)
-        organization = "test-org"
-
-        # Create a mock HTTPStatusError with 403 status
         mock_response = httpx.Response(
             status_code=403,
-            content=b'{"message": "API rate limit exceeded"}',
+            content=b'{"message": "Forbidden"}',
             request=httpx.Request(
                 "GET", "https://api.github.com/repos/test-org/repo1/git/trees/main"
             ),
@@ -638,10 +634,35 @@ class TestRestFileExporter:
             rest_client, "send_api_request", AsyncMock(side_effect=http_error)
         ):
             with pytest.raises(GitHubTreeFetchError) as exc_info:
-                await exporter.get_tree_recursive(organization, "repo1", "main")
+                await exporter.get_tree_recursive("test-org", "repo1", "main")
 
             assert "GitHub API returned 403" in str(exc_info.value)
             assert "repo1@main" in str(exc_info.value)
+
+    @pytest.mark.parametrize("status_code", [422, 429, 500, 502])
+    async def test_get_tree_recursive_non_403_http_error_propagates(
+        self, rest_client: GithubRestClient, status_code: int
+    ) -> None:
+        """Non-403 HTTP errors keep main behavior: propagate HTTPStatusError."""
+        exporter = RestFileExporter(rest_client)
+        mock_response = httpx.Response(
+            status_code=status_code,
+            content=b'{"message": "error"}',
+            request=httpx.Request(
+                "GET", "https://api.github.com/repos/test-org/repo1/git/trees/main"
+            ),
+        )
+        http_error = httpx.HTTPStatusError(
+            "HTTP Error", request=mock_response.request, response=mock_response
+        )
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(side_effect=http_error)
+        ):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await exporter.get_tree_recursive("test-org", "repo1", "main")
+
+            assert exc_info.value.response.status_code == status_code
 
     async def test_get_paginated_resources_mixed_403_and_valid_repos(
         self, rest_client: GithubRestClient
