@@ -657,6 +657,13 @@ class JiraClient(OAuthClient):
         )
         return JiraIssueComment.model_validate(response)
 
+    async def update_issue(self, issue_key: str, payload: dict[str, Any]) -> None:
+        await self._send_api_request(
+            "PUT",
+            f"{self.api_url}/issue/{issue_key}",
+            json=payload,
+        )
+
     @staticmethod
     def _build_issue_search_body(
         jql: str,

@@ -617,6 +617,23 @@ async def test_create_issue(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_update_issue(mock_jira_client: JiraClient) -> None:
+    payload = {"fields": {"summary": "Updated summary"}}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = None
+        await mock_jira_client.update_issue("PORT-1", payload)
+
+        mock_request.assert_called_once_with(
+            "PUT",
+            f"{mock_jira_client.api_url}/issue/PORT-1",
+            json=payload,
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_single_issue_with_fields(mock_jira_client: JiraClient) -> None:
     issue_data = {"key": "TEST-1", "fields": {"status": {"name": "Done"}}}
 
