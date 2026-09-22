@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.1 (2026-09-22)
+
+
+### Improvements
+
+- Remove the AWS_V3_LIVE_EVENTS_ENABLED organization feature flag now that live events are generally available.
+
+
 ## 0.52.0 (2026-09-16)
 
 
