@@ -10,13 +10,9 @@ class MissingExecutionPropertyError(ActionExecutionError):
     DEFAULT_STATUS_LABEL = "Invalid input"
 
 
-class CreateIssueError(ActionExecutionError):
-    """Raised when the Jira API returns an error while creating an issue."""
-
-    DEFAULT_STATUS_LABEL = "Create failed"
-
+class JiraApiError(ActionExecutionError):
     @classmethod
-    def from_response(cls, response: httpx.Response, prefix: str) -> "CreateIssueError":
+    def from_response(cls, response: httpx.Response, prefix: str) -> "JiraApiError":
         return cls(f"{prefix}: {cls._response_detail(response)}")
 
     @staticmethod
@@ -41,3 +37,15 @@ class CreateIssueError(ActionExecutionError):
 
         text = response.text.strip()
         return text or f"HTTP {response.status_code}"
+
+
+class CreateIssueError(JiraApiError):
+    """Raised when the Jira API returns an error while creating an issue."""
+
+    DEFAULT_STATUS_LABEL = "Create failed"
+
+
+class DeleteIssueError(JiraApiError):
+    """Raised when the Jira API returns an error while deleting an issue."""
+
+    DEFAULT_STATUS_LABEL = "Delete failed"
