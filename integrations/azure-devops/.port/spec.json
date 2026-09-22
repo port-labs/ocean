@@ -511,6 +511,48 @@
           "description": "The identity ID of the user enabling auto-complete for this pull request."
         }
       ]
+    },
+    {
+      "name": "update_pull_request_labels",
+      "icon": "AzureDevops",
+      "description": "Add a label to an Azure DevOps pull request",
+      "inputs": [
+        {
+          "name": "organization",
+          "title": "Organization",
+          "type": "string",
+          "description": "The Azure DevOps organization name. Must match the organization configured on the integration.",
+          "required": true
+        },
+        {
+          "name": "project",
+          "title": "Project ID",
+          "type": "string",
+          "description": "The ID of the Azure DevOps project that contains the repository",
+          "required": true
+        },
+        {
+          "name": "repositoryId",
+          "title": "Repository ID",
+          "type": "string",
+          "description": "The ID of the Git repository that contains the pull request",
+          "required": true
+        },
+        {
+          "name": "pullRequestId",
+          "title": "Pull request ID",
+          "type": "string",
+          "description": "The numeric ID of the pull request to label. It can be found in the pull request URL, for example - \"42\" for https://dev.azure.com/org/project/_git/repo/pullrequest/42",
+          "required": true
+        },
+        {
+          "name": "label",
+          "title": "Label",
+          "type": "string",
+          "description": "The name of the label to add. Each run adds one label; use several action nodes to apply more than one.",
+          "required": true
+        }
+      ]
     }
   ],
   "deploymentMethodOverride": [

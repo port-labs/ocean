@@ -1941,6 +1941,48 @@ class AzureDevopsClient(HTTPBaseClient):
             return {}
         return response.json()
 
+    async def create_pull_request_label(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        label: str,
+    ) -> dict[str, Any]:
+        """Add a label to a pull request.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/labels
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-labels/create
+        """
+        create_label_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/labels"
+        )
+        logger.info(
+            f"Adding label '{label}' to pull request {pull_request_id} in repository "
+            f"{repository_id} for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "POST",
+            create_label_url,
+            data=json.dumps({"name": label}),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to add label '{label}' to pull request {pull_request_id} in "
+                f"repository {repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
     async def update_pull_request(
         self,
         project: str,
