@@ -216,6 +216,27 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "delete_issue",
+      "icon": "Jira",
+      "description": "Delete a Jira issue",
+      "inputs": [
+        {
+          "name": "issueKey",
+          "title": "Issue key",
+          "type": "string",
+          "description": "The Jira issue key to delete, for example PORT-123",
+          "required": true
+        },
+        {
+          "name": "deleteSubtasks",
+          "title": "Delete subtasks",
+          "type": "boolean",
+          "description": "Whether subtasks of the issue should also be deleted",
+          "default": false
+        }
+      ]
     }
   ],
   "saas": {

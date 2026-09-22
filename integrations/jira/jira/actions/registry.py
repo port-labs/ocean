@@ -4,6 +4,7 @@ from jira.actions.change_issue_status_executor import ChangeIssueStatusExecutor
 from jira.actions.add_comment_executor import AddCommentExecutor
 from jira.actions.create_issue_executor import CreateIssueExecutor
 from jira.actions.update_issue_executor import UpdateIssueExecutor
+from jira.actions.delete_issue_executor import DeleteIssueExecutor
 
 
 def register_actions_executors() -> None:
@@ -12,3 +13,4 @@ def register_actions_executors() -> None:
     ocean.register_action_executor(UpdateIssueExecutor())
     ocean.register_action_executor(ChangeIssueStatusExecutor())
     ocean.register_action_executor(AddCommentExecutor())
+    ocean.register_action_executor(DeleteIssueExecutor())
