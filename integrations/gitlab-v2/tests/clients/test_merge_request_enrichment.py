@@ -145,7 +145,7 @@ class TestEnrichMergeRequests:
         mock_commits.assert_not_called()
         mock_notes.assert_not_called()
 
-    async def test_first_commit_flag_attaches_raw_commits(
+    async def test_commits_flag_attaches_raw_commits(
         self, client: GitLabClient
     ) -> None:
         batch = [_merge_request()]
@@ -167,7 +167,7 @@ class TestEnrichMergeRequests:
             patch.object(client, "get_merge_request_notes", AsyncMock()) as mock_notes,
         ):
             result = await client.enrich_merge_requests(
-                batch, enrich_with_first_commit=True
+                batch, enrich_with_commits=True
             )
 
         assert result[0]["__commits"] == [later, earlier]
@@ -234,7 +234,7 @@ class TestEnrichMergeRequests:
         ):
             result = await client.enrich_merge_requests(
                 batch,
-                enrich_with_first_commit=True,
+                enrich_with_commits=True,
                 enrich_with_review_discussion=True,
             )
 
@@ -259,7 +259,7 @@ class TestEnrichMergeRequests:
             client, "get_merge_request_commits", side_effect=commits_side_effect
         ):
             result = await client.enrich_merge_requests(
-                [failing, succeeding], enrich_with_first_commit=True
+                [failing, succeeding], enrich_with_commits=True
             )
 
         assert result[0]["__commits"] is None
@@ -283,7 +283,7 @@ class TestEnrichMergeRequests:
         ):
             result = await client.enrich_merge_requests(
                 batch,
-                enrich_with_first_commit=True,
+                enrich_with_commits=True,
                 enrich_with_review_discussion=True,
             )
 
@@ -302,7 +302,7 @@ class TestEnrichMergeRequests:
             patch.object(client, "get_merge_request_notes", AsyncMock()) as mock_notes,
         ):
             result = await client.enrich_merge_requests(
-                batch, enrich_with_first_commit=True
+                batch, enrich_with_commits=True
             )
 
         assert "__commits" not in result[0]

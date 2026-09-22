@@ -501,13 +501,13 @@ class GitlabMergeRequestSelector(GroupSelector):
         ),
         default=90,
     )
-    enrich_with_first_commit: bool = Field(
+    enrich_with_commits: bool = Field(
         default=False,
-        alias="enrichWithFirstCommit",
-        title="Enrich With First Commit",
+        alias="enrichWithCommits",
+        title="Enrich With Commits",
         description=(
             "Fetch and attach the merge request's commits under __commits as returned by "
-            "GitLab. Derive first-commit fields in mapping JQ. Adds one extra GitLab API "
+            "GitLab. Derive commit fields in mapping JQ. Adds one extra GitLab API "
             "call per merge request on resync and live events. Defaults to false."
         ),
     )

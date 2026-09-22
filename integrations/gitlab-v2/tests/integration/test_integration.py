@@ -118,7 +118,7 @@ def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() 
 
     missing_kinds = {kind for kind in expected_kinds if kind not in schema_str}
     assert not missing_kinds, f"Missing resource kinds in schema: {missing_kinds}"
-    assert "enrichWithFirstCommit" in schema_str
+    assert "enrichWithCommits" in schema_str
     assert "enrichWithReviewDiscussion" in schema_str
 
 
@@ -336,7 +336,7 @@ def test_deployment_query_params_finished_after_rejects_missing_timezone() -> No
 def test_merge_request_selector_enrichment_flags_default_false() -> None:
     selector = GitlabMergeRequestSelector(query="true")
 
-    assert selector.enrich_with_first_commit is False
+    assert selector.enrich_with_commits is False
     assert selector.enrich_with_review_discussion is False
 
 
@@ -344,10 +344,10 @@ def test_merge_request_selector_enrichment_flags_accept_aliases() -> None:
     selector = GitlabMergeRequestSelector.parse_obj(
         {
             "query": "true",
-            "enrichWithFirstCommit": True,
+            "enrichWithCommits": True,
             "enrichWithReviewDiscussion": True,
         }
     )
 
-    assert selector.enrich_with_first_commit is True
+    assert selector.enrich_with_commits is True
     assert selector.enrich_with_review_discussion is True

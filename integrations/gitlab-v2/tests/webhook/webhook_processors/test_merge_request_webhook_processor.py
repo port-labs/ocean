@@ -16,13 +16,13 @@ from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
 def _resource_config(
     *,
     states: list[str] | None = None,
-    enrich_with_first_commit: bool = False,
+    enrich_with_commits: bool = False,
     enrich_with_review_discussion: bool = False,
 ) -> MagicMock:
     config = MagicMock()
     config.selector.states = states or ["opened"]
     config.selector.updated_after_datetime = datetime(2022, 1, 1, tzinfo=timezone.utc)
-    config.selector.enrich_with_first_commit = enrich_with_first_commit
+    config.selector.enrich_with_commits = enrich_with_commits
     config.selector.enrich_with_review_discussion = enrich_with_review_discussion
     return config
 
@@ -155,7 +155,7 @@ class TestMergeRequestWebhookProcessor:
         self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
     ) -> None:
         resource_config = _resource_config(
-            enrich_with_first_commit=True,
+            enrich_with_commits=True,
             enrich_with_review_discussion=True,
         )
         fetched_mr = {
@@ -181,7 +181,7 @@ class TestMergeRequestWebhookProcessor:
 
         processor._gitlab_webhook_client.enrich_merge_requests.assert_called_once_with(
             [fetched_mr],
-            enrich_with_first_commit=True,
+            enrich_with_commits=True,
             enrich_with_review_discussion=True,
             max_concurrent=1,
         )

@@ -73,10 +73,10 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
             )
 
         selector = config.selector
-        if selector.enrich_with_first_commit or selector.enrich_with_review_discussion:
+        if selector.enrich_with_commits or selector.enrich_with_review_discussion:
             enriched = await self._gitlab_webhook_client.enrich_merge_requests(
                 [merge_request],
-                enrich_with_first_commit=selector.enrich_with_first_commit,
+                enrich_with_commits=selector.enrich_with_commits,
                 enrich_with_review_discussion=selector.enrich_with_review_discussion,
                 max_concurrent=1,
             )

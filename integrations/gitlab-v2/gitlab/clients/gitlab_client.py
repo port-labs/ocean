@@ -940,24 +940,24 @@ class GitLabClient:
         self,
         batch: list[dict[str, Any]],
         *,
-        enrich_with_first_commit: bool = False,
+        enrich_with_commits: bool = False,
         enrich_with_review_discussion: bool = False,
         max_concurrent: int = 10,
     ) -> list[dict[str, Any]]:
         """Attach opt-in raw commits and notes from GitLab onto a merge-request batch."""
-        if not batch or not (enrich_with_first_commit or enrich_with_review_discussion):
+        if not batch or not (enrich_with_commits or enrich_with_review_discussion):
             return batch
 
         logger.info(
             f"Enriching {len(batch)} merge requests "
-            f"(firstCommit={enrich_with_first_commit}, "
+            f"(commits={enrich_with_commits}, "
             f"reviewDiscussion={enrich_with_review_discussion})"
         )
         return await self._enrich_batch(
             batch,
             partial(
                 self._attach_merge_request_enrichment,
-                enrich_with_first_commit=enrich_with_first_commit,
+                enrich_with_commits=enrich_with_commits,
                 enrich_with_review_discussion=enrich_with_review_discussion,
             ),
             max_concurrent,
@@ -967,7 +967,7 @@ class GitLabClient:
         self,
         merge_request: dict[str, Any],
         *,
-        enrich_with_first_commit: bool,
+        enrich_with_commits: bool,
         enrich_with_review_discussion: bool,
     ) -> dict[str, Any]:
         project_id = merge_request.get("project_id")
@@ -981,7 +981,7 @@ class GitLabClient:
 
         try:
             fetchers: list[tuple[str, Awaitable[list[dict[str, Any]]]]] = []
-            if enrich_with_first_commit:
+            if enrich_with_commits:
                 fetchers.append(
                     ("commits", self.get_merge_request_commits(project_id, iid))
                 )
