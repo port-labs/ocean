@@ -61,6 +61,11 @@ _TERMINAL_SESSION_WEBHOOK_TYPES = {
     "session.status_terminated",
 }
 
+# Status labels for terminal session webhooks, shown on the Port run.
+# Keep every label to two words at most so it stays readable in Port's UI.
+SESSION_COMPLETED_STATUS_LABEL = "Session completed"
+SESSION_FAILED_STATUS_LABEL = "Session failed"
+
 
 class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     """Reports `trigger_agent` node-run status from session webhooks.
@@ -201,7 +206,15 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         )
         if extra_output and isinstance(run, WorkflowNodeRun):
             run.output.update(extra_output)
-        await ocean.port_client.report_run_completed(run, success)
+        await ocean.port_client.report_run_completed(
+            run,
+            success,
+            status_label=(
+                SESSION_COMPLETED_STATUS_LABEL
+                if success
+                else SESSION_FAILED_STATUS_LABEL
+            ),
+        )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 

@@ -28,7 +28,11 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
-from typing import Any, Dict, List, Optional, Type, Literal
+from github.helpers.datetime_selectors import (
+    ISO_8601_SELECTOR_REGEX,
+    parse_selector_iso_datetime,
+)
+from typing import Any, Dict, List, Optional, Type, Literal, ClassVar
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
@@ -38,11 +42,21 @@ from github.core.exporters.plugin_exporter.utils import (
     DEFAULT_PLUGIN_PROVIDERS,
     PluginProvider,
 )
+from github.core.exporters.mcp_exporter.utils import DEFAULT_MCP_PATHS
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
     load_org_port_app_config,
 )
+
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
+def _optional_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    return parse_selector_iso_datetime(value)
+
 
 FILE_PROPERTY_PREFIX = "file://"
 
@@ -172,6 +186,20 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
         description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples/#repositories-with-multiple-relationships'>teams, collaborators, sbom, custom properties and pages</a>",
         default=None,
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include repositories updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
     @property
     def normalized_relations(self) -> dict[str, dict[str, Any]]:
@@ -195,6 +223,11 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
 
 
 class GithubRepositoryConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("metadata",),
+    }
+
     selector: GithubRepositorySelector = Field(
         title="Repository Selector",
         description="Selector for the repository resource.",
@@ -295,6 +328,11 @@ For more information, see <a target='_blank' href='https://docs.port.io/build-yo
 
 
 class GithubFileResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.FILE] = Field(
         title="Github File",
         description="Github file resource kind.",
@@ -337,6 +375,11 @@ class GithubSkillSelector(Selector):
 
 
 class GithubSkillResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.SKILL] = Field(
         title="Github Skill",
         description="Agent Skill (SKILL.md) resource kind.",
@@ -367,6 +410,11 @@ class GithubPluginSelector(Selector):
 
 
 class GithubPluginResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.PLUGIN] = Field(
         title="Github Plugin",
         description="Agent plugin package resource kind.",
@@ -374,6 +422,53 @@ class GithubPluginResourceConfig(ResourceConfig):
     selector: GithubPluginSelector = Field(
         title="Plugin selector",
         description="Selector for discovering agent plugin repositories.",
+    )
+
+
+class GithubMcpPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description=(
+            "Path to an MCP server config file (e.g. 'mcp.json' or '.mcp.json'). "
+            "Root-level exact paths are recommended; broadening this to a glob "
+            "(e.g. '**/mcp.json') can pick up unrelated IDE config files such as "
+            "'.cursor/mcp.json' or '.vscode/mcp.json'."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubMcpSelector(Selector):
+    paths: list[GithubMcpPattern] = Field(
+        title="Paths",
+        default=[GithubMcpPattern(path=path) for path in DEFAULT_MCP_PATHS],
+        description=(
+            "Paths for MCP server config discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtering."
+        ),
+    )
+
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+                for path in default_paths
+            ]
+
+
+class GithubMcpResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.MCP] = Field(
+        title="Github MCP Server",
+        description="MCP server (mcp.json/.mcp.json) resource kind.",
+    )
+    selector: GithubMcpSelector = Field(
+        title="MCP selector",
+        description="Selector for discovering and ingesting MCP servers.",
     )
 
 
@@ -404,6 +499,11 @@ class GithubUserSelector(IncludeSAMLEmailSelector):
 
 
 class GithubUserConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("members",),
+    }
+
     kind: Literal[ObjectKind.USER] = Field(
         title="Github User",
         description="Github user resource kind.",
@@ -415,6 +515,11 @@ class GithubUserConfig(ResourceConfig):
 
 
 class GithubFolderResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     selector: GithubFolderSelector = Field(
         title="Folder selector",
         description="Selector for the folder resource.",
@@ -442,13 +547,19 @@ class GithubPullRequestSelector(RepoSearchSelector):
         title="Closed PRs Lookback Days",
         default=60,
         ge=1,
-        description="Numbers of days back for closed pull requests.",
+        description=(
+            "Numbers of days back for closed pull requests."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     closed_since_date: Optional[str] = Field(
         title="Closed PRs Since Date",
         alias="closedSinceDate",
         default=None,
-        description="Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set.",
+        description=(
+            "Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
@@ -500,6 +611,11 @@ class GithubPullRequestSelector(RepoSearchSelector):
 
 
 class GithubPullRequestConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("pull_requests",),
+    }
+
     selector: GithubPullRequestSelector = Field(
         title="Pull request selector",
         description="Selector for the pull request resource.",
@@ -521,14 +637,33 @@ class GithubIssueSelector(RepoSearchSelector):
         default=None,
         description="Filter issues by labels; issues must have ALL specified labels (e.g. ['bug', 'enhancement']).",
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include issues updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
 
     @property
     def labels_str(self) -> Optional[str]:
         """Convert labels list to comma-separated string for GitHub API."""
         return ",".join(self.labels) if self.labels else None
 
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
+
 
 class GithubIssueConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("issues",),
+    }
+
     selector: GithubIssueSelector = Field(
         title="Issue selector",
         description="Selector for the issue resource.",
@@ -553,6 +688,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
 
 
 class GithubTeamConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("members",),
+    }
+
     selector: GithubTeamSelector = Field(
         title="Team selector",
         description="Selector for the team resource.",
@@ -593,6 +733,16 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
         description="Filter alerts by package ecosystem (e.g. ['npm', 'pip']).",
         default=None,
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
 
     @property
     def severity_str(self) -> Optional[str]:
@@ -604,8 +754,17 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
         """Convert ecosystems list to comma-separated string for GitHub API."""
         return ",".join(self.ecosystems) if self.ecosystems else None
 
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
+
 
 class GithubDependabotAlertConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("vulnerability_alerts",),
+    }
+
     selector: GithubDependabotAlertSelector = Field(
         title="Dependabot alert selector",
         description="Selector for the dependabot alert resource.",
@@ -629,9 +788,28 @@ class GithubCodeScanningAlertSelector(RepoSearchSelector):
         description="Filter alerts by severity level (e.g. 'critical', 'high', 'medium', 'low', 'warning', 'note', 'error').",
         default=None,
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("security_events",),
+    }
+
     selector: GithubCodeScanningAlertSelector = Field(
         title="Code scanning alert selector",
         description="Selector for the code scanning alert resource.",
@@ -663,9 +841,28 @@ class GithubDeploymentSelector(RepoSearchSelector):
             "deployment-level __commitCount. Defaults to false."
         ),
     )
+    created_since: Optional[str] = Field(
+        default=None,
+        alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Created Since",
+        description=(
+            "Only include deployments created after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.created_since)
 
 
 class GithubDeploymentConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("deployments",),
+    }
+
     selector: GithubDeploymentSelector = Field(
         title="Deployment selector",
         description="Selector for the deployment resource.",
@@ -690,6 +887,11 @@ class GithubDeploymentStatusSelector(RepoSearchSelector):
 
 
 class GithubDeploymentStatusConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("deployments",),
+    }
+
     selector: GithubDeploymentStatusSelector = Field(
         title="Deployment status selector",
         description="Selector for the deployment status resource.",
@@ -715,6 +917,11 @@ class GithubSecretScanningAlertSelector(RepoSearchSelector):
 
 
 class GithubSecretScanningAlertConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("secret_scanning_alerts",),
+    }
+
     selector: GithubSecretScanningAlertSelector = Field(
         title="Secret scanning alert selector",
         description="Selector for the secret scanning alert resource.",
@@ -758,6 +965,11 @@ class GithubCollaboratorSelector(
 
 
 class GithubBranchConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.BRANCH] = Field(
         title="Github Branch",
         description="Github branch resource kind.",
@@ -769,6 +981,11 @@ class GithubBranchConfig(ResourceConfig):
 
 
 class GithubOrganizationConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("metadata",),
+    }
+
     kind: Literal[ObjectKind.ORGANIZATION] = Field(
         title="Github Organization",
         description="Github organization resource kind.",
@@ -819,6 +1036,11 @@ class GithubPackageSelector(Selector):
 
 
 class GithubPackageConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:packages",),
+        "app": ("organization_packages", "packages"),
+    }
+
     kind: Literal[ObjectKind.PACKAGE] = Field(
         title="Github Package",
         description="GitHub package resource kind.",
@@ -830,6 +1052,11 @@ class GithubPackageConfig(ResourceConfig):
 
 
 class GithubWorkflowConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("actions",),
+    }
+
     kind: Literal[ObjectKind.WORKFLOW] = Field(
         title="Github Workflow",
         description="Github workflow resource kind.",
@@ -878,12 +1105,18 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
         title="Lookback Days",
         default=None,
         ge=1,
-        description="Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set.",
+        description=(
+            "Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     since_date: Optional[str] = Field(
         title="Since Date",
         default=None,
-        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set.",
+        description=(
+            "Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
 
     @property
@@ -896,6 +1129,11 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
 
 
 class GithubWorkflowRunConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("actions",),
+    }
+
     kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
         title="Github Workflow Run",
         description="Github workflow run resource kind.",
@@ -906,18 +1144,45 @@ class GithubWorkflowRunConfig(ResourceConfig):
     )
 
 
+class GithubReleaseSelector(RepoSearchSelector):
+    created_since: Optional[str] = Field(
+        default=None,
+        alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Created Since",
+        description=(
+            "Only include releases created after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.created_since)
+
+
 class GithubReleaseConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.RELEASE] = Field(
         title="Github Release",
         description="Github release resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubReleaseSelector = Field(
         title="Release selector",
         description="Selector for the release resource.",
     )
 
 
 class GithubTagConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.TAG] = Field(
         title="Github Tag",
         description="Github tag resource kind.",
@@ -929,6 +1194,11 @@ class GithubTagConfig(ResourceConfig):
 
 
 class GithubEnvironmentConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("environments",),
+    }
+
     kind: Literal[ObjectKind.ENVIRONMENT] = Field(
         title="Github Environment",
         description="Github environment resource kind.",
@@ -940,6 +1210,11 @@ class GithubEnvironmentConfig(ResourceConfig):
 
 
 class GithubCollaboratorConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("metadata",),
+    }
+
     kind: Literal[ObjectKind.COLLABORATOR] = Field(
         title="Github Collaborator",
         description="Github collaborator resource kind.",
@@ -986,6 +1261,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubSkillResourceConfig
         | GithubPluginResourceConfig
+        | GithubMcpResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
@@ -1110,8 +1386,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
               and load the Port app config from a GitHub organization config
               repository (global mapping).
             - Otherwise, if `config` is non-empty, use it as-is (standard mapping).
-            - If `config` is empty and no repo source is specified, treat it as an
-              invalid/empty mapping.
+            - If `config` is empty and no repo source is specified, return an empty
+              mapping; resync will no-op until resources are configured in Port.
             """
             logger.info("Fetching GitHub Port app config")
 
@@ -1133,8 +1409,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
                 logger.debug("Using Port integration config from API")
                 return raw_config
 
-            logger.error(
-                "Integration Port app config is empty and no repoManagedMapping "
-                "flag was specified"
+            logger.info(
+                "The integration port app config is empty; "
+                "resync will be skipped until resources are configured."
             )
-            raise EmptyPortAppConfigError()
+            return {}

@@ -7,6 +7,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.14.1 (2026-09-22)
+
+
+### Improvements
+
+- Added time-based selectors for incremental-sync kinds and ignore them during incremental runs so the stored cursor controls the sync window
+
+
+## 6.14.0 (2026-09-21)
+
+
+### Features
+
+- Added organization live events for lifecycle changes (deleted, renamed), enabling immediate entity updates on org rename or removal
+- Added pull request CRUD actions (create, update, close, merge, review), enabling Port Workflows to manage GitHub pull requests with full lifecycle support
+- Added issue actions (create, edit, close), enabling Port Workflows to create, update, and close GitHub issues with labels and assignee support
+
+
+## 6.13.6 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 6.13.5 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 6.13.4 (2026-09-15)
+
+
+### Bug Fixes
+
+- Treat empty Port mapping as a valid no-op during resync so the integration stays alive, marks resync as completed, and actions continue to work.
+
+
+## 6.13.3 (2026-09-14)
+
+
+### Improvements
+
+- Expose GitHub workflow conclusion on workflow node run output when dispatch_workflow completes, so downstream workflow JQ can reference it
+
+
+## 6.13.2 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 6.13.1 (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
+## 6.13.0 (2026-09-09)
+
+
+### Features
+
+- Add a dedicated `mcp` kind to discover MCP servers from `mcp.json`/`.mcp.json` files bundled with agent plugins, emitting one entity per server with derived transport (http/stdio) and full create/update/delete parity on live push events.
+
+
+## 6.12.1 (2026-09-09)
+
+
+### Bug Fixes
+
+- Restore live-event deletes for file-kind itemsToParse item removals, whole-file deletes, and renames. Modified files with itemsToParse emit old content as deletes and new content as upserts; DSP keeps entities that appear in both lists.
+
+
+## 6.12.0 (2026-09-08)
+
+
+### Features
+
+- Add GitHub permission probing for PAT and GitHub App authentication
+
+
 ## 6.11.1 (2026-09-07)
 
 

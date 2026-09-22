@@ -1,5 +1,6 @@
 from enum import StrEnum, IntEnum
 from typing import List, Tuple, Dict, Any, AsyncGenerator
+from uuid import uuid4
 
 from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
@@ -148,3 +149,13 @@ async def get_teams() -> AsyncGenerator[List[Dict[Any, Any]], None]:
 
 async def get_projects() -> AsyncGenerator[List[Dict[Any, Any]], None]:
     yield await _fetch_integration_results("/projects")
+
+
+async def trigger_fake_task(task_name: str) -> Dict[str, Any]:
+    task_id = str(uuid4())
+    return {
+        "id": task_id,
+        "name": task_name,
+        "status": "pending",
+        "link": f"/fake-tasks/{task_id}",
+    }

@@ -38,6 +38,7 @@ async def test_on_resync_skill_usage_raises_after_partial_day_failures(
     mock_resource_config = MagicMock()
     mock_resource_config.selector.starting_date = None
     mock_resource_config.selector.time_frame = 2
+    mock_resource_config.selector.group_by = []
 
     monkeypatch.setattr(main, "event", MagicMock(resource_config=mock_resource_config))
     monkeypatch.setattr(main, "is_deployment_enabled", lambda *_args, **_kwargs: True)
@@ -49,7 +50,7 @@ async def test_on_resync_skill_usage_raises_after_partial_day_failures(
 
     class FakeExporter:
         async def get_paginated_resources(
-            self, options: dict[str, str | int]
+            self, options: dict[str, Any]
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
             if options["date"] == "2026-03-01":
                 raise RuntimeError("API unavailable")
@@ -67,3 +68,61 @@ async def test_on_resync_skill_usage_raises_after_partial_day_failures(
             pages.append(page)
 
     assert pages == [[{"skill_name": "contribute-docs"}]]
+
+
+@pytest.mark.asyncio
+async def test_on_resync_skill_usage_forwards_group_by(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with (
+        patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ),
+        patch(
+            "port_ocean.context.ocean.ocean.integration.on_start",
+            lambda fn: fn,
+        ),
+    ):
+        import main
+
+    mock_resource_config = MagicMock()
+    mock_resource_config.selector.starting_date = None
+    mock_resource_config.selector.time_frame = 1
+    mock_resource_config.selector.group_by = ["user_id", "product"]
+
+    monkeypatch.setattr(main, "event", MagicMock(resource_config=mock_resource_config))
+    monkeypatch.setattr(main, "is_deployment_enabled", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        main,
+        "get_skill_usage_dates",
+        lambda **_kwargs: ["2026-08-05"],
+    )
+
+    captured: list[dict[str, Any]] = []
+
+    class FakeExporter:
+        async def get_paginated_resources(
+            self, options: dict[str, Any]
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            captured.append(options)
+            yield [
+                {"skill_name": "Gong", "user_id": "user_1", "product": "claude_code"}
+            ]
+
+    monkeypatch.setattr(main, "create_skill_usage_exporter", lambda: FakeExporter())
+
+    resync = cast(
+        Callable[[str], AsyncIterator[list[dict[str, Any]]]],
+        main.on_resync_skill_usage,
+    )
+    pages: list[list[dict[str, Any]]] = []
+    async for page in resync("claude-ai-skill-usage"):
+        pages.append(page)
+
+    assert captured == [
+        {"date": "2026-08-05", "limit": 1000, "group_by": ["user_id", "product"]}
+    ]
+    assert pages == [
+        [{"skill_name": "Gong", "user_id": "user_1", "product": "claude_code"}]
+    ]

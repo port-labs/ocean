@@ -1,4 +1,5 @@
 import json
+from typing import Self
 
 import httpx
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -10,16 +11,12 @@ class MissingExecutionPropertyError(ActionExecutionError):
     DEFAULT_STATUS_LABEL = "Invalid input"
 
 
-class JiraApiError(ActionExecutionError):
-    @classmethod
-    def from_response(cls, response: httpx.Response, prefix: str) -> "JiraApiError":
-        return cls(f"{prefix}: {cls._response_detail(response)}")
-
+class JiraActionError(ActionExecutionError):
     @staticmethod
     def _response_detail(response: httpx.Response) -> str:
         try:
             body = response.json()
-        except Exception:
+        except json.JSONDecodeError:
             body = None
 
         if isinstance(body, dict):
@@ -38,14 +35,36 @@ class JiraApiError(ActionExecutionError):
         text = response.text.strip()
         return text or f"HTTP {response.status_code}"
 
+    @classmethod
+    def from_response(cls, response: httpx.Response, prefix: str) -> Self:
+        return cls(f"{prefix}: {cls._response_detail(response)}")
 
-class CreateIssueError(JiraApiError):
+
+class CreateIssueError(JiraActionError):
     """Raised when the Jira API returns an error while creating an issue."""
 
     DEFAULT_STATUS_LABEL = "Create failed"
 
 
-class DeleteIssueError(JiraApiError):
+class UpdateIssueError(JiraActionError):
+    """Raised when the Jira API returns an error while updating an issue."""
+
+    DEFAULT_STATUS_LABEL = "Update failed"
+
+
+class ChangeIssueStatusError(JiraActionError):
+    """Raised when the Jira API returns an error while changing issue status."""
+
+    DEFAULT_STATUS_LABEL = "Status change failed"
+
+
+class AddCommentError(JiraActionError):
+    """Raised when the Jira API returns an error while adding a comment."""
+
+    DEFAULT_STATUS_LABEL = "Add comment failed"
+
+
+class DeleteIssueError(JiraActionError):
     """Raised when the Jira API returns an error while deleting an issue."""
 
     DEFAULT_STATUS_LABEL = "Delete failed"

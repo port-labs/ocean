@@ -8,9 +8,14 @@ from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
 )
+from github.probe import GitHubAppPermissionProbe, GitHubPatPermissionProbe
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+from github.helpers.incremental import resolve_effective_datetime
+from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -108,6 +113,7 @@ from integration import (
     GithubFileResourceConfig,
     GithubSkillResourceConfig,
     GithubPluginResourceConfig,
+    GithubMcpResourceConfig,
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubDeploymentConfig,
@@ -122,6 +128,9 @@ from github.core.exporters.skill_exporter import (
 )
 from github.core.exporters.plugin_exporter import (
     PluginExporter,
+)
+from github.core.exporters.mcp_exporter import (
+    McpExporter,
 )
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
@@ -217,6 +226,19 @@ def _resync_per_authenticator(
     return wrapper
 
 
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing GitHub permissions for {len(context.available_kinds)} resource kinds"
+    )
+    provider = get_auth_provider()
+    probe_flow = (
+        GitHubAppPermissionProbe if provider.is_app_auth() else GitHubPatPermissionProbe
+    )
+    await probe_flow(context, await provider.list_authenticators()).run()
+    return context
+
+
 @ocean.on_resync(ObjectKind.ORGANIZATION)
 @_resync_per_authenticator
 async def resync_organizations(
@@ -246,6 +268,7 @@ async def resync_repositories(
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relations = repo_config.selector.normalized_relations
     included_files = repo_config.selector.included_files or []
+    sync_cursor = active_incremental_cursor()
     included_files_enricher = (
         IncludedFilesEnricher(
             client=rest_client,
@@ -265,6 +288,9 @@ async def resync_repositories(
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                     exclude_archived=repo_config.selector.exclude_archived,
+                    updated_since=resolve_effective_datetime(
+                        sync_cursor, repo_config.selector.updated_since_datetime
+                    ),
                 )
             )
             for org in organizations
@@ -465,6 +491,12 @@ async def resync_workflow_runs(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowRunConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    created_filter = (
+        WORKFLOW_RUN_INCREMENTAL.build_params(sync_cursor).get("created")
+        if sync_cursor is not None
+        else config.selector.created_after
+    )
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -496,9 +528,10 @@ async def resync_workflow_runs(
                                         organization=org_name,
                                         repo_name=repo_name,
                                         workflow_id=workflow["id"],
-                                        max_runs=100,
+                                        max_runs=None if sync_cursor else 100,
                                         status=status,
-                                        created=config.selector.created_after,
+                                        created=created_filter,
+                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -511,8 +544,9 @@ async def resync_workflow_runs(
                                         organization=org_name,
                                         repo_name=repo_name,
                                         workflow_id=workflow["id"],
-                                        max_runs=100,
-                                        created=config.selector.created_after,
+                                        max_runs=None if sync_cursor else 100,
+                                        created=created_filter,
+                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -536,6 +570,7 @@ async def resync_pull_requests(
     repository_exporter = RestRepositoryExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
@@ -568,9 +603,22 @@ async def resync_pull_requests(
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
-                                max_results=config.selector.effective_max_results,
-                                updated_after=config.selector.updated_after,
-                                closed_after=config.selector.closed_after,
+                                incremental_cursor=sync_cursor,
+                                updated_after=(
+                                    resolve_effective_datetime(
+                                        sync_cursor, config.selector.updated_after
+                                    )
+                                ),
+                                max_results=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.effective_max_results
+                                ),
+                                closed_after=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.closed_after
+                                ),
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
@@ -617,6 +665,7 @@ async def resync_issues(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubIssueConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -641,6 +690,9 @@ async def resync_issues(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 labels=config.selector.labels_str,
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.updated_since_datetime
+                                ),
                             )
                         )
                     )
@@ -664,6 +716,7 @@ async def resync_releases(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubReleaseConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -686,6 +739,9 @@ async def resync_releases(
                             ListReleaseOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                created_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.created_since_datetime
+                                ),
                             )
                         )
                     )
@@ -855,6 +911,7 @@ async def resync_deployments(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -880,6 +937,9 @@ async def resync_deployments(
                                 task=config.selector.task,
                                 environment=config.selector.environment,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                                created_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.created_since_datetime
+                                ),
                             )
                         )
                     )
@@ -981,6 +1041,7 @@ async def resync_dependabot_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDependabotAlertConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -1007,6 +1068,9 @@ async def resync_dependabot_alerts(
                                 state=list(config.selector.states),
                                 severity=config.selector.severity_str,
                                 ecosystem=config.selector.ecosystems_str,
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.updated_since_datetime
+                                ),
                             )
                         )
                     )
@@ -1030,6 +1094,7 @@ async def resync_code_scanning_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -1054,6 +1119,9 @@ async def resync_code_scanning_alerts(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 severity=config.selector.severity,
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.updated_since_datetime
+                                ),
                             )
                         )
                     )
@@ -1254,6 +1322,48 @@ async def resync_plugins(
                     ListPluginOptions(organization=org_login, repositories=repositories)
                 ):
                     yield plugins
+
+
+@ocean.on_resync(ObjectKind.MCP)
+@_resync_per_authenticator
+async def resync_mcp(
+    kind: str, authenticator: AbstractGitHubAuthenticator
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync MCP servers (mcp.json/.mcp.json) using glob path discovery."""
+    config = cast(GithubMcpResourceConfig, event.resource_config)
+    selector = config.selector
+    paths = [
+        pattern
+        for pattern in selector.paths
+        if can_access_organization(authenticator, pattern.organization)
+    ]
+    if not paths:
+        return
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    mcp_exporter = McpExporter(rest_client)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
+
+    file_patterns = [
+        GithubFilePattern(
+            path=pattern.path,
+            organization=pattern.organization,
+            repos=pattern.repos,
+            excludeArchived=pattern.exclude_archived,
+        )
+        for pattern in paths
+    ]
+    pattern_builder = FilePatternMappingBuilder(
+        org_exporter=org_exporter,
+        repo_exporter=repo_exporter,
+        repo_type=app_config.repository_type,
+    )
+    repo_path_map = await pattern_builder.build(file_patterns)
+
+    async for servers in mcp_exporter.get_paginated_resources(repo_path_map):
+        yield servers
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)

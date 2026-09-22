@@ -33,11 +33,7 @@ from azure_devops.incremental import (
     ANALYTICS_PIPELINE_RUNS_ODATA_PATH,
     ANALYTICS_PIPELINE_RUNS_PAGE_SIZE,
     BUILD_INCREMENTAL,
-    RELEASE_DEPLOYMENT_INCREMENTAL,
-    RELEASE_INCREMENTAL,
     build_pipeline_runs_analytics_filter,
-    ADVANCED_SECURITY_INCREMENTAL,
-    flatten_advanced_security_params,
     wiql_changed_after_clause,
 )
 from azure_devops.client.base_client import (
@@ -231,6 +227,22 @@ class RunPipelineOptions:
     variables: Optional[dict[str, Any]] = None
 
 
+@dataclass
+class CreatePullRequestOptions:
+    """Inputs for creating a pull request."""
+
+    title: str
+    source_ref_name: str
+    target_ref_name: str
+    description: Optional[str] = None
+
+
+def _normalize_git_ref(ref: str) -> str:
+    if ref.startswith("refs/"):
+        return ref
+    return f"refs/heads/{ref}"
+
+
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
@@ -414,8 +426,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_advanced_security_alerts(
         self,
         repository: dict[str, Any],
-        params: Optional[dict[str, Any]] = None,
-        incremental_cursor: Optional[datetime] = None,
+        additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate security alerts from GitHub Advanced Security (GHAS) in Azure DevOps.
@@ -425,18 +436,13 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id = repository["project"]["id"]
         repository_id = repository["id"]
         security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
-        additional_params = ADVANCED_SECURITY_INCREMENTAL.merge_params(
-            flatten_advanced_security_params(
-                {**ADVANCED_SECURITY_API_PARAMS, **(params or {})}
-            ),
-            incremental_cursor,
-        )
+        query_params = {**ADVANCED_SECURITY_API_PARAMS, **(additional_params or {})}
         try:
             async for (
                 security_alerts
             ) in self._get_paginated_by_top_and_continuation_token(
                 security_alerts_url,
-                additional_params=additional_params,
+                additional_params=query_params,
             ):
                 enriched_alerts = [
                     self._enrich_security_alert(
@@ -984,11 +990,8 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_releases(
         self,
         additional_params: dict[str, str] | None = None,
-        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = dict(additional_params or {})
-        if incremental_cursor is not None:
-            params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
@@ -1333,7 +1336,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_builds(
         self,
         enrich_with_first_commit: bool = False,
-        incremental_cursor: Optional[datetime] = None,
+        min_time: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
@@ -1342,7 +1345,7 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         async for projects in self.generate_projects():
             tasks = [
-                self._generate_builds_for_project(project, min_time=incremental_cursor)
+                self._generate_builds_for_project(project, min_time=min_time)
                 for project in projects
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
@@ -1534,13 +1537,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_release_deployments(
         self,
-        incremental_cursor: Optional[datetime] = None,
+        additional_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        additional_params: dict[str, Any] = {}
-        if incremental_cursor is not None:
-            additional_params = RELEASE_DEPLOYMENT_INCREMENTAL.build_params(
-                incremental_cursor
-            )
+        additional_params = additional_params or {}
         async for projects in self.generate_projects():
             for project in projects:
                 deployments_url = (
@@ -1638,7 +1637,8 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         wiql: Optional[str],
         expand: str,
-        incremental_cursor: Optional[datetime] = None,
+        changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -1646,7 +1646,6 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
         of 20,000 results per query.
         """
-        wiql_time_precision = incremental_cursor is not None
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
             tasks = [
@@ -1657,7 +1656,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         project,
                         wiql,
                         expand,
-                        incremental_cursor,
+                        changed_after,
                         wiql_time_precision=wiql_time_precision,
                     ),
                 )
@@ -1899,6 +1898,212 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         pull_request_data = response.json()
         return pull_request_data
+
+    async def create_pull_request_thread(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment thread on a pull request.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/create
+        """
+        create_thread_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/threads"
+        )
+        logger.info(
+            f"Creating comment thread on pull request {pull_request_id} in repository "
+            f"{repository_id} for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "POST",
+            create_thread_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create a comment thread on pull request {pull_request_id} "
+                f"in repository {repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def update_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a pull request.
+
+        API: PATCH {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update
+        """
+        update_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        logger.info(
+            f"Updating pull request {pull_request_id} in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "PATCH",
+            update_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to update pull request {pull_request_id} in repository "
+                f"{repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def close_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Abandon a pull request without merging it."""
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {"status": "abandoned"},
+        )
+
+    async def get_repository_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any] | None:
+        """Get a pull request scoped to a project and repository."""
+        get_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        response = await self.send_request(
+            "GET",
+            get_pull_request_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return None
+        return response.json()
+
+    async def merge_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Merge a pull request."""
+        pull_request = await self.get_repository_pull_request(
+            project, repository_id, pull_request_id
+        )
+        if not pull_request:
+            raise RuntimeError(
+                f"Pull request '{pull_request_id}' was not found in repository "
+                f"'{repository_id}'"
+            )
+
+        last_merge_source_commit = pull_request.get("lastMergeSourceCommit")
+        commit_id = (
+            last_merge_source_commit.get("commitId")
+            if isinstance(last_merge_source_commit, dict)
+            else None
+        )
+        if not commit_id:
+            raise RuntimeError(
+                "Pull request is not ready to merge: lastMergeSourceCommit is missing. "
+                "Wait for Azure DevOps to finish computing the merge preview and retry."
+            )
+
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {
+                "status": "completed",
+                "lastMergeSourceCommit": last_merge_source_commit,
+            },
+        )
+
+    async def create_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        options: CreatePullRequestOptions,
+    ) -> dict[str, Any]:
+        """Create a pull request in the given repository.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/create
+        """
+        create_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests"
+        )
+        body: dict[str, Any] = {
+            "title": options.title,
+            "sourceRefName": _normalize_git_ref(options.source_ref_name),
+            "targetRefName": _normalize_git_ref(options.target_ref_name),
+        }
+        if options.description:
+            body["description"] = options.description
+
+        logger.info(
+            f"Creating pull request '{options.title}' in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            source_ref_name=body["sourceRefName"],
+            target_ref_name=body["targetRefName"],
+        )
+        response = await self.send_request(
+            "POST",
+            create_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create pull request in repository {repository_id}: "
+                "no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+            )
+            return {}
+        return response.json()
 
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
@@ -2949,38 +3154,43 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"],
-        incremental_cursor: Optional[datetime] = None,
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        if incremental_cursor is None:
-            params = {"includeRunDetails": True, **API_PARAMS}
+        if min_last_updated_date is None and max_last_updated_date is None:
+            params: dict[str, Any] = {"includeRunDetails": True, **API_PARAMS}
             async for runs in self._get_paginated_by_top_and_skip(url, params=params):
                 yield await self._enrich_test_runs(
                     runs, project_id, include_results, coverage_config
                 )
             return
 
-        window_start = incremental_cursor
-        now = datetime.now(timezone.utc)
-        while window_start < now:
-            window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
+        window_start = min_last_updated_date
+        window_end = max_last_updated_date or datetime.now(timezone.utc)
+        if window_start is None:
+            window_start = window_end - TEST_RUN_QUERY_MAX_WINDOW
+
+        while window_start < window_end:
+            chunk_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, window_end)
             params = {
                 "includeRunDetails": True,
                 **API_PARAMS,
                 "minLastUpdatedDate": window_start.isoformat(),
-                "maxLastUpdatedDate": window_end.isoformat(),
+                "maxLastUpdatedDate": chunk_end.isoformat(),
             }
             async for runs in self._get_paginated_by_top_and_skip(url, params=params):
                 yield await self._enrich_test_runs(
                     runs, project_id, include_results, coverage_config
                 )
-            window_start = window_end
+            window_start = chunk_end
 
     async def fetch_test_runs(
         self,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"] = None,
-        incremental_cursor: Optional[datetime] = None,
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
@@ -2996,7 +3206,8 @@ class AzureDevopsClient(HTTPBaseClient):
                         project["id"],
                         include_results,
                         coverage_config,
-                        incremental_cursor,
+                        min_last_updated_date,
+                        max_last_updated_date,
                     ),
                 )
                 for project in projects
