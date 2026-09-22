@@ -63,6 +63,7 @@ class TestCreateIssueInput:
                 "description": "Details",
                 "priority": "High",
                 "assigneeAccountId": "abc-123",
+                "parentKey": "PORT-1",
             }
         )
 
@@ -72,6 +73,7 @@ class TestCreateIssueInput:
         assert action_input.description == "Details"
         assert action_input.priority == "High"
         assert action_input.assignee_account_id == "abc-123"
+        assert action_input.parent_key == "PORT-1"
 
     def test_to_api_payload_includes_optional_fields(self) -> None:
         payload = CreateIssueInput.from_execution_properties(
@@ -82,6 +84,7 @@ class TestCreateIssueInput:
                 "description": "Details",
                 "priority": "High",
                 "assigneeAccountId": "abc-123",
+                "parentKey": "PORT-1",
             }
         ).to_api_payload()
 
@@ -90,9 +93,31 @@ class TestCreateIssueInput:
         assert payload["fields"]["summary"] == "Summary"
         assert payload["fields"]["priority"] == {"name": "High"}
         assert payload["fields"]["assignee"] == {"id": "abc-123"}
+        assert payload["fields"]["parent"] == {"key": "PORT-1"}
         assert payload["fields"]["description"]["content"][0]["content"][0]["text"] == (
             "Details"
         )
+
+    def test_to_api_payload_merges_additional_fields(self) -> None:
+        # Arrange + Act
+        payload = CreateIssueInput.from_execution_properties(
+            {
+                "project": "PORT",
+                "issueType": "Bug",
+                "summary": "Summary",
+                "priority": "High",
+                "fields": {
+                    "labels": ["backend"],
+                    "customfield_10001": "custom-value",
+                },
+            }
+        ).to_api_payload()
+
+        # Assert
+        assert payload["fields"]["summary"] == "Summary"
+        assert payload["fields"]["priority"] == {"name": "High"}
+        assert payload["fields"]["labels"] == ["backend"]
+        assert payload["fields"]["customfield_10001"] == "custom-value"
 
     def test_from_execution_properties_raises_for_missing_required_field(self) -> None:
         with pytest.raises(MissingExecutionPropertyError, match="project"):
@@ -154,6 +179,36 @@ class TestCreateIssueExecutor:
             message="Created issue PORT-42: https://example.atlassian.net/browse/PORT-42",
             status_label="Issue created",
         )
+
+    async def test_happy_path_with_additional_fields(
+        self, executor: CreateIssueExecutor, mock_port_client: MagicMock
+    ) -> None:
+        # Arrange
+        run = make_run(
+            {
+                "project": "PORT",
+                "issueType": "Task",
+                "summary": "New task",
+                "fields": {
+                    "labels": ["backend"],
+                    "customfield_10001": "custom-value",
+                },
+            }
+        )
+
+        # Act
+        with (
+            patch("jira.actions.create_issue_executor.ocean") as mock_ocean,
+            patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+        ):
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        # Assert
+        payload = executor.client.create_issue.await_args.args[0]  # type: ignore[attr-defined]
+        assert payload["fields"]["labels"] == ["backend"]
+        assert payload["fields"]["customfield_10001"] == "custom-value"
+        assert payload["fields"]["summary"] == "New task"
 
     async def test_missing_required_input(
         self, executor: CreateIssueExecutor, mock_port_client: MagicMock
