@@ -46,7 +46,19 @@ class CreateIssueError(JiraActionError):
     DEFAULT_STATUS_LABEL = "Create failed"
 
 
+class UpdateIssueError(JiraActionError):
+    """Raised when the Jira API returns an error while updating an issue."""
+
+    DEFAULT_STATUS_LABEL = "Update failed"
+
+
 class ChangeIssueStatusError(JiraActionError):
     """Raised when the Jira API returns an error while changing issue status."""
 
     DEFAULT_STATUS_LABEL = "Status change failed"
+
+
+class AddCommentError(JiraActionError):
+    """Raised when the Jira API returns an error while adding a comment."""
+
+    DEFAULT_STATUS_LABEL = "Add comment failed"
