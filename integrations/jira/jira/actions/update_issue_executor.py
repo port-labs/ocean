@@ -4,12 +4,12 @@ import httpx
 from loguru import logger
 from pydantic import Field
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import MissingExecutionPropertyError, UpdateIssueError
-from jira.actions.utils import get_issue_browse_url, plain_text_adf
+from jira.actions.utils import plain_text_adf
 
 
 class UpdateIssueInput(AbstractJiraActionInput):
@@ -68,35 +68,16 @@ class UpdateIssueExecutor(AbstractJiraExecutor):
                 f"Could not update issue '{action_input.issue_key}'",
             )
 
-        issue_url = get_issue_browse_url(
-            self.client.jira_url,
-            action_input.issue_key,
-            oauth_enabled=self.client.is_oauth_enabled(),
-        )
-        message = f"Updated issue {action_input.issue_key}"
-        if issue_url:
-            message = f"{message}: {issue_url}"
-
-        await ocean.port_client.post_run_log(
-            run,
-            message,
-            should_raise=False,
-        )
         logger.info(
             "Updated Jira issue",
             issue_key=action_input.issue_key,
             updated_fields=list(payload["fields"].keys()),
         )
 
-        if isinstance(run, WorkflowNodeRun):
-            run.output = {
-                "issueKey": action_input.issue_key,
-                "updatedFields": list(payload["fields"].keys()),
-                "issueUrl": issue_url or "",
-            }
-        await ocean.port_client.report_run_completed(
+        await self._complete_issue_action(
             run,
-            success=True,
-            message=message,
+            issue_key=action_input.issue_key,
+            message=f"Updated issue {action_input.issue_key}",
             status_label="Issue updated",
+            output={"updatedFields": list(payload["fields"].keys())},
         )

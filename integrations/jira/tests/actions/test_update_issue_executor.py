@@ -115,7 +115,10 @@ async def test_update_issue_executor_happy_path(
     )
 
     # Act
-    with patch("jira.actions.update_issue_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.update_issue_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         await executor.execute(run)
 
@@ -160,7 +163,10 @@ async def test_update_issue_executor_raises_for_upstream_http_error(
     run = make_run({"issueKey": "PORT-42", "summary": "Updated summary"})
 
     # Act + Assert
-    with patch("jira.actions.update_issue_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.update_issue_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         with pytest.raises(
             UpdateIssueError, match="Field 'summary' cannot be set"
