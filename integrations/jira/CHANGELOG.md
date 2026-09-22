@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.0 (2026-09-22)
+
+
+### Features
+
+- Added an update_issue action that updates Jira issue fields from Port
+
+
+## 0.11.0 (2026-09-22)
+
+
+### Features
+
+- Added an add_comment action for adding comments to Jira issues from Port
+
+
 ## 0.10.0 (2026-09-20)
 
 

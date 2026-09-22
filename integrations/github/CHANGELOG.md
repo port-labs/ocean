@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.14.1 (2026-09-22)
+
+
+### Improvements
+
+- Added time-based selectors for incremental-sync kinds and ignore them during incremental runs so the stored cursor controls the sync window
+
+
+## 6.14.0 (2026-09-21)
+
+
+### Features
+
+- Added organization live events for lifecycle changes (deleted, renamed), enabling immediate entity updates on org rename or removal
+- Added pull request CRUD actions (create, update, close, merge, review), enabling Port Workflows to manage GitHub pull requests with full lifecycle support
+- Added issue actions (create, edit, close), enabling Port Workflows to create, update, and close GitHub issues with labels and assignee support
+
+
 ## 6.13.6 (2026-09-16)
 
 

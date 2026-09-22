@@ -122,7 +122,10 @@ class TestCreateIssueExecutor:
                 "assigneeAccountId": "abc-123",
             }
         )
-        with patch("jira.actions.create_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("jira.actions.create_issue_executor.ocean") as mock_ocean,
+            patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
@@ -156,7 +159,10 @@ class TestCreateIssueExecutor:
         self, executor: CreateIssueExecutor, mock_port_client: MagicMock
     ) -> None:
         run = make_run({"issueType": "Task", "summary": "New task"})
-        with patch("jira.actions.create_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("jira.actions.create_issue_executor.ocean") as mock_ocean,
+            patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+        ):
             mock_ocean.port_client = mock_port_client
             with pytest.raises(MissingExecutionPropertyError) as exc_info:
                 await executor.execute(run)
@@ -177,7 +183,10 @@ class TestCreateIssueExecutor:
             )
         )
         run = make_run({"project": "PORT", "issueType": "Task", "summary": "New task"})
-        with patch("jira.actions.create_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("jira.actions.create_issue_executor.ocean") as mock_ocean,
+            patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+        ):
             mock_ocean.port_client = mock_port_client
             with pytest.raises(
                 CreateIssueError, match="Issue type is required"
@@ -191,7 +200,10 @@ class TestCreateIssueExecutor:
     ) -> None:
         executor.client.create_issue = AsyncMock(return_value={"id": "10001"})  # type: ignore[method-assign]
         run = make_run({"project": "PORT", "issueType": "Task", "summary": "New task"})
-        with patch("jira.actions.create_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("jira.actions.create_issue_executor.ocean") as mock_ocean,
+            patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+        ):
             mock_ocean.port_client = mock_port_client
             with pytest.raises(CreateIssueError, match="empty or incomplete"):
                 await executor.execute(run)
