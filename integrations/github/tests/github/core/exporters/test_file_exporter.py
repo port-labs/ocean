@@ -2,7 +2,10 @@ import binascii
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import base64
+import httpx
 from github.core.exporters.file_exporter.core import RestFileExporter
+from github.helpers.exceptions import GitHubTreeFetchError
+from port_ocean.exceptions.core import OceanAbortException
 import github.helpers.utils as helpers_utils
 from github.core.exporters.file_exporter.utils import (
     decode_content,
@@ -585,6 +588,7 @@ class TestRestFileExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
+                ignore_default_errors=False,
             )
 
     async def test_get_tree_recursive_empty_repo(
@@ -605,7 +609,123 @@ class TestRestFileExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{organization}/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
+                ignore_default_errors=False,
             )
+
+    async def test_get_tree_recursive_403_raises_exception(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When tree-fetch returns 403 (permission denied or GitHub outage),
+        GitHubTreeFetchError should be raised to prevent reconciliation deletes.
+        See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
+        """
+        exporter = RestFileExporter(rest_client)
+        organization = "test-org"
+
+        # Create a mock HTTPStatusError with 403 status
+        mock_response = httpx.Response(
+            status_code=403,
+            content=b'{"message": "API rate limit exceeded"}',
+            request=httpx.Request(
+                "GET", "https://api.github.com/repos/test-org/repo1/git/trees/main"
+            ),
+        )
+        http_error = httpx.HTTPStatusError(
+            "Forbidden", request=mock_response.request, response=mock_response
+        )
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(side_effect=http_error)
+        ):
+            with pytest.raises(GitHubTreeFetchError) as exc_info:
+                await exporter.get_tree_recursive(organization, "repo1", "main")
+
+            assert "GitHub API returned 403" in str(exc_info.value)
+            assert "repo1@main" in str(exc_info.value)
+
+    async def test_get_paginated_resources_mixed_403_and_valid_repos(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When multiple repos are processed and one fails with 403, the error is collected
+        but other repos are still processed. OceanAbortException is raised at the end so
+        reconciliation is skipped and entities are preserved.
+        See PORT-18430: GitHub Ocean 403 on tree fetch triggers reconciliation entity deletes.
+        """
+        exporter = RestFileExporter(rest_client)
+        organization = "test-org"
+
+        options = [
+            ListFileSearchOptions(
+                organization=organization,
+                repo_name="broken-repo",  # Will fail with 403
+                files=[
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.yaml",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            ),
+            ListFileSearchOptions(
+                organization=organization,
+                repo_name="working-repo",  # Should succeed
+                files=[
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.txt",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            ),
+        ]
+
+        # Create async generators for results
+        async def mock_graphql_generator() -> AsyncGenerator[list[str], None]:
+            yield ["file_from_working_repo"]
+
+        async def mock_rest_generator() -> AsyncGenerator[list[str], None]:
+            yield []
+
+        def tree_side_effect(
+            org: str, repo: str, branch: str
+        ) -> tuple[List[Dict[str, Any]], bool]:
+            if repo == "broken-repo":
+                raise GitHubTreeFetchError(
+                    f"Tree fetch failed for {org}/{repo}@{branch}: "
+                    f"GitHub API returned 403. "
+                    f"Entities will be preserved until next successful resync."
+                )
+            return (TEST_TREE_ENTRIES, False)
+
+        with (
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
+            ),
+            patch.object(
+                exporter,
+                "get_tree_recursive",
+                side_effect=tree_side_effect,
+            ),
+            patch.object(
+                exporter, "process_graphql_files", return_value=mock_graphql_generator()
+            ),
+            patch.object(
+                exporter, "process_rest_api_files", return_value=mock_rest_generator()
+            ),
+        ):
+            async with event_context("test_event"):
+                results: list[Any] = []
+                with pytest.raises(OceanAbortException) as exc_info:
+                    async for batch in exporter.get_paginated_resources(options):
+                        results.append(batch)
+
+                assert results == [["file_from_working_repo"], []]
+                assert "synced with issues" in str(exc_info.value)
+                assert isinstance(exc_info.value.__cause__, GitHubTreeFetchError)
+                assert "broken-repo@main" in str(exc_info.value.__cause__)
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
