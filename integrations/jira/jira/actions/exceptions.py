@@ -62,3 +62,9 @@ class AddCommentError(JiraActionError):
     """Raised when the Jira API returns an error while adding a comment."""
 
     DEFAULT_STATUS_LABEL = "Add comment failed"
+
+
+class DeleteIssueError(JiraActionError):
+    """Raised when the Jira API returns an error while deleting an issue."""
+
+    DEFAULT_STATUS_LABEL = "Delete failed"
