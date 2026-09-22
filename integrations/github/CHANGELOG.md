@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.14.2 (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
+## 6.14.1 (2026-09-22)
+
+
+### Improvements
+
+- Added time-based selectors for incremental-sync kinds and ignore them during incremental runs so the stored cursor controls the sync window
+
+
 ## 6.14.0 (2026-09-21)
 
 

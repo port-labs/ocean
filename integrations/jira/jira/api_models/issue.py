@@ -12,3 +12,7 @@ class JiraIssueTransition(BaseModel):
 
 class JiraIssueTransitionsResponse(BaseModel):
     transitions: list[JiraIssueTransition]
+
+
+class JiraIssueComment(BaseModel):
+    id: str
