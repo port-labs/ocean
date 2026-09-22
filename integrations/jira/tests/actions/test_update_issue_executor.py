@@ -85,6 +85,22 @@ def test_update_issue_input_to_api_payload_includes_provided_fields() -> None:
     assert payload["fields"]["labels"] == ["backend"]
 
 
+def test_update_issue_input_to_api_payload_skips_empty_optional_fields() -> None:
+    # Arrange + Act
+    payload = UpdateIssueInput.from_execution_properties(
+        {
+            "issueKey": "PORT-42",
+            "summary": "Updated summary",
+            "description": "",
+            "priority": "",
+            "assigneeAccountId": "",
+        }
+    ).to_api_payload()
+
+    # Assert
+    assert payload["fields"] == {"summary": "Updated summary"}
+
+
 def test_update_issue_input_raises_when_no_fields_provided() -> None:
     # Act + Assert
     with pytest.raises(

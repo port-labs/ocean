@@ -22,13 +22,13 @@ class UpdateIssueInput(AbstractJiraActionInput):
 
     def to_api_payload(self) -> dict[str, Any]:
         field_updates: dict[str, Any] = {}
-        if self.summary is not None:
+        if self.summary:
             field_updates["summary"] = self.summary
-        if self.description is not None:
+        if self.description:
             field_updates["description"] = plain_text_adf(self.description)
-        if self.priority is not None:
+        if self.priority:
             field_updates["priority"] = {"name": self.priority}
-        if self.assignee_account_id is not None:
+        if self.assignee_account_id:
             field_updates["assignee"] = {"id": self.assignee_account_id}
         if self.fields:
             field_updates.update(self.fields)
