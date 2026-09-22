@@ -507,8 +507,9 @@ class GitlabMergeRequestSelector(GroupSelector):
         title="Enrich With Commits",
         description=(
             "Fetch and attach the merge request's commits under __commits as returned by "
-            "GitLab. Derive commit fields in mapping JQ. Adds one extra GitLab API "
-            "call per merge request on resync and live events. Defaults to false."
+            "GitLab. Derive commit fields in mapping JQ. Adds one extra GitLab API call "
+            "per page of commits for each merge request on resync and live events "
+            "(100 commits per page). Defaults to false."
         ),
     )
     enrich_with_review_discussion: bool = Field(
@@ -518,7 +519,8 @@ class GitlabMergeRequestSelector(GroupSelector):
         description=(
             "Fetch and attach the merge request's notes under __notes as returned by "
             "GitLab. Derive review and approval fields in mapping JQ. Adds one extra "
-            "GitLab API call per merge request on resync and live events. Defaults to false."
+            "GitLab API call per page of notes for each merge request on resync and live "
+            "events (100 notes per page). Defaults to false."
         ),
     )
 
