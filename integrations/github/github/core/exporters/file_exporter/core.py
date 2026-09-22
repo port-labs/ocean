@@ -424,7 +424,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"GitHub API returned {e.response.status_code}. "
                     f"Entities will be preserved until next successful resync."
                 ) from e
-    
 
         if not response:
             logger.warning(
