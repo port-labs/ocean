@@ -9,6 +9,7 @@ from port_ocean.core.models import IntegrationRun
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import CreateIssueError
+from jira.actions.utils import plain_text_adf
 
 
 class CreateIssueInput(AbstractJiraActionInput):
@@ -26,16 +27,7 @@ class CreateIssueInput(AbstractJiraActionInput):
             "summary": self.summary,
         }
         if self.description:
-            fields["description"] = {
-                "type": "doc",
-                "version": 1,
-                "content": [
-                    {
-                        "type": "paragraph",
-                        "content": [{"type": "text", "text": self.description}],
-                    }
-                ],
-            }
+            fields["description"] = plain_text_adf(self.description)
         if self.priority:
             fields["priority"] = {"name": self.priority}
         if self.assignee_account_id:
