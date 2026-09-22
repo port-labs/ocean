@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Added optional enrichWithCommits and enrichWithReviewDiscussion selectors on merge-request to attach raw GitLab commits and notes during resync
+- Added create_merge_request_comment action to post notes on GitLab merge requests
+- Added an update_merge_request action that updates a GitLab merge request
 
 
 ## 0.11.4 (2026-09-22)
