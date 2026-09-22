@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.1 (2026-09-17)
+
+
+### Bug Fixes
+
+- Report superseded in-flight resyncs as Aborted in Port (and notify lifecycle when DSP is enabled) when polling cancels a resync for a newer request.
+
+
 ## 0.52.0 (2026-09-16)
 
 
