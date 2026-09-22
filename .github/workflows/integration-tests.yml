@@ -89,7 +89,7 @@ jobs:
           make test/integration
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v6
+        uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}
         with:
           report_paths: '**/junit/integration-test-results-*.xml'
