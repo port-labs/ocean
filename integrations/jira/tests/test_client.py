@@ -615,6 +615,21 @@ async def test_create_issue(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_delete_issue(mock_jira_client: JiraClient) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = None
+        await mock_jira_client.delete_issue("PORT-1", delete_subtasks=True)
+
+        mock_request.assert_called_once_with(
+            "DELETE",
+            f"{mock_jira_client.api_url}/issue/PORT-1",
+            params={"deleteSubtasks": True},
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_issues with params including JQL filtering"""
 

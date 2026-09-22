@@ -252,6 +252,8 @@ class JiraClient(OAuthClient):
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
+                if response.status_code == 204 or not response.content:
+                    return None
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
@@ -620,6 +622,15 @@ class JiraClient(OAuthClient):
             "POST",
             f"{self.api_url}/issue",
             json=payload,
+        )
+
+    async def delete_issue(
+        self, issue_key: str, *, delete_subtasks: bool = False
+    ) -> None:
+        await self._send_api_request(
+            "DELETE",
+            f"{self.api_url}/issue/{issue_key}",
+            params={"deleteSubtasks": delete_subtasks},
         )
 
     @staticmethod
