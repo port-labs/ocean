@@ -1675,7 +1675,7 @@ class GitLabClient:
             f"projects/{encoded_id}/merge_requests/{merge_request_iid}",
             data=data,
         )
-        
+
     async def create_merge_request_note(
         self,
         project_id: str,

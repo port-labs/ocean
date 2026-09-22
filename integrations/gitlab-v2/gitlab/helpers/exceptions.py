@@ -58,6 +58,7 @@ class GitlabUpdateMergeRequestError(ActionExecutionError):
     ) -> "GitlabUpdateMergeRequestError":
         return cls(f"{prefix}: {_response_detail(response)}")
 
+
 class GitlabCreateMergeRequestCommentError(ActionExecutionError):
     """Raised when the GitLab API returns an error while creating a merge request note."""
 
