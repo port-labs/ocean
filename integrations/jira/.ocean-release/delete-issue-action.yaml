@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added a delete_issue action for deleting Jira issues from Port
