@@ -108,7 +108,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             except GitHubTreeFetchError as e:
                 logger.warning(f"Skipping {repo_name}: {e}")
                 fetch_errors.append(e)
-                continue
 
         logger.info(f"Processing {len(graphql_files)} GraphQL files")
         async for result in self.process_graphql_files(graphql_files):
