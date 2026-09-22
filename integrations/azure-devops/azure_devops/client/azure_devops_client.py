@@ -86,7 +86,12 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_CONCURRENT_PULL_REQUESTS_FOR_ENRICHMENT = 25
 MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT = 25
+_PR_ENRICHMENT_FIELDS = {
+    "commits": "__commits",
+    "threads": "__threads",
+}
 MAX_SUBJECTS_PER_LOOKUP = 500
 # Conservative concurrency caps to avoid exhausting the shared ADO TSTU budget.
 # ADO does not publish a per-connection limit; these values are empirically chosen
@@ -216,6 +221,19 @@ def _flatten_area_path_tree(
     for child in node.get("children", []):
         result.extend(_flatten_area_path_tree(child, project, node.get("identifier")))
     return result
+
+
+def _pull_request_resource_ids(
+    pull_request: dict[str, Any],
+) -> tuple[str, str, str] | None:
+    repository = pull_request.get("repository") or {}
+    project = repository.get("project") or {}
+    project_id = project.get("id")
+    repository_id = repository.get("id")
+    pull_request_id = pull_request.get("pullRequestId")
+    if not project_id or not repository_id or pull_request_id is None:
+        return None
+    return str(project_id), str(repository_id), str(pull_request_id)
 
 
 @dataclass
@@ -956,6 +974,9 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         search_filters: Optional[dict[str, Any]] = None,
         max_results: Optional[int] = None,
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
@@ -974,6 +995,14 @@ class AzureDevopsClient(HTTPBaseClient):
                 for repository in repositories
             ]
             async for pull_requests in stream_async_iterators_tasks(*tasks):
+                if pull_requests and (
+                    enrich_with_commits or enrich_with_review_discussion
+                ):
+                    pull_requests = await self.enrich_pull_requests(
+                        pull_requests,
+                        enrich_with_commits=enrich_with_commits,
+                        enrich_with_review_discussion=enrich_with_review_discussion,
+                    )
                 yield pull_requests
 
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -1898,6 +1927,161 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         pull_request_data = response.json()
         return pull_request_data
+
+    def _pull_request_item_url(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+        resource: str,
+    ) -> str:
+        return (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/{resource}"
+        )
+
+    async def _get_pull_request_collection(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+        resource: str,
+    ) -> list[dict[str, Any]]:
+        """GET a PR sub-resource and return its ``value`` list."""
+        url = self._pull_request_item_url(
+            project_id, repository_id, pull_request_id, resource
+        )
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        if not response:
+            return []
+        data = response.json()
+        value = data.get("value") if isinstance(data, dict) else None
+        return value if isinstance(value, list) else []
+
+    async def get_pull_request_commits(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return commits on a pull request, paginating with continuation tokens.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/commits
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-commits/get-pull-request-commits
+        """
+        commits: list[dict[str, Any]] = []
+        async for batch in self._get_paginated_by_top_and_continuation_token(
+            self._pull_request_item_url(
+                project_id, repository_id, pull_request_id, "commits"
+            ),
+            additional_params=API_PARAMS,
+        ):
+            commits.extend(batch)
+        return commits
+
+    async def get_pull_request_threads(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return discussion threads on a pull request.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/list
+        """
+        return await self._get_pull_request_collection(
+            project_id, repository_id, pull_request_id, "threads"
+        )
+
+    async def enrich_pull_requests(
+        self,
+        batch: list[dict[str, Any]],
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+        concurrency: int = MAX_CONCURRENT_PULL_REQUESTS_FOR_ENRICHMENT,
+    ) -> list[dict[str, Any]]:
+        """Attach opt-in raw commits and threads from Azure DevOps onto a pull-request batch."""
+        if not batch or not (enrich_with_commits or enrich_with_review_discussion):
+            return batch
+
+        logger.info(
+            f"Enriching {len(batch)} pull requests "
+            f"(commits={enrich_with_commits}, "
+            f"reviewDiscussion={enrich_with_review_discussion})"
+        )
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def _enrich(pull_request: dict[str, Any]) -> dict[str, Any]:
+            async with semaphore:
+                return await self._attach_pull_request_enrichment(
+                    pull_request,
+                    enrich_with_commits=enrich_with_commits,
+                    enrich_with_review_discussion=enrich_with_review_discussion,
+                )
+
+        return list(await asyncio.gather(*[_enrich(pr) for pr in batch]))
+
+    async def _attach_pull_request_enrichment(
+        self,
+        pull_request: dict[str, Any],
+        *,
+        enrich_with_commits: bool,
+        enrich_with_review_discussion: bool,
+    ) -> dict[str, Any]:
+        resource_ids = _pull_request_resource_ids(pull_request)
+        if resource_ids is None:
+            logger.warning(
+                "Skipping pull request enrichment; missing project, repository, "
+                f"or pullRequestId (id={pull_request.get('pullRequestId')!r})"
+            )
+            return pull_request
+
+        project_id, repository_id, pull_request_id = resource_ids
+        try:
+            fetchers: list[tuple[str, Awaitable[list[dict[str, Any]]]]] = []
+            if enrich_with_commits:
+                fetchers.append(
+                    (
+                        "commits",
+                        self.get_pull_request_commits(
+                            project_id, repository_id, pull_request_id
+                        ),
+                    )
+                )
+            if enrich_with_review_discussion:
+                fetchers.append(
+                    (
+                        "threads",
+                        self.get_pull_request_threads(
+                            project_id, repository_id, pull_request_id
+                        ),
+                    )
+                )
+
+            results = await asyncio.gather(
+                *(coro for _, coro in fetchers),
+                return_exceptions=True,
+            )
+
+            for (label, _), result in zip(fetchers, results):
+                field = _PR_ENRICHMENT_FIELDS[label]
+                if not isinstance(result, list):
+                    logger.warning(
+                        f"{label} enrichment failed for pull request "
+                        f"{project_id}/{repository_id}!{pull_request_id}: {result}"
+                    )
+                    pull_request[field] = None
+                    continue
+                pull_request[field] = result
+        except Exception as e:
+            logger.warning(
+                f"Pull request enrichment failed for pull request "
+                f"{project_id}/{repository_id}!{pull_request_id}: {e}"
+            )
+
+        return pull_request
 
     async def create_pull_request_thread(
         self,

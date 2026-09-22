@@ -1,3 +1,5 @@
+from typing import cast
+
 from loguru import logger
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
@@ -10,6 +12,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import PullRequestEvents
+from integration import AzureDevopsPullRequestResourceConfig
 
 
 class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
@@ -41,6 +44,16 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+        selector = cast(AzureDevopsPullRequestResourceConfig, resource_config).selector
+        if selector.enrich_with_commits or selector.enrich_with_review_discussion:
+            enriched = await client.enrich_pull_requests(
+                [pull_request_data],
+                enrich_with_commits=selector.enrich_with_commits,
+                enrich_with_review_discussion=selector.enrich_with_review_discussion,
+                concurrency=1,
+            )
+            pull_request_data = enriched[0] if enriched else pull_request_data
 
         return WebhookEventRawResults(
             updated_raw_results=[pull_request_data], deleted_raw_results=[]
