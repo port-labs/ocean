@@ -197,7 +197,10 @@ class TestCreateIssueExecutor:
         )
 
         # Act
-        with patch("jira.actions.create_issue_executor.ocean") as mock_ocean:
+        with (
+            patch("jira.actions.create_issue_executor.ocean") as mock_ocean,
+            patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
