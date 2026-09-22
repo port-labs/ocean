@@ -151,14 +151,18 @@ async def test_stream_independent_async_iterators_streams_successful_items() -> 
     assert sorted(items) == [1, 2, 3]
 
 
-async def test_stream_independent_async_iterators_re_raises_single_ocean_abort() -> (
+async def test_stream_independent_async_iterators_wraps_ocean_abort_in_exception_group() -> (
     None
 ):
-    with pytest.raises(OceanAbortException, match="tree fetch failed"):
+    with pytest.raises(ExceptionGroup) as exc_info:
         async for _ in stream_independent_async_iterators(
             _fail_abort(), context="file"
         ):
             pass
+
+    assert "file failed with 1 error(s)" in str(exc_info.value)
+    assert isinstance(exc_info.value.exceptions[0], OceanAbortException)
+    assert str(exc_info.value.exceptions[0]) == "tree fetch failed"
 
 
 async def test_stream_independent_async_iterators_defers_failures_until_finish() -> (

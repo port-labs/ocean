@@ -1209,14 +1209,14 @@ class TestResyncErrorHandling:
 
             mock_exception.assert_called_once()
 
-    def test_single_abort_in_exception_group_re_raised_without_logging(self) -> None:
+    def test_exception_group_is_logged_and_wrapped(self) -> None:
         abort = OceanAbortException("tree fetch failed")
         group = ExceptionGroup("file failed with 1 error(s)", [abort])
         with patch(
             "port_ocean.core.integrations.mixins.utils.logger.exception"
         ) as mock_exception:
-            with pytest.raises(OceanAbortException, match="tree fetch failed"):
+            with pytest.raises(OceanAbortException, match="Failed to execute resync"):
                 with resync_error_handling():
                     raise group
 
-            mock_exception.assert_not_called()
+            mock_exception.assert_called_once()
