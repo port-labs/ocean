@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added an add_comment action for adding comments to Jira issues from Port

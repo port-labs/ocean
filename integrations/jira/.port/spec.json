@@ -139,6 +139,27 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "add_comment",
+      "icon": "Jira",
+      "description": "Add a comment to a Jira issue",
+      "inputs": [
+        {
+          "name": "issueKey",
+          "title": "Issue key",
+          "type": "string",
+          "description": "The Jira issue key to comment on, for example PORT-123",
+          "required": true
+        },
+        {
+          "name": "comment",
+          "title": "Comment",
+          "type": "string",
+          "description": "The comment text to add to the issue",
+          "required": true
+        }
+      ]
     }
   ],
   "saas": {

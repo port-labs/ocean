@@ -50,3 +50,9 @@ class ChangeIssueStatusError(JiraActionError):
     """Raised when the Jira API returns an error while changing issue status."""
 
     DEFAULT_STATUS_LABEL = "Status change failed"
+
+
+class AddCommentError(JiraActionError):
+    """Raised when the Jira API returns an error while adding a comment."""
+
+    DEFAULT_STATUS_LABEL = "Add comment failed"

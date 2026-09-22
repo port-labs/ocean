@@ -121,7 +121,10 @@ async def test_happy_path(
     run = make_run({"issueKey": "PORT-42", "status": "in progress"})
 
     # Act
-    with patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         await executor.execute(run)
 
@@ -158,7 +161,10 @@ async def test_already_in_target_status(
     run = make_run({"issueKey": "PORT-42", "status": "done"})
 
     # Act
-    with patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         await executor.execute(run)
 
@@ -189,7 +195,10 @@ async def test_missing_required_input(
     run = make_run({"issueKey": "PORT-42"})
 
     # Act + Assert
-    with patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         with pytest.raises(MissingExecutionPropertyError) as exc_info:
             await executor.execute(run)
@@ -215,7 +224,10 @@ async def test_upstream_http_error(
     run = make_run({"issueKey": "PORT-42", "status": "Done"})
 
     # Act + Assert
-    with patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         with pytest.raises(
             ChangeIssueStatusError, match="Issue does not exist"
@@ -233,7 +245,10 @@ async def test_no_matching_transition(
     run = make_run({"issueKey": "PORT-42", "status": "Blocked"})
 
     # Act + Assert
-    with patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.change_issue_status_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         with pytest.raises(
             ChangeIssueStatusError,
