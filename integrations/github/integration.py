@@ -28,6 +28,10 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
+from github.helpers.datetime_selectors import (
+    ISO_8601_SELECTOR_REGEX,
+    parse_selector_iso_datetime,
+)
 from typing import Any, Dict, List, Optional, Type, Literal, ClassVar
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
@@ -44,6 +48,15 @@ from github.helpers.port_app_config import (
     is_repo_managed_mapping,
     load_org_port_app_config,
 )
+
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
+def _optional_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    return parse_selector_iso_datetime(value)
+
 
 FILE_PROPERTY_PREFIX = "file://"
 
@@ -173,6 +186,20 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
         description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples/#repositories-with-multiple-relationships'>teams, collaborators, sbom, custom properties and pages</a>",
         default=None,
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include repositories updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
     @property
     def normalized_relations(self) -> dict[str, dict[str, Any]]:
@@ -520,13 +547,19 @@ class GithubPullRequestSelector(RepoSearchSelector):
         title="Closed PRs Lookback Days",
         default=60,
         ge=1,
-        description="Numbers of days back for closed pull requests.",
+        description=(
+            "Numbers of days back for closed pull requests."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     closed_since_date: Optional[str] = Field(
         title="Closed PRs Since Date",
         alias="closedSinceDate",
         default=None,
-        description="Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set.",
+        description=(
+            "Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
@@ -604,11 +637,25 @@ class GithubIssueSelector(RepoSearchSelector):
         default=None,
         description="Filter issues by labels; issues must have ALL specified labels (e.g. ['bug', 'enhancement']).",
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include issues updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
 
     @property
     def labels_str(self) -> Optional[str]:
         """Convert labels list to comma-separated string for GitHub API."""
         return ",".join(self.labels) if self.labels else None
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubIssueConfig(ResourceConfig):
@@ -686,6 +733,16 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
         description="Filter alerts by package ecosystem (e.g. ['npm', 'pip']).",
         default=None,
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
 
     @property
     def severity_str(self) -> Optional[str]:
@@ -696,6 +753,10 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
     def ecosystems_str(self) -> Optional[str]:
         """Convert ecosystems list to comma-separated string for GitHub API."""
         return ",".join(self.ecosystems) if self.ecosystems else None
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubDependabotAlertConfig(ResourceConfig):
@@ -727,6 +788,20 @@ class GithubCodeScanningAlertSelector(RepoSearchSelector):
         description="Filter alerts by severity level (e.g. 'critical', 'high', 'medium', 'low', 'warning', 'note', 'error').",
         default=None,
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
@@ -766,6 +841,20 @@ class GithubDeploymentSelector(RepoSearchSelector):
             "deployment-level __commitCount. Defaults to false."
         ),
     )
+    created_since: Optional[str] = Field(
+        default=None,
+        alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Created Since",
+        description=(
+            "Only include deployments created after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.created_since)
 
 
 class GithubDeploymentConfig(ResourceConfig):
@@ -1016,12 +1105,18 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
         title="Lookback Days",
         default=None,
         ge=1,
-        description="Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set.",
+        description=(
+            "Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     since_date: Optional[str] = Field(
         title="Since Date",
         default=None,
-        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set.",
+        description=(
+            "Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
 
     @property
@@ -1049,6 +1144,23 @@ class GithubWorkflowRunConfig(ResourceConfig):
     )
 
 
+class GithubReleaseSelector(RepoSearchSelector):
+    created_since: Optional[str] = Field(
+        default=None,
+        alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Created Since",
+        description=(
+            "Only include releases created after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.created_since)
+
+
 class GithubReleaseConfig(ResourceConfig):
     probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
         "pat": ("repo",),
@@ -1059,7 +1171,7 @@ class GithubReleaseConfig(ResourceConfig):
         title="Github Release",
         description="Github release resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubReleaseSelector = Field(
         title="Release selector",
         description="Selector for the release resource.",
     )
