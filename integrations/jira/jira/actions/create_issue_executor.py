@@ -19,6 +19,8 @@ class CreateIssueInput(AbstractJiraActionInput):
     description: str | None = None
     priority: str | None = None
     assignee_account_id: str | None = Field(default=None, alias="assigneeAccountId")
+    parent_key: str | None = Field(default=None, alias="parentKey")
+    fields: dict[str, Any] | None = None
 
     def to_api_payload(self) -> dict[str, Any]:
         fields: dict[str, Any] = {
@@ -41,6 +43,10 @@ class CreateIssueInput(AbstractJiraActionInput):
             fields["priority"] = {"name": self.priority}
         if self.assignee_account_id:
             fields["assignee"] = {"id": self.assignee_account_id}
+        if self.parent_key:
+            fields["parent"] = {"key": self.parent_key}
+        if self.fields:
+            fields.update(self.fields)
         return {"fields": fields}
 
 
