@@ -13,6 +13,7 @@ from gitlab.actions.set_merge_request_comment_reaction_executor import (
     REACTION_UPDATED_STATUS_LABEL,
     SetMergeRequestCommentReactionExecutor,
 )
+from gitlab.clients.gitlab_client import AwardEmoji
 from gitlab.helpers.exceptions import (
     GitlabSetMergeRequestCommentReactionError,
     MissingExecutionPropertyError,
@@ -48,7 +49,7 @@ def executor() -> SetMergeRequestCommentReactionExecutor:
             return_value=AWARD_RESPONSE
         )
         ex.client.list_merge_request_note_award_emojis = AsyncMock(
-            return_value=[{"id": 88, "name": "thumbsup"}]
+            return_value=[AwardEmoji(id=88, name="thumbsup")]
         )
         ex.client.revoke_merge_request_note_award_emoji = AsyncMock(return_value={})
         return ex
@@ -137,6 +138,15 @@ class TestSetMergeRequestCommentReactionExecutor:
     ) -> None:
         run = make_run({"mergeRequestIid": "1", "noteId": "2", "name": "thumbsup"})
         with pytest.raises(MissingExecutionPropertyError, match="project"):
+            await executor.execute(run)
+
+    async def test_invalid_note_id_raises(
+        self, executor: SetMergeRequestCommentReactionExecutor
+    ) -> None:
+        run = make_run(
+            {"project": "p", "mergeRequestIid": "1", "noteId": "abc", "name": "x"}
+        )
+        with pytest.raises(MissingExecutionPropertyError, match="noteId"):
             await executor.execute(run)
 
     async def test_remove_when_not_found_raises(
