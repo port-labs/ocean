@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added an update_issue action that updates Jira issue fields from Port
