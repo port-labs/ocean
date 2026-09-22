@@ -6,7 +6,17 @@ from typing import Any
 from actions.utils import build_agent_link
 from integration import ObjectKind
 
-_V1_AGENT_STATUSES = frozenset({"ACTIVE", "ARCHIVED"})
+# v0 launch / webhook payloads carry run lifecycle statuses. Map them to v1 agent
+# lifecycle values before upserting the cursor_agent blueprint.
+_V0_TO_AGENT_STATUS = {
+    "CREATING": "ACTIVE",
+    "RUNNING": "ACTIVE",
+    "STOPPED": "IDLE",
+    "FINISHED": "IDLE",
+    "ERROR": "IDLE",
+    "CANCELLED": "IDLE",
+    "EXPIRED": "ARCHIVED",
+}
 
 
 def format_datetime_for_catalog(value: datetime) -> str:
@@ -45,17 +55,15 @@ def normalize_agent_raw_for_catalog(
 ) -> dict[str, Any]:
     """Shape a Cursor agent API object for the `cursor_agent` blueprint.
 
-    v1 List/Get Agents use durable ``ACTIVE`` / ``ARCHIVED`` statuses. v0 launch
-    and webhook snapshots reuse run lifecycle values (``CREATING``, ``RUNNING``,
-    ``FINISHED``, …) which fail blueprint validation if passed through unchanged.
+    v0 launch and webhook snapshots use ``source``/``target`` instead of the
+    v1 ``repos``/``url`` fields expected by port mappings. v0 run lifecycle
+    ``status`` values are mapped to v1 agent lifecycle values.
     """
     normalized = enrich_v0_agent_raw_for_catalog(raw, console_host=console_host)
     status = normalized.get("status")
-    if status in _V1_AGENT_STATUSES:
-        pass
-    elif status is not None:
-        normalized["status"] = "ACTIVE"
-    else:
+    if status in _V0_TO_AGENT_STATUS:
+        normalized["status"] = _V0_TO_AGENT_STATUS[status]
+    elif status is None:
         normalized.pop("status", None)
 
     # Optional url/date-time fields reject explicit null after jq mapping.
