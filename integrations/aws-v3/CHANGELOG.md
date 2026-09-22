@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.28.0-beta (2026-09-22)
+
+
+### Features
+
+- Enable CloudTrail live events for all organizations, expose liveEventsApiKey in the spec, and turn on SaaS live events support.
+
+
 ## 2.27.0-beta (2026-09-17)
 
 
