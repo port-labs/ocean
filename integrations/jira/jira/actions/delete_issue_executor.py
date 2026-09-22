@@ -2,7 +2,7 @@ import httpx
 from loguru import logger
 from pydantic import Field
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
@@ -45,23 +45,16 @@ class DeleteIssueExecutor(AbstractJiraExecutor):
                 f"Could not delete issue '{action_input.issue_key}'",
             )
 
-        message = f"Deleted issue {action_input.issue_key}"
-        await ocean.port_client.post_run_log(
-            run,
-            message,
-            should_raise=False,
-        )
         logger.info(
             "Deleted Jira issue",
             issue_key=action_input.issue_key,
             delete_subtasks=action_input.delete_subtasks,
         )
 
-        if isinstance(run, WorkflowNodeRun):
-            run.output = {"issueKey": action_input.issue_key}
-        await ocean.port_client.report_run_completed(
+        await self._complete_issue_action(
             run,
-            success=True,
-            message=message,
+            issue_key=action_input.issue_key,
+            message=f"Deleted issue {action_input.issue_key}",
             status_label="Issue deleted",
+            output={},
         )

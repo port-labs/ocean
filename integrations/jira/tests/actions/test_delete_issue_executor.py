@@ -32,6 +32,8 @@ def executor() -> DeleteIssueExecutor:
     with patch("jira.actions.abstract_jira_executor.get_or_create_jira_client"):
         delete_issue_executor = DeleteIssueExecutor()
         delete_issue_executor.client = MagicMock()
+        delete_issue_executor.client.jira_url = "https://example.atlassian.net"
+        delete_issue_executor.client.is_oauth_enabled = MagicMock(return_value=False)
         delete_issue_executor.client.delete_issue = AsyncMock()
         return delete_issue_executor
 
@@ -77,7 +79,10 @@ async def test_delete_issue_executor_happy_path(
     run = make_run({"issueKey": "PORT-42", "deleteSubtasks": True})
 
     # Act
-    with patch("jira.actions.delete_issue_executor.ocean") as mock_ocean:
+    with (
+        patch("jira.actions.delete_issue_executor.ocean") as mock_ocean,
+        patch("jira.actions.abstract_jira_executor.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_port_client
         await executor.execute(run)
 
@@ -86,7 +91,10 @@ async def test_delete_issue_executor_happy_path(
         "PORT-42",
         delete_subtasks=True,
     )
-    assert run.output == {"issueKey": "PORT-42"}
+    assert run.output == {
+        "issueKey": "PORT-42",
+        "issueUrl": "https://example.atlassian.net/browse/PORT-42",
+    }
     mock_port_client.post_run_log.assert_any_call(
         run,
         "Deleting Jira issue PORT-42",
@@ -96,7 +104,7 @@ async def test_delete_issue_executor_happy_path(
     mock_port_client.report_run_completed.assert_called_once_with(
         run,
         success=True,
-        message="Deleted issue PORT-42",
+        message=("Deleted issue PORT-42: https://example.atlassian.net/browse/PORT-42"),
         status_label="Issue deleted",
     )
 
