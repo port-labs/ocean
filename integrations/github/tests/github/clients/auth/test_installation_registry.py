@@ -69,3 +69,28 @@ async def test_get_installation_authenticator_is_case_insensitive(
         )
 
     assert authenticator.organization == "myorg"
+
+
+@pytest.mark.asyncio
+async def test_get_installation_retries_on_cache_miss() -> None:
+    """When an org is renamed, the cache has the old login. The registry
+    should reset and re-discover before raising AuthenticationException."""
+    old_auth = _mock_authenticator("old-name")
+    installation_registry._authenticators_by_org["old-name"] = old_auth
+    installation_registry._discovered_at = time.monotonic()
+
+    new_auth = _mock_authenticator("new-name")
+
+    with patch.object(
+        installation_registry,
+        "_fetch_installations",
+        AsyncMock(return_value={"new-name": new_auth}),
+    ) as mock_fetch:
+        result = (
+            await installation_registry.get_installation_authenticator_for_organization(
+                "new-name"
+            )
+        )
+
+    mock_fetch.assert_called_once()
+    assert result.organization == "new-name"
