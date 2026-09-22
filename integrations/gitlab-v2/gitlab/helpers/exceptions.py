@@ -57,3 +57,14 @@ class GitlabUpdateMergeRequestError(ActionExecutionError):
         cls, response: httpx.Response, prefix: str
     ) -> "GitlabUpdateMergeRequestError":
         return cls(f"{prefix}: {_response_detail(response)}")
+
+class GitlabCreateMergeRequestCommentError(ActionExecutionError):
+    """Raised when the GitLab API returns an error while creating a merge request note."""
+
+    DEFAULT_STATUS_LABEL = "Comment creation failed"
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabCreateMergeRequestCommentError":
+        return cls(f"{prefix}: {_response_detail(response)}")

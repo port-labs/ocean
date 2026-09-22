@@ -258,6 +258,8 @@ def resync_error_handling() -> Generator[None, None, None]:
         raise OceanAbortException(err_msg) from error
     except StopAsyncIteration:
         raise
+    except OceanAbortException:
+        raise
     except Exception as error:
         err_msg = f"Failed to execute resync function, error: {error}"
         logger.exception(err_msg)
