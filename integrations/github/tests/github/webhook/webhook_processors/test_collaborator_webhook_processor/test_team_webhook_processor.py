@@ -224,7 +224,7 @@ class TestCollaboratorTeamWebhookProcessor:
             mock_client.send_paginated_request.return_value = mock_paginated_generator()
 
             with patch(
-                "github.webhook.webhook_processors.collaborator_webhook_processor.utils.RestCollaboratorExporter"
+                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.RestCollaboratorExporter"
             ) as mock_collab_exporter_class:
                 mock_collab_exporter = MagicMock()
                 mock_collab_exporter_class.return_value = mock_collab_exporter
@@ -280,7 +280,7 @@ class TestCollaboratorTeamWebhookProcessor:
             mock_client.send_paginated_request.return_value = mock_paginated_generator()
 
             with patch(
-                "github.webhook.webhook_processors.collaborator_webhook_processor.utils.RestCollaboratorExporter"
+                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.RestCollaboratorExporter"
             ) as mock_collab_exporter_class:
                 mock_collab_exporter = MagicMock()
                 mock_collab_exporter_class.return_value = mock_collab_exporter

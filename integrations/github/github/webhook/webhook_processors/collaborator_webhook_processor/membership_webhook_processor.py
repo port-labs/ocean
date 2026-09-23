@@ -14,6 +14,7 @@ from github.helpers.utils import (
 )
 from github.webhook.events import (
     COLLABORATOR_DELETE_EVENTS,
+    COLLABORATOR_UPSERT_EVENTS,
 )
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -50,7 +51,6 @@ class CollaboratorMembershipWebhookProcessor(
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        """Handle membership-related webhook events for collaborators."""
 
         action = payload["action"]
         member = payload["member"]
@@ -95,12 +95,24 @@ class CollaboratorMembershipWebhookProcessor(
                 f"Reconciling collaborator {member_login} across {len(repositories)} "
                 f"repositories for team {team_slug} in {organization}"
             )
-            return await reconcile_collaborator_repos(
+            updated, deleted = await reconcile_collaborator_repos(
                 rest_client=rest_client,
                 organization=organization,
                 member_login=member_login,
                 member_id=member["id"],
                 repositories=repositories,
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=updated, deleted_raw_results=deleted
+            )
+
+        if action not in COLLABORATOR_UPSERT_EVENTS:
+            logger.info(
+                f"Skipping unsupported membership event {action} for "
+                f"{member_login} in team {team_slug} of organization: {organization}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
 
         list_data_to_upsert = self._enrich_collaborators_with_repositories(
@@ -121,14 +133,10 @@ class CollaboratorMembershipWebhookProcessor(
         repositories: list[dict[str, Any]],
         organization: str,
     ) -> list[dict[str, Any]]:
-        """Helper function to enrich response with repository information."""
-        list_of_collaborators = []
-        for repository in repositories:
-            collaborator_copy = response.copy()
-            list_of_collaborators.append(
-                enrich_with_organization(
-                    enrich_with_repository(collaborator_copy, repository["name"]),
-                    organization,
-                )
+        return [
+            enrich_with_organization(
+                enrich_with_repository(response.copy(), repository["name"]),
+                organization,
             )
-        return list_of_collaborators
+            for repository in repositories
+        ]

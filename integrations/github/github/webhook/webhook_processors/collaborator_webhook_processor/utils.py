@@ -1,7 +1,6 @@
 import asyncio
-from typing import Any, cast
+from typing import Any, Sequence, cast
 
-import httpx
 from loguru import logger
 
 from github.clients.http.rest_client import GithubRestClient
@@ -13,7 +12,11 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResult
 
 from integration import GithubCollaboratorConfig
 
-RECONCILIATION_CONCURRENCY_LIMIT = 10
+# Matches MAX_CONCURRENT_REPOS and BATCH_CONCURRENCY_LIMIT used across the integration
+BATCH_CONCURRENCY_LIMIT = 10
+
+# (login, member_id, repo_name) per check — aligned 1:1 with gather results
+CollaboratorCheck = tuple[str, int, str]
 
 
 def skip_if_affiliation_filtered(
@@ -34,56 +37,81 @@ def skip_if_affiliation_filtered(
     return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
 
+async def check_collaborator_access(
+    collaborator_exporter: RestCollaboratorExporter,
+    organization: str,
+    repo_name: str,
+    username: str,
+    semaphore: asyncio.BoundedSemaphore,
+) -> dict[str, Any] | None:
+    async with semaphore:
+        return await collaborator_exporter.get_resource(
+            SingleCollaboratorOptions(
+                organization=organization,
+                repo_name=repo_name,
+                username=username,
+            )
+        )
+
+
+def process_access_check_results(
+    results: Sequence[dict[str, Any] | BaseException | None],
+    checks: list[CollaboratorCheck],
+    organization: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    updated: list[dict[str, Any]] = []
+    deleted: list[dict[str, Any]] = []
+    for (login, member_id, repo_name), result in zip(checks, results):
+        if isinstance(result, Exception):
+            logger.warning(
+                f"Failed to check collaborator {login} on "
+                f"{repo_name} in {organization}, skipping: {result}"
+            )
+        elif isinstance(result, dict):
+            updated.append(result)
+        else:
+            logger.info(
+                f"Collaborator {login} no longer has access to "
+                f"{repo_name} in {organization}, marking for deletion"
+            )
+            deleted.append(
+                enrich_with_organization(
+                    enrich_with_repository(
+                        {"login": login, "id": member_id},
+                        repo_name,
+                    ),
+                    organization,
+                )
+            )
+    return updated, deleted
+
+
 async def reconcile_collaborator_repos(
     rest_client: GithubRestClient,
     organization: str,
     member_login: str,
     member_id: int,
     repositories: list[dict[str, Any]],
-    semaphore: asyncio.BoundedSemaphore | None = None,
-) -> WebhookEventRawResults:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     collaborator_exporter = RestCollaboratorExporter(rest_client)
-    semaphore = semaphore or asyncio.BoundedSemaphore(RECONCILIATION_CONCURRENCY_LIMIT)
+    semaphore = asyncio.BoundedSemaphore(BATCH_CONCURRENCY_LIMIT)
 
-    async def check_repo(
-        repo: dict[str, Any],
-    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-        async with semaphore:
-            try:
-                collaborator = await collaborator_exporter.get_resource(
-                    SingleCollaboratorOptions(
-                        organization=organization,
-                        repo_name=repo["name"],
-                        username=member_login,
-                    )
-                )
-            except httpx.HTTPError as e:
-                logger.warning(
-                    f"Failed to check collaborator {member_login} on "
-                    f"{repo['name']} in {organization}, skipping repo: {e}"
-                )
-                return None, None
-
-            if collaborator:
-                return collaborator, None
-
-            logger.info(
-                f"Collaborator {member_login} no longer has access to "
-                f"{repo['name']} in {organization}, marking for deletion"
+    results = await asyncio.gather(
+        *(
+            check_collaborator_access(
+                collaborator_exporter=collaborator_exporter,
+                organization=organization,
+                repo_name=repo["name"],
+                username=member_login,
+                semaphore=semaphore,
             )
-            return None, enrich_with_organization(
-                enrich_with_repository(
-                    {"login": member_login, "id": member_id},
-                    repo["name"],
-                ),
-                organization,
-            )
+            for repo in repositories
+        ),
+        return_exceptions=True,
+    )
 
-    results = await asyncio.gather(*(check_repo(repo) for repo in repositories))
-
-    updated = [updated_item for updated_item, _ in results if updated_item is not None]
-    deleted = [deleted_item for _, deleted_item in results if deleted_item is not None]
-
-    return WebhookEventRawResults(
-        updated_raw_results=updated, deleted_raw_results=deleted
+    return process_access_check_results(
+        results,
+        [(member_login, member_id, repo["name"]) for repo in repositories],
+        organization,
     )
