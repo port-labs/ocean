@@ -12,6 +12,7 @@ from github.core.exporters.pull_request_exporter.core import (
 )
 from github.core.exporters.release_exporter import RELEASE_INCREMENTAL
 from github.core.exporters.repository_exporter import REPOSITORY_INCREMENTAL
+from github.core.exporters.secret_scanning_alert_exporter import SECRET_SCANNING_INCREMENTAL
 from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 
 
@@ -52,6 +53,10 @@ def cursor() -> datetime:
             {"sort": "updated", "direction": "desc"},
         ),
         (
+            SECRET_SCANNING_INCREMENTAL,
+            {"sort": "updated", "direction": "desc"},
+        ),
+        (
             OPEN_PULL_REQUEST_INCREMENTAL_REST,
             {"sort": "updated", "direction": "desc"},
         ),
@@ -79,6 +84,7 @@ def test_build_params_with_cursor(
         DEPENDABOT_INCREMENTAL,
         CODE_SCANNING_INCREMENTAL,
         REPOSITORY_INCREMENTAL,
+        SECRET_SCANNING_INCREMENTAL,
         OPEN_PULL_REQUEST_INCREMENTAL_REST,
         OPEN_PULL_REQUEST_INCREMENTAL_GRAPHQL,
     ],
