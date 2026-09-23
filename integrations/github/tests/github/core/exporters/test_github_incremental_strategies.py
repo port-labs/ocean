@@ -12,7 +12,9 @@ from github.core.exporters.pull_request_exporter.core import (
 )
 from github.core.exporters.release_exporter import RELEASE_INCREMENTAL
 from github.core.exporters.repository_exporter import REPOSITORY_INCREMENTAL
-from github.core.exporters.secret_scanning_alert_exporter import SECRET_SCANNING_INCREMENTAL
+from github.core.exporters.secret_scanning_alert_exporter import (
+    SECRET_SCANNING_INCREMENTAL,
+)
 from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 
 

@@ -1427,7 +1427,6 @@ async def resync_secret_scanning_alerts(
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
     sync_cursor = active_incremental_cursor()
-    
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:

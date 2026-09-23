@@ -58,7 +58,9 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             params.pop("state")
 
         incremental_cursor = params.pop("updated_since", None)
-        request_params = SECRET_SCANNING_INCREMENTAL.merge_params(params, incremental_cursor)
+        request_params = SECRET_SCANNING_INCREMENTAL.merge_params(
+            params, incremental_cursor
+        )
 
         async for alerts in paginate_with_strategy(
             self.client.send_paginated_request(
