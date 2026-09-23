@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Add event_kind=http_request to Redis stream consumer logs so live event messages match other webhook processing logs.

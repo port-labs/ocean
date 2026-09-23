@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Re-raise OceanAbortException from resync generators so integrations can signal synced-with-issues without wrapping the error.
