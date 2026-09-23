@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Fixed Azure DevOps webhook subscription reconciliation to look up release hooks on the release-management host and clean up duplicate matching subscriptions safely.
