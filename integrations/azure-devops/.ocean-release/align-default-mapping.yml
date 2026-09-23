@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Aligned default port-app-config mapping with provision-service defaults - removed project relations from child kinds, removed repository-policy kind, added pipeline-stage pipelineRun relation, added pipeline-deployment build relation, reordered kinds for clarity

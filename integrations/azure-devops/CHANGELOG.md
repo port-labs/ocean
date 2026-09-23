@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.17.5 (2026-09-23)
+
+
+### Improvements
+
+- Aligned default port-app-config mapping with provision-service defaults - removed project relations from child kinds, removed repository-policy kind, added pipeline-stage pipelineRun relation, added pipeline-deployment build relation, reordered kinds for clarity
+
+
 ## 0.17.4 (2026-09-23)
 
 
