@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added create_merge_request_comment action to post notes on GitLab merge requests

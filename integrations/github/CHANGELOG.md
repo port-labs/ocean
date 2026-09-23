@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.14.4 (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 6.14.3 (2026-09-22)
+
+
+### Bug Fixes
+
+- Fix GitHub 403 tree-fetch handling to preserve entities during outages (PORT-18430). Raise GitHubTreeFetchError on 403 so reconciliation does not treat permission/outage failures as an empty catalog; other HTTP statuses keep existing client behavior.
+
+
 ## 6.14.2 (2026-09-22)
 
 
