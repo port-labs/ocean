@@ -2,7 +2,8 @@
 
 > Status: **Draft for review**  
 > Source: design discussion (Aug 20, 2026)  
-> Decision: dedicated `integrations/plain/` integration (Linear-style), **not** custom Ocean and **not** a generic GraphQL fork.
+> Decision: dedicated `integrations/plain/` integration (Linear-style), **not** custom Ocean and **not** a generic GraphQL fork.  
+> **Executable task list (prerequisites + per-task tests):** [TASKS.md](./TASKS.md)
 
 ## Summary
 
