@@ -205,6 +205,11 @@ resources:
             environment: .releaseEnvironment.name
           relations:
             release: .releaseDefinition.projectReference.id + "/" + (.release.id | tostring) | gsub(" "; "")
+            build: >-
+              ([.release.artifacts[]? | select(.type == "Build")] | first | .definitionReference.version.id) as $bid |
+              if $bid then
+                .releaseDefinition.projectReference.id + "/" + $bid | gsub(" "; "")
+              else null end
   - kind: pipeline-deployment
     selector:
       query: '.finishTime != null'
