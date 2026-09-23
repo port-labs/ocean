@@ -9,7 +9,6 @@ from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_DEPLOYMENTS = [
     {
@@ -236,17 +235,17 @@ class TestRestDeploymentExporter:
                 side_effect=mock_api,
             ):
                 async with event_context("test_event"):
-                    with with_active_incremental_cursor(cursor):
-                        exporter = RestDeploymentExporter(rest_client)
-                        collected: list[dict[str, Any]] = []
-                        async for batch in exporter.get_paginated_resources(
-                            ListDeploymentsOptions(
-                                organization="test-org",
-                                repo_name="test-repo",
-                                enrich_with_first_commit=True,
-                            )
-                        ):
-                            collected.extend(batch)
+                    exporter = RestDeploymentExporter(rest_client)
+                    collected: list[dict[str, Any]] = []
+                    async for batch in exporter.get_paginated_resources(
+                        ListDeploymentsOptions(
+                            organization="test-org",
+                            repo_name="test-repo",
+                            enrich_with_first_commit=True,
+                            created_since=cursor,
+                        )
+                    ):
+                        collected.extend(batch)
 
         assert [deployment["id"] for deployment in collected] == [1]
         assert collected[0]["__firstCommit"]["__sha"] == "commit_early"

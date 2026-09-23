@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Generator, cast
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -334,14 +334,6 @@ def _delete_event(bucket_name: str = "my-bucket") -> dict[str, Any]:
     }
 
 
-@pytest.fixture(autouse=True)
-def _live_events_feature_flag_enabled() -> Generator[None, None, None]:
-    with patch(
-        f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-    ):
-        yield
-
-
 @pytest.fixture
 def processor() -> CloudTrailWebhookProcessor:
     return CloudTrailWebhookProcessor(
@@ -376,28 +368,12 @@ async def test_get_matching_kinds_returns_s3_bucket(
 
 
 @pytest.mark.asyncio
-async def test_authenticate_fails_when_feature_flag_disabled(
-    processor: CloudTrailWebhookProcessor,
-) -> None:
-    with patch(
-        f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=False)
-    ):
-        result = await processor.authenticate(
-            {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
-        )
-    assert result is False
-
-
-@pytest.mark.asyncio
 async def test_authenticate_succeeds_with_matching_api_key(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with (
-        patch(
-            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-        ),
-        patch(f"{MODULE}.get_live_events_api_key", return_value="secret"),
-    ):
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"live_events_api_key": "secret"}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
         )
@@ -408,12 +384,9 @@ async def test_authenticate_succeeds_with_matching_api_key(
 async def test_authenticate_fails_with_wrong_api_key(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with (
-        patch(
-            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-        ),
-        patch(f"{MODULE}.get_live_events_api_key", return_value="secret"),
-    ):
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"live_events_api_key": "secret"}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         result = await processor.authenticate({}, {LIVE_EVENTS_API_KEY_HEADER: "wrong"})
     assert result is False
 
@@ -422,12 +395,9 @@ async def test_authenticate_fails_with_wrong_api_key(
 async def test_authenticate_fails_when_not_configured(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with (
-        patch(
-            f"{MODULE}.is_aws_v3_live_events_enabled", new=AsyncMock(return_value=True)
-        ),
-        patch(f"{MODULE}.get_live_events_api_key", return_value=None),
-    ):
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "anything"}
         )
@@ -1239,6 +1209,44 @@ async def test_handle_event_create_treats_not_found_as_deleted(
             {
                 "Arn": "arn:aws:s3:::missing-bucket",
                 "BucketName": "missing-bucket",
+            },
+        )
+    ]
+
+
+def _codebuild_delete_event(
+    project_name: str = "hadar-project",
+) -> dict[str, Any]:
+    return {
+        "account": _DEFAULT_ACCOUNT_ID,
+        "region": _DEFAULT_REGION,
+        "detail": {
+            "eventName": "DeleteProject",
+            "eventSource": "codebuild.amazonaws.com",
+            "awsRegion": _DEFAULT_REGION,
+            "recipientAccountId": _DEFAULT_ACCOUNT_ID,
+            "requestParameters": {"name": project_name},
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_handle_event_codebuild_project_delete_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    project_arn = (
+        f"arn:aws:codebuild:{_DEFAULT_REGION}:{_DEFAULT_ACCOUNT_ID}:"
+        "project/hadar-project"
+    )
+    result = await processor.handle_event(_codebuild_delete_event(project_arn), None)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result(
+            ObjectKind.CODEBUILD_PROJECT,
+            {
+                "Arn": project_arn,
+                "Name": "hadar-project",
             },
         )
     ]

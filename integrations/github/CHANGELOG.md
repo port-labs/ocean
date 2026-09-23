@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.14.4 (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 6.14.3 (2026-09-22)
+
+
+### Bug Fixes
+
+- Fix GitHub 403 tree-fetch handling to preserve entities during outages (PORT-18430). Raise GitHubTreeFetchError on 403 so reconciliation does not treat permission/outage failures as an empty catalog; other HTTP statuses keep existing client behavior.
+
+
+## 6.14.2 (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
+## 6.14.1 (2026-09-22)
+
+
+### Improvements
+
+- Added time-based selectors for incremental-sync kinds and ignore them during incremental runs so the stored cursor controls the sync window
+
+
+## 6.14.0 (2026-09-21)
+
+
+### Features
+
+- Added organization live events for lifecycle changes (deleted, renamed), enabling immediate entity updates on org rename or removal
+- Added pull request CRUD actions (create, update, close, merge, review), enabling Port Workflows to manage GitHub pull requests with full lifecycle support
+- Added issue actions (create, edit, close), enabling Port Workflows to create, update, and close GitHub issues with labels and assignee support
+
+
+## 6.13.6 (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 6.13.5 (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 6.13.4 (2026-09-15)
+
+
+### Bug Fixes
+
+- Treat empty Port mapping as a valid no-op during resync so the integration stays alive, marks resync as completed, and actions continue to work.
+
+
 ## 6.13.3 (2026-09-14)
 
 

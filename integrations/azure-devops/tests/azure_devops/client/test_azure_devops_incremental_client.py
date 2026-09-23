@@ -71,7 +71,7 @@ async def test_generate_builds_passes_min_time_when_incremental(
         ),
     ):
         async with event_context("test_event"):
-            async for _ in client.generate_builds(incremental_cursor=CURSOR):
+            async for _ in client.generate_builds(min_time=CURSOR):
                 pass
 
     assert captured_params
@@ -105,7 +105,7 @@ async def test_generate_release_deployments_passes_min_modified_time(
     ):
         async with event_context("test_event"):
             async for _ in client.generate_release_deployments(
-                incremental_cursor=CURSOR
+                additional_params={"minModifiedTime": CURSOR.isoformat()}
             ):
                 pass
 
@@ -198,7 +198,7 @@ async def test_fetch_test_runs_incremental_uses_date_window_params(
                 "proj1",
                 include_results=False,
                 coverage_config=None,
-                incremental_cursor=CURSOR,
+                min_last_updated_date=CURSOR,
             ):
                 pass
 

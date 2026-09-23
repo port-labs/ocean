@@ -1,7 +1,6 @@
 import json
 
 import httpx
-
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
@@ -45,4 +44,28 @@ class GitlabCreateMergeRequestError(ActionExecutionError):
     def from_response(
         cls, response: httpx.Response, prefix: str
     ) -> "GitlabCreateMergeRequestError":
+        return cls(f"{prefix}: {_response_detail(response)}")
+
+
+class GitlabUpdateMergeRequestError(ActionExecutionError):
+    """Raised when the GitLab API returns an error while updating a merge request."""
+
+    DEFAULT_STATUS_LABEL = "Update failed"
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabUpdateMergeRequestError":
+        return cls(f"{prefix}: {_response_detail(response)}")
+
+
+class GitlabCreateMergeRequestCommentError(ActionExecutionError):
+    """Raised when the GitLab API returns an error while creating a merge request note."""
+
+    DEFAULT_STATUS_LABEL = "Comment creation failed"
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabCreateMergeRequestCommentError":
         return cls(f"{prefix}: {_response_detail(response)}")

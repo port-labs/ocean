@@ -7,6 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.2 (2026-09-23)
+
+
+### Improvements
+
+- Add event_kind=http_request to Redis stream consumer logs so live event messages match other webhook processing logs.
+
+
+## 0.52.1 (2026-09-22)
+
+
+### Improvements
+
+- Remove the AWS_V3_LIVE_EVENTS_ENABLED organization feature flag now that live events are generally available.
+
+
+## 0.52.0 (2026-09-16)
+
+
+### Features
+
+- Add identity propagation (OAuth broker, vault, JWT verifier) so actions can run as the triggering user.
+
+
+## 0.51.4 (2026-09-15)
+
+
+### Improvements
+
+- Added incremental sync observability with Prometheus metrics and structured logs for run health, cursor lag, and kind duration
+
+
 ## 0.51.3 (2026-09-14)
 
 
