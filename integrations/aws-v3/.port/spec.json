@@ -159,6 +159,13 @@
         "aws-us-gov",
         "aws-cn"
       ]
+    },
+    {
+      "name": "liveEventsApiKey",
+      "required": false,
+      "type": "string",
+      "sensitive": true,
+      "description": "API key used to authenticate CloudTrail live events webhooks sent via EventBridge."
     }
   ],
   "disableDefaultInstallationMethods": true,
@@ -174,7 +181,7 @@
   "saas": {
     "enabled": true,
     "liveEvents": {
-      "enabled": false
+      "enabled": true
     }
   }
 }
