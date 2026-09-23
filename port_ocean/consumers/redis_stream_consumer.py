@@ -28,6 +28,7 @@ from port_ocean.consumers.redis_stream_utils import (
     is_missing_stream_or_group_error,
     is_redis_connection_error,
 )
+from port_ocean.context.event import EventType
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -260,85 +261,91 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             fields.get("queuedAt"), stream_key=self._stream_key
         )
         time_until_consumed_ms = self._time_since_queued_ms(queued_time)
-        logger.info(
-            "Redis stream message received",
-            stream_key=self._stream_key,
-            redis_event_id=redis_event_id,
-            webhook_path=fields.get("webhookPath"),
-            queued_at=fields.get("queuedAt"),
-            time_until_consumed_ms=time_until_consumed_ms,
-            trace_id=redis_event_id,
-        )
-        try:
-            raw_webhook_path = fields.get("webhookPath")
-            if not raw_webhook_path:
-                logger.warning(
-                    "Redis stream message missing webhookPath, acknowledging",
-                    stream_key=self._stream_key,
-                    redis_event_id=redis_event_id,
-                )
-                return
+        with logger.contextualize(
+            event_trigger_type="machine",
+            event_kind=EventType.HTTP_REQUEST,
+        ):
+            logger.info(
+                "Redis stream message received",
+                stream_key=self._stream_key,
+                redis_event_id=redis_event_id,
+                webhook_path=fields.get("webhookPath"),
+                queued_at=fields.get("queuedAt"),
+                time_until_consumed_ms=time_until_consumed_ms,
+                trace_id=redis_event_id,
+            )
+            try:
+                raw_webhook_path = fields.get("webhookPath")
+                if not raw_webhook_path:
+                    logger.warning(
+                        "Redis stream message missing webhookPath, acknowledging",
+                        stream_key=self._stream_key,
+                        redis_event_id=redis_event_id,
+                        trace_id=redis_event_id,
+                    )
+                    return
 
-            webhook_path = self._normalize_webhook_path(raw_webhook_path)
-            if webhook_path not in self._registered_paths:
-                elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
-                logger.warning(
-                    "No processors registered for webhookPath, acknowledging",
+                webhook_path = self._normalize_webhook_path(raw_webhook_path)
+                if webhook_path not in self._registered_paths:
+                    elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
+                    logger.warning(
+                        "No processors registered for webhookPath, acknowledging",
+                        stream_key=self._stream_key,
+                        redis_event_id=redis_event_id,
+                        webhook_path=webhook_path,
+                        elapsed_ms=elapsed_ms,
+                        trace_id=redis_event_id,
+                    )
+                    return
+
+                raw_payload = fields.get("payload")
+                payload = self._parse_raw_json_to_dict(raw_payload, "payload")
+                headers = self._normalize_headers(
+                    self._parse_raw_json_to_dict(fields.get("headers"), "headers")
+                )
+                original_request = None
+                if raw_payload is not None:
+                    original_request = WebhookRequestAdapter(
+                        raw_body=raw_payload.encode("utf-8"),
+                        headers=headers,
+                    )
+
+                webhook_event = WebhookEvent(
+                    trace_id=redis_event_id,
+                    payload=payload,
+                    headers=headers,
+                    original_request=original_request,
+                )
+
+                logger.info(
+                    "Dispatching Redis stream message to handler",
                     stream_key=self._stream_key,
                     redis_event_id=redis_event_id,
                     webhook_path=webhook_path,
+                    trace_id=redis_event_id,
+                )
+                await self._on_message(webhook_path, webhook_event)
+            except Exception as error:
+                logger.exception(
+                    "Failed to handle Redis stream message",
+                    stream_key=self._stream_key,
+                    redis_event_id=redis_event_id,
+                    trace_id=redis_event_id,
+                    error=str(error),
+                )
+            finally:
+                elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
+                await self._ack(message_id)
+                time_until_acked_ms = self._time_since_queued_ms(queued_time)
+                logger.info(
+                    "Redis stream message processed",
+                    stream_key=self._stream_key,
+                    redis_event_id=redis_event_id,
+                    webhook_path=webhook_path,
+                    trace_id=redis_event_id,
                     elapsed_ms=elapsed_ms,
+                    time_until_acked_ms=time_until_acked_ms,
                 )
-                return
-
-            raw_payload = fields.get("payload")
-            payload = self._parse_raw_json_to_dict(raw_payload, "payload")
-            headers = self._normalize_headers(
-                self._parse_raw_json_to_dict(fields.get("headers"), "headers")
-            )
-            original_request = None
-            if raw_payload is not None:
-                original_request = WebhookRequestAdapter(
-                    raw_body=raw_payload.encode("utf-8"),
-                    headers=headers,
-                )
-
-            webhook_event = WebhookEvent(
-                trace_id=redis_event_id,
-                payload=payload,
-                headers=headers,
-                original_request=original_request,
-            )
-
-            logger.info(
-                "Dispatching Redis stream message to handler",
-                stream_key=self._stream_key,
-                redis_event_id=redis_event_id,
-                webhook_path=webhook_path,
-                trace_id=redis_event_id,
-            )
-            await self._on_message(webhook_path, webhook_event)
-        except Exception as error:
-            logger.exception(
-                "Failed to handle Redis stream message",
-                stream_key=self._stream_key,
-                redis_event_id=redis_event_id,
-                trace_id=redis_event_id,
-                error=str(error),
-            )
-        finally:
-            elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
-            await self._ack(message_id)
-            time_until_acked_ms = self._time_since_queued_ms(queued_time)
-            logger.info(
-                "Redis stream message processed",
-                stream_key=self._stream_key,
-                redis_event_id=redis_event_id,
-                webhook_path=webhook_path,
-                trace_id=redis_event_id,
-                elapsed_ms=elapsed_ms,
-                time_until_acked_ms=time_until_acked_ms,
-            )
 
     @staticmethod
     def _parse_queued_at(
