@@ -1,0 +1,38 @@
+title: Vercel
+description: Vercel integration for Port Ocean
+icon: Vercel
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/vercel
+features:
+  - type: exporter
+    section: Cloud Providers
+    resources:
+      - kind: team
+      - kind: project
+      - kind: deployment
+      - kind: domain
+  - type: webhook
+    section: Cloud Providers
+
+configurations:
+  - name: token
+    required: true
+    type: string
+    sensitive: true
+    description: |
+      Vercel API token. Generate one at:
+      https://vercel.com/account/settings/tokens
+  - name: teamId
+    required: false
+    type: string
+    sensitive: false
+    description: |
+      Vercel Team ID (slug or ID) to scope all API calls. When provided,
+      only resources belonging to this team will be synced. If omitted,
+      personal-account resources are synced. Find it in your team settings URL.
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: |
+      Secret used to validate incoming Vercel webhook payloads (HMAC-SHA1).
+      Configure this in your Vercel team/project webhook settings to match.
