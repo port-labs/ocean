@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic.v1 import BaseModel, Field
+from pydantic.v1 import BaseModel, Field, validator
 
 from port_ocean.clients.port.types import RequestOptions
 
@@ -111,6 +111,35 @@ class ResourceConfig(BaseModel):
         title="Kind",
         description="key is a specifier for the object you wish to map from the tool's API.",
     )
+    enable_delete: bool = Field(
+        alias="enableDelete",
+        default=True,
+        title="Enable Delete",
+        description=(
+            "When true (default), reconciliation may delete stale entities for this "
+            "resource. When false, upserts still run but reconciliation deletes for "
+            "this resource are skipped. Omit the key to keep the default (true); "
+            "do not set null — omit instead. YAML-only in v1 (hidden from mapping form UI)."
+        ),
+        extra={"ui_schema": {"hidden": True}},
+    )
+
+    @validator("enable_delete", pre=True)
+    def _enable_delete_must_be_bool(cls, value: object) -> object:
+        # Reject string/number coercion so YAML `"false"` / 0 / 1 fail validation.
+        # Explicit null is rejected — omit the key for default true (Port omitempty parity).
+        if value is None:
+            raise ValueError(
+                "enableDelete must be a boolean (true or false). "
+                "Omit the key to keep the default (true); null is not allowed."
+            )
+        if not isinstance(value, bool):
+            raise ValueError(
+                "enableDelete must be a boolean (true or false). "
+                "Omit the key to keep the default (true)."
+            )
+        return value
+
     selector: Selector = Field(
         title="Selector",
         description="Specifies extraction flags and transformation filters reagrding the data to ingest into Port.",
