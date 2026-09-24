@@ -44,7 +44,7 @@
   "saas": {
     "enabled": true,
     "liveEvents": {
-      "enabled": true
+      "enabled": false
     }
   },
   "installationDocs": {

@@ -15,6 +15,12 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.subscription_reconciliation import (
+    create_webhook_subscription_batch,
+    delete_webhook_subscriptions,
+    dedupe_subscriptions_by_id,
+    plan_webhook_subscription_reconciliation,
+)
 from azure_devops.webhooks.events import (
     BuildEvents,
     RepositoryEvents,
@@ -33,11 +39,7 @@ from azure_devops.incremental import (
     ANALYTICS_PIPELINE_RUNS_ODATA_PATH,
     ANALYTICS_PIPELINE_RUNS_PAGE_SIZE,
     BUILD_INCREMENTAL,
-    RELEASE_DEPLOYMENT_INCREMENTAL,
-    RELEASE_INCREMENTAL,
     build_pipeline_runs_analytics_filter,
-    ADVANCED_SECURITY_INCREMENTAL,
-    flatten_advanced_security_params,
     wiql_changed_after_clause,
 )
 from azure_devops.client.base_client import (
@@ -99,6 +101,7 @@ MAX_CONCURRENT_PROJECTS = 5
 MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
+MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION = 100
 MAX_CONCURRENT_USER_MEMBERSHIPS = 10
 MAX_CONCURRENT_WIKI_PAGES = 10
 TEST_RUN_QUERY_MAX_WINDOW = timedelta(days=7)
@@ -174,6 +177,22 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         eventType=ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
     ),
 ]
+
+# Azure DevOps rejects these events when the subscription has no projectId:
+# the tfs/pipelines ones fail with "not allowed at collection level" (400) and
+# the advsec ones with "No scope found" (403).
+PROJECT_SCOPED_ONLY_EVENT_TYPES = {
+    RepositoryEvents.REPO_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_STATE_CHANGED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_UPDATED,
+    PipelineEvents.PIPELINE_UPDATED,
+    PipelineStageEvents.PIPELINE_JOB_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_PENDING,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_COMPLETED,
+    PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
+}
 
 
 def _parse_change_timestamp(timestamp: str) -> datetime:
@@ -430,8 +449,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_advanced_security_alerts(
         self,
         repository: dict[str, Any],
-        params: Optional[dict[str, Any]] = None,
-        incremental_cursor: Optional[datetime] = None,
+        additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate security alerts from GitHub Advanced Security (GHAS) in Azure DevOps.
@@ -441,18 +459,13 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id = repository["project"]["id"]
         repository_id = repository["id"]
         security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
-        additional_params = ADVANCED_SECURITY_INCREMENTAL.merge_params(
-            flatten_advanced_security_params(
-                {**ADVANCED_SECURITY_API_PARAMS, **(params or {})}
-            ),
-            incremental_cursor,
-        )
+        query_params = {**ADVANCED_SECURITY_API_PARAMS, **(additional_params or {})}
         try:
             async for (
                 security_alerts
             ) in self._get_paginated_by_top_and_continuation_token(
                 security_alerts_url,
-                additional_params=additional_params,
+                additional_params=query_params,
             ):
                 enriched_alerts = [
                     self._enrich_security_alert(
@@ -590,6 +603,15 @@ class AzureDevopsClient(HTTPBaseClient):
             return base_url.replace("dev.azure.com", f"{subdomain}.dev.azure.com")
 
         return base_url
+
+    def _get_subscription_base_url_and_params(
+        self, publisher_id: str
+    ) -> tuple[str, dict[str, str]]:
+        if publisher_id == ADVANCED_SECURITY_PUBLISHER_ID:
+            return self._advsec_base_url, ADVANCED_SECURITY_API_PARAMS
+        if publisher_id == RELEASE_PUBLISHER_ID:
+            return self._format_service_url("vsrm"), WEBHOOK_API_PARAMS
+        return self._organization_base_url, WEBHOOK_API_PARAMS
 
     async def generate_graph_users(
         self,
@@ -1000,11 +1022,8 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_releases(
         self,
         additional_params: dict[str, str] | None = None,
-        incremental_cursor: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = dict(additional_params or {})
-        if incremental_cursor is not None:
-            params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
@@ -1349,7 +1368,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_builds(
         self,
         enrich_with_first_commit: bool = False,
-        incremental_cursor: Optional[datetime] = None,
+        min_time: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
@@ -1358,7 +1377,7 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         async for projects in self.generate_projects():
             tasks = [
-                self._generate_builds_for_project(project, min_time=incremental_cursor)
+                self._generate_builds_for_project(project, min_time=min_time)
                 for project in projects
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
@@ -1550,13 +1569,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_release_deployments(
         self,
-        incremental_cursor: Optional[datetime] = None,
+        additional_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        additional_params: dict[str, Any] = {}
-        if incremental_cursor is not None:
-            additional_params = RELEASE_DEPLOYMENT_INCREMENTAL.build_params(
-                incremental_cursor
-            )
+        additional_params = additional_params or {}
         async for projects in self.generate_projects():
             for project in projects:
                 deployments_url = (
@@ -1654,7 +1669,8 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         wiql: Optional[str],
         expand: str,
-        incremental_cursor: Optional[datetime] = None,
+        changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -1662,7 +1678,6 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
         of 20,000 results per query.
         """
-        wiql_time_precision = incremental_cursor is not None
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
             tasks = [
@@ -1673,7 +1688,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         project,
                         wiql,
                         expand,
-                        incremental_cursor,
+                        changed_after,
                         wiql_time_precision=wiql_time_precision,
                     ),
                 )
@@ -2378,20 +2393,33 @@ class AzureDevopsClient(HTTPBaseClient):
         event_type: str,
     ) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
+        subscription_base_url, api_params = self._get_subscription_base_url_and_params(
+            publisher_id
+        )
         params: dict[str, str] = {
+            **api_params,
             "publisherId": publisher_id,
             "eventType": event_type,
         }
         try:
             get_subscriptions_url = (
-                f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
+                f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
             response = await self.send_request(
                 "GET", get_subscriptions_url, headers=headers, params=params
             )
             if not response:
+                logger.warning(
+                    f"Webhook subscription lookup returned no response: "
+                    f"eventType={event_type}, publisherId={publisher_id}, "
+                    f"url={get_subscriptions_url}",
+                )
                 return []
             subscriptions_raw = response.json().get("value", [])
+            logger.debug(
+                f"Fetched webhook subscriptions: eventType={event_type}, publisherId={publisher_id}, "
+                f"count={response.json().get("count", []) or len(subscriptions_raw)}"
+            )
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
@@ -2402,11 +2430,16 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def get_filtered_webhook_subscriptions(
         self,
+        *,
+        org_level: bool = False,
     ) -> list[WebhookSubscription]:
-        unique_filters = {
-            (sub.publisherId, sub.eventType)
-            for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
-        }
+        unique_filters = sorted(
+            {
+                (sub.publisherId, sub.eventType)
+                for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+                if not org_level or sub.eventType not in PROJECT_SCOPED_ONLY_EVENT_TYPES
+            }
+        )
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
 
         async def fetch(
@@ -2424,6 +2457,13 @@ class AzureDevopsClient(HTTPBaseClient):
             *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
         )
 
+        total_subscriptions = sum(len(batch) for batch in results)
+        logger.info(
+            f"Completed filtered webhook subscription lookup: "
+            f"totalFilters={len(unique_filters)}, "
+            f"totalSubscriptions={total_subscriptions}"
+        )
+
         return [sub for batch in results for sub in batch]
 
     async def create_subscription(
@@ -2432,19 +2472,23 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> Optional[str]:
         """Create a webhook subscription and return its ID (or None on failure)."""
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
-        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
-            subscription_base_url = self._format_service_url("vsrm")
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         create_subscription_url = (
             f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
+        project_id = (webhook_subscription.publisherInputs or {}).get("projectId")
         webhook_subscription_json = webhook_subscription.json()
-        logger.info(f"Creating subscription to event: {webhook_subscription_json}")
+        logger.debug(
+            f"Creating webhook subscription: "
+            f"publisherId={webhook_subscription.publisherId}, "
+            f"eventType={webhook_subscription.eventType}, "
+            f"projectId={project_id}, "
+            f"url={create_subscription_url}, params={params}"
+        )
         response = await self.send_request(
             "POST",
             create_subscription_url,
@@ -2453,11 +2497,18 @@ class AzureDevopsClient(HTTPBaseClient):
             data=webhook_subscription_json,
         )
         if not response:
+            logger.warning(
+                f"Webhook subscription create returned no response: "
+                f"publisherId={webhook_subscription.publisherId}, "
+                f"eventType={webhook_subscription.eventType}, "
+                f"projectId={project_id}, "
+                f"url={create_subscription_url}, params={params}"
+            )
             return None
         response_content = response.json()
         sub_id = response_content.get("id")
         logger.info(
-            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')}"
+            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')} for projectId {project_id}"
         )
         return sub_id
 
@@ -2465,13 +2516,10 @@ class AzureDevopsClient(HTTPBaseClient):
         self, webhook_subscription: WebhookSubscription
     ) -> None:
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
-        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
-            subscription_base_url = self._format_service_url("vsrm")
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         delete_subscription_url = f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
         logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
@@ -2838,68 +2886,53 @@ class AzureDevopsClient(HTTPBaseClient):
         existing_subscriptions: Optional[list[WebhookSubscription]] = None,
     ) -> list[str]:
         """Create/reconcile webhook subscriptions and return all active subscription IDs."""
-        auth_username = self.webhook_auth_username
-
         if existing_subscriptions is None:
-            existing_subscriptions = await self.get_filtered_webhook_subscriptions()
-
-        subs_to_create = []
-        subs_to_delete = []
-        # IDs of existing healthy subscriptions we keep as-is — needed for
-        # the subscription registry so incoming events can be routed.
-        kept_sub_ids: list[str] = []
-
-        webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
-
-        for sub in webhook_subs:
-            sub.set_webhook_details(
-                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
-                auth_username=auth_username,
-                webhook_secret=webhook_secret,
-                project_id=project_id,
-            )
-            existing_sub = sub.get_event_by_subscription(existing_subscriptions)
-
-            if existing_sub and (
-                not existing_sub.is_enabled()
-                or not existing_sub.has_required_payload_details()
-            ):
-                subs_to_delete.append(existing_sub)
-                subs_to_create.append(sub)
-            elif existing_sub and existing_sub.id:
-                kept_sub_ids.append(existing_sub.id)
-            elif not existing_sub:
-                subs_to_create.append(sub)
-
-        if subs_to_delete:
-            await asyncio.gather(
-                *[self.delete_subscription(sub) for sub in subs_to_delete]
+            existing_subscriptions = await self.get_filtered_webhook_subscriptions(
+                org_level=not bool(project_id),
             )
 
-        created_sub_ids: list[str] = []
-        if subs_to_create:
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+        plan = plan_webhook_subscription_reconciliation(
+            webhook_subscriptions=AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS,
+            webhook_url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
+            auth_username=self.webhook_auth_username,
+            webhook_secret=webhook_secret,
+            project_id=project_id,
+            existing_subscriptions=existing_subscriptions,
+            project_scoped_only_event_types=PROJECT_SCOPED_ONLY_EVENT_TYPES,
+        )
+        (
+            created_sub_ids,
+            stale_subscriptions_to_delete,
+            failed_create_count,
+        ) = await create_webhook_subscription_batch(
+            subs_to_create=plan.subs_to_create,
+            create_subscription=self.create_subscription,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
 
-            async def create(subscription: WebhookSubscription) -> Optional[str]:
-                async with semaphore:
-                    return await self.create_subscription(subscription)
+        subscriptions_to_delete = plan.subs_to_delete + stale_subscriptions_to_delete
+        delete_candidate_count = len(
+            dedupe_subscriptions_by_id(subscriptions_to_delete)
+        )
+        logger.info(
+            f"Webhook subscription reconciliation summary: "
+            f"kept={len(plan.kept_sub_ids)}, created={len(created_sub_ids)}, "
+            f"failedCreates={failed_create_count}, "
+            f"deleteCandidates={delete_candidate_count}, "
+            f"skippedProjectScoped={plan.skipped_project_scoped_count}, "
+            f"actions={dict(plan.action_counts)}"
+        )
 
-            results = await asyncio.gather(
-                *[create(sub) for sub in subs_to_create],
-                return_exceptions=True,
-            )
-
-            for result in results:
-                if isinstance(result, Exception):
-                    logger.error(
-                        f"Failed to create webhook: {type(result).__name__}: {result}"
-                    )
-                elif isinstance(result, str):
-                    created_sub_ids.append(result)
+        await delete_webhook_subscriptions(
+            subscriptions=subscriptions_to_delete,
+            delete_subscription=self.delete_subscription,
+            max_deletes_per_reconciliation=MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
 
         # Return all active subscription IDs so the caller can populate the
         # subscription registry for webhook event routing.
-        return kept_sub_ids + created_sub_ids
+        return plan.kept_sub_ids + created_sub_ids
 
     async def get_repository_tree(
         self,
@@ -3171,38 +3204,43 @@ class AzureDevopsClient(HTTPBaseClient):
         project_id: str,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"],
-        incremental_cursor: Optional[datetime] = None,
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        if incremental_cursor is None:
-            params = {"includeRunDetails": True, **API_PARAMS}
+        if min_last_updated_date is None and max_last_updated_date is None:
+            params: dict[str, Any] = {"includeRunDetails": True, **API_PARAMS}
             async for runs in self._get_paginated_by_top_and_skip(url, params=params):
                 yield await self._enrich_test_runs(
                     runs, project_id, include_results, coverage_config
                 )
             return
 
-        window_start = incremental_cursor
-        now = datetime.now(timezone.utc)
-        while window_start < now:
-            window_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, now)
+        window_start = min_last_updated_date
+        window_end = max_last_updated_date or datetime.now(timezone.utc)
+        if window_start is None:
+            window_start = window_end - TEST_RUN_QUERY_MAX_WINDOW
+
+        while window_start < window_end:
+            chunk_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, window_end)
             params = {
                 "includeRunDetails": True,
                 **API_PARAMS,
                 "minLastUpdatedDate": window_start.isoformat(),
-                "maxLastUpdatedDate": window_end.isoformat(),
+                "maxLastUpdatedDate": chunk_end.isoformat(),
             }
             async for runs in self._get_paginated_by_top_and_skip(url, params=params):
                 yield await self._enrich_test_runs(
                     runs, project_id, include_results, coverage_config
                 )
-            window_start = window_end
+            window_start = chunk_end
 
     async def fetch_test_runs(
         self,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"] = None,
-        incremental_cursor: Optional[datetime] = None,
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
@@ -3218,7 +3256,8 @@ class AzureDevopsClient(HTTPBaseClient):
                         project["id"],
                         include_results,
                         coverage_config,
-                        incremental_cursor,
+                        min_last_updated_date,
+                        max_last_updated_date,
                     ),
                 )
                 for project in projects
