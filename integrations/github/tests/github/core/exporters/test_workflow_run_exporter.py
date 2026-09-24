@@ -14,7 +14,6 @@ from github.core.options import (
 )
 from integration import GithubWorkflowRunSelector
 from port_ocean.context.event import event_context
-from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 
 TEST_DATA: dict[str, Any] = {
     "total_count": 1,
@@ -142,14 +141,16 @@ async def test_get_paginated_resources_with_filters(
 async def test_get_paginated_resources_with_incremental_cursor(
     rest_client: GithubRestClient,
 ) -> None:
+    cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
     options: ListWorkflowRunOptions = {
         "organization": "test-org",
         "repo_name": "test",
-        "max_runs": 1,
+        "max_runs": None,
         "workflow_id": 159038,
+        "created": f">={cursor.strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        "incremental_active": True,
     }
     exporter = RestWorkflowRunExporter(rest_client)
-    cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     async def mock_paginated_request(
         *args: Any, **kwargs: Any
@@ -161,10 +162,9 @@ async def test_get_paginated_resources_with_incremental_cursor(
         rest_client, "send_paginated_request", side_effect=mock_paginated_request
     ) as mock_request:
         async with event_context("test_event"):
-            with with_active_incremental_cursor(cursor):
-                batches = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
+            batches = [
+                batch async for batch in exporter.get_paginated_resources(options)
+            ]
 
         assert len(batches) == 2
         mock_request.assert_called_once_with(
