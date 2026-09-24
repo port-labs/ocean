@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Update smoke test import path for relocated ocean core smoke test helpers
