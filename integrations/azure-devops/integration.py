@@ -332,6 +332,28 @@ class AzureDevopsPullRequestSelector(Selector):
         title="Maximum Results",
         description="Maximum number of closed pull requests to fetch.",
     )
+    enrich_with_commits: bool = Field(
+        default=False,
+        alias="enrichWithCommits",
+        title="Enrich With Commits",
+        description=(
+            "Fetch and attach the pull request's commits under __commits as returned by "
+            "Azure DevOps. Derive commit fields in mapping JQ. Adds one extra Azure DevOps "
+            "API call per page of commits for each pull request on resync and live events "
+            "(50 commits per page). Defaults to false."
+        ),
+    )
+    enrich_with_review_discussion: bool = Field(
+        default=False,
+        alias="enrichWithReviewDiscussion",
+        title="Enrich With Review Discussion",
+        description=(
+            "Fetch and attach the pull request's threads under __threads as returned by "
+            "Azure DevOps. Derive review and approval fields in mapping JQ. Adds one extra "
+            "Azure DevOps API call for each pull request on resync and live events. "
+            "Defaults to false."
+        ),
+    )
 
     @property
     def min_time_datetime(self) -> datetime:
