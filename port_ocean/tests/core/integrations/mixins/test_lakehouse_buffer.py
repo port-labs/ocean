@@ -145,6 +145,65 @@ async def test_flush_serializes_datetime_in_items() -> None:
 
 
 @pytest.mark.asyncio
+async def test_flush_includes_extract_duration_ms() -> None:
+    buffer = LakehouseBuffer(
+        sync_id="sync-123",
+        kind="file",
+        resync_start_time=None,
+    )
+    entry = {
+        "request": {},
+        "response": {},
+        "metadata": {
+            "operation": LakehouseOperation.UPSERT,
+            "resource_index": 0,
+            "extraction_timestamp": 123,
+        },
+        "items": [{"id": "1"}],
+    }
+
+    with patch(
+        "port_ocean.core.integrations.mixins.lakehouse_buffer.ocean"
+    ) as mock_ocean:
+        mock_ocean.port_client.post_integration_raw_data_batch = AsyncMock()
+        await buffer.add(entry, extract_duration_sec=1.234)
+        await buffer.flush()
+
+    posted_event = mock_ocean.port_client.post_integration_raw_data_batch.await_args.args[1]
+    assert posted_event["extract_duration_ms"] == 1234
+    assert buffer._pending_extract_duration_sec == 0
+
+
+@pytest.mark.asyncio
+async def test_flush_always_includes_extract_duration_ms_even_when_zero() -> None:
+    buffer = LakehouseBuffer(
+        sync_id="sync-123",
+        kind="file",
+        resync_start_time=None,
+    )
+    entry = {
+        "request": {},
+        "response": {},
+        "metadata": {
+            "operation": LakehouseOperation.UPSERT,
+            "resource_index": 0,
+            "extraction_timestamp": 123,
+        },
+        "items": [{"id": "1"}],
+    }
+
+    with patch(
+        "port_ocean.core.integrations.mixins.lakehouse_buffer.ocean"
+    ) as mock_ocean:
+        mock_ocean.port_client.post_integration_raw_data_batch = AsyncMock()
+        await buffer.add(entry)
+        await buffer.flush()
+
+    posted_event = mock_ocean.port_client.post_integration_raw_data_batch.await_args.args[1]
+    assert posted_event["extract_duration_ms"] == 0
+
+
+@pytest.mark.asyncio
 async def test_flush_non_fatal_succeeds_normally() -> None:
     buffer = _make_buffer(fatal=False)
 
