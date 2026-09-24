@@ -1,0 +1,54 @@
+from typing import Any
+
+from plain.utils import ObjectKind, edges_to_nodes, get_nested
+
+
+def test_get_nested_returns_value_at_dotted_path() -> None:
+    payload: dict[str, Any] = {"data": {"threads": {"totalCount": 2}}}
+
+    assert get_nested(payload, "data.threads") == {"totalCount": 2}
+    assert get_nested(payload, "data.threads.totalCount") == 2
+
+
+def test_get_nested_returns_none_when_path_is_missing() -> None:
+    payload: dict[str, Any] = {"data": {"companies": {"edges": []}}}
+
+    assert get_nested(payload, "data.threads") is None
+    assert get_nested(payload, "data.companies.pageInfo.hasNextPage") is None
+    assert get_nested(None, "data.threads") is None
+
+
+def test_edges_to_nodes_flattens_relay_edges() -> None:
+    connection: dict[str, Any] = {
+        "pageInfo": {"hasNextPage": False, "endCursor": None},
+        "edges": [
+            {"cursor": "c1", "node": {"id": "co_1", "name": "Acme"}},
+            {"cursor": "c2", "node": {"id": "co_2", "name": "Beta"}},
+        ],
+    }
+
+    assert edges_to_nodes(connection) == [
+        {"id": "co_1", "name": "Acme"},
+        {"id": "co_2", "name": "Beta"},
+    ]
+
+
+def test_edges_to_nodes_returns_empty_list_for_empty_connection() -> None:
+    assert edges_to_nodes({"edges": [], "pageInfo": {"hasNextPage": False}}) == []
+    assert edges_to_nodes(None) == []
+    assert edges_to_nodes({"pageInfo": {"hasNextPage": False}}) == []
+
+
+def test_object_kind_values_match_kind_strings() -> None:
+    assert ObjectKind.COMPANY == "company"
+    assert ObjectKind.TENANT == "tenant"
+    assert ObjectKind.USER == "user"
+    assert ObjectKind.CUSTOMER == "customer"
+    assert ObjectKind.THREAD == "thread"
+    assert [kind.value for kind in ObjectKind] == [
+        "company",
+        "tenant",
+        "user",
+        "customer",
+        "thread",
+    ]

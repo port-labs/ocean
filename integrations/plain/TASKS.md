@@ -120,17 +120,19 @@ Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public
 **Prerequisites:** `T1`
 
 **Work**
-- [ ] `plain/exceptions.py` — `PlainGraphQLError` (and optional HTTP wrapper)
-- [ ] `plain/utils.py` — `ObjectKind` enum (`COMPANY`, `TENANT`, `USER`, `CUSTOMER`, `THREAD`)
-- [ ] Helpers: `get_nested(data, path)`, `edges_to_nodes(connection)`
+- [x] `plain/exceptions.py` — `PlainGraphQLError` (and optional HTTP wrapper)
+- [x] `plain/utils.py` — `ObjectKind` enum (`COMPANY`, `TENANT`, `USER`, `CUSTOMER`, `THREAD`)
+- [x] Helpers: `get_nested(data, path)`, `edges_to_nodes(connection)`
 
 **Exit tests** (`tests/test_utils.py`, `tests/test_exceptions.py`)
-- [ ] `get_nested` happy path + missing path
-- [ ] `edges_to_nodes` flattens Relay edges
-- [ ] `ObjectKind` values match intended kind strings (`company`, `tenant`, …)
-- [ ] `poetry run pytest tests/test_utils.py tests/test_exceptions.py -q`
+- [x] `get_nested` happy path + missing path
+- [x] `edges_to_nodes` flattens Relay edges
+- [x] `ObjectKind` values match intended kind strings (`company`, `tenant`, …)
+- [x] `poetry run pytest tests/test_utils.py tests/test_exceptions.py -q`
 
 **Done when:** utils/exceptions covered by unit tests.
+
+`ObjectKind` for the five Plain kinds lives in `plain/utils.py`. The cookiecutter example kind remains on `integration.py` until the real kinds replace it. `PlainHTTPError` covers gateway HTTP failures such as 401 `{"message":"Unauthorized"}`.
 
 ---
 
@@ -141,20 +143,22 @@ Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public
 **Prerequisites:** `T2`
 
 **Work**
-- [ ] `plain/client.py` with `PlainClient`
-- [ ] Read `api_token`, `api_url` from `ocean.integration_config`
-- [ ] `execute(query, variables, operation_name=None) -> dict`
-- [ ] Raise on HTTP errors and on response `errors[]`
-- [ ] Set `Authorization: Bearer …`
+- [x] `plain/client.py` with `PlainClient`
+- [x] Read `api_token`, `api_url` from `ocean.integration_config`
+- [x] `execute(query, variables, operation_name=None) -> dict`
+- [x] Raise on HTTP errors and on response `errors[]`
+- [x] Set `Authorization: Bearer …`
 
 **Exit tests** (`tests/test_client_execute.py`)
-- [ ] Success: mocked 200 with `{ "data": {...} }` returns data
-- [ ] GraphQL errors: `{ "errors": [...] }` raises `PlainGraphQLError`
-- [ ] HTTP 401/500 raises clearly
-- [ ] Auth header is Bearer token from config
-- [ ] `poetry run pytest tests/test_client_execute.py -q`
+- [x] Success: mocked 200 with `{ "data": {...} }` returns data
+- [x] GraphQL errors: `{ "errors": [...] }` raises `PlainGraphQLError`
+- [x] HTTP 401/500 raises clearly
+- [x] Auth header is Bearer token from config
+- [x] `poetry run pytest tests/test_client_execute.py -q`
 
 **Done when:** execute path is fully unit-tested with mocks (no live API required).
+
+`execute()` returns the GraphQL `data` object. HTTP 401/500 raise `PlainHTTPError`. A body `errors` array raises `PlainGraphQLError`. Requests send `Authorization: Bearer <api_token>` and `User-Agent: port-ocean-plain`. `api_url` defaults to `https://core-api.uk.plain.com/graphql/v1` when unset. Spec keys `apiToken` / `apiUrl` are still the cookiecutter placeholders; Ocean will expose them as `api_token` / `api_url` once the spec is updated.
 
 ---
 

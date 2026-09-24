@@ -1,0 +1,106 @@
+import json
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import httpx
+import pytest
+
+from plain.client import DEFAULT_API_URL
+from plain.exceptions import PlainGraphQLError, PlainHTTPError
+
+API_TOKEN = "plainApiKey_test"
+
+
+def _config(api_url: str = DEFAULT_API_URL) -> dict[str, str]:
+    return {"api_token": API_TOKEN, "api_url": api_url}
+
+
+def _client(
+    handler: Any,
+    config: dict[str, str] | None = None,
+) -> tuple[Any, httpx.AsyncClient]:
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = config or _config()
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    with patch("plain.client.ocean", mock_ocean):
+        from plain.client import PlainClient
+
+        client = PlainClient(http_client=http_client)
+    return client, http_client
+
+
+@pytest.mark.asyncio
+async def test_execute_returns_data_on_success() -> None:
+    seen: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["body"] = json.loads(request.content)
+        seen["authorization"] = request.headers["authorization"]
+        return httpx.Response(
+            200,
+            json={"data": {"threads": {"totalCount": 1}}},
+        )
+
+    client, http_client = _client(handler)
+    async with http_client:
+        data = await client.execute(
+            "query ListThreads($first: Int) { threads(first: $first) { totalCount } }",
+            {"first": 1},
+            operation_name="ListThreads",
+        )
+
+    assert data == {"threads": {"totalCount": 1}}
+    assert seen["url"] == DEFAULT_API_URL
+    assert seen["body"]["operationName"] == "ListThreads"
+    assert seen["body"]["variables"] == {"first": 1}
+    assert seen["authorization"] == f"Bearer {API_TOKEN}"
+
+
+@pytest.mark.asyncio
+async def test_execute_raises_on_graphql_errors() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "data": None,
+                "errors": [{"message": "Missing permission thread:read"}],
+            },
+        )
+
+    client, http_client = _client(handler)
+    async with http_client:
+        with pytest.raises(PlainGraphQLError, match="Missing permission thread:read"):
+            await client.execute("query { threads { id } }", {})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [401, 500])
+async def test_execute_raises_on_http_errors(status_code: int) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code, json={"message": "Unauthorized"})
+
+    client, http_client = _client(handler)
+    async with http_client:
+        with pytest.raises(PlainHTTPError, match=f"Plain API HTTP {status_code}"):
+            await client.execute("query { threads { id } }", {})
+
+
+@pytest.mark.asyncio
+async def test_authorization_header_uses_token_from_config() -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["authorization"] = request.headers["authorization"]
+        seen["user_agent"] = request.headers["user-agent"]
+        return httpx.Response(200, json={"data": {"companies": {}}})
+
+    client, http_client = _client(
+        handler,
+        {"api_token": "plainApiKey_from_config"},
+    )
+    async with http_client:
+        await client.execute("query { companies { edges { node { id } } } }")
+
+    assert seen["authorization"] == "Bearer plainApiKey_from_config"
+    assert seen["user_agent"] == "port-ocean-plain"
