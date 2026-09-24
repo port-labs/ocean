@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Renamed integration to be the legacy AWS integration.
