@@ -423,3 +423,53 @@ class TestEnrichPullRequests:
 
         assert batches == pull_requests
         mock_enrich.assert_not_called()
+
+    async def test_get_pull_request_skips_enrichment_when_flags_off(
+        self, client: AzureDevopsClient
+    ) -> None:
+        pull_request = _pull_request()
+
+        with (
+            patch.object(
+                client,
+                "send_request",
+                AsyncMock(return_value=Response(status_code=200, json=pull_request)),
+            ),
+            patch.object(client, "enrich_pull_requests", AsyncMock()) as mock_enrich,
+        ):
+            result = await client.get_pull_request("42")
+
+        assert result == pull_request
+        mock_enrich.assert_not_called()
+
+    async def test_get_pull_request_enriches_when_flags_enabled(
+        self, client: AzureDevopsClient
+    ) -> None:
+        pull_request = _pull_request()
+        enriched = {**pull_request, "__commits": [{"commitId": "sha"}]}
+
+        with (
+            patch.object(
+                client,
+                "send_request",
+                AsyncMock(return_value=Response(status_code=200, json=pull_request)),
+            ),
+            patch.object(
+                client,
+                "enrich_pull_requests",
+                AsyncMock(return_value=[enriched]),
+            ) as mock_enrich,
+        ):
+            result = await client.get_pull_request(
+                "42",
+                enrich_with_commits=True,
+                enrich_with_review_discussion=True,
+            )
+
+        assert result == enriched
+        mock_enrich.assert_called_once_with(
+            [pull_request],
+            enrich_with_commits=True,
+            enrich_with_review_discussion=True,
+            concurrency=1,
+        )

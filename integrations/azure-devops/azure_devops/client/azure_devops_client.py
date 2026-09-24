@@ -57,6 +57,7 @@ from azure_devops.client.file_processing import (
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
     semaphore_async_iterator,
+    throttle_batch_operation,
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
@@ -1920,13 +1921,27 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         return response.json()
 
-    async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
+    async def get_pull_request(
+        self,
+        pull_request_id: str,
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+    ) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
         if not response:
             return None
         pull_request_data = response.json()
-        return pull_request_data
+        if not (enrich_with_commits or enrich_with_review_discussion):
+            return pull_request_data
+        enriched = await self.enrich_pull_requests(
+            [pull_request_data],
+            enrich_with_commits=enrich_with_commits,
+            enrich_with_review_discussion=enrich_with_review_discussion,
+            concurrency=1,
+        )
+        return enriched[0] if enriched else pull_request_data
 
     def _pull_request_item_url(
         self,
@@ -1939,24 +1954,6 @@ class AzureDevopsClient(HTTPBaseClient):
             f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
             f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/{resource}"
         )
-
-    async def _get_pull_request_collection(
-        self,
-        project_id: str,
-        repository_id: str,
-        pull_request_id: str,
-        resource: str,
-    ) -> list[dict[str, Any]]:
-        """GET a PR sub-resource and return its ``value`` list."""
-        url = self._pull_request_item_url(
-            project_id, repository_id, pull_request_id, resource
-        )
-        response = await self.send_request("GET", url, params=API_PARAMS)
-        if not response:
-            return []
-        data = response.json()
-        value = data.get("value") if isinstance(data, dict) else None
-        return value if isinstance(value, list) else []
 
     async def get_pull_request_commits(
         self,
@@ -1990,9 +1987,15 @@ class AzureDevopsClient(HTTPBaseClient):
         API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
         https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/list
         """
-        return await self._get_pull_request_collection(
+        url = self._pull_request_item_url(
             project_id, repository_id, pull_request_id, "threads"
         )
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        if not response:
+            return []
+        data = response.json()
+        value = data.get("value") if isinstance(data, dict) else None
+        return value if isinstance(value, list) else []
 
     async def enrich_pull_requests(
         self,
@@ -2011,17 +2014,18 @@ class AzureDevopsClient(HTTPBaseClient):
             f"(commits={enrich_with_commits}, "
             f"reviewDiscussion={enrich_with_review_discussion})"
         )
-        semaphore = asyncio.Semaphore(concurrency)
-
-        async def _enrich(pull_request: dict[str, Any]) -> dict[str, Any]:
-            async with semaphore:
-                return await self._attach_pull_request_enrichment(
+        return await throttle_batch_operation(
+            [
+                functools.partial(
+                    self._attach_pull_request_enrichment,
                     pull_request,
                     enrich_with_commits=enrich_with_commits,
                     enrich_with_review_discussion=enrich_with_review_discussion,
                 )
-
-        return list(await asyncio.gather(*[_enrich(pr) for pr in batch]))
+                for pull_request in batch
+            ],
+            concurrency,
+        )
 
     async def _attach_pull_request_enrichment(
         self,
@@ -2039,47 +2043,31 @@ class AzureDevopsClient(HTTPBaseClient):
             return pull_request
 
         project_id, repository_id, pull_request_id = resource_ids
-        try:
-            fetchers: list[tuple[str, Awaitable[list[dict[str, Any]]]]] = []
-            if enrich_with_commits:
-                fetchers.append(
-                    (
-                        "commits",
-                        self.get_pull_request_commits(
-                            project_id, repository_id, pull_request_id
-                        ),
-                    )
-                )
-            if enrich_with_review_discussion:
-                fetchers.append(
-                    (
-                        "threads",
-                        self.get_pull_request_threads(
-                            project_id, repository_id, pull_request_id
-                        ),
-                    )
-                )
-
-            results = await asyncio.gather(
-                *(coro for _, coro in fetchers),
-                return_exceptions=True,
+        fetchers: dict[str, Awaitable[list[dict[str, Any]]]] = {}
+        if enrich_with_commits:
+            fetchers["commits"] = self.get_pull_request_commits(
+                project_id, repository_id, pull_request_id
+            )
+        if enrich_with_review_discussion:
+            fetchers["threads"] = self.get_pull_request_threads(
+                project_id, repository_id, pull_request_id
             )
 
-            for (label, _), result in zip(fetchers, results):
-                field = _PR_ENRICHMENT_FIELDS[label]
-                if not isinstance(result, list):
-                    logger.warning(
-                        f"{label} enrichment failed for pull request "
-                        f"{project_id}/{repository_id}!{pull_request_id}: {result}"
-                    )
-                    pull_request[field] = None
-                    continue
-                pull_request[field] = result
-        except Exception as e:
-            logger.warning(
-                f"Pull request enrichment failed for pull request "
-                f"{project_id}/{repository_id}!{pull_request_id}: {e}"
-            )
+        results = await asyncio.gather(
+            *fetchers.values(),
+            return_exceptions=True,
+        )
+
+        for label, result in zip(fetchers, results):
+            field = _PR_ENRICHMENT_FIELDS[label]
+            if not isinstance(result, list):
+                logger.warning(
+                    f"{label} enrichment failed for pull request "
+                    f"{project_id}/{repository_id}!{pull_request_id}: {result}"
+                )
+                pull_request[field] = None
+                continue
+            pull_request[field] = result
 
         return pull_request
 

@@ -37,23 +37,18 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     ) -> WebhookEventRawResults:
         client = self._get_client_for_webhook(payload)
         pull_request_id = payload["resource"]["pullRequestId"]
-        pull_request_data = await client.get_pull_request(pull_request_id)
+        selector = cast(AzureDevopsPullRequestResourceConfig, resource_config).selector
+        pull_request_data = await client.get_pull_request(
+            pull_request_id,
+            enrich_with_commits=selector.enrich_with_commits,
+            enrich_with_review_discussion=selector.enrich_with_review_discussion,
+        )
 
         if not pull_request_data:
             logger.warning(f"Pull request with ID {pull_request_id} not found")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
-
-        selector = cast(AzureDevopsPullRequestResourceConfig, resource_config).selector
-        if selector.enrich_with_commits or selector.enrich_with_review_discussion:
-            enriched = await client.enrich_pull_requests(
-                [pull_request_data],
-                enrich_with_commits=selector.enrich_with_commits,
-                enrich_with_review_discussion=selector.enrich_with_review_discussion,
-                concurrency=1,
-            )
-            pull_request_data = enriched[0] if enriched else pull_request_data
 
         return WebhookEventRawResults(
             updated_raw_results=[pull_request_data], deleted_raw_results=[]

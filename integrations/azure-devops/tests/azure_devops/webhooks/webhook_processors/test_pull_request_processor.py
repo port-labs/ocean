@@ -105,7 +105,11 @@ async def test_pull_request_handle_event_skips_enrichment_when_flags_off(
         _pr_payload(), _resource_config()
     )
 
-    mock_client.get_pull_request.assert_called_once_with("123")
+    mock_client.get_pull_request.assert_called_once_with(
+        "123",
+        enrich_with_commits=False,
+        enrich_with_review_discussion=False,
+    )
     mock_client.enrich_pull_requests.assert_not_called()
     assert len(result.updated_raw_results) == 1
     assert result.updated_raw_results[0]["pullRequestId"] == 123
@@ -129,8 +133,8 @@ async def test_pull_request_handle_event_enriches_when_flags_enabled(
         "__threads": [{"id": 1}],
     }
     mock_client = MagicMock()
-    mock_client.get_pull_request = AsyncMock(return_value=fetched_pr)
-    mock_client.enrich_pull_requests = AsyncMock(return_value=[enriched_pr])
+    mock_client.get_pull_request = AsyncMock(return_value=enriched_pr)
+    mock_client.enrich_pull_requests = AsyncMock()
     mock_client_manager(monkeypatch, mock_client)
 
     result = await pull_request_processor.handle_event(
@@ -141,12 +145,12 @@ async def test_pull_request_handle_event_enriches_when_flags_enabled(
         ),
     )
 
-    mock_client.enrich_pull_requests.assert_called_once_with(
-        [fetched_pr],
+    mock_client.get_pull_request.assert_called_once_with(
+        "123",
         enrich_with_commits=True,
         enrich_with_review_discussion=True,
-        concurrency=1,
     )
+    mock_client.enrich_pull_requests.assert_not_called()
     assert result.updated_raw_results[0]["__commits"] == [{"commitId": "abc"}]
     assert result.updated_raw_results[0]["__threads"] == [{"id": 1}]
 
@@ -167,6 +171,11 @@ async def test_pull_request_handle_event_missing_pr_skips_upsert(
         _resource_config(enrich_with_commits=True),
     )
 
+    mock_client.get_pull_request.assert_called_once_with(
+        "123",
+        enrich_with_commits=True,
+        enrich_with_review_discussion=False,
+    )
     mock_client.enrich_pull_requests.assert_not_called()
     assert not result.updated_raw_results
     assert not result.deleted_raw_results
