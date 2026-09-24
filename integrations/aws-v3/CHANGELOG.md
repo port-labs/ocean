@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.30.0 (2026-09-24)
+
+
+### Features
+
+- Removed beta suffix from version number
+- Renamed integration to be the main AWS integration
+- Added support for self hosted installation method
+
+
 ## 2.28.2-beta (2026-09-23)
 
 
