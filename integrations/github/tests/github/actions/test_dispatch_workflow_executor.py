@@ -13,6 +13,9 @@ from github.actions.dispatch_workflow_executor import (
     DISPATCHING_STATUS_LABEL,
     WORKFLOW_RUNNING_STATUS_LABEL,
 )
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import (
     InvalidActionParametersException,
@@ -55,7 +58,13 @@ def patched_ocean() -> Generator[MagicMock, None, None]:
     mock_client = MagicMock()
     mock_client.update_run_started = AsyncMock()
     mock_client.post_run_log = AsyncMock()
-    with patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean:
+    with (
+        patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean,
+        patch(
+            "github.actions.dispatch_workflow_executor.resolve_user_token",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
         mock_ocean.port_client = mock_client
         mock_ocean.integration_config = {
             **ocean.integration_config,
@@ -382,6 +391,59 @@ class TestDispatchWorkflowExecutor:
         )
         assert await executor._get_partition_key(run) == "port-labs/ocean/deploy.yml"
 
+    @pytest.mark.asyncio
+    async def test_identity_run_uses_user_token_client(
+        self, mock_rest_client: MagicMock
+    ) -> None:
+        run = make_run({"org": "port-labs"})
+        user_client = MagicMock()
+        user_client.base_url = "https://api.github.com"
+
+        with (
+            patch(
+                "github.actions.dispatch_workflow_executor.resolve_user_token",
+                new=AsyncMock(return_value="gho_alice"),
+            ),
+            patch(
+                "github.actions.dispatch_workflow_executor.GithubRestClient",
+                return_value=user_client,
+            ) as mock_rest_client_cls,
+            patch(
+                "github.actions.dispatch_workflow_executor.create_github_client_for_org",
+                new=AsyncMock(return_value=mock_rest_client),
+            ) as create_client,
+        ):
+            executor = DispatchWorkflowExecutor()
+            client = (await executor._get_execution_clients(run))[0]
+
+        assert client is user_client
+        mock_rest_client_cls.assert_called_once()
+        authenticator = mock_rest_client_cls.call_args.kwargs["authenticator"]
+        assert authenticator._token.token == "gho_alice"
+        create_client.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_non_identity_run_uses_default_client(
+        self, mock_rest_client: MagicMock
+    ) -> None:
+        run = make_run({"org": "port-labs"})
+
+        with (
+            patch(
+                "github.actions.dispatch_workflow_executor.resolve_user_token",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "github.actions.dispatch_workflow_executor.create_github_client_for_org",
+                new=AsyncMock(return_value=mock_rest_client),
+            ) as create_client,
+        ):
+            executor = DispatchWorkflowExecutor()
+            client = (await executor._get_execution_clients(run))[0]
+
+        assert client is mock_rest_client
+        create_client.assert_awaited_once()
+
 
 class TestLegacyDispatchWorkflowExecutor:
     @pytest.mark.asyncio
@@ -440,6 +502,59 @@ class TestLegacyDispatchWorkflowExecutor:
             extra_output={"workflowRunId": 12345},
             status_label=WORKFLOW_RUNNING_STATUS_LABEL,
         )
+
+    @pytest.mark.asyncio
+    async def test_legacy_identity_run_polls_with_human_actor(
+        self,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+        patched_ocean: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "workflow": "deploy.yml",
+            }
+        )
+
+        mock_rest_client.send_api_request.return_value = {
+            "workflow_runs": [WORKFLOW_RUN]
+        }
+        patched_ocean.integration_config["legacy_dispatch_workflow_tracking"] = True
+
+        with (
+            patch(
+                "github.actions.dispatch_workflow_executor.resolve_user_token",
+                new=AsyncMock(return_value="gho_alice"),
+            ),
+            patch.object(
+                PersonalTokenAuthenticator,
+                "get_authenticated_actor",
+                new=AsyncMock(return_value="alice"),
+            ),
+            patch(
+                "github.actions.dispatch_workflow_executor.get_auth_provider",
+                return_value=MagicMock(
+                    get_integration_actor=AsyncMock(return_value="port-bot[bot]")
+                ),
+            ),
+            patch.object(
+                DispatchWorkflowExecutor,
+                "_get_default_ref",
+                AsyncMock(return_value="main"),
+            ),
+            patch.object(
+                DispatchWorkflowExecutor,
+                "_get_execution_clients",
+                new=AsyncMock(return_value=[mock_rest_client]),
+            ),
+        ):
+            executor = DispatchWorkflowExecutor()
+            await executor.execute(run)
+
+        params = mock_rest_client.send_api_request.call_args.kwargs["params"]
+        assert params["actor"] == "alice"
 
     @pytest.mark.asyncio
     async def test_no_workflow_runs_found_raises(
