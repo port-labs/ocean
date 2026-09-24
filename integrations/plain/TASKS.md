@@ -93,21 +93,23 @@ Authenticated `threads` and `companies` list calls (`first: 1`) returned HTTP 20
 **Prerequisites:** `T0`
 
 **Work**
-- [ ] Create scaffold via Ocean CLI / skill (`ocean new` or create-ocean-integration skill)
-- [ ] Ensure package layout exists:
+- [x] Create scaffold via Ocean CLI / skill (`ocean new` or create-ocean-integration skill)
+- [x] Ensure package layout exists:
   - `pyproject.toml`, `Makefile`, `debug.py`, `main.py`, `integration.py`
   - `.port/spec.yaml` (or `spec.json`)
   - `.port/resources/` placeholders
   - `tests/` with smoke test
-- [ ] Wire `port_ocean` dependency consistent with other integrations
-- [ ] Integration identifier/type = `plain`
+- [x] Wire `port_ocean` dependency consistent with other integrations
+- [x] Integration identifier/type = `plain`
 
 **Exit tests**
-- [ ] `cd integrations/plain && poetry install`
-- [ ] `poetry run pytest -q` (scaffold smoke test passes)
-- [ ] `make lint` (or project equivalent) passes on scaffold
+- [x] `cd integrations/plain && poetry install`
+- [x] `poetry run pytest -q` (scaffold smoke test passes)
+- [x] `make lint` (or project equivalent) passes on scaffold
 
 **Done when:** empty integration installs and tests run.
+
+Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public). `Makefile` is a symlink to `integrations/_infra/Makefile`. `port_ocean` is `^0.52.1` with the `cli` extra. Identifier is `plain` (`OCEAN__INTEGRATION__IDENTIFIER` in `.env.example`). `yamllint` was added to dev dependencies so `make lint` can run. `integrations/plain/.env` still holds `PLAIN_TOKEN` and is gitignored.
 
 ---
 
