@@ -616,6 +616,12 @@
         "target": "azureDevopsRelease",
         "required": false,
         "many": false
+      },
+      "build": {
+        "title": "Build",
+        "target": "azureDevopsBuild",
+        "required": false,
+        "many": false
       }
     }
   },
