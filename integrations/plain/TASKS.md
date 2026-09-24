@@ -67,18 +67,22 @@ T5 company   T6 tenant      T7 user       T8 customer
 **Prerequisites:** none
 
 **Work**
-- [ ] Confirm GraphQL URL (`https://core-api.uk.plain.com/graphql/v1` vs regional variants)
-- [ ] Confirm Bearer auth with API key
-- [ ] Confirm Relay pagination (`first`/`after`, max 100)
-- [ ] Confirm list connection paths for: `companies`, `tenants`, `users`, `customers`, `threads`
-- [ ] Confirm single-entity queries exist for `thread(id)` / `customer(id)` (Phase 2 stubs)
-- [ ] Note exact API key permission names needed
+- [x] Confirm GraphQL URL (`https://core-api.uk.plain.com/graphql/v1` vs regional variants)
+- [x] Confirm Bearer auth with API key
+- [x] Confirm Relay pagination (`first`/`after`, max 100)
+- [x] Confirm list connection paths for: `companies`, `tenants`, `users`, `customers`, `threads`
+- [x] Confirm single-entity queries exist for `thread(threadId)` / `customer(customerId)` (Phase 2 stubs)
+- [x] Note exact API key permission names needed
 
 **Exit tests / checks**
-- [ ] Document findings in a short `API_NOTES.md` under `integrations/plain/` **or** append an “API verification” section to this file
-- [ ] At least one manual `curl`/GraphQL explorer list response captured (sanitized) for `threads` and one other kind
+- [x] Document findings in a short `API_NOTES.md` under `integrations/plain/` **or** append an “API verification” section to this file
+- [x] At least one manual `curl`/GraphQL explorer list response captured (sanitized) for `threads` and one other kind
 
 **Done when:** team agrees on URL + auth + pagination + 5 list queries.
+
+Findings: [API_NOTES.md](./API_NOTES.md) (verified 2026-09-24). URL is UK-only (`us`/`eu` hosts do not resolve). Auth is `Authorization: Bearer`. Pagination is Relay, default 25, max 100. Permissions: `company:read`, `tenant:read`, `user:read`, `customer:read`, `thread:read`. Single-entity args are `threadId` / `customerId`.
+
+Authenticated `threads` and `companies` list calls (`first: 1`) returned HTTP 200. Sanitized pages are in `API_NOTES.md`. The key in `integrations/plain/.env` includes all five read permissions. Keep that file gitignored.
 
 ---
 
