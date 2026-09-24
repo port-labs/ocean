@@ -10,7 +10,7 @@ secret_patterns = {
     "Generic API Key": r"[a|A][p|P][i|I][_]?[k|K][e|E][y|Y].*['|\"][0-9a-zA-Z]{32,45}['|\"]",
     "Generic Secret": r"[s|S][e|E][c|C][r|R][e|E][t|T].*['|\"][0-9a-zA-Z]{32,45}['|\"]",
     "Google API Key": r"AIza[0-9A-Za-z\\-_]{35}",
-    "Firebase URL": r".*firebaseio\.com",
+    "Firebase URL": r"[\w.-]{0,64}firebaseio\.com",
     "RSA private key": r"-----BEGIN RSA PRIVATE KEY-----",
     "SSH (DSA) private key": r"-----BEGIN DSA PRIVATE KEY-----",
     "SSH (EC) private key": r"-----BEGIN EC PRIVATE KEY-----",
