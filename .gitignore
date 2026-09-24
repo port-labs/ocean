@@ -173,7 +173,3 @@ junit/*
 
 # macOS
 .DS_Store
-
-# Postman Local View (auto-created by Postman IDE extension)
-.postman/
-postman/
