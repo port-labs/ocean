@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: feature
-changelog: Improved collaborator live event accuracy by handling team removed_from_repository and membership removed events, ensuring collaborator entities are updated when team repo access is revoked or members leave a team
