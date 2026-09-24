@@ -321,6 +321,7 @@ class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
     """Options for listing secret scanning alerts."""
 
     state: Required[str]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class SinglePackageOptions(SingleOrganizationOptions):
