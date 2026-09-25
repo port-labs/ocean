@@ -1,0 +1,72 @@
+{
+  "identifier": "upgrade_component_to_recommended_version",
+  "title": "Upgrade to Recommended Version",
+  "icon": "Sonatype",
+  "description": "Open a GitHub pull request that upgrades this component to its Sonatype-recommended version (or next non-failing version).",
+  "trigger": {
+    "type": "self-service",
+    "operation": "DAY-2",
+    "blueprintIdentifier": "sonatypeComponent",
+    "condition": {
+      "type": "SEARCH",
+      "combinator": "or",
+      "rules": [
+        { "property": "recommendedVersion", "operator": "isNotEmpty" },
+        { "property": "recommendedNonFailingVersion", "operator": "isNotEmpty" }
+      ]
+    },
+    "userInputs": {
+      "properties": {
+        "target_repository": {
+          "type": "string",
+          "title": "Target repository",
+          "description": "The GitHub repository to open the upgrade PR in, from Sonatype's Source Control Configuration. Auto-selected — change it only if it's missing (no SCM configured for this application in IQ) or wrong.",
+          "format": "entity",
+          "blueprint": "githubRepository",
+          "default": {
+            "jqQuery": ".entity.properties.repositoryIdentifier"
+          }
+        },
+        "target_version": {
+          "type": "string",
+          "title": "Target version",
+          "description": "Version to upgrade to. Defaults to the Sonatype recommended version, or the next non-failing version if there is no recommended version.",
+          "default": {
+            "jqQuery": "if (.entity.properties.recommendedVersion // \"\") != \"\" then .entity.properties.recommendedVersion else (.entity.properties.recommendedNonFailingVersion // \"\") end"
+          }
+        }
+      },
+      "required": ["target_repository", "target_version"],
+      "order": ["target_repository", "target_version"]
+    }
+  },
+  "invocationMethod": {
+    "type": "WEBHOOK",
+    "url": "https://api.github.com/repos/<AUTOMATION_GITHUB_ORG>/<AUTOMATION_GITHUB_REPO>/actions/workflows/upgrade-component-version.yml/dispatches",
+    "agent": false,
+    "synchronized": true,
+    "method": "POST",
+    "headers": {
+      "Accept": "application/vnd.github+json",
+      "Authorization": "Bearer {{ .secrets._GITHUB_TOKEN }}",
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28"
+    },
+    "body": {
+      "ref": "main",
+      "inputs": {
+        "component_display_name": "{{ .entity.properties.displayName }}",
+        "component_entity": "{{ .entity.identifier }}",
+        "current_version": "{{ .entity.properties.version }}",
+        "ecosystem": "{{ .entity.properties.format }}",
+        "package_url": "{{ .entity.properties.packageUrl }}",
+        "requested_by": "{{ .trigger.by.user.email }}",
+        "run_id": "{{ .run.id }}",
+        "target_repository": "{{ .inputs.target_repository.identifier }}",
+        "target_version": "{{ .inputs.target_version }}"
+      }
+    }
+  },
+  "requiredApproval": false,
+  "publish": true
+}
