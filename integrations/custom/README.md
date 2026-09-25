@@ -53,6 +53,7 @@ The integration will automatically sync data from your API to Port!
 - **Multiple Authentication Methods** - Bearer token, Basic auth, API key, or none
 - **Flexible Pagination** - Offset/limit, page/size, cursor-based, or none
 - **Dynamic Path Parameters** - Query APIs to discover parameter values for nested endpoints
+- **Dynamic Query Parameters** - Query APIs to discover values and inject them into request query params
 - **Endpoint-as-Kind** - Each endpoint tracked separately in Port's UI for better testing and debugging
 - **Smart Data Extraction** - Use JQ `data_path` to extract arrays from any response structure
 - **Built-in Caching & Rate Limiting** - Leverages Ocean's framework for optimal performance
@@ -441,6 +442,38 @@ path_parameters:
 - **Flexible**: Full JQ power for filtering and field extraction
 - **Efficient**: Can optimize discovery calls with query parameters
 - **Dynamic**: Automatically adapts when new entities are added to the API
+
+## Dynamic Query Parameters
+
+The integration also supports dynamic query parameter discovery. You can resolve query values from discovery endpoints and inject them into request query params at ingestion time.
+
+### Basic Configuration
+
+```yaml
+resources:
+  - kind: /api/v1/members
+    selector:
+      query: "true"
+      method: GET
+      query_params:
+        status: "active"   # Static default
+      dynamic_query_params:
+        team_id:
+          endpoint: "/api/v1/teams"
+          field: ".id"
+        region:
+          endpoint: "/api/v1/regions"
+          field: ".slug"
+      data_path: ".members"
+```
+
+### Behavior
+
+- Dynamic query values are discovered per configured key in `dynamic_query_params`.
+- If multiple values are discovered, requests are generated using Cartesian expansion.
+- Dynamic query values override conflicting keys from static `query_params`.
+- Combined flows are supported: one path parameter + dynamic query parameters.
+- Multi-path-parameter resolution remains unchanged (current limitation: single path parameter).
 
 ## Example Use Cases
 

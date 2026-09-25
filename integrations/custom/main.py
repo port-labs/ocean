@@ -64,6 +64,7 @@ def _raw_fetch(
 async def fetch_endpoint_data(
     endpoint: str,
     path_params: Dict[str, str],
+    dynamic_query_params: Dict[str, Any],
     http_client: HttpServerClient,
     method: str,
     query_params: Dict[str, Any],
@@ -76,6 +77,7 @@ async def fetch_endpoint_data(
     Args:
         endpoint: The endpoint URL to fetch data from
         path_params: Path parameters to inject into each entity
+        dynamic_query_params: Endpoint-specific dynamic query parameters
         http_client: The HTTP client instance for making requests
         method: HTTP method (GET, POST, etc.)
         query_params: Query parameters for the request
@@ -86,6 +88,7 @@ async def fetch_endpoint_data(
     Yields:
         Batches of processed data from the endpoint
     """
+    effective_query_params = {**query_params, **dynamic_query_params}
     logger.info(f"Fetching data from: {method} {endpoint}")
 
     cache = get_endpoint_cache()
@@ -94,16 +97,22 @@ async def fetch_endpoint_data(
         raw_source = cache.get_or_fetch(
             endpoint=endpoint,
             method=method,
-            query_params=query_params,
+            query_params=effective_query_params,
             headers=headers,
             body=body,
             fetch_fn=functools.partial(
-                _raw_fetch, http_client, endpoint, method, query_params, headers, body
+                _raw_fetch,
+                http_client,
+                endpoint,
+                method,
+                effective_query_params,
+                headers,
+                body,
             ),
         )
     else:
         raw_source = _raw_fetch(
-            http_client, endpoint, method, query_params, headers, body
+            http_client, endpoint, method, effective_query_params, headers, body
         )
 
     try:
