@@ -10,7 +10,21 @@ empowering engineers to effortlessly prioritize key features and streamline the 
 
 ## Prerequisites
 
-- Python 3.11
+- Python 3.13
+
+## Devbox (recommended for monorepo development)
+
+Install [devbox](https://www.jetify.com/docs/devbox/installing_devbox/) for a pinned toolchain (Python 3.13, Poetry — matching production), then use the existing Make targets:
+
+```bash
+devbox shell
+make install
+
+cd integrations/github
+make install/local-core
+source .venv/bin/activate
+make run
+```
 
 ## Installation
 
@@ -110,6 +124,8 @@ The reason Ocean is open source is that we aim for the Port integration library 
 In order to learn how you can contribute to Ocean, read our [contributing guide](./CONTRIBUTING.md)
 
 ### Local Development (Framework)
+
+See [Devbox (recommended for monorepo development)](#devbox-recommended-for-monorepo-development) above, or install manually:
 
 1. Clone the repository
 
