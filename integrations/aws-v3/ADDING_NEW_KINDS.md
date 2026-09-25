@@ -5,14 +5,35 @@ This guide walks you through adding a new AWS resource kind (like SQS queues, RD
 ## Overview
 
 The AWS-v3 integration follows a consistent pattern for all resource types:
+
+**Resync (scheduled / manual):**
 ```
 Ocean Event → Resync Handler → Exporter → ResourceInspector → Actions → AWS API
 ```
 
+**Live events (CloudTrail via EventBridge):**
+```
+EventBridge → CloudTrailWebhookProcessor → live_events metadata → Exporter.get_resource → Port
+```
+
+Every new kind must implement **both** resync and live events. Live events are routed
+through a single `CloudTrailWebhookProcessor`; per-kind behavior lives in a `live_events.py`
+module and is registered on `ExporterMetadata` in `exporter_metadata.py`.
+
+**Live events need three things — missing any one means silent failure** (resync still
+works; live create/update/delete does not):
+
+1. **Ocean code** (this repo) — `live_events.py` + `exporter_metadata.py`
+2. **Port CFN** ([Port repo](https://github.com/port-labs/Port)) — EventBridge rules that
+   match each mapped `eventSource` + `eventName`
+3. **Customer deployment** — updated live-events CloudFormation stack in their AWS
+   account(s), plus `live_events_api_key` and the `AWS_V3_LIVE_EVENTS_ENABLED` org flag
+
 After implementing the steps below, run the
 [Self-Review Checklist](#self-review-checklist-before-opening-a-pr) against the real AWS API
 before opening a PR. Bootstrapped kinds often look correct while still using non-existent
-paginators, redundant actions, or invented model fields.
+paginators, redundant actions, invented model fields, or CloudTrail event names that never
+appear in real EventBridge payloads.
 
 ## Prerequisites
 
@@ -20,6 +41,8 @@ paginators, redundant actions, or invented model fields.
 - Basic knowledge of Pydantic models
 - Familiarity with AWS SDK (boto3/aiobotocore)
 - Understanding of the existing AWS-v3 codebase structure
+- Familiarity with AWS CloudTrail event shapes (what `requestParameters` / `responseElements`
+  contain for create, update, and delete API calls on your resource)
 
 ## Step-by-Step Guide
 
@@ -70,7 +93,7 @@ class AWSPortAppConfig(PortAppConfig):
 
 ```
 
-**Why:** This defines the resource type that Ocean will recognize and trigger resync events for.
+**Why:** This defines the resource type that Ocean will recognize for resync and live events.
 
 ### Step 2: Create the Resource Models
 
@@ -324,6 +347,12 @@ class YourResourceExporter(IResourceExporter):
 - `ResourceInspector` handles the orchestration of actions
 - Use appropriate paginator for your AWS service
 - Include account and region context for debugging
+- **`get_resource` must work for live events**: CloudTrail only gives you a minimal
+  identifier (name, ARN, URL, etc.). Live-event upserts call `get_resource`, not
+  `get_paginated_resources`. If your default actions swallow not-found errors and return
+  empty stubs, add an upfront existence check (e.g. `head_bucket`, `describe_table`) so
+  a deleted resource raises and the live-event handler can emit a delete instead. See
+  `s3/bucket/exporter.py`, `dynamodb/table/exporter.py`, or `ses/configuration_set/exporter.py`.
 
 ### Step 5: Create Package Init File
 
@@ -379,7 +408,206 @@ async def resync_your_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 ```
 
-### Step 7: Update Port Specification
+### Step 7: Implement Live Events
+
+Live events keep Port in sync when resources are created, updated, or deleted outside
+of a resync. This step has three parts — Ocean integration code, Port repo CFN, and a
+customer redeploy note for the release.
+
+> ⚠️ **Ocean code alone is not enough**
+>
+> `live_events.py` tells Ocean *how* to handle an event. It does not *deliver* the event.
+> Delivery requires EventBridge rules in the customer's AWS account, defined in the Port
+> repo CloudFormation template. Add or update rules for every `eventName` in
+> `cloudtrail_mappings`, ship the CFN change with (or before) the Ocean release, and note
+> in the changelog that customers must redeploy the stack — otherwise live events for this
+> kind will never fire.
+
+#### Step 7a: Ocean integration (`live_events.py`)
+
+Each kind contributes a `LiveEventFactories` object that tells the shared webhook
+processor how to parse CloudTrail events and fetch/delete the affected entity.
+
+**File:** `aws/core/exporters/{service}/{resource}/live_events.py`
+
+```python
+from aws.core.exporters.{service}.{resource}.models import SingleYourResourceRequest
+from aws.core.helpers.metadata.types import (
+    CloudTrailDetail,
+    CloudTrailEventAction,
+    CloudTrailEventMapping,
+    LiveEventContext,
+    LiveEventFactories,
+)
+from aws.utils import RegionHelper
+
+CLOUDTRAIL_EVENT_SOURCE = "your-service.amazonaws.com"  # detail["eventSource"] value
+
+
+def _extract_resource_identifier(detail: CloudTrailDetail) -> str | None:
+    """Pull the resource identifier from a real CloudTrail record.
+
+    Inspect actual EventBridge/CloudTrail payloads — field names differ per API call.
+    Create events often put the name in responseElements; updates/deletes use
+    requestParameters. Return None when the identifier cannot be determined.
+    """
+    request_parameters = detail.get("requestParameters", {})
+    if not isinstance(request_parameters, dict):
+        return None
+
+    name = request_parameters.get("yourResourceName")
+    return name if isinstance(name, str) else None
+
+
+def _request_factory(
+    context: LiveEventContext, include_actions: list[str]
+) -> SingleYourResourceRequest:
+    """Build the Single*Request used by Exporter.get_resource for upsert events."""
+    return SingleYourResourceRequest(
+        resource_id=context.identifier,
+        region=context.region,
+        account_id=context.account_id,
+        include=include_actions,
+    )
+
+
+def _deletion_identifier_properties(context: LiveEventContext) -> dict[str, str]:
+    """Properties Port uses to match and delete the entity.
+
+    Keys must align with fields referenced by the kind's port-app-config identifier
+    mapping (e.g. .Properties.Arn, .Properties.TableName).
+    """
+    partition = RegionHelper.get_partition()
+    return {
+        "Arn": (
+            f"arn:{partition}:your-service:{context.region}:{context.account_id}:"
+            f"resource/{context.identifier}"
+        ),
+        "YourResourceName": context.identifier,
+    }
+
+
+YOUR_RESOURCE_LIVE_EVENTS = LiveEventFactories(
+    request_factory=_request_factory,
+    deletion_identifier_properties_factory=_deletion_identifier_properties,
+    cloudtrail_mappings={
+        "CreateYourResource": CloudTrailEventMapping(
+            CloudTrailEventAction.UPSERT,
+            _extract_resource_identifier,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
+        ),
+        "UpdateYourResource": CloudTrailEventMapping(
+            CloudTrailEventAction.UPSERT,
+            _extract_resource_identifier,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
+        ),
+        "DeleteYourResource": CloudTrailEventMapping(
+            CloudTrailEventAction.DELETE,
+            _extract_resource_identifier,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
+        ),
+    },
+)
+```
+
+**File:** `aws/core/exporters/exporter_metadata.py`
+
+Import your `YOUR_RESOURCE_LIVE_EVENTS` constant and pass it when registering the kind:
+
+```python
+from aws.core.exporters.{service}.{resource}.live_events import YOUR_RESOURCE_LIVE_EVENTS
+
+kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
+    # ...
+    ObjectKind.YOUR_RESOURCE: ExporterMetadata(
+        YourResourceExporter,
+        PaginatedYourResourceRequest,
+        live_events=YOUR_RESOURCE_LIVE_EVENTS,
+    ),
+}
+```
+
+No changes to `main.py` or the webhook processor are needed — mappings are discovered
+automatically via `build_event_name_mappings()` in `cloudtrail_event_mappings.py`.
+
+**Key Points:**
+- **`cloudtrail_mappings`**: map CloudTrail `eventName` values to `UPSERT` or `DELETE`.
+  Include every API call that should trigger a Port update (creates, attribute changes,
+  tag changes, etc.). Reuse the same `CloudTrailEventMapping` instance when several
+  event names share one extractor (see `ses/configuration_set/live_events.py`).
+- **`event_source`**: set to the CloudTrail `detail.eventSource` for your service
+  (e.g. `sqs.amazonaws.com`). Required when the same `eventName` exists on multiple
+  services.
+- **`extract_identifier`**: must return the same identifier your `_request_factory`
+  expects in `context.identifier`. Validate against real CloudTrail JSON, not AWS doc
+  prose — create events may only expose the ID in `responseElements` (see
+  `ec2/instance/live_events.py` `RunInstances`).
+- **`deletion_identifier_properties_factory`**: return the property bag Port's jq
+  mapping uses to find the entity. On delete CloudTrail events the processor skips
+  AWS fetch and emits `deleted_raw_results` directly from these properties.
+- **Partition-aware ARNs**: use `RegionHelper.get_partition()` when building ARNs or
+  URLs (required for `aws-cn`, etc.) — see `sqs/queue/live_events.py`.
+- **Feature flag**: live events are gated by the org-level `AWS_V3_LIVE_EVENTS_ENABLED`
+  flag and require `live_events_api_key` in integration config. Resync works without
+  either; live events do not.
+
+**Tests:** add parser coverage in `tests/webhook/test_cloudtrail_parser.py` — assert
+`is_supported_cloudtrail_event` and `parse_cloudtrail_event` for each mapped
+`eventName`, including malformed/missing identifier cases. Use realistic
+`requestParameters` / `responseElements` shapes from real CloudTrail records.
+
+#### Step 7b: Port repo EventBridge rules (CloudFormation)
+
+CloudTrail events only reach Ocean when the customer's account has an EventBridge rule
+that matches them and forwards to Port's webhook. That rule is **not** in this Ocean
+repo — it lives in the Port repo:
+
+**File:** [`s3/port-cloudformation-templates/ocean/aws-v3/live-events-region-stack.yaml`](https://github.com/port-labs/Port/blob/main/s3/port-cloudformation-templates/ocean/aws-v3/live-events-region-stack.yaml)
+
+(`live-events-single-account.yaml` and `live-events-multi-account.yaml` are the
+customer-facing entry points; they deploy this regional stack per account/region.)
+
+For every new kind, update `LiveEventsRule` in that template:
+
+1. **`EventPattern.source`** — add the EventBridge source for your service if not
+   already listed (e.g. `aws.sqs` for SQS). This corresponds to the CloudTrail
+   `detail.eventSource` domain (`sqs.amazonaws.com` → `aws.sqs`).
+2. **`EventPattern.detail.eventName`** — add every key from your `cloudtrail_mappings`,
+   grouped under a comment naming the kind (follow the existing `# AWS::S3::Bucket`
+   style). The CFN `eventName` list and `cloudtrail_mappings` keys must stay in sync.
+
+Example snippet (add alongside existing entries):
+
+```yaml
+        detail:
+          errorCode:
+            - exists: false
+          eventName:
+            # ... existing kinds ...
+            # AWS::YourService::YourResource
+            - CreateYourResource
+            - UpdateYourResource
+            - DeleteYourResource
+```
+
+**PR requirement:** do not merge Ocean-only live-events PRs without a linked Port repo
+CFN PR (or an explicit follow-up ticket). Drift between Ocean `cloudtrail_mappings` and
+CFN `eventName` patterns is a production bug — the integration will parse events that
+never arrive, or receive events it cannot parse.
+
+#### Step 7c: Customer redeploy (release note)
+
+After this kind ships, customers already on live events must **update/redeploy** their
+Port live-events CloudFormation stack (single- or multi-account) in each linked AWS
+account. Until they do, the new kind resyncs on schedule but will not receive live
+updates.
+
+Add a changelog entry when releasing, for example:
+
+> Customers using live events must redeploy the Port AWS live-events CloudFormation stack
+> to receive live updates for `AWS::YourService::YourResource`.
+
+### Step 8: Update Port Specification
 
 **File:** `.port/spec.yaml`
 
@@ -397,7 +625,7 @@ features:
       - kind: AWS::YourService::YourResource  # Add your kind here
 ```
 
-### Step 8: Create Blueprint
+### Step 9: Create Blueprint
 
 **File:** `.port/resources/blueprints.json`
 
@@ -440,7 +668,7 @@ Add your blueprint to the blueprints array:
 }
 ```
 
-### Step 9: Add Default Mapping
+### Step 10: Add Default Mapping
 
 **File:** `.port/resources/port-app-config.yml`
 
@@ -538,8 +766,9 @@ async def get_paginated_resources(self, options) -> AsyncGenerator[list[dict], N
 New kinds (`aws/core/exporters/{service}/{resource}/`) are usually one-shot bootstrapped from
 this guide, with no real AWS calls made and no tests run against live data. Pattern-matching
 other kinds can hallucinate: paginators that don't exist, actions for data that's already
-available elsewhere, model fields that don't exist on the real API. Nothing catches this until
-it runs against a real account.
+available elsewhere, model fields that don't exist on the real API, or CloudTrail mappings
+with no matching EventBridge rule in the Port repo CFN. Nothing catches this until it runs
+against a real account.
 
 **Do not open a PR until every item below is verified against the actual AWS API** — not against
 what "looks right" or what other kinds do.
@@ -639,6 +868,11 @@ If the defaults are pass-through actions that expect full response items (e.g., 
 MemoryDB users), `get_resource` may perform the single "describe/get" call and pass its result to
 the inspector — but it must not call an API that a default action will call again.
 
+**Live events:** `get_resource` is also the code path for CloudTrail upserts. An extra upfront
+existence check (before `inspector.inspect`) is acceptable when it prevents returning a stub for
+a resource that was already deleted — see Step 4. Do not swallow not-found in actions used by
+live-event fetches unless `get_resource` raises first.
+
 ### 7. Actions run concurrently over the same raw input, not chained
 
 All actions in `defaults` + selected `options` run via `asyncio.gather` over the *same* raw
@@ -708,3 +942,32 @@ key at the construction site.
 This does **not** apply when the API's list call returns plain strings (e.g. SQS's
 `list_queues` → `QueueUrls`, a `list[str]`) — there's no dict shape to document, so keep
 `Action[list[str]]` as-is.
+
+### 15. Live events must be implemented for every new kind
+
+Every new kind needs a `live_events.py` and `live_events=` on its `ExporterMetadata`
+entry. Without it, resync works but CloudTrail changes are silently ignored.
+
+**Verify:**
+- Mapped CloudTrail `eventName` values exist and match `detail.eventSource` for your
+  service (check real EventBridge payloads or CloudTrail log samples, not just API docs).
+- `extract_identifier` returns a value for each mapped event — create APIs often put the
+  ID only in `responseElements`.
+- `deletion_identifier_properties_factory` returns property keys that match the kind's
+  `port-app-config.yml` identifier jq (run the same jq against the deletion property dict).
+- `request_factory` produces a `Single*Request` that `get_resource` accepts with only
+  the CloudTrail-derived identifier (no fields only available from a full list/describe).
+- Parser tests in `tests/webhook/test_cloudtrail_parser.py` cover each new mapping.
+
+### 16. Port repo CFN EventBridge rules match `cloudtrail_mappings`
+
+Every `eventName` in `cloudtrail_mappings` must appear under `LiveEventsRule` →
+`EventPattern.detail.eventName` in
+[`live-events-region-stack.yaml`](https://github.com/port-labs/Port/blob/main/s3/port-cloudformation-templates/ocean/aws-v3/live-events-region-stack.yaml),
+and the service's EventBridge `source` must be listed under `EventPattern.source`.
+A kind with Ocean live-event code but no CFN rule passes tests here and still never
+receives events in production.
+
+**Verify:** diff your `cloudtrail_mappings` keys against the CFN `eventName` list side
+by side; confirm the Port repo PR is linked before merging the Ocean PR; add a changelog
+note that customers must redeploy the live-events stack.
