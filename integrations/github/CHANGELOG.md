@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.15.1 (2026-09-27)
+
+
+### Bug Fixes
+
+- Ensure GitHub rate limiter waits at least 1s after reset to avoid burning retries with sleep(0)
+
+
 ## 6.15.0 (2026-09-24)
 
 
