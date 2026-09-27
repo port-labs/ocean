@@ -914,6 +914,20 @@ class GithubSecretScanningAlertSelector(RepoSearchSelector):
         description="Control whether the secret content is included.",
         default=True,
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubSecretScanningAlertConfig(ResourceConfig):

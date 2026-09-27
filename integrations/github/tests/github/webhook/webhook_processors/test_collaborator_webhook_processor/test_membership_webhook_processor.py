@@ -1,3 +1,4 @@
+import httpx
 from integration import (
     GithubCollaboratorConfig,
     GithubCollaboratorSelector,
@@ -9,7 +10,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
 )
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor import (
     CollaboratorMembershipWebhookProcessor,
 )
@@ -27,7 +28,7 @@ VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "repository": {"name": "test-repo"},
     "organization": {"login": "test-org"},
     "team": {"name": "test-team", "slug": "test-team"},
-    "member": {"login": "test-user"},
+    "member": {"login": "test-user", "id": 1},
 }
 
 INVALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
@@ -162,29 +163,17 @@ class TestCollaboratorMembershipWebhookProcessor:
                 is expected_result
             )
 
-    @pytest.mark.parametrize(
-        "action,expected_updated,expected_deleted",
-        [
-            ("added", True, False),
-            ("edited", True, False),
-            ("removed", False, False),  # Not in COLLABORATOR_UPSERT_EVENTS
-            ("deleted", False, False),  # Not in COLLABORATOR_UPSERT_EVENTS
-        ],
-    )
-    async def test_handle_event_membership_events(
+    @pytest.mark.parametrize("action", ["added", "edited"])
+    async def test_handle_event_upsert(
         self,
         membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
         resource_config: GithubCollaboratorConfig,
         mock_port_app_config: GithubPortAppConfig,
         action: str,
-        expected_updated: bool,
-        expected_deleted: bool,
     ) -> None:
-        # Set up payload
         payload = VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS.copy()
         payload["action"] = action
 
-        # Mock the repositories data
         mock_repositories = [
             {"name": "repo1", "full_name": "org/repo1", "visibility": "public"},
             {"name": "repo2", "full_name": "org/repo2", "visibility": "public"},
@@ -196,14 +185,12 @@ class TestCollaboratorMembershipWebhookProcessor:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
 
-            # Mock RestTeamExporter
             with patch(
                 "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.RestTeamExporter"
             ) as mock_team_exporter_class:
                 mock_team_exporter = MagicMock()
                 mock_team_exporter_class.return_value = mock_team_exporter
 
-                # Mock the async generator for team repositories
                 async def mock_get_team_repositories() -> (
                     AsyncGenerator[list[dict[str, Any]], None]
                 ):
@@ -219,28 +206,236 @@ class TestCollaboratorMembershipWebhookProcessor:
                         payload, resource_config
                     )
 
-                # Verify the result
                 assert isinstance(result, WebhookEventRawResults)
-                assert bool(result.updated_raw_results) is expected_updated
-                assert bool(result.deleted_raw_results) is expected_deleted
+                assert len(result.updated_raw_results) == len(mock_repositories)
+                for i, repo in enumerate(mock_repositories):
+                    assert result.updated_raw_results[i]["__repository"] == repo["name"]
+                    assert result.updated_raw_results[i]["login"] == "test-user"
+                assert result.deleted_raw_results == []
 
-                if expected_updated:
-                    # Verify enriched data structure
-                    assert len(result.updated_raw_results) == len(mock_repositories)
-                    for i, repo in enumerate(mock_repositories):
-                        assert (
-                            result.updated_raw_results[i]["__repository"]
-                            == repo["name"]
-                        )
-                        assert result.updated_raw_results[i]["login"] == "test-user"
+                mock_team_exporter.get_team_repositories_by_slug.assert_called_once_with(
+                    SingleTeamOptions(organization="test-org", slug="test-team")
+                )
 
-                    # Verify team exporter was called
-                    mock_team_exporter.get_team_repositories_by_slug.assert_called_once_with(
-                        SingleTeamOptions(organization="test-org", slug="test-team")
+    @pytest.mark.parametrize("action", ["removed", "deleted"])
+    async def test_handle_event_reconcile(
+        self,
+        membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+        mock_port_app_config: GithubPortAppConfig,
+        action: str,
+    ) -> None:
+        payload = VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = action
+
+        mock_repositories = [
+            {"name": "repo1", "full_name": "org/repo1", "visibility": "public"},
+            {"name": "repo2", "full_name": "org/repo2", "visibility": "public"},
+        ]
+
+        still_collaborator_data = {
+            "login": "test-user",
+            "id": 1,
+            "__repository": "repo1",
+            "__organization": "test-org",
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client_for_org"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.RestTeamExporter"
+            ) as mock_team_exporter_class:
+                mock_team_exporter = MagicMock()
+                mock_team_exporter_class.return_value = mock_team_exporter
+
+                async def mock_get_team_repositories() -> (
+                    AsyncGenerator[list[dict[str, Any]], None]
+                ):
+                    yield mock_repositories
+
+                mock_team_exporter.get_team_repositories_by_slug.return_value = (
+                    mock_get_team_repositories()
+                )
+
+                with patch(
+                    "github.webhook.webhook_processors.collaborator_webhook_processor.utils.RestCollaboratorExporter"
+                ) as mock_collab_exporter_class:
+                    mock_collab_exporter = MagicMock()
+                    mock_collab_exporter_class.return_value = mock_collab_exporter
+
+                    async def mock_get_resource(
+                        options: Any,
+                    ) -> dict[str, Any] | None:
+                        if options["repo_name"] == "repo1":
+                            return still_collaborator_data
+                        return None
+
+                    mock_collab_exporter.get_resource = AsyncMock(
+                        side_effect=mock_get_resource
                     )
-                else:
-                    # For non-upsert events, no repositories should be fetched
-                    mock_team_exporter.get_team_repositories_by_slug.assert_not_called()
+
+                    async with event_context("test_event") as event_context_obj:
+                        event_context_obj.port_app_config = mock_port_app_config
+                        result = await membership_webhook_processor.handle_event(
+                            payload, resource_config
+                        )
+
+                assert isinstance(result, WebhookEventRawResults)
+                assert len(result.updated_raw_results) == 1
+                assert result.updated_raw_results[0] == still_collaborator_data
+                assert len(result.deleted_raw_results) == 1
+                assert result.deleted_raw_results[0]["login"] == "test-user"
+                assert result.deleted_raw_results[0]["id"] == 1
+                assert result.deleted_raw_results[0]["__repository"] == "repo2"
+                assert result.deleted_raw_results[0]["__organization"] == "test-org"
+
+    async def test_handle_event_reconcile_skips_repo_on_api_error(
+        self,
+        membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+        mock_port_app_config: GithubPortAppConfig,
+    ) -> None:
+        payload = VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "removed"
+
+        mock_repositories = [
+            {"name": "repo1", "full_name": "org/repo1", "visibility": "public"},
+            {"name": "repo2", "full_name": "org/repo2", "visibility": "public"},
+        ]
+
+        still_collaborator_data = {
+            "login": "test-user",
+            "id": 1,
+            "__repository": "repo2",
+            "__organization": "test-org",
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client_for_org"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.RestTeamExporter"
+            ) as mock_team_exporter_class:
+                mock_team_exporter = MagicMock()
+                mock_team_exporter_class.return_value = mock_team_exporter
+
+                async def mock_get_team_repositories() -> (
+                    AsyncGenerator[list[dict[str, Any]], None]
+                ):
+                    yield mock_repositories
+
+                mock_team_exporter.get_team_repositories_by_slug.return_value = (
+                    mock_get_team_repositories()
+                )
+
+                with patch(
+                    "github.webhook.webhook_processors.collaborator_webhook_processor.utils.RestCollaboratorExporter"
+                ) as mock_collab_exporter_class:
+                    mock_collab_exporter = MagicMock()
+                    mock_collab_exporter_class.return_value = mock_collab_exporter
+
+                    async def mock_get_resource(
+                        options: Any,
+                    ) -> dict[str, Any] | None:
+                        if options["repo_name"] == "repo1":
+                            raise httpx.HTTPStatusError(
+                                "Server Error",
+                                request=httpx.Request("GET", "https://api.github.com"),
+                                response=httpx.Response(500),
+                            )
+                        return still_collaborator_data
+
+                    mock_collab_exporter.get_resource = AsyncMock(
+                        side_effect=mock_get_resource
+                    )
+
+                    async with event_context("test_event") as event_context_obj:
+                        event_context_obj.port_app_config = mock_port_app_config
+                        result = await membership_webhook_processor.handle_event(
+                            payload, resource_config
+                        )
+
+                assert isinstance(result, WebhookEventRawResults)
+                assert len(result.updated_raw_results) == 1
+                assert result.updated_raw_results[0] == still_collaborator_data
+                assert result.deleted_raw_results == []
+
+    async def test_handle_event_reconcile_skips_repo_on_network_error(
+        self,
+        membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+        mock_port_app_config: GithubPortAppConfig,
+    ) -> None:
+        payload = VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "removed"
+
+        mock_repositories = [
+            {"name": "repo1", "full_name": "org/repo1", "visibility": "public"},
+            {"name": "repo2", "full_name": "org/repo2", "visibility": "public"},
+        ]
+
+        still_collaborator_data = {
+            "login": "test-user",
+            "id": 1,
+            "__repository": "repo2",
+            "__organization": "test-org",
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client_for_org"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.RestTeamExporter"
+            ) as mock_team_exporter_class:
+                mock_team_exporter = MagicMock()
+                mock_team_exporter_class.return_value = mock_team_exporter
+
+                async def mock_get_team_repositories() -> (
+                    AsyncGenerator[list[dict[str, Any]], None]
+                ):
+                    yield mock_repositories
+
+                mock_team_exporter.get_team_repositories_by_slug.return_value = (
+                    mock_get_team_repositories()
+                )
+
+                with patch(
+                    "github.webhook.webhook_processors.collaborator_webhook_processor.utils.RestCollaboratorExporter"
+                ) as mock_collab_exporter_class:
+                    mock_collab_exporter = MagicMock()
+                    mock_collab_exporter_class.return_value = mock_collab_exporter
+
+                    async def mock_get_resource(
+                        options: Any,
+                    ) -> dict[str, Any] | None:
+                        if options["repo_name"] == "repo1":
+                            raise httpx.ConnectTimeout("Connection timed out")
+                        return still_collaborator_data
+
+                    mock_collab_exporter.get_resource = AsyncMock(
+                        side_effect=mock_get_resource
+                    )
+
+                    async with event_context("test_event") as event_context_obj:
+                        event_context_obj.port_app_config = mock_port_app_config
+                        result = await membership_webhook_processor.handle_event(
+                            payload, resource_config
+                        )
+
+                assert isinstance(result, WebhookEventRawResults)
+                assert len(result.updated_raw_results) == 1
+                assert result.updated_raw_results[0] == still_collaborator_data
+                assert result.deleted_raw_results == []
 
     async def test_handle_event_skips_when_affiliation_filter_enabled(
         self,

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2026-09-24)
+
+
+### Features
+
+- Renamed integration to be the legacy AWS integration.
+
+
 ## 0.3.155 (2026-09-23)
 
 

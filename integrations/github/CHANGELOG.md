@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.15.0 (2026-09-24)
+
+
+### Features
+
+- Add incremental sync (T2 client-side cutoff) for secret-scanning-alerts using updated_at and optional updatedSince selector.
+
+
+## 6.14.5 (2026-09-24)
+
+
+### Features
+
+- Improved collaborator live event accuracy by handling team removed_from_repository and membership removed events, ensuring collaborator entities are updated when team repo access is revoked or members leave a team
+
+
 ## 6.14.4 (2026-09-23)
 
 
