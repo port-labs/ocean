@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Ensure GitHub rate limiter waits at least 1s after reset to avoid burning retries with sleep(0)
