@@ -1,0 +1,92 @@
+[
+  {
+    "id": "person-hr-001",
+    "name": "Alex Rivera",
+    "email": "alex.rivera@example.com",
+    "status": "WORKING",
+    "age": 34,
+    "bio": "Platform engineer",
+    "department": { "id": "hr", "name": "hr" }
+  },
+  {
+    "id": "person-hr-002",
+    "name": "Sam Chen",
+    "email": "sam.chen@example.com",
+    "status": "WORKING",
+    "age": 29,
+    "bio": "People ops",
+    "department": { "id": "hr", "name": "hr" }
+  },
+  {
+    "id": "person-marketing-001",
+    "name": "Jordan Lee",
+    "email": "jordan.lee@example.com",
+    "status": "WORKING",
+    "age": 31,
+    "bio": "Campaign lead",
+    "department": { "id": "marketing", "name": "marketing" }
+  },
+  {
+    "id": "person-marketing-002",
+    "name": "Riley Patil",
+    "email": "riley.patil@example.com",
+    "status": "NOPE",
+    "age": 27,
+    "bio": "Content",
+    "department": { "id": "marketing", "name": "marketing" }
+  },
+  {
+    "id": "person-finance-001",
+    "name": "Casey Ng",
+    "email": "casey.ng@example.com",
+    "status": "WORKING",
+    "age": 41,
+    "bio": "Controller",
+    "department": { "id": "finance", "name": "finance" }
+  },
+  {
+    "id": "person-finance-002",
+    "name": "Morgan Diaz",
+    "email": "morgan.diaz@example.com",
+    "status": "WORKING",
+    "age": 36,
+    "bio": "Analyst",
+    "department": { "id": "finance", "name": "finance" }
+  },
+  {
+    "id": "person-support-001",
+    "name": "Taylor Brooks",
+    "email": "taylor.brooks@example.com",
+    "status": "WORKING",
+    "age": 28,
+    "bio": "Support lead",
+    "department": { "id": "support", "name": "support" }
+  },
+  {
+    "id": "person-support-002",
+    "name": "Quinn Alvarez",
+    "email": "quinn.alvarez@example.com",
+    "status": "WORKING",
+    "age": 33,
+    "bio": "Support engineer",
+    "department": { "id": "support", "name": "support" }
+  },
+  {
+    "id": "person-morpazia-001",
+    "name": "Avery Kim",
+    "email": "avery.kim@example.com",
+    "status": "WORKING",
+    "age": 38,
+    "bio": "Morpazia specialist",
+    "department": { "id": "morpazia", "name": "morpazia" }
+  },
+  {
+    "id": "person-morpazia-002",
+    "name": "Reese Okonkwo",
+    "email": "reese.okonkwo@example.com",
+    "status": "NOPE",
+    "age": 45,
+    "bio": "Operations",
+    "department": { "id": "morpazia", "name": "morpazia" }
+  }
+]

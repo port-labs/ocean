@@ -60,6 +60,13 @@
       "type": "boolean",
       "description": "Run only 1 static department instead of the default 5",
       "default": false
+    },
+    {
+      "name": "fixturePack",
+      "required": false,
+      "type": "string",
+      "description": "Optional extension pack name under extensions/packs/ for deterministic local/CI fixtures (e.g. stable-org). Omit for default loadgen.",
+      "default": ""
     }
   ],
   "actionsProcessingEnabled": true,

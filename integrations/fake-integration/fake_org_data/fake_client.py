@@ -25,6 +25,7 @@ class FakeIntegrationConfigKeys(StrEnum):
     THIRD_PARTY_BATCH_SIZE = "third_party_batch_size"
     THIRD_PARTY_LATENCY_MS = "third_party_latency_ms"
     SINGLE_PERF_RUN = "single_department_run"
+    FIXTURE_PACK = "fixture_pack"
 
 
 def get_config() -> Tuple[List[int], int, int]:
@@ -111,6 +112,19 @@ async def get_fake_persons_batch(
 
 
 async def get_fake_persons() -> AsyncGenerator[List[Dict[Any, Any]], None]:
+    from .fixture_packs import get_fixture_pack_name
+
+    # Deterministic fixture pack: one batch per department, ignore loadgen amounts.
+    if get_fixture_pack_name():
+        async for departments_batch in get_departments():
+            for department in departments_batch:
+                current_result = await get_fake_persons_batch(
+                    department["id"], -1, 1, 0
+                )
+                if current_result:
+                    yield current_result
+        return
+
     batches, entity_kb_size, latency_ms = get_config()
     async for departments_batch in get_departments():
         for department in departments_batch:

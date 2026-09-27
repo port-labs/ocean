@@ -1,0 +1,14 @@
+[
+  {
+    "identifier": "fake-person",
+    "relations": {
+      "department": {
+        "title": "Department",
+        "description": "Fake Department",
+        "target": "fake-department",
+        "required": true,
+        "many": false
+      }
+    }
+  }
+]

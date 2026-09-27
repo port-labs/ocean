@@ -2,6 +2,10 @@ from typing import Any, Dict
 
 from port_ocean.context.ocean import ocean
 
+from fake_org_data.fixture_packs import (
+    get_fixture_pack_name,
+    persons_for_department,
+)
 from fake_org_data.generator import generate_fake_persons, generate_fake_projects
 from fake_org_data.static import FAKE_OFFICES, FAKE_TEAMS
 
@@ -25,6 +29,11 @@ def initialize_fake_routes() -> None:
 
 
         """
+        pack = get_fixture_pack_name()
+        if pack:
+            results = persons_for_department(pack, department_id, limit)
+            return {"results": results}
+
         result = await generate_fake_persons(
             department_id, limit, entity_kb_size, latency
         )
