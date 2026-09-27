@@ -439,11 +439,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 resource_config, send_raw_data_examples_amount
             )
             static_extract_duration_sec = time.monotonic() - extract_start
-            logger.info(
-                "[duration-debug] measured static extract duration",
-                kind=resource_config.kind,
-                static_extract_duration_sec=static_extract_duration_sec,
-            )
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
             lakehouse_data_enabled = await is_lakehouse_data_enabled()
@@ -526,11 +521,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     except StopAsyncIteration:
                         break
                     extract_duration_sec = time.monotonic() - iter_start
-                    logger.info(
-                        "[duration-debug] measured per-yield extract duration",
-                        kind=resource_config.kind,
-                        extract_duration_sec=extract_duration_sec,
-                    )
                     batch_index += 1
                     if lakehouse_data_enabled and buffer:
                         metadata = LakehouseDataEntryMetadata(
