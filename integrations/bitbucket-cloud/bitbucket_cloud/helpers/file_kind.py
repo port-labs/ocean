@@ -1,4 +1,5 @@
 import fnmatch
+import os
 from pathlib import Path
 from typing import Dict, List, Any, AsyncGenerator
 from loguru import logger
@@ -13,6 +14,19 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
+
+
+def extract_filename_extension(filename: str) -> str:
+    """Return a filename's extension without the leading dot.
+
+    Dotfiles such as ``.nvmrc`` have no extension. ``os.path.splitext`` keeps
+    the leading dot on the name, so those files are not dropped from Bitbucket
+    code search by an ``ext:`` qualifier built from the rest of the name.
+    """
+    extension = os.path.splitext(filename)[1]
+    if extension.startswith("."):
+        return extension[1:]
+    return extension
 
 
 def build_search_terms(
@@ -68,7 +82,7 @@ async def process_file_patterns(
             filename=filename,
             repos=file_pattern.repos,
             path=path_to_search if path_to_search not in GLOBAL_PATHS else "/",
-            extension=filename.split(".")[-1] if "." in filename else "",
+            extension=extract_filename_extension(filename),
         )
         logger.debug(f"Constructed search query: {search_query}")
         bitbucket_client = init_client()

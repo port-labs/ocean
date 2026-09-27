@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from bitbucket_cloud.helpers.file_kind import (
     build_search_terms,
+    extract_filename_extension,
     process_file_patterns,
     validate_file_match,
 )
@@ -35,11 +36,34 @@ def test_build_search_terms_with_minimal_parameters() -> None:
     assert query == '"test.py" path:/'
 
 
+@pytest.mark.parametrize(
+    ("filename", "extension"),
+    [
+        (".nvmrc", ""),
+        (".gitignore", ""),
+        (".env", ""),
+        ("Dockerfile", ""),
+        ("test.py", "py"),
+        ("test.js", "js"),
+        ("catalog.yaml", "yaml"),
+        ("package.json", "json"),
+        ("archive.tar.gz", "gz"),
+        (".eslintrc.js", "js"),
+    ],
+)
+def test_extract_filename_extension(filename: str, extension: str) -> None:
+    """Dotfiles have no extension; ordinary files keep theirs."""
+    assert extract_filename_extension(filename) == extension
+
+
 def test_validate_file_match() -> None:
     """Test validate_file_match function."""
     assert validate_file_match("src/main/test.py", "test.py", "src/main")
     assert validate_file_match("test.py", "test.py", "")
     assert validate_file_match("test.py", "test.py", "/")
+    assert validate_file_match(".nvmrc", ".nvmrc", "/")
+    assert validate_file_match("src/.gitignore", ".gitignore", "src")
+    assert validate_file_match(".env", ".env", "")
     assert not validate_file_match("src/main/other.py", "test.py", "src/main")
     assert not validate_file_match("src/test/test.py", "test.py", "src/main")
 
@@ -134,6 +158,107 @@ async def test_process_file_patterns_with_extensions() -> None:
         assert len(search_calls) == 2
         assert "ext:py" in search_calls[0]
         assert "ext:js" in search_calls[1]
+
+
+@pytest.mark.asyncio
+async def test_process_file_patterns_ingests_dotfiles() -> None:
+    """Dotfiles are searched without an ext filter and their content is returned."""
+    filenames = [".nvmrc", ".gitignore", ".env"]
+    search_calls: List[str] = []
+
+    async def mock_search_files(
+        query: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        search_calls.append(query)
+        filename = query.split('"')[1]
+        yield [
+            {
+                "path_matches": [{"match": filename}],
+                "file": {
+                    "path": filename,
+                    "commit": {
+                        "repository": {
+                            "name": "test-repo",
+                            "mainbranch": {"name": "main"},
+                        }
+                    },
+                },
+            }
+        ]
+
+    async def mock_retrieve_file_content(
+        file_info: Dict[str, Any], skip_parsing: bool
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        yield {
+            "content": f"content of {file_info['path']}",
+            "metadata": {"path": file_info["path"]},
+            "repo": {"name": "test-repo"},
+            "branch": "main",
+        }
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_init_client.return_value = mock_client
+
+        with patch(
+            "bitbucket_cloud.helpers.file_kind.retrieve_file_content",
+            side_effect=mock_retrieve_file_content,
+        ):
+            file_pattern = BitbucketFilePattern(
+                path="/",
+                repos=["test-repo"],
+                filenames=filenames,
+                skipParsing=False,
+            )
+
+            results = []
+            async for result in process_file_patterns(file_pattern):
+                results.extend(result)
+
+    assert [result["metadata"]["path"] for result in results] == filenames
+    assert [result["content"] for result in results] == [
+        "content of .nvmrc",
+        "content of .gitignore",
+        "content of .env",
+    ]
+    assert len(search_calls) == len(filenames)
+    for query, filename in zip(search_calls, filenames):
+        assert f'"{filename}"' in query
+        assert "ext:" not in query
+
+
+@pytest.mark.asyncio
+async def test_process_file_patterns_keeps_extension_for_regular_files() -> None:
+    """Files with a real extension still search by that extension."""
+    search_calls: List[str] = []
+
+    async def mock_search_files(
+        query: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        search_calls.append(query)
+        yield []
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_init_client.return_value = mock_client
+
+        file_pattern = BitbucketFilePattern(
+            path="src",
+            repos=["test-repo"],
+            filenames=["catalog.yaml", "package.json", "archive.tar.gz"],
+            skipParsing=False,
+        )
+
+        async for _ in process_file_patterns(file_pattern):
+            pass
+
+    assert len(search_calls) == 3
+    assert "ext:yaml" in search_calls[0]
+    assert "ext:json" in search_calls[1]
+    assert "ext:gz" in search_calls[2]
+    assert "ext:tar" not in search_calls[2]
 
 
 @pytest.mark.asyncio
