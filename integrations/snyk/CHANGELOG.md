@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.112 (2026-09-27)
+
+
+### Improved Documentation
+
+- Clarify that webhookSecret is required for live events (minimum 16 characters per Snyk) and not required otherwise
+
+
 ## 0.5.111 (2026-09-23)
 
 
