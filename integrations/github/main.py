@@ -948,12 +948,13 @@ async def resync_deployments(
                     yield deployments
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPLOYMENT_STATUS)
 @ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
 @_resync_per_authenticator
 async def resync_deployment_statuses(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all deployment statuses in the organization."""
+    """Fetch statuses for deployments in the ``created_since`` window."""
     logger.info(f"Starting resync for kind {kind}")
 
     rest_client = create_github_client(authenticator)
@@ -964,10 +965,15 @@ async def resync_deployment_statuses(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentStatusConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    deployments_since = resolve_effective_datetime(
+        sync_cursor, config.selector.created_since_datetime
+    )
 
     logger.info(
         f"Deployment status resync filters: "
-        f"task={config.selector.task}, environment={config.selector.environment}"
+        f"task={config.selector.task}, environment={config.selector.environment}, "
+        f"deployments_since={deployments_since.isoformat() if deployments_since else None}"
     )
 
     async for organizations in org_exporter.get_paginated_resources():
@@ -995,6 +1001,7 @@ async def resync_deployment_statuses(
                         repo_name=repo_name,
                         task=config.selector.task,
                         environment=config.selector.environment,
+                        created_since=deployments_since,
                     )
 
                     async for (

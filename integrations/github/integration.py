@@ -884,6 +884,20 @@ class GithubDeploymentStatusSelector(RepoSearchSelector):
         description="Filter deployment statuses by deployment environment name (e.g. staging, production).",
         default=None,
     )
+    created_since: Optional[str] = Field(
+        default=None,
+        alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Created Since",
+        description=(
+            "Only include statuses for deployments created after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.created_since)
 
 
 class GithubDeploymentStatusConfig(ResourceConfig):
