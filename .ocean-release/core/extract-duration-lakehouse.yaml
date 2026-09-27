@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: improvement
+changelog: Report per-batch extract duration on lakehouse raw data writes (extractDurationMs) so DSP can surface metrics.extract.durationSeconds on integration sync events
