@@ -59,7 +59,7 @@ def test_enable_delete_rejects_non_boolean() -> None:
 
 
 def test_enable_delete_rejects_null() -> None:
-    """null is not omit — reject so callers omit the key for default true."""
+    """null is not a bool — rejected by the isinstance guard (same as other non-bools)."""
     import pytest
     from pydantic.v1 import ValidationError
 
