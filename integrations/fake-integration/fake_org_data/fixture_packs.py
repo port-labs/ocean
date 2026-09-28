@@ -51,7 +51,9 @@ def discover_pack_names() -> List[str]:
     for path in sorted(PACKS_ROOT.iterdir()):
         if not path.is_dir() or path.name.startswith("."):
             continue
-        has_resource = any((path / filename).is_file() for filename in RESOURCE_FILES.values())
+        has_resource = any(
+            (path / filename).is_file() for filename in RESOURCE_FILES.values()
+        )
         if has_resource or (path / "README.md").is_file():
             names.append(path.name)
     return names
@@ -107,7 +109,9 @@ def persons_for_department(
             status=p["status"],
             age=p["age"],
             bio=p.get("bio") or "",
-            department=FakeDepartment(id=dept["id"], name=dept.get("name") or dept["id"]),
+            department=FakeDepartment(
+                id=dept["id"], name=dept.get("name") or dept["id"]
+            ),
         )
         out.append(person.dict())
     return out

@@ -153,11 +153,8 @@ async def get_departments() -> AsyncGenerator[List[Dict[Any, Any]], None]:
             yield departments
             return
 
-    departments = (
-        FAKE_DEPARTMENTS if not single_department_run else [FAKE_DEPARTMENTS[0]]
-    )
-
-    yield [department.dict() for department in departments]
+    source = FAKE_DEPARTMENTS if not single_department_run else FAKE_DEPARTMENTS[:1]
+    yield [department.dict() for department in source]
 
 
 async def _results_from_pack_or_fetch(

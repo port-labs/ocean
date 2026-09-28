@@ -6,7 +6,7 @@
     "status": "WORKING",
     "age": 34,
     "bio": "Platform engineer",
-    "department": { "id": "hr", "name": "hr" }
+    "department": {"id": "hr", "name": "hr"}
   },
   {
     "id": "person-hr-002",
@@ -15,7 +15,7 @@
     "status": "WORKING",
     "age": 29,
     "bio": "People ops",
-    "department": { "id": "hr", "name": "hr" }
+    "department": {"id": "hr", "name": "hr"}
   },
   {
     "id": "person-marketing-001",
@@ -24,7 +24,7 @@
     "status": "WORKING",
     "age": 31,
     "bio": "Campaign lead",
-    "department": { "id": "marketing", "name": "marketing" }
+    "department": {"id": "marketing", "name": "marketing"}
   },
   {
     "id": "person-marketing-002",
@@ -33,7 +33,7 @@
     "status": "NOPE",
     "age": 27,
     "bio": "Content",
-    "department": { "id": "marketing", "name": "marketing" }
+    "department": {"id": "marketing", "name": "marketing"}
   },
   {
     "id": "person-finance-001",
@@ -42,7 +42,7 @@
     "status": "WORKING",
     "age": 41,
     "bio": "Controller",
-    "department": { "id": "finance", "name": "finance" }
+    "department": {"id": "finance", "name": "finance"}
   },
   {
     "id": "person-finance-002",
@@ -51,7 +51,7 @@
     "status": "WORKING",
     "age": 36,
     "bio": "Analyst",
-    "department": { "id": "finance", "name": "finance" }
+    "department": {"id": "finance", "name": "finance"}
   },
   {
     "id": "person-support-001",
@@ -60,7 +60,7 @@
     "status": "WORKING",
     "age": 28,
     "bio": "Support lead",
-    "department": { "id": "support", "name": "support" }
+    "department": {"id": "support", "name": "support"}
   },
   {
     "id": "person-support-002",
@@ -69,7 +69,7 @@
     "status": "WORKING",
     "age": 33,
     "bio": "Support engineer",
-    "department": { "id": "support", "name": "support" }
+    "department": {"id": "support", "name": "support"}
   },
   {
     "id": "person-morpazia-001",
@@ -78,7 +78,7 @@
     "status": "WORKING",
     "age": 38,
     "bio": "Morpazia specialist",
-    "department": { "id": "morpazia", "name": "morpazia" }
+    "department": {"id": "morpazia", "name": "morpazia"}
   },
   {
     "id": "person-morpazia-002",
@@ -87,6 +87,6 @@
     "status": "NOPE",
     "age": 45,
     "bio": "Operations",
-    "department": { "id": "morpazia", "name": "morpazia" }
+    "department": {"id": "morpazia", "name": "morpazia"}
   }
 ]
