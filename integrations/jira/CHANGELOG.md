@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.14.3 (2026-09-28)
+
+
+### Bug Fixes
+
+- Remove OAuth minimumScheduledResyncInterval so SaaS OAuth installs are not forced to a 2h resync floor
+
+
 ## 0.14.2 (2026-09-28)
 
 
