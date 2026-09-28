@@ -5,7 +5,7 @@ from typing import Any
 import jq  # type: ignore[import-not-found]
 import yaml  # type: ignore[import-untyped]
 
-from integration import PlainPortAppConfig
+from integration import PlainPortAppConfig, ThreadResourceConfig
 
 FIXTURES = Path("tests/fixtures")
 RESOURCES = Path(".port/resources")
@@ -55,6 +55,11 @@ def test_blueprint_and_port_app_config_parse() -> None:
     assert by_id["plainThread"]["relations"]["customer"]["target"] == "plainCustomer"
     assert by_id["plainThread"]["relations"]["tenant"]["target"] == "plainTenant"
     assert by_id["plainThread"]["relations"]["assignee"]["target"] == "plainUser"
+    thread = next(
+        resource for resource in config.resources if resource.kind == "thread"
+    )
+    assert isinstance(thread, ThreadResourceConfig)
+    assert thread.selector.exclude_done_threads is False
 
 
 def test_mapping_resolves_identifiers_titles_and_relations() -> None:

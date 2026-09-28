@@ -16,7 +16,7 @@ Ocean integration that syncs [Plain](https://www.plain.com/) support data into P
 | `customer` | `customers` | `customer:read` |
 | `thread` | `threads` | `thread:read` |
 
-Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, and `plainThread`. A thread assignee relation is set only when `assignedTo` is a `User`. Customer tenants come from `tenantMemberships`.
+Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, and `plainThread`. A thread assignee relation is set only when `assignedTo` is a `User`. Customer tenants come from `tenantMemberships`. On the thread selector, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. `false` syncs every status. The next resync uses the saved mapping.
 
 Create the API key on a Plain machine user (Settings → Machine Users → Add API key). The token looks like `plainApiKey_…`.
 
@@ -27,7 +27,7 @@ Create the API key on a Plain machine user (Settings → Machine Users → Add A
 | `apiToken` | yes | | Bearer token for the GraphQL API |
 | `apiUrl` | no | `https://core-api.uk.plain.com/graphql/v1` | GraphQL endpoint |
 | `pageSize` | no | `100` | List page size. Plain's maximum is 100 |
-| `threadStatusFilter` | no | unset | Comma-separated statuses: `TODO`, `SNOOZED`, `DONE`. Omit to sync every status |
+| `threadStatusFilter` | no | unset | Comma-separated statuses (`TODO`, `SNOOZED`, `DONE`) for a thread fetch that does not receive a status list. Thread resync uses `excludeDoneThreads` on the thread selector |
 | `enableLiveEvents` | no | `false` | Reserved for webhook registration. Leave false |
 
 For local runs, set the same values as environment variables, for example `OCEAN__INTEGRATION__CONFIG__API_TOKEN`. See `.env.example`.

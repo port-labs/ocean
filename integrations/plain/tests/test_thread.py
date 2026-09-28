@@ -2,7 +2,9 @@ from typing import Any
 from unittest.mock import patch
 
 import httpx
+from port_ocean.context.resource import resource_context
 
+from integration import ThreadResourceConfig
 from main import on_resync_threads
 from plain.queries import LIST_THREADS
 from tests.kind_helpers import (
@@ -82,6 +84,28 @@ async def test_get_threads_passes_status_filter() -> None:
     assert seen["variables"] == {"filters": {"statuses": ["TODO", "DONE"]}}
 
 
+def _thread_resource(exclude_done_threads: bool) -> ThreadResourceConfig:
+    config = ThreadResourceConfig.parse_obj(
+        {
+            "kind": "thread",
+            "selector": {
+                "query": "true",
+                "excludeDoneThreads": exclude_done_threads,
+            },
+            "port": {
+                "entity": {
+                    "mappings": {
+                        "identifier": ".id",
+                        "blueprint": '"plainThread"',
+                    }
+                }
+            },
+        }
+    )
+    assert isinstance(config, ThreadResourceConfig)
+    return config
+
+
 async def test_resync_threads_yields_batches() -> None:
     expected = [
         [
@@ -91,18 +115,41 @@ async def test_resync_threads_yields_batches() -> None:
             }
         ]
     ]
+    seen: dict[str, Any] = {}
 
     class FakeClient:
         def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
             pass
 
-        async def get_threads(self) -> Any:
+        async def get_threads(self, statuses: list[str] | None = None) -> Any:
+            seen["statuses"] = statuses
             for batch in expected:
                 yield batch
 
     with patch("main.PlainClient", FakeClient):
         assert on_resync_threads is not None
-        batches = await collect_pages(on_resync_threads("thread"))
+        async with resource_context(_thread_resource(False)):
+            batches = await collect_pages(on_resync_threads("thread"))
 
     assert batches == expected
+    assert seen["statuses"] == []
     assert batches[0][0]["assignedTo"]["__typename"] == "MachineUser"
+
+
+async def test_resync_threads_excludes_done_when_mapping_flag_is_set() -> None:
+    seen: dict[str, Any] = {}
+
+    class FakeClient:
+        def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
+            pass
+
+        async def get_threads(self, statuses: list[str] | None = None) -> Any:
+            seen["statuses"] = statuses
+            yield []
+
+    with patch("main.PlainClient", FakeClient):
+        assert on_resync_threads is not None
+        async with resource_context(_thread_resource(True)):
+            await collect_pages(on_resync_threads("thread"))
+
+    assert seen["statuses"] == ["TODO", "SNOOZED"]

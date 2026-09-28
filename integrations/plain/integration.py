@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
+    Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic.v1 import Field
@@ -50,10 +51,23 @@ class CustomerResourceConfig(ResourceConfig):
     )
 
 
+class ThreadSelector(Selector):
+    exclude_done_threads: bool = Field(
+        default=False,
+        alias="excludeDoneThreads",
+        description="Sync only TODO and SNOOZED threads. Leave false to sync every status.",
+        title="Exclude done threads",
+    )
+
+
 class ThreadResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.THREAD] = Field(
         description="Plain thread",
         title="Thread",
+    )
+    selector: ThreadSelector = Field(
+        description="Thread selector",
+        title="Selector",
     )
 
 

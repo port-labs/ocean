@@ -2,11 +2,14 @@ from typing import Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.context.resource import resource
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import ExampleKind
+from integration import ExampleKind, ThreadResourceConfig
 from plain.client import PlainClient
 from plain.utils import ObjectKind
+
+OPEN_THREAD_STATUSES = ["TODO", "SNOOZED"]
 
 
 @ocean.on_resync(ExampleKind.EXAMPLE_KIND)
@@ -61,8 +64,14 @@ async def on_resync_customers(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.THREAD)
 async def on_resync_threads(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    thread_config = resource.resource_config
+    if not isinstance(thread_config, ThreadResourceConfig):
+        raise RuntimeError("Thread resync requires a thread resource config")
+    statuses = (
+        OPEN_THREAD_STATUSES if thread_config.selector.exclude_done_threads else []
+    )
     client = PlainClient()
-    async for threads in client.get_threads():
+    async for threads in client.get_threads(statuses):
         logger.info(f"Received thread batch with {len(threads)} threads")
         yield threads
 

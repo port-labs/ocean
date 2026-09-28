@@ -182,10 +182,11 @@ class PlainClient:
         ):
             yield batch
 
-    async def get_threads(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        variables = None
-        if self._thread_statuses:
-            variables = {"filters": {"statuses": self._thread_statuses}}
+    async def get_threads(
+        self, statuses: list[str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        chosen = self._thread_statuses if statuses is None else statuses
+        variables = {"filters": {"statuses": chosen}} if chosen else None
         async for batch in self.paginate_connection(
             LIST_THREADS,
             "ListThreads",
