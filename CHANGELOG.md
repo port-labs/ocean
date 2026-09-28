@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.3 (2026-09-28)
+
+
+### Improvements
+
+- Add optional enableDelete on each mapping resource so reconciliation delete policy can be set per resource without changing upserts
+
+
 ## 0.52.2 (2026-09-23)
 
 

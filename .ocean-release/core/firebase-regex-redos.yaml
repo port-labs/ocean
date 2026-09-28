@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix quadratic-time Firebase URL pattern in the sensitive log filter that could stall the event loop when scrubbing large single-line log messages.

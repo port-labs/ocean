@@ -73,9 +73,16 @@ async def iter_pipelines() -> AsyncGenerator[list[dict[str, Any]], None]:
 async def iter_pull_requests(
     search_criteria: dict[str, Any],
     max_results: Optional[int] = None,
+    enrich_with_commits: bool = False,
+    enrich_with_review_discussion: bool = False,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_pull_requests(search_criteria, max_results)
+        lambda client: client.generate_pull_requests(
+            search_criteria,
+            max_results,
+            enrich_with_commits=enrich_with_commits,
+            enrich_with_review_discussion=enrich_with_review_discussion,
+        )
     ):
         yield batch
 

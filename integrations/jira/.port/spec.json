@@ -260,9 +260,6 @@
       "valuesOverride": {
         "integrationSpec": {
           "jiraHost": "\"https://api.atlassian.com/ex/jira/\" + .oauthData.profile.accessibleResources[0].id"
-        },
-        "appSpec": {
-          "minimumScheduledResyncInterval": "2h"
         }
       }
     }
