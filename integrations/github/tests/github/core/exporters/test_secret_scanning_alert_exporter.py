@@ -249,3 +249,39 @@ class TestRestSecretScanningAlertExporter:
                     "direction": "desc",
                 },
             )
+
+    async def test_get_paginated_resources_org_level(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        org_alerts = [
+            {
+                **TEST_SECRET_SCANNING_ALERTS[0],
+                "repository": {"name": "repo-a", "archived": False},
+            }
+        ]
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield org_alerts
+
+        exporter = RestSecretScanningAlertExporter(rest_client)
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            alerts = []
+            async for batch in exporter.get_paginated_resources(
+                ListSecretScanningAlertOptions(
+                    organization="test-org",
+                    state="open",
+                    hide_secret=True,
+                )
+            ):
+                alerts.extend(batch)
+
+            assert len(alerts) == 1
+            assert alerts[0]["__repository"] == "repo-a"
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/orgs/test-org/secret-scanning/alerts",
+                {"state": "open", "hide_secret": True},
+            )

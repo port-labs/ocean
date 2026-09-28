@@ -317,11 +317,15 @@ class SingleSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
     alert_number: Required[str]
 
 
-class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+class ListSecretScanningAlertOptions(SingleOrganizationOptions):
     """Options for listing secret scanning alerts."""
 
+    hide_secret: Required[bool]
     state: Required[str]
     updated_since: NotRequired[Optional[datetime]]
+    repo_name: NotRequired[Optional[str]]
+    allowed_repos: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
 
 
 class SinglePackageOptions(SingleOrganizationOptions):
