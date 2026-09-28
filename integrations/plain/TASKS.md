@@ -169,20 +169,22 @@ Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public
 **Prerequisites:** `T3`
 
 **Work**
-- [ ] `paginate_connection(query, operation_name, variables, connection_path)`
-- [ ] Inject `first` / `after` into variables each page
-- [ ] Yield batches of nodes
-- [ ] Stop when `pageInfo.hasNextPage` is false
-- [ ] Honor `page_size` from config (cap at 100)
+- [x] `paginate_connection(query, operation_name, variables, connection_path)`
+- [x] Inject `first` / `after` into variables each page
+- [x] Yield batches of nodes
+- [x] Stop when `pageInfo.hasNextPage` is false
+- [x] Honor `page_size` from config (cap at 100)
 
 **Exit tests** (`tests/test_client_pagination.py`)
-- [ ] Single page: yields one batch, stops
-- [ ] Multi-page: uses `endCursor` as next `after`, yields all pages in order
-- [ ] Empty connection: yields nothing / empty batch without hanging
-- [ ] Does not request another page when `hasNextPage=false`
-- [ ] `poetry run pytest tests/test_client_pagination.py -q`
+- [x] Single page: yields one batch, stops
+- [x] Multi-page: uses `endCursor` as next `after`, yields all pages in order
+- [x] Empty connection: yields nothing / empty batch without hanging
+- [x] Does not request another page when `hasNextPage=false`
+- [x] `poetry run pytest tests/test_client_pagination.py -q`
 
 **Done when:** pagination edge cases are covered; this unblocks all kind work.
+
+`paginate_connection` yields one batch of nodes per page. `page_size` defaults to 100 and is capped at 100. Paths such as `data.companies` are accepted because `execute()` already returns the GraphQL `data` object. A GraphQL error from `execute()` is not treated as an empty page.
 
 ---
 
@@ -194,18 +196,20 @@ Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public
 **Parallel with:** `T6`, `T7`, `T8`
 
 **Work**
-- [ ] `LIST_COMPANIES` in `plain/queries.py`
-- [ ] `client.get_companies()` using `paginate_connection(..., "data.companies")`
-- [ ] `@ocean.on_resync("company")` in `main.py`
-- [ ] Register kind in spec exporter resources
+- [x] `LIST_COMPANIES` in `plain/queries.py`
+- [x] `client.get_companies()` using `paginate_connection(..., "data.companies")`
+- [x] `@ocean.on_resync("company")` in `main.py`
+- [x] Register kind in spec exporter resources
 
 **Exit tests** (`tests/test_company.py` and/or client query tests)
-- [ ] Query string contains expected fields (`id`, `externalId`, `name`, …)
-- [ ] Client method yields nodes from mocked paginated response
-- [ ] Resync handler yields batches (unit-test with mocked client)
-- [ ] `poetry run pytest -q -k company`
+- [x] Query string contains expected fields (`id`, `name`, `domainName`, …)
+- [x] Client method yields nodes from mocked paginated response
+- [x] Resync handler yields batches (unit-test with mocked client)
+- [x] `poetry run pytest -q -k company`
 
 **Done when:** company resync path works under mocks.
+
+Company has no `externalId` in the Plain schema. The list query selects `id`, `name`, `domainName`, and timestamps.
 
 ---
 
@@ -215,16 +219,16 @@ Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public
 **Parallel with:** `T5`, `T7`, `T8`
 
 **Work**
-- [ ] `LIST_TENANTS` query
-- [ ] `client.get_tenants()`
-- [ ] `@ocean.on_resync("tenant")`
-- [ ] Spec resource registration
+- [x] `LIST_TENANTS` query
+- [x] `client.get_tenants()`
+- [x] `@ocean.on_resync("tenant")`
+- [x] Spec resource registration
 
 **Exit tests**
-- [ ] Query field smoke assertions
-- [ ] Client pagination mock yields tenants
-- [ ] Resync handler mock test
-- [ ] `poetry run pytest -q -k tenant`
+- [x] Query field smoke assertions
+- [x] Client pagination mock yields tenants
+- [x] Resync handler mock test
+- [x] `poetry run pytest -q -k tenant`
 
 ---
 
@@ -234,14 +238,14 @@ Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public
 **Parallel with:** `T5`, `T6`, `T8`
 
 **Work**
-- [ ] `LIST_USERS` query
-- [ ] `client.get_users()`
-- [ ] `@ocean.on_resync("user")`
-- [ ] Spec resource registration
+- [x] `LIST_USERS` query
+- [x] `client.get_users()`
+- [x] `@ocean.on_resync("user")`
+- [x] Spec resource registration
 
 **Exit tests**
-- [ ] Query/client/resync tests analogous to `T5`
-- [ ] `poetry run pytest -q -k user`
+- [x] Query/client/resync tests analogous to `T5`
+- [x] `poetry run pytest -q -k user`
 
 ---
 

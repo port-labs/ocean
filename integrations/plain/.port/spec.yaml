@@ -4,8 +4,10 @@ features:
   - type: exporter
     section: Under Development  # Should be one of the available sections in Port
     resources:
-      - kind: plain-example-kind
-      # - kind: <ResourceName2>
+      - kind: company
+      - kind: tenant
+      - kind: user
+      - kind: example-kind
 configurations:
   - name: myplainToken
     # required: true

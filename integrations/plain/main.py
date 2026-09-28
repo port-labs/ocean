@@ -1,25 +1,17 @@
 from typing import Any
 
+from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import ObjectKind
+from integration import ExampleKind
+from plain.client import PlainClient
+from plain.utils import ObjectKind
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync()
+@ocean.on_resync(ExampleKind.EXAMPLE_KIND)
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == ObjectKind.PROJECT:
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == ObjectKind.ISSUE:
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-
-    # Initial stub to show complete flow, replace this with your own logic
-    if kind == ObjectKind.EXAMPLE_KIND:
+    if kind == ExampleKind.EXAMPLE_KIND:
         return [
             {
                 "my_custom_id": f"id_{x}",
@@ -35,24 +27,30 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
     return []
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync(ObjectKind.PROJECT)
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync(ObjectKind.ISSUE)
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+@ocean.on_resync(ObjectKind.COMPANY)
+async def on_resync_companies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = PlainClient()
+    async for companies in client.get_companies():
+        logger.info(f"Received company batch with {len(companies)} companies")
+        yield companies
 
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
+@ocean.on_resync(ObjectKind.TENANT)
+async def on_resync_tenants(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = PlainClient()
+    async for tenants in client.get_tenants():
+        logger.info(f"Received tenant batch with {len(tenants)} tenants")
+        yield tenants
+
+
+@ocean.on_resync(ObjectKind.USER)
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = PlainClient()
+    async for users in client.get_users():
+        logger.info(f"Received user batch with {len(users)} users")
+        yield users
+
+
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting plain integration")
+    logger.info("Starting plain integration")
