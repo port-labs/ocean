@@ -1,16 +1,87 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
-  - kind: example-kind
+  - kind: company
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: .my_custom_id
-          title: '(.my_component + " @ " + .my_service)'
-          blueprint: '"plainExampleBlueprint"'
+          identifier: .id
+          title: .name
+          blueprint: '"plainCompany"'
           properties:
-            status: .my_enum
-            text: .my_custom_text
-            component: .my_component
-            service: .my_service
-            score: .my_special_score
+            domainName: .domainName
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+  - kind: tenant
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"plainTenant"'
+          properties:
+            externalId: .externalId
+            url: .url
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullName // .publicName // .email
+          blueprint: '"plainUser"'
+          properties:
+            email: .email
+            publicName: .publicName
+            status: .status
+            role: .role.name
+  - kind: customer
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullName // .shortName // .email.email
+          blueprint: '"plainCustomer"'
+          properties:
+            externalId: .externalId
+            email: .email.email
+            shortName: .shortName
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+          relations:
+            company: .company.id
+            tenants: "[.tenantMemberships.edges[].node.tenant.id]"
+  - kind: thread
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title // .ref
+          blueprint: '"plainThread"'
+          properties:
+            ref: .ref
+            externalId: .externalId
+            description: .description
+            status: .status
+            priority: .priority
+            assigneeType: .assignedTo.__typename
+            machineUserAssignee: if .assignedTo.__typename == "MachineUser" then .assignedTo.id else null end
+            labels: "[.labels[].labelType.name]"
+            fields: '[.threadFields[] | .key + "=" + ((.stringValue // .numberValue // .booleanValue) | tostring)] | join(", ")'
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+          relations:
+            customer: .customer.id
+            tenant: .tenant.id
+            assignee: if .assignedTo.__typename == "User" then .assignedTo.id else null end

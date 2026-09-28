@@ -1,23 +1,36 @@
 description: Plain integration for Port Ocean
-icon: Cookiecutter  # Should be one of the available icons in Port
+icon: Blueprint
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: Project management
     resources:
       - kind: company
       - kind: tenant
       - kind: user
       - kind: customer
       - kind: thread
-      - kind: example-kind
 configurations:
-  - name: myplainToken
-    # required: true
+  - name: apiToken
+    required: true
     type: string
     sensitive: true
-  - name: someApplicationUrl
-    type: url
-  - name: threadStatusFilter
-    type: string
+    description: Plain API key sent as a Bearer token
+  - name: apiUrl
     required: false
+    type: url
+    default: "https://core-api.uk.plain.com/graphql/v1"
+    description: Plain GraphQL endpoint. The UK host is the one that resolves.
+  - name: pageSize
+    required: false
+    type: string
+    default: "100"
+    description: Page size for list queries. Plain caps this at 100.
+  - name: threadStatusFilter
+    required: false
+    type: string
     description: Comma-separated thread statuses to sync (TODO, SNOOZED, DONE). Omit to sync every status.
+  - name: enableLiveEvents
+    required: false
+    type: boolean
+    default: false
+    description: "Phase 2: register Plain webhooks for real-time sync. Leave false until webhook support is implemented."

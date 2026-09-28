@@ -158,7 +158,7 @@ Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public
 
 **Done when:** execute path is fully unit-tested with mocks (no live API required).
 
-`execute()` returns the GraphQL `data` object. HTTP 401/500 raise `PlainHTTPError`. A body `errors` array raises `PlainGraphQLError`. Requests send `Authorization: Bearer <api_token>` and `User-Agent: port-ocean-plain`. `api_url` defaults to `https://core-api.uk.plain.com/graphql/v1` when unset. Spec keys `apiToken` / `apiUrl` are still the cookiecutter placeholders; Ocean will expose them as `api_token` / `api_url` once the spec is updated.
+`execute()` returns the GraphQL `data` object. HTTP 401/500 raise `PlainHTTPError`. A body `errors` array raises `PlainGraphQLError`. Requests send `Authorization: Bearer <api_token>` and `User-Agent: port-ocean-plain`. `api_url` defaults to `https://core-api.uk.plain.com/graphql/v1` when unset. Spec keys `apiToken` and `apiUrl` are exposed to the client as `api_token` and `api_url`.
 
 ---
 
@@ -304,20 +304,22 @@ Customer tenants come from `tenantMemberships`, not a `tenants` list. The query 
 **Prerequisites:** `T9` (fields known). Drafts may start after `T5`–`T8`.
 
 **Work**
-- [ ] `.port/resources/blueprints.json` for:
+- [x] `.port/resources/blueprints.json` for:
   - `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, `plainThread`
-- [ ] Relations as in IMPLEMENTATION_PLAN.md
-- [ ] `.port/resources/port-app-config.yaml` with mappings
-- [ ] `createMissingRelatedEntities: true`
-- [ ] Resource order: company → tenant → user → customer → thread
+- [x] Relations as in IMPLEMENTATION_PLAN.md
+- [x] `.port/resources/port-app-config.yaml` with mappings
+- [x] `createMissingRelatedEntities: true`
+- [x] Resource order: company → tenant → user → customer → thread
 
 **Exit tests**
-- [ ] Mapping smoke tests: given sample raw fixtures, JQ/mapping expectations for identifiers/titles/relations
+- [x] Mapping smoke tests: given sample raw fixtures, JQ/mapping expectations for identifiers/titles/relations
   - Prefer lightweight tests that validate critical JQ expressions against fixtures in `tests/fixtures/`
-- [ ] YAML/JSON parse validation (load files in test)
-- [ ] `poetry run pytest -q -k "mapping or blueprint or port_app_config"`
+- [x] YAML/JSON parse validation (load files in test)
+- [x] `poetry run pytest -q -k "mapping or blueprint or port_app_config"`
 
 **Done when:** fixtures prove identifiers + key relations resolve.
+
+The mapping file is `.port/resources/port-app-config.yml` (Ocean accepts `.yml`). Customer tenants map from `tenantMemberships.edges[].node.tenant.id`. Thread `assignee` is set only when `assignedTo.__typename` is `User`; a machine user is stored on `machineUserAssignee`. The scaffold `example-kind` mapping was removed so a live run does not create the example blueprint. A full user sync still needs `roles:read`, and a full customer sync still needs `customerTenantMembership:read`.
 
 ---
 
@@ -328,14 +330,16 @@ Customer tenants come from `tenantMemberships`, not a `tenants` list. The query 
 **Prerequisites:** `T1` (can land anytime after scaffold; finalize after `T9`)
 
 **Work**
-- [ ] `enableLiveEvents` boolean in `.port/spec.yaml` (default `false`)
-- [ ] Guarded `@ocean.on_start` stub that no-ops when disabled
-- [ ] Comment or TODO pointing to Phase 2 webhook registration
+- [x] `enableLiveEvents` boolean in `.port/spec.yaml` (default `false`)
+- [x] Guarded `@ocean.on_start` stub that no-ops when disabled
+- [x] Comment or TODO pointing to Phase 2 webhook registration
 
 **Exit tests**
-- [ ] Spec loads / config model accepts `enable_live_events`
-- [ ] `on_start` does not register webhooks when flag is false
-- [ ] `poetry run pytest -q -k "live_events or on_start or spec"`
+- [x] Spec loads / config model accepts `enable_live_events`
+- [x] `on_start` does not register webhooks when flag is false
+- [x] `poetry run pytest -q -k "live_events or on_start or spec"`
+
+`enableLiveEvents` defaults to false. `on_start` skips `_register_webhook_target` unless the flag is true. The target function only logs; Phase 2 (`P2-T5`) still has to register the webhook. Spec install keys are now `apiToken`, `apiUrl`, `pageSize`, `threadStatusFilter`, and `enableLiveEvents`.
 
 ---
 
@@ -346,15 +350,17 @@ Customer tenants come from `tenantMemberships`, not a `tenants` list. The query 
 **Prerequisites:** `T9`, `T10`, `T11`
 
 **Work**
-- [ ] README: install config, permissions, kinds, limitations
-- [ ] CHANGELOG fragment / entry
-- [ ] Example env / debug instructions
-- [ ] Ensure `.port/spec` lists all 5 exporter resources
+- [x] README: install config, permissions, kinds, limitations
+- [x] CHANGELOG fragment / entry
+- [x] Example env / debug instructions
+- [x] Ensure `.port/spec` lists all 5 exporter resources
 
 **Exit tests / checks**
-- [ ] `poetry run pytest -q` (full suite green)
-- [ ] `make lint` / format checks green
-- [ ] Manual checklist: no secrets in repo; defaults safe (`enableLiveEvents=false`)
+- [x] `poetry run pytest -q` (full suite green)
+- [x] `make lint` / format checks green
+- [x] Manual checklist: no secrets in repo; defaults safe (`enableLiveEvents=false`)
+
+README, `CONTRIBUTING.md`, and `.env.example` document the install config. `CHANGELOG.md` records the 0.1.0-beta resync kinds. `.env` stays gitignored.
 
 **Phase 1 done when:** full suite + lint pass and docs are reviewable.
 

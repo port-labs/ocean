@@ -1,0 +1,7 @@
+{
+  "id": "co_1",
+  "name": "Analytical Engines",
+  "domainName": "analytical.example",
+  "createdAt": {"iso8601": "2026-01-01T00:00:00Z"},
+  "updatedAt": {"iso8601": "2026-01-02T00:00:00Z"}
+}

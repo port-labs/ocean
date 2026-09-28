@@ -67,6 +67,24 @@ async def on_resync_threads(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield threads
 
 
+def _live_events_enabled() -> bool:
+    raw = ocean.integration_config.get("enable_live_events", False)
+    if isinstance(raw, str):
+        return raw.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(raw)
+
+
+async def _register_webhook_target() -> None:
+    # TODO Phase 2 (P2-T5): create the Plain webhook target and point it at this integration.
+    logger.info(
+        "Plain live events are enabled; webhook registration is not implemented yet"
+    )
+
+
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting plain integration")
+    if not _live_events_enabled():
+        logger.info("Plain live events are disabled; skipping webhook registration")
+        return
+    await _register_webhook_target()

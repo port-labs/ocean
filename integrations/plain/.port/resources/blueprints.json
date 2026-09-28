@@ -1,41 +1,222 @@
 [
     {
-        "identifier": "plainExampleBlueprint",
-        "title": "Plain Example",
+        "identifier": "plainCompany",
+        "title": "Plain Company",
         "icon": "Blueprint",
+        "description": "A company in Plain",
         "schema": {
             "properties": {
-                "status": {
+                "domainName": {
                     "type": "string",
-                    "enum": [
-                        "VALID",
-                        "FAILED"
-                    ],
-                    "enumColors": {
-                        "VALID": "green",
-                        "FAILED": "red"
-                    },
-                    "title": "Status"
+                    "title": "Domain"
                 },
-                "text": {
+                "createdAt": {
                     "type": "string",
-                    "title": "Text"
+                    "format": "date-time",
+                    "title": "Created at"
                 },
-                "component": {
+                "updatedAt": {
                     "type": "string",
-                    "title": "Component"
-                },
-                "service": {
-                    "type": "string",
-                    "title": "Service"
-                },
-                "score": {
-                    "type": "number",
-                    "title": "Score"
+                    "format": "date-time",
+                    "title": "Updated at"
                 }
             },
             "required": []
         },
+        "calculationProperties": {},
         "relations": {}
+    },
+    {
+        "identifier": "plainTenant",
+        "title": "Plain Tenant",
+        "icon": "Blueprint",
+        "description": "A tenant in Plain",
+        "schema": {
+            "properties": {
+                "externalId": {
+                    "type": "string",
+                    "title": "External ID"
+                },
+                "url": {
+                    "type": "string",
+                    "format": "url",
+                    "title": "URL"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "plainUser",
+        "title": "Plain User",
+        "icon": "Blueprint",
+        "description": "A support user in Plain",
+        "schema": {
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "title": "Email"
+                },
+                "publicName": {
+                    "type": "string",
+                    "title": "Public name"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status"
+                },
+                "role": {
+                    "type": "string",
+                    "title": "Role"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "plainCustomer",
+        "title": "Plain Customer",
+        "icon": "Blueprint",
+        "description": "A customer in Plain",
+        "schema": {
+            "properties": {
+                "externalId": {
+                    "type": "string",
+                    "title": "External ID"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "title": "Email"
+                },
+                "shortName": {
+                    "type": "string",
+                    "title": "Short name"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "company": {
+                "title": "Company",
+                "target": "plainCompany",
+                "required": false,
+                "many": false
+            },
+            "tenants": {
+                "title": "Tenants",
+                "target": "plainTenant",
+                "required": false,
+                "many": true
+            }
+        }
+    },
+    {
+        "identifier": "plainThread",
+        "title": "Plain Thread",
+        "icon": "Blueprint",
+        "description": "A support thread in Plain",
+        "schema": {
+            "properties": {
+                "ref": {
+                    "type": "string",
+                    "title": "Reference"
+                },
+                "externalId": {
+                    "type": "string",
+                    "title": "External ID"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": ["TODO", "SNOOZED", "DONE"]
+                },
+                "priority": {
+                    "type": "number",
+                    "title": "Priority"
+                },
+                "assigneeType": {
+                    "type": "string",
+                    "title": "Assignee type"
+                },
+                "machineUserAssignee": {
+                    "type": "string",
+                    "title": "Machine user assignee"
+                },
+                "labels": {
+                    "type": "array",
+                    "title": "Labels",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "fields": {
+                    "type": "string",
+                    "title": "Thread fields"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "customer": {
+                "title": "Customer",
+                "target": "plainCustomer",
+                "required": false,
+                "many": false
+            },
+            "tenant": {
+                "title": "Tenant",
+                "target": "plainTenant",
+                "required": false,
+                "many": false
+            },
+            "assignee": {
+                "title": "Assignee",
+                "target": "plainUser",
+                "required": false,
+                "many": false
+            }
+        }
     }
 ]
