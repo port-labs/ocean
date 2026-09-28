@@ -12,7 +12,7 @@ from jira.overrides import (
     JiraWorklogAPIQueryParams,
     ComponentSource,
 )
-from jira.api_models import JiraIssueTransitionsResponse
+from jira.api_models import JiraIssueComment, JiraIssueTransitionsResponse
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -645,6 +645,32 @@ class JiraClient(OAuthClient):
             "POST",
             f"{self.api_url}/issue/{issue_key}/transitions",
             json={"transition": {"id": transition_id}},
+        )
+
+    async def add_comment(
+        self, issue_key: str, payload: dict[str, Any]
+    ) -> JiraIssueComment:
+        response = await self._send_api_request(
+            "POST",
+            f"{self.api_url}/issue/{issue_key}/comment",
+            json=payload,
+        )
+        return JiraIssueComment.model_validate(response)
+
+    async def update_issue(self, issue_key: str, payload: dict[str, Any]) -> None:
+        await self._send_api_request(
+            "PUT",
+            f"{self.api_url}/issue/{issue_key}",
+            json=payload,
+        )
+
+    async def delete_issue(
+        self, issue_key: str, *, delete_subtasks: bool = False
+    ) -> None:
+        await self._send_api_request(
+            "DELETE",
+            f"{self.api_url}/issue/{issue_key}",
+            params={"deleteSubtasks": delete_subtasks},
         )
 
     @staticmethod
