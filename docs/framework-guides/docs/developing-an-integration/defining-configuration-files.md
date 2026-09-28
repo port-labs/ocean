@@ -152,8 +152,6 @@ saas:
     valuesOverride:
       integrationSpec:
         jiraHost: '"https://api.atlassian.com/ex/jira/" + .oauthData.profile.accessibleResources[0].id'
-      appSpec:
-        minimumScheduledResyncInterval: '2h'
 ```
 </details>
 
@@ -465,4 +463,3 @@ Once an integration is running, changes to `blueprints.json` and `port-app-confi
    ```
    DELETE /v1/integration/:{identifier}
    ```
-
