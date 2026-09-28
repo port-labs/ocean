@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add optional enableDelete on each mapping resource so reconciliation delete policy can be set per resource without changing upserts
