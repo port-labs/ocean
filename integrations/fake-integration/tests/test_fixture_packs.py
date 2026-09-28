@@ -6,8 +6,10 @@ import pytest
 from fake_org_data import fixture_packs
 from fake_org_data.fixture_packs import (
     clear_pack_cache,
+    discover_pack_names,
     get_fixture_pack_name,
     load_pack_persons,
+    load_pack_resource,
     persons_for_department,
 )
 
@@ -19,12 +21,33 @@ def _clear_cache() -> Any:
     clear_pack_cache()
 
 
+def test_discover_pack_names_includes_stable_org() -> None:
+    names = discover_pack_names()
+    assert "stable-org" in names
+
+
 def test_load_stable_org_persons() -> None:
     rows = load_pack_persons("stable-org")
     assert len(rows) == 10
     ids = {r["id"] for r in rows}
     assert "person-hr-001" in ids
     assert "person-morpazia-002" in ids
+
+
+def test_load_stable_org_departments() -> None:
+    rows = load_pack_resource("stable-org", "departments")
+    assert rows is not None
+    assert {r["id"] for r in rows} == {
+        "hr",
+        "marketing",
+        "finance",
+        "support",
+        "morpazia",
+    }
+
+
+def test_load_pack_resource_missing_optional_file() -> None:
+    assert load_pack_resource("stable-org", "offices") is None
 
 
 def test_persons_for_department_stable_ids() -> None:

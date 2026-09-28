@@ -1,5 +1,20 @@
 [
   {
+    "identifier": "fake-department",
+    "title": "Fake Department",
+    "icon": "Blueprint",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
     "identifier": "fake-person",
     "relations": {
       "department": {
