@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Remove OAuth minimumScheduledResyncInterval so SaaS OAuth installs are not forced to a 2h resync floor
