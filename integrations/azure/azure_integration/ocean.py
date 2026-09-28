@@ -20,6 +20,10 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 
+from azure_integration.client_options import (
+    apply_azure_authority_host_from_config,
+    azure_mgmt_client_kwargs,
+)
 from azure_integration.utils import (
     ResourceKindsWithSpecialHandling,
     batch_resources_iterator,
@@ -63,7 +67,9 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         AzureSpecificKindSelector, get_current_resource_config().selector
     )
     async with DefaultAzureCredential() as credential:
-        async with SubscriptionClient(credential=credential) as subscription_client:
+        async with SubscriptionClient(
+            credential=credential, **azure_mgmt_client_kwargs()
+        ) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
                 subscription_client.subscriptions.list,
             ):
@@ -91,7 +97,9 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         AzureSpecificKindSelector, get_current_resource_config().selector
     )
     async with DefaultAzureCredential() as credential:
-        async with SubscriptionClient(credential=credential) as subscription_client:
+        async with SubscriptionClient(
+            credential=credential, **azure_mgmt_client_kwargs()
+        ) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
                 subscription_client.subscriptions.list,
                 api_version=resource_selector.api_version,
@@ -116,7 +124,9 @@ async def resync_base_resources(
     kind: str, api_version: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async with DefaultAzureCredential() as credential:
-        async with SubscriptionClient(credential=credential) as subscription_client:
+        async with SubscriptionClient(
+            credential=credential, **azure_mgmt_client_kwargs()
+        ) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
                 subscription_client.subscriptions.list,
             ):
@@ -165,7 +175,9 @@ async def resync_extension_resources(
     """
     with logger.contextualize(resource_kind=kind):
         async with DefaultAzureCredential() as credential:
-            async with SubscriptionClient(credential=credential) as subscription_client:
+            async with SubscriptionClient(
+            credential=credential, **azure_mgmt_client_kwargs()
+        ) as subscription_client:
                 async for subscriptions_batch in batch_resources_iterator(
                     subscription_client.subscriptions.list,
                 ):
@@ -207,6 +219,7 @@ async def cloud_event_validation_middleware_handler(
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Setting up credentials for Azure client")
+    apply_azure_authority_host_from_config()
     azure_client_id = ocean.integration_config.get("azure_client_id")
     azure_client_secret = ocean.integration_config.get("azure_client_secret")
     azure_tenant_id = ocean.integration_config.get("azure_tenant_id")

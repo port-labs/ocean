@@ -6,6 +6,7 @@ from port_ocean.context.event import event
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
+from azure_integration.client_options import azure_mgmt_client_kwargs
 from azure_integration.overrides import (
     AzureCustomKindResourceConfig,
     AzureCloudResourceConfig,
@@ -182,5 +183,6 @@ async def resource_client_context(
         async with ResourceManagementClient(
             credential=credential,
             subscription_id=subscription_id,
+            **azure_mgmt_client_kwargs(),
         ) as client:
             yield client
