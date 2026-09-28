@@ -51,6 +51,22 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield users
 
 
+@ocean.on_resync(ObjectKind.CUSTOMER)
+async def on_resync_customers(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = PlainClient()
+    async for customers in client.get_customers():
+        logger.info(f"Received customer batch with {len(customers)} customers")
+        yield customers
+
+
+@ocean.on_resync(ObjectKind.THREAD)
+async def on_resync_threads(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = PlainClient()
+    async for threads in client.get_threads():
+        logger.info(f"Received thread batch with {len(threads)} threads")
+        yield threads
+
+
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting plain integration")

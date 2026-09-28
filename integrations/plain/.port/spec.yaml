@@ -7,6 +7,8 @@ features:
       - kind: company
       - kind: tenant
       - kind: user
+      - kind: customer
+      - kind: thread
       - kind: example-kind
 configurations:
   - name: myplainToken
@@ -15,3 +17,7 @@ configurations:
     sensitive: true
   - name: someApplicationUrl
     type: url
+  - name: threadStatusFilter
+    type: string
+    required: false
+    description: Comma-separated thread statuses to sync (TODO, SNOOZED, DONE). Omit to sync every status.

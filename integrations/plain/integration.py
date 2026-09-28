@@ -43,12 +43,28 @@ class UserResourceConfig(ResourceConfig):
     )
 
 
+class CustomerResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.CUSTOMER] = Field(
+        description="Plain customer",
+        title="Customer",
+    )
+
+
+class ThreadResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.THREAD] = Field(
+        description="Plain thread",
+        title="Thread",
+    )
+
+
 class PlainPortAppConfig(PortAppConfig):
     resources: list[
         ExampleKindResourceConfig
         | CompanyResourceConfig
         | TenantResourceConfig
         | UserResourceConfig
+        | CustomerResourceConfig
+        | ThreadResourceConfig
     ] = Field(
         description="Resources for plain",
         title="Resources",

@@ -7,7 +7,15 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 
 from plain.exceptions import PlainGraphQLError, PlainHTTPError
-from plain.queries import LIST_COMPANIES, LIST_TENANTS, LIST_USERS
+from plain.queries import (
+    GET_CUSTOMER,
+    GET_THREAD,
+    LIST_COMPANIES,
+    LIST_CUSTOMERS,
+    LIST_TENANTS,
+    LIST_THREADS,
+    LIST_USERS,
+)
 from plain.utils import edges_to_nodes, get_nested
 
 DEFAULT_API_URL = "https://core-api.uk.plain.com/graphql/v1"
@@ -25,6 +33,7 @@ class PlainClient:
         api_url = config.get("api_url") or DEFAULT_API_URL
         self._api_url = str(api_url).rstrip("/")
         self._page_size = _resolve_page_size(config.get("page_size"))
+        self._thread_statuses = _thread_statuses(config.get("thread_status_filter"))
         self._http_client = http_client or OceanAsyncClient(
             timeout=ocean.config.client_timeout,
             headers={"User-Agent": USER_AGENT},
@@ -164,6 +173,64 @@ class PlainClient:
         ):
             yield batch
 
+    async def get_customers(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self.paginate_connection(
+            LIST_CUSTOMERS,
+            "ListCustomers",
+            None,
+            "data.customers",
+        ):
+            yield batch
+
+    async def get_threads(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        variables = None
+        if self._thread_statuses:
+            variables = {"filters": {"statuses": self._thread_statuses}}
+        async for batch in self.paginate_connection(
+            LIST_THREADS,
+            "ListThreads",
+            variables,
+            "data.threads",
+        ):
+            yield batch
+
+    async def get_customer(self, customer_id: str) -> dict[str, Any]:
+        return await self._get_single_entity(
+            GET_CUSTOMER,
+            {"customerId": customer_id},
+            "GetCustomer",
+            "customer",
+            customer_id,
+            "customer",
+        )
+
+    async def get_thread(self, thread_id: str) -> dict[str, Any]:
+        return await self._get_single_entity(
+            GET_THREAD,
+            {"threadId": thread_id},
+            "GetThread",
+            "thread",
+            thread_id,
+            "thread",
+        )
+
+    async def _get_single_entity(
+        self,
+        query: str,
+        variables: dict[str, Any],
+        operation_name: str,
+        field: str,
+        entity_id: str,
+        label: str,
+    ) -> dict[str, Any]:
+        data = await self.execute(query, variables, operation_name)
+        entity = data.get(field)
+        if not isinstance(entity, dict):
+            raise PlainGraphQLError(
+                [{"message": f"Plain {label} '{entity_id}' was not found"}]
+            )
+        return entity
+
 
 def _resolve_page_size(raw: Any) -> int:
     try:
@@ -173,6 +240,16 @@ def _resolve_page_size(raw: Any) -> int:
     if size < 1:
         return DEFAULT_PAGE_SIZE
     return min(size, MAX_PAGE_SIZE)
+
+
+def _thread_statuses(raw: Any) -> list[str]:
+    if isinstance(raw, str):
+        values = raw.split(",")
+    elif isinstance(raw, list):
+        values = [str(value) for value in raw]
+    else:
+        return []
+    return [value.strip() for value in values if value.strip()]
 
 
 def _connection_lookup_path(connection_path: str) -> str:

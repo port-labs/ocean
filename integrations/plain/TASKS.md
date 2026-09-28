@@ -255,15 +255,17 @@ Company has no `externalId` in the Plain schema. The list query selects `id`, `n
 **Parallel with:** `T5`, `T6`, `T7`
 
 **Work**
-- [ ] `LIST_CUSTOMERS` query (include `company { id }` and tenants if available)
-- [ ] `client.get_customers()`
-- [ ] `@ocean.on_resync("customer")`
-- [ ] Spec resource registration
+- [x] `LIST_CUSTOMERS` query (include `company { id }` and tenants if available)
+- [x] `client.get_customers()`
+- [x] `@ocean.on_resync("customer")`
+- [x] Spec resource registration
 
 **Exit tests**
-- [ ] Query includes relation ids needed for mapping
-- [ ] Client/resync mock tests
-- [ ] `poetry run pytest -q -k customer`
+- [x] Query includes relation ids needed for mapping
+- [x] Client/resync mock tests
+- [x] `poetry run pytest -q -k customer`
+
+Customer tenants come from `tenantMemberships`, not a `tenants` list. The query selects `company { id }` and `tenantMemberships { edges { node { tenant { id } } } }`.
 
 ---
 
@@ -274,22 +276,24 @@ Company has no `externalId` in the Plain schema. The list query selects `id`, `n
 **Prerequisites:** `T5`, `T6`, `T7`, `T8` (relation targets ready)
 
 **Work**
-- [ ] `LIST_THREADS` query with customer/tenant/assignee/labels/threadFields
-- [ ] Optional `threadStatusFilter` → GraphQL filters variable
-- [ ] `client.get_threads()`
-- [ ] `@ocean.on_resync("thread")`
-- [ ] `GET_THREAD` / `GET_CUSTOMER` queries
-- [ ] `client.get_thread(id)` / `client.get_customer(id)` (even if unused in Phase 1)
+- [x] `LIST_THREADS` query with customer/tenant/assignee/labels/threadFields
+- [x] Optional `threadStatusFilter` → GraphQL filters variable
+- [x] `client.get_threads()`
+- [x] `@ocean.on_resync("thread")`
+- [x] `GET_THREAD` / `GET_CUSTOMER` queries
+- [x] `client.get_thread(id)` / `client.get_customer(id)` (even if unused in Phase 1)
 
 **Exit tests** (`tests/test_thread.py`, `tests/test_getters.py`)
-- [ ] List pagination mock for threads
-- [ ] Assignee `__typename` present in fixture for mapping later
-- [ ] `get_thread` / `get_customer` return node from mocked response
-- [ ] `get_thread` raises on GraphQL errors / missing entity (agreed behavior)
-- [ ] Resync handler mock test
-- [ ] `poetry run pytest -q -k "thread or getter or get_thread or get_customer"`
+- [x] List pagination mock for threads
+- [x] Assignee `__typename` present in fixture for mapping later
+- [x] `get_thread` / `get_customer` return node from mocked response
+- [x] `get_thread` raises on GraphQL errors / missing entity (agreed behavior)
+- [x] Resync handler mock test
+- [x] `poetry run pytest -q -k "thread or getter or get_thread or get_customer"`
 
 **Done when:** all 5 kinds resync under unit tests; getters exist.
+
+`threadStatusFilter` is an optional spec string (`TODO,SNOOZED,DONE`) read as `thread_status_filter` and sent as `filters.statuses`. When it is unset, threads are not filtered. `get_thread` and `get_customer` raise `PlainGraphQLError` when Plain returns a GraphQL error or a null entity. `assignedTo` selects `__typename` plus `User`, `MachineUser`, and `System` ids.
 
 ---
 
