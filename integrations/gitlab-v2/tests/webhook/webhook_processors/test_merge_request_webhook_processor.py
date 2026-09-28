@@ -1,20 +1,30 @@
-import pytest
-from unittest.mock import MagicMock, AsyncMock
+from datetime import datetime, timezone
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
+from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
 )
-from gitlab.helpers.utils import ObjectKind
 
-from port_ocean.core.handlers.webhook.webhook_event import (
-    WebhookEvent,
-)
-from typing import Any
 
-from datetime import datetime, timezone
+def _resource_config(
+    *,
+    states: list[str] | None = None,
+    enrich_with_commits: bool = False,
+    enrich_with_review_discussion: bool = False,
+) -> MagicMock:
+    config = MagicMock()
+    config.selector.states = states or ["opened"]
+    config.selector.updated_after_datetime = datetime(2022, 1, 1, tzinfo=timezone.utc)
+    config.selector.enrich_with_commits = enrich_with_commits
+    config.selector.enrich_with_review_discussion = enrich_with_review_discussion
+    return config
 
 
 @pytest.fixture(autouse=True)
@@ -83,14 +93,10 @@ class TestMergeRequestWebhookProcessor:
         self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
     ) -> None:
         """Test handling a merge request event when state matches"""
-        resource_config = MagicMock()
-        resource_config.selector.states = ["opened"]
-        resource_config.selector.updated_after_datetime = datetime(
-            2022, 1, 1, tzinfo=timezone.utc
-        )
+        resource_config = _resource_config(states=["opened"])
 
         project_id = mr_payload["project"]["id"]
-        mr_id = mr_payload["object_attributes"]["iid"]  # Use iid instead of id
+        mr_id = mr_payload["object_attributes"]["iid"]
         expected_mr = {
             "id": mr_id,
             "object_kind": "merge_request",
@@ -101,12 +107,14 @@ class TestMergeRequestWebhookProcessor:
         processor._gitlab_webhook_client.get_merge_request = AsyncMock(
             return_value=expected_mr
         )
+        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
 
         result = await processor.handle_event(mr_payload, resource_config)
 
         processor._gitlab_webhook_client.get_merge_request.assert_called_once_with(
             project_id, mr_id
         )
+        processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_mr
         assert not result.deleted_raw_results
@@ -115,17 +123,66 @@ class TestMergeRequestWebhookProcessor:
         self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
     ) -> None:
         """Test handling a merge request event when state doesn't match"""
-        resource_config = MagicMock()
-        resource_config.selector.states = ["merged"]
-        resource_config.selector.updated_after_datetime = datetime(
-            2022, 1, 1, tzinfo=timezone.utc
-        )
+        resource_config = _resource_config(states=["merged"])
 
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.get_merge_request = AsyncMock()
+        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
 
         result = await processor.handle_event(mr_payload, resource_config)
 
         processor._gitlab_webhook_client.get_merge_request.assert_not_called()
+        processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
         assert not result.updated_raw_results
         assert result.deleted_raw_results
+
+    async def test_handle_event_missing_merge_request_skips_upsert(
+        self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
+    ) -> None:
+        resource_config = _resource_config()
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_merge_request = AsyncMock(return_value={})
+        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
+
+        result = await processor.handle_event(mr_payload, resource_config)
+
+        processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
+        assert not result.updated_raw_results
+        assert not result.deleted_raw_results
+
+    async def test_handle_event_enriches_when_flags_enabled(
+        self, processor: MergeRequestWebhookProcessor, mr_payload: dict[str, Any]
+    ) -> None:
+        resource_config = _resource_config(
+            enrich_with_commits=True,
+            enrich_with_review_discussion=True,
+        )
+        fetched_mr = {
+            "id": 456,
+            "iid": 1,
+            "project_id": 123,
+        }
+        enriched_mr = {
+            **fetched_mr,
+            "__commits": [{"id": "abc"}],
+            "__notes": [{"body": "lgtm"}],
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_merge_request = AsyncMock(
+            return_value=fetched_mr
+        )
+        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock(
+            return_value=[enriched_mr]
+        )
+
+        result = await processor.handle_event(mr_payload, resource_config)
+
+        processor._gitlab_webhook_client.enrich_merge_requests.assert_called_once_with(
+            [fetched_mr],
+            enrich_with_commits=True,
+            enrich_with_review_discussion=True,
+            max_concurrent=1,
+        )
+        assert result.updated_raw_results == [enriched_mr]
