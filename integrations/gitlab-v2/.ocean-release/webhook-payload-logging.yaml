@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Stop logging the full webhook payload once per registered processor on every incoming webhook. Payload logging is already handled by Ocean core behind the events_debug_logging flag.
