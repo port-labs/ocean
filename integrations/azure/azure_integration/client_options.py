@@ -14,9 +14,18 @@ from typing import Any, AsyncIterator
 
 from azure.core.credentials import AccessToken
 from azure.core.credentials_async import AsyncTokenCredential
+from azure.core.pipeline import PipelineRequest
+from azure.core.pipeline.policies import SansIOHTTPPolicy
 from azure.identity.aio import DefaultAzureCredential
 from loguru import logger
 from port_ocean.context.ocean import ocean
+
+
+class _AllowInsecureArmHttpPolicy(SansIOHTTPPolicy):
+    """Let bearer auth run against http:// ARM mocks (load tests only)."""
+
+    def on_request(self, request: PipelineRequest) -> None:
+        request.context.options["enforce_https"] = False
 
 
 def azure_management_base_url() -> str | None:
@@ -31,7 +40,10 @@ def azure_mgmt_client_kwargs() -> dict[str, Any]:
     base = azure_management_base_url()
     if not base:
         return {}
-    return {"base_url": base}
+    kwargs: dict[str, Any] = {"base_url": base}
+    if base.lower().startswith("http://"):
+        kwargs["per_call_policies"] = [_AllowInsecureArmHttpPolicy()]
+    return kwargs
 
 
 def apply_azure_authority_host_from_config() -> None:
