@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added optional enrichWithCommits and enrichWithReviewDiscussion selectors on pull-request to attach raw Azure DevOps commits and threads during resync and live events
