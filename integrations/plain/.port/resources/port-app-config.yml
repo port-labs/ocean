@@ -25,7 +25,7 @@ resources:
           blueprint: '"plainTenant"'
           properties:
             externalId: .externalId
-            url: .url
+            url: 'if .url == null or .url == "" then null elif (.url | startswith("http://") or startswith("https://")) then .url else "https://" + .url end'
             createdAt: .createdAt.iso8601
             updatedAt: .updatedAt.iso8601
   - kind: user

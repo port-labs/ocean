@@ -69,6 +69,11 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     assert _apply(mappings["company"]["identifier"], company) == "co_1"
     assert _apply(mappings["company"]["title"], company) == "Analytical Engines"
     assert _apply(mappings["tenant"]["identifier"], tenant) == "te_1"
+    tenant_url = mappings["tenant"]["properties"]["url"]
+    assert _apply(tenant_url, tenant) == "https://acme.example"
+    assert _apply(tenant_url, {"url": "appflame.com"}) == "https://appflame.com"
+    assert _apply(tenant_url, {"url": "http://appflame.com"}) == "http://appflame.com"
+    assert _apply(tenant_url, {"url": None}) is None
     assert _apply(mappings["user"]["identifier"], user) == "us_1"
     assert _apply(mappings["user"]["title"], user) == "Grace Hopper"
     assert _apply(mappings["user"]["properties"]["role"], user) == "Support"

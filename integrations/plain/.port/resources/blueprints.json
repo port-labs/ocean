@@ -67,7 +67,7 @@
             "properties": {
                 "email": {
                     "type": "string",
-                    "format": "email",
+                    "format": "idn-email",
                     "title": "Email"
                 },
                 "publicName": {
