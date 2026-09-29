@@ -218,5 +218,46 @@
                 "many": false
             }
         }
+    },
+    {
+        "identifier": "plainThreadMessage",
+        "title": "Plain Thread Message",
+        "icon": "Blueprint",
+        "description": "A message in a Plain thread timeline",
+        "schema": {
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "title": "Text"
+                },
+                "entryType": {
+                    "type": "string",
+                    "title": "Entry type"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Timestamp"
+                },
+                "actorType": {
+                    "type": "string",
+                    "title": "Actor type"
+                },
+                "actorId": {
+                    "type": "string",
+                    "title": "Actor ID"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "thread": {
+                "title": "Thread",
+                "target": "plainThread",
+                "required": false,
+                "many": false
+            }
+        }
     }
 ]

@@ -4,17 +4,26 @@ from typing import Any
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.context.resource import resource
+from port_ocean.exceptions.context import ResourceContextNotFoundError
+from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.helpers.async_client import OceanAsyncClient
 
-from plain.exceptions import PlainGraphQLError, PlainHTTPError
+from plain.exceptions import (
+    PlainGraphQLError,
+    PlainHTTPError,
+    missing_permission_names,
+)
 from plain.queries import (
     GET_CUSTOMER,
     GET_THREAD,
     LIST_COMPANIES,
     LIST_CUSTOMERS,
     LIST_TENANTS,
+    LIST_THREAD_IDS,
     LIST_THREADS,
     LIST_USERS,
+    THREAD_TIMELINE,
 )
 from plain.utils import edges_to_nodes, get_nested
 
@@ -62,6 +71,7 @@ class PlainClient:
             },
         )
         if response.status_code >= 400:
+            _abort_when_permission_is_missing(response.text)
             raise PlainHTTPError(response.status_code, response.text)
 
         try:
@@ -80,6 +90,7 @@ class PlainClient:
         if errors:
             if not isinstance(errors, list):
                 errors = [{"message": str(errors)}]
+            _abort_when_permission_is_missing(errors)
             raise PlainGraphQLError(errors)
 
         data = payload.get("data")
@@ -185,15 +196,62 @@ class PlainClient:
     async def get_threads(
         self, statuses: list[str] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        chosen = self._thread_statuses if statuses is None else statuses
-        variables = {"filters": {"statuses": chosen}} if chosen else None
         async for batch in self.paginate_connection(
             LIST_THREADS,
             "ListThreads",
-            variables,
+            self._thread_list_variables(statuses),
             "data.threads",
         ):
             yield batch
+
+    async def get_thread_ids(
+        self, statuses: list[str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self.paginate_connection(
+            LIST_THREAD_IDS,
+            "ListThreadIds",
+            self._thread_list_variables(statuses),
+            "data.threads",
+        ):
+            yield batch
+
+    async def get_thread_messages(
+        self, statuses: list[str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for threads in self.get_thread_ids(statuses):
+            for thread in threads:
+                thread_id = thread.get("id")
+                if not isinstance(thread_id, str) or not thread_id:
+                    continue
+                async for messages in self._timeline_pages(thread_id):
+                    if messages:
+                        yield messages
+
+    def _thread_list_variables(
+        self, statuses: list[str] | None
+    ) -> dict[str, Any] | None:
+        chosen = self._thread_statuses if statuses is None else statuses
+        if not chosen:
+            return None
+        return {"filters": {"statuses": chosen}}
+
+    async def _timeline_pages(
+        self, thread_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        try:
+            async for batch in self.paginate_connection(
+                THREAD_TIMELINE,
+                "ThreadTimeline",
+                {"threadId": thread_id},
+                "thread.timelineEntries",
+            ):
+                yield [entry for entry in batch if _has_message_text(entry)]
+        except PlainGraphQLError as error:
+            if "missing connection" in str(error):
+                raise PlainGraphQLError(
+                    [{"message": f"Plain thread '{thread_id}' was not found"}]
+                ) from error
+            raise
 
     async def get_customer(self, customer_id: str) -> dict[str, Any]:
         return await self._get_single_entity(
@@ -231,6 +289,30 @@ class PlainClient:
                 [{"message": f"Plain {label} '{entity_id}' was not found"}]
             )
         return entity
+
+
+def _abort_when_permission_is_missing(payload: Any) -> None:
+    permissions = missing_permission_names(payload)
+    if not permissions:
+        return
+    quoted = ", ".join(f'"{name}"' for name in permissions)
+    noun = "permission" if len(permissions) == 1 else "permissions"
+    try:
+        kind = resource.kind
+    except ResourceContextNotFoundError:
+        message = f"The Plain API key is missing the {quoted} {noun}"
+    else:
+        message = (
+            f"Failed to sync kind '{kind}': the Plain API key is missing "
+            f"the {quoted} {noun}"
+        )
+    logger.error(message)
+    raise OceanAbortException(message)
+
+
+def _has_message_text(entry: dict[str, Any]) -> bool:
+    text = entry.get("llmText")
+    return isinstance(text, str) and bool(text.strip())
 
 
 def _resolve_page_size(raw: Any) -> int:

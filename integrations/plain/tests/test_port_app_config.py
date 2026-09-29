@@ -5,7 +5,11 @@ from typing import Any
 import jq  # type: ignore[import-not-found]
 import yaml  # type: ignore[import-untyped]
 
-from integration import PlainPortAppConfig, ThreadResourceConfig
+from integration import (
+    PlainPortAppConfig,
+    ThreadMessageResourceConfig,
+    ThreadResourceConfig,
+)
 
 FIXTURES = Path("tests/fixtures")
 RESOURCES = Path(".port/resources")
@@ -39,6 +43,7 @@ def test_blueprint_and_port_app_config_parse() -> None:
         "user",
         "customer",
         "thread",
+        "thread-message",
     ]
     identifiers = [blueprint["identifier"] for blueprint in blueprints]
     assert identifiers == [
@@ -47,6 +52,7 @@ def test_blueprint_and_port_app_config_parse() -> None:
         "plainUser",
         "plainCustomer",
         "plainThread",
+        "plainThreadMessage",
     ]
     by_id = {blueprint["identifier"]: blueprint for blueprint in blueprints}
     assert by_id["plainCustomer"]["relations"]["company"]["target"] == "plainCompany"
@@ -60,6 +66,12 @@ def test_blueprint_and_port_app_config_parse() -> None:
     )
     assert isinstance(thread, ThreadResourceConfig)
     assert thread.selector.exclude_done_threads is False
+    message = next(
+        resource for resource in config.resources if resource.kind == "thread-message"
+    )
+    assert isinstance(message, ThreadMessageResourceConfig)
+    assert message.selector.exclude_done_threads is False
+    assert by_id["plainThreadMessage"]["relations"]["thread"]["target"] == "plainThread"
 
 
 def test_mapping_resolves_identifiers_titles_and_relations() -> None:

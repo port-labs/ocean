@@ -71,6 +71,17 @@ class ThreadResourceConfig(ResourceConfig):
     )
 
 
+class ThreadMessageResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.THREAD_MESSAGE] = Field(
+        description="Plain thread message",
+        title="Thread message",
+    )
+    selector: ThreadSelector = Field(
+        description="Thread message selector",
+        title="Selector",
+    )
+
+
 class PlainPortAppConfig(PortAppConfig):
     resources: list[
         ExampleKindResourceConfig
@@ -79,6 +90,7 @@ class PlainPortAppConfig(PortAppConfig):
         | UserResourceConfig
         | CustomerResourceConfig
         | ThreadResourceConfig
+        | ThreadMessageResourceConfig
     ] = Field(
         description="Resources for plain",
         title="Resources",

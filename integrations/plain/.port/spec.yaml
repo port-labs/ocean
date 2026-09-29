@@ -9,6 +9,7 @@ features:
       - kind: user
       - kind: customer
       - kind: thread
+      - kind: thread-message
 configurations:
   - name: apiToken
     required: true

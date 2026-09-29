@@ -86,3 +86,21 @@ resources:
             customer: .customer.id
             tenant: .tenant.id
             assignee: if .assignedTo.__typename == "User" then .assignedTo.id else null end
+  - kind: thread-message
+    selector:
+      query: "true"
+      excludeDoneThreads: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '(.entry.__typename // "Message") + (if .llmText then ": " + .llmText[0:80] else "" end)'
+          blueprint: '"plainThreadMessage"'
+          properties:
+            text: .llmText
+            entryType: .entry.__typename
+            timestamp: .timestamp.iso8601
+            actorType: .actor.__typename
+            actorId: .actor.user.id // .actor.customer.id // .actor.machineUser.id
+          relations:
+            thread: .threadId

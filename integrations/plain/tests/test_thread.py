@@ -1,8 +1,10 @@
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import patch
 
 import httpx
 from port_ocean.context.resource import resource_context
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 from integration import ThreadResourceConfig
 from main import on_resync_threads
@@ -150,6 +152,36 @@ async def test_resync_threads_excludes_done_when_mapping_flag_is_set() -> None:
     with patch("main.PlainClient", FakeClient):
         assert on_resync_threads is not None
         async with resource_context(_thread_resource(True)):
+            await collect_pages(on_resync_threads("thread"))
+
+    assert seen["statuses"] == ["TODO", "SNOOZED"]
+
+
+async def test_resync_threads_reads_exclude_flag_without_local_config_class() -> None:
+    seen: dict[str, Any] = {}
+
+    class FakeClient:
+        def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
+            pass
+
+        async def get_threads(self, statuses: list[str] | None = None) -> Any:
+            seen["statuses"] = statuses
+            yield []
+
+    # Ocean parses the mapping with a second copy of integration.py, so the
+    # live object is not this module's ThreadResourceConfig.
+    config = cast(
+        ResourceConfig,
+        SimpleNamespace(
+            kind="thread",
+            selector=SimpleNamespace(exclude_done_threads=True),
+        ),
+    )
+    assert not isinstance(config, ThreadResourceConfig)
+
+    with patch("main.PlainClient", FakeClient):
+        assert on_resync_threads is not None
+        async with resource_context(config):
             await collect_pages(on_resync_threads("thread"))
 
     assert seen["statuses"] == ["TODO", "SNOOZED"]

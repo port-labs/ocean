@@ -163,8 +163,9 @@ Exact strings from schema field descriptions:
 - `user:read`
 - `customer:read`
 - `thread:read`
+- `timeline:read` for `thread.timelineEntries` (thread messages). Confirmed live on 2026-09-29: the field returns HTTP 403 `Insufficient permissions, missing "timeline:read"` when this permission is absent.
 
-Create the machine-user key with those five. Webhook registration is out of scope here; it will need its own permissions in Phase 2.
+Create the machine-user key with those permissions. Webhook registration is out of scope here; it will need its own permissions in Phase 2.
 
 The key in `integrations/plain/.env` (`PLAIN_TOKEN`, gitignored) was checked with `myPermissions` on 2026-09-24. All five are present.
 

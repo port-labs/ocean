@@ -7,4 +7,4 @@
 3. Leave `OCEAN__INTEGRATION__CONFIG__ENABLE_LIVE_EVENTS=false`. Webhook registration is not implemented.
 4. Start the integration with `make run`, or `poetry run python debug.py`.
 
-The API key needs `company:read`, `tenant:read`, `user:read`, `customer:read`, and `thread:read`. Requests go to `https://core-api.uk.plain.com/graphql/v1` unless `OCEAN__INTEGRATION__CONFIG__API_URL` is set.
+The API key needs `company:read`, `tenant:read`, `user:read`, `customer:read`, `thread:read`, and `timeline:read` (thread messages). Requests go to `https://core-api.uk.plain.com/graphql/v1` unless `OCEAN__INTEGRATION__CONFIG__API_URL` is set.

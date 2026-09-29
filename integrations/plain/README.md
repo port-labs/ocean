@@ -15,8 +15,9 @@ Ocean integration that syncs [Plain](https://www.plain.com/) support data into P
 | `user` | `users` | `user:read` |
 | `customer` | `customers` | `customer:read` |
 | `thread` | `threads` | `thread:read` |
+| `thread-message` | `thread.timelineEntries` | `timeline:read` |
 
-Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, and `plainThread`. A thread assignee relation is set only when `assignedTo` is a `User`. Customer tenants come from `tenantMemberships`. On the thread selector, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. `false` syncs every status. The next resync uses the saved mapping.
+Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, `plainThread`, and `plainThreadMessage`. A thread assignee relation is set only when `assignedTo` is a `User`. Customer tenants come from `tenantMemberships`. On the thread and thread-message selectors, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. `false` syncs every status. The two flags are independent. The next resync uses the saved mapping. Thread messages are timeline entries that have text.
 
 Create the API key on a Plain machine user (Settings → Machine Users → Add API key). The token looks like `plainApiKey_…`.
 
@@ -38,6 +39,8 @@ For local runs, set the same values as environment variables, for example `OCEAN
 - Only the UK GraphQL host is known to resolve. `apiUrl` is an override if Plain adds another region.
 - Customer tenants come from the first page of `tenantMemberships` (at most 100). That selection needs `customerTenantMembership:read` in addition to `customer:read`.
 - The user query selects `role`, which needs `roles:read` in addition to `user:read`.
+- Thread messages come from `thread.timelineEntries`, which needs `timeline:read` in addition to `thread:read`.
+- A missing Plain permission fails that kind and logs the permission name. The other kinds still sync.
 - Company fields are `id`, `name`, and `domainName`. Company has no `externalId`.
 - A thread assignee is a `User`, `MachineUser`, or `System`. The sync stores `__typename` and `id` for those three.
 - HTTP failures (including a missing token) raise before GraphQL parsing. A GraphQL `errors` array fails the sync instead of yielding an empty page.

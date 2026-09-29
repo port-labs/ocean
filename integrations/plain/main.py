@@ -5,11 +5,19 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import ExampleKind, ThreadResourceConfig
+from integration import ExampleKind
 from plain.client import PlainClient
 from plain.utils import ObjectKind
 
 OPEN_THREAD_STATUSES = ["TODO", "SNOOZED"]
+
+
+def _exclude_done_threads() -> bool:
+    # Ocean loads integration.py as "module.name", then main.py imports it again.
+    # The parsed resource is therefore a different class object, and isinstance fails.
+    return bool(
+        getattr(resource.resource_config.selector, "exclude_done_threads", False)
+    )
 
 
 @ocean.on_resync(ExampleKind.EXAMPLE_KIND)
@@ -64,16 +72,20 @@ async def on_resync_customers(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.THREAD)
 async def on_resync_threads(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    thread_config = resource.resource_config
-    if not isinstance(thread_config, ThreadResourceConfig):
-        raise RuntimeError("Thread resync requires a thread resource config")
-    statuses = (
-        OPEN_THREAD_STATUSES if thread_config.selector.exclude_done_threads else []
-    )
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
     client = PlainClient()
     async for threads in client.get_threads(statuses):
         logger.info(f"Received thread batch with {len(threads)} threads")
         yield threads
+
+
+@ocean.on_resync(ObjectKind.THREAD_MESSAGE)
+async def on_resync_thread_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
+    client = PlainClient()
+    async for messages in client.get_thread_messages(statuses):
+        logger.info(f"Received thread message batch with {len(messages)} messages")
+        yield messages
 
 
 def _live_events_enabled() -> bool:

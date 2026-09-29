@@ -5,6 +5,10 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
+from port_ocean.context.resource import resource_context
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.exceptions.core import OceanAbortException
+
 from plain.client import DEFAULT_API_URL
 from plain.exceptions import PlainGraphQLError, PlainHTTPError
 
@@ -72,6 +76,50 @@ async def test_execute_raises_on_graphql_errors() -> None:
     async with http_client:
         with pytest.raises(PlainGraphQLError, match="Missing permission thread:read"):
             await client.execute("query { threads { id } }", {})
+
+
+@pytest.mark.asyncio
+async def test_execute_logs_missing_permission_and_fails_the_kind() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            403,
+            json={
+                "errors": [
+                    {
+                        "message": 'Insufficient permissions, missing "timeline:read".',
+                        "path": ["thread", "timelineEntries"],
+                        "extensions": {"code": "FORBIDDEN"},
+                    }
+                ],
+                "data": {"thread": None},
+            },
+        )
+
+    client, http_client = _client(handler)
+    config = ResourceConfig.parse_obj(
+        {
+            "kind": "thread-message",
+            "selector": {"query": "true"},
+            "port": {
+                "entity": {
+                    "mappings": {
+                        "identifier": ".id",
+                        "blueprint": '"plainThreadMessage"',
+                    }
+                }
+            },
+        }
+    )
+    async with http_client:
+        with patch("plain.client.logger") as log:
+            with pytest.raises(OceanAbortException, match="timeline:read"):
+                async with resource_context(config):
+                    await client.execute("query ThreadTimeline { thread { id } }", {})
+
+    message = log.error.call_args.args[0]
+    assert "thread-message" in message
+    assert '"timeline:read"' in message
+    log.exception.assert_not_called()
 
 
 @pytest.mark.asyncio

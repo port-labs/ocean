@@ -1,4 +1,8 @@
+import json
+import re
 from typing import Any
+
+_MISSING_PERMISSION = re.compile(r'missing "([^"]+)"')
 
 
 class PlainGraphQLError(Exception):
@@ -17,6 +21,40 @@ class PlainHTTPError(Exception):
         self.body = body
         detail = body.strip() or "empty body"
         super().__init__(f"Plain API HTTP {status_code}: {detail}")
+
+
+def missing_permission_names(payload: Any) -> list[str]:
+    """Return permission names from Plain's insufficient-permission errors."""
+    found: list[str] = []
+    for message in _error_messages(payload):
+        for name in _MISSING_PERMISSION.findall(message):
+            if name not in found:
+                found.append(name)
+    return found
+
+
+def _error_messages(payload: Any) -> list[str]:
+    if isinstance(payload, str):
+        try:
+            parsed = json.loads(payload)
+        except ValueError:
+            return [payload]
+        return _error_messages(parsed)
+    if isinstance(payload, dict):
+        messages: list[str] = []
+        message = payload.get("message")
+        if isinstance(message, str):
+            messages.append(message)
+        errors = payload.get("errors")
+        if errors is not None:
+            messages.extend(_error_messages(errors))
+        return messages
+    if isinstance(payload, list):
+        collected: list[str] = []
+        for item in payload:
+            collected.extend(_error_messages(item))
+        return collected
+    return []
 
 
 def _format_graphql_errors(errors: list[dict[str, Any]]) -> str:
