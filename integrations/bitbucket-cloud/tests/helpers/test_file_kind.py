@@ -162,8 +162,13 @@ async def test_process_file_patterns_with_extensions() -> None:
 
 @pytest.mark.asyncio
 async def test_process_file_patterns_ingests_dotfiles() -> None:
-    """Dotfiles are searched without an ext filter and their content is returned."""
+    """Dotfiles are searched without an ext filter; plain-text content is returned via retrieve_file_content."""
     filenames = [".nvmrc", ".gitignore", ".env"]
+    file_contents = {
+        ".nvmrc": "18",
+        ".gitignore": "node_modules/\n.env\n",
+        ".env": "SECRET=value\n",
+    }
     search_calls: List[str] = []
 
     async def mock_search_files(
@@ -186,41 +191,31 @@ async def test_process_file_patterns_ingests_dotfiles() -> None:
             }
         ]
 
-    async def mock_retrieve_file_content(
-        file_info: Dict[str, Any], skip_parsing: bool
-    ) -> AsyncGenerator[Dict[str, Any], None]:
-        yield {
-            "content": f"content of {file_info['path']}",
-            "metadata": {"path": file_info["path"]},
-            "repo": {"name": "test-repo"},
-            "branch": "main",
-        }
+    async def mock_get_repository_files(
+        repo_slug: str, branch: str, file_path: str
+    ) -> str:
+        return file_contents[file_path]
 
     with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
         mock_client = AsyncMock()
         mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = mock_get_repository_files
         mock_init_client.return_value = mock_client
 
-        with patch(
-            "bitbucket_cloud.helpers.file_kind.retrieve_file_content",
-            side_effect=mock_retrieve_file_content,
-        ):
-            file_pattern = BitbucketFilePattern(
-                path="/",
-                repos=["test-repo"],
-                filenames=filenames,
-                skipParsing=False,
-            )
+        file_pattern = BitbucketFilePattern(
+            path="/",
+            repos=["test-repo"],
+            filenames=filenames,
+            skipParsing=False,
+        )
 
-            results = []
-            async for result in process_file_patterns(file_pattern):
-                results.extend(result)
+        results = []
+        async for result in process_file_patterns(file_pattern):
+            results.extend(result)
 
     assert [result["metadata"]["path"] for result in results] == filenames
     assert [result["content"] for result in results] == [
-        "content of .nvmrc",
-        "content of .gitignore",
-        "content of .env",
+        file_contents[filename] for filename in filenames
     ]
     assert len(search_calls) == len(filenames)
     for query, filename in zip(search_calls, filenames):

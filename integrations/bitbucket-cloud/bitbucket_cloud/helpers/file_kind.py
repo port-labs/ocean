@@ -7,6 +7,7 @@ from integration import BitbucketFilePattern
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from initialize_client import init_client
 from bitbucket_cloud.helpers.file_kind_live_event import (
+    FileObject,
     check_and_load_file_prefix,
     parse_file,
 )
@@ -133,6 +134,16 @@ async def retrieve_file_content(
     parent_directory = Path(file_path).parent
     if not skip_parsing:
         file_content = parse_file(file_content, file_path)
+
+    result: FileObject
+    if skip_parsing or not isinstance(file_content, (dict, list)):
+        result = {
+            "content": file_content,
+            "repo": repo_info,
+            "branch": branch,
+            "metadata": file_info,
+        }
+    else:
         result = await check_and_load_file_prefix(
             file_content,
             str(parent_directory),
@@ -142,13 +153,6 @@ async def retrieve_file_content(
             repo_info,
             branch,
         )
-    else:
-        result = {
-            "content": file_content,
-            "repo": repo_info,
-            "branch": branch,
-            "metadata": file_info,
-        }
     yield dict(result)
 
 
