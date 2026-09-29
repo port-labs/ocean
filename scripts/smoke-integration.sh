@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
-# Manage fake-integration containers for ocean core smoke scenarios.
+# Boot fake-integration per smoke config, run matching tests, clean up.
 #
 # Usage:
-#   ./scripts/smoke-integration.sh up <scenario>      # start integration for a scenario
-#   ./scripts/smoke-integration.sh down <scenario>    # stop a daemon integration
-#   ./scripts/smoke-integration.sh run <scenario>     # up, run its tests, down, clean
-#   ./scripts/smoke-integration.sh run-all            # run every scenario that has tests
-#   ./scripts/smoke-integration.sh clean <scenario>   # remove Port resources for a scenario
-#   ./scripts/smoke-integration.sh clean-all          # down + clean every scenario
+#   ./scripts/smoke-integration.sh up <config>
+#   ./scripts/smoke-integration.sh down <config>
+#   ./scripts/smoke-integration.sh run <config>       # up → tests → down → clean
+#   ./scripts/smoke-integration.sh run-all            # each config with tests, sequential
+#   ./scripts/smoke-integration.sh clean <config>
+#   ./scripts/smoke-integration.sh clean-all
 #   ./scripts/smoke-integration.sh list
 #
-# Scenarios: port_ocean/tests/smoke/scenarios/<name>.yaml
-# run-all runs scenarios one by one and cleans Port resources before the next one.
+# Configs: port_ocean/tests/smoke/configs/<name>.yaml
+# Tests opt in with @pytest.mark.smoke_config("<name>").
 
 set -euo pipefail
 
@@ -22,21 +22,22 @@ PYTHON="${ROOT_DIR}/.venv/bin/python"
 if [[ ! -x "${PYTHON}" ]]; then
     PYTHON=python3
 fi
-SCENARIO_CLI="${SCRIPT_DIR}/smoke_scenario_cli.py"
+CONFIG_CLI="${SCRIPT_DIR}/smoke_config_cli.py"
+SMOKE_TESTS_DIR="${ROOT_DIR}/port_ocean/tests/smoke"
 
 usage() {
     cat <<EOF
-Usage: $0 {up|down|run|run-all|clean|clean-all|list} [scenario]
+Usage: $0 {up|down|run|run-all|clean|clean-all|list} [config]
 
-  up         Start the integration using the scenario lifecycle (once or daemon)
+  up         Start fake-integration for a config
   down       Stop a daemon integration
-  run        up, run the scenario tests, down, then clean its Port resources
-  run-all    run every scenario that has tests, cleaning after each one
-  clean      Remove Port resources created for the scenario
-  clean-all  down + clean every discovered scenario
-  list       List available smoke scenarios
+  run        up, run tests marked for the config, down, clean
+  run-all    run every config that has marked tests (one config at a time)
+  clean      Remove Port resources for the config
+  clean-all  down + clean every config
+  list       List smoke configs
 
-Scenarios: port_ocean/tests/smoke/scenarios/<scenario>.yaml
+Configs: port_ocean/tests/smoke/configs/<config>.yaml
 EOF
 }
 
@@ -51,23 +52,23 @@ _clear_ocean_env() {
     unset SMOKE_OCEAN_ENV_KEYS
 }
 
-load_scenario() {
-    local scenario="${1:-resync}"
-    if ! "${PYTHON}" "${SCENARIO_CLI}" describe "${scenario}" >/dev/null 2>&1; then
-        echo "Unknown smoke scenario '${scenario}'"
-        "${PYTHON}" "${SCENARIO_CLI}" list
+load_config() {
+    local config="${1:-resync}"
+    if ! "${PYTHON}" "${CONFIG_CLI}" describe "${config}" >/dev/null 2>&1; then
+        echo "Unknown smoke config '${config}'"
+        "${PYTHON}" "${CONFIG_CLI}" list
         exit 1
     fi
 
     _clear_ocean_env
 
     # shellcheck disable=SC1090
-    eval "$("${PYTHON}" "${SCENARIO_CLI}" export "${scenario}")"
+    eval "$("${PYTHON}" "${CONFIG_CLI}" export "${config}")"
 
     if [[ -z "${SMOKE_TEST_BASE_SUFFIX:-}" ]]; then
         export SMOKE_TEST_BASE_SUFFIX="${SMOKE_TEST_SUFFIX:-local}"
     fi
-    export SMOKE_TEST_SUFFIX="${SMOKE_TEST_BASE_SUFFIX}-${SMOKE_TEST_SCENARIO_SUFFIX}"
+    export SMOKE_TEST_SUFFIX="${SMOKE_TEST_BASE_SUFFIX}-${SMOKE_TEST_CONFIG_SUFFIX}"
     export SMOKE_TEST_CONTAINER="$(
         echo "ocean-smoke-${SMOKE_TEST_SUFFIX}" | tr -c 'a-zA-Z0-9._-' '-'
     )"
@@ -149,7 +150,7 @@ wait_for_integration() {
     echo "Waiting for smoke integration at http://localhost:${SMOKE_TEST_HOST_PORT}/health/ready"
     for _ in $(seq 1 60); do
         if curl -sf "http://localhost:${SMOKE_TEST_HOST_PORT}/health/ready" >/dev/null; then
-            echo "Smoke integration is ready (scenario=${SMOKE_TEST_SCENARIO})"
+            echo "Smoke integration is ready (config=${SMOKE_TEST_CONFIG})"
             return 0
         fi
         sleep 2
@@ -165,39 +166,49 @@ wait_for_resync() {
     if [[ "${SMOKE_TEST_WAIT_FOR_RESYNC}" != "true" ]]; then
         return 0
     fi
-    echo "Waiting for resync to complete (scenario=${SMOKE_TEST_SCENARIO})"
-    "${PYTHON}" "${SCENARIO_CLI}" wait-resync
+    echo "Waiting for resync to complete (config=${SMOKE_TEST_CONFIG})"
+    "${PYTHON}" "${CONFIG_CLI}" wait-resync
 }
 
-run_scenario_tests() {
-    if [[ -z "${SMOKE_TEST_PATHS}" ]]; then
-        echo "Scenario '${SMOKE_TEST_SCENARIO}' has no tests"
-        return 1
-    fi
+config_has_tests() {
+    local collected
+    collected="$(
+        cd "${ROOT_DIR}"
+        SMOKE_TEST_CONFIG="${SMOKE_TEST_CONFIG}" \
+            "${PYTHON}" -m pytest -o addopts= --collect-only -q \
+            --smoke-config="${SMOKE_TEST_CONFIG}" \
+            "${SMOKE_TESTS_DIR}" 2>/dev/null | tail -n 1 || true
+    )"
+    [[ "${collected}" =~ [1-9][0-9]*\ tests?\ collected ]]
+}
 
+run_config_tests() {
     local pytest_addopts="${PYTEST_ADDOPTS:-}"
     if [[ -n "${SMOKE_JUNIT_DIR:-}" ]]; then
         mkdir -p "${SMOKE_JUNIT_DIR}"
-        pytest_addopts="${pytest_addopts} --junitxml=${SMOKE_JUNIT_DIR}/core-${SMOKE_TEST_SCENARIO}.xml"
+        pytest_addopts="${pytest_addopts} --junitxml=${SMOKE_JUNIT_DIR}/core-${SMOKE_TEST_CONFIG}.xml"
     fi
 
-    echo "Running smoke tests for scenario=${SMOKE_TEST_SCENARIO}"
+    echo "Running smoke tests for config=${SMOKE_TEST_CONFIG}"
     (
         cd "${ROOT_DIR}"
         SMOKE_TEST_SUFFIX="${SMOKE_TEST_SUFFIX}" \
+        SMOKE_TEST_CONFIG="${SMOKE_TEST_CONFIG}" \
         PYTEST_ADDOPTS="${pytest_addopts}" \
-        "${PYTHON}" -m pytest -o addopts= -vv --durations=10 --color=yes ${SMOKE_TEST_PATHS}
+            "${PYTHON}" -m pytest -o addopts= -vv --durations=10 --color=yes \
+            --smoke-config="${SMOKE_TEST_CONFIG}" \
+            "${SMOKE_TESTS_DIR}"
     )
 }
 
-for_each_scenario() {
+for_each_config() {
     local callback="$1"
-    local scenario
-    while IFS= read -r scenario; do
-        [[ -z "${scenario}" ]] && continue
-        load_scenario "${scenario}"
+    local config
+    while IFS= read -r config; do
+        [[ -z "${config}" ]] && continue
+        load_config "${config}"
         "${callback}"
-    done < <("${PYTHON}" "${SCENARIO_CLI}" list)
+    done < <("${PYTHON}" "${CONFIG_CLI}" list)
 }
 
 cmd_up() {
@@ -212,7 +223,7 @@ cmd_up() {
 
     case "${SMOKE_TEST_LIFECYCLE}" in
         once)
-            echo "Starting once smoke scenario '${SMOKE_TEST_SCENARIO}' (integration=${INTEGRATION_IDENTIFIER})"
+            echo "Starting once smoke config '${SMOKE_TEST_CONFIG}' (integration=${INTEGRATION_IDENTIFIER})"
             integration_docker_run "once"
             ;;
         daemon)
@@ -220,12 +231,12 @@ cmd_up() {
                 echo "Stopping existing smoke integration container: ${SMOKE_TEST_CONTAINER}"
                 docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
             fi
-            echo "Starting daemon smoke scenario '${SMOKE_TEST_SCENARIO}' (integration=${INTEGRATION_IDENTIFIER})"
+            echo "Starting daemon smoke config '${SMOKE_TEST_CONFIG}' (integration=${INTEGRATION_IDENTIFIER})"
             integration_docker_run "daemon"
             wait_for_integration
             ;;
         *)
-            echo "Unknown scenario lifecycle '${SMOKE_TEST_LIFECYCLE}'"
+            echo "Unknown lifecycle '${SMOKE_TEST_LIFECYCLE}'"
             exit 1
             ;;
     esac
@@ -250,7 +261,7 @@ cmd_run() {
         wait_for_resync || status=$?
     fi
     if [[ "${status}" -eq 0 ]]; then
-        run_scenario_tests || status=$?
+        run_config_tests || status=$?
     fi
     cmd_down || true
     if ! cmd_clean; then
@@ -261,21 +272,21 @@ cmd_run() {
 
 cmd_run_all() {
     local status=0
-    local scenario
-    while IFS= read -r scenario; do
-        [[ -z "${scenario}" ]] && continue
-        load_scenario "${scenario}"
-        if [[ -z "${SMOKE_TEST_PATHS}" ]]; then
-            echo "Skipping scenario '${scenario}' (no tests)"
+    local config
+    while IFS= read -r config; do
+        [[ -z "${config}" ]] && continue
+        load_config "${config}"
+        if ! config_has_tests; then
+            echo "Skipping config '${config}' (no smoke_config markers)"
             continue
         fi
         cmd_run || status=1
-    done < <("${PYTHON}" "${SCENARIO_CLI}" list)
+    done < <("${PYTHON}" "${CONFIG_CLI}" list)
     return "${status}"
 }
 
 cmd_clean() {
-    echo "Cleaning smoke scenario '${SMOKE_TEST_SCENARIO}' (suffix=${SMOKE_TEST_SUFFIX})"
+    echo "Cleaning smoke config '${SMOKE_TEST_CONFIG}' (suffix=${SMOKE_TEST_SUFFIX})"
     (
         cd "${ROOT_DIR}"
         SMOKE_TEST_SUFFIX="${SMOKE_TEST_SUFFIX}" make smoke/clean
@@ -283,25 +294,25 @@ cmd_clean() {
 }
 
 cmd_clean_all() {
-    for_each_scenario _clean_scenario
+    for_each_config _clean_config
 }
 
-_clean_scenario() {
+_clean_config() {
     cmd_down || true
     cmd_clean || true
 }
 
 cmd_list() {
-    "${PYTHON}" "${SCENARIO_CLI}" list
+    "${PYTHON}" "${CONFIG_CLI}" list
 }
 
 main() {
     local command="${1:-}"
-    local scenario="${2:-resync}"
+    local config="${2:-resync}"
 
     case "${command}" in
         up | down | run | clean)
-            load_scenario "${scenario}"
+            load_config "${config}"
             ;;
         run-all | clean-all)
             ;;

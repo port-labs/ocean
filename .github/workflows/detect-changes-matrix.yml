@@ -70,7 +70,7 @@ jobs:
               - 'scripts/run-smoke-test.sh'
               - 'scripts/smoke-test-base.sh'
               - 'scripts/smoke-integration.sh'
-              - 'scripts/smoke_scenario_cli.py'
+              - 'scripts/smoke_config_cli.py'
             integrations:
               - 'integrations/**'
               - '!integrations/**/*.md'

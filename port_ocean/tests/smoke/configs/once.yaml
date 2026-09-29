@@ -1,7 +1,4 @@
-# One-shot integration for metric tests (ocean sail -O). No smoke assertions.
-lifecycle: once
-suffix: once
-tests: []
+# Metric harness only (run-smoke-test.sh). Not used by smoke assertions.
 ocean:
   event_listener:
     type: ONCE

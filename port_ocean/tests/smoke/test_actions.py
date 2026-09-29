@@ -16,7 +16,7 @@ from port_ocean.tests.smoke.helpers.actions import (
 )
 from port_ocean.tests.smoke.helpers.details import SmokeTestDetails
 
-pytestmark = pytest.mark.smoke
+pytestmark = [pytest.mark.smoke, pytest.mark.smoke_config("actions")]
 
 requires_running_integration = pytest.mark.skipif(
     environ.get(

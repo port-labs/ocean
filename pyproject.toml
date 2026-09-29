@@ -218,4 +218,5 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto --durations=10 --color=yes --ignore-glob='./integrations/*' ./port_ocean/tests"
 markers = [
     "smoke: Smoke tests (deselect with '-m \"not smoke\"')",
+    "smoke_config(name): Smoke config this test runs under (see port_ocean/tests/smoke/configs/)",
 ]
