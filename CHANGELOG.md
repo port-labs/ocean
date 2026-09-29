@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.52.4 (2026-09-28)
+
+
+### Bug Fixes
+
+- Fix quadratic-time Firebase URL pattern in the sensitive log filter that could stall the event loop when scrubbing large single-line log messages.
+
+
 ## 0.52.3 (2026-09-28)
 
 
