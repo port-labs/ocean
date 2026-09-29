@@ -16,7 +16,21 @@ from port_ocean.tests.smoke.helpers.actions import (
 )
 from port_ocean.tests.smoke.helpers.details import SmokeTestDetails
 
-pytestmark = [pytest.mark.smoke, pytest.mark.smoke_config("actions")]
+pytestmark = [
+    pytest.mark.smoke,
+    # Omit smoke_config while skipped so run-all does not boot the actions container.
+    # Restore: pytest.mark.smoke_config("actions"),
+    # Port PUT /v1/actions rejects custom Ocean action types: integrationActionType is
+    # enum-limited to GitHub types (dispatch_workflow, …). Workflows already accept
+    # free-form integrationInvocationType. Unskip + restore smoke_config when port-api
+    # allows free-form types (local Port patch ready in apps/port-api schema).
+    pytest.mark.skip(
+        reason=(
+            "Port API 422: integrationActionType enum does not allow echo_message/"
+            "trigger_fake_task (see INTEGRATION_ACTION_TYPES in port-api)"
+        )
+    ),
+]
 
 requires_running_integration = pytest.mark.skipif(
     environ.get(

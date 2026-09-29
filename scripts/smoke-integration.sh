@@ -167,7 +167,11 @@ wait_for_resync() {
         return 0
     fi
     echo "Waiting for resync to complete (config=${SMOKE_TEST_CONFIG})"
-    "${PYTHON}" "${CONFIG_CLI}" wait-resync
+    if ! "${PYTHON}" "${CONFIG_CLI}" wait-resync; then
+        echo "Resync wait failed; dumping container logs for ${SMOKE_TEST_CONTAINER}"
+        docker logs "${SMOKE_TEST_CONTAINER}" || true
+        return 1
+    fi
 }
 
 config_has_tests() {

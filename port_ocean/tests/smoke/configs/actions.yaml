@@ -10,7 +10,7 @@ ocean:
     is_redis_stream_consumer_enabled: true
   integration:
     config:
-      entity_amount: -1
-      entity_kb_size: -1
-      third_party_batch_size: -1
-      third_party_latency_ms: -1
+      entity_amount: 1
+      entity_kb_size: 1
+      third_party_batch_size: 1000
+      third_party_latency_ms: 0
