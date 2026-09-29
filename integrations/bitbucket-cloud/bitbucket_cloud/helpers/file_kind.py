@@ -20,8 +20,8 @@ GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
 def normalize_directory_path(path: str) -> str:
     """Strip leading and trailing slashes so path variants match equivalently.
 
-    ``hello/test``, ``/hello/test``, ``/hello/test/``, and ``hello/test/``
-    all normalize to ``hello/test``. Root ``/`` and empty become ``""``.
+    ``hello/world``, ``/hello/world``, ``/hello/world/``, and ``hello/world/``
+    all normalize to ``hello/world``. Root ``/`` and empty become ``""``.
     """
     return path.strip("/")
 
