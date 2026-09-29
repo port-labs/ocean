@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.16.0 (2026-09-29)
+
+
+### Features
+
+- Enabled test connection so Port can run connection health probes for this integration.
+
+
 ## 6.15.3 (2026-09-29)
 
 

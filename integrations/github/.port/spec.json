@@ -4,6 +4,7 @@
   "icon": "Github",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean",
   "formMappingEnabled": true,
+  "testConnectionAvailable": true,
   "features": [
     {
       "type": "exporter",
