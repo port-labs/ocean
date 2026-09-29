@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.18.1 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 0.18.0 (2026-09-28)
+
+
+### Features
+
+- Added optional enrichWithCommits and enrichWithReviewDiscussion selectors on pull-request to attach raw Azure DevOps commits and threads during resync and live events
+
+
+## 0.17.7 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
 ## 0.17.6 (2026-09-23)
 
 

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.16.0 (2026-09-29)
+
+
+### Features
+
+- Enabled test connection so Port can run connection health probes for this integration.
+
+
+## 6.15.3 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 6.15.2 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 6.15.1 (2026-09-27)
+
+
+### Bug Fixes
+
+- Ensure GitHub rate limiter waits at least 1s after reset to avoid burning retries with sleep(0)
+
+
 ## 6.15.0 (2026-09-24)
 
 

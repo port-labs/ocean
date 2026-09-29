@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.4 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 0.12.3 (2026-09-28)
+
+
+### Bug Fixes
+
+- Stop logging the full webhook payload once per registered processor on every incoming webhook. Payload logging is already handled by Ocean core behind the events_debug_logging flag.
+
+
+## 0.12.2 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
 ## 0.12.1 (2026-09-23)
 
 
