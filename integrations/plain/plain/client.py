@@ -15,6 +15,7 @@ from plain.exceptions import (
     missing_permission_names,
 )
 from plain.queries import (
+    DISCUSSION_MESSAGES,
     GET_CUSTOMER,
     GET_THREAD,
     LIST_COMPANIES,
@@ -23,6 +24,8 @@ from plain.queries import (
     LIST_THREAD_IDS,
     LIST_THREADS,
     LIST_USERS,
+    THREAD_DISCUSSION_IDS,
+    THREAD_DISCUSSIONS,
     THREAD_TIMELINE,
 )
 from plain.utils import edges_to_nodes, get_nested
@@ -227,6 +230,41 @@ class PlainClient:
                     if messages:
                         yield messages
 
+    async def get_discussions(
+        self, statuses: list[str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for threads in self.get_thread_ids(statuses):
+            for thread in threads:
+                thread_id = _entity_id(thread)
+                if thread_id is None:
+                    continue
+                async for discussions in self._discussion_pages(thread_id):
+                    if discussions:
+                        yield discussions
+
+    async def get_discussion_messages(
+        self, statuses: list[str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for threads in self.get_thread_ids(statuses):
+            for thread in threads:
+                thread_id = _entity_id(thread)
+                if thread_id is None:
+                    continue
+                async for discussions in self._discussion_id_pages(thread_id):
+                    for discussion in discussions:
+                        discussion_id = _entity_id(discussion)
+                        if discussion_id is None:
+                            continue
+                        async for messages in self._discussion_message_pages(
+                            discussion_id
+                        ):
+                            stamped = [
+                                {**message, "threadId": thread_id}
+                                for message in messages
+                            ]
+                            if stamped:
+                                yield stamped
+
     def _thread_list_variables(
         self, statuses: list[str] | None
     ) -> dict[str, Any] | None:
@@ -250,6 +288,46 @@ class PlainClient:
             if "missing connection" in str(error):
                 raise PlainGraphQLError(
                     [{"message": f"Plain thread '{thread_id}' was not found"}]
+                ) from error
+            raise
+
+    async def _discussion_pages(
+        self, thread_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self.paginate_connection(
+            THREAD_DISCUSSIONS,
+            "ThreadDiscussions",
+            {"threadId": thread_id},
+            "discussions",
+        ):
+            yield batch
+
+    async def _discussion_id_pages(
+        self, thread_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self.paginate_connection(
+            THREAD_DISCUSSION_IDS,
+            "ThreadDiscussionIds",
+            {"threadId": thread_id},
+            "discussions",
+        ):
+            yield batch
+
+    async def _discussion_message_pages(
+        self, discussion_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        try:
+            async for batch in self.paginate_connection(
+                DISCUSSION_MESSAGES,
+                "DiscussionMessages",
+                {"discussionId": discussion_id},
+                "discussion.messages",
+            ):
+                yield batch
+        except PlainGraphQLError as error:
+            if "missing connection" in str(error):
+                raise PlainGraphQLError(
+                    [{"message": f"Plain discussion '{discussion_id}' was not found"}]
                 ) from error
             raise
 
@@ -308,6 +386,13 @@ def _abort_when_permission_is_missing(payload: Any) -> None:
         )
     logger.error(message)
     raise OceanAbortException(message)
+
+
+def _entity_id(entity: dict[str, Any]) -> str | None:
+    entity_id = entity.get("id")
+    if isinstance(entity_id, str) and entity_id:
+        return entity_id
+    return None
 
 
 def _has_message_text(entry: dict[str, Any]) -> bool:

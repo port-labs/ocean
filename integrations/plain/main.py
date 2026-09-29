@@ -88,6 +88,24 @@ async def on_resync_thread_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield messages
 
 
+@ocean.on_resync(ObjectKind.DISCUSSION)
+async def on_resync_discussions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
+    client = PlainClient()
+    async for discussions in client.get_discussions(statuses):
+        logger.info(f"Received discussion batch with {len(discussions)} discussions")
+        yield discussions
+
+
+@ocean.on_resync(ObjectKind.DISCUSSION_MESSAGE)
+async def on_resync_discussion_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
+    client = PlainClient()
+    async for messages in client.get_discussion_messages(statuses):
+        logger.info(f"Received discussion message batch with {len(messages)} messages")
+        yield messages
+
+
 def _live_events_enabled() -> bool:
     raw = ocean.integration_config.get("enable_live_events", False)
     if isinstance(raw, str):

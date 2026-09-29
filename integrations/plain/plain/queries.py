@@ -262,3 +262,127 @@ query ThreadTimeline($threadId: ID!, $first: Int, $after: String) {
   }
 }
 """.strip()
+
+THREAD_DISCUSSIONS = """
+query ThreadDiscussions($threadId: ID!, $first: Int, $after: String) {
+  discussions(
+    first: $first
+    after: $after
+    filters: { threadIds: [$threadId] }
+  ) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        threadId
+        title
+        status
+        agentStatus
+        visibility
+        isUnread
+        createdAt {
+          iso8601
+        }
+        updatedAt {
+          iso8601
+        }
+        lastActivityAt {
+          iso8601
+        }
+        resolvedAt {
+          iso8601
+        }
+        channelDetails {
+          __typename
+          ... on ThreadDiscussionSlackChannelDetails {
+            slackChannelName
+            slackMessageLink
+          }
+          ... on ThreadDiscussionEmailChannelDetails {
+            emailRecipients
+          }
+        }
+        createdBy {
+          __typename
+          ... on UserActor {
+            userId
+          }
+          ... on CustomerActor {
+            customerId
+          }
+          ... on MachineUserActor {
+            machineUserId
+          }
+          ... on SystemActor {
+            systemId
+          }
+        }
+      }
+    }
+  }
+}
+""".strip()
+
+THREAD_DISCUSSION_IDS = """
+query ThreadDiscussionIds($threadId: ID!, $first: Int, $after: String) {
+  discussions(
+    first: $first
+    after: $after
+    filters: { threadIds: [$threadId] }
+  ) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
+""".strip()
+
+DISCUSSION_MESSAGES = """
+query DiscussionMessages($discussionId: ID!, $first: Int, $after: String) {
+  discussion(discussionId: $discussionId) {
+    threadId
+    messages(first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          threadDiscussionId
+          type
+          text
+          slackMessageLink
+          createdAt {
+            iso8601
+          }
+          createdBy {
+            __typename
+            ... on UserActor {
+              userId
+            }
+            ... on CustomerActor {
+              customerId
+            }
+            ... on MachineUserActor {
+              machineUserId
+            }
+            ... on SystemActor {
+              systemId
+            }
+          }
+        }
+      }
+    }
+  }
+}
+""".strip()

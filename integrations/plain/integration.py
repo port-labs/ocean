@@ -82,6 +82,28 @@ class ThreadMessageResourceConfig(ResourceConfig):
     )
 
 
+class DiscussionResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.DISCUSSION] = Field(
+        description="Plain thread discussion",
+        title="Discussion",
+    )
+    selector: ThreadSelector = Field(
+        description="Discussion selector",
+        title="Selector",
+    )
+
+
+class DiscussionMessageResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.DISCUSSION_MESSAGE] = Field(
+        description="Plain discussion message",
+        title="Discussion message",
+    )
+    selector: ThreadSelector = Field(
+        description="Discussion message selector",
+        title="Selector",
+    )
+
+
 class PlainPortAppConfig(PortAppConfig):
     resources: list[
         ExampleKindResourceConfig
@@ -91,6 +113,8 @@ class PlainPortAppConfig(PortAppConfig):
         | CustomerResourceConfig
         | ThreadResourceConfig
         | ThreadMessageResourceConfig
+        | DiscussionResourceConfig
+        | DiscussionMessageResourceConfig
     ] = Field(
         description="Resources for plain",
         title="Resources",

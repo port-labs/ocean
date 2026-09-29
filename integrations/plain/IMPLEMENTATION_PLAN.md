@@ -1,7 +1,7 @@
 # Plain Ocean Integration — Implementation Plan
 
-> Status: **Draft for review**  
-> Source: design discussion (Aug 20, 2026)  
+> Status: **Phase 1 complete — start Phase 2**  
+> Source: design discussion (Aug 20, 2026); Phase 1 kinds expanded Sep 2026  
 > Decision: dedicated `integrations/plain/` integration (Linear-style), **not** custom Ocean and **not** a generic GraphQL fork.  
 > **Executable task list (prerequisites + per-task tests):** [TASKS.md](./TASKS.md)
 
@@ -9,14 +9,16 @@
 
 Build a Port Ocean integration for [Plain](https://www.plain.com/) that syncs support data into the Port catalog via Plain’s GraphQL API.
 
-| Phase | Goal | Effort |
-|-------|------|--------|
-| **0 (optional POC)** | Custom Ocean, `pagination_type: none`, `first: 100` | ~1 day |
-| **1** | Dedicated integration, **5 kinds**, resync only | **4.5–5.5 days** |
-| **2** | Live events via Plain webhooks | **+3–4 days** |
-| **3+ (optional)** | Extra catalog kinds (tasks, labels, help center, etc.) | TBD |
+| Phase | Goal | Effort | Status |
+|-------|------|--------|--------|
+| **0 (optional POC)** | Custom Ocean, `pagination_type: none`, `first: 100` | ~1 day | Skipped |
+| **1** | Dedicated integration, **8 kinds**, resync only | Done | **Complete** |
+| **2** | Live events via Plain webhooks | **+3–5 days** | **Next** |
+| **3+ (optional)** | Extra catalog kinds (tasks, labels, help center, etc.) | TBD | Backlog |
 
-**Agreed Phase 1 set:** `thread`, `customer`, `tenant`, `user`, `company`
+**Phase 1 kinds (shipped):** `company`, `tenant`, `user`, `customer`, `thread`, `thread-message`, `discussion`, `discussion-message`
+
+Originally scoped to five kinds (`thread`, `customer`, `tenant`, `user`, `company`). Phase 1 also shipped the thread-conversation kinds below so Port can model customer-facing timeline messages and internal discussions.
 
 ---
 
@@ -31,7 +33,7 @@ The custom Ocean integration only injects pagination into **URL query parameters
 | Full thread pagination (Relay) | Not supported today | Built-in |
 | Rich thread model (customer, tenant, assignee, labels, fields) | Manual JQ mapping | Curated blueprints |
 | Multiple resources | One GraphQL resource per mapping | Native kinds |
-| Live updates | No | Plain webhooks |
+| Live updates | No | Plain webhooks (Phase 2) |
 | Time to first demo | Faster (~1 day with `pagination: none`) | Slower |
 | Long-term maintenance | Consumer-owned mappings | Integration-owned |
 
@@ -44,8 +46,8 @@ The custom Ocean integration only injects pagination into **URL query parameters
 | Custom + `pagination: none`, `first: 100` | ~1 day | Demo / &lt;100 entities |
 | Custom + `body_cursor` enhancement | 2–3 days | Generic GraphQL product need |
 | Generic GraphQL fork of custom | 5–7 days | Platform product; overkill for Plain alone |
-| **Dedicated Plain Phase 1** | **4.5–5.5 days** | **Chosen path** |
-| Dedicated + webhooks | **7–9 days** | Near real-time production |
+| **Dedicated Plain Phase 1** | **Done** | **Chosen path** |
+| Dedicated + webhooks | **Phase 2 next** | Near real-time production |
 
 ---
 
@@ -66,21 +68,26 @@ Useful docs:
 - [Request signing](https://www.plain.com/docs/request-signing.md)
 - [API explorer](https://app.plain.com/developer/api-explorer/)
 
+Verified API notes live in [API_NOTES.md](./API_NOTES.md).
+
 ---
 
-## Phase 1 — Resync MVP (production baseline)
+## Phase 1 — Resync MVP (complete)
 
-### Scope
+### Scope (shipped)
 
-| Kind | GraphQL query | Blueprint (suggested) | Priority |
-|------|---------------|----------------------|----------|
-| `thread` | `threads` | `plainThread` | P0 |
-| `customer` | `customers` | `plainCustomer` | P0 |
-| `tenant` | `tenants` | `plainTenant` | P0 |
-| `user` | `users` | `plainUser` | P1 |
-| `company` | `companies` | `plainCompany` | P1 |
+| Kind | GraphQL query | Blueprint | Notes |
+|------|---------------|----------|-------|
+| `company` | `companies` | `plainCompany` | Root list |
+| `tenant` | `tenants` | `plainTenant` | Root list |
+| `user` | `users` | `plainUser` | Root list; needs `roles:read` for `role` |
+| `customer` | `customers` | `plainCustomer` | Root list; tenants via `tenantMemberships` |
+| `thread` | `threads` | `plainThread` | Root list; selector `excludeDoneThreads` |
+| `thread-message` | `thread.timelineEntries` | `plainThreadMessage` | Nested per thread; needs `timeline:read` |
+| `discussion` | `discussions(filters: { threadIds })` | `plainDiscussion` | Nested per thread |
+| `discussion-message` | `discussion.messages` | `plainDiscussionMessage` | Nested per discussion; stamps `threadId` |
 
-**Out of scope for Phase 1:** webhooks, live events, search queries, mutations, Tier 2–5 kinds.
+**Out of scope for Phase 1 (still true):** webhooks, live events, search queries, mutations, remaining Tier 2–5 kinds.
 
 ### Catalog model (relations)
 
@@ -91,6 +98,10 @@ erDiagram
     plainThread ||--o| plainUser : assignee
     plainCustomer ||--o| plainCompany : company
     plainCustomer }o--o{ plainTenant : tenants
+    plainThreadMessage }o--|| plainThread : thread
+    plainDiscussion }o--|| plainThread : thread
+    plainDiscussionMessage }o--|| plainThread : thread
+    plainDiscussionMessage }o--|| plainDiscussion : discussion
 ```
 
 | From | Relation | To | Source field |
@@ -99,158 +110,131 @@ erDiagram
 | `plainThread` | `tenant` | `plainTenant` | `thread.tenant.id` |
 | `plainThread` | `assignee` | `plainUser` | `thread.assignedTo.id` (when `__typename == "User"`) |
 | `plainCustomer` | `company` | `plainCompany` | `customer.company.id` |
-| `plainCustomer` | `tenants` | `plainTenant` | `customer.tenants[].id` (if exposed in query) |
+| `plainCustomer` | `tenants` | `plainTenant` | `customer.tenantMemberships.edges[].node.tenant.id` |
+| `plainThreadMessage` | `thread` | `plainThread` | stamped `threadId` on timeline entry |
+| `plainDiscussion` | `thread` | `plainThread` | stamped / returned `threadId` |
+| `plainDiscussionMessage` | `thread` | `plainThread` | stamped `threadId` |
+| `plainDiscussionMessage` | `discussion` | `plainDiscussion` | `threadDiscussionId` |
 
-Use `createMissingRelatedEntities: true` so threads can sync even if related entities have not synced yet.
+`createMissingRelatedEntities: true` is set so child kinds can sync even if parents have not finished yet.
 
-### Suggested project structure
-
-Design the client so Phase 2 only adds webhook processors — no client rewrite.
+### Project structure (as built)
 
 ```text
 integrations/plain/
 ├── plain/
-│   ├── client.py           # GraphQL POST + Relay pagination + error handling
-│   ├── queries.py          # LIST_THREADS, LIST_CUSTOMERS, etc.
-│   ├── utils.py            # ObjectKind enum, flatten edges→nodes
-│   └── exceptions.py       # PlainGraphQLError
-├── main.py                 # @ocean.on_resync per kind
-├── integration.py
+│   ├── client.py           # GraphQL POST + Relay pagination + list/get helpers
+│   ├── queries.py          # LIST_* / GET_* / THREAD_TIMELINE / THREAD_DISCUSSIONS / DISCUSSION_MESSAGES
+│   ├── utils.py            # ObjectKind enum (8 kinds), flatten edges→nodes
+│   └── exceptions.py       # PlainGraphQLError, PlainHTTPError
+├── main.py                 # @ocean.on_resync per kind + enableLiveEvents on_start stub
+├── integration.py          # ResourceConfig per kind (excludeDoneThreads where needed)
 ├── .port/
-│   ├── spec.yaml           # apiToken (bearer), optional threadStatusFilter
+│   ├── spec.yaml           # apiToken, apiUrl, pageSize, threadStatusFilter, enableLiveEvents
 │   └── resources/
-│       ├── port-app-config.yaml
+│       ├── port-app-config.yml
 │       └── blueprints.json
 └── tests/
-    ├── test_client.py      # pagination, errors
-    └── test_queries.py     # response parsing
+    ├── test_*.py           # per-kind + client + mapping tests
+    └── fixtures/           # discussion_slack / email / message fixtures
 ```
 
-**Phase 2 additions (planned, not built in Phase 1):**
+**Phase 2 additions (still to build):**
 
 ```text
 ├── webhook_processors/
 │   ├── plain_abstract_webhook_processor.py
 │   ├── thread_webhook_processor.py
-│   └── customer_webhook_processor.py
+│   ├── customer_webhook_processor.py
+│   ├── thread_message_webhook_processor.py   # optional / stretch
+│   └── discussion_webhook_processor.py       # optional / stretch
 └── plain/webhook_setup.py  # createWebhookTarget on @ocean.on_start
 ```
 
-### Client design (Phase 1 + Phase 2-ready)
+### Client design (shipped, Phase 2-ready)
 
-#### Generic Relay paginator (write once, reuse for all 5 kinds)
+#### Generic Relay paginator (all list kinds)
 
-```python
-async def paginate_connection(
-    self,
-    query: str,
-    operation_name: str,
-    variables: dict,
-    connection_path: str,  # e.g. "data.threads"
-) -> AsyncGenerator[list[dict], None]:
-    after = None
-    while True:
-        page_vars = {**variables, "first": PAGE_SIZE, "after": after}
-        data = await self.execute(query, page_vars, operation_name)
-        connection = get_nested(data, connection_path)
-        yield [edge["node"] for edge in connection["edges"]]
-        if not connection["pageInfo"]["hasNextPage"]:
-            break
-        after = connection["pageInfo"]["endCursor"]
-```
+`paginate_connection(query, operation_name, variables, connection_path)` walks `first` / `after` until `hasNextPage` is false. Default page size **100** (Plain max). GraphQL `errors` raise; they are not treated as empty pages.
 
-- Default page size: **100** (Plain max).
-- Raise clearly on GraphQL `errors` in the response body (do not treat as an empty page).
+#### Nested kinds (thread-scoped)
 
-#### Single-entity fetch (stub for Phase 2)
+`thread-message`, `discussion`, and `discussion-message` are not root lists:
 
-Add in Phase 1; use later when a webhook provides an entity ID:
+1. Page thread IDs (`get_thread_ids`, respects status filter / `excludeDoneThreads`)
+2. For each thread, page nested connections:
+   - messages → `thread.timelineEntries` (entries with text only)
+   - discussions → `discussions(filters: { threadIds: [$threadId] })`
+   - discussion messages → for each discussion, `discussion.messages`, then stamp `threadId`
+
+#### Single-entity fetch (Phase 2 stubs — present)
 
 ```python
 async def get_thread(self, thread_id: str) -> dict: ...
 async def get_customer(self, customer_id: str) -> dict: ...
-# optionally: get_tenant / get_user / get_company
 ```
 
-### Per-kind implementation notes
+Still missing for richer live events (add in Phase 2 as needed):
 
-#### 1. `thread` (largest effort — ~1–1.5 days)
+```python
+async def get_thread_message / timeline entry by id  # if Plain exposes it
+async def get_discussion(self, discussion_id: str) -> dict: ...
+async def get_discussion_message(...)  # or re-fetch discussion.messages page
+```
+
+### Per-kind notes (as shipped)
+
+#### 1. `thread`
 
 - Query: `threads` — [docs](https://www.plain.com/docs/graphql/threads/get.md)
 - Permission: `thread:read`
-- Pagination: Relay (`first` / `after`, max 100/page)
-- Key fields: `id`, `ref`, `externalId`, `title`, `status`, `priority`, `customer`, `tenant`, `assignedTo`, `labels`, `threadFields`, timestamps
+- Selector: `excludeDoneThreads` → sync `TODO` + `SNOOZED` only when `true`
+- Assignee relation only when `assignedTo.__typename == "User"`; `MachineUser` / `System` stored as properties
 
-**Mapping highlights:**
-
-- `identifier`: `.id`
-- `title`: `.title // .ref`
-- `assignee` relation: only when `assignedTo.__typename == "User"`
-- Store machine-user assignee as a property if needed (no `machine-user` kind in Phase 1)
-
-**Optional install config:** `threadStatusFilter` (`TODO`, `DONE`, etc.) passed into `variables.filters`.
-
-#### 2. `customer` (~0.5 day)
+#### 2. `customer`
 
 - Query: `customers` — [docs](https://www.plain.com/docs/graphql/customers/get.md)
-- Permission: `customer:read`
-- Key fields: `id`, `externalId`, `fullName`, `email`, `company`, `createdAt`, `updatedAt`
+- Permissions: `customer:read`, plus `customerTenantMembership:read` for tenants
+- Tenants mapped from first page of `tenantMemberships` (max 100)
 
-#### 3. `tenant` (~0.5 day)
+#### 3. `tenant` / `user` / `company`
 
-- Query: `tenants` — [docs](https://www.plain.com/docs/graphql/tenants/get.md)
-- Permission: tenant read
-- Key fields: `id`, `externalId`, `name`, `createdAt`, `updatedAt` (+ tenant custom fields if needed)
+- Root Relay lists as originally planned
+- User `role` needs `roles:read`
+- Company fields: `id`, `name`, `domainName` (no `externalId`)
 
-#### 4. `user` (~0.5 day)
+#### 4. `thread-message` (added in Phase 1)
 
-- Query: `users`
-- Permission: user read
-- Key fields: `id`, `fullName`, `email`, `status`, `role` (if available)
-- Used mainly as assignee relation target from threads
+- Source: `thread.timelineEntries` (permission `timeline:read`)
+- Only entries with message text (`llmText` / equivalent) are yielded
+- Related to parent `plainThread` via stamped `threadId`
+- Selector: same `excludeDoneThreads` as threads
 
-#### 5. `company` (~0.5 day)
+#### 5. `discussion` (added in Phase 1; was Tier 2 backlog)
 
-- Query: `companies` — [docs](https://www.plain.com/docs/graphql/companies/get-companies.md)
-- Permission: company read
-- Key fields: `id`, `externalId`, `name`, `domain`, `createdAt`, `updatedAt`
-- **Optional cut** if only tenants are used (−0.5 day)
+- Source: `discussions` filtered by `threadIds`
+- Channel derived from `channelDetails.__typename` → `SLACK` / `EMAIL` / `CURSOR` / `AGENT_SESSION`
+- Slack link + email recipients mapped when present
+- Related to parent `plainThread`
 
-### Install configuration (`.port/spec.yaml`)
+#### 6. `discussion-message` (added in Phase 1)
 
-```yaml
-configurations:
-  - name: apiToken
-    required: true
-    type: string
-    sensitive: true
-    description: Plain API key (Bearer token)
+- Source: `discussion.messages`
+- Related to both `plainDiscussion` (`threadDiscussionId`) and `plainThread` (stamped `threadId`)
 
-  - name: apiUrl
-    required: false
-    type: url
-    default: "https://core-api.uk.plain.com/graphql/v1"
+### Install configuration (`.port/spec.yaml`) — as shipped
 
-  - name: pageSize
-    required: false
-    type: string
-    default: "100"
-    description: Max 100 per Plain API limits
+| Spec name | Required | Default | Purpose |
+|-----------|----------|---------|---------|
+| `apiToken` | yes | | Bearer token |
+| `apiUrl` | no | UK GraphQL URL | Override if Plain adds regions |
+| `pageSize` | no | `100` | Capped at 100 |
+| `threadStatusFilter` | no | unset | Fallback status list for fetches without an explicit list |
+| `enableLiveEvents` | no | `false` | Phase 2 gate; `on_start` skips registration when false |
 
-  # Phase 2 placeholder — add now in spec as optional, wire in Phase 2
-  - name: enableLiveEvents
-    required: false
-    type: boolean
-    default: false
-    description: "Phase 2: register Plain webhooks for real-time sync"
+Thread / message / discussion resync uses selector `excludeDoneThreads`, not `threadStatusFilter`, for the open-vs-all filter.
 
-  # optional later:
-  # - name: threadStatusFilter
-```
-
-Keep `enableLiveEvents` in the spec from day one (default `false`) so Phase 2 does not require a breaking install change.
-
-### Suggested `port-app-config.yaml` resources block
+### Resources order in `port-app-config.yml`
 
 ```yaml
 createMissingRelatedEntities: true
@@ -262,105 +246,121 @@ resources:
   - kind: user
   - kind: customer
   - kind: thread
+  - kind: thread-message
+  - kind: discussion
+  - kind: discussion-message
 ```
 
-Also list kinds in `spec.yaml` `features.exporter.resources` for Port UI discovery.
+Kinds are also listed in `spec.yaml` `features.exporter.resources`.
 
 ### Resync order
 
-Ocean runs kinds independently. Relations work best if related entities exist, but with `createMissingRelatedEntities: true`, order does not block sync.
+Ocean runs kinds independently. Recommended mental order:
 
-Recommended mental order:
-
-1. `company`, `tenant`, `user`, `customer` (can run in parallel)
-2. `thread` (references the above)
+1. `company`, `tenant`, `user`, `customer` (parallel-safe)
+2. `thread`
+3. `thread-message`, `discussion` (need thread IDs)
+4. `discussion-message` (needs discussions + stamped thread id)
 
 ### API key permissions needed
 
 Ask Plain admins for an API key with at least:
 
+- `company:read`
+- `tenant:read`
+- `user:read` (+ `roles:read` for role name)
+- `customer:read` (+ `customerTenantMembership:read` for tenant links)
 - `thread:read`
-- `customer:read`
-- tenant read
-- user read
-- company read
-
-Confirm exact permission names in the [Plain API explorer](https://app.plain.com/developer/api-explorer/).
-
-### Phase 1 effort breakdown
-
-| Task | Days |
-|------|------|
-| Scaffold + spec + blueprints | 0.5 |
-| Generic GraphQL client + pagination | 0.5–1 |
-| 5 kinds (queries, handlers, mappings) | 2–2.5 |
-| Tests | 1 |
-| Docs + changelog | 0.25–0.5 |
-| **Phase 1 total** | **4.5–5.5 days** |
+- `timeline:read` (thread messages)
+- Discussion / discussion-message permissions are not named in the public schema; confirm in the [API explorer](https://app.plain.com/developer/api-explorer/)
 
 ### Phase 1 acceptance criteria
 
-- [ ] All 5 kinds resync with full Relay pagination
-- [ ] GraphQL errors fail clearly (not silent empty pages)
-- [ ] Relations map correctly; `createMissingRelatedEntities` works
-- [ ] Unit tests cover pagination, GraphQL error path, and smoke mapping
-- [ ] `get_thread` / `get_customer` stubs exist
-- [ ] `enableLiveEvents` present in spec (default `false`)
-- [ ] README + example config + changelog
+- [x] All shipped kinds resync with full Relay pagination
+- [x] GraphQL errors fail clearly (not silent empty pages)
+- [x] Relations map correctly; `createMissingRelatedEntities` works
+- [x] Unit tests cover pagination, GraphQL error path, and smoke mapping (incl. discussion fixtures)
+- [x] `get_thread` / `get_customer` stubs exist
+- [x] `enableLiveEvents` present in spec (default `false`); `on_start` gated stub
+- [x] README + example config + changelog / release intent as needed
 
 ---
 
-## Phase 2 — Live events (webhooks)
+## Phase 2 — Live events (webhooks) — **next**
 
-### Events to support first
+Phase 2 builds on the **8-kind** catalog. Minimum viable live events cover thread + customer (original plan). Extend to conversation kinds once single-entity getters and Plain event coverage are confirmed.
+
+### Events to support first (MVP)
 
 | Webhook event | Action | Uses |
 |---------------|--------|------|
-| `thread.created` | Upsert thread | `get_thread(id)` |
-| `thread.status_transitioned` | Update thread | `get_thread(id)` |
-| `thread.assignment_transitioned` | Update thread | `get_thread(id)` |
+| `thread.thread_created` / `thread.created` | Upsert thread | `get_thread(id)` |
+| `thread.thread_status_transitioned` / `thread.status_transitioned` | Update thread | `get_thread(id)` |
+| `thread.thread_assignment_transitioned` / `thread.assignment_transitioned` | Update thread | `get_thread(id)` |
 | `customer.created` | Upsert customer | `get_customer(id)` |
 | `customer.updated` | Update customer | `get_customer(id)` |
 | `customer.deleted` | Delete entity | webhook payload ID |
 
-Reference: [Plain webhooks](https://www.plain.com/docs/webhooks.md)
+Confirm exact event type strings against [Plain webhooks](https://www.plain.com/docs/webhooks.md) / the current event catalog before implementing.
 
-### Phase 2 architecture hooks to add in Phase 1
+### Events to support next (conversation kinds — stretch in Phase 2 or early Phase 3)
 
-1. **`get_thread()` / `get_customer()`** in client (even if unused initially)
-2. **Webhook payload parser** — typed model for event body
-3. **`spec.yaml`** — `enableLiveEvents` flag (disabled)
-4. **`main.py`** — guarded `@ocean.on_start` stub for webhook registration
-5. **Signature verification helper** — [request signing docs](https://www.plain.com/docs/request-signing.md)
+These keep `thread-message`, `discussion`, and `discussion-message` fresh without full resync. Prefer upsert-via-fetch when Plain exposes a stable ID in the payload.
+
+| Area | Likely event families | Handler approach |
+|------|----------------------|------------------|
+| Thread timeline / messages | Channel events (`thread.email_received`, `thread.chat_received`, `thread.slack_message_received`, …) and/or timeline events | Upsert `plainThreadMessage` (and often refresh parent thread); may need new getter or payload mapping |
+| Discussions | Discussion created / updated / resolved (confirm names in Plain docs) | Upsert `plainDiscussion` via `get_discussion(id)` once added |
+| Discussion messages | Discussion message created / updated | Upsert `plainDiscussionMessage`; stamp `threadId` + `discussion` relation |
+
+If Plain does not expose single-entity timeline/discussion fetches, fall back to: on thread activity → re-fetch nested pages for that thread only (cheaper than full resync).
+
+### Phase 2 architecture hooks (already in Phase 1)
+
+1. **`get_thread()` / `get_customer()`** in client — done
+2. **`spec.yaml`** — `enableLiveEvents` flag (disabled) — done
+3. **`main.py`** — gated `@ocean.on_start` stub for webhook registration — done (logs only; real registration is Phase 2)
+4. **Still to add:** webhook payload parser, signature verification, processors, `webhook_setup.py`, optional getters for discussion / timeline entry
 
 ### Phase 2 effort estimate
 
 | Task | Days |
 |------|------|
 | Webhook target setup on `on_start` (gated by `enableLiveEvents`) | 0.5–1 |
-| 2–3 processors (thread created/updated, customer updated) | 1.5–2 |
+| Thread + customer processors (MVP) | 1.5–2 |
 | Signature verification + tests | 1 |
-| **Phase 2 total** | **+3–4 days** |
+| Conversation-kind processors + getters (stretch) | +1–1.5 |
+| **Phase 2 MVP total** | **+3–4 days** |
+| **Phase 2 + conversation live events** | **+4–5.5 days** |
 
 ### Phase 2 acceptance criteria
 
-- [ ] With `enableLiveEvents: true`, webhook target is registered
+**MVP**
+
+- [ ] With `enableLiveEvents: true`, webhook target is registered for thread + customer events
 - [ ] Signature verification rejects invalid requests
 - [ ] Thread create / status / assignment events upsert catalog entities
 - [ ] Customer create/update upsert; delete removes entity
 - [ ] Tests cover auth failure and happy path per processor
 
+**Stretch (conversation kinds)**
+
+- [ ] Timeline / channel events upsert `plainThreadMessage` (or documented fallback re-fetch)
+- [ ] Discussion create/update upserts `plainDiscussion`
+- [ ] Discussion message events upsert `plainDiscussionMessage` with thread + discussion relations
+- [ ] Missing-entity GraphQL paths fail clearly (same pattern as resync)
+
 ---
 
 ## Phase 3+ — Optional kinds backlog
 
-Not in MVP scope. Use as a future expansion menu.
+Not in Phase 1/2 scope. `discussion` / discussion messages moved **out** of this backlog (shipped in Phase 1).
 
 ### Tier 1 remaining
 
 | Kind | GraphQL query | Notes |
 |------|---------------|------|
-| `machine-user` | `machineUsers` | AI/bot assignees |
+| `machine-user` | `machineUsers` | AI/bot assignees (today stored as thread property only) |
 | `label-type` | `labelTypes` | Tag definitions (labels usually embedded on thread) |
 
 ### Tier 2 — Thread ecosystem
@@ -368,14 +368,14 @@ Not in MVP scope. Use as a future expansion menu.
 | Kind | GraphQL query | What it is |
 |------|---------------|------------|
 | `task` | `tasks` | Follow-up tasks on threads |
-| `note` | notes / timeline | Internal notes |
+| `note` | notes / timeline | Internal notes (overlap with thread-message — evaluate before adding) |
 | `thread-field-schema` | `threadFieldSchemas` | Custom field definitions |
 | `tenant-field-schema` | `tenantFieldSchemas` | Tenant custom field definitions |
 | `customer-group` | `customerGroups` | Customer segmentation |
 | `tier` | `tiers` | Support / priority tiers |
-| `discussion` | `discussions` | Internal team discussions |
 | `snippet` | `snippets` | Canned responses |
-| `timeline-entry` | `timelineEntries` | Thread activity items |
+| ~~`discussion`~~ | — | **Shipped in Phase 1** |
+| ~~`timeline-entry`~~ | — | **Covered by `thread-message` in Phase 1** |
 
 ### Tier 3 — Help center & knowledge
 
@@ -397,26 +397,37 @@ Slack / Discord / Teams / Linear / Jira / GitHub / Sidekick / chat-app configura
 
 ---
 
-## Suggested implementation order (PR / task checklist)
+## Suggested implementation order
 
-1. Scaffold `integrations/plain/` (pyproject, Makefile, `integration.py`, spec)
-2. Client: `execute` + `paginate_connection` + GraphQL error handling
-3. Queries + resync for `company`, `tenant`, `user`, `customer`
-4. Queries + resync for `thread` (largest)
-5. Blueprints + `port-app-config` relations
-6. Single-entity getters + `enableLiveEvents` stub
-7. Tests + README + changelog
-8. *(Later)* Phase 2 webhook setup + processors
+### Phase 1 (done)
+
+1. ~~Scaffold `integrations/plain/`~~
+2. ~~Client: `execute` + `paginate_connection` + GraphQL error handling~~
+3. ~~Queries + resync for `company`, `tenant`, `user`, `customer`, `thread`~~
+4. ~~Queries + resync for `thread-message`, `discussion`, `discussion-message`~~
+5. ~~Blueprints + `port-app-config` relations~~
+6. ~~Single-entity getters + `enableLiveEvents` stub~~
+7. ~~Tests + README~~
+
+### Phase 2 (next)
+
+1. Payload parsing + signature verification (`P2-T1` in [TASKS.md](./TASKS.md))
+2. Abstract webhook processor + `/webhook` route (`P2-T2`)
+3. Thread webhook processors using `get_thread` (`P2-T3`)
+4. Customer webhook processors using `get_customer` (`P2-T4`)
+5. Webhook target registration when `enableLiveEvents=true` (`P2-T5`)
+6. Docs + gate (`P2-T6`)
+7. *(Stretch)* Discussion / thread-message processors + any missing single-entity getters
 
 ---
 
-## Open questions for reviewers
+## Open questions for Phase 2
 
-1. Confirm **5 kinds** for Phase 1 vs cutting `company` (−0.5 day).
-2. Confirm default API URL (`core-api.uk.plain.com`) vs US / other Plain regions.
-3. Confirm which thread filters are needed at install time (status, labels, tenants).
-4. Confirm whether Phase 2 webhooks are required for the first production release or can follow later.
-5. Confirm ownership / target repo branch and review path (maintaining team PR).
+1. Exact Plain webhook **event type strings** for thread status/assignment and for discussion / timeline activity (docs vs live catalog).
+2. Whether Phase 2 MVP should stay at thread + customer only, or include conversation kinds in the first live-events PR.
+3. Whether Plain exposes **single-entity** queries for timeline entries / discussion messages, or handlers should re-fetch nested pages by parent ID.
+4. Webhook signing secret storage: install config vs Ocean secrets pattern used by other integrations (e.g. Linear).
+5. Confirm whether `createWebhookTarget` mutation permissions are on the same API key used for resync.
 
 ---
 
@@ -424,16 +435,17 @@ Slack / Discord / Teams / Linear / Jira / GitHub / Sidekick / chat-app configura
 
 | Scope | Effort |
 |-------|--------|
-| Phase 1 only | **4.5–5.5 days** |
-| Phase 1 + Phase 2 | **7–9 days** |
+| Phase 1 (8 kinds, resync) | **Done** |
+| Phase 2 MVP (thread + customer webhooks) | **+3–4 days** |
+| Phase 2 + conversation live events | **+4–5.5 days** |
 
 ---
 
-## Next step after approval
+## Next step
 
-Scaffold `integrations/plain/` with:
+Start **Phase 2** from [TASKS.md](./TASKS.md) (`P2-T1` onward):
 
-1. Client + generic Relay paginator
-2. All Phase 1 kinds (queries, handlers, mappings)
-3. Blueprints + relations
-4. Phase 2 stubs (`get_thread`, `get_customer`, `enableLiveEvents` in spec)
+1. Signature verification + payload models
+2. Abstract processor + thread/customer processors
+3. Register webhook target when `enableLiveEvents` is true
+4. Decide stretch scope for `thread-message` / `discussion` / `discussion-message` live updates

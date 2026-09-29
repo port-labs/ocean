@@ -6,6 +6,8 @@ import jq  # type: ignore[import-not-found]
 import yaml  # type: ignore[import-untyped]
 
 from integration import (
+    DiscussionMessageResourceConfig,
+    DiscussionResourceConfig,
     PlainPortAppConfig,
     ThreadMessageResourceConfig,
     ThreadResourceConfig,
@@ -44,6 +46,8 @@ def test_blueprint_and_port_app_config_parse() -> None:
         "customer",
         "thread",
         "thread-message",
+        "discussion",
+        "discussion-message",
     ]
     identifiers = [blueprint["identifier"] for blueprint in blueprints]
     assert identifiers == [
@@ -53,6 +57,8 @@ def test_blueprint_and_port_app_config_parse() -> None:
         "plainCustomer",
         "plainThread",
         "plainThreadMessage",
+        "plainDiscussion",
+        "plainDiscussionMessage",
     ]
     by_id = {blueprint["identifier"]: blueprint for blueprint in blueprints}
     assert by_id["plainCustomer"]["relations"]["company"]["target"] == "plainCompany"
@@ -72,6 +78,28 @@ def test_blueprint_and_port_app_config_parse() -> None:
     assert isinstance(message, ThreadMessageResourceConfig)
     assert message.selector.exclude_done_threads is False
     assert by_id["plainThreadMessage"]["relations"]["thread"]["target"] == "plainThread"
+    discussion = next(
+        resource for resource in config.resources if resource.kind == "discussion"
+    )
+    assert isinstance(discussion, DiscussionResourceConfig)
+    assert discussion.selector.exclude_done_threads is False
+    discussion_message = next(
+        resource
+        for resource in config.resources
+        if resource.kind == "discussion-message"
+    )
+    assert isinstance(discussion_message, DiscussionMessageResourceConfig)
+    assert discussion_message.selector.exclude_done_threads is False
+    assert by_id["plainDiscussion"]["relations"]["thread"]["target"] == "plainThread"
+    assert "format" not in by_id["plainDiscussion"]["schema"]["properties"]["slackMessageLink"]
+    assert (
+        "format"
+        not in by_id["plainDiscussionMessage"]["schema"]["properties"]["slackMessageLink"]
+    )
+    assert (
+        by_id["plainDiscussionMessage"]["relations"]["discussion"]["target"]
+        == "plainDiscussion"
+    )
 
 
 def test_mapping_resolves_identifiers_titles_and_relations() -> None:
@@ -112,6 +140,9 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     assert _apply(mappings["thread"]["relations"]["tenant"], thread) == "te_1"
     assert _apply(mappings["thread"]["relations"]["assignee"], thread) == "us_1"
     assert _apply(mappings["thread"]["properties"]["labels"], thread) == ["Billing"]
+    assert _apply(mappings["thread"]["properties"]["productArea"], thread) == (
+        "Users, teams & permissions"
+    )
     assert (
         _apply(mappings["thread"]["properties"]["machineUserAssignee"], thread) is None
     )
@@ -125,4 +156,7 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     )
     assert _apply(mappings["thread"]["properties"]["fields"], machine_thread) == (
         "urgent=false"
+    )
+    assert _apply(mappings["thread"]["properties"]["productArea"], machine_thread) == (
+        ""
     )

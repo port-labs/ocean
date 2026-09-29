@@ -9,6 +9,8 @@ class ObjectKind(StrEnum):
     CUSTOMER = "customer"
     THREAD = "thread"
     THREAD_MESSAGE = "thread-message"
+    DISCUSSION = "discussion"
+    DISCUSSION_MESSAGE = "discussion-message"
 
 
 def get_nested(data: dict[str, Any] | None, path: str) -> Any:

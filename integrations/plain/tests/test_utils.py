@@ -46,6 +46,8 @@ def test_object_kind_values_match_kind_strings() -> None:
     assert ObjectKind.CUSTOMER == "customer"
     assert ObjectKind.THREAD == "thread"
     assert ObjectKind.THREAD_MESSAGE == "thread-message"
+    assert ObjectKind.DISCUSSION == "discussion"
+    assert ObjectKind.DISCUSSION_MESSAGE == "discussion-message"
     assert [kind.value for kind in ObjectKind] == [
         "company",
         "tenant",
@@ -53,4 +55,6 @@ def test_object_kind_values_match_kind_strings() -> None:
         "customer",
         "thread",
         "thread-message",
+        "discussion",
+        "discussion-message",
     ]

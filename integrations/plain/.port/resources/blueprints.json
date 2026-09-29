@@ -180,6 +180,10 @@
                         "type": "string"
                     }
                 },
+                "productArea": {
+                    "type": "string",
+                    "title": "Product area"
+                },
                 "fields": {
                     "type": "string",
                     "title": "Thread fields"
@@ -255,6 +259,145 @@
             "thread": {
                 "title": "Thread",
                 "target": "plainThread",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "plainDiscussion",
+        "title": "Plain Discussion",
+        "icon": "Blueprint",
+        "description": "An internal discussion on a Plain thread",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": ["OPEN", "RESOLVED"]
+                },
+                "agentStatus": {
+                    "type": "string",
+                    "title": "Agent status",
+                    "enum": ["UNKNOWN", "IDLE", "IN_PROGRESS", "TOOL_CALL_APPROVAL_PENDING"]
+                },
+                "visibility": {
+                    "type": "string",
+                    "title": "Visibility",
+                    "enum": ["WORKSPACE", "USER"]
+                },
+                "isUnread": {
+                    "type": "boolean",
+                    "title": "Unread"
+                },
+                "channel": {
+                    "type": "string",
+                    "title": "Channel",
+                    "enum": ["SLACK", "EMAIL", "CURSOR", "AGENT_SESSION"]
+                },
+                "slackChannelName": {
+                    "type": "string",
+                    "title": "Slack channel"
+                },
+                "slackMessageLink": {
+                    "type": "string",
+                    "title": "Slack link"
+                },
+                "emailRecipients": {
+                    "type": "array",
+                    "title": "Email recipients",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                },
+                "lastActivityAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Last activity at"
+                },
+                "resolvedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Resolved at"
+                },
+                "createdByType": {
+                    "type": "string",
+                    "title": "Created by type"
+                },
+                "createdById": {
+                    "type": "string",
+                    "title": "Created by ID"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "thread": {
+                "title": "Thread",
+                "target": "plainThread",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "plainDiscussionMessage",
+        "title": "Plain Discussion Message",
+        "icon": "Blueprint",
+        "description": "A message in a Plain thread discussion",
+        "schema": {
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "title": "Text"
+                },
+                "messageType": {
+                    "type": "string",
+                    "title": "Message type",
+                    "enum": ["INBOUND", "OUTBOUND"]
+                },
+                "slackMessageLink": {
+                    "type": "string",
+                    "title": "Slack link"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Timestamp"
+                },
+                "authorType": {
+                    "type": "string",
+                    "title": "Author type"
+                },
+                "authorId": {
+                    "type": "string",
+                    "title": "Author ID"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "thread": {
+                "title": "Thread",
+                "target": "plainThread",
+                "required": false,
+                "many": false
+            },
+            "discussion": {
+                "title": "Discussion",
+                "target": "plainDiscussion",
                 "required": false,
                 "many": false
             }

@@ -79,6 +79,7 @@ resources:
             assigneeType: .assignedTo.__typename
             machineUserAssignee: if .assignedTo.__typename == "MachineUser" then .assignedTo.id else null end
             labels: "[.labels[].labelType.name]"
+            productArea: '([.threadFields[]? | select(.key == "product_area") | .stringValue] | first) // ""'
             fields: '[.threadFields[] | .key + "=" + ((.stringValue // .numberValue // .booleanValue) | tostring)] | join(", ")'
             createdAt: .createdAt.iso8601
             updatedAt: .updatedAt.iso8601
@@ -104,3 +105,50 @@ resources:
             actorId: .actor.user.id // .actor.customer.id // .actor.machineUser.id
           relations:
             thread: .threadId
+  - kind: discussion
+    selector:
+      query: "true"
+      excludeDoneThreads: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"plainDiscussion"'
+          properties:
+            status: .status
+            agentStatus: .agentStatus
+            visibility: .visibility
+            isUnread: .isUnread
+            channel: 'if .channelDetails == null then null elif .channelDetails.__typename == "ThreadDiscussionSlackChannelDetails" then "SLACK" elif .channelDetails.__typename == "ThreadDiscussionEmailChannelDetails" then "EMAIL" elif .channelDetails.__typename == "ThreadDiscussionCursorWorkspaceBackgroundAgentChannelDetails" then "CURSOR" elif .channelDetails.__typename == "ThreadDiscussionAgentSessionChannelDetails" then "AGENT_SESSION" else .channelDetails.__typename end'
+            slackChannelName: .channelDetails.slackChannelName
+            slackMessageLink: .channelDetails.slackMessageLink
+            emailRecipients: .channelDetails.emailRecipients
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+            lastActivityAt: .lastActivityAt.iso8601
+            resolvedAt: .resolvedAt.iso8601
+            createdByType: .createdBy.__typename
+            createdById: .createdBy.userId // .createdBy.customerId // .createdBy.machineUserId // .createdBy.systemId
+          relations:
+            thread: .threadId
+  - kind: discussion-message
+    selector:
+      query: "true"
+      excludeDoneThreads: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '(.type // "Message") + (if .text then ": " + .text[0:80] else "" end)'
+          blueprint: '"plainDiscussionMessage"'
+          properties:
+            text: .text
+            messageType: .type
+            slackMessageLink: .slackMessageLink
+            timestamp: .createdAt.iso8601
+            authorType: .createdBy.__typename
+            authorId: .createdBy.userId // .createdBy.customerId // .createdBy.machineUserId // .createdBy.systemId
+          relations:
+            thread: .threadId
+            discussion: .threadDiscussionId
