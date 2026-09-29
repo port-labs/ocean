@@ -1,4 +1,5 @@
 import fnmatch
+import os
 from pathlib import Path
 from typing import Dict, List, Any, AsyncGenerator
 from loguru import logger
@@ -6,6 +7,7 @@ from integration import BitbucketFilePattern
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from initialize_client import init_client
 from bitbucket_cloud.helpers.file_kind_live_event import (
+    FileObject,
     check_and_load_file_prefix,
     parse_file,
 )
@@ -13,6 +15,28 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
+
+
+def normalize_directory_path(path: str) -> str:
+    """Strip leading and trailing slashes so path variants match equivalently.
+
+    ``hello/world``, ``/hello/world``, ``/hello/world/``, and ``hello/world/``
+    all normalize to ``hello/world``. Root ``/`` and empty become ``""``.
+    """
+    return path.strip("/")
+
+
+def extract_filename_extension(filename: str) -> str:
+    """Return a filename's extension without the leading dot.
+
+    Dotfiles such as ``.nvmrc`` have no extension. ``os.path.splitext`` keeps
+    the leading dot on the name, so those files are not dropped from Bitbucket
+    code search by an ``ext:`` qualifier built from the rest of the name.
+    """
+    extension = os.path.splitext(filename)[1]
+    if extension.startswith("."):
+        return extension[1:]
+    return extension
 
 
 def build_search_terms(
@@ -39,7 +63,7 @@ def build_search_terms(
         repo_filters = " ".join(f"repo:{repo}" for repo in repos)
         search_terms.append(f"{repo_filters}")
 
-    search_terms.append(f"path:{path}")
+    search_terms.append(f"path:{normalize_directory_path(path) or '/'}")
 
     if extension:
         search_terms.append(f"ext:{extension}")
@@ -68,7 +92,7 @@ async def process_file_patterns(
             filename=filename,
             repos=file_pattern.repos,
             path=path_to_search if path_to_search not in GLOBAL_PATHS else "/",
-            extension=filename.split(".")[-1] if "." in filename else "",
+            extension=extract_filename_extension(filename),
         )
         logger.debug(f"Constructed search query: {search_query}")
         bitbucket_client = init_client()
@@ -119,6 +143,16 @@ async def retrieve_file_content(
     parent_directory = Path(file_path).parent
     if not skip_parsing:
         file_content = parse_file(file_content, file_path)
+
+    result: FileObject
+    if skip_parsing or not isinstance(file_content, (dict, list)):
+        result = {
+            "content": file_content,
+            "repo": repo_info,
+            "branch": branch,
+            "metadata": file_info,
+        }
+    else:
         result = await check_and_load_file_prefix(
             file_content,
             str(parent_directory),
@@ -128,13 +162,6 @@ async def retrieve_file_content(
             repo_info,
             branch,
         )
-    else:
-        result = {
-            "content": file_content,
-            "repo": repo_info,
-            "branch": branch,
-            "metadata": file_info,
-        }
     yield dict(result)
 
 
@@ -149,7 +176,6 @@ def validate_file_match(file_path: str, filename: str, expected_path: str) -> bo
     if expected_path in GLOBAL_PATHS:
         expected_path = "*/"
 
-    dir_path = file_path[: -len(filename)]
-    dir_path = dir_path.rstrip("/")
-    expected_path = expected_path.rstrip("/")
+    dir_path = normalize_directory_path(file_path[: -len(filename)])
+    expected_path = normalize_directory_path(expected_path)
     return fnmatch.fnmatch(dir_path, expected_path)
