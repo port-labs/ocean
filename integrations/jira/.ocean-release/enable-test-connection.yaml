@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Enabled test connection so Port can run connection health probes for this integration.
