@@ -174,7 +174,7 @@ async def check_and_load_file_prefix(
 def check_single_path(file_path: str, filenames: list[str], config_path: str) -> bool:
     path_parts = file_path.split("/")
     file_name = path_parts[-1]
-    path_without_file = "/".join(path_parts[:-1])
+    path_without_file = "/".join(path_parts[:-1]).strip("/")
 
     filename_match = (
         any(fnmatch(file_name, pattern) for pattern in filenames) if filenames else True
@@ -184,7 +184,10 @@ def check_single_path(file_path: str, filenames: list[str], config_path: str) ->
     if not path_without_file and config_path in {"/", ""}:
         path_match = True
     else:
-        path_match = fnmatch(path_without_file, config_path) if config_path else True
+        normalized_config = config_path.strip("/")
+        path_match = (
+            fnmatch(path_without_file, normalized_config) if config_path else True
+        )
 
     return filename_match and path_match
 

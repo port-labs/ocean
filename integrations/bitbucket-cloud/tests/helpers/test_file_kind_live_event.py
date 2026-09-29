@@ -89,6 +89,11 @@ async def test_check_single_path() -> None:
     # Test root directory file with empty path
     assert check_single_path("README.md", ["README.md"], "")
 
+    # Leading/trailing slashes on config path are equivalent
+    for config_path in ("hello/test", "/hello/test", "/hello/test/", "hello/test/"):
+        assert check_single_path("hello/test/file.txt", ["file.txt"], config_path)
+        assert not check_single_path("hello/other/file.txt", ["file.txt"], config_path)
+
 
 @pytest.mark.asyncio
 async def test_check_and_load_file_prefix() -> None:

@@ -17,6 +17,15 @@ YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
 
 
+def normalize_directory_path(path: str) -> str:
+    """Strip leading and trailing slashes so path variants match equivalently.
+
+    ``hello/test``, ``/hello/test``, ``/hello/test/``, and ``hello/test/``
+    all normalize to ``hello/test``. Root ``/`` and empty become ``""``.
+    """
+    return path.strip("/")
+
+
 def extract_filename_extension(filename: str) -> str:
     """Return a filename's extension without the leading dot.
 
@@ -54,7 +63,7 @@ def build_search_terms(
         repo_filters = " ".join(f"repo:{repo}" for repo in repos)
         search_terms.append(f"{repo_filters}")
 
-    search_terms.append(f"path:{path}")
+    search_terms.append(f"path:{normalize_directory_path(path) or '/'}")
 
     if extension:
         search_terms.append(f"ext:{extension}")
@@ -167,7 +176,6 @@ def validate_file_match(file_path: str, filename: str, expected_path: str) -> bo
     if expected_path in GLOBAL_PATHS:
         expected_path = "*/"
 
-    dir_path = file_path[: -len(filename)]
-    dir_path = dir_path.rstrip("/")
-    expected_path = expected_path.rstrip("/")
+    dir_path = normalize_directory_path(file_path[: -len(filename)])
+    expected_path = normalize_directory_path(expected_path)
     return fnmatch.fnmatch(dir_path, expected_path)

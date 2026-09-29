@@ -68,6 +68,25 @@ def test_validate_file_match() -> None:
     assert not validate_file_match("src/test/test.py", "test.py", "src/main")
 
 
+@pytest.mark.parametrize(
+    "expected_path",
+    ["hello/test", "/hello/test", "/hello/test/", "hello/test/"],
+)
+def test_validate_file_match_ignores_path_slash_variants(expected_path: str) -> None:
+    """Leading/trailing slashes on the configured path must not change matching."""
+    assert validate_file_match("hello/test/file.txt", "file.txt", expected_path)
+    assert not validate_file_match("hello/other/file.txt", "file.txt", expected_path)
+
+
+def test_build_search_terms_normalizes_path_slashes() -> None:
+    """Search path: qualifier should not keep a leading or trailing slash."""
+    for path in ("hello/test", "/hello/test", "/hello/test/", "hello/test/"):
+        query = build_search_terms("file.txt", None, path, "txt")
+        assert "path:hello/test" in query
+        assert "path:/hello/test" not in query
+        assert "path:hello/test/" not in query
+
+
 @pytest.mark.asyncio
 async def test_process_file_patterns() -> None:
     """Test process_file_patterns function."""
