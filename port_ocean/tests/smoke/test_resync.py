@@ -7,11 +7,7 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.tests.smoke.helpers.details import SmokeTestDetails
 
-pytestmark = [
-    pytest.mark.smoke,
-    pytest.mark.smoke_profile("once"),
-    pytest.mark.smoke_profile("polling"),
-]
+pytestmark = pytest.mark.smoke
 
 
 @pytest.mark.skipif(

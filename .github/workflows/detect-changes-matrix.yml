@@ -69,6 +69,8 @@ jobs:
               - '.github/workflows/actions/build-docker-image/**'
               - 'scripts/run-smoke-test.sh'
               - 'scripts/smoke-test-base.sh'
+              - 'scripts/smoke-integration.sh'
+              - 'scripts/smoke_scenario_cli.py'
             integrations:
               - 'integrations/**'
               - '!integrations/**/*.md'

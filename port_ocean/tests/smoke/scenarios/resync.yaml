@@ -1,0 +1,25 @@
+# Fake-integration resync with a polling event listener.
+lifecycle: daemon
+suffix: resync
+host_port: 18080
+wait_for_resync: true
+tests:
+  - test_resync.py
+resource_kinds:
+  - fake-department
+  - fake-person
+ocean:
+  event_listener:
+    type: POLLING
+    resync_on_start: true
+    interval: 3600
+  actions_processor:
+    enabled: false
+  live_events:
+    is_redis_stream_consumer_enabled: false
+  integration:
+    config:
+      entity_amount: -1
+      entity_kb_size: -1
+      third_party_batch_size: -1
+      third_party_latency_ms: -1

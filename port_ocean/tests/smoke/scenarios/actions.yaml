@@ -1,0 +1,25 @@
+# Action and workflow smoke tests. Actions processing and live events are on.
+# The Redis live-events consumer starts only when OCEAN__BASE_URL contains /live-events/{id}.
+lifecycle: daemon
+suffix: actions
+host_port: 18080
+tests:
+  - test_actions.py
+resource_kinds:
+  - fake-department
+  - fake-person
+ocean:
+  event_listener:
+    type: POLLING
+    resync_on_start: true
+    interval: 3600
+  actions_processor:
+    enabled: true
+  live_events:
+    is_redis_stream_consumer_enabled: true
+  integration:
+    config:
+      entity_amount: -1
+      entity_kb_size: -1
+      third_party_batch_size: -1
+      third_party_latency_ms: -1

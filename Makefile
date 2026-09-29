@@ -49,7 +49,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all smoke/test smoke/clean lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all smoke/start-mock-api smoke/stop-mock-api
+.SILENT: install install/all test/all smoke/clean lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all smoke/start-mock-api smoke/stop-mock-api
 
 
 # Install dependencies
@@ -122,24 +122,6 @@ new:
 
 test:
 	$(ACTIVATE) && pytest -m 'not smoke'
-
-smoke/test:
-	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
-
-smoke/test/profile:
-	$(ACTIVATE) && pytest --smoke-profile=$${SMOKE_TEST_PROFILE:-$${PROFILE:-once}} ./port_ocean/tests/smoke
-
-smoke/collect:
-	$(ACTIVATE) && pytest --smoke-profile=$${PROFILE:-once} --collect-only -q ./port_ocean/tests/smoke
-
-smoke/run:
-	chmod +x ./scripts/smoke-integration.sh && ./scripts/smoke-integration.sh run $${PROFILE:-once}
-
-smoke/run/all:
-	chmod +x ./scripts/smoke-integration.sh && ./scripts/smoke-integration.sh run-all
-
-smoke/clean/all:
-	chmod +x ./scripts/smoke-integration.sh && ./scripts/smoke-integration.sh clean-all
 
 smoke/clean:
 	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./scripts/clean-smoke-test.py

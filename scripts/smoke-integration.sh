@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 
-# Manage fake-integration containers for ocean core smoke tests.
+# Manage fake-integration containers for ocean core smoke scenarios.
 #
 # Usage:
-#   ./scripts/smoke-integration.sh up <profile>     # start integration per profile mode
-#   ./scripts/smoke-integration.sh down <profile>   # stop integration (polling only)
-#   ./scripts/smoke-integration.sh run <profile>      # up, run matching tests, down
-#   ./scripts/smoke-integration.sh run-all            # run all discovered profiles
-#   ./scripts/smoke-integration.sh clean <profile>    # remove Port resources for profile
-#   ./scripts/smoke-integration.sh clean-all          # clean all discovered profiles
+#   ./scripts/smoke-integration.sh up <scenario>      # start integration for a scenario
+#   ./scripts/smoke-integration.sh down <scenario>    # stop a daemon integration
+#   ./scripts/smoke-integration.sh run <scenario>     # up, run its tests, down, clean
+#   ./scripts/smoke-integration.sh run-all            # run every scenario that has tests
+#   ./scripts/smoke-integration.sh clean <scenario>   # remove Port resources for a scenario
+#   ./scripts/smoke-integration.sh clean-all          # down + clean every scenario
 #   ./scripts/smoke-integration.sh list
 #
-# Profiles: port_ocean/tests/smoke/profiles/<name>.yaml
+# Scenarios: port_ocean/tests/smoke/scenarios/<name>.yaml
+# run-all runs scenarios one by one and cleans Port resources before the next one.
 
 set -euo pipefail
 
@@ -21,39 +22,52 @@ PYTHON="${ROOT_DIR}/.venv/bin/python"
 if [[ ! -x "${PYTHON}" ]]; then
     PYTHON=python3
 fi
-PROFILE_CLI="${SCRIPT_DIR}/smoke_profile_cli.py"
+SCENARIO_CLI="${SCRIPT_DIR}/smoke_scenario_cli.py"
 
 usage() {
     cat <<EOF
-Usage: $0 {up|down|run|run-all|clean|clean-all|list} [profile]
+Usage: $0 {up|down|run|run-all|clean|clean-all|list} [scenario]
 
-  up         Start integration using the profile mode (once or polling)
-  down       Stop a polling integration
-  run        up, run pytest for the profile, then down
-  run-all    run every profile discovered under port_ocean/tests/smoke/profiles/
-  clean      Remove Port resources created for the profile
-  clean-all  down + clean every discovered profile
-  list       List available smoke profiles
+  up         Start the integration using the scenario lifecycle (once or daemon)
+  down       Stop a daemon integration
+  run        up, run the scenario tests, down, then clean its Port resources
+  run-all    run every scenario that has tests, cleaning after each one
+  clean      Remove Port resources created for the scenario
+  clean-all  down + clean every discovered scenario
+  list       List available smoke scenarios
 
-Profiles: port_ocean/tests/smoke/profiles/<profile>.yaml
+Scenarios: port_ocean/tests/smoke/scenarios/<scenario>.yaml
 EOF
 }
 
-load_profile() {
-    local profile="${1:-once}"
-    if ! "${PYTHON}" "${PROFILE_CLI}" describe "${profile}" >/dev/null 2>&1; then
-        echo "Unknown smoke profile '${profile}'"
-        "${PYTHON}" "${PROFILE_CLI}" list
+_clear_ocean_env() {
+    if [[ -z "${SMOKE_OCEAN_ENV_KEYS:-}" ]]; then
+        return 0
+    fi
+    local key
+    for key in ${SMOKE_OCEAN_ENV_KEYS}; do
+        unset "${key}"
+    done
+    unset SMOKE_OCEAN_ENV_KEYS
+}
+
+load_scenario() {
+    local scenario="${1:-resync}"
+    if ! "${PYTHON}" "${SCENARIO_CLI}" describe "${scenario}" >/dev/null 2>&1; then
+        echo "Unknown smoke scenario '${scenario}'"
+        "${PYTHON}" "${SCENARIO_CLI}" list
         exit 1
     fi
 
+    _clear_ocean_env
+
     # shellcheck disable=SC1090
-    eval "$("${PYTHON}" "${PROFILE_CLI}" export "${profile}")"
+    eval "$("${PYTHON}" "${SCENARIO_CLI}" export "${scenario}")"
 
     if [[ -z "${SMOKE_TEST_BASE_SUFFIX:-}" ]]; then
         export SMOKE_TEST_BASE_SUFFIX="${SMOKE_TEST_SUFFIX:-local}"
     fi
-    export SMOKE_TEST_SUFFIX="${SMOKE_TEST_BASE_SUFFIX}-${SMOKE_TEST_PROFILE_SUFFIX}"
+    export SMOKE_TEST_SUFFIX="${SMOKE_TEST_BASE_SUFFIX}-${SMOKE_TEST_SCENARIO_SUFFIX}"
     export SMOKE_TEST_CONTAINER="$(
         echo "ocean-smoke-${SMOKE_TEST_SUFFIX}" | tr -c 'a-zA-Z0-9._-' '-'
     )"
@@ -68,7 +82,7 @@ docker_port_base_url() {
 }
 
 integration_docker_run() {
-    local run_mode="$1"
+    local lifecycle="$1"
     local port_base_url
     port_base_url="$(docker_port_base_url)"
 
@@ -78,7 +92,7 @@ integration_docker_run() {
     tar_file=$(basename "${tar_full_path}")
 
     local sail_command="ocean sail"
-    if [[ "${run_mode}" == "once" ]]; then
+    if [[ "${lifecycle}" == "once" ]]; then
         sail_command="ocean sail -O"
     fi
 
@@ -92,23 +106,26 @@ integration_docker_run() {
         -e "OCEAN__PORT__BASE_URL=${port_base_url}"
         -e "OCEAN__PORT__CLIENT_ID=${PORT_CLIENT_ID}"
         -e "OCEAN__PORT__CLIENT_SECRET=${PORT_CLIENT_SECRET}"
-        -e 'OCEAN__EVENT_LISTENER={"type": "POLLING"}'
         -e "OCEAN__INTEGRATION__TYPE=smoke-test"
         -e "OCEAN__INTEGRATION__IDENTIFIER=${INTEGRATION_IDENTIFIER}"
-        -e "OCEAN__INTEGRATION__CONFIG__ENTITY_AMOUNT=${OCEAN__INTEGRATION__CONFIG__ENTITY_AMOUNT:--1}"
-        -e "OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE=${OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE:--1}"
-        -e "OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE=${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE:--1}"
-        -e "OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS=${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS:--1}"
         -e "OCEAN__METRICS=${OCEAN__METRICS:--1}"
         -e "OCEAN__RUNTIME_MODE=${OCEAN__RUNTIME_MODE:-single_process}"
         -e "OCEAN__LAKEHOUSE_ENABLED=${OCEAN__LAKEHOUSE_ENABLED:-false}"
         -e "OCEAN__RESOURCES_PATH=/opt/port-resources"
         -e "APPLICATION__LOG_LEVEL=DEBUG"
+    )
+
+    local key
+    for key in ${SMOKE_OCEAN_ENV_KEYS}; do
+        docker_args+=(-e "${key}=${!key}")
+    done
+
+    docker_args+=(
         "${smoke_test_image}"
         -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${tar_file}[cli] && ${sail_command}"
     )
 
-    if [[ "${run_mode}" == "once" ]]; then
+    if [[ "${lifecycle}" == "once" ]]; then
         docker run --rm -i "${docker_args[@]}"
         rm -rf "${TEMP_DIR}"
         return
@@ -129,10 +146,10 @@ wait_for_integration() {
         } >> "${GITHUB_ENV}"
     fi
 
-    echo "Waiting for smoke integration at ${SMOKE_TEST_WEBHOOK_URL}"
+    echo "Waiting for smoke integration at http://localhost:${SMOKE_TEST_HOST_PORT}/health/ready"
     for _ in $(seq 1 60); do
-        if curl -sf "http://localhost:${SMOKE_TEST_HOST_PORT}/integration/health/live" >/dev/null; then
-            echo "Smoke integration is ready (profile=${SMOKE_TEST_PROFILE})"
+        if curl -sf "http://localhost:${SMOKE_TEST_HOST_PORT}/health/ready" >/dev/null; then
+            echo "Smoke integration is ready (scenario=${SMOKE_TEST_SCENARIO})"
             return 0
         fi
         sleep 2
@@ -144,31 +161,43 @@ wait_for_integration() {
     return 1
 }
 
-run_profile_tests() {
+wait_for_resync() {
+    if [[ "${SMOKE_TEST_WAIT_FOR_RESYNC}" != "true" ]]; then
+        return 0
+    fi
+    echo "Waiting for resync to complete (scenario=${SMOKE_TEST_SCENARIO})"
+    "${PYTHON}" "${SCENARIO_CLI}" wait-resync
+}
+
+run_scenario_tests() {
+    if [[ -z "${SMOKE_TEST_PATHS}" ]]; then
+        echo "Scenario '${SMOKE_TEST_SCENARIO}' has no tests"
+        return 1
+    fi
+
     local pytest_addopts="${PYTEST_ADDOPTS:-}"
     if [[ -n "${SMOKE_JUNIT_DIR:-}" ]]; then
         mkdir -p "${SMOKE_JUNIT_DIR}"
-        pytest_addopts="${pytest_addopts} --junitxml=${SMOKE_JUNIT_DIR}/core-${SMOKE_TEST_PROFILE}.xml"
+        pytest_addopts="${pytest_addopts} --junitxml=${SMOKE_JUNIT_DIR}/core-${SMOKE_TEST_SCENARIO}.xml"
     fi
 
-    echo "Running smoke tests for profile=${SMOKE_TEST_PROFILE}"
+    echo "Running smoke tests for scenario=${SMOKE_TEST_SCENARIO}"
     (
         cd "${ROOT_DIR}"
-        SMOKE_TEST_PROFILE="${SMOKE_TEST_PROFILE}" \
         SMOKE_TEST_SUFFIX="${SMOKE_TEST_SUFFIX}" \
         PYTEST_ADDOPTS="${pytest_addopts}" \
-        make smoke/test/profile
+        "${PYTHON}" -m pytest -o addopts= -vv --durations=10 --color=yes ${SMOKE_TEST_PATHS}
     )
 }
 
-for_each_profile() {
+for_each_scenario() {
     local callback="$1"
-    local profile
-    while IFS= read -r profile; do
-        [[ -z "${profile}" ]] && continue
-        load_profile "${profile}"
+    local scenario
+    while IFS= read -r scenario; do
+        [[ -z "${scenario}" ]] && continue
+        load_scenario "${scenario}"
         "${callback}"
-    done < <("${PYTHON}" "${PROFILE_CLI}" list)
+    done < <("${PYTHON}" "${SCENARIO_CLI}" list)
 }
 
 cmd_up() {
@@ -181,49 +210,72 @@ cmd_up() {
         exit 1
     }
 
-    case "${SMOKE_TEST_PROFILE_MODE}" in
+    case "${SMOKE_TEST_LIFECYCLE}" in
         once)
-            echo "Starting once smoke profile '${SMOKE_TEST_PROFILE}' (integration=${INTEGRATION_IDENTIFIER})"
+            echo "Starting once smoke scenario '${SMOKE_TEST_SCENARIO}' (integration=${INTEGRATION_IDENTIFIER})"
             integration_docker_run "once"
             ;;
-        polling)
+        daemon)
             if docker ps -a --format '{{.Names}}' | grep -qx "${SMOKE_TEST_CONTAINER}"; then
                 echo "Stopping existing smoke integration container: ${SMOKE_TEST_CONTAINER}"
                 docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
             fi
-            echo "Starting polling smoke profile '${SMOKE_TEST_PROFILE}' (integration=${INTEGRATION_IDENTIFIER})"
+            echo "Starting daemon smoke scenario '${SMOKE_TEST_SCENARIO}' (integration=${INTEGRATION_IDENTIFIER})"
             integration_docker_run "daemon"
             wait_for_integration
             ;;
         *)
-            echo "Unknown profile mode '${SMOKE_TEST_PROFILE_MODE}'"
+            echo "Unknown scenario lifecycle '${SMOKE_TEST_LIFECYCLE}'"
             exit 1
             ;;
     esac
 }
 
 cmd_down() {
-    if [[ "${SMOKE_TEST_PROFILE_MODE}" != "polling" ]]; then
-        return 0
+    if [[ "${SMOKE_TEST_LIFECYCLE}" == "daemon" ]]; then
+        if docker ps -a --format '{{.Names}}' | grep -qx "${SMOKE_TEST_CONTAINER}"; then
+            echo "Stopping smoke integration container: ${SMOKE_TEST_CONTAINER}"
+            docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
+        fi
     fi
-    if docker ps -a --format '{{.Names}}' | grep -qx "${SMOKE_TEST_CONTAINER}"; then
-        echo "Stopping smoke integration container: ${SMOKE_TEST_CONTAINER}"
-        docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
+    if [[ -n "${TEMP_DIR:-}" && -d "${TEMP_DIR}" ]]; then
+        rm -rf "${TEMP_DIR}"
     fi
 }
 
 cmd_run() {
-    cmd_up
-    run_profile_tests
-    cmd_down
+    local status=0
+    cmd_up || status=$?
+    if [[ "${status}" -eq 0 ]]; then
+        wait_for_resync || status=$?
+    fi
+    if [[ "${status}" -eq 0 ]]; then
+        run_scenario_tests || status=$?
+    fi
+    cmd_down || true
+    if ! cmd_clean; then
+        status=1
+    fi
+    return "${status}"
 }
 
 cmd_run_all() {
-    for_each_profile cmd_run
+    local status=0
+    local scenario
+    while IFS= read -r scenario; do
+        [[ -z "${scenario}" ]] && continue
+        load_scenario "${scenario}"
+        if [[ -z "${SMOKE_TEST_PATHS}" ]]; then
+            echo "Skipping scenario '${scenario}' (no tests)"
+            continue
+        fi
+        cmd_run || status=1
+    done < <("${PYTHON}" "${SCENARIO_CLI}" list)
+    return "${status}"
 }
 
 cmd_clean() {
-    echo "Cleaning smoke profile '${SMOKE_TEST_PROFILE}' (suffix=${SMOKE_TEST_SUFFIX})"
+    echo "Cleaning smoke scenario '${SMOKE_TEST_SCENARIO}' (suffix=${SMOKE_TEST_SUFFIX})"
     (
         cd "${ROOT_DIR}"
         SMOKE_TEST_SUFFIX="${SMOKE_TEST_SUFFIX}" make smoke/clean
@@ -231,25 +283,25 @@ cmd_clean() {
 }
 
 cmd_clean_all() {
-    for_each_profile _clean_profile
+    for_each_scenario _clean_scenario
 }
 
-_clean_profile() {
+_clean_scenario() {
     cmd_down || true
     cmd_clean || true
 }
 
 cmd_list() {
-    "${PYTHON}" "${PROFILE_CLI}" list
+    "${PYTHON}" "${SCENARIO_CLI}" list
 }
 
 main() {
     local command="${1:-}"
-    local profile="${2:-once}"
+    local scenario="${2:-resync}"
 
     case "${command}" in
         up | down | run | clean)
-            load_profile "${profile}"
+            load_scenario "${scenario}"
             ;;
         run-all | clean-all)
             ;;

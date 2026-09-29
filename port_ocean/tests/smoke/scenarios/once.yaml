@@ -1,0 +1,13 @@
+# One-shot integration for metric tests (ocean sail -O). No smoke assertions.
+lifecycle: once
+suffix: once
+tests: []
+ocean:
+  event_listener:
+    type: ONCE
+  integration:
+    config:
+      entity_amount: -1
+      entity_kb_size: -1
+      third_party_batch_size: -1
+      third_party_latency_ms: -1

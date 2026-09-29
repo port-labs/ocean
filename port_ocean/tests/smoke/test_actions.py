@@ -16,14 +16,14 @@ from port_ocean.tests.smoke.helpers.actions import (
 )
 from port_ocean.tests.smoke.helpers.details import SmokeTestDetails
 
-pytestmark = [pytest.mark.smoke, pytest.mark.smoke_profile("polling")]
+pytestmark = pytest.mark.smoke
 
 requires_running_integration = pytest.mark.skipif(
     environ.get(
         "SMOKE_TEST_WEBHOOK_URL", environ.get("SMOKE_TEST_INTEGRATION_WEBHOOK_URL")
     )
     is None,
-    reason="Run smoke-integration.sh start <profile> before action smoke tests",
+    reason="Run smoke-integration.sh up actions before action smoke tests",
 )
 
 

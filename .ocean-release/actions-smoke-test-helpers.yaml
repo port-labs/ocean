@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Add ocean core smoke test helpers for Port integration actions and workflows, consolidated under port_ocean/tests/smoke
+changelog: Add ocean core smoke scenarios that start fake-integration with per-scenario configuration, including action and workflow smoke tests

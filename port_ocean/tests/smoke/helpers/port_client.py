@@ -1,5 +1,8 @@
+import asyncio
 from os import environ
+from time import monotonic
 
+import httpx
 from loguru import logger
 
 from port_ocean.clients.port.client import PortClient
@@ -32,6 +35,28 @@ async def cleanup_smoke_test() -> None:
         [smoke_test_details.blueprint_department, smoke_test_details.blueprint_person],
     )
     logger.info("Cleaning up fake integration complete")
+
+
+async def wait_for_resync_completed(timeout_seconds: float = 180) -> None:
+    client = get_port_client_for_fake_integration()
+    deadline = monotonic() + timeout_seconds
+    last_status = "missing"
+    while monotonic() < deadline:
+        try:
+            integration = await client.get_current_integration(should_log=False)
+        except httpx.HTTPError:
+            integration = {}
+        resync_state = integration.get("resyncState") or {}
+        last_status = resync_state.get("status") or "missing"
+        if last_status == "completed":
+            logger.info("Smoke resync completed")
+            return
+        if last_status in {"failed", "aborted"}:
+            raise RuntimeError(f"Smoke resync ended with status {last_status}")
+        await asyncio.sleep(2)
+    raise TimeoutError(
+        f"Smoke resync did not complete within {timeout_seconds}s (last status: {last_status})"
+    )
 
 
 def get_port_client_for_fake_integration() -> PortClient:
