@@ -9,9 +9,7 @@ from github.helpers.security_alerts import (
 
 
 def test_repository_name_from_alert() -> None:
-    assert (
-        repository_name_from_alert({"repository": {"name": "ocean"}}) == "ocean"
-    )
+    assert repository_name_from_alert({"repository": {"name": "ocean"}}) == "ocean"
     assert repository_name_from_alert({"repository": {}}) is None
     assert repository_name_from_alert({}) is None
 
@@ -39,9 +37,7 @@ def test_should_include_org_alert_filters() -> None:
 
     archived = {"repository": {"name": "repo-a", "archived": True}}
     assert (
-        should_include_org_alert(
-            archived, allowed_repos=None, exclude_archived=True
-        )
+        should_include_org_alert(archived, allowed_repos=None, exclude_archived=True)
         is None
     )
 

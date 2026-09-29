@@ -60,9 +60,7 @@ def pop_org_alert_filters(
     """
     allowed_repos_list = params.pop("allowed_repos", None)
     exclude_archived = bool(params.pop("exclude_archived", False))
-    allowed_repos = (
-        set(allowed_repos_list) if allowed_repos_list is not None else None
-    )
+    allowed_repos = set(allowed_repos_list) if allowed_repos_list is not None else None
     return allowed_repos, exclude_archived
 
 
@@ -77,19 +75,18 @@ def enrich_security_alert_batch(
     """Enrich alerts with ``__repository`` / ``__organization``, filtering org streams."""
     batch: list[dict[str, Any]] = []
     for alert in alerts:
-        if repo_name:
-            name = repo_name
-        else:
-            name = should_include_org_alert(
+        name = (
+            repo_name
+            if repo_name
+            else should_include_org_alert(
                 alert,
                 allowed_repos=allowed_repos,
                 exclude_archived=exclude_archived,
             )
-            if not name:
-                continue
+        )
+        if not name:
+            continue
         batch.append(
-            enrich_with_organization(
-                enrich_with_repository(alert, name), organization
-            )
+            enrich_with_organization(enrich_with_repository(alert, name), organization)
         )
     return batch

@@ -1064,12 +1064,18 @@ async def resync_dependabot_alerts(
                     repository_exporter, repo_options, config.selector.repo_search
                 )
                 if allowed_repos is not None and not allowed_repos:
-                    logger.info(f"Skipping {org_name}: repoSearch matched no repositories")
+                    logger.info(
+                        f"Skipping {org_name}: repoSearch matched no repositories"
+                    )
                     continue
 
                 logger.info(
                     f"Syncing {org_name} via org-level endpoint "
-                    + (f"(incremental from {sync_cursor.isoformat()})" if sync_cursor else "(full resync)")
+                    + (
+                        f"(incremental from {sync_cursor.isoformat()})"
+                        if sync_cursor
+                        else "(full resync)"
+                    )
                 )
                 async for alerts in dependabot_alert_exporter.get_paginated_resources(
                     ListDependabotAlertOptions(
@@ -1087,7 +1093,11 @@ async def resync_dependabot_alerts(
 
             logger.info(
                 f"Syncing {org_name} via per-repo endpoint "
-                + (f"(incremental from {sync_cursor.isoformat()})" if sync_cursor else "(full resync)")
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
             )
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
@@ -1147,14 +1157,22 @@ async def resync_code_scanning_alerts(
                 )
                 # Skip early if repoSearch matched no repositories
                 if allowed_repos is not None and not allowed_repos:
-                    logger.info(f"Skipping {org_name}: repoSearch matched no repositories")
+                    logger.info(
+                        f"Skipping {org_name}: repoSearch matched no repositories"
+                    )
                     continue
 
                 logger.info(
                     f"Syncing {org_name} via org-level endpoint "
-                    + (f"(incremental from {sync_cursor.isoformat()})" if sync_cursor else "(full resync)")
+                    + (
+                        f"(incremental from {sync_cursor.isoformat()})"
+                        if sync_cursor
+                        else "(full resync)"
+                    )
                 )
-                async for alerts in code_scanning_alert_exporter.get_paginated_resources(
+                async for (
+                    alerts
+                ) in code_scanning_alert_exporter.get_paginated_resources(
                     ListCodeScanningAlertOptions(
                         organization=org_name,
                         state=config.selector.state,
@@ -1169,7 +1187,11 @@ async def resync_code_scanning_alerts(
 
             logger.info(
                 f"Syncing {org_name} via per-repo endpoint "
-                + (f"(incremental from {sync_cursor.isoformat()})" if sync_cursor else "(full resync)")
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
             )
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
@@ -1508,14 +1530,22 @@ async def resync_secret_scanning_alerts(
                     repository_exporter, repo_options, config.selector.repo_search
                 )
                 if allowed_repos is not None and not allowed_repos:
-                    logger.info(f"Skipping {org_name}: repoSearch matched no repositories")
+                    logger.info(
+                        f"Skipping {org_name}: repoSearch matched no repositories"
+                    )
                     continue
 
                 logger.info(
                     f"Syncing {org_name} via org-level endpoint "
-                    + (f"(incremental from {sync_cursor.isoformat()})" if sync_cursor else "(full resync)")
+                    + (
+                        f"(incremental from {sync_cursor.isoformat()})"
+                        if sync_cursor
+                        else "(full resync)"
+                    )
                 )
-                async for alerts in secret_scanning_alert_exporter.get_paginated_resources(
+                async for (
+                    alerts
+                ) in secret_scanning_alert_exporter.get_paginated_resources(
                     ListSecretScanningAlertOptions(
                         organization=org_name,
                         state=config.selector.state,
@@ -1530,7 +1560,11 @@ async def resync_secret_scanning_alerts(
 
             logger.info(
                 f"Syncing {org_name} via per-repo endpoint "
-                + (f"(incremental from {sync_cursor.isoformat()})" if sync_cursor else "(full resync)")
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
             )
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
