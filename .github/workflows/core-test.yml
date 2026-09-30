@@ -69,9 +69,7 @@ jobs:
           SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
           SMOKE_JUNIT_DIR: junit/smoke-test-results-ocean
           OCEAN__CACHING_STORAGE_MODE: memory
-        run: |
-          chmod +x ./scripts/smoke-integration.sh
-          ./scripts/smoke-integration.sh run-all
+        run: make smoke/run-all
 
       - name: Cleanup Smoke Test
         if: always() && env.RUN_SMOKE_TESTS == 'true'
@@ -80,8 +78,7 @@ jobs:
           PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
-        run: |
-          ./scripts/smoke-integration.sh clean-all
+        run: make smoke/clean-all
 
       - name: List integrations with tests
         id: list-integrations

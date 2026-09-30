@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
 # Boot fake-integration per smoke config, run matching tests, clean up.
+# Prefer Make entrypoints (make smoke/up CONFIG=resync, make smoke/run-all, …).
 #
 # Usage:
-#   ./scripts/smoke-integration.sh up <config>
-#   ./scripts/smoke-integration.sh down <config>
-#   ./scripts/smoke-integration.sh run <config>       # up → tests → down → clean
-#   ./scripts/smoke-integration.sh run-all            # each config with tests, sequential
-#   ./scripts/smoke-integration.sh clean <config>
-#   ./scripts/smoke-integration.sh clean-all
-#   ./scripts/smoke-integration.sh list
+#   make smoke/up CONFIG=<config>
+#   make smoke/down CONFIG=<config>
+#   make smoke/run CONFIG=<config>       # up → tests → down → clean
+#   make smoke/run-all                   # each config with tests, sequential
+#   make smoke/clean-all
+#   make smoke/list
 #
 # Configs: port_ocean/tests/smoke/configs/<name>.yaml
 # Tests opt in with @pytest.mark.smoke_config("<name>").
@@ -27,7 +27,9 @@ SMOKE_TESTS_DIR="${ROOT_DIR}/port_ocean/tests/smoke"
 
 usage() {
     cat <<EOF
-Usage: $0 {up|down|run|run-all|clean|clean-all|list} [config]
+Prefer Make: make smoke/{up,down,run,run-all,clean-all,list} [CONFIG=<name>]
+
+Direct script usage: $0 {up|down|run|run-all|clean|clean-all|list} [config]
 
   up         Start fake-integration for a config
   down       Stop a daemon integration

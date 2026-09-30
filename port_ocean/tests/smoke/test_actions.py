@@ -37,7 +37,7 @@ requires_running_integration = pytest.mark.skipif(
         "SMOKE_TEST_WEBHOOK_URL", environ.get("SMOKE_TEST_INTEGRATION_WEBHOOK_URL")
     )
     is None,
-    reason="Run smoke-integration.sh up actions before action smoke tests",
+    reason="Run make smoke/up CONFIG=actions before action smoke tests",
 )
 
 

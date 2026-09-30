@@ -49,7 +49,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all smoke/clean lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all smoke/start-mock-api smoke/stop-mock-api
+.SILENT: install install/all test/all smoke/clean smoke/clean-all smoke/run-all smoke/up smoke/down smoke/run smoke/list lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all smoke/start-mock-api smoke/stop-mock-api
 
 
 # Install dependencies
@@ -123,8 +123,31 @@ new:
 test:
 	$(ACTIVATE) && pytest -m 'not smoke'
 
+# Smoke configs: port_ocean/tests/smoke/configs/<CONFIG>.yaml
+# Usage: make smoke/up CONFIG=resync | make smoke/run-all | make smoke/clean-all
+CONFIG ?= resync
+
+smoke/up:
+	./scripts/smoke-integration.sh up $(CONFIG)
+
+smoke/down:
+	./scripts/smoke-integration.sh down $(CONFIG)
+
+smoke/run:
+	./scripts/smoke-integration.sh run $(CONFIG)
+
+smoke/run-all:
+	./scripts/smoke-integration.sh run-all
+
+smoke/list:
+	./scripts/smoke-integration.sh list
+
+# Port-resource cleanup for the current SMOKE_TEST_SUFFIX (used by smoke-integration.sh).
 smoke/clean:
 	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./scripts/clean-smoke-test.py
+
+smoke/clean-all:
+	./scripts/smoke-integration.sh clean-all
 
 test/watch:
 	$(ACTIVATE) && \

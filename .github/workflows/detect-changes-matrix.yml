@@ -71,6 +71,7 @@ jobs:
               - 'scripts/smoke-test-base.sh'
               - 'scripts/smoke-integration.sh'
               - 'scripts/smoke_config_cli.py'
+              - 'Makefile'
             integrations:
               - 'integrations/**'
               - '!integrations/**/*.md'
