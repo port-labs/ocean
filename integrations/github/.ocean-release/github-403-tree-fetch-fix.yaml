@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Fix GitHub 403 tree-fetch handling to preserve entities during outages (PORT-18430). Raise GitHubTreeFetchError on 403 so reconciliation does not treat permission/outage failures as an empty catalog; other HTTP statuses keep existing client behavior.

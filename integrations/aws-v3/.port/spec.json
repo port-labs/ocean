@@ -1,6 +1,6 @@
 {
-  "title": "AWS Hosted by Port",
-  "description": "AWS integration for Port Ocean Hosted by Port",
+  "title": "AWS",
+  "description": "AWS integration for Port",
   "icon": "AWS",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3",
   "formMappingEnabled": true,
@@ -174,10 +174,18 @@
       {
         "name": "Saas",
         "enabled": true,
-        "docs": "build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installation/hosted-by-port/?installation-method=single-account"
+        "docs": "context-lake/ingestion/ingest-data-into-port/native-integrations/available-integrations/cloud-providers/aws-v3/installation/?method=hosted#setup"
       }
-    ]
+    ],
+    "self-hosted-aws-cloudformation": {
+      "enabled": false
+    }
   },
+  "deploymentMethodOverride": [
+    {
+      "type": "self-hosted-aws-cloudformation"
+    }
+  ],
   "saas": {
     "enabled": true,
     "liveEvents": {

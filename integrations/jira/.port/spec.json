@@ -4,6 +4,7 @@
   "icon": "Jira",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/jira",
   "formMappingEnabled": true,
+  "testConnectionAvailable": true,
   "features": [
     {
       "type": "exporter",
@@ -260,9 +261,6 @@
       "valuesOverride": {
         "integrationSpec": {
           "jiraHost": "\"https://api.atlassian.com/ex/jira/\" + .oauthData.profile.accessibleResources[0].id"
-        },
-        "appSpec": {
-          "minimumScheduledResyncInterval": "2h"
         }
       }
     }

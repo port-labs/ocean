@@ -15,6 +15,12 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.subscription_reconciliation import (
+    create_webhook_subscription_batch,
+    delete_webhook_subscriptions,
+    dedupe_subscriptions_by_id,
+    plan_webhook_subscription_reconciliation,
+)
 from azure_devops.webhooks.events import (
     BuildEvents,
     RepositoryEvents,
@@ -57,6 +63,7 @@ from azure_devops.client.file_processing import (
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
     semaphore_async_iterator,
+    throttle_batch_operation,
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
@@ -86,7 +93,12 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_CONCURRENT_PULL_REQUESTS_FOR_ENRICHMENT = 25
 MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT = 25
+_PR_ENRICHMENT_FIELDS = {
+    "commits": "__commits",
+    "threads": "__threads",
+}
 MAX_SUBJECTS_PER_LOOKUP = 500
 # Conservative concurrency caps to avoid exhausting the shared ADO TSTU budget.
 # ADO does not publish a per-connection limit; these values are empirically chosen
@@ -95,6 +107,7 @@ MAX_CONCURRENT_PROJECTS = 5
 MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
+MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION = 100
 MAX_CONCURRENT_USER_MEMBERSHIPS = 10
 MAX_CONCURRENT_WIKI_PAGES = 10
 TEST_RUN_QUERY_MAX_WINDOW = timedelta(days=7)
@@ -171,6 +184,22 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     ),
 ]
 
+# Azure DevOps rejects these events when the subscription has no projectId:
+# the tfs/pipelines ones fail with "not allowed at collection level" (400) and
+# the advsec ones with "No scope found" (403).
+PROJECT_SCOPED_ONLY_EVENT_TYPES = {
+    RepositoryEvents.REPO_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_STATE_CHANGED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_UPDATED,
+    PipelineEvents.PIPELINE_UPDATED,
+    PipelineStageEvents.PIPELINE_JOB_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_PENDING,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_COMPLETED,
+    PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
+}
+
 
 def _parse_change_timestamp(timestamp: str) -> datetime:
     try:
@@ -216,6 +245,19 @@ def _flatten_area_path_tree(
     for child in node.get("children", []):
         result.extend(_flatten_area_path_tree(child, project, node.get("identifier")))
     return result
+
+
+def _pull_request_resource_ids(
+    pull_request: dict[str, Any],
+) -> tuple[str, str, str] | None:
+    repository = pull_request.get("repository") or {}
+    project = repository.get("project") or {}
+    project_id = project.get("id")
+    repository_id = repository.get("id")
+    pull_request_id = pull_request.get("pullRequestId")
+    if not project_id or not repository_id or pull_request_id is None:
+        return None
+    return str(project_id), str(repository_id), str(pull_request_id)
 
 
 @dataclass
@@ -580,6 +622,15 @@ class AzureDevopsClient(HTTPBaseClient):
             return base_url.replace("dev.azure.com", f"{subdomain}.dev.azure.com")
 
         return base_url
+
+    def _get_subscription_base_url_and_params(
+        self, publisher_id: str
+    ) -> tuple[str, dict[str, str]]:
+        if publisher_id == ADVANCED_SECURITY_PUBLISHER_ID:
+            return self._advsec_base_url, ADVANCED_SECURITY_API_PARAMS
+        if publisher_id == RELEASE_PUBLISHER_ID:
+            return self._format_service_url("vsrm"), WEBHOOK_API_PARAMS
+        return self._organization_base_url, WEBHOOK_API_PARAMS
 
     async def generate_graph_users(
         self,
@@ -956,6 +1007,9 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         search_filters: Optional[dict[str, Any]] = None,
         max_results: Optional[int] = None,
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
@@ -974,6 +1028,14 @@ class AzureDevopsClient(HTTPBaseClient):
                 for repository in repositories
             ]
             async for pull_requests in stream_async_iterators_tasks(*tasks):
+                if pull_requests and (
+                    enrich_with_commits or enrich_with_review_discussion
+                ):
+                    pull_requests = await self.enrich_pull_requests(
+                        pull_requests,
+                        enrich_with_commits=enrich_with_commits,
+                        enrich_with_review_discussion=enrich_with_review_discussion,
+                    )
                 yield pull_requests
 
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -1891,13 +1953,155 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         return response.json()
 
-    async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
+    async def get_pull_request(
+        self,
+        pull_request_id: str,
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+    ) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
         if not response:
             return None
         pull_request_data = response.json()
-        return pull_request_data
+        if not (enrich_with_commits or enrich_with_review_discussion):
+            return pull_request_data
+        enriched = await self.enrich_pull_requests(
+            [pull_request_data],
+            enrich_with_commits=enrich_with_commits,
+            enrich_with_review_discussion=enrich_with_review_discussion,
+            concurrency=1,
+        )
+        return enriched[0] if enriched else pull_request_data
+
+    def _pull_request_item_url(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+        resource: str,
+    ) -> str:
+        return (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/{resource}"
+        )
+
+    async def get_pull_request_commits(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return commits on a pull request, paginating with continuation tokens.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/commits
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-commits/get-pull-request-commits
+        """
+        commits: list[dict[str, Any]] = []
+        async for batch in self._get_paginated_by_top_and_continuation_token(
+            self._pull_request_item_url(
+                project_id, repository_id, pull_request_id, "commits"
+            ),
+            additional_params=API_PARAMS,
+        ):
+            commits.extend(batch)
+        return commits
+
+    async def get_pull_request_threads(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return discussion threads on a pull request.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/list
+        """
+        url = self._pull_request_item_url(
+            project_id, repository_id, pull_request_id, "threads"
+        )
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        if not response:
+            return []
+        data = response.json()
+        value = data.get("value") if isinstance(data, dict) else None
+        return value if isinstance(value, list) else []
+
+    async def enrich_pull_requests(
+        self,
+        batch: list[dict[str, Any]],
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+        concurrency: int = MAX_CONCURRENT_PULL_REQUESTS_FOR_ENRICHMENT,
+    ) -> list[dict[str, Any]]:
+        """Attach opt-in raw commits and threads from Azure DevOps onto a pull-request batch."""
+        if not batch or not (enrich_with_commits or enrich_with_review_discussion):
+            return batch
+
+        logger.info(
+            f"Enriching {len(batch)} pull requests "
+            f"(commits={enrich_with_commits}, "
+            f"reviewDiscussion={enrich_with_review_discussion})"
+        )
+        return await throttle_batch_operation(
+            [
+                functools.partial(
+                    self._attach_pull_request_enrichment,
+                    pull_request,
+                    enrich_with_commits=enrich_with_commits,
+                    enrich_with_review_discussion=enrich_with_review_discussion,
+                )
+                for pull_request in batch
+            ],
+            concurrency,
+        )
+
+    async def _attach_pull_request_enrichment(
+        self,
+        pull_request: dict[str, Any],
+        *,
+        enrich_with_commits: bool,
+        enrich_with_review_discussion: bool,
+    ) -> dict[str, Any]:
+        resource_ids = _pull_request_resource_ids(pull_request)
+        if resource_ids is None:
+            logger.warning(
+                "Skipping pull request enrichment; missing project, repository, "
+                f"or pullRequestId (id={pull_request.get('pullRequestId')!r})"
+            )
+            return pull_request
+
+        project_id, repository_id, pull_request_id = resource_ids
+        fetchers: dict[str, Awaitable[list[dict[str, Any]]]] = {}
+        if enrich_with_commits:
+            fetchers["commits"] = self.get_pull_request_commits(
+                project_id, repository_id, pull_request_id
+            )
+        if enrich_with_review_discussion:
+            fetchers["threads"] = self.get_pull_request_threads(
+                project_id, repository_id, pull_request_id
+            )
+
+        results = await asyncio.gather(
+            *fetchers.values(),
+            return_exceptions=True,
+        )
+
+        for label, result in zip(fetchers, results):
+            field = _PR_ENRICHMENT_FIELDS[label]
+            if not isinstance(result, list):
+                logger.warning(
+                    f"{label} enrichment failed for pull request "
+                    f"{project_id}/{repository_id}!{pull_request_id}: {result}"
+                )
+                pull_request[field] = None
+                continue
+            pull_request[field] = result
+
+        return pull_request
 
     async def create_pull_request_thread(
         self,
@@ -2361,20 +2565,33 @@ class AzureDevopsClient(HTTPBaseClient):
         event_type: str,
     ) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
+        subscription_base_url, api_params = self._get_subscription_base_url_and_params(
+            publisher_id
+        )
         params: dict[str, str] = {
+            **api_params,
             "publisherId": publisher_id,
             "eventType": event_type,
         }
         try:
             get_subscriptions_url = (
-                f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
+                f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
             response = await self.send_request(
                 "GET", get_subscriptions_url, headers=headers, params=params
             )
             if not response:
+                logger.warning(
+                    f"Webhook subscription lookup returned no response: "
+                    f"eventType={event_type}, publisherId={publisher_id}, "
+                    f"url={get_subscriptions_url}",
+                )
                 return []
             subscriptions_raw = response.json().get("value", [])
+            logger.debug(
+                f"Fetched webhook subscriptions: eventType={event_type}, publisherId={publisher_id}, "
+                f"count={response.json().get("count", []) or len(subscriptions_raw)}"
+            )
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
@@ -2385,11 +2602,16 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def get_filtered_webhook_subscriptions(
         self,
+        *,
+        org_level: bool = False,
     ) -> list[WebhookSubscription]:
-        unique_filters = {
-            (sub.publisherId, sub.eventType)
-            for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
-        }
+        unique_filters = sorted(
+            {
+                (sub.publisherId, sub.eventType)
+                for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+                if not org_level or sub.eventType not in PROJECT_SCOPED_ONLY_EVENT_TYPES
+            }
+        )
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
 
         async def fetch(
@@ -2407,6 +2629,13 @@ class AzureDevopsClient(HTTPBaseClient):
             *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
         )
 
+        total_subscriptions = sum(len(batch) for batch in results)
+        logger.info(
+            f"Completed filtered webhook subscription lookup: "
+            f"totalFilters={len(unique_filters)}, "
+            f"totalSubscriptions={total_subscriptions}"
+        )
+
         return [sub for batch in results for sub in batch]
 
     async def create_subscription(
@@ -2415,19 +2644,23 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> Optional[str]:
         """Create a webhook subscription and return its ID (or None on failure)."""
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
-        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
-            subscription_base_url = self._format_service_url("vsrm")
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         create_subscription_url = (
             f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
+        project_id = (webhook_subscription.publisherInputs or {}).get("projectId")
         webhook_subscription_json = webhook_subscription.json()
-        logger.info(f"Creating subscription to event: {webhook_subscription_json}")
+        logger.debug(
+            f"Creating webhook subscription: "
+            f"publisherId={webhook_subscription.publisherId}, "
+            f"eventType={webhook_subscription.eventType}, "
+            f"projectId={project_id}, "
+            f"url={create_subscription_url}, params={params}"
+        )
         response = await self.send_request(
             "POST",
             create_subscription_url,
@@ -2436,11 +2669,18 @@ class AzureDevopsClient(HTTPBaseClient):
             data=webhook_subscription_json,
         )
         if not response:
+            logger.warning(
+                f"Webhook subscription create returned no response: "
+                f"publisherId={webhook_subscription.publisherId}, "
+                f"eventType={webhook_subscription.eventType}, "
+                f"projectId={project_id}, "
+                f"url={create_subscription_url}, params={params}"
+            )
             return None
         response_content = response.json()
         sub_id = response_content.get("id")
         logger.info(
-            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')}"
+            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')} for projectId {project_id}"
         )
         return sub_id
 
@@ -2448,13 +2688,10 @@ class AzureDevopsClient(HTTPBaseClient):
         self, webhook_subscription: WebhookSubscription
     ) -> None:
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
-        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
-            subscription_base_url = self._format_service_url("vsrm")
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         delete_subscription_url = f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
         logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
@@ -2821,68 +3058,53 @@ class AzureDevopsClient(HTTPBaseClient):
         existing_subscriptions: Optional[list[WebhookSubscription]] = None,
     ) -> list[str]:
         """Create/reconcile webhook subscriptions and return all active subscription IDs."""
-        auth_username = self.webhook_auth_username
-
         if existing_subscriptions is None:
-            existing_subscriptions = await self.get_filtered_webhook_subscriptions()
-
-        subs_to_create = []
-        subs_to_delete = []
-        # IDs of existing healthy subscriptions we keep as-is — needed for
-        # the subscription registry so incoming events can be routed.
-        kept_sub_ids: list[str] = []
-
-        webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
-
-        for sub in webhook_subs:
-            sub.set_webhook_details(
-                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
-                auth_username=auth_username,
-                webhook_secret=webhook_secret,
-                project_id=project_id,
-            )
-            existing_sub = sub.get_event_by_subscription(existing_subscriptions)
-
-            if existing_sub and (
-                not existing_sub.is_enabled()
-                or not existing_sub.has_required_payload_details()
-            ):
-                subs_to_delete.append(existing_sub)
-                subs_to_create.append(sub)
-            elif existing_sub and existing_sub.id:
-                kept_sub_ids.append(existing_sub.id)
-            elif not existing_sub:
-                subs_to_create.append(sub)
-
-        if subs_to_delete:
-            await asyncio.gather(
-                *[self.delete_subscription(sub) for sub in subs_to_delete]
+            existing_subscriptions = await self.get_filtered_webhook_subscriptions(
+                org_level=not bool(project_id),
             )
 
-        created_sub_ids: list[str] = []
-        if subs_to_create:
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+        plan = plan_webhook_subscription_reconciliation(
+            webhook_subscriptions=AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS,
+            webhook_url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
+            auth_username=self.webhook_auth_username,
+            webhook_secret=webhook_secret,
+            project_id=project_id,
+            existing_subscriptions=existing_subscriptions,
+            project_scoped_only_event_types=PROJECT_SCOPED_ONLY_EVENT_TYPES,
+        )
+        (
+            created_sub_ids,
+            stale_subscriptions_to_delete,
+            failed_create_count,
+        ) = await create_webhook_subscription_batch(
+            subs_to_create=plan.subs_to_create,
+            create_subscription=self.create_subscription,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
 
-            async def create(subscription: WebhookSubscription) -> Optional[str]:
-                async with semaphore:
-                    return await self.create_subscription(subscription)
+        subscriptions_to_delete = plan.subs_to_delete + stale_subscriptions_to_delete
+        delete_candidate_count = len(
+            dedupe_subscriptions_by_id(subscriptions_to_delete)
+        )
+        logger.info(
+            f"Webhook subscription reconciliation summary: "
+            f"kept={len(plan.kept_sub_ids)}, created={len(created_sub_ids)}, "
+            f"failedCreates={failed_create_count}, "
+            f"deleteCandidates={delete_candidate_count}, "
+            f"skippedProjectScoped={plan.skipped_project_scoped_count}, "
+            f"actions={dict(plan.action_counts)}"
+        )
 
-            results = await asyncio.gather(
-                *[create(sub) for sub in subs_to_create],
-                return_exceptions=True,
-            )
-
-            for result in results:
-                if isinstance(result, Exception):
-                    logger.error(
-                        f"Failed to create webhook: {type(result).__name__}: {result}"
-                    )
-                elif isinstance(result, str):
-                    created_sub_ids.append(result)
+        await delete_webhook_subscriptions(
+            subscriptions=subscriptions_to_delete,
+            delete_subscription=self.delete_subscription,
+            max_deletes_per_reconciliation=MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
 
         # Return all active subscription IDs so the caller can populate the
         # subscription registry for webhook event routing.
-        return kept_sub_ids + created_sub_ids
+        return plan.kept_sub_ids + created_sub_ids
 
     async def get_repository_tree(
         self,

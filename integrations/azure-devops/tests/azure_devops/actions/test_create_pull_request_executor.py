@@ -264,3 +264,56 @@ async def test_partition_key(
         await executor._get_partition_key(_make_run(_valid_props()))
         == "my-org/proj-guid/repo-guid"
     )
+
+
+@pytest.mark.asyncio
+async def test_execute_identity_run_uses_bearer_client_for_create_pull_request(
+    executor: CreatePullRequestExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user_api_client = MagicMock()
+    user_api_client.create_pull_request = AsyncMock(
+        return_value={"pullRequestId": 7, "_links": {}}
+    )
+    user_api_client.aclose = AsyncMock()
+    mock_client_for_token = MagicMock(return_value=user_api_client)
+    monkeypatch.setattr(executor, "_client_for_token", mock_client_for_token)
+    monkeypatch.setattr(
+        "azure_devops.actions.abstract_ado_executor._resolve_user_token",
+        AsyncMock(return_value="entra-user-token"),
+    )
+    monkeypatch.setattr(
+        "azure_devops.actions.create_pull_request_executor.ocean", _make_mock_ocean()
+    )
+
+    await executor.execute(_make_run(_valid_props()))
+
+    mock_client_for_token.assert_called_once_with("entra-user-token")
+    user_api_client.create_pull_request.assert_awaited_once()
+    user_api_client.aclose.assert_awaited_once()
+    client.create_pull_request.assert_not_awaited()
+    client.aclose.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_non_identity_run_uses_default_client_for_create_pull_request(
+    executor: CreatePullRequestExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client.create_pull_request.return_value = {"pullRequestId": 1, "_links": {}}
+    mock_client_for_token = MagicMock()
+    monkeypatch.setattr(executor, "_client_for_token", mock_client_for_token)
+    monkeypatch.setattr(
+        "azure_devops.actions.abstract_ado_executor._resolve_user_token",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "azure_devops.actions.create_pull_request_executor.ocean", _make_mock_ocean()
+    )
+
+    await executor.execute(_make_run(_valid_props()))
+
+    mock_client_for_token.assert_not_called()
+    client.create_pull_request.assert_awaited_once()

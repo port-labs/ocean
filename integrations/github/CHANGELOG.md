@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.16.0 (2026-09-29)
+
+
+### Features
+
+- Enabled test connection so Port can run connection health probes for this integration.
+
+
+## 6.15.3 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 6.15.2 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 6.15.1 (2026-09-27)
+
+
+### Bug Fixes
+
+- Ensure GitHub rate limiter waits at least 1s after reset to avoid burning retries with sleep(0)
+
+
+## 6.15.0 (2026-09-24)
+
+
+### Features
+
+- Add incremental sync (T2 client-side cutoff) for secret-scanning-alerts using updated_at and optional updatedSince selector.
+
+
+## 6.14.5 (2026-09-24)
+
+
+### Features
+
+- Improved collaborator live event accuracy by handling team removed_from_repository and membership removed events, ensuring collaborator entities are updated when team repo access is revoked or members leave a team
+
+
+## 6.14.4 (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 6.14.3 (2026-09-22)
+
+
+### Bug Fixes
+
+- Fix GitHub 403 tree-fetch handling to preserve entities during outages (PORT-18430). Raise GitHubTreeFetchError on 403 so reconciliation does not treat permission/outage failures as an empty catalog; other HTTP statuses keep existing client behavior.
+
+
 ## 6.14.2 (2026-09-22)
 
 
