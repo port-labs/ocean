@@ -19,10 +19,12 @@ class AbstractGithubExecutor(AbstractExecutor):
     async def _get_execution_clients(
         self, run: IntegrationRun
     ) -> list[AbstractGithubClient]:
-        organization = run.execution_properties.get("org")
-        if not isinstance(organization, str):
-            raise InvalidActionParametersException("org is required")
-        return [await create_github_client_for_org(organization)]
+        """Clients checked for rate limits before the run is acknowledged.
+
+        Single-org actions use one client; multi-org actions (e.g. bulk external
+        custom properties) override this to return one client per org.
+        """
+        return [await self._get_rest_client(run)]
 
     async def _get_rest_client(self, run: IntegrationRun) -> GithubRestClient:
         organization = run.execution_properties.get("org")

@@ -1,58 +1,46 @@
 import httpx
 from loguru import logger
-from pydantic import Field
 
-from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
-
-from github.actions.abstract_github_action_input import AbstractGithubActionInput
-from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.abstract_pr_comment_executor import (
+    AbstractPrCommentExecutor,
+    PrCommentInputs,
+)
 from github.actions.exceptions import DeleteCommentError
+from github.clients.http.rest_client import GithubRestClient
 
 
-class DeletePrCommentInputs(AbstractGithubActionInput):
-    org: str = Field(min_length=1)
-    repo: str = Field(min_length=1)
+class DeletePrCommentInputs(PrCommentInputs):
     commentId: int
 
 
-class DeletePrCommentExecutor(AbstractGithubExecutor):
+class DeletePrCommentExecutor(AbstractPrCommentExecutor[DeletePrCommentInputs]):
     ACTION_NAME = "delete_pr_comment"
+    INPUTS_CLASS = DeletePrCommentInputs
+    ERROR_CLASS = DeleteCommentError
+    IN_PROGRESS_STATUS_LABEL = "Deleting comment"
+    COMPLETED_STATUS_LABEL = "Comment deleted"
 
-    async def execute(self, run: IntegrationRun) -> None:
-        inputs = DeletePrCommentInputs.from_execution_properties(
-            run.execution_properties
-        )
+    def _start_message(self, inputs: DeletePrCommentInputs) -> str:
+        return f"Deleting comment {inputs.commentId} in {inputs.repo_path}"
 
-        rest_client = await self._get_rest_client(run)
-
-        await ocean.port_client.post_run_log(
-            run,
-            f"Deleting comment {inputs.commentId} in {inputs.org}/{inputs.repo}",
-            status_label="Deleting comment",
-            should_raise=False,
-        )
-
+    async def _perform(
+        self, rest_client: GithubRestClient, inputs: DeletePrCommentInputs
+    ) -> str:
+        # make_request, not send_api_request: DELETE returns 204 with no JSON body.
         try:
             await rest_client.make_request(
-                f"{rest_client.base_url}/repos/{inputs.org}/{inputs.repo}/issues/comments/{inputs.commentId}",
+                f"{self._repo_url(rest_client, inputs)}/issues/comments/{inputs.commentId}",
                 method="DELETE",
                 ignore_default_errors=False,
             )
         except httpx.HTTPStatusError as e:
             raise DeleteCommentError.from_response(
                 e.response,
-                f"Could not delete comment {inputs.commentId} in {inputs.org}/{inputs.repo}",
+                f"Could not delete comment {inputs.commentId} in {inputs.repo_path}",
             )
 
         logger.info(
-            f"Deleted comment {inputs.commentId} in {inputs.org}/{inputs.repo}",
+            f"Deleted comment {inputs.commentId} in {inputs.repo_path}",
             comment_id=inputs.commentId,
         )
-
-        await ocean.port_client.report_run_completed(
-            run,
-            success=True,
-            message=f"Comment {inputs.commentId} deleted from {inputs.org}/{inputs.repo}",
-            status_label="Comment deleted",
-        )
+        return f"Comment {inputs.commentId} deleted from {inputs.repo_path}"

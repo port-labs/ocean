@@ -26,7 +26,7 @@ def patched_ocean() -> Generator[MagicMock, None, None]:
     mock_client = MagicMock()
     mock_client.post_run_log = AsyncMock()
     mock_client.report_run_completed = AsyncMock()
-    with patch("github.actions.create_pr_comment_executor.ocean") as mock_ocean:
+    with patch("github.actions.abstract_pr_comment_executor.ocean") as mock_ocean:
         mock_ocean.port_client = mock_client
         yield mock_ocean
 
