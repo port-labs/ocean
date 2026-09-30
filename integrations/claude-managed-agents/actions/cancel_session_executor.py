@@ -2,9 +2,10 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
+from pydantic import Field
 
+from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.exceptions import InvalidActionParametersException
 from integration import ObjectKind
 
 CANCELLING_STATUS_LABEL = "Cancelling session"
@@ -15,6 +16,11 @@ SESSION_NOT_CANCELLABLE_STATUS_LABEL = "Cannot cancel"
 # A session only has work to interrupt while it is running; the remaining
 # statuses either never started or have already stopped.
 CANCELLABLE_STATUS = "running"
+
+
+class CancelSessionInputs(AbstractAnthropicActionInput):
+    sessionId: str = Field(min_length=1)
+    sessionThreadId: str | None = None
 
 
 class CancelSessionExecutor(AbstractAnthropicExecutor):
@@ -31,18 +37,12 @@ class CancelSessionExecutor(AbstractAnthropicExecutor):
     ACTION_NAME = "cancel_session"
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
-        session_id = run.execution_properties.get("sessionId")
-        if session_id:
-            return session_id
-        return None
+        return run.execution_properties.get("sessionId")
 
     async def execute(self, run: IntegrationRun) -> None:
-        props = run.execution_properties
-        session_id = props.get("sessionId")
-        if not session_id:
-            raise InvalidActionParametersException("sessionId is required")
-
-        session_thread_id = props.get("sessionThreadId")
+        inputs = CancelSessionInputs.from_execution_properties(run.execution_properties)
+        session_id = inputs.sessionId
+        session_thread_id = inputs.sessionThreadId
 
         await ocean.port_client.post_run_log(
             run,

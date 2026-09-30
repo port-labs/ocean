@@ -955,8 +955,21 @@ async def test_cancel_session_requires_session_id() -> None:
     run = MagicMock()
     run.execution_properties = {}
 
-    with pytest.raises(InvalidActionParametersException, match="sessionId is required"):
+    with pytest.raises(InvalidActionParametersException, match="sessionId"):
         await executor.execute(run)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("session_id", ["", 123])
+async def test_cancel_session_rejects_invalid_session_id(session_id: Any) -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock()
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    with pytest.raises(InvalidActionParametersException, match="sessionId"):
+        await executor.execute(_cancel_run(sessionId=session_id))
+
+    client_mock.get_session.assert_not_called()
 
 
 @pytest.mark.asyncio
