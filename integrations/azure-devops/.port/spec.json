@@ -515,7 +515,7 @@
     {
       "name": "update_pull_request_labels",
       "icon": "AzureDevops",
-      "description": "Add a label to an Azure DevOps pull request",
+      "description": "Update the labels of an Azure DevOps pull request by adding one label per run",
       "inputs": [
         {
           "name": "organization",

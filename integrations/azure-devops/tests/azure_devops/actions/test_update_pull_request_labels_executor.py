@@ -37,6 +37,7 @@ def _make_run(props: dict[str, Any]) -> ActionRun:
 def client() -> MagicMock:
     mock = MagicMock()
     mock._organization_base_url = "https://dev.azure.com/my-org"
+    mock.get_pull_request_labels = AsyncMock(return_value=[])
     mock.create_pull_request_label = AsyncMock()
     return mock
 
@@ -150,6 +151,58 @@ async def test_execute_adds_label_and_completes_run(
         success=True,
         message="Label 'approved' added to pull request 42",
     )
+
+
+@pytest.mark.asyncio
+async def test_execute_label_already_on_pull_request_completes_without_creating(
+    executor: UpdatePullRequestLabelsExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client.get_pull_request_labels.return_value = [
+        {"id": "label-guid", "name": "Approved", "active": True}
+    ]
+    mock_ocean = _make_mock_ocean()
+    monkeypatch.setattr(
+        "azure_devops.actions.update_pull_request_labels_executor.ocean", mock_ocean
+    )
+
+    run = _make_run(_valid_props())
+    await executor.execute(run)
+
+    client.get_pull_request_labels.assert_awaited_once_with(
+        "proj-guid", "repo-guid", "42"
+    )
+    client.create_pull_request_label.assert_not_awaited()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run,
+        success=True,
+        message="Label 'Approved' is already on pull request 42; nothing to add",
+    )
+
+
+@pytest.mark.asyncio
+async def test_execute_inactive_existing_label_is_added_again(
+    executor: UpdatePullRequestLabelsExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client.get_pull_request_labels.return_value = [
+        {"id": "label-guid", "name": "approved", "active": False}
+    ]
+    client.create_pull_request_label.return_value = {
+        "id": "label-guid",
+        "name": "approved",
+        "active": True,
+    }
+    monkeypatch.setattr(
+        "azure_devops.actions.update_pull_request_labels_executor.ocean",
+        _make_mock_ocean(),
+    )
+
+    await executor.execute(_make_run(_valid_props()))
+
+    client.create_pull_request_label.assert_awaited_once()
 
 
 @pytest.mark.asyncio

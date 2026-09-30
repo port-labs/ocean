@@ -2145,6 +2145,31 @@ class AzureDevopsClient(HTTPBaseClient):
             return {}
         return response.json()
 
+    async def get_pull_request_labels(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """List the labels assigned to a pull request.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/labels
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-labels/list
+        """
+        labels_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/labels"
+        )
+        response = await self.send_request(
+            "GET",
+            labels_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return []
+        return response.json().get("value", [])
+
     async def create_pull_request_label(
         self,
         project: str,

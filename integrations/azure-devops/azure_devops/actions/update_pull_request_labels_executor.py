@@ -80,6 +80,35 @@ class UpdatePullRequestLabelsExecutor(AbstractAzureDevopsExecutor):
         )
 
         try:
+            existing_labels = await self.client.get_pull_request_labels(
+                inputs.project,
+                inputs.repositoryId,
+                inputs.pullRequestId,
+            )
+            # Azure DevOps label names are case-insensitive, and the create
+            # endpoint does not document its response for a duplicate label.
+            existing_label = next(
+                (
+                    label
+                    for label in existing_labels
+                    if label.get("active", True)
+                    and label.get("name", "").lower() == inputs.label.lower()
+                ),
+                None,
+            )
+            if existing_label:
+                message = (
+                    f"Label '{existing_label['name']}' is already on pull request "
+                    f"{inputs.pullRequestId}; nothing to add"
+                )
+                await ocean.port_client.post_run_log(run, message, should_raise=False)
+                await ocean.port_client.report_run_completed(
+                    run,
+                    success=True,
+                    message=message,
+                )
+                return
+
             created_label = await self.client.create_pull_request_label(
                 inputs.project,
                 inputs.repositoryId,
