@@ -5,6 +5,7 @@ from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, 
 import anyio
 import httpx
 from loguru import logger
+from pydantic.v1 import BaseModel
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -21,6 +22,12 @@ from gitlab.helpers.utils import (
 
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
+
+
+class AwardEmoji(BaseModel):
+    id: int
+    name: str
+
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 _MR_ENRICHMENT_FIELDS = {
@@ -1688,6 +1695,62 @@ class GitLabClient:
         encoded_id = quote(project_id, safe="")
         path = f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes"
         return await self.rest.send_api_request("POST", path, data={"body": body})
+
+    async def award_merge_request_note_emoji(
+        self,
+        project_id: str,
+        merge_request_iid: int,
+        note_id: int,
+        name: str,
+    ) -> dict[str, Any]:
+        encoded_id = quote(project_id, safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji"
+        )
+        return await self.rest.send_api_request("POST", path, data={"name": name})
+
+    async def list_merge_request_note_award_emojis(
+        self,
+        project_id: str,
+        merge_request_iid: int,
+        note_id: int,
+    ) -> list[AwardEmoji] | None:
+        """Return every award on the note, or None if GitLab answered 403/404."""
+        encoded_id = quote(project_id, safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji"
+        )
+        page_size = RestClient.DEFAULT_PAGE_SIZE
+        awards: list[AwardEmoji] = []
+        page = 1
+        while True:
+            response = await self.rest.send_api_request(
+                "GET", path, params={"per_page": page_size, "page": page}
+            )
+            # send_api_request turns a GET 403/404 into {}, so a non-list means
+            # the note could not be read, not that it has no reactions.
+            if not isinstance(response, list):
+                return None
+            awards.extend(AwardEmoji.parse_obj(award) for award in response)
+            if len(response) < page_size:
+                return awards
+            page += 1
+
+    async def revoke_merge_request_note_award_emoji(
+        self,
+        project_id: str,
+        merge_request_iid: int,
+        note_id: int,
+        award_id: int,
+    ) -> dict[str, Any]:
+        encoded_id = quote(project_id, safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji/{award_id}"
+        )
+        return await self.rest.send_api_request("DELETE", path)
 
     def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Return the most-recently observed rate-limit info, or None if unknown."""
