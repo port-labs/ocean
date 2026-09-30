@@ -688,7 +688,7 @@ class GitLabClient:
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
-        strategy: str = "groupSearch",
+        strategy: str = "repositoryTree",
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files based on the specified strategy.
 
@@ -696,9 +696,12 @@ class GitLabClient:
             query: The parsed search path, built once by the caller and threaded
                 through every strategy so the query string is never rebuilt.
             strategy: One of "projectSearch", "repositoryTree", or "groupSearch".
-                - projectSearch: Search across all accessible projects
                 - repositoryTree: Search across all accessible projects using tree API
+                - projectSearch: Search across all accessible projects via Search API
                 - groupSearch: Search across groups (with fallback to projectSearch if no results)
+
+            GitLab's Search API (groupSearch / projectSearch) does not guarantee complete
+            results; see https://docs.gitlab.com/user/search/advanced_search/#known-issues
         """
         should_use_tree = strategy == "repositoryTree"
 
