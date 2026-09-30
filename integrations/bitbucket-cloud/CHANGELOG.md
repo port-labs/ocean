@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.135 (2026-09-29)
+
+
+### Bug Fixes
+
+- Fixed file ingestion so dotfiles such as .nvmrc, .gitignore, and .env are no longer skipped because their names were treated as extensions. Paths were also normalized to remove leading and trailing slashes so path variants match equivalently.
+
+
+## 0.5.134 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
 ## 0.5.133 (2026-09-28)
 
 

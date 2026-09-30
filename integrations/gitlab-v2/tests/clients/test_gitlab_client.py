@@ -789,7 +789,11 @@ class TestGitLabClient:
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
                 mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", query, False
+                    "group/project",
+                    "blobs",
+                    query,
+                    False,
+                    should_use_tree=True,
                 )
 
     @pytest.mark.parametrize(
@@ -878,6 +882,7 @@ class TestGitLabClient:
                         query,
                         skip_parsing=False,
                         params={"min_access_level": 30},
+                        strategy="groupSearch",
                     ):
                         results.extend(batch)
 
