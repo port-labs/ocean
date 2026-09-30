@@ -57,9 +57,7 @@ class PollingEventListener(BaseEventListener):
             ocean.app.resync_state_updater.last_integration_state_updated_at
         )
 
-        # Initialized as "" on ResyncStateUpdater — treat empty like unset so
-        # resync_on_start actually fires on the first polling iteration.
-        if not _last_updated_at:
+        if _last_updated_at is None:
             return self.event_listener_config.resync_on_start
 
         return False

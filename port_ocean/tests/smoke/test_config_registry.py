@@ -15,10 +15,10 @@ def test_configs_are_discovered() -> None:
 
 def test_resync_config() -> None:
     config = load_config("resync")
-    assert config.lifecycle == "daemon"
+    assert config.lifecycle == "once"
     assert config.wait_for_resync is True
     env = ocean_config_env(config.ocean)
-    assert json.loads(env["OCEAN__EVENT_LISTENER"])["type"] == "POLLING"
+    assert json.loads(env["OCEAN__EVENT_LISTENER"])["type"] == "ONCE"
     assert env["OCEAN__ACTIONS_PROCESSOR__ENABLED"] == "false"
 
 

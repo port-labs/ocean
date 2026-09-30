@@ -234,43 +234,6 @@ async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
 
 
 @pytest.mark.asyncio
-async def test_polling_resyncs_on_start_when_last_updated_at_is_empty(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    port_client = MagicMock()
-    port_client.get_integration_resync_request = AsyncMock(return_value={})
-
-    app = SimpleNamespace(
-        port_client=port_client,
-        resync_state_updater=SimpleNamespace(
-            last_integration_state_updated_at="",
-            last_resync_request_updated_at=None,
-        ),
-    )
-    monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
-    monkeypatch.setattr(
-        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
-    )
-
-    listener = PollingEventListener(
-        events={"on_resync": AsyncMock(return_value=True)},
-        event_listener_config=PollingEventListenerSettings(
-            type=EventListenerType.POLLING,
-            resync_on_start=True,
-        ),
-    )
-    resync_mock = AsyncMock()
-    monkeypatch.setattr(listener, "_resync", resync_mock)
-
-    await listener._start()
-    await sleep(0)
-
-    resync_mock.assert_called_once_with({})
-    port_client.get_integration_resync_request.assert_not_called()
-
-
-@pytest.mark.asyncio
 async def test_polling_cancels_current_resync_when_new_request_arrives(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

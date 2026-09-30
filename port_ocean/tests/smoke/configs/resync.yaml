@@ -1,10 +1,9 @@
-# Polling resync smoke. Tests mark themselves with smoke_config("resync").
+# Resync smoke (once). Tests mark themselves with smoke_config("resync").
+# Uses ONCE so sail -O completes a full resync before pytest (same as pre-config CI).
 wait_for_resync: true
 ocean:
   event_listener:
-    type: POLLING
-    resync_on_start: true
-    interval: 3600
+    type: ONCE
   actions_processor:
     enabled: false
   live_events:
