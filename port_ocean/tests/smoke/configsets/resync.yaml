@@ -1,6 +1,6 @@
-# Resync smoke (once). Tests mark themselves with smoke_configset("resync").
-# Uses ONCE so sail -O completes a full resync before pytest (same as pre-configset CI).
-wait_for_resync: true
+# Resync smoke. Tests mark themselves with smoke_configset("resync").
+# ONCE event listener exits after one sync; runner always boots detached and downs after tests.
+# wait_for_resync defaults to true.
 ocean:
   event_listener:
     type: ONCE

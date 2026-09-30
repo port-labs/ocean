@@ -15,7 +15,6 @@ def test_configsets_are_discovered() -> None:
 
 def test_resync_configset() -> None:
     configset = load_configset("resync")
-    assert configset.lifecycle == "once"
     assert configset.wait_for_resync is True
     env = ocean_config_env(configset.ocean)
     assert json.loads(env["OCEAN__EVENT_LISTENER"])["type"] == "ONCE"
@@ -24,16 +23,17 @@ def test_resync_configset() -> None:
 
 def test_actions_configset() -> None:
     configset = load_configset("actions")
-    assert configset.lifecycle == "daemon"
-    assert configset.wait_for_resync is False
+    assert configset.wait_for_resync is True
     env = ocean_config_env(configset.ocean)
     assert env["OCEAN__ACTIONS_PROCESSOR__ENABLED"] == "true"
     assert env["OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED"] == "true"
 
 
-def test_once_configset_lifecycle_from_event_listener() -> None:
+def test_once_configset() -> None:
     configset = load_configset("once")
-    assert configset.lifecycle == "once"
+    assert configset.wait_for_resync is True
+    env = ocean_config_env(configset.ocean)
+    assert json.loads(env["OCEAN__EVENT_LISTENER"])["type"] == "ONCE"
 
 
 def test_unknown_configset_raises() -> None:

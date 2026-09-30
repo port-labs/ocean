@@ -32,7 +32,7 @@ Prefer Make: make smoke/{up,down,run,run-all,clean-all,list} [CONFIGSET=<name>]
 Direct script usage: $0 {up|down|run|run-all|clean|clean-all|list} [configset]
 
   up         Start fake-integration for a configset
-  down       Stop a daemon integration
+  down       Stop the integration container
   run        up, run tests marked for the configset, down, clean
   run-all    run every configset that has marked tests (one at a time)
   clean      Remove Port resources for the configset
@@ -85,7 +85,6 @@ docker_port_base_url() {
 }
 
 integration_docker_run() {
-    local lifecycle="$1"
     local port_base_url
     port_base_url="$(docker_port_base_url)"
 
@@ -93,11 +92,6 @@ integration_docker_run() {
     tar_full_path=$(ls "${ROOT_DIR}"/dist/*.tar.gz)
     local tar_file
     tar_file=$(basename "${tar_full_path}")
-
-    local sail_command="ocean sail"
-    if [[ "${lifecycle}" == "once" ]]; then
-        sail_command="ocean sail -O"
-    fi
 
     local smoke_test_image="${SMOKE_TEST_IMAGE:-port-ocean-fake-integration:smoke-test-local}"
     local docker_args=(
@@ -125,14 +119,8 @@ integration_docker_run() {
 
     docker_args+=(
         "${smoke_test_image}"
-        -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${tar_file}[cli] && ${sail_command}"
+        -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${tar_file}[cli] && ocean sail"
     )
-
-    if [[ "${lifecycle}" == "once" ]]; then
-        docker run --rm -i "${docker_args[@]}"
-        rm -rf "${TEMP_DIR}"
-        return
-    fi
 
     docker run -d --rm -p "${SMOKE_TEST_HOST_PORT}:8000" "${docker_args[@]}"
 }
@@ -227,33 +215,19 @@ cmd_up() {
         exit 1
     }
 
-    case "${SMOKE_TEST_LIFECYCLE}" in
-        once)
-            echo "Starting once smoke configset '${SMOKE_TEST_CONFIGSET}' (integration=${INTEGRATION_IDENTIFIER})"
-            integration_docker_run "once"
-            ;;
-        daemon)
-            if docker ps -a --format '{{.Names}}' | grep -qx "${SMOKE_TEST_CONTAINER}"; then
-                echo "Stopping existing smoke integration container: ${SMOKE_TEST_CONTAINER}"
-                docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
-            fi
-            echo "Starting daemon smoke configset '${SMOKE_TEST_CONFIGSET}' (integration=${INTEGRATION_IDENTIFIER})"
-            integration_docker_run "daemon"
-            wait_for_integration
-            ;;
-        *)
-            echo "Unknown lifecycle '${SMOKE_TEST_LIFECYCLE}'"
-            exit 1
-            ;;
-    esac
+    if docker ps -a --format '{{.Names}}' | grep -qx "${SMOKE_TEST_CONTAINER}"; then
+        echo "Stopping existing smoke integration container: ${SMOKE_TEST_CONTAINER}"
+        docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
+    fi
+    echo "Starting smoke configset '${SMOKE_TEST_CONFIGSET}' (integration=${INTEGRATION_IDENTIFIER})"
+    integration_docker_run
+    wait_for_integration
 }
 
 cmd_down() {
-    if [[ "${SMOKE_TEST_LIFECYCLE}" == "daemon" ]]; then
-        if docker ps -a --format '{{.Names}}' | grep -qx "${SMOKE_TEST_CONTAINER}"; then
-            echo "Stopping smoke integration container: ${SMOKE_TEST_CONTAINER}"
-            docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
-        fi
+    if docker ps -a --format '{{.Names}}' | grep -qx "${SMOKE_TEST_CONTAINER}"; then
+        echo "Stopping smoke integration container: ${SMOKE_TEST_CONTAINER}"
+        docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
     fi
     if [[ -n "${TEMP_DIR:-}" && -d "${TEMP_DIR}" ]]; then
         rm -rf "${TEMP_DIR}"

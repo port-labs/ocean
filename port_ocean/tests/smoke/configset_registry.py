@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import yaml
 
 CONFIGSETS_DIR = Path(__file__).parent / "configsets"
-Lifecycle = Literal["once", "daemon"]
 
 
 @dataclass(frozen=True)
@@ -16,16 +15,6 @@ class SmokeConfigSet:
     name: str
     wait_for_resync: bool
     ocean: dict[str, Any]
-
-    @property
-    def lifecycle(self) -> Lifecycle:
-        listener = self.ocean.get("event_listener") or {}
-        if (
-            isinstance(listener, dict)
-            and str(listener.get("type", "")).upper() == "ONCE"
-        ):
-            return "once"
-        return "daemon"
 
 
 def list_configset_names() -> list[str]:
@@ -43,9 +32,14 @@ def load_configset(name: str) -> SmokeConfigSet:
     ocean = raw.get("ocean", {})
     if not isinstance(ocean, dict):
         raise ValueError(f"Invalid smoke configset '{name}': ocean must be a mapping")
+    wait_for_resync = raw["wait_for_resync"] if "wait_for_resync" in raw else True
+    if not isinstance(wait_for_resync, bool):
+        raise ValueError(
+            f"Invalid smoke configset '{name}': wait_for_resync must be a boolean"
+        )
     return SmokeConfigSet(
         name=name,
-        wait_for_resync=bool(raw.get("wait_for_resync", False)),
+        wait_for_resync=wait_for_resync,
         ocean=ocean,
     )
 

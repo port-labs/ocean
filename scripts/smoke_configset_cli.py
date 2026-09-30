@@ -25,7 +25,6 @@ def _export_shell(configset_name: str) -> str:
         f"export SMOKE_TEST_CONFIGSET={shlex.quote(configset_name)}",
         f"export SMOKE_TEST_HOST_PORT={HOST_PORT}",
         f"export SMOKE_TEST_CONFIGSET_SUFFIX={shlex.quote(configset_name)}",
-        f"export SMOKE_TEST_LIFECYCLE={shlex.quote(configset.lifecycle)}",
         f"export SMOKE_TEST_WAIT_FOR_RESYNC={shlex.quote('true' if configset.wait_for_resync else 'false')}",
         f"export SMOKE_OCEAN_ENV_KEYS={shlex.quote(' '.join(ocean_env))}",
     ]
@@ -79,7 +78,6 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(
                 {
                     "name": configset.name,
-                    "lifecycle": configset.lifecycle,
                     "wait_for_resync": configset.wait_for_resync,
                     "ocean": configset.ocean,
                     "env": ocean_config_env(configset.ocean),

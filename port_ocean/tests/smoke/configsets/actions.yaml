@@ -1,4 +1,5 @@
 # Actions/workflows smoke. Tests mark themselves with smoke_configset("actions").
+# Daemon-style POLLING; wait_for_resync defaults to true before pytest.
 ocean:
   event_listener:
     type: POLLING
