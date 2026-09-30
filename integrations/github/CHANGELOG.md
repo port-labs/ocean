@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## Unreleased
+
+### Improvements
+
+- Optimized workflow incremental sync with per-repo commit-path filtering for improved efficiency and reduced API calls. Replaces search API with direct commits endpoint checks.
+
+
 ## 6.16.0 (2026-09-29)
 
 
