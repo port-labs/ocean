@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2026-09-30)
+
+
+### Features
+
+- Added cancel_session action to cancel a running Claude managed agent session
+
+
 ## 0.2.8 (2026-09-29)
 
 
