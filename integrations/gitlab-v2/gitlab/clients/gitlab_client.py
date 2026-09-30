@@ -1715,16 +1715,28 @@ class GitLabClient:
         project_id: str,
         merge_request_iid: int,
         note_id: int,
-    ) -> list[AwardEmoji]:
+    ) -> list[AwardEmoji] | None:
+        """Return every award on the note, or None if GitLab answered 403/404."""
         encoded_id = quote(project_id, safe="")
         path = (
             f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
             f"{note_id}/award_emoji"
         )
-        response = await self.rest.send_api_request("GET", path)
-        if isinstance(response, list):
-            return [AwardEmoji.parse_obj(award) for award in response]
-        return []
+        page_size = RestClient.DEFAULT_PAGE_SIZE
+        awards: list[AwardEmoji] = []
+        page = 1
+        while True:
+            response = await self.rest.send_api_request(
+                "GET", path, params={"per_page": page_size, "page": page}
+            )
+            # send_api_request turns a GET 403/404 into {}, so a non-list means
+            # the note could not be read, not that it has no reactions.
+            if not isinstance(response, list):
+                return None
+            awards.extend(AwardEmoji.parse_obj(award) for award in response)
+            if len(response) < page_size:
+                return awards
+            page += 1
 
     async def revoke_merge_request_note_award_emoji(
         self,

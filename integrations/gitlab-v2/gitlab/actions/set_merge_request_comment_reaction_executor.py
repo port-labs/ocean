@@ -150,6 +150,12 @@ class SetMergeRequestCommentReactionExecutor(AbstractGitlabExecutor):
         awards = await self.client.list_merge_request_note_award_emojis(
             inputs.project, inputs.mergeRequestIid, inputs.noteId
         )
+        if awards is None:
+            raise GitlabSetMergeRequestCommentReactionError(
+                f"Could not read reactions on note {inputs.noteId} of merge request "
+                f"!{inputs.mergeRequestIid} in project '{inputs.project}': not found "
+                "or no access"
+            )
         normalized = inputs.name.lower()
         for award in awards:
             if award.name.lower() == normalized:

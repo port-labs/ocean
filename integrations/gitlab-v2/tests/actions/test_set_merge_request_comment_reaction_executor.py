@@ -171,6 +171,32 @@ class TestSetMergeRequestCommentReactionExecutor:
             with pytest.raises(GitlabSetMergeRequestCommentReactionError):
                 await executor.execute(run)
 
+    async def test_remove_when_note_unreadable_raises(
+        self,
+        executor: SetMergeRequestCommentReactionExecutor,
+        mock_port_client: MagicMock,
+    ) -> None:
+        executor.client.list_merge_request_note_award_emojis = AsyncMock(return_value=None)  # type: ignore[method-assign]
+        run = make_run(
+            {
+                "project": "p",
+                "mergeRequestIid": "1",
+                "noteId": "2",
+                "name": "thumbsup",
+                "removeReaction": True,
+            }
+        )
+        with patch(
+            "gitlab.actions.set_merge_request_comment_reaction_executor.ocean"
+        ) as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            with pytest.raises(
+                GitlabSetMergeRequestCommentReactionError,
+                match="not found or no access",
+            ):
+                await executor.execute(run)
+        executor.client.revoke_merge_request_note_award_emoji.assert_not_called()  # type: ignore[attr-defined]
+
     async def test_api_error_on_add_raises(
         self,
         executor: SetMergeRequestCommentReactionExecutor,
