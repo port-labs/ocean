@@ -433,47 +433,77 @@ async def resync_packages(
                 yield packages
 
 
+@ocean.on_incremental_resync(ObjectKind.WORKFLOW)
 @ocean.on_resync(ObjectKind.WORKFLOW)
 @_resync_per_authenticator
 async def resync_workflows(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all workflows for specified Github repositories"""
+    """Resync all workflows with incremental filtering on .github/workflows changes."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    fetch_errors: list[Exception] = []
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
             org_name = org["login"]
-            repo_exporter = RestRepositoryExporter(rest_client)
             workflow_exporter = RestWorkflowExporter(rest_client)
 
-            repo_options = ListRepositoryOptions(
-                organization=org_name,
-                organization_type=org["type"],
-                type=port_app_config.repository_type,
-                search_params=config.selector.repo_search,
-                exclude_archived=config.selector.exclude_archived,
-            )
+            if sync_cursor:
+                try:
+                    changed_repos = await workflow_exporter.get_changed_repo_names(
+                        org_name, sync_cursor
+                    )
+                except Exception as e:
+                    fetch_errors.append(e)
+                    logger.error(
+                        f"Failed to fetch commits for {org_name}, skipping workflows for this organization",
+                        extra={"error": str(e)},
+                    )
+                    continue
 
-            async for repositories in repo_exporter.get_paginated_resources(
-                options=repo_options
-            ):
-                tasks = []
-                for repo in repositories:
-                    tasks.append(
-                        workflow_exporter.get_paginated_resources(
-                            options=ListWorkflowOptions(
-                                organization=org_name, repo_name=repo["name"]
-                            )
+                if not changed_repos:
+                    continue
+                repos_to_sync = [{"name": repo_name} for repo_name in changed_repos]
+            else:
+                repo_exporter = RestRepositoryExporter(rest_client)
+                repo_options = ListRepositoryOptions(
+                    organization=org_name,
+                    organization_type=org["type"],
+                    type=port_app_config.repository_type,
+                    search_params=config.selector.repo_search,
+                    exclude_archived=config.selector.exclude_archived,
+                )
+
+                all_repos = []
+                async for repositories in repo_exporter.get_paginated_resources(
+                    options=repo_options
+                ):
+                    all_repos.extend(repositories)
+                repos_to_sync = all_repos
+
+            tasks = []
+            for repo in repos_to_sync:
+                tasks.append(
+                    workflow_exporter.get_paginated_resources(
+                        options=ListWorkflowOptions(
+                            organization=org_name, repo_name=repo["name"]
                         )
                     )
+                )
 
-                async for workflows in stream_async_iterators_tasks(*tasks):
-                    yield workflows
+            async for workflows in stream_async_iterators_tasks(*tasks):
+                yield workflows
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
 
 
 @ocean.on_incremental_resync(ObjectKind.WORKFLOW_RUN)

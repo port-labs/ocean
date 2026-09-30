@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+from datetime import datetime, timedelta
 import pytest
 from unittest.mock import patch
 from github.clients.http.rest_client import GithubRestClient
@@ -89,3 +90,90 @@ async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
         mock_request.assert_called_once_with(
             f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows"
         )
+
+
+@pytest.mark.asyncio
+async def test_get_changed_repo_names_with_cursor(
+    rest_client: GithubRestClient,
+) -> None:
+    """Test get_changed_repo_names returns repos when commits are found."""
+    exporter = RestWorkflowExporter(rest_client)
+    cursor = datetime.utcnow() - timedelta(days=1)
+
+    commits_response = [
+        {"repository": {"name": "repo-a"}},
+        {"repository": {"name": "repo-b"}},
+        {"repository": {"name": "repo-a"}},  # Duplicate
+    ]
+
+    async def mock_paginated_request(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield commits_response
+
+    with patch.object(
+        rest_client, "send_paginated_request", side_effect=mock_paginated_request
+    ):
+        async with event_context("test_event"):
+            changed_repos = await exporter.get_changed_repo_names(
+                "test-org", cursor
+            )
+
+            assert changed_repos == {"repo-a", "repo-b"}
+            assert len(changed_repos) == 2  # Deduplicated
+
+
+@pytest.mark.asyncio
+async def test_get_changed_repo_names_no_cursor(
+    rest_client: GithubRestClient,
+) -> None:
+    """Test get_changed_repo_names returns empty set when cursor is None."""
+    exporter = RestWorkflowExporter(rest_client)
+
+    async with event_context("test_event"):
+        changed_repos = await exporter.get_changed_repo_names("test-org", None)
+
+        assert changed_repos == set()
+
+
+@pytest.mark.asyncio
+async def test_get_changed_repo_names_no_commits(
+    rest_client: GithubRestClient,
+) -> None:
+    """Test get_changed_repo_names returns empty set when no commits found."""
+    exporter = RestWorkflowExporter(rest_client)
+    cursor = datetime.utcnow() - timedelta(days=1)
+
+    async def mock_paginated_request(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield []  # No commits
+
+    with patch.object(
+        rest_client, "send_paginated_request", side_effect=mock_paginated_request
+    ):
+        async with event_context("test_event"):
+            changed_repos = await exporter.get_changed_repo_names(
+                "test-org", cursor
+            )
+
+            assert changed_repos == set()
+
+
+@pytest.mark.asyncio
+async def test_get_changed_repo_names_api_error(
+    rest_client: GithubRestClient,
+) -> None:
+    """Test get_changed_repo_names raises exception on API error."""
+    exporter = RestWorkflowExporter(rest_client)
+    cursor = datetime.utcnow() - timedelta(days=1)
+
+    async def mock_paginated_request(*args: Any, **kwargs: Any) -> None:
+        raise Exception("API error")
+
+    with patch.object(
+        rest_client, "send_paginated_request", side_effect=mock_paginated_request
+    ):
+        async with event_context("test_event"):
+            with pytest.raises(Exception, match="API error"):
+                await exporter.get_changed_repo_names("test-org", cursor)
