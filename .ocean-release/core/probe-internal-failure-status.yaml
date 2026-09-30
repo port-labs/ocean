@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Add INTERNAL_FAILURE probe status to distinguish Ocean/platform errors from third-party connection failures
