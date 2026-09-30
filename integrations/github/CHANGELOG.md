@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.16.1 (2026-09-30)
+
+
+### Improvements
+
+- Added workflow node outputs (issueNumber, issueId, issueUrl) to the create_issue action
+
+
 ## 6.16.0 (2026-09-29)
 
 
