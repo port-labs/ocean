@@ -84,3 +84,9 @@ class CreatePullRequestThreadError(AzureDevopsActionError):
     """Raised when the Azure DevOps API returns an error while creating a thread."""
 
     DEFAULT_STATUS_LABEL = "Create failed"
+
+
+class UpdatePullRequestLabelsError(AzureDevopsActionError):
+    """Raised when the Azure DevOps API returns an error while labelling a pull request."""
+
+    DEFAULT_STATUS_LABEL = "Update Pull Request labels failed"
