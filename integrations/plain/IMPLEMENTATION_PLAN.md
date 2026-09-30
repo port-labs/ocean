@@ -1,7 +1,7 @@
 # Plain Ocean Integration — Implementation Plan
 
-> Status: **Phase 1 complete — start Phase 2**  
-> Source: design discussion (Aug 20, 2026); Phase 1 kinds expanded Sep 2026  
+> Status: **Phase 1 + Phase 2 complete**  
+> Source: design discussion (Aug 20, 2026); Phase 1 kinds expanded Sep 2026; Phase 2 live events Sep 2026  
 > Decision: dedicated `integrations/plain/` integration (Linear-style), **not** custom Ocean and **not** a generic GraphQL fork.  
 > **Executable task list (prerequisites + per-task tests):** [TASKS.md](./TASKS.md)
 
@@ -13,7 +13,7 @@ Build a Port Ocean integration for [Plain](https://www.plain.com/) that syncs su
 |-------|------|--------|--------|
 | **0 (optional POC)** | Custom Ocean, `pagination_type: none`, `first: 100` | ~1 day | Skipped |
 | **1** | Dedicated integration, **8 kinds**, resync only | Done | **Complete** |
-| **2** | Live events via Plain webhooks | **+3–5 days** | **Next** |
+| **2** | Live events via Plain webhooks (all 8 kinds) | Done | **Complete** |
 | **3+ (optional)** | Extra catalog kinds (tasks, labels, help center, etc.) | TBD | Backlog |
 
 **Phase 1 kinds (shipped):** `company`, `tenant`, `user`, `customer`, `thread`, `thread-message`, `discussion`, `discussion-message`
@@ -335,20 +335,13 @@ If Plain does not expose single-entity timeline/discussion fetches, fall back to
 
 ### Phase 2 acceptance criteria
 
-**MVP**
-
-- [ ] With `enableLiveEvents: true`, webhook target is registered for thread + customer events
-- [ ] Signature verification rejects invalid requests
-- [ ] Thread create / status / assignment events upsert catalog entities
-- [ ] Customer create/update upsert; delete removes entity
-- [ ] Tests cover auth failure and happy path per processor
-
-**Stretch (conversation kinds)**
-
-- [ ] Timeline / channel events upsert `plainThreadMessage` (or documented fallback re-fetch)
-- [ ] Discussion create/update upserts `plainDiscussion`
-- [ ] Discussion message events upsert `plainDiscussionMessage` with thread + discussion relations
-- [ ] Missing-entity GraphQL paths fail clearly (same pattern as resync)
+- [x] With `enableLiveEvents: true`, webhook target is registered for all catalog-kind events
+- [x] Signature verification rejects invalid requests (`webhookSecret` / `Plain-Request-Signature`)
+- [x] Thread create / status / assignment / labels / fields / tenant events upsert catalog entities
+- [x] Customer create/update upsert; delete removes entity
+- [x] Thread-message, discussion, and discussion-message live updates
+- [x] Company / tenant / user refreshed from related customer/thread events (no dedicated Plain webhooks)
+- [x] Tests cover signature failure, setup, and processor happy paths
 
 ---
 

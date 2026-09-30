@@ -91,10 +91,15 @@ def test_blueprint_and_port_app_config_parse() -> None:
     assert isinstance(discussion_message, DiscussionMessageResourceConfig)
     assert discussion_message.selector.exclude_done_threads is False
     assert by_id["plainDiscussion"]["relations"]["thread"]["target"] == "plainThread"
-    assert "format" not in by_id["plainDiscussion"]["schema"]["properties"]["slackMessageLink"]
     assert (
         "format"
-        not in by_id["plainDiscussionMessage"]["schema"]["properties"]["slackMessageLink"]
+        not in by_id["plainDiscussion"]["schema"]["properties"]["slackMessageLink"]
+    )
+    assert (
+        "format"
+        not in by_id["plainDiscussionMessage"]["schema"]["properties"][
+            "slackMessageLink"
+        ]
     )
     assert (
         by_id["plainDiscussionMessage"]["relations"]["discussion"]["target"]

@@ -36,4 +36,9 @@ configurations:
     required: false
     type: boolean
     default: false
-    description: "Phase 2: register Plain webhooks for real-time sync. Leave false until webhook support is implemented."
+    description: Register a Plain webhook target for live catalog updates. Requires OCEAN__BASE_URL and webhookTarget permissions on the API key.
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Workspace HMAC secret from Plain Settings → Request signing. Used to verify Plain-Request-Signature on inbound webhooks.

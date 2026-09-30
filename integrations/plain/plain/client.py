@@ -14,19 +14,33 @@ from plain.exceptions import (
     PlainHTTPError,
     missing_permission_names,
 )
+from plain.constants import (
+    WEBHOOK_EVENT_TYPES,
+    WEBHOOK_NAME,
+    WEBHOOK_PATH_SUFFIX,
+    WEBHOOK_TARGET_VERSION,
+)
 from plain.queries import (
+    CREATE_WEBHOOK_TARGET,
     DISCUSSION_MESSAGES,
+    GET_COMPANY,
     GET_CUSTOMER,
+    GET_DISCUSSION,
+    GET_TENANT,
     GET_THREAD,
+    GET_TIMELINE_ENTRY,
+    GET_USER,
     LIST_COMPANIES,
     LIST_CUSTOMERS,
     LIST_TENANTS,
     LIST_THREAD_IDS,
     LIST_THREADS,
     LIST_USERS,
+    LIST_WEBHOOK_TARGETS,
     THREAD_DISCUSSION_IDS,
     THREAD_DISCUSSIONS,
     THREAD_TIMELINE,
+    UPDATE_WEBHOOK_TARGET,
 )
 from plain.utils import edges_to_nodes, get_nested
 
@@ -331,6 +345,36 @@ class PlainClient:
                 ) from error
             raise
 
+    async def get_company(self, company_id: str) -> dict[str, Any]:
+        return await self._get_single_entity(
+            GET_COMPANY,
+            {"companyId": company_id},
+            "GetCompany",
+            "company",
+            company_id,
+            "company",
+        )
+
+    async def get_tenant(self, tenant_id: str) -> dict[str, Any]:
+        return await self._get_single_entity(
+            GET_TENANT,
+            {"tenantId": tenant_id},
+            "GetTenant",
+            "tenant",
+            tenant_id,
+            "tenant",
+        )
+
+    async def get_user(self, user_id: str) -> dict[str, Any]:
+        return await self._get_single_entity(
+            GET_USER,
+            {"userId": user_id},
+            "GetUser",
+            "user",
+            user_id,
+            "user",
+        )
+
     async def get_customer(self, customer_id: str) -> dict[str, Any]:
         return await self._get_single_entity(
             GET_CUSTOMER,
@@ -351,6 +395,144 @@ class PlainClient:
             "thread",
         )
 
+    async def get_discussion(self, discussion_id: str) -> dict[str, Any]:
+        return await self._get_single_entity(
+            GET_DISCUSSION,
+            {"discussionId": discussion_id},
+            "GetDiscussion",
+            "discussion",
+            discussion_id,
+            "discussion",
+        )
+
+    async def get_timeline_entry(
+        self, customer_id: str, timeline_entry_id: str
+    ) -> dict[str, Any]:
+        data = await self.execute(
+            GET_TIMELINE_ENTRY,
+            {
+                "customerId": customer_id,
+                "timelineEntryId": timeline_entry_id,
+            },
+            "GetTimelineEntry",
+        )
+        entry = data.get("timelineEntry")
+        if not isinstance(entry, dict):
+            raise PlainGraphQLError(
+                [
+                    {
+                        "message": (
+                            f"Plain timeline entry '{timeline_entry_id}' was not found"
+                        )
+                    }
+                ]
+            )
+        if not _has_message_text(entry):
+            raise PlainGraphQLError(
+                [
+                    {
+                        "message": (
+                            f"Plain timeline entry '{timeline_entry_id}' has no message text"
+                        )
+                    }
+                ]
+            )
+        return entry
+
+    async def get_discussion_message(
+        self, discussion_id: str, message_id: str, thread_id: str | None = None
+    ) -> dict[str, Any]:
+        resolved_thread_id = thread_id
+        if resolved_thread_id is None:
+            discussion = await self.get_discussion(discussion_id)
+            raw_thread_id = discussion.get("threadId")
+            if isinstance(raw_thread_id, str) and raw_thread_id:
+                resolved_thread_id = raw_thread_id
+
+        async for messages in self._discussion_message_pages(discussion_id):
+            for message in messages:
+                if message.get("id") == message_id:
+                    stamped = dict(message)
+                    if resolved_thread_id:
+                        stamped["threadId"] = resolved_thread_id
+                    return stamped
+
+        raise PlainGraphQLError(
+            [
+                {
+                    "message": (
+                        f"Plain discussion message '{message_id}' was not found "
+                        f"in discussion '{discussion_id}'"
+                    )
+                }
+            ]
+        )
+
+    async def ensure_webhook_target(self, app_host: str) -> None:
+        target_url = f"{app_host.rstrip('/')}{WEBHOOK_PATH_SUFFIX}"
+        description = f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}"
+        subscriptions = [{"eventType": event} for event in WEBHOOK_EVENT_TYPES]
+
+        async for targets in self.paginate_connection(
+            LIST_WEBHOOK_TARGETS,
+            "ListWebhookTargets",
+            None,
+            "data.webhookTargets",
+        ):
+            for target in targets:
+                if target.get("url") == target_url:
+                    await self._update_webhook_target(
+                        str(target["id"]),
+                        subscriptions,
+                    )
+                    logger.info(
+                        "Updated existing Plain webhook target for {}", target_url
+                    )
+                    return
+
+        await self._create_webhook_target(target_url, description, subscriptions)
+        logger.info("Created Plain webhook target for {}", target_url)
+
+    async def _create_webhook_target(
+        self,
+        url: str,
+        description: str,
+        subscriptions: list[dict[str, str]],
+    ) -> None:
+        data = await self.execute(
+            CREATE_WEBHOOK_TARGET,
+            {
+                "input": {
+                    "url": url,
+                    "description": description,
+                    "isEnabled": True,
+                    "version": WEBHOOK_TARGET_VERSION,
+                    "eventSubscriptions": subscriptions,
+                }
+            },
+            "CreateWebhookTarget",
+        )
+        _raise_on_mutation_error(data.get("createWebhookTarget"), "createWebhookTarget")
+
+    async def _update_webhook_target(
+        self,
+        webhook_target_id: str,
+        subscriptions: list[dict[str, str]],
+    ) -> None:
+        data = await self.execute(
+            UPDATE_WEBHOOK_TARGET,
+            {
+                "input": {
+                    "webhookTargetId": webhook_target_id,
+                    "isEnabled": {"value": True},
+                    "version": {"value": WEBHOOK_TARGET_VERSION},
+                    "eventSubscriptions": subscriptions,
+                }
+            },
+            "UpdateWebhookTarget",
+        )
+        _raise_on_mutation_error(data.get("updateWebhookTarget"), "updateWebhookTarget")
+
     async def _get_single_entity(
         self,
         query: str,
@@ -367,6 +549,16 @@ class PlainClient:
                 [{"message": f"Plain {label} '{entity_id}' was not found"}]
             )
         return entity
+
+
+def _raise_on_mutation_error(result: Any, mutation: str) -> None:
+    if not isinstance(result, dict):
+        raise PlainGraphQLError(
+            [{"message": f"Plain {mutation} returned an unexpected response"}]
+        )
+    error = result.get("error")
+    if isinstance(error, dict) and error.get("message"):
+        raise PlainGraphQLError([error])
 
 
 def _abort_when_permission_is_missing(payload: Any) -> None:

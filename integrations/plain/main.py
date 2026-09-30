@@ -8,6 +8,17 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from integration import ExampleKind
 from plain.client import PlainClient
 from plain.utils import ObjectKind
+from plain.webhook_setup import register_webhook_target
+from webhook_processors import (
+    CompanyWebhookProcessor,
+    CustomerWebhookProcessor,
+    DiscussionMessageWebhookProcessor,
+    DiscussionWebhookProcessor,
+    TenantWebhookProcessor,
+    ThreadMessageWebhookProcessor,
+    ThreadWebhookProcessor,
+    UserWebhookProcessor,
+)
 
 OPEN_THREAD_STATUSES = ["TODO", "SNOOZED"]
 
@@ -113,17 +124,25 @@ def _live_events_enabled() -> bool:
     return bool(raw)
 
 
-async def _register_webhook_target() -> None:
-    # TODO Phase 2 (P2-T5): create the Plain webhook target and point it at this integration.
-    logger.info(
-        "Plain live events are enabled; webhook registration is not implemented yet"
-    )
-
-
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting plain integration")
+    if ocean.event_listener_type == "ONCE":
+        logger.info(
+            "Skipping Plain webhook registration because the event listener is ONCE"
+        )
+        return
     if not _live_events_enabled():
         logger.info("Plain live events are disabled; skipping webhook registration")
         return
-    await _register_webhook_target()
+    await register_webhook_target()
+
+
+ocean.add_webhook_processor("/webhook", CompanyWebhookProcessor)
+ocean.add_webhook_processor("/webhook", TenantWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", CustomerWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ThreadWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ThreadMessageWebhookProcessor)
+ocean.add_webhook_processor("/webhook", DiscussionWebhookProcessor)
+ocean.add_webhook_processor("/webhook", DiscussionMessageWebhookProcessor)

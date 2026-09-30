@@ -31,13 +31,32 @@ Create the API key on a Plain machine user (Settings → Machine Users → Add A
 | `apiUrl` | no | `https://core-api.uk.plain.com/graphql/v1` | GraphQL endpoint |
 | `pageSize` | no | `100` | List page size. Plain's maximum is 100 |
 | `threadStatusFilter` | no | unset | Comma-separated statuses (`TODO`, `SNOOZED`, `DONE`) for a thread fetch that does not receive a status list. Thread resync uses `excludeDoneThreads` on the thread selector |
-| `enableLiveEvents` | no | `false` | Reserved for webhook registration. Leave false |
+| `enableLiveEvents` | no | `false` | When true, registers a Plain webhook target at `{OCEAN__BASE_URL}/integration/webhook` |
+| `webhookSecret` | no | unset | Workspace HMAC secret (Settings → Request signing). Verifies `Plain-Request-Signature` |
 
 For local runs, set the same values as environment variables, for example `OCEAN__INTEGRATION__CONFIG__API_TOKEN`. See `.env.example`.
 
+## Live events
+
+Set `enableLiveEvents: true`, configure `OCEAN__BASE_URL`, and optionally `webhookSecret`. On start the integration creates or updates a Plain webhook target (needs `webhookTarget:create` / `webhookTarget:edit` / `webhookTarget:read`).
+
+| Kind | Live-event source |
+|------|-------------------|
+| `thread` | `thread.thread_*` (created, status, assignment, labels, fields, tenant, locked, …) |
+| `customer` | `customer.customer_created` / `updated` / `deleted` / `changed` |
+| `thread-message` | Channel/timeline events (`thread.email_received`, `timeline.timeline_entry_changed`, …) |
+| `discussion` | `discussion.discussion_created`, `discussion.message_created`, approval events |
+| `discussion-message` | `discussion.message_created` |
+| `company` | No `company.*` webhooks — refreshed from customer create/update events |
+| `tenant` | No `tenant.*` webhooks — refreshed from `thread.thread_tenant_updated` |
+| `user` | No `user.*` webhooks — refreshed from `thread.thread_assignment_transitioned` when the assignee is a human user |
+
+Handlers re-fetch entities via GraphQL before upserting (except customer delete, which uses the payload id).
+
 ## Limitations
 
-- Live events are off by default. Turning `enableLiveEvents` on does not register webhooks yet; that lands in Phase 2.
+- Live events are off by default. Enable with `enableLiveEvents` and a reachable `OCEAN__BASE_URL`.
+- Plain does not emit dedicated company/tenant/user webhooks; those kinds update only when related thread/customer events fire.
 - Only the UK GraphQL host is known to resolve. `apiUrl` is an override if Plain adds another region.
 - Customer tenants come from the first page of `tenantMemberships` (at most 100). That selection needs `customerTenantMembership:read` in addition to `customer:read`.
 - The user query selects `role`, which needs `roles:read` in addition to `user:read`.

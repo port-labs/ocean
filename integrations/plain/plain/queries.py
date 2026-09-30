@@ -1,75 +1,117 @@
-LIST_COMPANIES = """
-query ListCompanies($first: Int, $after: String) {
-  companies(first: $first, after: $after) {
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-    edges {
-      node {
-        id
-        name
-        domainName
-        createdAt {
-          iso8601
-        }
-        updatedAt {
-          iso8601
-        }
-      }
-    }
-  }
+_COMPANY_FIELDS = """
+id
+name
+domainName
+createdAt {
+  iso8601
+}
+updatedAt {
+  iso8601
 }
 """.strip()
 
-LIST_TENANTS = """
-query ListTenants($first: Int, $after: String) {
-  tenants(first: $first, after: $after) {
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-    edges {
-      node {
-        id
-        externalId
-        name
-        url
-        createdAt {
-          iso8601
-        }
-        updatedAt {
-          iso8601
-        }
-      }
-    }
-  }
+_TENANT_FIELDS = """
+id
+externalId
+name
+url
+createdAt {
+  iso8601
+}
+updatedAt {
+  iso8601
 }
 """.strip()
 
-LIST_USERS = """
-query ListUsers($first: Int, $after: String) {
-  users(first: $first, after: $after) {
-    pageInfo {
+_USER_FIELDS = """
+id
+fullName
+publicName
+email
+status
+role {
+  id
+  name
+  key
+}
+""".strip()
+
+
+def _indent(selection: str, spaces: int) -> str:
+    prefix = " " * spaces
+    return "\n".join(prefix + line for line in selection.splitlines())
+
+
+LIST_COMPANIES = f"""
+query ListCompanies($first: Int, $after: String) {{
+  companies(first: $first, after: $after) {{
+    pageInfo {{
       hasNextPage
       endCursor
-    }
-    edges {
-      node {
-        id
-        fullName
-        publicName
-        email
-        status
-        role {
-          id
-          name
-          key
-        }
-      }
-    }
-  }
-}
+    }}
+    edges {{
+      node {{
+{_indent(_COMPANY_FIELDS, 8)}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+GET_COMPANY = f"""
+query GetCompany($companyId: ID!) {{
+  company(companyId: $companyId) {{
+{_indent(_COMPANY_FIELDS, 4)}
+  }}
+}}
+""".strip()
+
+LIST_TENANTS = f"""
+query ListTenants($first: Int, $after: String) {{
+  tenants(first: $first, after: $after) {{
+    pageInfo {{
+      hasNextPage
+      endCursor
+    }}
+    edges {{
+      node {{
+{_indent(_TENANT_FIELDS, 8)}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+GET_TENANT = f"""
+query GetTenant($tenantId: ID!) {{
+  tenant(tenantId: $tenantId) {{
+{_indent(_TENANT_FIELDS, 4)}
+  }}
+}}
+""".strip()
+
+LIST_USERS = f"""
+query ListUsers($first: Int, $after: String) {{
+  users(first: $first, after: $after) {{
+    pageInfo {{
+      hasNextPage
+      endCursor
+    }}
+    edges {{
+      node {{
+{_indent(_USER_FIELDS, 8)}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+GET_USER = f"""
+query GetUser($userId: ID!) {{
+  user(userId: $userId) {{
+{_indent(_USER_FIELDS, 4)}
+  }}
+}}
 """.strip()
 
 _CUSTOMER_FIELDS = """
@@ -150,11 +192,6 @@ updatedAt {
 """.strip()
 
 
-def _indent(selection: str, spaces: int) -> str:
-    prefix = " " * spaces
-    return "\n".join(prefix + line for line in selection.splitlines())
-
-
 LIST_CUSTOMERS = f"""
 query ListCustomers($first: Int, $after: String) {{
   customers(first: $first, after: $after) {{
@@ -219,111 +256,135 @@ query ListThreadIds($first: Int, $after: String, $filters: ThreadsFilter) {
 }
 """.strip()
 
-THREAD_TIMELINE = """
-query ThreadTimeline($threadId: ID!, $first: Int, $after: String) {
-  thread(threadId: $threadId) {
-    timelineEntries(first: $first, after: $after) {
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-      edges {
-        node {
-          id
-          threadId
-          timestamp {
-            iso8601
-          }
-          llmText
-          actor {
-            __typename
-            ... on UserActor {
-              user {
-                id
-              }
-            }
-            ... on CustomerActor {
-              customer {
-                id
-              }
-            }
-            ... on MachineUserActor {
-              machineUser {
-                id
-              }
-            }
-          }
-          entry {
-            __typename
-          }
-        }
-      }
+_TIMELINE_ENTRY_FIELDS = """
+id
+threadId
+timestamp {
+  iso8601
+}
+llmText
+actor {
+  __typename
+  ... on UserActor {
+    user {
+      id
     }
+  }
+  ... on CustomerActor {
+    customer {
+      id
+    }
+  }
+  ... on MachineUserActor {
+    machineUser {
+      id
+    }
+  }
+}
+entry {
+  __typename
+}
+""".strip()
+
+_DISCUSSION_FIELDS = """
+id
+threadId
+title
+status
+agentStatus
+visibility
+isUnread
+createdAt {
+  iso8601
+}
+updatedAt {
+  iso8601
+}
+lastActivityAt {
+  iso8601
+}
+resolvedAt {
+  iso8601
+}
+channelDetails {
+  __typename
+  ... on ThreadDiscussionSlackChannelDetails {
+    slackChannelName
+    slackMessageLink
+  }
+  ... on ThreadDiscussionEmailChannelDetails {
+    emailRecipients
+  }
+}
+createdBy {
+  __typename
+  ... on UserActor {
+    userId
+  }
+  ... on CustomerActor {
+    customerId
+  }
+  ... on MachineUserActor {
+    machineUserId
+  }
+  ... on SystemActor {
+    systemId
   }
 }
 """.strip()
 
-THREAD_DISCUSSIONS = """
-query ThreadDiscussions($threadId: ID!, $first: Int, $after: String) {
+THREAD_TIMELINE = f"""
+query ThreadTimeline($threadId: ID!, $first: Int, $after: String) {{
+  thread(threadId: $threadId) {{
+    timelineEntries(first: $first, after: $after) {{
+      pageInfo {{
+        hasNextPage
+        endCursor
+      }}
+      edges {{
+        node {{
+{_indent(_TIMELINE_ENTRY_FIELDS, 10)}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+GET_TIMELINE_ENTRY = f"""
+query GetTimelineEntry($customerId: ID!, $timelineEntryId: ID!) {{
+  timelineEntry(customerId: $customerId, timelineEntryId: $timelineEntryId) {{
+{_indent(_TIMELINE_ENTRY_FIELDS, 4)}
+  }}
+}}
+""".strip()
+
+THREAD_DISCUSSIONS = f"""
+query ThreadDiscussions($threadId: ID!, $first: Int, $after: String) {{
   discussions(
     first: $first
     after: $after
-    filters: { threadIds: [$threadId] }
-  ) {
-    pageInfo {
+    filters: {{ threadIds: [$threadId] }}
+  ) {{
+    pageInfo {{
       hasNextPage
       endCursor
-    }
-    edges {
-      node {
-        id
-        threadId
-        title
-        status
-        agentStatus
-        visibility
-        isUnread
-        createdAt {
-          iso8601
-        }
-        updatedAt {
-          iso8601
-        }
-        lastActivityAt {
-          iso8601
-        }
-        resolvedAt {
-          iso8601
-        }
-        channelDetails {
-          __typename
-          ... on ThreadDiscussionSlackChannelDetails {
-            slackChannelName
-            slackMessageLink
-          }
-          ... on ThreadDiscussionEmailChannelDetails {
-            emailRecipients
-          }
-        }
-        createdBy {
-          __typename
-          ... on UserActor {
-            userId
-          }
-          ... on CustomerActor {
-            customerId
-          }
-          ... on MachineUserActor {
-            machineUserId
-          }
-          ... on SystemActor {
-            systemId
-          }
-        }
-      }
-    }
-  }
-}
+    }}
+    edges {{
+      node {{
+{_indent(_DISCUSSION_FIELDS, 8)}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+GET_DISCUSSION = f"""
+query GetDiscussion($discussionId: ID!) {{
+  discussion(discussionId: $discussionId) {{
+{_indent(_DISCUSSION_FIELDS, 4)}
+  }}
+}}
 """.strip()
 
 THREAD_DISCUSSION_IDS = """
@@ -382,6 +443,67 @@ query DiscussionMessages($discussionId: ID!, $first: Int, $after: String) {
           }
         }
       }
+    }
+  }
+}
+""".strip()
+
+LIST_WEBHOOK_TARGETS = """
+query ListWebhookTargets($first: Int, $after: String) {
+  webhookTargets(first: $first, after: $after) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        url
+        description
+        isEnabled
+        version
+        eventSubscriptions {
+          eventType
+        }
+      }
+    }
+  }
+}
+""".strip()
+
+CREATE_WEBHOOK_TARGET = """
+mutation CreateWebhookTarget($input: CreateWebhookTargetInput!) {
+  createWebhookTarget(input: $input) {
+    webhookTarget {
+      id
+      url
+      description
+      isEnabled
+      version
+    }
+    error {
+      message
+      type
+      code
+    }
+  }
+}
+""".strip()
+
+UPDATE_WEBHOOK_TARGET = """
+mutation UpdateWebhookTarget($input: UpdateWebhookTargetInput!) {
+  updateWebhookTarget(input: $input) {
+    webhookTarget {
+      id
+      url
+      description
+      isEnabled
+      version
+    }
+    error {
+      message
+      type
+      code
     }
   }
 }

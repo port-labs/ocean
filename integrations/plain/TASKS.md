@@ -538,9 +538,10 @@ Copy this into a PR description or project board if useful:
 - [ ] T12 Docs/changelog/full gate
 
 **Phase 2**
-- [ ] P2-T1 Signature/payload + tests
-- [ ] P2-T2 Abstract processor + tests
-- [ ] P2-T3 Thread webhooks + tests
-- [ ] P2-T4 Customer webhooks + tests
-- [ ] P2-T5 Registration + tests
-- [ ] P2-T6 Docs/full gate
+- [x] P2-T1 Signature/payload + tests
+- [x] P2-T2 Abstract processor + tests
+- [x] P2-T3 Thread webhooks + tests
+- [x] P2-T4 Customer webhooks + tests
+- [x] P2-T5 Registration + tests
+- [x] P2-T6 Docs/full gate
+- [x] Conversation + company/tenant/user processors (all 8 kinds)
