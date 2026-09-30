@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.19.0 (2026-09-29)
+
+
+### Features
+
+- Add identity propagation for Azure DevOps actions so API calls run as the triggering user when enabled.
+
+
 ## 0.18.2 (2026-09-29)
 
 
