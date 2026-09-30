@@ -336,7 +336,12 @@ class FilesSelector(BaseModel):
     path: str = Field(
         alias="path",
         title="Path",
-        description="Specify the path to match files from",
+        description=(
+            "Path pattern used to match files. With the default repositoryTree strategy "
+            "this is a glob (for example `**/*.yaml` or `src/config.json`). With "
+            "groupSearch or projectSearch, the path is interpreted for GitLab's Search "
+            "API instead (filename/path filters and content keywords)."
+        ),
     )
     repos: list[str] = Field(
         description="A list of repositories to search files in",
