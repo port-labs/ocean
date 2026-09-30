@@ -81,25 +81,26 @@ class CreatePullRequestExecutor(AbstractAzureDevopsExecutor):
             should_raise=False,
         )
 
-        try:
-            pull_request = await self.client.create_pull_request(
-                inputs.project,
-                inputs.repositoryId,
-                options,
-            )
-        except httpx.HTTPStatusError as error:
-            logger.error(
-                f"Azure DevOps rejected pull request creation for action run {run.id}: "
-                f"HTTP {error.response.status_code}",
-                run_id=run.id,
-                project_id=inputs.project,
-                repository_id=inputs.repositoryId,
-                status_code=error.response.status_code,
-            )
-            raise CreatePullRequestError.from_response(
-                error.response,
-                f"Could not create pull request in repository '{inputs.repositoryId}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                pull_request = await api_client.create_pull_request(
+                    inputs.project,
+                    inputs.repositoryId,
+                    options,
+                )
+            except httpx.HTTPStatusError as error:
+                logger.error(
+                    f"Azure DevOps rejected pull request creation for action run {run.id}: "
+                    f"HTTP {error.response.status_code}",
+                    run_id=run.id,
+                    project_id=inputs.project,
+                    repository_id=inputs.repositoryId,
+                    status_code=error.response.status_code,
+                )
+                raise CreatePullRequestError.from_response(
+                    error.response,
+                    f"Could not create pull request in repository '{inputs.repositoryId}'",
+                )
 
         pull_request_id = pull_request.get("pullRequestId")
         if pull_request_id is None:
