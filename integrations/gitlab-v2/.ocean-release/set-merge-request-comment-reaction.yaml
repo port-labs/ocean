@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added set_merge_request_comment_reaction action for emoji reactions on MR comments
