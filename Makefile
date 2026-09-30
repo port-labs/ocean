@@ -123,18 +123,18 @@ new:
 test:
 	$(ACTIVATE) && pytest -m 'not smoke'
 
-# Smoke configs: port_ocean/tests/smoke/configs/<CONFIG>.yaml
-# Usage: make smoke/up CONFIG=resync | make smoke/run-all | make smoke/clean-all
-CONFIG ?= resync
+# Smoke configsets: port_ocean/tests/smoke/configsets/<CONFIGSET>.yaml
+# Usage: make smoke/up CONFIGSET=resync | make smoke/run-all | make smoke/clean-all
+CONFIGSET ?= resync
 
 smoke/up:
-	./scripts/smoke-integration.sh up $(CONFIG)
+	./scripts/smoke-integration.sh up $(CONFIGSET)
 
 smoke/down:
-	./scripts/smoke-integration.sh down $(CONFIG)
+	./scripts/smoke-integration.sh down $(CONFIGSET)
 
 smoke/run:
-	./scripts/smoke-integration.sh run $(CONFIG)
+	./scripts/smoke-integration.sh run $(CONFIGSET)
 
 smoke/run-all:
 	./scripts/smoke-integration.sh run-all

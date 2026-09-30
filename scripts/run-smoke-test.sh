@@ -5,4 +5,4 @@
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
 
-exec make -C "${ROOT_DIR}" smoke/up CONFIG=once
+exec make -C "${ROOT_DIR}" smoke/up CONFIGSET=once

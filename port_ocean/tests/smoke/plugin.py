@@ -7,15 +7,17 @@ import pytest
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
-        "--smoke-config",
+        "--smoke-configset",
         action="store",
         default=None,
-        help="Run smoke tests marked for this config (see port_ocean/tests/smoke/configs/)",
+        help="Run smoke tests marked for this configset (see port_ocean/tests/smoke/configsets/)",
     )
 
 
-def _selected_config_name(config: pytest.Config) -> str | None:
-    return config.getoption("--smoke-config") or os.environ.get("SMOKE_TEST_CONFIG")
+def _selected_configset_name(config: pytest.Config) -> str | None:
+    return config.getoption("--smoke-configset") or os.environ.get(
+        "SMOKE_TEST_CONFIGSET"
+    )
 
 
 def _marker_args(item: pytest.Item, marker_name: str) -> set[str]:
@@ -29,8 +31,8 @@ def _marker_args(item: pytest.Item, marker_name: str) -> set[str]:
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
-    config_name = _selected_config_name(config)
-    if config_name is None:
+    configset_name = _selected_configset_name(config)
+    if configset_name is None:
         return
 
     selected: list[pytest.Item] = []
@@ -39,7 +41,7 @@ def pytest_collection_modifyitems(
         if item.get_closest_marker("smoke") is None:
             deselected.append(item)
             continue
-        if config_name in _marker_args(item, "smoke_config"):
+        if configset_name in _marker_args(item, "smoke_configset"):
             selected.append(item)
         else:
             deselected.append(item)
@@ -53,7 +55,7 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     for item in session.items:
         if item.get_closest_marker("smoke") is None:
             continue
-        if not _marker_args(item, "smoke_config"):
+        if not _marker_args(item, "smoke_configset"):
             raise pytest.UsageError(
-                f"{item.nodeid} is marked smoke but has no smoke_config marker"
+                f"{item.nodeid} is marked smoke but has no smoke_configset marker"
             )

@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
-# Boot fake-integration per smoke config, run matching tests, clean up.
-# Prefer Make entrypoints (make smoke/up CONFIG=resync, make smoke/run-all, …).
+# Boot fake-integration per smoke configset, run matching tests, clean up.
+# Prefer Make entrypoints (make smoke/up CONFIGSET=resync, make smoke/run-all, …).
 #
 # Usage:
-#   make smoke/up CONFIG=<config>
-#   make smoke/down CONFIG=<config>
-#   make smoke/run CONFIG=<config>       # up → tests → down → clean
-#   make smoke/run-all                   # each config with tests, sequential
+#   make smoke/up CONFIGSET=<configset>
+#   make smoke/down CONFIGSET=<configset>
+#   make smoke/run CONFIGSET=<configset>   # up → tests → down → clean
+#   make smoke/run-all                     # each configset with tests, sequential
 #   make smoke/clean-all
 #   make smoke/list
 #
-# Configs: port_ocean/tests/smoke/configs/<name>.yaml
-# Tests opt in with @pytest.mark.smoke_config("<name>").
+# Configsets: port_ocean/tests/smoke/configsets/<name>.yaml
+# Tests opt in with @pytest.mark.smoke_configset("<name>").
 
 set -euo pipefail
 
@@ -22,24 +22,24 @@ PYTHON="${ROOT_DIR}/.venv/bin/python"
 if [[ ! -x "${PYTHON}" ]]; then
     PYTHON=python3
 fi
-CONFIG_CLI="${SCRIPT_DIR}/smoke_config_cli.py"
+CONFIGSET_CLI="${SCRIPT_DIR}/smoke_configset_cli.py"
 SMOKE_TESTS_DIR="${ROOT_DIR}/port_ocean/tests/smoke"
 
 usage() {
     cat <<EOF
-Prefer Make: make smoke/{up,down,run,run-all,clean-all,list} [CONFIG=<name>]
+Prefer Make: make smoke/{up,down,run,run-all,clean-all,list} [CONFIGSET=<name>]
 
-Direct script usage: $0 {up|down|run|run-all|clean|clean-all|list} [config]
+Direct script usage: $0 {up|down|run|run-all|clean|clean-all|list} [configset]
 
-  up         Start fake-integration for a config
+  up         Start fake-integration for a configset
   down       Stop a daemon integration
-  run        up, run tests marked for the config, down, clean
-  run-all    run every config that has marked tests (one config at a time)
-  clean      Remove Port resources for the config
-  clean-all  down + clean every config
-  list       List smoke configs
+  run        up, run tests marked for the configset, down, clean
+  run-all    run every configset that has marked tests (one at a time)
+  clean      Remove Port resources for the configset
+  clean-all  down + clean every configset
+  list       List smoke configsets
 
-Configs: port_ocean/tests/smoke/configs/<config>.yaml
+Configsets: port_ocean/tests/smoke/configsets/<configset>.yaml
 EOF
 }
 
@@ -54,23 +54,23 @@ _clear_ocean_env() {
     unset SMOKE_OCEAN_ENV_KEYS
 }
 
-load_config() {
-    local config="${1:-resync}"
-    if ! "${PYTHON}" "${CONFIG_CLI}" describe "${config}" >/dev/null 2>&1; then
-        echo "Unknown smoke config '${config}'"
-        "${PYTHON}" "${CONFIG_CLI}" list
+load_configset() {
+    local configset="${1:-resync}"
+    if ! "${PYTHON}" "${CONFIGSET_CLI}" describe "${configset}" >/dev/null 2>&1; then
+        echo "Unknown smoke configset '${configset}'"
+        "${PYTHON}" "${CONFIGSET_CLI}" list
         exit 1
     fi
 
     _clear_ocean_env
 
     # shellcheck disable=SC1090
-    eval "$("${PYTHON}" "${CONFIG_CLI}" export "${config}")"
+    eval "$("${PYTHON}" "${CONFIGSET_CLI}" export "${configset}")"
 
     if [[ -z "${SMOKE_TEST_BASE_SUFFIX:-}" ]]; then
         export SMOKE_TEST_BASE_SUFFIX="${SMOKE_TEST_SUFFIX:-local}"
     fi
-    export SMOKE_TEST_SUFFIX="${SMOKE_TEST_BASE_SUFFIX}-${SMOKE_TEST_CONFIG_SUFFIX}"
+    export SMOKE_TEST_SUFFIX="${SMOKE_TEST_BASE_SUFFIX}-${SMOKE_TEST_CONFIGSET_SUFFIX}"
     export SMOKE_TEST_CONTAINER="$(
         echo "ocean-smoke-${SMOKE_TEST_SUFFIX}" | tr -c 'a-zA-Z0-9._-' '-'
     )"
@@ -152,7 +152,7 @@ wait_for_integration() {
     echo "Waiting for smoke integration at http://localhost:${SMOKE_TEST_HOST_PORT}/health/ready"
     for _ in $(seq 1 60); do
         if curl -sf "http://localhost:${SMOKE_TEST_HOST_PORT}/health/ready" >/dev/null; then
-            echo "Smoke integration is ready (config=${SMOKE_TEST_CONFIG})"
+            echo "Smoke integration is ready (configset=${SMOKE_TEST_CONFIGSET})"
             return 0
         fi
         sleep 2
@@ -168,53 +168,53 @@ wait_for_resync() {
     if [[ "${SMOKE_TEST_WAIT_FOR_RESYNC}" != "true" ]]; then
         return 0
     fi
-    echo "Waiting for resync to complete (config=${SMOKE_TEST_CONFIG})"
-    if ! "${PYTHON}" "${CONFIG_CLI}" wait-resync; then
+    echo "Waiting for resync to complete (configset=${SMOKE_TEST_CONFIGSET})"
+    if ! "${PYTHON}" "${CONFIGSET_CLI}" wait-resync; then
         echo "Resync wait failed; dumping container logs for ${SMOKE_TEST_CONTAINER}"
         docker logs "${SMOKE_TEST_CONTAINER}" || true
         return 1
     fi
 }
 
-config_has_tests() {
+configset_has_tests() {
     local collected
     collected="$(
         cd "${ROOT_DIR}"
-        SMOKE_TEST_CONFIG="${SMOKE_TEST_CONFIG}" \
+        SMOKE_TEST_CONFIGSET="${SMOKE_TEST_CONFIGSET}" \
             "${PYTHON}" -m pytest -o addopts= --collect-only -q \
-            --smoke-config="${SMOKE_TEST_CONFIG}" \
+            --smoke-configset="${SMOKE_TEST_CONFIGSET}" \
             "${SMOKE_TESTS_DIR}" 2>/dev/null | tail -n 1 || true
     )"
     [[ "${collected}" =~ [1-9][0-9]*\ tests?\ collected ]]
 }
 
-run_config_tests() {
+run_configset_tests() {
     local pytest_addopts="${PYTEST_ADDOPTS:-}"
     if [[ -n "${SMOKE_JUNIT_DIR:-}" ]]; then
         mkdir -p "${SMOKE_JUNIT_DIR}"
-        pytest_addopts="${pytest_addopts} --junitxml=${SMOKE_JUNIT_DIR}/core-${SMOKE_TEST_CONFIG}.xml"
+        pytest_addopts="${pytest_addopts} --junitxml=${SMOKE_JUNIT_DIR}/core-${SMOKE_TEST_CONFIGSET}.xml"
     fi
 
-    echo "Running smoke tests for config=${SMOKE_TEST_CONFIG}"
+    echo "Running smoke tests for configset=${SMOKE_TEST_CONFIGSET}"
     (
         cd "${ROOT_DIR}"
         SMOKE_TEST_SUFFIX="${SMOKE_TEST_SUFFIX}" \
-        SMOKE_TEST_CONFIG="${SMOKE_TEST_CONFIG}" \
+        SMOKE_TEST_CONFIGSET="${SMOKE_TEST_CONFIGSET}" \
         PYTEST_ADDOPTS="${pytest_addopts}" \
             "${PYTHON}" -m pytest -o addopts= -vv --durations=10 --color=yes \
-            --smoke-config="${SMOKE_TEST_CONFIG}" \
+            --smoke-configset="${SMOKE_TEST_CONFIGSET}" \
             "${SMOKE_TESTS_DIR}"
     )
 }
 
-for_each_config() {
+for_each_configset() {
     local callback="$1"
-    local config
-    while IFS= read -r config; do
-        [[ -z "${config}" ]] && continue
-        load_config "${config}"
+    local configset
+    while IFS= read -r configset; do
+        [[ -z "${configset}" ]] && continue
+        load_configset "${configset}"
         "${callback}"
-    done < <("${PYTHON}" "${CONFIG_CLI}" list)
+    done < <("${PYTHON}" "${CONFIGSET_CLI}" list)
 }
 
 cmd_up() {
@@ -229,7 +229,7 @@ cmd_up() {
 
     case "${SMOKE_TEST_LIFECYCLE}" in
         once)
-            echo "Starting once smoke config '${SMOKE_TEST_CONFIG}' (integration=${INTEGRATION_IDENTIFIER})"
+            echo "Starting once smoke configset '${SMOKE_TEST_CONFIGSET}' (integration=${INTEGRATION_IDENTIFIER})"
             integration_docker_run "once"
             ;;
         daemon)
@@ -237,7 +237,7 @@ cmd_up() {
                 echo "Stopping existing smoke integration container: ${SMOKE_TEST_CONTAINER}"
                 docker rm -f "${SMOKE_TEST_CONTAINER}" >/dev/null
             fi
-            echo "Starting daemon smoke config '${SMOKE_TEST_CONFIG}' (integration=${INTEGRATION_IDENTIFIER})"
+            echo "Starting daemon smoke configset '${SMOKE_TEST_CONFIGSET}' (integration=${INTEGRATION_IDENTIFIER})"
             integration_docker_run "daemon"
             wait_for_integration
             ;;
@@ -267,7 +267,7 @@ cmd_run() {
         wait_for_resync || status=$?
     fi
     if [[ "${status}" -eq 0 ]]; then
-        run_config_tests || status=$?
+        run_configset_tests || status=$?
     fi
     cmd_down || true
     if ! cmd_clean; then
@@ -278,21 +278,21 @@ cmd_run() {
 
 cmd_run_all() {
     local status=0
-    local config
-    while IFS= read -r config; do
-        [[ -z "${config}" ]] && continue
-        load_config "${config}"
-        if ! config_has_tests; then
-            echo "Skipping config '${config}' (no smoke_config markers)"
+    local configset
+    while IFS= read -r configset; do
+        [[ -z "${configset}" ]] && continue
+        load_configset "${configset}"
+        if ! configset_has_tests; then
+            echo "Skipping configset '${configset}' (no smoke_configset markers)"
             continue
         fi
         cmd_run || status=1
-    done < <("${PYTHON}" "${CONFIG_CLI}" list)
+    done < <("${PYTHON}" "${CONFIGSET_CLI}" list)
     return "${status}"
 }
 
 cmd_clean() {
-    echo "Cleaning smoke config '${SMOKE_TEST_CONFIG}' (suffix=${SMOKE_TEST_SUFFIX})"
+    echo "Cleaning smoke configset '${SMOKE_TEST_CONFIGSET}' (suffix=${SMOKE_TEST_SUFFIX})"
     (
         cd "${ROOT_DIR}"
         SMOKE_TEST_SUFFIX="${SMOKE_TEST_SUFFIX}" make smoke/clean
@@ -300,25 +300,25 @@ cmd_clean() {
 }
 
 cmd_clean_all() {
-    for_each_config _clean_config
+    for_each_configset _clean_configset
 }
 
-_clean_config() {
+_clean_configset() {
     cmd_down || true
     cmd_clean || true
 }
 
 cmd_list() {
-    "${PYTHON}" "${CONFIG_CLI}" list
+    "${PYTHON}" "${CONFIGSET_CLI}" list
 }
 
 main() {
     local command="${1:-}"
-    local config="${2:-resync}"
+    local configset="${2:-resync}"
 
     case "${command}" in
         up | down | run | clean)
-            load_config "${config}"
+            load_configset "${configset}"
             ;;
         run-all | clean-all)
             ;;

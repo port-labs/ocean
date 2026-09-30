@@ -1,4 +1,4 @@
-# Actions/workflows smoke. Tests mark themselves with smoke_config("actions").
+# Actions/workflows smoke. Tests mark themselves with smoke_configset("actions").
 ocean:
   event_listener:
     type: POLLING

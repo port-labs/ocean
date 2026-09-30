@@ -7,12 +7,12 @@ from typing import Any, Literal
 
 import yaml
 
-CONFIGS_DIR = Path(__file__).parent / "configs"
+CONFIGSETS_DIR = Path(__file__).parent / "configsets"
 Lifecycle = Literal["once", "daemon"]
 
 
 @dataclass(frozen=True)
-class SmokeConfig:
+class SmokeConfigSet:
     name: str
     wait_for_resync: bool
     ocean: dict[str, Any]
@@ -28,22 +28,22 @@ class SmokeConfig:
         return "daemon"
 
 
-def list_config_names() -> list[str]:
-    return sorted(path.stem for path in CONFIGS_DIR.glob("*.yaml"))
+def list_configset_names() -> list[str]:
+    return sorted(path.stem for path in CONFIGSETS_DIR.glob("*.yaml"))
 
 
-def load_config(name: str) -> SmokeConfig:
-    path = CONFIGS_DIR / f"{name}.yaml"
+def load_configset(name: str) -> SmokeConfigSet:
+    path = CONFIGSETS_DIR / f"{name}.yaml"
     if not path.is_file():
-        available = ", ".join(list_config_names()) or "(none)"
-        raise ValueError(f"Unknown smoke config '{name}'. Available: {available}")
+        available = ", ".join(list_configset_names()) or "(none)"
+        raise ValueError(f"Unknown smoke configset '{name}'. Available: {available}")
     raw = yaml.safe_load(path.read_text())
     if not isinstance(raw, dict):
-        raise ValueError(f"Invalid smoke config '{name}': expected a mapping")
+        raise ValueError(f"Invalid smoke configset '{name}': expected a mapping")
     ocean = raw.get("ocean", {})
     if not isinstance(ocean, dict):
-        raise ValueError(f"Invalid smoke config '{name}': ocean must be a mapping")
-    return SmokeConfig(
+        raise ValueError(f"Invalid smoke configset '{name}': ocean must be a mapping")
+    return SmokeConfigSet(
         name=name,
         wait_for_resync=bool(raw.get("wait_for_resync", False)),
         ocean=ocean,
