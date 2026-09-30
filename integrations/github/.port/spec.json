@@ -702,7 +702,7 @@
           "name": "body",
           "title": "Review body",
           "type": "string",
-          "description": "The review comment text (required for REQUEST_CHANGES)"
+          "description": "The review comment text (required for REQUEST_CHANGES and COMMENT)"
         }
       ]
     },
