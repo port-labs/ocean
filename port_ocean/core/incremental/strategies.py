@@ -187,8 +187,6 @@ class ClientSideCutoffStrategy(IncrementalStrategy):
         return any(self.should_stop(item, cursor) for item in page)
 
 
-
-
 async def paginate_with_strategy(
     pages: AsyncIterator[list[dict[str, Any]]],
     *,

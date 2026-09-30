@@ -452,49 +452,58 @@ async def resync_workflows(
         for org in organizations:
             org_name = org["login"]
             workflow_exporter = RestWorkflowExporter(rest_client)
+            repo_exporter = RestRepositoryExporter(rest_client)
+            repo_options = ListRepositoryOptions(
+                organization=org_name,
+                organization_type=org["type"],
+                type=port_app_config.repository_type,
+                search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
+            )
+
+            all_repos = []
+            async for repositories in repo_exporter.get_paginated_resources(
+                options=repo_options
+            ):
+                all_repos.extend(repositories)
 
             if sync_cursor:
-                try:
-                    changed_repos = await workflow_exporter.get_changed_repo_names(
-                        org_name, sync_cursor
-                    )
-                except Exception as e:
-                    fetch_errors.append(e)
-                    logger.error(
-                        f"Failed to fetch commits for {org_name}, skipping workflows for this organization",
-                        extra={"error": str(e)},
-                    )
+                repos_to_sync = []
+                for repo in all_repos:
+                    try:
+                        has_changes = await workflow_exporter.has_workflow_changes_since(
+                            org_name, repo["name"], sync_cursor
+                        )
+                        if has_changes:
+                            repos_to_sync.append(repo)
+                    except Exception as e:
+                        fetch_errors.append(e)
+                        logger.error(
+                            f"Failed to check workflow changes for {org_name}/{repo['name']}",
+                            extra={"error": str(e)},
+                        )
+                if not repos_to_sync:
                     continue
-
-                if not changed_repos:
-                    continue
-                repos_to_sync = [{"name": repo_name} for repo_name in changed_repos]
             else:
-                repo_exporter = RestRepositoryExporter(rest_client)
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
-                    exclude_archived=config.selector.exclude_archived,
-                )
-
-                all_repos = []
-                async for repositories in repo_exporter.get_paginated_resources(
-                    options=repo_options
-                ):
-                    all_repos.extend(repositories)
                 repos_to_sync = all_repos
 
-            tasks = []
-            for repo in repos_to_sync:
-                tasks.append(
-                    workflow_exporter.get_paginated_resources(
-                        options=ListWorkflowOptions(
-                            organization=org_name, repo_name=repo["name"]
-                        )
+            logger.info(
+                f"Syncing {org_name} workflows "
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
+            )
+
+            tasks = [
+                workflow_exporter.get_paginated_resources(
+                    options=ListWorkflowOptions(
+                        organization=org_name, repo_name=repo["name"]
                     )
                 )
+                for repo in repos_to_sync
+            ]
 
             async for workflows in stream_async_iterators_tasks(*tasks):
                 yield workflows
