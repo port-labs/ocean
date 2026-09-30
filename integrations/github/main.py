@@ -471,8 +471,10 @@ async def resync_workflows(
                 repos_to_sync = []
                 for repo in all_repos:
                     try:
-                        has_changes = await workflow_exporter.has_workflow_changes_since(
-                            org_name, repo["name"], sync_cursor
+                        has_changes = (
+                            await workflow_exporter.has_workflow_changes_since(
+                                org_name, repo["name"], sync_cursor
+                            )
                         )
                         if has_changes:
                             repos_to_sync.append(repo)
