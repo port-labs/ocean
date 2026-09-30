@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Added workflow node outputs (issueNumber, issueId, issueUrl) to the create_issue action
