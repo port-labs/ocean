@@ -79,58 +79,61 @@ class UpdatePullRequestLabelsExecutor(AbstractAzureDevopsExecutor):
             should_raise=False,
         )
 
-        try:
-            existing_labels = await self.client.get_pull_request_labels(
-                inputs.project,
-                inputs.repositoryId,
-                inputs.pullRequestId,
-            )
-            # Azure DevOps label names are case-insensitive, and the create
-            # endpoint does not document its response for a duplicate label.
-            existing_label = next(
-                (
-                    label
-                    for label in existing_labels
-                    if label.get("active", True)
-                    and label.get("name", "").lower() == inputs.label.lower()
-                ),
-                None,
-            )
-            if existing_label:
-                message = (
-                    f"Label '{existing_label['name']}' is already on pull request "
-                    f"{inputs.pullRequestId}; nothing to add"
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                existing_labels = await api_client.get_pull_request_labels(
+                    inputs.project,
+                    inputs.repositoryId,
+                    inputs.pullRequestId,
                 )
-                await ocean.port_client.post_run_log(run, message, should_raise=False)
-                await ocean.port_client.report_run_completed(
-                    run,
-                    success=True,
-                    message=message,
+                # Azure DevOps label names are case-insensitive, and the create
+                # endpoint does not document its response for a duplicate label.
+                existing_label = next(
+                    (
+                        label
+                        for label in existing_labels
+                        if label.get("active", True)
+                        and label.get("name", "").lower() == inputs.label.lower()
+                    ),
+                    None,
                 )
-                return
+                if existing_label:
+                    message = (
+                        f"Label '{existing_label['name']}' is already on pull request "
+                        f"{inputs.pullRequestId}; nothing to add"
+                    )
+                    await ocean.port_client.post_run_log(
+                        run, message, should_raise=False
+                    )
+                    await ocean.port_client.report_run_completed(
+                        run,
+                        success=True,
+                        message=message,
+                    )
+                    return
 
-            created_label = await self.client.create_pull_request_label(
-                inputs.project,
-                inputs.repositoryId,
-                inputs.pullRequestId,
-                inputs.label,
-            )
-        except httpx.HTTPStatusError as error:
-            logger.error(
-                f"Azure DevOps rejected the label on pull request "
-                f"{inputs.pullRequestId} for action run {run.id}: "
-                f"HTTP {error.response.status_code}",
-                run_id=run.id,
-                project_id=inputs.project,
-                repository_id=inputs.repositoryId,
-                pull_request_id=inputs.pullRequestId,
-                status_code=error.response.status_code,
-            )
-            raise UpdatePullRequestLabelsError.from_response(
-                error.response,
-                f"Could not add label '{inputs.label}' to pull request "
-                f"'{inputs.pullRequestId}' in repository '{inputs.repositoryId}'",
-            )
+                created_label = await api_client.create_pull_request_label(
+                    inputs.project,
+                    inputs.repositoryId,
+                    inputs.pullRequestId,
+                    inputs.label,
+                )
+            except httpx.HTTPStatusError as error:
+                logger.error(
+                    f"Azure DevOps rejected the label on pull request "
+                    f"{inputs.pullRequestId} for action run {run.id}: "
+                    f"HTTP {error.response.status_code}",
+                    run_id=run.id,
+                    project_id=inputs.project,
+                    repository_id=inputs.repositoryId,
+                    pull_request_id=inputs.pullRequestId,
+                    status_code=error.response.status_code,
+                )
+                raise UpdatePullRequestLabelsError.from_response(
+                    error.response,
+                    f"Could not add label '{inputs.label}' to pull request "
+                    f"'{inputs.pullRequestId}' in repository '{inputs.repositoryId}'",
+                )
 
         if not created_label or "name" not in created_label:
             raise UpdatePullRequestLabelsError(

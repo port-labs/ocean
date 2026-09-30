@@ -154,6 +154,40 @@ async def test_execute_adds_label_and_completes_run(
 
 
 @pytest.mark.asyncio
+async def test_execute_uses_user_token_client_when_identity_propagation_enabled(
+    executor: UpdatePullRequestLabelsExecutor,
+    client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user_client = MagicMock()
+    user_client.get_pull_request_labels = AsyncMock(return_value=[])
+    user_client.create_pull_request_label = AsyncMock(
+        return_value={"id": "label-guid", "name": "approved", "active": True}
+    )
+    user_client.aclose = AsyncMock()
+    mock_client_for_token = MagicMock(return_value=user_client)
+    monkeypatch.setattr(executor, "_client_for_token", mock_client_for_token)
+    monkeypatch.setattr(
+        "azure_devops.actions.abstract_ado_executor._resolve_user_token",
+        AsyncMock(return_value="entra-user-token"),
+    )
+    monkeypatch.setattr(
+        "azure_devops.actions.update_pull_request_labels_executor.ocean",
+        _make_mock_ocean(),
+    )
+
+    await executor.execute(_make_run(_valid_props()))
+
+    mock_client_for_token.assert_called_once_with("entra-user-token")
+    user_client.create_pull_request_label.assert_awaited_once_with(
+        "proj-guid", "repo-guid", "42", "approved"
+    )
+    user_client.aclose.assert_awaited_once()
+    client.get_pull_request_labels.assert_not_awaited()
+    client.create_pull_request_label.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_execute_label_already_on_pull_request_completes_without_creating(
     executor: UpdatePullRequestLabelsExecutor,
     client: MagicMock,
