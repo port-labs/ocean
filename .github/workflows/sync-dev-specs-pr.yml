@@ -1,0 +1,107 @@
+name: Sync dev specs (PR)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "integrations/**/.port/spec.json"
+
+# Separate workflow — do not add as a required status check.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-dev-specs:
+    name: Merge spec changes into dev-specs
+    runs-on: ubuntu-latest
+    # Optional: does not block other workflows or merge
+    continue-on-error: true
+    # Bot push only works for same-repo PRs
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+
+      - name: Ensure dev-specs branch exists
+        run: |
+          set -euo pipefail
+          BRANCH=dev-specs
+          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            git fetch origin "${BRANCH}"
+            echo "Fetched origin/${BRANCH}"
+          else
+            echo "origin/${BRANCH} missing — creating from origin/main"
+            git fetch origin main
+            git branch "${BRANCH}" origin/main
+            git push -u origin "${BRANCH}"
+            git fetch origin "${BRANCH}"
+          fi
+
+      - name: Merge changed specs into dev-specs
+        id: merge
+        env:
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          BRANCH=dev-specs
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Ensure PR head is reachable for git show / merge-base
+          git fetch --no-tags origin "${PR_SHA}"
+
+          git checkout -B "${BRANCH}" "origin/${BRANCH}"
+
+          chmod +x scripts/ci/merge_pr_specs_into_dev_specs.sh
+          scripts/ci/merge_pr_specs_into_dev_specs.sh "${PR_SHA}" "${BASE_SHA}"
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit (already up to date on ${BRANCH})."
+            exit 0
+          fi
+
+          git commit -m "dev-specs: merge spec changes from PR #${PR_NUMBER}"
+
+          # Handle concurrent PR jobs racing to push dev-specs
+          for attempt in 1 2 3 4 5; do
+            if git push origin "HEAD:${BRANCH}"; then
+              echo "Pushed to ${BRANCH}."
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}), rebasing and retrying..."
+            git pull --rebase origin "${BRANCH}"
+          done
+
+          echo "::error::Failed to push to ${BRANCH} after retries."
+          exit 1
+
+      - name: Comment on conflict
+        if: failure() && steps.merge.outcome == 'failure'
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              '### dev-specs sync failed',
+              '',
+              "This PR's `spec.json` changes could not be merged into `dev-specs` (likely a conflict with another open PR).",
+              '',
+              'Dev S3 will not reflect these spec changes until this is resolved.',
+              'This check is **optional** and does not block merge.',
+            ].join('\n');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
