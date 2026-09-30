@@ -1,4 +1,4 @@
-from integration import AzureDevopsUserSelector
+from integration import AzureDevopsPullRequestSelector, AzureDevopsUserSelector
 
 from azure_devops.client.user_sources import (
     EntitlementsUserSource,
@@ -62,3 +62,23 @@ def test_user_selector_entitlements_excludes_graph_only_fields() -> None:
     params = source.to_params()
     assert "subjectTypes" not in params
     assert "source" not in params
+
+
+def test_pull_request_selector_enrichment_flags_default_false() -> None:
+    selector = AzureDevopsPullRequestSelector(query="true")
+
+    assert selector.enrich_with_commits is False
+    assert selector.enrich_with_review_discussion is False
+
+
+def test_pull_request_selector_enrichment_flags_accept_aliases() -> None:
+    selector = AzureDevopsPullRequestSelector.parse_obj(
+        {
+            "query": "true",
+            "enrichWithCommits": True,
+            "enrichWithReviewDiscussion": True,
+        }
+    )
+
+    assert selector.enrich_with_commits is True
+    assert selector.enrich_with_review_discussion is True

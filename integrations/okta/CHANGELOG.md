@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.222 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 0.1.221 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 0.1.220 (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 0.1.219 (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
+## 0.1.218 (2026-09-22)
+
+
+### Improvements
+
+- Disable live events for Okta on Port SaaS until Okta Event Hook verification is supported by ocean-gateway.
+
+
 ## 0.1.217 (2026-09-16)
 
 

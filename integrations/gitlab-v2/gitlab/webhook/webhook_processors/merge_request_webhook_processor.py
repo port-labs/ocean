@@ -63,6 +63,24 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
         merge_request = await self._gitlab_webhook_client.get_merge_request(
             project_id, merge_request_id
         )
+        if not merge_request:
+            logger.warning(
+                f"Merge request {merge_request_id} in project {project_id} was not found, skipping upsert"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
+
+        selector = config.selector
+        if selector.enrich_with_commits or selector.enrich_with_review_discussion:
+            enriched = await self._gitlab_webhook_client.enrich_merge_requests(
+                [merge_request],
+                enrich_with_commits=selector.enrich_with_commits,
+                enrich_with_review_discussion=selector.enrich_with_review_discussion,
+                max_concurrent=1,
+            )
+            merge_request = enriched[0] if enriched else merge_request
 
         raw_merge_request_result = WebhookEventRawResults(
             updated_raw_results=[merge_request],

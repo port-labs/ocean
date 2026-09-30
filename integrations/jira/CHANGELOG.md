@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.0 (2026-09-29)
+
+
+### Features
+
+- Enabled test connection so Port can run connection health probes for this integration.
+
+
+## 0.14.4 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 0.14.3 (2026-09-28)
+
+
+### Bug Fixes
+
+- Remove OAuth minimumScheduledResyncInterval so SaaS OAuth installs are not forced to a 2h resync floor
+
+
+## 0.14.2 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 0.14.1 (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 0.14.0 (2026-09-22)
+
+
+### Features
+
+- Added a delete_issue action for deleting Jira issues from Port
+
+
+## 0.13.0 (2026-09-22)
+
+
+### Features
+
+- Added parentKey and arbitrary fields support to the create_issue action
+
+
+## 0.12.1 (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
+## 0.12.0 (2026-09-22)
+
+
+### Features
+
+- Added an update_issue action that updates Jira issue fields from Port
+
+
+## 0.11.0 (2026-09-22)
+
+
+### Features
+
+- Added an add_comment action for adding comments to Jira issues from Port
+
+
 ## 0.10.0 (2026-09-20)
 
 
