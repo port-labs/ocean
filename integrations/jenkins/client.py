@@ -1,6 +1,6 @@
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin
 import httpx
 
 from loguru import logger
@@ -207,8 +207,9 @@ class JenkinsClient:
         return {"tree": jobs_query + jobs_pagination}
 
     def _build_base_url(self, parent_job: Optional[dict[str, Any]]) -> str:
-        job_path = urlparse(parent_job["url"]).path if parent_job else ""
-        return f"{self.jenkins_base_url}{job_path}".rstrip("/")
+        if parent_job is None:
+            return self.jenkins_base_url
+        return parent_job["url"].rstrip("/")
 
     def enrich_jobs(
         self, jobs: list[dict[str, Any]], parent_job: dict[str, Any] | None

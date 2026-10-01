@@ -237,3 +237,37 @@ async def test_build_base_url_removes_trailing_slash(
     url2 = client._build_base_url(None)
     assert not url2.endswith("/"), f"URL should not end with a slash: {url2}"
     assert url2 == "http://jenkins.example.com"
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.context.ocean.PortOceanContext.integration_config",
+    new_callable=AsyncMock,
+)
+@patch("port_ocean.utils.async_http.OceanAsyncClient", new_callable=AsyncMock)
+async def test_build_base_url_does_not_double_context_path(
+    mock_ocean_client: AsyncMock, mock_integration_config: AsyncMock
+) -> None:
+    # Reproduces https://github.com/port-labs/ocean/issues/3024:
+    # when Jenkins is served under a non-root context path, the job's own
+    # "url" from the Jenkins API already includes that context path, so
+    # re-prepending jenkins_base_url doubled it (e.g. ".../jenkins/jenkins/job/...").
+    mock_integration_config.return_value = {
+        "jenkins_host": "http://jenkins.example.com/jenkins",
+        "jenkins_user": "user",
+        "jenkins_token": "token",
+    }
+
+    with patch("client.http_async_client", new=mock_ocean_client):
+        client = JenkinsClient("http://jenkins.example.com/jenkins", "user", "token")
+
+    parent_job = {"url": "http://jenkins.example.com/jenkins/job/MyFolder/"}
+    url = client._build_base_url(parent_job)
+    assert url == "http://jenkins.example.com/jenkins/job/MyFolder"
+
+    # Nested folder job one level deeper, to make sure it doesn't compound
+    nested_parent_job = {
+        "url": "http://jenkins.example.com/jenkins/job/MyFolder/job/SubFolder/"
+    }
+    nested_url = client._build_base_url(nested_parent_job)
+    assert nested_url == "http://jenkins.example.com/jenkins/job/MyFolder/job/SubFolder"
