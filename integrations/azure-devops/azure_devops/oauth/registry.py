@@ -1,3 +1,4 @@
+from loguru import logger
 from pydantic import BaseModel
 
 from port_ocean.context.ocean import ocean
@@ -29,6 +30,10 @@ def register_oauth_provider() -> None:
     """
     raw = ocean.integration_config.get("identity_oauth")
     if not raw:
+        if ocean.config.identity_propagation.enabled:
+            logger.warning(
+                "Identity propagation is enabled but identity_oauth is missing from the integration config"
+            )
         return
 
     cfg = OAuthConfig(**raw)

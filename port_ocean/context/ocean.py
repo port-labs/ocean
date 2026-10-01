@@ -264,6 +264,10 @@ class PortOceanContext:
             )
 
         self.app.oauth_provider = provider
+        logger.info(
+            "OAuth provider registered for identity propagation",
+            target=provider.target,
+        )
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)
