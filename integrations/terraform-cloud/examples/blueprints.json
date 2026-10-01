@@ -1,0 +1,157 @@
+[
+  {
+    "identifier": "terraformCloudHealthAssessment",
+    "description": "This blueprint represents a Terraform Cloud health assessment result",
+    "title": "Terraform Cloud Health Assessment",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "Timestamp when the assessment result was created"
+        },
+        "drifted": {
+          "type": "boolean",
+          "title": "Drifted",
+          "description": "Whether drift was detected (actual infrastructure differs from desired state)"
+        },
+        "succeeded": {
+          "type": "boolean",
+          "title": "Succeeded",
+          "description": "Whether the overall health assessment completed successfully"
+        },
+        "allChecksSucceeded": {
+          "type": "boolean",
+          "title": "All Checks Succeeded",
+          "description": "Whether all continuous validation checks passed successfully"
+        },
+        "checksErrored": {
+          "type": "number",
+          "title": "Checks Errored",
+          "description": "Number of resources/data sources/outputs with condition errors"
+        },
+        "checksFailed": {
+          "type": "number",
+          "title": "Checks Failed",
+          "description": "Number of resources/data sources/outputs with one or more failing conditions"
+        },
+        "checksPassed": {
+          "type": "number",
+          "title": "Checks Passed",
+          "description": "Number of resources/data sources/outputs where all conditions passed"
+        },
+        "checksUnknown": {
+          "type": "number",
+          "title": "Checks Unknown",
+          "description": "Number of resources/data sources/outputs with unknown check status"
+        },
+        "resourcesDrifted": {
+          "type": "number",
+          "title": "Resources Drifted",
+          "description": "Number of resources that have drifted"
+        },
+        "resourcesUndrifted": {
+          "type": "number",
+          "title": "Resources Undrifted",
+          "description": "Number of resources that match the expected state (no drift)"
+        },
+        "errorMessage": {
+          "type": "string",
+          "title": "Error Message",
+          "description": "Error message if the assessment failed"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "workspace": {
+        "title": "Terraform Cloud Workspace",
+        "target": "terraformCloudWorkspace",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "terraformCloudWorkspace",
+    "description": "This blueprint represents a workspace in Terraform Cloud",
+    "title": "Terraform Cloud Workspace",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "organization": {
+          "type": "string",
+          "title": "Organization",
+          "description": "The organization within which the workspace belongs to"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Time",
+          "description": "The creation timestamp of the workspace"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated",
+          "description": "The last update timestamp of the workspace"
+        },
+        "terraformVersion": {
+          "type": "string",
+          "title": "Terraform Cloud Version",
+          "description": "Version of Terraform cloud used by the workspace"
+        },
+        "locked": {
+          "type": "boolean",
+          "title": "Locked Status",
+          "description": "Indicates whether the workspace is locked"
+        },
+        "executionMode": {
+          "type": "string",
+          "title": "Execution Mode",
+          "description": "The execution mode of the workspace"
+        },
+        "resourceCount": {
+          "type": "number",
+          "title": "Resource Count",
+          "description": "Number of resources managed by the workspace"
+        },
+        "latestChangeAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Latest Change",
+          "description": "Timestamp of the latest change in the workspace"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Workspace Tags",
+          "items": {
+            "type": "string"
+          },
+          "description": "Terraform workspace tags"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "currentStateVersion": {
+        "title": "Current State Version",
+        "target": "terraformCloudStateVersion",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Terraform Cloud Project",
+        "target": "terraformCloudProject",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

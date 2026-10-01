@@ -11,14 +11,12 @@ class TerraformWebhookClient(TerraformClient):
 
     async def _webhook_exists(self, workspace_id: str, webhook_target_url: str) -> bool:
         """Check if a webhook already exists for the given workspace."""
-        endpoint = f"workspaces/{workspace_id}/notification-configurations"
-        notifications_response = await self.send_api_request(endpoint=endpoint)
-        existing_configs = notifications_response.get("data", [])
-
-        return any(
-            config["attributes"]["url"] == webhook_target_url
-            for config in existing_configs
-        )
+        async for configs in self.list_workspace_webhooks(workspace_id):
+            if any(
+                config["attributes"]["url"] == webhook_target_url for config in configs
+            ):
+                return True
+        return False
 
     async def _ensure_workspace_webhook(
         self,
@@ -112,7 +110,9 @@ class TerraformWebhookClient(TerraformClient):
                 f"Successfully created webhook for workspace '{workspace_name}' ({workspace_id})"
             )
         except Exception as e:
-            logger.error(f"Failed to create webhook. Body: {webhook_body}, Error: {e}")
+            logger.error(
+                f"Failed to create webhook for workspace '{workspace_name}' ({workspace_id}): {e}"
+            )
             raise
 
     async def list_workspace_webhooks(

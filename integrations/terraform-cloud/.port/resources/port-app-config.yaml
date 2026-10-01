@@ -74,6 +74,9 @@ resources:
             hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
             vcsCommitUrl: .attributes."vcs-commit-url"
             outputData: .__output
+          relations:
+            workspace: .relationships.workspace.data.id
+            run: .relationships.run.data.id
   - kind: run
     selector:
       query: "true"
@@ -95,3 +98,26 @@ resources:
             source: .attributes.source
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id
+  - kind: health-assessment
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .type + "-" + .id
+          blueprint: '"terraformCloudHealthAssessment"'
+          properties:
+            createdAt: .attributes."created-at"
+            succeeded: .attributes.succeeded
+            allChecksSucceeded: .attributes."all-checks-succeeded"
+            drifted: .attributes.drifted
+            checksErrored: .attributes."checks-errored"
+            checksFailed: .attributes."checks-failed"
+            checksPassed: .attributes."checks-passed"
+            checksUnknown: .attributes."checks-unknown"
+            resourcesDrifted: .attributes."resources-drifted"
+            resourcesUndrifted: .attributes."resources-undrifted"
+            errorMessage: .attributes."error-message"
+          relations:
+            workspace: .relationships.workspace.data.id
