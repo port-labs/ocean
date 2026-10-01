@@ -1,0 +1,23 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: scale-quality-entity
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .subject.id
+          title: .subject.name
+          blueprint: '"scaleQualityEntity"'
+          properties:
+            scopeType: .subject.type
+            aiDurability: .signals.durability.value
+            engMaturityLevel: .signals.engMaturity.value
+            codeMaturityScore: .signals.codeMaturity.value
+            technologies: .signals.techRadar.value
+            durabilityStatus: .signals.durability.status
+            deepLink: .signals.durability.deepLinkUrl
+            measuredAt: .measuredAt
+          relations:
+            parent: .subject.parentId
