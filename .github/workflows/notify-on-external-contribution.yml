@@ -55,9 +55,7 @@ jobs:
             const org = payload.repository.owner.login;
             const user = pr.user.login;
 
-            // Bots (dependabot, renovate, amplify preview bots, etc.) aren't real external
-            // contributors and shouldn't open or update support tickets — skip before even
-            // checking org membership.
+            // Bots aren't real external contributors and shouldn't open or update support tickets — skip.
             if (pr.user.type === 'Bot') {
               core.info(`PR author ${user} is a bot — skipping webhook.`);
               return;
