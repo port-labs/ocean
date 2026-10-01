@@ -30,7 +30,7 @@
     "@stackql/docusaurus-plugin-hubspot": "^1.1.0",
     "clsx": "^2.0.0",
     "docusaurus-plugin-module-alias": "^0.0.2",
-    "docusaurus-plugin-sass": "^0.2.5",
+    "docusaurus-plugin-sass": "^0.2.7",
     "prism-react-renderer": "^2.3.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
