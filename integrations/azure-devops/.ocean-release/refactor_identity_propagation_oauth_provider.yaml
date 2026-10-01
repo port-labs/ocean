@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: improvement
-changelog: The integration now builds and registers its own Entra ID OAuth2 provider for identity propagation, instead of relying on Azure DevOps settings in Ocean core.
