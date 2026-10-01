@@ -7,6 +7,7 @@ from port_ocean.context.ocean import ocean
 
 from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
+from .fixture_packs import get_fixture_pack_name, load_pack_resource
 
 API_URL = "http://localhost:8000/integration"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
@@ -25,6 +26,7 @@ class FakeIntegrationConfigKeys(StrEnum):
     THIRD_PARTY_BATCH_SIZE = "third_party_batch_size"
     THIRD_PARTY_LATENCY_MS = "third_party_latency_ms"
     SINGLE_PERF_RUN = "single_department_run"
+    FIXTURE_PACK = "fixture_pack"
 
 
 def get_config() -> Tuple[List[int], int, int]:
@@ -110,15 +112,24 @@ async def get_fake_persons_batch(
     ]
 
 
+def _person_fetch_plan() -> Tuple[List[int], int, int]:
+    """Shared batch plan for fixture packs and loadgen (one code path)."""
+    if get_fixture_pack_name():
+        # Pack route ignores size/latency; one unrestricted batch per department.
+        return [-1], 1, 0
+    return get_config()
+
+
 async def get_fake_persons() -> AsyncGenerator[List[Dict[Any, Any]], None]:
-    batches, entity_kb_size, latency_ms = get_config()
+    batches, entity_kb_size, latency_ms = _person_fetch_plan()
     async for departments_batch in get_departments():
         for department in departments_batch:
             for batch in batches:
                 current_result = await get_fake_persons_batch(
                     department["id"], batch, entity_kb_size, latency_ms
                 )
-                yield current_result
+                if current_result:
+                    yield current_result
 
 
 async def get_random_person_from_batch() -> Dict[Any, Any]:
@@ -132,23 +143,42 @@ async def get_departments() -> AsyncGenerator[List[Dict[Any, Any]], None]:
         FakeIntegrationConfigKeys.SINGLE_PERF_RUN, False
     )
 
-    departments = (
-        FAKE_DEPARTMENTS if not single_department_run else [FAKE_DEPARTMENTS[0]]
-    )
+    pack = get_fixture_pack_name()
+    if pack:
+        pack_departments = load_pack_resource(pack, "departments")
+        if pack_departments is not None:
+            departments = (
+                pack_departments[:1] if single_department_run else pack_departments
+            )
+            yield departments
+            return
 
-    yield [department.dict() for department in departments]
+    source = FAKE_DEPARTMENTS if not single_department_run else FAKE_DEPARTMENTS[:1]
+    yield [department.dict() for department in source]
+
+
+async def _results_from_pack_or_fetch(
+    resource: str, fetch_path: str
+) -> List[Dict[Any, Any]]:
+    """Prefer pack JSON for `resource` when fixturePack is set; else HTTP fetch."""
+    pack = get_fixture_pack_name()
+    if pack:
+        rows = load_pack_resource(pack, resource)
+        if rows is not None:
+            return rows
+    return await _fetch_integration_results(fetch_path)
 
 
 async def get_offices() -> AsyncGenerator[List[Dict[Any, Any]], None]:
-    yield await _fetch_integration_results("/offices")
+    yield await _results_from_pack_or_fetch("offices", "/offices")
 
 
 async def get_teams() -> AsyncGenerator[List[Dict[Any, Any]], None]:
-    yield await _fetch_integration_results("/teams")
+    yield await _results_from_pack_or_fetch("teams", "/teams")
 
 
 async def get_projects() -> AsyncGenerator[List[Dict[Any, Any]], None]:
-    yield await _fetch_integration_results("/projects")
+    yield await _results_from_pack_or_fetch("projects", "/projects")
 
 
 async def trigger_fake_task(task_name: str) -> Dict[str, Any]:

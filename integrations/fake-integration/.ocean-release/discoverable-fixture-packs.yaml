@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add discoverable fixture packs for fake-integration so multi-kind org fixtures can be loaded from extension packs (stable-org departments + persons).

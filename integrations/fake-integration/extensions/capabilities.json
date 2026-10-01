@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "packs": ["stable-org"],
+  "default_pack": null,
+  "config_keys": {
+    "fixture_pack": "Name of pack under extensions/packs/, or omit for loadgen"
+  },
+  "hooks": {
+    "mapping_overlay": true,
+    "blueprint_overlay": true,
+    "stable_identifiers": true
+  }
+}
