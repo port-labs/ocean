@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.0 (2026-10-01)
+
+
+### Features
+
+- Add ocean core smoke configsets that boot fake-integration per Ocean settings, with tests opting in via smoke_configset markers
+
+
 ## 0.52.5 (2026-10-01)
 
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.52.5"
+version = "0.53.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -217,5 +217,6 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto --durations=10 --color=yes --ignore-glob='./integrations/*' ./port_ocean/tests"
 markers = [
-    "smoke: Smoke tests (deselect with '-m \"not smoke\"')"
+    "smoke: Smoke tests (deselect with '-m \"not smoke\"')",
+    "smoke_configset(name): Smoke configset this test runs under (see port_ocean/tests/smoke/configsets/)",
 ]

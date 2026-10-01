@@ -23,12 +23,13 @@ TEMP_DIR=$(mktemp -d -t smoke-test-integration.XXXXXXX)
 RESOURCE_DIR_SUFFIX="integrations/fake-integration/.port/resources"
 cp -r "${ROOT_DIR}"/${RESOURCE_DIR_SUFFIX} "${TEMP_DIR}"
 
-# Smoke tests validate dept/person only; trim 5-kind E2E resources from the copy.
+SMOKE_TEST_RESOURCE_KINDS="${SMOKE_TEST_RESOURCE_KINDS:-fake-department,fake-person}"
+
 PYTHON="${ROOT_DIR}/.venv/bin/python"
 if [[ ! -x "${PYTHON}" ]]; then
     PYTHON=python3
 fi
-"${PYTHON}" - "${TEMP_DIR}/resources" <<'PY'
+"${PYTHON}" - "${TEMP_DIR}/resources" "${SMOKE_TEST_RESOURCE_KINDS}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -36,7 +37,7 @@ from pathlib import Path
 import yaml
 
 resources_dir = Path(sys.argv[1])
-smoke_kinds = {"fake-department", "fake-person"}
+smoke_kinds = {kind for kind in sys.argv[2].split(",") if kind}
 
 blueprints_path = resources_dir / "blueprints.json"
 blueprints = json.loads(blueprints_path.read_text())
