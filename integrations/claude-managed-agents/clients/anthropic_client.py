@@ -12,6 +12,12 @@ from anthropic.types.beta import UnwrapWebhookEvent
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
 )
+from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event import (
+    BetaManagedAgentsUserInterruptEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event_params import (
+    BetaManagedAgentsUserInterruptEventParams,
+)
 from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import (
     BetaManagedAgentsUserMessageEvent,
 )
@@ -339,6 +345,30 @@ class AnthropicClient:
                 f"Expected user.message event from send, got {event.type}"
             )
         return event
+
+    async def send_user_interrupt(
+        self, session_id: str, session_thread_id: str | None = None
+    ) -> BetaManagedAgentsUserInterruptEvent:
+        logger.info(f"Interrupting Claude session '{session_id}'")
+        event: BetaManagedAgentsUserInterruptEventParams = {"type": "user.interrupt"}
+        # Omitted rather than sent as null: the API interrupts every
+        # non-archived thread only when the field is absent.
+        if session_thread_id:
+            event["session_thread_id"] = session_thread_id
+        response = await self._client.beta.sessions.events.send(
+            session_id,
+            events=[event],
+        )
+        if not response.data:
+            raise UnexpectedApiResponseError(
+                "Interrupt was sent but no event was returned"
+            )
+        returned_event = response.data[0]
+        if not isinstance(returned_event, BetaManagedAgentsUserInterruptEvent):
+            raise UnexpectedApiResponseError(
+                f"Expected user.interrupt event from send, got {returned_event.type}"
+            )
+        return returned_event
 
     def unwrap_webhook(
         self, payload: str, headers: Mapping[str, str]

@@ -170,6 +170,27 @@
           "required": false
         }
       ]
+    },
+    {
+      "name": "cancel_session",
+      "icon": "Claude",
+      "description": "Cancel a running Claude session by interrupting the agent",
+      "inputs": [
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "The ID of the session to cancel. The session must be running.",
+          "required": true
+        },
+        {
+          "name": "sessionThreadId",
+          "title": "Session thread ID",
+          "type": "string",
+          "description": "Optional thread to interrupt. When omitted, every non-archived thread in the session is interrupted.",
+          "required": false
+        }
+      ]
     }
   ]
 }

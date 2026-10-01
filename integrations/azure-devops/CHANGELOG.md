@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.20.2 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
+## 0.20.1 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 0.20.0 (2026-09-30)
+
+
+### Features
+
+- Added update_pull_request_labels action to add a label to Azure DevOps pull requests
+
+
 ## 0.19.0 (2026-09-29)
 
 
