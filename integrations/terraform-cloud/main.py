@@ -103,8 +103,7 @@ async def resync_health_assessments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for workspaces in terraform_client.get_paginated_workspaces():
         logger.info(f"Processing batch of {len(workspaces)} workspaces for {kind}")
 
-        for i in range(0, len(workspaces), BATCH_SIZE):
-            batch = workspaces[i : i + BATCH_SIZE]
+        for batch in batched(workspaces, BATCH_SIZE):
             tasks = [
                 terraform_client.get_current_health_assessment_for_workspace(
                     workspace["id"]
@@ -112,10 +111,11 @@ async def resync_health_assessments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 for workspace in batch
                 if workspace["attributes"]["assessments-enabled"]
             ]
-            for assessment_task in asyncio.as_completed(tasks):
-                assessment = await assessment_task
-                if assessment:
-                    yield [assessment]
+            assessments = [
+                assessment for assessment in await asyncio.gather(*tasks) if assessment
+            ]
+            if assessments:
+                yield assessments
 
 
 @ocean.on_resync()

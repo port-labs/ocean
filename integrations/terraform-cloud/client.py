@@ -80,9 +80,7 @@ class TerraformClient:
 
         try:
             async with self.rate_limiter:
-                logger.debug(
-                    f"Requesting {method} {url} with params: {query_params} and body: {json_data}"
-                )
+                logger.debug(f"Requesting {method} {url} with params: {query_params}")
 
                 response = await self.client.request(
                     method=method,
@@ -103,7 +101,6 @@ class TerraformClient:
                 url=url,
                 method=method,
                 params=query_params,
-                body=json_data,
             )
             raise
 
@@ -349,11 +346,17 @@ class TerraformClient:
     async def get_current_health_assessment_for_workspace(
         self,
         workspace_id: str,
-    ) -> dict[str, Any]:
-        assessment = await self.send_api_request(
-            f"workspaces/{workspace_id}/current-assessment-result"
-        )
-        return assessment.get("data", {})
+    ) -> dict[str, Any] | None:
+        try:
+            assessment = await self.send_api_request(
+                f"workspaces/{workspace_id}/current-assessment-result"
+            )
+            return assessment.get("data")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Workspace {workspace_id} has no assessment result yet")
+                return None
+            raise
 
     async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
         assessment = await self.send_api_request(f"assessment-results/{assessment_id}")

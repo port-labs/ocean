@@ -914,6 +914,47 @@ class TestGetHealthAssessmentsForSingleWorkspace:
 
             assert assessment == {"id": "assessment-1"}
 
+    @pytest.mark.asyncio
+    async def test_get_current_health_assessment_for_workspace_never_assessed(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            mock_send.side_effect = httpx.HTTPStatusError(
+                "Not found", request=MagicMock(), response=mock_response
+            )
+
+            assessment = (
+                await terraform_client.get_current_health_assessment_for_workspace(
+                    "ws-never-assessed"
+                )
+            )
+
+            assert assessment is None
+
+    @pytest.mark.asyncio
+    async def test_get_current_health_assessment_for_workspace_raises_on_other_errors(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            mock_send.side_effect = httpx.HTTPStatusError(
+                "Server error", request=MagicMock(), response=mock_response
+            )
+
+            with pytest.raises(httpx.HTTPStatusError):
+                await terraform_client.get_current_health_assessment_for_workspace(
+                    "ws-error"
+                )
+
 
 class TestTerraformWebhookEvents:
     def test_webhook_events_constant(self) -> None:
