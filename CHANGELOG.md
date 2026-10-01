@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.1 (2026-10-01)
+
+
+### Improvements
+
+- Bump compatible Ocean core dependencies, including uvicorn 0.54 and security fixes in urllib3 and PyJWT
+
+
 ## 0.53.0 (2026-10-01)
 
 
