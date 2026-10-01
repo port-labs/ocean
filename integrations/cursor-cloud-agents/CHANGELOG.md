@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2026-10-01)
+
+
+### Improvements
+
+- Added run logs and status labels to the create_agent and trigger_agent actions, so Port shows when an agent is being launched, running, or finished
+
+
 ## 0.1.47 (2026-10-01)
 
 
