@@ -96,7 +96,7 @@ jobs:
                 eventName === 'pull_request_review' ? payload.review.user : payload.comment.user;
               const actor = actorUser.login;
 
-              // Same bot exclusion as above, applied to whoever is commenting/reviewing —
+              // Bot comments shouldn't trigger a notification - skip.
               // e.g. Amplify's preview-deploy bot commenting on the PR shouldn't touch the ticket.
               if (actorUser.type === 'Bot') {
                 core.info(`${actor} is a bot — skipping webhook.`);
