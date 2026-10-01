@@ -50,6 +50,7 @@ class LakehouseBuffer:
         self._max_buffer_count = max_buffer_count
         self._buffer: list[Any] = []
         self._current_size_bytes: int = 0
+        self._pending_extract_duration_sec: float = 0
         self._last_flush_at: float | None = None
         self.sync_id = sync_id
         self.kind = kind
@@ -65,15 +66,17 @@ class LakehouseBuffer:
             f" (~{self._current_size_bytes / (1024 * 1024):.1f} MB)"
         )
         event_id = str(uuid.uuid4())
-        event = LakehouseDataEntryBatch(
-            event_id=event_id,
-            type=self.event_type.value,
-            kind=self.kind,
-            event_type=self.event_type,
-            resync_start_time=self.resync_start_time,
-            extraction_timestamp=int(time.time() * 1000),
-            data=self._buffer,
-        )
+        extract_duration_ms = int(round(self._pending_extract_duration_sec * 1000))
+        event: LakehouseDataEntryBatch = {
+            "event_id": event_id,
+            "type": self.event_type.value,
+            "kind": self.kind,
+            "event_type": self.event_type,
+            "resync_start_time": self.resync_start_time,
+            "extraction_timestamp": int(time.time() * 1000),
+            "data": self._buffer,
+            "extract_duration_ms": extract_duration_ms,
+        }
         try:
             await ocean.port_client.post_integration_raw_data_batch(
                 self.sync_id,
@@ -88,10 +91,14 @@ class LakehouseBuffer:
                 raise
         self._buffer = []
         self._current_size_bytes = 0
+        self._pending_extract_duration_sec = 0
         self._last_flush_at = time.monotonic()
 
-    async def add(self, batch_items: LakehouseDataEntry) -> None:
+    async def add(
+        self, batch_items: LakehouseDataEntry, *, extract_duration_sec: float = 0
+    ) -> None:
         """Append items to the buffer, flushing if the interval or size cap is reached."""
+        self._pending_extract_duration_sec += extract_duration_sec
         self._buffer.append(batch_items)
         self._current_size_bytes += len(
             json.dumps(make_json_compatible(batch_items)).encode("utf-8")
