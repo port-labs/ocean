@@ -1,7 +1,7 @@
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from utils import init_terraform_client
+from utils import init_terraform_client, should_fetch_health_assessment
 
 
 class TestInitTerraformClient:
@@ -60,3 +60,42 @@ class TestInitTerraformClient:
             init_terraform_client()
 
         assert mock_terraform_client_class.call_count == len(configs)
+
+
+def _workspace(
+    assessments_enabled: bool, relationships: dict[str, Any]
+) -> dict[str, Any]:
+    return {
+        "id": "ws-123",
+        "attributes": {"assessments-enabled": assessments_enabled},
+        "relationships": relationships,
+    }
+
+
+class TestShouldFetchHealthAssessment:
+    def test_skips_workspace_with_assessments_disabled(self) -> None:
+        workspace = _workspace(False, {"current-assessment-result": {"data": None}})
+
+        assert should_fetch_health_assessment(workspace) is False
+
+    def test_skips_workspace_that_has_never_been_assessed(self) -> None:
+        workspace = _workspace(True, {"current-assessment-result": {"data": None}})
+
+        assert should_fetch_health_assessment(workspace) is False
+
+    def test_fetches_workspace_with_an_assessment_result(self) -> None:
+        workspace = _workspace(
+            True,
+            {
+                "current-assessment-result": {
+                    "data": {"id": "asmtres-1", "type": "assessment-results"}
+                }
+            },
+        )
+
+        assert should_fetch_health_assessment(workspace) is True
+
+    def test_fetches_when_the_relationship_is_absent(self) -> None:
+        workspace = _workspace(True, {"organization": {"data": {"id": "org-1"}}})
+
+        assert should_fetch_health_assessment(workspace) is True

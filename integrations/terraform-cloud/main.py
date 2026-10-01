@@ -8,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from utils import ObjectKind, init_terraform_client
+from utils import ObjectKind, init_terraform_client, should_fetch_health_assessment
 from integration import StateFileResourceConfig
 from helpers.state_version_enricher import enrich_state_versions_with_output_data
 from helpers.workspace_enricher import enrich_workspaces_with_tags
@@ -109,13 +109,15 @@ async def resync_health_assessments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     workspace["id"]
                 )
                 for workspace in batch
-                if workspace["attributes"]["assessments-enabled"]
+                if should_fetch_health_assessment(workspace)
             ]
             assessments = [
                 assessment for assessment in await asyncio.gather(*tasks) if assessment
             ]
             if assessments:
                 yield assessments
+            else:
+                logger.debug(f"No {kind}s found for batch of {len(batch)} workspaces")
 
 
 @ocean.on_resync()
