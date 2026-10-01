@@ -10,6 +10,7 @@ from aws.core.exporters.codepipeline.pipeline_execution.models import (
     PaginatedPipelineExecutionRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -30,6 +31,24 @@ class CodePipelinePipelineExecutionExporter(
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-execution fetch only has pipeline/execution ids from
+            # CloudTrail. The inspector actions swallow get_pipeline_execution failures
+            # and still emit an identifier stub. Confirm the execution exists first.
+            execution_response = await proxy.client.get_pipeline_execution(  # type: ignore[attr-defined]
+                pipelineName=options.pipeline_name,
+                pipelineExecutionId=options.pipeline_execution_id,
+            )
+            pipeline_execution = execution_response.get("pipelineExecution")
+            require_aws_resource(
+                [pipeline_execution] if pipeline_execution else [],
+                error_code="PipelineExecutionNotFoundException",
+                message=(
+                    f"Pipeline execution not found: {options.pipeline_name}/"
+                    f"{options.pipeline_execution_id}"
+                ),
+                operation_name="GetPipelineExecution",
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

@@ -12,6 +12,7 @@ WEBHOOK_EVENTS = [
     "Document",
     "User",
     "Project",
+    "Initiative",
     "Cycle",
 ]
 GET_LIVE_EVENTS_WEBHOOKS_QUERY = "GET_LIVE_EVENTS_WEBHOOKS"
@@ -36,7 +37,9 @@ class LinearObject(StrEnum):
     DOCUMENTS = "DOCUMENTS"
     USERS = "USERS"
     PROJECTS = "PROJECTS"
+    INITIATIVES = "INITIATIVES"
     CYCLES = "CYCLES"
+    WORKFLOW_STATES = "WORKFLOW_STATES"
     TEAM_MEMBERSHIPS = "TEAM_MEMBERSHIPS"
 
 
@@ -47,7 +50,9 @@ CONNECTION_KEYS: dict[LinearObject, str] = {
     LinearObject.DOCUMENTS: "documents",
     LinearObject.USERS: "users",
     LinearObject.PROJECTS: "projects",
+    LinearObject.INITIATIVES: "initiatives",
     LinearObject.CYCLES: "cycles",
+    LinearObject.WORKFLOW_STATES: "workflowStates",
     LinearObject.TEAM_MEMBERSHIPS: "teamMemberships",
 }
 
@@ -55,7 +60,9 @@ NODE_PAGINATION_OBJECTS: frozenset[LinearObject] = frozenset(
     {
         LinearObject.USERS,
         LinearObject.PROJECTS,
+        LinearObject.INITIATIVES,
         LinearObject.CYCLES,
+        LinearObject.WORKFLOW_STATES,
         LinearObject.TEAM_MEMBERSHIPS,
     }
 )
@@ -91,10 +98,22 @@ SINGLE_RESOURCE_CONFIG: dict[LinearObject, SingleResourceConfig] = {
         id_param="project_id",
         log_label="project",
     ),
+    LinearObject.INITIATIVES: SingleResourceConfig(
+        query_key="GET_SINGLE_INITIATIVE",
+        response_key="initiative",
+        id_param="initiative_id",
+        log_label="initiative",
+    ),
     LinearObject.CYCLES: SingleResourceConfig(
         query_key="GET_SINGLE_CYCLE",
         response_key="cycle",
         id_param="cycle_id",
         log_label="cycle",
+    ),
+    LinearObject.WORKFLOW_STATES: SingleResourceConfig(
+        query_key="GET_SINGLE_WORKFLOW_STATE",
+        response_key="workflowState",
+        id_param="workflow_state_id",
+        log_label="workflow state",
     ),
 }

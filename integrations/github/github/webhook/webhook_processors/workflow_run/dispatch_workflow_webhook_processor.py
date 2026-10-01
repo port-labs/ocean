@@ -15,6 +15,8 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from loguru import logger
 
+from port_ocean.core.models import WorkflowNodeRun
+
 # Status labels for the GitHub `workflow_run.conclusion` values, shown on the
 # Port run. Anything unmapped echoes the raw conclusion. Keep every label to
 # two words at most so it stays readable in Port's UI.
@@ -105,6 +107,10 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 run_id=run.id,
                 conclusion=conclusion,
             )
+
+            if isinstance(run, WorkflowNodeRun):
+                run.output["conclusion"] = conclusion
+
             await ocean.port_client.report_run_completed(
                 run,
                 success,

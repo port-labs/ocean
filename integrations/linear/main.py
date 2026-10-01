@@ -4,7 +4,9 @@ from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
 from linear.core.exporters import (
     CycleExporter,
+    WorkflowStateExporter,
     DocumentExporter,
+    InitiativeExporter,
     IssueExporter,
     LabelExporter,
     ProjectExporter,
@@ -19,6 +21,7 @@ from linear.utils import ObjectKind
 from webhook_processors import (
     CycleWebhookProcessor,
     DocumentWebhookProcessor,
+    InitiativeWebhookProcessor,
     IssueWebhookProcessor,
     LabelWebhookProcessor,
     ProjectWebhookProcessor,
@@ -89,6 +92,15 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
+@ocean.on_resync(ObjectKind.INITIATIVE)
+async def on_resync_initiatives(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for initiatives in InitiativeExporter(client).get_paginated_resources():
+        logger.info(f"Received initiative batch with {len(initiatives)} initiatives")
+        yield initiatives
+
+
 @ocean.on_resync(ObjectKind.TEAM_MEMBERS)
 async def on_resync_team_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
@@ -107,6 +119,19 @@ async def on_resync_cycles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield cycles
 
 
+@ocean.on_resync(ObjectKind.WORKFLOW_STATE)
+async def on_resync_workflow_states(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LinearClient.create_from_ocean_configuration()
+
+    async for workflow_states in WorkflowStateExporter(
+        client
+    ).get_paginated_resources():
+        logger.info(
+            f"Received workflow state batch with {len(workflow_states)} workflow states"
+        )
+        yield workflow_states
+
+
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
@@ -123,6 +148,7 @@ ocean.add_webhook_processor("/webhook", LabelWebhookProcessor)
 ocean.add_webhook_processor("/webhook", DocumentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", InitiativeWebhookProcessor)
 ocean.add_webhook_processor("/webhook", CycleWebhookProcessor)
 
 register_actions_executors()

@@ -1,6 +1,9 @@
 import httpx
 
-from github.actions.utils import build_external_id, extract_error_message
+from github.actions.utils import (
+    build_external_id,
+    extract_error_message,
+)
 
 
 class TestBuildExternalId:

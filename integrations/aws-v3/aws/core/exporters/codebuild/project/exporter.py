@@ -7,6 +7,7 @@ from aws.core.exporters.codebuild.project.models import (
     PaginatedCodeBuildProjectRequest,
 )
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -23,10 +24,30 @@ class CodeBuildProjectExporter(IResourceExporter[list[str]]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # Live-event single-project fetch only has a project name from CloudTrail.
+            # batch_get_projects omits missing projects instead of erroring. Confirm
+            # it exists so the live-event handler can treat a stale update as delete.
+            batch_response = await proxy.client.batch_get_projects(  # type: ignore[attr-defined]
+                names=[options.project_name]
+            )
+            require_aws_resource(
+                batch_response.get("projects"),
+                error_code="ResourceNotFoundException",
+                message=f"Project not found: {options.project_name}",
+                operation_name="BatchGetProjects",
+            )
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect([options.project_name], options.include)
+            response = await inspector.inspect(
+                [options.project_name],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
             return response[0] if response else {}
 
     async def get_paginated_resources(

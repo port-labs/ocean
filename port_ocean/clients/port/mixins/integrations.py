@@ -243,6 +243,7 @@ class IntegrationClientMixin:
         incremental_sync_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
         processing_mode: ProcessingMode | None = None,
+        oauth_broker_url: str | None = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -261,6 +262,8 @@ class IntegrationClientMixin:
             json["changelogDestination"] = changelog_destination
         if processing_mode is not None:
             json["processingMode"] = processing_mode.value
+        if oauth_broker_url is not None:
+            json["oauthBrokerUrl"] = oauth_broker_url
 
         json["version"] = self.integration_version
 

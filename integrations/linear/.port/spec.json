@@ -29,6 +29,9 @@
           "kind": "project"
         },
         {
+          "kind": "initiative"
+        },
+        {
           "kind": "team-members"
         },
         {
@@ -57,5 +60,331 @@
     "liveEvents": {
       "enabled": true
     }
-  }
+  },
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_issue",
+      "icon": "Linear",
+      "description": "Create a new Linear issue in a team",
+      "inputs": [
+        {
+          "name": "teamId",
+          "title": "Team ID",
+          "type": "string",
+          "description": "Linear team UUID. In self-service actions, map teamId from a linearTeam catalog entity identifier.",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The issue title",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Issue description in Markdown"
+        },
+        {
+          "name": "assigneeId",
+          "title": "Assignee ID",
+          "type": "string",
+          "description": "UUID of the user to assign the issue to"
+        },
+        {
+          "name": "stateId",
+          "title": "State ID",
+          "type": "string",
+          "description": "UUID of the workflow state to assign the issue to"
+        },
+        {
+          "name": "projectId",
+          "title": "Project ID",
+          "type": "string",
+          "description": "UUID of the project to associate the issue with"
+        },
+        {
+          "name": "cycleId",
+          "title": "Cycle ID",
+          "type": "string",
+          "description": "UUID of the cycle to add the issue to"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
+        },
+        {
+          "name": "labelIds",
+          "title": "Label IDs",
+          "type": "array",
+          "description": "UUIDs of labels to attach to the issue"
+        }
+      ]
+    },
+    {
+      "name": "create_sub_issue",
+      "icon": "Linear",
+      "description": "Create a sub-issue under an existing Linear issue",
+      "inputs": [
+        {
+          "name": "parentId",
+          "title": "Parent issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the parent issue (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "The sub-issue title",
+          "required": true
+        },
+        {
+          "name": "teamId",
+          "title": "Team ID",
+          "type": "string",
+          "description": "Optional Linear team UUID. When omitted, the parent issue's team is used. Map from a linearTeam catalog entity identifier when needed."
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Issue description in Markdown"
+        },
+        {
+          "name": "assigneeId",
+          "title": "Assignee ID",
+          "type": "string",
+          "description": "UUID of the user to assign the issue to"
+        },
+        {
+          "name": "stateId",
+          "title": "State ID",
+          "type": "string",
+          "description": "UUID of the workflow state to assign the issue to"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
+        }
+      ]
+    },
+    {
+      "name": "update_issue",
+      "icon": "Linear",
+      "description": "Update fields on an existing Linear issue",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to update (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "Updated issue title"
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Updated issue description in Markdown"
+        },
+        {
+          "name": "assigneeId",
+          "title": "Assignee ID",
+          "type": "string",
+          "description": "UUID of the user to assign the issue to"
+        },
+        {
+          "name": "stateId",
+          "title": "State ID",
+          "type": "string",
+          "description": "UUID of the workflow state to move the issue to"
+        },
+        {
+          "name": "projectId",
+          "title": "Project ID",
+          "type": "string",
+          "description": "UUID of the project to associate the issue with"
+        },
+        {
+          "name": "cycleId",
+          "title": "Cycle ID",
+          "type": "string",
+          "description": "UUID of the cycle to add the issue to"
+        },
+        {
+          "name": "priority",
+          "title": "Priority",
+          "type": "string",
+          "description": "Issue priority (No priority, Urgent, High, Normal, or Low)"
+        },
+        {
+          "name": "labelIds",
+          "title": "Label IDs",
+          "type": "array",
+          "description": "UUIDs of labels to attach to the issue"
+        }
+      ]
+    },
+    {
+      "name": "add_issue_comment",
+      "icon": "Linear",
+      "description": "Add a comment to a Linear issue",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to comment on (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Comment body",
+          "type": "string",
+          "description": "Comment content in Markdown",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "add_document",
+      "icon": "Linear",
+      "description": "Create a Linear document linked to exactly one parent resource",
+      "inputs": [
+        {
+          "name": "title",
+          "title": "Title",
+          "type": "string",
+          "description": "Document title",
+          "required": true
+        },
+        {
+          "name": "content",
+          "title": "Content",
+          "type": "string",
+          "description": "Document content in Markdown"
+        },
+        {
+          "name": "initiativeId",
+          "title": "Initiative ID",
+          "type": "string",
+          "description": "UUID of the related initiative"
+        },
+        {
+          "name": "teamId",
+          "title": "Team ID",
+          "type": "string",
+          "description": "UUID of the related team"
+        },
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the related issue"
+        },
+        {
+          "name": "releaseId",
+          "title": "Release ID",
+          "type": "string",
+          "description": "UUID of the related release"
+        },
+        {
+          "name": "cycleId",
+          "title": "Cycle ID",
+          "type": "string",
+          "description": "UUID of the related cycle"
+        },
+        {
+          "name": "projectId",
+          "title": "Project ID",
+          "type": "string",
+          "description": "UUID of the related project"
+        }
+      ]
+    },
+    {
+      "name": "add_reaction_to_issue",
+      "icon": "Linear",
+      "description": "Add an emoji reaction to a Linear issue. Each user can have at most one reaction per emoji on an issue.",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "emoji",
+          "title": "Emoji",
+          "type": "string",
+          "description": "Emoji shortcode to add (e.g. +1, thumbsup, eyes)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "archive_issue",
+      "icon": "Linear",
+      "description": "Archive a Linear issue",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to archive (e.g. ENG-123)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "delete_issue",
+      "icon": "Linear",
+      "description": "Move a Linear issue to trash",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to delete (e.g. ENG-123)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "delegate_issue_to_agent",
+      "icon": "Linear",
+      "description": "Delegate a Linear issue to an agent app user",
+      "inputs": [
+        {
+          "name": "issueId",
+          "title": "Issue ID",
+          "type": "string",
+          "description": "UUID or identifier of the issue to delegate (e.g. ENG-123)",
+          "required": true
+        },
+        {
+          "name": "delegateId",
+          "title": "Delegate ID",
+          "type": "string",
+          "description": "UUID of the agent app user to delegate the issue to",
+          "required": true
+        }
+      ]
+    }
+  ]
 }

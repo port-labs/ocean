@@ -56,6 +56,27 @@ def test_normalize_agent_raw_maps_v0_creating_to_active() -> None:
     }
 
 
+def test_normalize_agent_raw_maps_v0_finished_to_idle() -> None:
+    assert (
+        normalize_agent_raw_for_catalog({"id": "bc-1", "status": "FINISHED"})["status"]
+        == "IDLE"
+    )
+
+
+def test_normalize_agent_raw_maps_v0_stopped_to_idle() -> None:
+    assert (
+        normalize_agent_raw_for_catalog({"id": "bc-1", "status": "STOPPED"})["status"]
+        == "IDLE"
+    )
+
+
+def test_normalize_agent_raw_maps_v0_expired_to_archived() -> None:
+    assert (
+        normalize_agent_raw_for_catalog({"id": "bc-1", "status": "EXPIRED"})["status"]
+        == "ARCHIVED"
+    )
+
+
 def test_normalize_agent_raw_preserves_v1_statuses() -> None:
     assert (
         normalize_agent_raw_for_catalog({"id": "bc-1", "status": "ARCHIVED"})["status"]
@@ -64,4 +85,8 @@ def test_normalize_agent_raw_preserves_v1_statuses() -> None:
     assert (
         normalize_agent_raw_for_catalog({"id": "bc-1", "status": "ACTIVE"})["status"]
         == "ACTIVE"
+    )
+    assert (
+        normalize_agent_raw_for_catalog({"id": "bc-1", "status": "IDLE"})["status"]
+        == "IDLE"
     )

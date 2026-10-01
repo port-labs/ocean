@@ -9,6 +9,7 @@ from aws.core.exporters.memorydb.user.models import (
 )
 from aws.core.exporters.memorydb.user.regions import MEMORYDB_SUPPORTED_REGIONS
 from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -28,7 +29,12 @@ class MemoryDbUserExporter(IResourceExporter[list[dict[str, Any]]]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await proxy.client.describe_users(UserName=options.user_name)  # type: ignore[attr-defined]
-            users = response["Users"]
+            users = require_aws_resource(
+                response.get("Users"),
+                error_code="UserNotFoundFault",
+                message=f"User not found: {options.user_name}",
+                operation_name="DescribeUsers",
+            )
             action_result = await inspector.inspect(
                 users,
                 options.include,

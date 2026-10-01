@@ -4,11 +4,12 @@ import httpx
 from loguru import logger
 from pydantic import Field
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import CreateIssueError
+from jira.actions.utils import plain_text_adf
 
 
 class CreateIssueInput(AbstractJiraActionInput):
@@ -18,6 +19,8 @@ class CreateIssueInput(AbstractJiraActionInput):
     description: str | None = None
     priority: str | None = None
     assignee_account_id: str | None = Field(default=None, alias="assigneeAccountId")
+    parent_key: str | None = Field(default=None, alias="parentKey")
+    fields: dict[str, Any] | None = None
 
     def to_api_payload(self) -> dict[str, Any]:
         fields: dict[str, Any] = {
@@ -26,20 +29,15 @@ class CreateIssueInput(AbstractJiraActionInput):
             "summary": self.summary,
         }
         if self.description:
-            fields["description"] = {
-                "type": "doc",
-                "version": 1,
-                "content": [
-                    {
-                        "type": "paragraph",
-                        "content": [{"type": "text", "text": self.description}],
-                    }
-                ],
-            }
+            fields["description"] = plain_text_adf(self.description)
         if self.priority:
             fields["priority"] = {"name": self.priority}
         if self.assignee_account_id:
             fields["assignee"] = {"id": self.assignee_account_id}
+        if self.parent_key:
+            fields["parent"] = {"key": self.parent_key}
+        if self.fields:
+            fields.update(self.fields)
         return {"fields": fields}
 
 
@@ -75,17 +73,6 @@ class CreateIssueExecutor(AbstractJiraExecutor):
                 "Failed to create issue: Jira returned an empty or incomplete response"
             )
 
-        message = f"Created issue {issue_key}"
-        issue_link = ""
-        if not self.client.is_oauth_enabled():
-            issue_link = f"{self.client.jira_url.rstrip('/')}/browse/{issue_key}"
-            message = f"{message}: {issue_link}"
-
-        await ocean.port_client.post_run_log(
-            run,
-            message,
-            should_raise=False,
-        )
         logger.info(
             "Created Jira issue",
             issue_key=issue_key,
@@ -93,15 +80,10 @@ class CreateIssueExecutor(AbstractJiraExecutor):
             issue_type=action_input.issue_type,
         )
 
-        if isinstance(run, WorkflowNodeRun):
-            run.output = {
-                "issueKey": issue_key,
-                "issueId": str(created_issue.get("id")),
-                "issueUrl": issue_link,
-            }
-        await ocean.port_client.report_run_completed(
+        await self._complete_issue_action(
             run,
-            success=True,
-            message=message,
+            issue_key=issue_key,
+            message=f"Created issue {issue_key}",
             status_label="Issue created",
+            output={"issueId": str(created_issue.get("id"))},
         )

@@ -977,6 +977,7 @@ class TestRedisStreamConsumer:
             webhook_path="integration/webhook",
             queued_at="1700000000000000000",
             time_until_consumed_ms=2000.0,
+            trace_id="redis-event-123",
         )
         assert on_message.await_args is not None
         trace_id = on_message.await_args.args[1].trace_id

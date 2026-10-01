@@ -7,6 +7,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.0.3 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 3.0.2 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 3.0.1 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 3.0.0 (2026-09-24)
+
+
+### Features
+
+- Removed beta suffix from version number
+- Renamed integration to be the main AWS integration
+- Added support for self hosted installation method
+
+
+## 2.28.2-beta (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 2.28.1-beta (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
+## 2.28.0-beta (2026-09-22)
+
+
+### Features
+
+- Enable CloudTrail live events for all organizations, expose liveEventsApiKey in the spec, and turn on SaaS live events support.
+
+
+## 2.27.0-beta (2026-09-17)
+
+
+### Features
+
+- Added live events support for CodeBuild build runs (including RetryBuild), CodeDeploy deployments, and CodePipeline pipeline executions via CloudTrail start/stop events. Build run live-event fetches now raise not-found when batch_get_builds omits the build instead of upserting an empty entity.
+
+
+## 2.26.3-beta (2026-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.0
+
+
+## 2.26.2-beta (2026-09-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.4
+
+
+## 2.26.1-beta (2026-09-15)
+
+
+### Bug Fixes
+
+- Fix: AWS v3 integration now properly handles throttled API calls with retry logic and bounded concurrency (max 20 concurrent operations) to prevent silent entity count divergence
+
+
+## 2.26.0-beta (2026-09-15)
+
+
+### Features
+
+- Added CloudTrail live events support for AWS::MemoryDB::User, AWS::CodeBuild::Project, and AWS::CodePipeline::Pipeline.
+
+
+## 2.25.2-beta (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.3
+
+
+## 2.25.1-beta (2026-09-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.51.2
+
+
 ## 2.25.0-beta (2026-09-07)
 
 

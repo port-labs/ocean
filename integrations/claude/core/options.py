@@ -68,11 +68,19 @@ class ListUserActivityOptions(TypedDict):
     limit: Required[int]
 
 
+ClaudeAISkillUsageGroupBy = Literal["user_id", "product", "rbac_group_id"]
+
+
 class ListSkillUsageOptions(TypedDict):
-    """Query options for the per-day skills analytics endpoint (org scope)."""
+    """Query options for the per-day skills analytics endpoint.
+
+    When ``group_by`` is omitted the API returns org-level totals. Supported
+    dimensions are ``user_id``, ``product``, and ``rbac_group_id``.
+    """
 
     date: Required[str]
     limit: Required[int]
+    group_by: NotRequired[list[ClaudeAISkillUsageGroupBy]]
 
 
 class ListUserReportOptions(TypedDict):

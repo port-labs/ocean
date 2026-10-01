@@ -12,10 +12,8 @@ MODULE = "aws.webhook.registry"
 def test_register_cloudtrail_live_events_when_configured() -> None:
     mock_ocean = MagicMock()
 
-    with (
-        patch(f"{MODULE}.ocean", mock_ocean),
-        patch(f"{MODULE}.get_live_events_api_key", return_value="secret"),
-    ):
+    mock_ocean.integration_config = {"live_events_api_key": "secret"}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         register_cloudtrail_live_events()
 
     mock_ocean.add_webhook_processor.assert_called_once_with(
@@ -26,10 +24,8 @@ def test_register_cloudtrail_live_events_when_configured() -> None:
 def test_skips_registration_when_api_key_missing() -> None:
     mock_ocean = MagicMock()
 
-    with (
-        patch(f"{MODULE}.ocean", mock_ocean),
-        patch(f"{MODULE}.get_live_events_api_key", return_value=None),
-    ):
+    mock_ocean.integration_config = {}
+    with patch(f"{MODULE}.ocean", mock_ocean):
         register_cloudtrail_live_events()
 
     mock_ocean.add_webhook_processor.assert_not_called()

@@ -38,6 +38,7 @@ QUERIES = {
         key
     }
     state {
+        id
         name
     }
     creator {
@@ -150,6 +151,7 @@ QUERIES = {
     teamMemberships {
         nodes {
             team {
+                id
                 key
             }
         }
@@ -186,6 +188,49 @@ QUERIES = {
         }
     }
     """,
+    "BASE_INITIATIVES_QUERY_FIELDS": """
+    id
+    name
+    description
+    url
+    slugId
+    status
+    health
+    priority
+    targetDate
+    startedAt
+    completedAt
+    createdAt
+    updatedAt
+    creator {
+        id
+        name
+        email
+    }
+    owner {
+        id
+        name
+        email
+    }
+    leadTeam {
+        id
+        key
+        name
+    }
+    parentInitiative {
+        id
+    }
+    subInitiatives {
+        nodes {
+            id
+        }
+    }
+    projects {
+        nodes {
+            id
+        }
+    }
+    """,
     "BASE_CYCLES_QUERY_FIELDS": """
     id
     number
@@ -198,6 +243,21 @@ QUERIES = {
     isActive
     isFuture
     isPast
+    createdAt
+    updatedAt
+    team {
+        id
+        key
+        name
+    }
+    """,
+    "BASE_WORKFLOW_STATES_QUERY_FIELDS": """
+    id
+    name
+    type
+    color
+    position
+    description
     createdAt
     updatedAt
     team {
@@ -261,6 +321,20 @@ QUERIES = {
     "GET_SINGLE_CYCLE": """
     query Cycle {
         cycle(id: "{{ cycle_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_WORKFLOW_STATE": """
+    query WorkflowState {
+        workflowState(id: "{{ workflow_state_id }}") {
+            {{ base_query_fields }}
+        }
+    }
+    """,
+    "GET_SINGLE_INITIATIVE": """
+    query Initiative {
+        initiative(id: "{{ initiative_id }}") {
             {{ base_query_fields }}
         }
     }
@@ -380,9 +454,37 @@ QUERIES = {
         }
     }
     """,
+    "GET_INITIATIVES_PAGE": """
+    query Initiatives {
+        initiatives(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
     "GET_CYCLES_PAGE": """
     query Cycles {
         cycles(first: {{ page_size }}{{ after_cursor }}) {
+            nodes {
+                {{ base_query_fields }}
+            }
+            pageInfo {
+                hasNextPage
+                startCursor
+                endCursor
+            }
+        }
+    }
+    """,
+    "GET_WORKFLOW_STATES_PAGE": """
+    query WorkflowStates {
+        workflowStates(first: {{ page_size }}{{ after_cursor }}) {
             nodes {
                 {{ base_query_fields }}
             }

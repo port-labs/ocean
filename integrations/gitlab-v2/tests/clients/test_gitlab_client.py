@@ -346,6 +346,29 @@ class TestGitLabClient:
                 "GET", f"projects/{project_id}/merge_requests/{merge_request_id}"
             )
 
+    async def test_update_merge_request(self, client: GitLabClient) -> None:
+        project_path = "my-group/my-project"
+        merge_request_iid = 18
+        payload = {"title": "New title", "assignee_ids": [1, 2]}
+        mock_merge_request = {
+            "iid": merge_request_iid,
+            "web_url": "https://gitlab.example.com/my-group/my-project/-/merge_requests/18",
+        }
+
+        with patch.object(
+            client.rest, "send_api_request", AsyncMock(return_value=mock_merge_request)
+        ) as mock_send_request:
+            result = await client.update_merge_request(
+                project_path, merge_request_iid, payload
+            )
+
+            assert result == mock_merge_request
+            mock_send_request.assert_called_once_with(
+                "PUT",
+                "projects/my-group%2Fmy-project/merge_requests/18",
+                data=payload,
+            )
+
     async def test_get_issue(self, client: GitLabClient) -> None:
         """Test fetching a single issue by ID"""
         # Arrange
@@ -766,7 +789,11 @@ class TestGitLabClient:
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
                 mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", query, False
+                    "group/project",
+                    "blobs",
+                    query,
+                    False,
+                    should_use_tree=True,
                 )
 
     @pytest.mark.parametrize(
@@ -855,6 +882,7 @@ class TestGitLabClient:
                         query,
                         skip_parsing=False,
                         params={"min_access_level": 30},
+                        strategy="groupSearch",
                     ):
                         results.extend(batch)
 
@@ -2895,3 +2923,33 @@ class TestGitLabClient:
                     [{"id": 1, "path_with_namespace": "group/a"}]
                 ):
                     pass
+
+    async def test_list_merge_request_note_award_emojis_paginates(
+        self, client: GitLabClient
+    ) -> None:
+        first_page = [{"id": i, "name": f"emoji{i}"} for i in range(100)]
+        second_page = [{"id": 100, "name": "thumbsup"}]
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(side_effect=[first_page, second_page]),
+        ) as mock_request:
+            awards = await client.list_merge_request_note_award_emojis("g/p", 1, 2)
+
+        assert awards is not None
+        assert len(awards) == 101
+        assert awards[-1].name == "thumbsup"
+        path = "projects/g%2Fp/merge_requests/1/notes/2/award_emoji"
+        assert mock_request.call_args_list == [
+            call("GET", path, params={"per_page": 100, "page": 1}),
+            call("GET", path, params={"per_page": 100, "page": 2}),
+        ]
+
+    async def test_list_merge_request_note_award_emojis_returns_none_on_access_error(
+        self, client: GitLabClient
+    ) -> None:
+        # send_api_request returns {} for a GET 403/404
+        with patch.object(client.rest, "send_api_request", AsyncMock(return_value={})):
+            awards = await client.list_merge_request_note_award_emojis("g/p", 1, 2)
+
+        assert awards is None

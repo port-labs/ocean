@@ -142,7 +142,6 @@ class IntegrationFeatureFlag(StrEnum):
     )
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
     LIVE_EVENTS_REDIS_STREAM_ENABLED = "LIVE_EVENTS_REDIS_STREAM_ENABLED"
-    AWS_V3_LIVE_EVENTS_ENABLED = "AWS_V3_LIVE_EVENTS_ENABLED"
 
 
 class ProcessingMode(StrEnum):
@@ -291,6 +290,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
     config: WorkflowIntegrationActionConfig | None = None
     node: WorkflowNode | None = None
     output: dict[str, Any] = Field(default_factory=dict)
+    identity_token: str | None = Field(default=None, alias="identityToken")
 
     @root_validator(skip_on_failure=True)
     def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:

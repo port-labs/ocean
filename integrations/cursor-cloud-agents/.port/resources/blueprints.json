@@ -10,10 +10,12 @@
                     "title": "Status",
                     "enum": [
                         "ACTIVE",
+                        "IDLE",
                         "ARCHIVED"
                     ],
                     "enumColors": {
                         "ACTIVE": "blue",
+                        "IDLE": "yellow",
                         "ARCHIVED": "lightGray"
                     }
                 },

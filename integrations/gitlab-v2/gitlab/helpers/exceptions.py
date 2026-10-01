@@ -1,7 +1,6 @@
 import json
 
 import httpx
-
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
@@ -9,6 +8,21 @@ class MissingExecutionPropertyError(ActionExecutionError):
     """Raised when a required execution property is absent from the action run."""
 
     DEFAULT_STATUS_LABEL = "Invalid inputs"
+
+
+def _response_detail(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+    except Exception:
+        body = None
+
+    if isinstance(body, dict):
+        for key in ("error_description", "message", "error"):
+            if (value := body.get(key)) is not None:
+                return value if isinstance(value, str) else json.dumps(value)
+
+    text = response.text.strip()
+    return text or f"HTTP {response.status_code}"
 
 
 class GitlabTriggerPipelineError(ActionExecutionError):
@@ -20,19 +34,50 @@ class GitlabTriggerPipelineError(ActionExecutionError):
     def from_response(
         cls, response: httpx.Response, prefix: str
     ) -> "GitlabTriggerPipelineError":
-        return cls(f"{prefix}: {cls._response_detail(response)}")
+        return cls(f"{prefix}: {_response_detail(response)}")
 
-    @staticmethod
-    def _response_detail(response: httpx.Response) -> str:
-        try:
-            body = response.json()
-        except Exception:
-            body = None
 
-        if isinstance(body, dict):
-            for key in ("error_description", "message", "error"):
-                if (value := body.get(key)) is not None:
-                    return value if isinstance(value, str) else json.dumps(value)
+class GitlabCreateMergeRequestError(ActionExecutionError):
+    """Raised when the GitLab API returns an error while creating a merge request."""
 
-        text = response.text.strip()
-        return text or f"HTTP {response.status_code}"
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabCreateMergeRequestError":
+        return cls(f"{prefix}: {_response_detail(response)}")
+
+
+class GitlabUpdateMergeRequestError(ActionExecutionError):
+    """Raised when the GitLab API returns an error while updating a merge request."""
+
+    DEFAULT_STATUS_LABEL = "Update failed"
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabUpdateMergeRequestError":
+        return cls(f"{prefix}: {_response_detail(response)}")
+
+
+class GitlabCreateMergeRequestCommentError(ActionExecutionError):
+    """Raised when the GitLab API returns an error while creating a merge request note."""
+
+    DEFAULT_STATUS_LABEL = "Comment creation failed"
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabCreateMergeRequestCommentError":
+        return cls(f"{prefix}: {_response_detail(response)}")
+
+
+class GitlabSetMergeRequestCommentReactionError(ActionExecutionError):
+    """Raised when the GitLab API returns an error while updating a note reaction."""
+
+    DEFAULT_STATUS_LABEL = "Reaction update failed"
+
+    @classmethod
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabSetMergeRequestCommentReactionError":
+        return cls(f"{prefix}: {_response_detail(response)}")

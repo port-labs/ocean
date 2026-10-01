@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import Any, List
 
 import httpx
 from loguru import logger
@@ -16,12 +16,12 @@ class OrganizationClientMixin:
     ):
         self.auth = auth
         self.client = client
-        self._feature_flags_cache_ttl = feature_flags_cache_ttl_seconds
-        self._feature_flags_cache: list[str] | None = None
-        self._feature_flags_cached_at: float | None = None
+        self._organization_cache_ttl = feature_flags_cache_ttl_seconds
+        self._organization_cache: dict[str, Any] | None = None
+        self._organization_cached_at: float | None = None
 
-    async def _get_organization_feature_flags(self) -> httpx.Response:
-        logger.info("Fetching organization feature flags")
+    async def _fetch_organization(self) -> httpx.Response:
+        logger.info("Fetching organization details")
 
         response = await self.client.get(
             f"{self.auth.api_url}/organization",
@@ -29,22 +29,32 @@ class OrganizationClientMixin:
         )
         return response
 
+    async def _get_organization(
+        self, should_raise: bool = True, should_log: bool = True
+    ) -> dict[str, Any]:
+        now = time.monotonic()
+        if (
+            self._organization_cache is not None
+            and self._organization_cached_at is not None
+            and now - self._organization_cached_at < self._organization_cache_ttl
+        ):
+            return self._organization_cache
+
+        response = await self._fetch_organization()
+        handle_port_status_code(response, should_raise, should_log)
+        organization: dict[str, Any] = response.json().get("organization", {})
+        self._organization_cache = organization
+        self._organization_cached_at = now
+        return organization
+
     async def get_organization_feature_flags(
         self, should_raise: bool = True, should_log: bool = True
     ) -> List[str]:
-        now = time.monotonic()
-        if (
-            self._feature_flags_cache is not None
-            and self._feature_flags_cached_at is not None
-            and now - self._feature_flags_cached_at < self._feature_flags_cache_ttl
-        ):
-            return self._feature_flags_cache
+        organization = await self._get_organization(should_raise, should_log)
+        return organization.get("featureFlags", [])
 
-        response = await self._get_organization_feature_flags()
-        handle_port_status_code(response, should_raise, should_log)
-        flags: list[str] = (
-            response.json().get("organization", {}).get("featureFlags", [])
-        )
-        self._feature_flags_cache = flags
-        self._feature_flags_cached_at = now
-        return flags
+    async def is_organization_blocked(
+        self, should_raise: bool = True, should_log: bool = True
+    ) -> bool:
+        organization = await self._get_organization(should_raise, should_log)
+        return bool(organization.get("isBlocked", False))

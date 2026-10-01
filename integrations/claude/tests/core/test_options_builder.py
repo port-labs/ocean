@@ -145,6 +145,22 @@ def test_build_skill_usage_options() -> None:
     assert options == {"date": "2026-03-01", "limit": 1000}
 
 
+def test_build_skill_usage_options_with_group_by() -> None:
+    options = build_skill_usage_options(
+        date="2026-03-01", group_by=["user_id", "rbac_group_id"]
+    )
+    assert options == {
+        "date": "2026-03-01",
+        "limit": 1000,
+        "group_by": ["user_id", "rbac_group_id"],
+    }
+
+
+def test_build_skill_usage_options_omits_empty_group_by() -> None:
+    options = build_skill_usage_options(date="2026-03-01", group_by=[])
+    assert options == {"date": "2026-03-01", "limit": 1000}
+
+
 # ---------------------------------------------------------------------------
 # resolve_analytics_range
 # ---------------------------------------------------------------------------

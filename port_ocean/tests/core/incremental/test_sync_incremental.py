@@ -1,5 +1,6 @@
 """Unit tests for SyncRawMixin.sync_incremental."""
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -18,6 +19,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.helpers.metric.metric import MetricType, Metrics
 
 
 def make_resource_config(kind: str) -> ResourceConfig:
@@ -109,6 +111,37 @@ def _make_lifecycle_client() -> MagicMock:
     client.notify_resync_failed = AsyncMock()
     client.notify_resync_aborted = AsyncMock()
     return client
+
+
+def _make_metrics(integration_type: str = "fake-integration") -> Metrics:
+    metrics_settings = MagicMock()
+    metrics_settings.enabled = True
+    integration_configuration = MagicMock()
+    integration_configuration.type = integration_type
+    integration_configuration.identifier = "test-integration"
+    port_client = MagicMock()
+    return Metrics(
+        metrics_settings=metrics_settings,
+        integration_configuration=integration_configuration,
+        port_client=port_client,
+    )
+
+
+def _configure_ocean_with_real_metrics(
+    mock_ocean: MagicMock,
+    mock_port_client: MagicMock,
+    lifecycle_client: MagicMock | None = None,
+    integration_type: str = "fake-integration",
+) -> Metrics:
+    metrics = _make_metrics(integration_type)
+    mock_ocean.port_client = mock_port_client
+    mock_ocean.config.integration.identifier = "test-integration"
+    mock_ocean.config.integration.type = integration_type
+    mock_ocean.metrics = metrics
+    mock_ocean.metrics.clear_sync_context = MagicMock()
+    if lifecycle_client is not None:
+        mock_ocean.app.lifecycle_client = lifecycle_client
+    return metrics
 
 
 class TestSyncIncrementalNoHandlers:
@@ -372,6 +405,53 @@ class TestSyncIncrementalDspLifecycle:
             await mock_mixin.sync_incremental(interval_seconds=900)
 
             mock_ocean.metrics.clear_sync_context.assert_called()
+
+
+class TestSyncIncrementalMetrics:
+    async def test_kind_exception_increments_error_metric_with_reason_label(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        mock_mixin.process_resource.side_effect = RuntimeError("error")  # type: ignore[attr-defined]
+
+        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
+            metrics = _configure_ocean_with_real_metrics(mock_ocean, mock_port_client)
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        metrics.inc_metric(
+            MetricType.INCREMENTAL_RUN_ERRORS_TOTAL_NAME,
+            ["fake-integration", "kind_exception"],
+            0,
+        )
+
+    async def test_cancelled_run_increments_interrupted_metric_and_notifies_aborted(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        mock_mixin.process_resource.side_effect = asyncio.CancelledError  # type: ignore[attr-defined]
+        lifecycle_client = _make_lifecycle_client()
+
+        with (
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=True),
+            ),
+            pytest.raises(asyncio.CancelledError),
+        ):
+            metrics = _configure_ocean_with_real_metrics(
+                mock_ocean, mock_port_client, lifecycle_client
+            )
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        metrics.inc_metric(
+            MetricType.INCREMENTAL_RUN_INTERRUPTED_TOTAL_NAME,
+            ["fake-integration", "cancelled"],
+            0,
+        )
+        lifecycle_client.notify_resync_aborted.assert_awaited_once()
 
 
 class TestEventType:

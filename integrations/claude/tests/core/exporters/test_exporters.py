@@ -135,6 +135,31 @@ async def test_skill_usage_exporter_injects_date() -> None:
 
 
 @pytest.mark.asyncio
+async def test_skill_usage_exporter_passes_group_by() -> None:
+    client = MagicMock()
+    client.send_paginated_request.return_value = _page_generator(
+        [{"skill_name": "Gong", "user_id": "user_1"}]
+    )
+    exporter = ClaudeAISkillUsageExporter(client)
+
+    results = [
+        page
+        async for page in exporter.get_paginated_resources(
+            {"date": "2026-08-05", "limit": 30, "group_by": ["user_id"]}
+        )
+    ]
+
+    assert results == [
+        [{"skill_name": "Gong", "user_id": "user_1", "__date": "2026-08-05"}]
+    ]
+    client.send_paginated_request.assert_called_once_with(
+        "/v1/organizations/analytics/skills",
+        {"date": "2026-08-05", "limit": 30, "group_by[]": ["user_id"]},
+        soft_fail_statuses={403},
+    )
+
+
+@pytest.mark.asyncio
 async def test_user_usage_exporter_builds_array_params_and_stamps_range() -> None:
     client = MagicMock()
     client.send_paginated_request.return_value = _page_generator(

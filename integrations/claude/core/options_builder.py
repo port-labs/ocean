@@ -9,6 +9,7 @@ from core.options import (
     ClaudeAIGroupBy,
     ClaudeAIInferenceGeo,
     ClaudeAIProduct,
+    ClaudeAISkillUsageGroupBy,
     ClaudeAISpeed,
     ClaudePlatformUsageGroupBy,
     ListPlatformCodeAnalyticsOptions,
@@ -272,12 +273,16 @@ def get_skill_usage_dates(
 
 def build_skill_usage_options(
     date: str,
+    group_by: Sequence[ClaudeAISkillUsageGroupBy] = (),
     limit: int = ANALYTICS_PAGE_SIZE,
 ) -> ListSkillUsageOptions:
-    return {
+    options: ListSkillUsageOptions = {
         "date": date,
         "limit": limit,
     }
+    if group_by:
+        options["group_by"] = list(group_by)
+    return options
 
 
 def build_user_report_options(
