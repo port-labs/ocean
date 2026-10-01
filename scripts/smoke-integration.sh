@@ -105,6 +105,7 @@ integration_docker_run() {
         -e "OCEAN__PORT__CLIENT_SECRET=${PORT_CLIENT_SECRET}"
         -e "OCEAN__INTEGRATION__TYPE=smoke-test"
         -e "OCEAN__INTEGRATION__IDENTIFIER=${INTEGRATION_IDENTIFIER}"
+        -e "OCEAN__BASE_URL=http://localhost:8000"
         -e "OCEAN__METRICS=${OCEAN__METRICS:--1}"
         -e "OCEAN__RUNTIME_MODE=${OCEAN__RUNTIME_MODE:-single_process}"
         -e "OCEAN__LAKEHOUSE_ENABLED=${OCEAN__LAKEHOUSE_ENABLED:-false}"

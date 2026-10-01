@@ -33,12 +33,6 @@ def _export_shell(configset_name: str) -> str:
     return "\n".join(lines)
 
 
-def _wait_for_resync() -> None:
-    from port_ocean.tests.smoke.helpers.port_client import wait_for_resync_completed
-
-    asyncio.run(wait_for_resync_completed())
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Smoke configset utilities")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -64,7 +58,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "wait-resync":
-        _wait_for_resync()
+        # Lazy import: avoids pulling Port client deps on list/export/describe.
+        from port_ocean.tests.smoke.helpers.port_client import wait_for_resync_completed
+
+        asyncio.run(wait_for_resync_completed())
         return 0
 
     configset = load_configset(args.configset)

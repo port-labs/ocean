@@ -1,6 +1,6 @@
 import asyncio
-from dataclasses import dataclass
-from typing import Any
+import uuid
+from typing import Any, Awaitable, Callable
 
 import httpx
 from loguru import logger
@@ -14,6 +14,9 @@ ECHO_MESSAGE_ACTION = "echo_message"
 TRIGGER_FAKE_TASK_ACTION = "trigger_fake_task"
 FAKE_TASK_COMPLETED_EVENT = "fake_task.completed"
 
+_ACTION_TERMINAL = frozenset({"SUCCESS", "FAILURE"})
+_WORKFLOW_TERMINAL = frozenset({"COMPLETED", "FAILED", "TERMINATED"})
+
 
 class ActionResources(BaseModel):
     suffix: str
@@ -25,19 +28,23 @@ class ActionResources(BaseModel):
     trigger_fake_task_workflow_identifier: str
 
 
-@dataclass(frozen=True)
-class CompletedRun:
+class CompletedRun(BaseModel):
     run_id: str
     status: str
     success: bool
-    message: str | None
+    message: str | None = None
 
 
-def get_action_resources() -> ActionResources:
+def get_action_resources(unique_suffix: str | None = None) -> ActionResources:
     details = get_smoke_test_details()
-    suffix = details.integration_identifier.removeprefix("smoke-test-integration")
-    suffix = suffix.removeprefix("-")
-    resource_suffix = f"-{suffix}" if suffix else ""
+    prefix = "smoke-test-integration-"
+    identifier = details.integration_identifier
+    parts: list[str] = []
+    if identifier.startswith(prefix):
+        parts.append(identifier.removeprefix(prefix))
+    if unique_suffix:
+        parts.append(unique_suffix)
+    resource_suffix = f"-{'-'.join(parts)}" if parts else ""
 
     return ActionResources(
         suffix=resource_suffix,
@@ -63,6 +70,17 @@ def _integration_action_invocation(
     }
 
 
+def _self_service_trigger(properties: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "type": "self-service",
+        "operation": "CREATE",
+        "userInputs": {
+            "properties": properties,
+            "required": list(properties),
+        },
+    }
+
+
 def build_echo_message_action(resources: ActionResources) -> dict[str, Any]:
     return {
         "identifier": resources.echo_action_identifier,
@@ -74,19 +92,9 @@ def build_echo_message_action(resources: ActionResources) -> dict[str, Any]:
             ECHO_MESSAGE_ACTION,
             {"message": "{{ .inputs.message }}"},
         ),
-        "trigger": {
-            "type": "self-service",
-            "operation": "CREATE",
-            "userInputs": {
-                "properties": {
-                    "message": {
-                        "type": "string",
-                        "title": "Message",
-                    }
-                },
-                "required": ["message"],
-            },
-        },
+        "trigger": _self_service_trigger(
+            {"message": {"type": "string", "title": "Message"}}
+        ),
         "publish": True,
     }
 
@@ -105,19 +113,9 @@ def build_trigger_fake_task_action(resources: ActionResources) -> dict[str, Any]
                 "reportTaskStatus": True,
             },
         ),
-        "trigger": {
-            "type": "self-service",
-            "operation": "CREATE",
-            "userInputs": {
-                "properties": {
-                    "taskName": {
-                        "type": "string",
-                        "title": "Task name",
-                    }
-                },
-                "required": ["taskName"],
-            },
-        },
+        "trigger": _self_service_trigger(
+            {"taskName": {"type": "string", "title": "Task name"}}
+        ),
         "publish": True,
     }
 
@@ -146,71 +144,68 @@ def _integration_workflow_node(
     }
 
 
-def build_echo_message_workflow(resources: ActionResources) -> dict[str, Any]:
+def _self_serve_workflow(
+    *,
+    identifier: str,
+    title: str,
+    description: str,
+    action_node: dict[str, Any],
+) -> dict[str, Any]:
     trigger_id = "trigger"
-    action_id = "echo_message"
     return {
-        "identifier": resources.echo_workflow_identifier,
-        "title": "Smoke test echo message workflow",
+        "identifier": identifier,
+        "title": title,
         "icon": "Workflow",
-        "description": "Ocean core smoke test workflow for sync integration actions",
+        "description": description,
         "nodes": [
             {
                 "identifier": trigger_id,
                 "title": "Trigger",
                 "config": {"type": "SELF_SERVE_TRIGGER", "published": True},
             },
-            _integration_workflow_node(
-                resources,
-                action_id,
-                "Echo message",
-                ECHO_MESSAGE_ACTION,
-                {"message": "{{ .inputs.message }}"},
-            ),
+            action_node,
         ],
         "connections": [
             {
                 "sourceIdentifier": trigger_id,
-                "targetIdentifier": action_id,
+                "targetIdentifier": action_node["identifier"],
             }
         ],
         "allowAnyoneToViewRuns": True,
     }
+
+
+def build_echo_message_workflow(resources: ActionResources) -> dict[str, Any]:
+    return _self_serve_workflow(
+        identifier=resources.echo_workflow_identifier,
+        title="Smoke test echo message workflow",
+        description="Ocean core smoke test workflow for sync integration actions",
+        action_node=_integration_workflow_node(
+            resources,
+            "echo_message",
+            "Echo message",
+            ECHO_MESSAGE_ACTION,
+            {"message": "{{ .inputs.message }}"},
+        ),
+    )
 
 
 def build_trigger_fake_task_workflow(resources: ActionResources) -> dict[str, Any]:
-    trigger_id = "trigger"
-    action_id = "trigger_fake_task"
-    return {
-        "identifier": resources.trigger_fake_task_workflow_identifier,
-        "title": "Smoke test trigger fake task workflow",
-        "icon": "Workflow",
-        "description": "Ocean core smoke test workflow for async integration actions",
-        "nodes": [
+    return _self_serve_workflow(
+        identifier=resources.trigger_fake_task_workflow_identifier,
+        title="Smoke test trigger fake task workflow",
+        description="Ocean core smoke test workflow for async integration actions",
+        action_node=_integration_workflow_node(
+            resources,
+            "trigger_fake_task",
+            "Trigger fake task",
+            TRIGGER_FAKE_TASK_ACTION,
             {
-                "identifier": trigger_id,
-                "title": "Trigger",
-                "config": {"type": "SELF_SERVE_TRIGGER", "published": True},
+                "taskName": "{{ .inputs.taskName }}",
+                "reportTaskStatus": True,
             },
-            _integration_workflow_node(
-                resources,
-                action_id,
-                "Trigger fake task",
-                TRIGGER_FAKE_TASK_ACTION,
-                {
-                    "taskName": "{{ .inputs.taskName }}",
-                    "reportTaskStatus": True,
-                },
-            ),
-        ],
-        "connections": [
-            {
-                "sourceIdentifier": trigger_id,
-                "targetIdentifier": action_id,
-            }
-        ],
-        "allowAnyoneToViewRuns": True,
-    }
+        ),
+    )
 
 
 async def _upsert_action(port_client: PortClient, action: dict[str, Any]) -> None:
@@ -231,12 +226,25 @@ async def _upsert_workflow(port_client: PortClient, workflow: dict[str, Any]) ->
     handle_port_status_code(response, should_log=False)
 
 
-async def setup_action_resources(port_client: PortClient) -> ActionResources:
-    resources = get_action_resources()
-    await _upsert_action(port_client, build_echo_message_action(resources))
-    await _upsert_action(port_client, build_trigger_fake_task_action(resources))
-    await _upsert_workflow(port_client, build_echo_message_workflow(resources))
-    await _upsert_workflow(port_client, build_trigger_fake_task_workflow(resources))
+async def _delete_resource(port_client: PortClient, kind: str, identifier: str) -> None:
+    response = await port_client.client.delete(
+        f"{port_client.auth.api_url}/{kind}/{identifier}",
+        headers=await port_client.auth.headers(),
+    )
+    if response.status_code != 404:
+        handle_port_status_code(response, should_log=False)
+
+
+async def setup_action_resources(
+    port_client: PortClient, unique_suffix: str | None = None
+) -> ActionResources:
+    resources = get_action_resources(unique_suffix)
+    await asyncio.gather(
+        _upsert_action(port_client, build_echo_message_action(resources)),
+        _upsert_action(port_client, build_trigger_fake_task_action(resources)),
+        _upsert_workflow(port_client, build_echo_message_workflow(resources)),
+        _upsert_workflow(port_client, build_trigger_fake_task_workflow(resources)),
+    )
     logger.info("Configured actions and workflows for smoke test", resources=resources)
     return resources
 
@@ -244,27 +252,16 @@ async def setup_action_resources(port_client: PortClient) -> ActionResources:
 async def cleanup_action_resources(
     port_client: PortClient, resources: ActionResources
 ) -> None:
-    for identifier in (
-        resources.echo_action_identifier,
-        resources.trigger_fake_task_action_identifier,
-    ):
-        response = await port_client.client.delete(
-            f"{port_client.auth.api_url}/actions/{identifier}",
-            headers=await port_client.auth.headers(),
-        )
-        if response.status_code != 404:
-            handle_port_status_code(response, should_log=False)
-
-    for identifier in (
-        resources.echo_workflow_identifier,
-        resources.trigger_fake_task_workflow_identifier,
-    ):
-        response = await port_client.client.delete(
-            f"{port_client.auth.api_url}/workflows/{identifier}",
-            headers=await port_client.auth.headers(),
-        )
-        if response.status_code != 404:
-            handle_port_status_code(response, should_log=False)
+    await asyncio.gather(
+        _delete_resource(port_client, "actions", resources.echo_action_identifier),
+        _delete_resource(
+            port_client, "actions", resources.trigger_fake_task_action_identifier
+        ),
+        _delete_resource(port_client, "workflows", resources.echo_workflow_identifier),
+        _delete_resource(
+            port_client, "workflows", resources.trigger_fake_task_workflow_identifier
+        ),
+    )
 
 
 async def trigger_self_service_action(
@@ -329,26 +326,45 @@ def task_id_from_external_id(external_id: str) -> str:
     return external_id.removeprefix(prefix)
 
 
+async def _wait_for_terminal_run(
+    *,
+    run_id: str,
+    fetch_run: Callable[[], Awaitable[dict[str, Any]]],
+    terminal: frozenset[str],
+    success_statuses: frozenset[str],
+    label: str,
+    timeout_seconds: float,
+    poll_interval_seconds: float,
+) -> CompletedRun:
+    deadline = asyncio.get_event_loop().time() + timeout_seconds
+    while asyncio.get_event_loop().time() < deadline:
+        run = await fetch_run()
+        status = run.get("status")
+        if status in terminal:
+            return CompletedRun(
+                run_id=run_id,
+                status=status,
+                success=status in success_statuses,
+                message=run.get("message"),
+            )
+        await asyncio.sleep(poll_interval_seconds)
+    raise TimeoutError(f"{label} {run_id} did not complete within {timeout_seconds}s")
+
+
 async def wait_for_action_run(
     port_client: PortClient,
     run_id: str,
     timeout_seconds: float = 120,
     poll_interval_seconds: float = 2,
 ) -> CompletedRun:
-    deadline = asyncio.get_event_loop().time() + timeout_seconds
-    while asyncio.get_event_loop().time() < deadline:
-        run = await get_action_run(port_client, run_id)
-        status = run.get("status")
-        if status in {"COMPLETED", "FAILED"}:
-            return CompletedRun(
-                run_id=run_id,
-                status=status,
-                success=status == "COMPLETED",
-                message=run.get("message"),
-            )
-        await asyncio.sleep(poll_interval_seconds)
-    raise TimeoutError(
-        f"Action run {run_id} did not complete within {timeout_seconds}s"
+    return await _wait_for_terminal_run(
+        run_id=run_id,
+        fetch_run=lambda: get_action_run(port_client, run_id),
+        terminal=_ACTION_TERMINAL,
+        success_statuses=frozenset({"SUCCESS"}),
+        label="Action run",
+        timeout_seconds=timeout_seconds,
+        poll_interval_seconds=poll_interval_seconds,
     )
 
 
@@ -358,25 +374,22 @@ async def wait_for_workflow_run(
     timeout_seconds: float = 120,
     poll_interval_seconds: float = 2,
 ) -> CompletedRun:
-    deadline = asyncio.get_event_loop().time() + timeout_seconds
-    while asyncio.get_event_loop().time() < deadline:
+    async def fetch_run() -> dict[str, Any]:
         response = await port_client.client.get(
             f"{port_client.auth.api_url}/workflows/runs/{run_id}",
             headers=await port_client.auth.headers(),
         )
         handle_port_status_code(response)
-        run = response.json()["run"]
-        status = run.get("status")
-        if status in {"COMPLETED", "FAILED", "TERMINATED"}:
-            return CompletedRun(
-                run_id=run_id,
-                status=status,
-                success=status == "COMPLETED",
-                message=run.get("message"),
-            )
-        await asyncio.sleep(poll_interval_seconds)
-    raise TimeoutError(
-        f"Workflow run {run_id} did not complete within {timeout_seconds}s"
+        return response.json()["run"]
+
+    return await _wait_for_terminal_run(
+        run_id=run_id,
+        fetch_run=fetch_run,
+        terminal=_WORKFLOW_TERMINAL,
+        success_statuses=frozenset({"COMPLETED"}),
+        label="Workflow run",
+        timeout_seconds=timeout_seconds,
+        poll_interval_seconds=poll_interval_seconds,
     )
 
 
@@ -392,3 +405,7 @@ async def simulate_fake_task_webhook(
     async with httpx.AsyncClient() as client:
         response = await client.post(integration_webhook_url, json=payload)
         response.raise_for_status()
+
+
+def new_action_resource_suffix() -> str:
+    return uuid.uuid4().hex[:8]

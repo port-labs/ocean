@@ -45,9 +45,9 @@ jobs:
         run: |
           INTEGRATIONS=$(
             for dir in integrations/*; do
-              count=$(find "$dir" -type f -name '*.py' -not -path "*/venv/*" | wc -l)
-              if [ "$count" -ne 0 ]; then
-                basename "$dir"
+              name=$(basename "$dir")
+              if [ "$name" != "_infra" ]; then
+                echo "$name"
               fi
             done | jq -R -s -c 'split("\n") | map(select(length > 0))'
           )
