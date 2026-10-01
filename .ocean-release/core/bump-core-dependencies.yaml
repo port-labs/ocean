@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Bump compatible Ocean core dependencies, including uvicorn 0.54 and security fixes in urllib3 and PyJWT
