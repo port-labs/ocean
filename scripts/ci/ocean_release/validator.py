@@ -81,8 +81,8 @@ def _core_intent_covers_integrations(
     """A core intent alone may cover integrations changed in the same PR.
 
     Combined core + integration PRs can declare a single `.ocean-release/core/`
-    intent so the follow-up release bumps the touched integration once (with
-    core) instead of requiring a separate integration intent.
+    intent. The integration is not bumped in the CoreBump PR; it gets its one
+    version bump later when ocean is applied to all integrations.
     """
     has_core_target = any(target.kind == "core" for target in targets)
     has_core_intent = bool(release_files_by_target.get(("core", "core"), []))
