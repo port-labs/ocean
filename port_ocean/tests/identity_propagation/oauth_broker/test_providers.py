@@ -3,9 +3,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from port_ocean.exceptions.identity_propagation import OAuthError
+from port_ocean.exceptions.identity_propagation import (
+    OAuthError,
+    OAuthProviderNotConfiguredError,
+)
 from port_ocean.identity_propagation.oauth_broker import providers as providers_module
-from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
+from port_ocean.identity_propagation.oauth_broker.providers import (
+    OAuth2Provider,
+    require_provider,
+)
 
 
 @pytest.fixture
@@ -38,6 +44,28 @@ def _provider(
         client_secret="secret",
         scopes=scopes,
     )
+
+
+def test_require_provider_returns_the_registered_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = _provider()
+    mock_ocean = MagicMock()
+    mock_ocean.app.oauth_provider = provider
+    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
+
+    assert require_provider() is provider
+
+
+def test_require_provider_raises_when_none_registered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_ocean = MagicMock()
+    mock_ocean.app.oauth_provider = None
+    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
+
+    with pytest.raises(OAuthProviderNotConfiguredError):
+        require_provider()
 
 
 def test_authorization_url_carries_state_scopes_and_response_type() -> None:
@@ -149,3 +177,13 @@ async def test_a_transport_failure_is_a_failure(mock_http_client: MagicMock) -> 
 
     with pytest.raises(OAuthError):
         await _provider().refresh("refresh-old")
+
+
+async def test_a_non_json_body_is_a_failure(mock_http_client: MagicMock) -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.json = MagicMock(side_effect=ValueError("not json"))
+    mock_http_client.post.return_value = response
+
+    with pytest.raises(OAuthError, match="not valid JSON"):
+        await _provider().exchange_code("code", "https://cb")
