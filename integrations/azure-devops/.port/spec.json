@@ -165,6 +165,14 @@
       "description": "A list of tags used to exclude projects and resources that belong to them from syncing.",
       "type": "array",
       "required": false
+    },
+    {
+      "name": "identityOauth",
+      "title": "Identity propagation OAuth",
+      "description": "Microsoft Entra ID app registration used so workflow actions run as the triggering user. Object with tenantId, clientId, and clientSecret. Authorize and token URLs are derived from tenantId. Set the callback to {OCEAN__BASE_URL}/v1/oauth-broker/callback.",
+      "type": "object",
+      "required": false,
+      "sensitive": true
     }
   ],
   "actionsProcessingEnabled": true,
