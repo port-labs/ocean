@@ -44,6 +44,10 @@ class AbstractGitlabExecutor(AbstractExecutor):
         if user_token:
             host = str(ocean.integration_config["gitlab_host"]).rstrip("/")
             api_client = GitLabClient(host, user_token)
+
+            # Do not fall back to the integration OAuth token on 401 — that would
+            # execute the action as the integration instead of the user.
+            api_client.rest._auth_client.disable_token_refresh()
             try:
                 yield api_client
             finally:
