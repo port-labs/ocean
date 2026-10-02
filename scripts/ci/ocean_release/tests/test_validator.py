@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ocean_release.git_context import GitContext
 from ocean_release.models import ReleaseTarget
 from ocean_release.validator import validate
 
 
-class FakeGit:
+class FakeGit(GitContext):
     def __init__(
         self,
         *,
@@ -19,7 +20,7 @@ class FakeGit:
         changelog_changed: set[str] | None = None,
         worktree: dict[str, str] | None = None,
     ) -> None:
-        self.repo_root = repo_root
+        super().__init__(repo_root)
         self._targets = targets
         self._release_files = release_files or []
         self._version_changed = version_changed or set()
