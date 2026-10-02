@@ -35,9 +35,7 @@ def register_oauth_provider() -> None:
         return
 
     cfg = OAuthConfig(**raw)
-    host = str(ocean.integration_config.get("gitlab_host") or _DEFAULT_HOST).rstrip(
-        "/"
-    )
+    host = str(ocean.integration_config.get("gitlab_host") or _DEFAULT_HOST).rstrip("/")
 
     ocean.register_oauth_provider(
         OAuth2Provider(
