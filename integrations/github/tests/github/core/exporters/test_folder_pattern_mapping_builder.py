@@ -29,6 +29,11 @@ def github_main(mock_ocean_context: None) -> Any:
             "on_resync",
             side_effect=lambda function, _: function,
         ),
+        patch.object(
+            ocean.app.integration,
+            "on_incremental_resync",
+            side_effect=lambda function, _: function,
+        ),
     ):
         return importlib.import_module("main")
 

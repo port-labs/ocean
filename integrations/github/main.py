@@ -1184,13 +1184,28 @@ async def resync_folders(
         yield folder_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 @_resync_per_authenticator
 async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration using the file exporter."""
-    logger.info(f"Starting resync for kind: {kind}")
+    sync_cursor = active_incremental_cursor()
+    auth_label = getattr(authenticator, "organization", None) or type(
+        authenticator
+    ).__name__
+    if sync_cursor:
+        logger.info(
+            f"[file-incremental] kind={kind} authenticator={auth_label} "
+            f"mode=incremental cursor={sync_cursor.isoformat()} "
+            f"cursor_tzinfo={sync_cursor.tzinfo}"
+        )
+    else:
+        logger.info(
+            f"[file-incremental] kind={kind} authenticator={auth_label} mode=full "
+            f"(no active incremental cursor)"
+        )
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     files = [
@@ -1199,6 +1214,9 @@ async def resync_files(
         if can_access_organization(authenticator, file.organization)
     ]
     if not files:
+        logger.info(
+            f"[file-incremental] No accessible file patterns for authenticator={auth_label}, skipping"
+        )
         return
 
     rest_client = create_github_client(authenticator)
@@ -1224,6 +1242,45 @@ async def resync_files(
         repo_type=app_config.repository_type,
     )
     repo_path_map = await pattern_builder.build(files)
+    logger.info(
+        f"[file-incremental] Built repo path map with {len(repo_path_map)} repo(s) "
+        f"before incremental filter"
+    )
+
+    # Incremental: filter repos by .github/ changes since cursor
+    if sync_cursor:
+        incremental_path = ".github/"
+        logger.info(
+            f"[file-incremental] Filtering {len(repo_path_map)} repo(s) by commits "
+            f"touching path={incremental_path!r} since cursor={sync_cursor.isoformat()}"
+        )
+        filtered_repo_path_map = []
+        kept_repos: list[str] = []
+        skipped_repos: list[str] = []
+        for repo_options in repo_path_map:
+            org = repo_options["organization"]
+            repo = repo_options["repo_name"]
+            full_name = f"{org}/{repo}"
+            has_changes = await file_exporter.has_path_changes_since(
+                org, repo, incremental_path, sync_cursor
+            )
+            if has_changes:
+                filtered_repo_path_map.append(repo_options)
+                kept_repos.append(full_name)
+            else:
+                skipped_repos.append(full_name)
+        repo_path_map = filtered_repo_path_map
+        logger.info(
+            f"[file-incremental] Filter result cursor={sync_cursor.isoformat()} "
+            f"kept={len(kept_repos)} skipped={len(skipped_repos)} "
+            f"kept_repos={kept_repos} skipped_repos={skipped_repos}"
+        )
+        if not repo_path_map:
+            logger.info(
+                f"[file-incremental] No repos with {incremental_path!r} changes "
+                f"since cursor={sync_cursor.isoformat()}, skipping file fetch"
+            )
+            return
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
