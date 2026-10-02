@@ -48,6 +48,8 @@ By contributing a new integration, you enable users of the framework to seamless
 
    - Integration: `integrations/<name>/.ocean-release/<unique-name>.yaml`
    - Ocean core: `.ocean-release/core/<unique-name>.yaml`
+   - Combined core + integration PR: a single `.ocean-release/core/<unique-name>.yaml` is enough
+     (the integration bumps once later when ocean is applied to all integrations)
 
    ```yaml
    bump: patch
