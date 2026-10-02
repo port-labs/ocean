@@ -5,7 +5,6 @@ from github.actions.external_custom_properties.utils import (
     ExternalPropertyGithubValue,
     external_custom_properties_action_error_message,
 )
-from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
@@ -37,7 +36,7 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
             raise InvalidActionParametersException("org is required")
-        return [await create_github_client_for_org(organization)]
+        return [await self._rest_client_for_org(run, organization)]
 
     async def execute(self, run: IntegrationRun) -> None:
         org = run.execution_properties.get("org")
@@ -63,7 +62,7 @@ class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
             ]
 
             try:
-                rest_client = await create_github_client_for_org(org)
+                rest_client = await self._rest_client_for_org(run, org)
                 await rest_client.make_request(
                     f"{rest_client.base_url}/orgs/{org}/properties/installations/values",
                     method="PATCH",

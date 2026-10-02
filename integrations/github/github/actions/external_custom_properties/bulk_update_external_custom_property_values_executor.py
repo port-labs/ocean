@@ -16,7 +16,6 @@ from github.actions.external_custom_properties.utils import (
     get_external_custom_properties_partition_key,
     report_bulk_operation_results,
 )
-from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import IntegrationRun
@@ -39,7 +38,7 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
             run.execution_properties
         )
         return [
-            await create_github_client_for_org(organization)
+            await self._rest_client_for_org(run, organization)
             for organization in input.group_by_org().keys()
         ]
 
@@ -88,7 +87,7 @@ class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
         with logger.contextualize(property_name=property_name):
             logger.info("Processing bulk external custom property update")
             for organization, repository_values in grouped_repository_values.items():
-                rest_client = await create_github_client_for_org(organization)
+                rest_client = await self._rest_client_for_org(run, organization)
                 endpoint = external_property_values_endpoint(
                     rest_client.base_url, organization, str(property_name)
                 )
