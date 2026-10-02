@@ -58,6 +58,14 @@
       "type": "url",
       "default": "https://gitlab.com",
       "description": "The host of the Gitlab instance. If not specified, the default will be https://gitlab.com."
+    },
+    {
+      "name": "identityOauth",
+      "title": "Identity propagation OAuth",
+      "description": "GitLab OAuth app used so workflow actions run as the triggering user. Object with clientId and clientSecret. Authorize and token URLs are derived from gitlabHost. Set the callback to {OCEAN__BASE_URL}/v1/oauth-broker/callback.",
+      "type": "object",
+      "required": false,
+      "sensitive": true
     }
   ],
   "saas": {
