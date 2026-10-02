@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: GitLab action executors now use a shared per-run API client context for consistent client selection and cleanup.
