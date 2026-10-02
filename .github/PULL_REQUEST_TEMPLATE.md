@@ -12,6 +12,7 @@ If this PR changes an integration or `port_ocean/`, add a release intent file **
 
 - Integration: `integrations/<name>/.ocean-release/<unique-name>.yaml`
 - Core: `.ocean-release/core/<unique-name>.yaml`
+- Combined core + integration changes: a single `.ocean-release/core/<unique-name>.yaml` is enough (CI applies one bump to the touched integration with core)
 
 ```yaml
 bump: patch
