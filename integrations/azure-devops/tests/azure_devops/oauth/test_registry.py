@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +14,7 @@ from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provide
 
 
 @pytest.fixture
-def mock_ocean() -> MagicMock:
+def mock_ocean() -> Generator[MagicMock, None, None]:
     with patch("azure_devops.oauth.registry.ocean") as ocean:
         ocean.integration_config = {}
         ocean.config.identity_propagation.enabled = False
