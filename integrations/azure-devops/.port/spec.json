@@ -167,10 +167,25 @@
       "required": false
     },
     {
-      "name": "identityOauth",
-      "title": "Identity propagation OAuth",
-      "description": "Microsoft Entra ID app registration used so workflow actions run as the triggering user. Object with tenantId, clientId, and clientSecret. Authorize and token URLs are derived from tenantId. Set the callback to {OCEAN__BASE_URL}/v1/oauth-broker/callback.",
-      "type": "object",
+      "name": "identityOauthTenantId",
+      "title": "Identity propagation OAuth tenant ID",
+      "description": "Microsoft Entra ID tenant ID for the app registration used so workflow actions run as the triggering user. Authorize and token URLs are derived from this value. Set the callback to {OCEAN__BASE_URL}/v1/oauth-broker/callback.",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "identityOauthClientId",
+      "title": "Identity propagation OAuth client ID",
+      "description": "Microsoft Entra ID application (client) ID used so workflow actions run as the triggering user.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "identityOauthClientSecret",
+      "title": "Identity propagation OAuth client secret",
+      "description": "Microsoft Entra ID application client secret used so workflow actions run as the triggering user.",
+      "type": "string",
       "required": false,
       "sensitive": true
     }
