@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed delegate_issue_to_agent reporting success when Linear did not set the delegate
