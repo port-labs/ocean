@@ -4,7 +4,9 @@ from itertools import batched
 
 from loguru import logger
 
-from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.external_custom_properties.abstract_executor import (
+    AbstractExternalCustomPropertiesExecutor,
+)
 from github.actions.external_custom_properties.utils import (
     MAX_CONCURRENT_BULK_REQUESTS,
     REPOSITORY_VALUES_BATCH_SIZE,
@@ -22,7 +24,9 @@ from port_ocean.core.models import IntegrationRun
 from port_ocean.utils.async_iterators import throttle_batch_operation
 
 
-class BulkUpdateExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
+class BulkUpdateExternalCustomPropertyValuesExecutor(
+    AbstractExternalCustomPropertiesExecutor
+):
     """PATCH sparse updates for one external custom property across repositories."""
 
     ACTION_NAME = "bulk_update_external_custom_property_values"

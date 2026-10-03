@@ -2,7 +2,9 @@ from functools import partial
 
 from loguru import logger
 
-from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.external_custom_properties.abstract_executor import (
+    AbstractExternalCustomPropertiesExecutor,
+)
 from github.actions.external_custom_properties.utils import (
     MAX_CONCURRENT_BULK_REQUESTS,
     BulkOperationOutcome,
@@ -17,7 +19,9 @@ from port_ocean.core.models import IntegrationRun
 from port_ocean.utils.async_iterators import throttle_batch_operation
 
 
-class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
+class BulkDeleteExternalCustomPropertyValuesExecutor(
+    AbstractExternalCustomPropertiesExecutor
+):
     """DELETE all values for one external custom property across organizations."""
 
     ACTION_NAME = "bulk_delete_external_custom_property_values"

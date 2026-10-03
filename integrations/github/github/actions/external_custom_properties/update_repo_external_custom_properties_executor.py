@@ -1,6 +1,8 @@
 from loguru import logger
 
-from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.external_custom_properties.abstract_executor import (
+    AbstractExternalCustomPropertiesExecutor,
+)
 from github.actions.external_custom_properties.utils import (
     ExternalPropertyGithubValue,
     external_custom_properties_action_error_message,
@@ -12,7 +14,9 @@ from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
-class UpdateRepoExternalCustomPropertiesExecutor(AbstractGithubExecutor):
+class UpdateRepoExternalCustomPropertiesExecutor(
+    AbstractExternalCustomPropertiesExecutor
+):
     """
     Writes changed Port entity properties back to GitHub as repository
     external custom properties.
