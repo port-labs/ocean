@@ -33,6 +33,18 @@ class TestGithubAuthenticator:
         assert github_auth.rate_limit_scope == "installation:12345"
 
     @pytest.mark.asyncio
+    async def test_get_authenticated_actor_delegates_to_app_auth(
+        self, github_auth: GitHubAppInstallationAuthenticator
+    ) -> None:
+        with patch.object(
+            github_auth.app_auth,
+            "get_authenticated_actor",
+            AsyncMock(return_value="port-bot[bot]"),
+        ) as mock_get_actor:
+            assert await github_auth.get_authenticated_actor() == "port-bot[bot]"
+            mock_get_actor.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_token_generated(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:

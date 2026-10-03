@@ -48,8 +48,11 @@ class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
             X_GitHub_Api_Version="2022-11-28",
         )
 
-    @cache_coroutine_result()
     async def get_authenticated_actor(self) -> str:
+        return await self._fetch_authenticated_actor()
+
+    @cache_coroutine_result()
+    async def _fetch_authenticated_actor(self) -> str:
         github_host = ocean.integration_config["github_host"]
         response = await self.client.get(
             f"{github_host}/user",
