@@ -1,5 +1,4 @@
 from loguru import logger
-from pydantic import BaseModel
 
 from port_ocean.context.ocean import ocean
 from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
@@ -12,40 +11,31 @@ _ADO_RESOURCE_ID = "499b84ac-1321-427f-aa17-267ca6975798"
 _SCOPES = f"{_ADO_RESOURCE_ID}/user_impersonation offline_access"
 
 
-class OAuthConfig(BaseModel):
-    """Identity-propagation OAuth credentials for Azure DevOps.
-
-    Set via ``OCEAN__INTEGRATION__CONFIG__IDENTITY_OAUTH__*`` env vars.
-    """
-
-    tenant_id: str
-    client_id: str
-    client_secret: str
-
-
 def register_oauth_provider() -> None:
     """Register this integration's identity-propagation OAuth provider.
 
-    No-op when the ``identity_oauth`` config block is absent.
+    No-op when identity OAuth client credentials are absent.
     """
-    raw = ocean.integration_config.get("identity_oauth")
-    if not raw:
+    tenant_id = ocean.integration_config.get("identity_oauth_tenant_id")
+    client_id = ocean.integration_config.get("identity_oauth_client_id")
+    client_secret = ocean.integration_config.get("identity_oauth_client_secret")
+
+    if not tenant_id or not client_id or not client_secret:
         if ocean.config.identity_propagation.enabled:
             logger.warning(
-                "Identity propagation is enabled but identity_oauth is missing from the integration config"
+                "Identity propagation is enabled but identityOauthTenantId/"
+                "identityOauthClientId/identityOauthClientSecret are missing "
+                "from the integration config"
             )
         return
-
-    cfg = OAuthConfig(**raw)
-    tenant = cfg.tenant_id
 
     ocean.register_oauth_provider(
         OAuth2Provider(
             target=ocean.config.integration.type,
-            authorize_url=f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
-            token_url=f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
-            client_id=cfg.client_id,
-            client_secret=cfg.client_secret,
+            authorize_url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize",
+            token_url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
+            client_id=client_id,
+            client_secret=client_secret,
             scopes=_SCOPES,
         )
     )
