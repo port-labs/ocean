@@ -2,9 +2,8 @@ from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from pydantic import ValidationError
 
-from github.oauth.registry import OAuthConfig, _SCOPES, oauth_web_host, register_oauth_provider
+from github.oauth.registry import _SCOPES, oauth_web_host, register_oauth_provider
 from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
 
@@ -27,11 +26,6 @@ def test_oauth_web_host_maps_enterprise_api_host() -> None:
     assert oauth_web_host("https://ghe.example.com/api/v3") == "https://ghe.example.com"
 
 
-def test_oauth_config_requires_client_credentials() -> None:
-    with pytest.raises(ValidationError):
-        OAuthConfig(client_id="cid")  # type: ignore[call-arg]
-
-
 def test_register_is_noop_without_identity_oauth(mock_ocean: MagicMock) -> None:
     register_oauth_provider()
 
@@ -47,14 +41,15 @@ def test_register_warns_when_ip_enabled_but_identity_oauth_missing(
         register_oauth_provider()
 
     logger.warning.assert_called_once()
-    assert "identity_oauth" in logger.warning.call_args.args[0]
+    assert "identityOauthClientId" in logger.warning.call_args.args[0]
     mock_ocean.register_oauth_provider.assert_not_called()
 
 
 def test_register_builds_github_provider(mock_ocean: MagicMock) -> None:
     mock_ocean.integration_config = {
         "github_host": "https://api.github.com",
-        "identity_oauth": {"client_id": "cid", "client_secret": "csecret"},
+        "identity_oauth_client_id": "cid",
+        "identity_oauth_client_secret": "csecret",
     }
 
     register_oauth_provider()
