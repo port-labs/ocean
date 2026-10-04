@@ -26,7 +26,7 @@ def test_workflows_configset() -> None:
     assert configset.wait_for_resync is True
     env = ocean_config_env(configset.ocean)
     assert env["OCEAN__ACTIONS_PROCESSOR__ENABLED"] == "true"
-    assert env["OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED"] == "true"
+    assert env["OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED"] == "false"
 
 
 def test_unknown_configset_raises() -> None:

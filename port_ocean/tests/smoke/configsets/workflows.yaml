@@ -8,7 +8,7 @@ ocean:
   actions_processor:
     enabled: true
   live_events:
-    is_redis_stream_consumer_enabled: true
+    is_redis_stream_consumer_enabled: false
   integration:
     config:
       entity_amount: 1
