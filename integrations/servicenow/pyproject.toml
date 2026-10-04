@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "servicenow"
-version = "0.5.35"
+version = "0.5.36"
 description = "ServiceNow Ocean Integration"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
