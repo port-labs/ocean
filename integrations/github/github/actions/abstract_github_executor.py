@@ -1,13 +1,18 @@
 from typing import Optional, Type
 
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
 from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.models import IntegrationRun
+from port_ocean.identity_propagation.token_exchanger import resolve_user_token
 
 MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS = 20
 
@@ -19,7 +24,18 @@ class AbstractGithubExecutor(AbstractExecutor):
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
             raise InvalidActionParametersException("org is required")
-        return await create_github_client_for_org(organization)
+        return await self._rest_client_for_org(run, organization)
+
+    async def _rest_client_for_org(
+        self, run: IntegrationRun, organization: str
+    ) -> GithubRestClient:
+        user_token = await resolve_user_token(run)
+        if not user_token:
+            return await create_github_client_for_org(organization)
+        return GithubRestClient(
+            github_host=str(ocean.integration_config["github_host"]),
+            authenticator=PersonalTokenAuthenticator(user_token, organization),
+        )
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         org = run.execution_properties.get("org")
