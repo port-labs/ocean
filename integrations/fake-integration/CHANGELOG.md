@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.12-dev (2026-10-04)
+
+
+### Improvements
+
+- Use an absolute URL when starting fake-task workflow runs so Port accepts links
+
+
 ## 0.2.11-dev (2026-10-04)
 
 
