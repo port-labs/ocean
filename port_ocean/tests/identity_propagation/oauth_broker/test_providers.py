@@ -3,31 +3,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from port_ocean.config.settings import OAuthProviderSettings
-from port_ocean.exceptions.identity_propagation import OAuthError
+from port_ocean.exceptions.identity_propagation import (
+    OAuthError,
+    OAuthProviderNotConfiguredError,
+)
 from port_ocean.identity_propagation.oauth_broker import providers as providers_module
 from port_ocean.identity_propagation.oauth_broker.providers import (
     OAuth2Provider,
-    ProviderDefaults,
-)
-
-# Mirrors what used to live in the deleted central PROVIDER_DEFAULTS dict - now these values
-# live in each integration's own oauth/registry.py; tests construct them directly.
-GITHUB_DEFAULTS = ProviderDefaults(
-    authorize_url="https://github.com/login/oauth/authorize",
-    token_url="https://github.com/login/oauth/access_token",
-    scopes="",
-)
-GITLAB_DEFAULTS = ProviderDefaults(
-    authorize_url="{host}/oauth/authorize",
-    token_url="{host}/oauth/token",
-    scopes="api",
-    default_host="https://gitlab.com",
-)
-AZURE_DEVOPS_DEFAULTS = ProviderDefaults(
-    authorize_url="https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize",
-    token_url="https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
-    scopes="499b84ac-1321-427f-aa17-267ca6975798/user_impersonation offline_access",
+    require_provider,
 )
 
 
@@ -46,40 +29,72 @@ def token_response(body: dict[str, Any], status_code: int = 200) -> MagicMock:
     return response
 
 
-def settings(**overrides: Any) -> OAuthProviderSettings:
-    return OAuthProviderSettings(client_id="id", client_secret="secret", **overrides)
+def _provider(
+    *,
+    authorize_url: str = "https://idp.example.com/oauth/authorize",
+    token_url: str = "https://idp.example.com/oauth/token",
+    scopes: str = "read",
+) -> OAuth2Provider:
+    """Generic fixture — core tests must not encode real integration IdPs."""
+    return OAuth2Provider(
+        target="example-integration",
+        authorize_url=authorize_url,
+        token_url=token_url,
+        client_id="id",
+        client_secret="secret",
+        scopes=scopes,
+    )
 
 
-def test_github_authorization_url_carries_the_state_and_scopes() -> None:
-    url = OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).authorization_url(
+def test_require_provider_returns_the_registered_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = _provider()
+    mock_ocean = MagicMock()
+    mock_ocean.app.oauth_provider = provider
+    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
+
+    assert require_provider() is provider
+
+
+def test_require_provider_raises_when_none_registered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_ocean = MagicMock()
+    mock_ocean.app.oauth_provider = None
+    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean)
+
+    with pytest.raises(OAuthProviderNotConfiguredError):
+        require_provider()
+
+
+def test_authorization_url_carries_state_scopes_and_response_type() -> None:
+    url = _provider(scopes="").authorization_url(
         "https://ocean.acme.com/v1/oauth/callback", "signed-state"
     )
 
-    assert url.startswith("https://github.com/login/oauth/authorize?")
+    assert url.startswith("https://idp.example.com/oauth/authorize?")
     assert "state=signed-state" in url
-    assert (
-        "scope=" in url
-    )  # empty for GitHub Apps; permissions come from the App Manifest
+    assert "scope=" in url
     assert "response_type=code" in url
 
 
-def test_gitlab_endpoints_follow_the_configured_host() -> None:
-    provider = OAuth2Provider(
-        "gitlab-v2", GITLAB_DEFAULTS, settings(host="https://gitlab.acme.com/")
+def test_authorization_url_uses_the_configured_authorize_endpoint() -> None:
+    provider = _provider(
+        authorize_url="https://idp.acme.com/oauth/authorize",
+        token_url="https://idp.acme.com/oauth/token",
     )
 
     assert provider.authorization_url("https://cb", "s").startswith(
-        "https://gitlab.acme.com/oauth/authorize?"
+        "https://idp.acme.com/oauth/authorize?"
     )
 
 
-def test_azure_devops_requests_offline_access_so_refresh_is_possible() -> None:
-    url = OAuth2Provider(
-        "azure-devops", AZURE_DEVOPS_DEFAULTS, settings(tenant_id="tenant-1")
-    ).authorization_url("https://cb", "s")
+def test_authorization_url_includes_configured_scopes() -> None:
+    url = _provider(scopes="read offline_access").authorization_url("https://cb", "s")
 
-    assert "login.microsoftonline.com/tenant-1/oauth2/v2.0/authorize" in url
     assert "offline_access" in url
+    assert "read" in url
 
 
 async def test_exchange_code_returns_the_full_record(
@@ -87,18 +102,16 @@ async def test_exchange_code_returns_the_full_record(
 ) -> None:
     mock_http_client.post.return_value = token_response(
         {
-            "access_token": "gho_token",
-            "refresh_token": "ghr_token",
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
             "expires_in": 3600,
         }
     )
 
-    record = await OAuth2Provider(
-        "github-ocean", GITHUB_DEFAULTS, settings()
-    ).exchange_code("auth-code", "https://cb")
+    record = await _provider(scopes="").exchange_code("auth-code", "https://cb")
 
-    assert record.access_token == "gho_token"
-    assert record.refresh_token == "ghr_token"
+    assert record.access_token == "access-token"
+    assert record.refresh_token == "refresh-token"
     assert record.expires_at is not None
     _, kwargs = mock_http_client.post.call_args
     assert kwargs["data"]["grant_type"] == "authorization_code"
@@ -108,68 +121,69 @@ async def test_exchange_code_returns_the_full_record(
 
 async def test_refresh_uses_the_refresh_grant(mock_http_client: MagicMock) -> None:
     mock_http_client.post.return_value = token_response(
-        {"access_token": "gho_new", "refresh_token": "ghr_rotated"}
+        {"access_token": "access-new", "refresh_token": "refresh-rotated"}
     )
 
-    record = await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh(
-        "ghr_old"
-    )
+    record = await _provider().refresh("refresh-old")
 
-    assert record.access_token == "gho_new"
-    assert record.refresh_token == "ghr_rotated"
+    assert record.access_token == "access-new"
+    assert record.refresh_token == "refresh-rotated"
     assert record.expires_at is None
     _, kwargs = mock_http_client.post.call_args
     assert kwargs["data"]["grant_type"] == "refresh_token"
-    assert kwargs["data"]["refresh_token"] == "ghr_old"
+    assert kwargs["data"]["refresh_token"] == "refresh-old"
 
 
-async def test_azure_exchange_code_includes_scope(
+async def test_exchange_code_includes_configured_scopes(
     mock_http_client: MagicMock,
 ) -> None:
     mock_http_client.post.return_value = token_response(
         {
-            "access_token": "ado_token",
-            "refresh_token": "ado_refresh",
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
             "expires_in": 3600,
         }
     )
 
-    await OAuth2Provider(
-        "azure-devops", AZURE_DEVOPS_DEFAULTS, settings(tenant_id="tenant-1")
-    ).exchange_code("auth-code", "https://cb")
+    await _provider(scopes="read offline_access").exchange_code(
+        "auth-code", "https://cb"
+    )
 
     _, kwargs = mock_http_client.post.call_args
-    assert "499b84ac" in kwargs["data"]["scope"]
-    assert "offline_access" in kwargs["data"]["scope"]
+    assert kwargs["data"]["scope"] == "read offline_access"
 
 
 async def test_an_error_body_with_a_200_is_still_a_failure(
     mock_http_client: MagicMock,
 ) -> None:
-    # GitHub answers 200 with an error body rather than a 4xx.
+    # Some IdPs answer 200 with an error body instead of a 4xx.
     mock_http_client.post.return_value = token_response(
         {"error": "bad_verification_code"}
     )
 
     with pytest.raises(OAuthError):
-        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).exchange_code(
-            "code", "https://cb"
-        )
+        await _provider().exchange_code("code", "https://cb")
 
 
 async def test_an_error_status_is_a_failure(mock_http_client: MagicMock) -> None:
     mock_http_client.post.return_value = token_response({}, status_code=401)
 
     with pytest.raises(OAuthError):
-        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh(
-            "ghr_revoked"
-        )
+        await _provider().refresh("refresh-revoked")
 
 
 async def test_a_transport_failure_is_a_failure(mock_http_client: MagicMock) -> None:
     mock_http_client.post.side_effect = Exception("connection reset")
 
     with pytest.raises(OAuthError):
-        await OAuth2Provider("github-ocean", GITHUB_DEFAULTS, settings()).refresh(
-            "ghr_old"
-        )
+        await _provider().refresh("refresh-old")
+
+
+async def test_a_non_json_body_is_a_failure(mock_http_client: MagicMock) -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.json = MagicMock(side_effect=ValueError("not json"))
+    mock_http_client.post.return_value = response
+
+    with pytest.raises(OAuthError, match="not valid JSON"):
+        await _provider().exchange_code("code", "https://cb")
