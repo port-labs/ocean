@@ -71,7 +71,7 @@ jobs:
           fail_on_failure: true
 
   smoke-tests:
-    name: 👋 Ocean Core Smoke Tests
+    name: 🌊 Ocean Core Smoke Tests
     needs: detect-changes
     runs-on: ubuntu-latest
     if: |
