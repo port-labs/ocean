@@ -77,10 +77,13 @@ def mock_port_client() -> Generator[MagicMock, None, None]:
     )
     client.is_run_in_progress = MagicMock(return_value=True)
     client.report_run_completed = AsyncMock()
-    with patch(
-        "github.webhook.webhook_processors.workflow_run."
-        "dispatch_workflow_webhook_processor.ocean"
-    ) as mock_ocean:
+    with (
+        patch(
+            "github.webhook.webhook_processors.workflow_run."
+            "dispatch_workflow_webhook_processor.ocean"
+        ) as mock_ocean,
+        patch("github.actions.utils.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = client
         yield client
 

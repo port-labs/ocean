@@ -5,7 +5,11 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from github.actions.utils import build_external_id, extract_error_message
+from github.actions.utils import (
+    build_external_id,
+    extract_error_message,
+    report_workflow_run_conclusion,
+)
 from github.clients.auth import get_auth_provider
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
@@ -385,3 +389,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 f"Error dispatching workflow: {error_message}",
                 status_label=specific_label or DISPATCH_FAILED_STATUS_LABEL,
             )
+
+        # A short workflow can finish before `externalRunId` is set (e.g. while
+        # we were still retrying the run fetch), in which case its completion
+        # webhook found no Port run and was dropped. Report the conclusion here.
+        if workflow_run.get("status") == "completed" and run.execution_properties.get(
+            "reportWorkflowStatus", False
+        ):
+            await report_workflow_run_conclusion(run, workflow_run)
