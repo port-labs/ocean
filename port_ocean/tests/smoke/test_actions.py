@@ -16,21 +16,7 @@ from port_ocean.tests.smoke.helpers.actions import (
 )
 from port_ocean.tests.smoke.helpers.details import SmokeTestDetails
 
-pytestmark = [
-    # Restore when Port accepts install-local Ocean action types:
-    #   pytest.mark.smoke,
-    #   pytest.mark.smoke_configset("actions"),
-    # Blocked: Port validates integrationActionType against registry/index (and a
-    # hardcoded enum on action upsert)—not the install's own actions. Don't publish
-    # fake-integration to prod index.json. Omit smoke/smoke_configset while skipped so
-    # bare pytest collection does not UsageError, and run-all does not boot actions.
-    pytest.mark.skip(
-        reason=(
-            "Blocked until Port accepts install-local Ocean action types "
-            "(no fake-integration in prod index.json)"
-        )
-    ),
-]
+pytestmark = [pytest.mark.smoke, pytest.mark.smoke_configset("actions")]
 
 requires_running_integration = pytest.mark.skipif(
     environ.get(

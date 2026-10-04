@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Enable Ocean core smoke tests for Port actions and workflows
