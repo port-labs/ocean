@@ -627,9 +627,9 @@ class TestRestFileExporter:
     ) -> None:
         """404 on tree-fetch must remain ignored (skip repo), not abort the kind.
 
-        ignore_default_errors=False is only to surface 403; 401/404 stay on
-        _IGNORED_ERRORS from the client defaults so send_api_request returns
-        empty and we continue.
+        With ignore_default_errors=False, only 403 raises to abort. 401/404/409
+        are on _IGNORED_ERRORS so send_api_request returns empty and the kind
+        continues (skips that repo without aborting).
         """
         exporter = RestFileExporter(rest_client)
 
@@ -676,10 +676,12 @@ class TestRestFileExporter:
             assert "repo1@main" in str(exc_info.value)
 
     @pytest.mark.parametrize("status_code", [422, 429, 500, 502])
-    async def test_get_tree_recursive_non_403_http_error_returns_empty(
+    async def test_get_tree_recursive_non_403_http_error_aborts(
         self, rest_client: GithubRestClient, status_code: int
     ) -> None:
-        """Non-403 HTTP errors skip the repo instead of aborting the kind."""
+        """Non-403 HTTP errors (5xx, 429, 422) abort the resync to prevent
+        reconciliation from treating transient API failures as empty catalogs.
+        This preserves entities during outages/rate limits."""
         exporter = RestFileExporter(rest_client)
         mock_response = httpx.Response(
             status_code=status_code,
@@ -695,12 +697,10 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(side_effect=http_error)
         ):
-            tree, truncated = await exporter.get_tree_recursive(
-                "test-org", "repo1", "main"
-            )
-
-            assert tree == []
-            assert truncated is False
+            with pytest.raises(httpx.HTTPStatusError):
+                await exporter.get_tree_recursive(
+                    "test-org", "repo1", "main"
+                )
 
     async def test_get_paginated_resources_mixed_403_and_valid_repos(
         self, rest_client: GithubRestClient
