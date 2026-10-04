@@ -7,7 +7,10 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.tests.smoke.helpers.details import SmokeTestDetails
 from port_ocean.tests.smoke.helpers.workflows import (
     WorkflowResources,
+    simulate_fake_task_webhook,
+    task_id_from_external_id,
     trigger_workflow,
+    wait_for_workflow_node_external_id,
     wait_for_workflow_run,
 )
 
@@ -41,9 +44,6 @@ async def test_echo_message_workflow_run(
     assert completed.success
 
 
-@pytest.mark.skip(
-    reason="Workflow node run external id polling for async actions is not wired yet"
-)
 @pytest.mark.skipif(
     environ.get("SMOKE_TEST_SUFFIX", None) is None,
     reason="You need to run the fake integration once",
@@ -53,11 +53,20 @@ async def test_trigger_fake_task_workflow_run(
     port_client_for_fake_integration: Tuple[SmokeTestDetails, PortClient],
     workflow_resources: WorkflowResources,
 ) -> None:
+    webhook_url = (
+        environ.get("SMOKE_TEST_WEBHOOK_URL")
+        or environ["SMOKE_TEST_INTEGRATION_WEBHOOK_URL"]
+    )
+
     _, port_client = port_client_for_fake_integration
     run_id = await trigger_workflow(
         port_client,
         workflow_resources.trigger_fake_task_workflow_identifier,
         {"taskName": "smoke-async-workflow-task"},
+    )
+    external_id = await wait_for_workflow_node_external_id(port_client, run_id)
+    await simulate_fake_task_webhook(
+        webhook_url, task_id_from_external_id(external_id), status="success"
     )
     completed = await wait_for_workflow_run(port_client, run_id)
     assert completed.success

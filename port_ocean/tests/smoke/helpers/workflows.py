@@ -2,6 +2,7 @@ import asyncio
 import uuid
 from typing import Any
 
+import httpx
 from loguru import logger
 from pydantic.v1 import BaseModel
 
@@ -11,8 +12,9 @@ from port_ocean.tests.smoke.helpers.details import get_smoke_test_details
 
 ECHO_MESSAGE_ACTION = "echo_message"
 TRIGGER_FAKE_TASK_ACTION = "trigger_fake_task"
+FAKE_TASK_COMPLETED_EVENT = "fake_task.completed"
 
-_WORKFLOW_TERMINAL = frozenset({"COMPLETED", "FAILED", "TERMINATED"})
+_WORKFLOW_TERMINAL = frozenset({"COMPLETED"})
 
 
 class WorkflowResources(BaseModel):
@@ -180,15 +182,64 @@ async def cleanup_workflow_resources(
 async def trigger_workflow(
     port_client: PortClient,
     workflow_identifier: str,
-    properties: dict[str, Any],
+    inputs: dict[str, Any],
 ) -> str:
     response = await port_client.client.post(
         f"{port_client.auth.api_url}/workflows/{workflow_identifier}/runs",
-        json={"properties": properties},
+        json={"inputs": inputs},
         headers=await port_client.auth.headers(),
     )
     handle_port_status_code(response)
-    return response.json()["run"]["id"]
+    return response.json()["workflowRun"]["identifier"]
+
+
+async def _get_workflow_run(port_client: PortClient, run_id: str) -> dict[str, Any]:
+    response = await port_client.client.get(
+        f"{port_client.auth.api_url}/workflows/runs/{run_id}",
+        headers=await port_client.auth.headers(),
+    )
+    handle_port_status_code(response)
+    return response.json()["workflowRun"]
+
+
+async def wait_for_workflow_node_external_id(
+    port_client: PortClient,
+    run_id: str,
+    timeout_seconds: float = 60,
+    poll_interval_seconds: float = 1,
+) -> str:
+    deadline = asyncio.get_event_loop().time() + timeout_seconds
+    while asyncio.get_event_loop().time() < deadline:
+        run = await _get_workflow_run(port_client, run_id)
+        for node_run in run.get("nodeRuns") or []:
+            external_id = node_run.get("externalRunId")
+            if external_id:
+                return external_id
+        await asyncio.sleep(poll_interval_seconds)
+    raise TimeoutError(
+        f"Workflow run {run_id} did not get a node external id within {timeout_seconds}s"
+    )
+
+
+def task_id_from_external_id(external_id: str) -> str:
+    prefix = "fake_task_"
+    if not external_id.startswith(prefix):
+        raise ValueError(f"Unexpected external id format: {external_id}")
+    return external_id.removeprefix(prefix)
+
+
+async def simulate_fake_task_webhook(
+    integration_webhook_url: str,
+    task_id: str,
+    status: str = "success",
+) -> None:
+    payload = {
+        "event": FAKE_TASK_COMPLETED_EVENT,
+        "task": {"id": task_id, "status": status},
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(integration_webhook_url, json=payload)
+        response.raise_for_status()
 
 
 async def wait_for_workflow_run(
@@ -199,19 +250,18 @@ async def wait_for_workflow_run(
 ) -> CompletedRun:
     deadline = asyncio.get_event_loop().time() + timeout_seconds
     while asyncio.get_event_loop().time() < deadline:
-        response = await port_client.client.get(
-            f"{port_client.auth.api_url}/workflows/runs/{run_id}",
-            headers=await port_client.auth.headers(),
-        )
-        handle_port_status_code(response)
-        run = response.json()["run"]
+        run = await _get_workflow_run(port_client, run_id)
         status = run.get("status")
         if status in _WORKFLOW_TERMINAL:
+            status_label = run.get("statusLabel")
+            message = (
+                status_label.get("message") if isinstance(status_label, dict) else None
+            )
             return CompletedRun(
                 run_id=run_id,
                 status=status,
-                success=status == "COMPLETED",
-                message=run.get("message"),
+                success=run.get("result") == "SUCCESS",
+                message=message,
             )
         await asyncio.sleep(poll_interval_seconds)
     raise TimeoutError(
