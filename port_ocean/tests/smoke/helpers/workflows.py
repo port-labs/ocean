@@ -134,7 +134,7 @@ def build_echo_message_workflow(resources: WorkflowResources) -> dict[str, Any]:
             "echo-message",
             "Echo message",
             ECHO_MESSAGE_ACTION,
-            {"message": "{{ .inputs.message }}"},
+            {"message": "{{ .outputs.trigger.message }}"},
         ),
     )
 
@@ -150,7 +150,7 @@ def build_trigger_fake_task_workflow(resources: WorkflowResources) -> dict[str, 
             "Trigger fake task",
             TRIGGER_FAKE_TASK_ACTION,
             {
-                "taskName": "{{ .inputs.taskName }}",
+                "taskName": "{{ .outputs.trigger.taskName }}",
                 "reportTaskStatus": True,
             },
         ),

@@ -41,7 +41,7 @@ async def test_echo_message_workflow_run(
         {"message": "hello from smoke workflow"},
     )
     completed = await wait_for_workflow_run(port_client, run_id)
-    assert completed.success
+    assert completed.success, completed.message
 
 
 @pytest.mark.skipif(
@@ -69,4 +69,4 @@ async def test_trigger_fake_task_workflow_run(
         webhook_url, task_id_from_external_id(external_id), status="success"
     )
     completed = await wait_for_workflow_run(port_client, run_id)
-    assert completed.success
+    assert completed.success, completed.message
