@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.17.0 (2026-10-04)
+
+
+### Features
+
+- Added identity propagation for GitHub actions. The integration registers its own OAuth app (identityOauthClientId/identityOauthClientSecret) so actions can run as the triggering user. Workflow dispatch completion tracking matches user-triggered runs, and external custom property actions keep using the GitHub App installation token because `/orgs/{org}/properties/installations/values` requires installation permissions. User OAuth tokens also get per-credential rate-limit scopes so one user's quota exhaustion no longer stalls other users or the integration PAT.
+
+
 ## 6.16.6 (2026-10-04)
 
 
