@@ -141,12 +141,21 @@ def build_trigger_fake_task_workflow(resources: WorkflowResources) -> dict[str, 
 
 
 async def _upsert_workflow(port_client: PortClient, workflow: dict[str, Any]) -> None:
-    response = await port_client.client.put(
-        f"{port_client.auth.api_url}/workflows/{workflow['identifier']}",
+    headers = await port_client.auth.headers()
+    create = await port_client.client.post(
+        f"{port_client.auth.api_url}/workflows",
         json=workflow,
-        headers=await port_client.auth.headers(),
+        headers=headers,
     )
-    handle_port_status_code(response, should_log=False)
+    if create.status_code == 409:
+        update = await port_client.client.put(
+            f"{port_client.auth.api_url}/workflows/{workflow['identifier']}",
+            json=workflow,
+            headers=headers,
+        )
+        handle_port_status_code(update, should_log=False)
+        return
+    handle_port_status_code(create, should_log=False)
 
 
 async def _delete_workflow(port_client: PortClient, identifier: str) -> None:
