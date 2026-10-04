@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.54.0 (2026-10-04)
+
+
+### Improvements
+
+- Bump redis-py to 8.x, cryptography to 50.x, virtualenv to 21.x, and FastAPI to 0.142.x
+
+
 ## 0.53.1 (2026-10-01)
 
 
