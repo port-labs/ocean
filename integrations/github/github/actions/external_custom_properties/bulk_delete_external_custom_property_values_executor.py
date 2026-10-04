@@ -2,7 +2,9 @@ from functools import partial
 
 from loguru import logger
 
-from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.actions.external_custom_properties.abstract_executor import (
+    AbstractExternalCustomPropertiesExecutor,
+)
 from github.actions.external_custom_properties.utils import (
     MAX_CONCURRENT_BULK_REQUESTS,
     BulkOperationOutcome,
@@ -11,14 +13,15 @@ from github.actions.external_custom_properties.utils import (
     get_external_custom_properties_partition_key,
     report_bulk_operation_results,
 )
-from github.clients.client_factory import create_github_client_for_org
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import IntegrationRun
 from port_ocean.utils.async_iterators import throttle_batch_operation
 
 
-class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
+class BulkDeleteExternalCustomPropertyValuesExecutor(
+    AbstractExternalCustomPropertiesExecutor
+):
     """DELETE all values for one external custom property across organizations."""
 
     ACTION_NAME = "bulk_delete_external_custom_property_values"
@@ -32,16 +35,17 @@ class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
     ) -> list[AbstractGithubClient]:
         organizations: list[str] = run.execution_properties.get("orgs") or []
         return [
-            await create_github_client_for_org(organization)
+            await self._rest_client_for_org(run, organization)
             for organization in organizations
         ]
 
     async def _delete_for_organization(
         self,
+        run: IntegrationRun,
         organization: str,
         property_name: str,
     ) -> BulkOperationOutcome:
-        rest_client = await create_github_client_for_org(organization)
+        rest_client = await self._rest_client_for_org(run, organization)
         endpoint = external_property_values_endpoint(
             rest_client.base_url, organization, property_name
         )
@@ -76,6 +80,7 @@ class BulkDeleteExternalCustomPropertyValuesExecutor(AbstractGithubExecutor):
                 [
                     partial(
                         self._delete_for_organization,
+                        run,
                         organization,
                         str(property_name),
                     )

@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Integrations now construct and register a fully built OAuth2Provider. Core no longer parses GitHub, GitLab, or Azure DevOps OAuth settings, and identity propagation requires actions processing to be enabled.

@@ -66,18 +66,19 @@ class CreateMergeRequestExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
 
-        try:
-            merge_request = await self.client.create_merge_request(
-                inputs.project,
-                inputs.sourceBranch,
-                inputs.targetBranch,
-                inputs.title,
-            )
-        except httpx.HTTPStatusError as e:
-            raise GitlabCreateMergeRequestError.from_response(
-                e.response,
-                f"Could not create merge request in project '{inputs.project}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                merge_request = await api_client.create_merge_request(
+                    inputs.project,
+                    inputs.sourceBranch,
+                    inputs.targetBranch,
+                    inputs.title,
+                )
+            except httpx.HTTPStatusError as e:
+                raise GitlabCreateMergeRequestError.from_response(
+                    e.response,
+                    f"Could not create merge request in project '{inputs.project}'",
+                )
 
         if not merge_request or not all(k in merge_request for k in ("id", "web_url")):
             raise GitlabCreateMergeRequestError(

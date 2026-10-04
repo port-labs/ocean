@@ -81,6 +81,9 @@ def mock_rest_client() -> MagicMock:
     client.make_request = AsyncMock()
     client.send_api_request = AsyncMock()
     client.get_rate_limit_status = MagicMock(return_value=None)
+    client.authenticator = MagicMock(
+        get_authenticated_actor=AsyncMock(return_value="port-bot[bot]")
+    )
     return client
 
 
@@ -89,7 +92,7 @@ def executor(
     mock_rest_client: MagicMock,
 ) -> Generator[DispatchWorkflowExecutor, None, None]:
     with patch(
-        "github.actions.dispatch_workflow_executor.create_github_client_for_org",
+        "github.actions.abstract_github_executor.create_github_client_for_org",
         new=AsyncMock(return_value=mock_rest_client),
     ):
         yield DispatchWorkflowExecutor()
@@ -294,6 +297,55 @@ class TestDispatchWorkflowExecutor:
             extra_output={"workflowRunId": 12345},
             status_label=WORKFLOW_RUNNING_STATUS_LABEL,
         )
+
+    @pytest.mark.asyncio
+    async def test_run_fetch_retry_uses_identity_propagation_client(
+        self,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run({"org": "port-labs", "repo": "ocean", "workflow": "deploy.yml"})
+        executor = DispatchWorkflowExecutor()
+
+        dispatch_response = MagicMock()
+        dispatch_response.json.return_value = {"workflow_run_id": 12345}
+        mock_rest_client.make_request.return_value = dispatch_response
+        get_resource_mock = AsyncMock(side_effect=[None, WORKFLOW_RUN])
+
+        with (
+            patch(
+                "github.actions.abstract_github_executor.resolve_user_token",
+                new=AsyncMock(return_value="gho_user"),
+            ),
+            patch(
+                "github.actions.abstract_github_executor.create_github_client_for_org",
+                new=AsyncMock(),
+            ) as create_app_client,
+            patch("github.actions.abstract_github_executor.PersonalTokenAuthenticator"),
+            patch(
+                "github.actions.abstract_github_executor.GithubRestClient",
+                return_value=mock_rest_client,
+            ),
+            patch("github.actions.abstract_github_executor.ocean") as abstract_ocean,
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+            ) as mock_exporter_cls,
+            patch(
+                "github.actions.dispatch_workflow_executor.asyncio.sleep", AsyncMock()
+            ),
+        ):
+            abstract_ocean.integration_config = {
+                "github_host": "https://api.github.com"
+            }
+            mock_exporter_cls.return_value.get_resource = get_resource_mock
+            await executor.execute(run)
+
+        create_app_client.assert_not_awaited()
+        mock_exporter_cls.assert_called_once_with(mock_rest_client)
+        assert get_resource_mock.await_count == 2
+        mock_rest_client.make_request.assert_awaited_once()
+        mock_port_client.update_run_started.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_run_fetch_gives_up_after_bounded_backoff(
@@ -620,14 +672,8 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.dispatch_workflow_executor.create_github_client_for_org",
+                "github.actions.abstract_github_executor.create_github_client_for_org",
                 new=AsyncMock(return_value=mock_rest_client),
-            ),
-            patch(
-                "github.actions.dispatch_workflow_executor.get_auth_provider",
-                return_value=MagicMock(
-                    get_integration_actor=AsyncMock(return_value="port-bot[bot]")
-                ),
             ),
             patch.object(
                 DispatchWorkflowExecutor,
@@ -646,6 +692,8 @@ class TestLegacyDispatchWorkflowExecutor:
         assert "return_run_details" not in call_kwargs.kwargs["json_data"]
 
         mock_rest_client.send_api_request.assert_awaited_once()
+        poll_params = mock_rest_client.send_api_request.await_args.kwargs["params"]
+        assert poll_params["actor"] == "port-bot[bot]"
         mock_port_client.update_run_started.assert_awaited_once_with(
             run,
             WORKFLOW_RUN["html_url"],
@@ -674,14 +722,8 @@ class TestLegacyDispatchWorkflowExecutor:
 
         with (
             patch(
-                "github.actions.dispatch_workflow_executor.create_github_client_for_org",
+                "github.actions.abstract_github_executor.create_github_client_for_org",
                 new=AsyncMock(return_value=mock_rest_client),
-            ),
-            patch(
-                "github.actions.dispatch_workflow_executor.get_auth_provider",
-                return_value=MagicMock(
-                    get_integration_actor=AsyncMock(return_value="port-bot[bot]")
-                ),
             ),
             patch(
                 "github.actions.dispatch_workflow_executor.asyncio.sleep",
