@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.16.5 (2026-10-04)
+
+
+### Bug Fixes
+
+- Fix GitHub 403 tree-fetch handling to preserve entities during outages (PORT-18430). Raise GitHubTreeFetchError on 403 permission errors to signal reconciliation guard and prevent entity deletion during API outages.
+
+
 ## 6.16.4 (2026-10-01)
 
 
