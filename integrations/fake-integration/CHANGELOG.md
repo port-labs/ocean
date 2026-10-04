@@ -43,7 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.52.4
-- Use an absolute URL when starting fake-task workflow runs so Port accepts `links`
 
 
 ## 0.2.6-dev (2026-09-28)
