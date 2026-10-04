@@ -51,13 +51,14 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
 
-        try:
-            pipeline = await self.client.trigger_pipeline(project, ref, variables)
-        except httpx.HTTPStatusError as e:
-            raise GitlabTriggerPipelineError.from_response(
-                e.response,
-                f"Could not trigger pipeline for project '{project}' on ref '{ref}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                pipeline = await api_client.trigger_pipeline(project, ref, variables)
+            except httpx.HTTPStatusError as e:
+                raise GitlabTriggerPipelineError.from_response(
+                    e.response,
+                    f"Could not trigger pipeline for project '{project}' on ref '{ref}'",
+                )
 
         if not pipeline or not all(
             k in pipeline for k in ("id", "project_id", "web_url")
