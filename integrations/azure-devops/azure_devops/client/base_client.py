@@ -46,6 +46,9 @@ class HTTPBaseClient:
             timeout=ocean.config.client_timeout,
         )
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     async def send_request(
         self,
         method: str,

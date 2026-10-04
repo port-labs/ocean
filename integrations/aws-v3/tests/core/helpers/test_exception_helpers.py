@@ -79,6 +79,18 @@ def test_is_resource_not_found_exception_includes_cicd_and_memorydb_codes() -> N
         is_resource_not_found_exception(_client_error("PipelineNotFoundException"))
         is True
     )
+    assert (
+        is_resource_not_found_exception(
+            _client_error("PipelineExecutionNotFoundException")
+        )
+        is True
+    )
+    assert (
+        is_resource_not_found_exception(
+            _client_error("DeploymentDoesNotExistException")
+        )
+        is True
+    )
     assert is_resource_not_found_exception(_client_error("UserNotFoundFault")) is True
 
 

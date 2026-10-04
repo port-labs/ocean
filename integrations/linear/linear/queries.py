@@ -38,6 +38,7 @@ QUERIES = {
         key
     }
     state {
+        id
         name
     }
     creator {
@@ -150,6 +151,7 @@ QUERIES = {
     teamMemberships {
         nodes {
             team {
+                id
                 key
             }
         }

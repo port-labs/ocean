@@ -5,7 +5,7 @@ import jinja2
 from httpx import HTTPStatusError
 
 from linear.client.rate_limiter import LinearRateLimitStatus, parse_rate_limit_headers
-from linear.helpers.exceptions import LinearActionError
+from linear.core.exceptions import LinearApiError
 from linear.queries import QUERIES
 
 
@@ -37,17 +37,17 @@ class GraphqlClient:
             )
             response.raise_for_status()
         except HTTPStatusError as error:
-            raise LinearActionError.from_response(error.response) from error
+            raise LinearApiError.from_response(error.response) from error
 
         self._rate_limit_status = parse_rate_limit_headers(dict(response.headers))
 
         payload = response.json()
         if errors := payload.get("errors"):
-            raise LinearActionError.from_graphql_errors(errors)
+            raise LinearApiError.from_graphql_errors(errors)
 
         data = payload.get("data")
         if not isinstance(data, dict):
-            raise LinearActionError("Linear returned an empty response")
+            raise LinearApiError("Linear returned an empty response")
 
         return data
 
@@ -70,7 +70,7 @@ class GraphqlClient:
         data = await self.execute(query, variables)
         result = data.get(result_key)
         if not isinstance(result, dict) or not result.get("success"):
-            raise LinearActionError(
+            raise LinearApiError(
                 f"Linear mutation '{result_key}' returned an unsuccessful response"
             )
         return result

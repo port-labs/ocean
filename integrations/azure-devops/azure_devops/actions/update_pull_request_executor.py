@@ -10,6 +10,7 @@ from azure_devops.actions.abstract_ado_action_input import (
     AbstractAzureDevopsActionInput,
 )
 from azure_devops.actions.abstract_ado_executor import AbstractAzureDevopsExecutor
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.actions.exceptions import (
     InvalidActionParametersError,
     UpdatePullRequestError,
@@ -246,45 +247,47 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
                 f"{', '.join(UPDATE_FIELD_NAMES)}"
             )
 
-        last_merge_source_commit: dict[str, Any] | None = None
-        if inputs.status == COMPLETED_STATUS:
-            last_merge_source_commit = await self._resolve_last_merge_source_commit(
-                inputs.project,
-                inputs.repositoryId,
-                inputs.pullRequestId,
-            )
-
-        body = _build_update_pull_request_body(inputs, last_merge_source_commit)
-
         await ocean.port_client.post_run_log(
             run,
             f"Updating pull request {inputs.pullRequestId} in repository "
             f"'{inputs.repositoryId}'",
         )
 
-        try:
-            pull_request = await self.client.update_pull_request(
-                inputs.project,
-                inputs.repositoryId,
-                inputs.pullRequestId,
-                body,
-            )
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Azure DevOps rejected the update of pull request "
-                f"{inputs.pullRequestId} for action run {run.id}: "
-                f"HTTP {e.response.status_code}",
-                run_id=run.id,
-                project_id=inputs.project,
-                repository_id=inputs.repositoryId,
-                pull_request_id=inputs.pullRequestId,
-                status_code=e.response.status_code,
-            )
-            raise UpdatePullRequestError.from_response(
-                e.response,
-                f"Error updating pull request {inputs.pullRequestId} in repository "
-                f"'{inputs.repositoryId}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            last_merge_source_commit: dict[str, Any] | None = None
+            if inputs.status == COMPLETED_STATUS:
+                last_merge_source_commit = await self._resolve_last_merge_source_commit(
+                    api_client,
+                    inputs.project,
+                    inputs.repositoryId,
+                    inputs.pullRequestId,
+                )
+
+            body = _build_update_pull_request_body(inputs, last_merge_source_commit)
+
+            try:
+                pull_request = await api_client.update_pull_request(
+                    inputs.project,
+                    inputs.repositoryId,
+                    inputs.pullRequestId,
+                    body,
+                )
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Azure DevOps rejected the update of pull request "
+                    f"{inputs.pullRequestId} for action run {run.id}: "
+                    f"HTTP {e.response.status_code}",
+                    run_id=run.id,
+                    project_id=inputs.project,
+                    repository_id=inputs.repositoryId,
+                    pull_request_id=inputs.pullRequestId,
+                    status_code=e.response.status_code,
+                )
+                raise UpdatePullRequestError.from_response(
+                    e.response,
+                    f"Error updating pull request {inputs.pullRequestId} in repository "
+                    f"'{inputs.repositoryId}'",
+                )
 
         if not pull_request or "pullRequestId" not in pull_request:
             logger.error(
@@ -330,6 +333,7 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
 
     async def _resolve_last_merge_source_commit(
         self,
+        api_client: AzureDevopsClient,
         project: str,
         repository_id: str,
         pull_request_id: str,
@@ -339,7 +343,7 @@ class UpdatePullRequestExecutor(AbstractAzureDevopsExecutor):
         Azure DevOps requires it so the merge runs against the source version
         the caller last saw, and rejects the completion otherwise.
         """
-        pull_request = await self.client.get_repository_pull_request(
+        pull_request = await api_client.get_repository_pull_request(
             project,
             repository_id,
             pull_request_id,

@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.7 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.1
+
+
+## 0.12.6 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
+## 0.12.5 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 0.12.4 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 0.12.3 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 0.12.2 (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 0.12.1 (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
+## 0.12.0 (2026-09-17)
+
+
+### Features
+
+- Added delegate_issue_to_agent Linear integration action
+
+
+## 0.11.0 (2026-09-17)
+
+
+### Features
+
+- Added add_reaction_to_issue, archive_issue, and delete_issue Linear integration actions
+
+
+## 0.10.0 (2026-09-17)
+
+
+### Features
+
+- Added add_issue_comment and add_document Linear integration actions
+
+
 ## 0.9.2 (2026-09-17)
 
 

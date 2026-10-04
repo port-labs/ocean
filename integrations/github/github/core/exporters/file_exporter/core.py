@@ -413,9 +413,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> tuple[List[Dict[str, Any]], bool]:
         """Retrieve the recursive tree and whether GitHub truncated the response.
 
-        Primary source for file kinds: 403 must raise (synced-with-issues) so
-        reconciliation does not treat the failure as an empty catalog. 401/404/409
-        remain ignored so missing repos/branches skip without aborting the kind.
+        Primary source for file kinds: 403 must raise GitHubTreeFetchError
+        (synced-with-issues) so reconciliation does not treat the failure as an
+        empty catalog. 401/404/409 are ignored so missing repos/branches skip
+        without aborting the kind. Other HTTP errors propagate.
         """
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
         try:
@@ -431,11 +432,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"GitHub API returned {e.response.status_code}. "
                     f"Entities will be preserved until next successful resync."
                 ) from e
-            logger.error(
-                f"Tree fetch returned {e.response.status_code} for "
-                f"{organization}/{repo}@{branch}, returning empty"
-            )
-            return [], False
+            raise
 
         if not response:
             logger.warning(

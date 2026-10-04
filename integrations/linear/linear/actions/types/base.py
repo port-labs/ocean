@@ -1,11 +1,9 @@
-from abc import ABC, abstractmethod
-from typing import Annotated, Any, ClassVar, Generic, Self, TypeVar
+from abc import ABC
+from typing import Any, ClassVar, Generic, Self, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
-from linear.helpers.exceptions import MissingExecutionPropertyError
-
-NonEmptyStr = Annotated[str, Field(min_length=1)]
+from linear.actions.exceptions import MissingExecutionPropertyError
 
 MutationPayloadT = TypeVar("MutationPayloadT", bound=BaseModel)
 
@@ -21,8 +19,8 @@ class LinearActionPayload(BaseModel, Generic[MutationPayloadT], ABC):
             exclude_none=True,
         )
 
-    @abstractmethod
-    def to_mutation(self) -> MutationPayloadT: ...
+    def to_mutation(self) -> MutationPayloadT:
+        return self.MUTATION_PAYLOAD_TYPE(**self.to_payload())
 
     @classmethod
     def from_execution_properties(cls, execution_properties: dict[str, Any]) -> Self:

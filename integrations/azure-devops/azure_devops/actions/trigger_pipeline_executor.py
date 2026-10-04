@@ -68,23 +68,24 @@ class TriggerPipelineExecutor(AbstractAzureDevopsExecutor):
         await ocean.port_client.post_run_log(
             run, f"Triggering pipeline {pipeline_id} in project '{project_input}'"
         )
-        try:
-            pipeline_run = await self.client.run_pipeline(
-                project_id, str(pipeline_id), options
-            )
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Azure DevOps rejected pipeline {pipeline_id} run for action run {run.id}: "
-                f"HTTP {e.response.status_code}",
-                run_id=run.id,
-                project_id=project_id,
-                pipeline_id=pipeline_id,
-                status_code=e.response.status_code,
-            )
-            raise TriggerPipelineError.from_response(
-                e.response,
-                f"Error triggering pipeline {pipeline_id} in project '{project_input}'",
-            )
+        async with self._api_client_for_run(run) as pipeline_client:
+            try:
+                pipeline_run = await pipeline_client.run_pipeline(
+                    project_id, str(pipeline_id), options
+                )
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Azure DevOps rejected pipeline {pipeline_id} run for action run {run.id}: "
+                    f"HTTP {e.response.status_code}",
+                    run_id=run.id,
+                    project_id=project_id,
+                    pipeline_id=pipeline_id,
+                    status_code=e.response.status_code,
+                )
+                raise TriggerPipelineError.from_response(
+                    e.response,
+                    f"Error triggering pipeline {pipeline_id} in project '{project_input}'",
+                )
 
         external_id = build_external_id(
             project_id, str(pipeline_id), str(pipeline_run["id"])

@@ -7,6 +7,62 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.1 (2026-10-01)
+
+
+### Improvements
+
+- Bump compatible Ocean core dependencies, including uvicorn 0.54 and security fixes in urllib3 and PyJWT
+
+
+## 0.53.0 (2026-10-01)
+
+
+### Features
+
+- Add ocean core smoke configsets that boot fake-integration per Ocean settings, with tests opting in via smoke_configset markers
+
+
+## 0.52.5 (2026-10-01)
+
+
+### Features
+
+- Add INTERNAL_FAILURE probe status to distinguish Ocean/platform errors from third-party connection failures
+
+
+## 0.52.4 (2026-09-28)
+
+
+### Bug Fixes
+
+- Fix quadratic-time Firebase URL pattern in the sensitive log filter that could stall the event loop when scrubbing large single-line log messages.
+
+
+## 0.52.3 (2026-09-28)
+
+
+### Improvements
+
+- Add optional enableDelete on each mapping resource so reconciliation delete policy can be set per resource without changing upserts
+
+
+## 0.52.2 (2026-09-23)
+
+
+### Improvements
+
+- Add event_kind=http_request to Redis stream consumer logs so live event messages match other webhook processing logs.
+
+
+## 0.52.1 (2026-09-22)
+
+
+### Improvements
+
+- Remove the AWS_V3_LIVE_EVENTS_ENABLED organization feature flag now that live events are generally available.
+
+
 ## 0.52.0 (2026-09-16)
 
 

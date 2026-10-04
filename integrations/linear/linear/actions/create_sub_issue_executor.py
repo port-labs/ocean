@@ -8,7 +8,7 @@ from linear.actions.utils import set_issue_run_output
 from linear.core.exporters import IssueExporter
 from linear.core.exporters.issue_exporter import GetIssueOptions
 from linear.core.mutations import IssueMutations
-from linear.helpers.exceptions import MissingExecutionPropertyError
+from linear.actions.exceptions import LinearActionError, MissingExecutionPropertyError
 
 
 class CreateSubIssueExecutor(AbstractLinearExecutor):
@@ -43,7 +43,10 @@ class CreateSubIssueExecutor(AbstractLinearExecutor):
         )
 
         mutations = IssueMutations(self.client)
-        issue = await mutations.create_issue(payload.to_mutation())
+        try:
+            issue = await mutations.create_issue(payload.to_mutation())
+        except Exception as error:
+            raise LinearActionError(str(error), status_label="Create failed") from error
         message = f"Created sub-issue {issue.identifier}: {issue.url}"
         set_issue_run_output(run, issue)
 

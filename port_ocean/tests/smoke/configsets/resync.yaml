@@ -1,0 +1,16 @@
+# Resync smoke. Tests mark themselves with smoke_configset("resync").
+# ONCE event listener exits after one sync; runner always boots detached and downs after tests.
+# wait_for_resync defaults to true.
+ocean:
+  event_listener:
+    type: ONCE
+  actions_processor:
+    enabled: false
+  live_events:
+    is_redis_stream_consumer_enabled: false
+  integration:
+    config:
+      entity_amount: 1
+      entity_kb_size: 1
+      third_party_batch_size: 1000
+      third_party_latency_ms: 0

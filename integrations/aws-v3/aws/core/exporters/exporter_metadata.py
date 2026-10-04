@@ -9,6 +9,9 @@ from aws.core.exporters.codebuild import (
     PaginatedBuildRunRequest,
     PaginatedCodeBuildProjectRequest,
 )
+from aws.core.exporters.codebuild.build_run.live_events import (
+    CODEBUILD_BUILD_RUN_LIVE_EVENTS,
+)
 from aws.core.exporters.codebuild.project.live_events import (
     CODEBUILD_PROJECT_LIVE_EVENTS,
 )
@@ -21,6 +24,9 @@ from aws.core.exporters.codedeploy import (
     PaginatedCodeDeployDeploymentGroupRequest,
     PaginatedCodeDeployDeploymentRequest,
     PaginatedCodeDeployDeploymentTargetRequest,
+)
+from aws.core.exporters.codedeploy.deployment.live_events import (
+    CODEDEPLOY_DEPLOYMENT_LIVE_EVENTS,
 )
 from aws.core.exporters.codepipeline import (
     CodePipelineActionExecutionExporter,
@@ -36,6 +42,9 @@ from aws.core.exporters.codepipeline import (
 )
 from aws.core.exporters.codepipeline.pipeline.live_events import (
     CODEPIPELINE_PIPELINE_LIVE_EVENTS,
+)
+from aws.core.exporters.codepipeline.pipeline_execution.live_events import (
+    CODEPIPELINE_PIPELINE_EXECUTION_LIVE_EVENTS,
 )
 from aws.core.exporters.dynamodb import DynamoDBTableExporter
 from aws.core.exporters.dynamodb.table.live_events import DYNAMODB_TABLE_LIVE_EVENTS
@@ -190,7 +199,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         live_events=CODEBUILD_PROJECT_LIVE_EVENTS,
     ),
     ObjectKind.CODEBUILD_BUILD_RUN: ExporterMetadata(
-        CodeBuildBuildRunExporter, PaginatedBuildRunRequest
+        CodeBuildBuildRunExporter,
+        PaginatedBuildRunRequest,
+        live_events=CODEBUILD_BUILD_RUN_LIVE_EVENTS,
     ),
     ObjectKind.CODEDEPLOY_APPLICATION: ExporterMetadata(
         CodeDeployApplicationExporter, PaginatedCodeDeployApplicationRequest
@@ -199,7 +210,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         CodeDeployDeploymentGroupExporter, PaginatedCodeDeployDeploymentGroupRequest
     ),
     ObjectKind.CODEDEPLOY_DEPLOYMENT: ExporterMetadata(
-        CodeDeployDeploymentExporter, PaginatedCodeDeployDeploymentRequest
+        CodeDeployDeploymentExporter,
+        PaginatedCodeDeployDeploymentRequest,
+        live_events=CODEDEPLOY_DEPLOYMENT_LIVE_EVENTS,
     ),
     ObjectKind.CODEDEPLOY_DEPLOYMENT_TARGET: ExporterMetadata(
         CodeDeployDeploymentTargetExporter, PaginatedCodeDeployDeploymentTargetRequest
@@ -216,7 +229,9 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         CodePipelineActionExporter, PaginatedCodePipelineActionRequest
     ),
     ObjectKind.CODEPIPELINE_PIPELINE_EXECUTION: ExporterMetadata(
-        CodePipelinePipelineExecutionExporter, PaginatedPipelineExecutionRequest
+        CodePipelinePipelineExecutionExporter,
+        PaginatedPipelineExecutionRequest,
+        live_events=CODEPIPELINE_PIPELINE_EXECUTION_LIVE_EVENTS,
     ),
     ObjectKind.CODEPIPELINE_ACTION_EXECUTION: ExporterMetadata(
         CodePipelineActionExecutionExporter, PaginatedCodePipelineActionExecutionRequest
