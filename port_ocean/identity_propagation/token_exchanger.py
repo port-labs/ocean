@@ -16,9 +16,16 @@ from port_ocean.identity_propagation.oauth_broker.providers import require_provi
 from port_ocean.identity_propagation.vault.base import TokenRecord, VaultClient
 from port_ocean.identity_propagation.verifier import IdentityClaims
 
-# Serializes refresh per stored secret. Two runs for the same user and target
+# Serializes refresh per stored secret.  Two runs for the same user and target
 # would otherwise refresh at once and, because providers rotate refresh tokens,
 # leave the loser holding one the provider has already invalidated.
+#
+# Limitation: these locks are process-local, so concurrent pods can still race.
+# If this becomes a problem, consider:
+#   - Vault-level CAS (conditional write based on version/etag) so only the
+#     first writer wins and others re-read the updated record.
+#   - A distributed lock via the live-events Redis instance (already deployed
+#     alongside Ocean) with a short TTL matching the refresh window.
 _refresh_locks: dict[str, asyncio.Lock] = {}
 
 

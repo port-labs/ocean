@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.2 (2026-10-04)
+
+
+### Improvements
+
+- Integrations now construct and register a fully built OAuth2Provider. Core no longer parses GitHub, GitLab, or Azure DevOps OAuth settings, and identity propagation requires actions processing to be enabled.
+
+
+## 0.53.1 (2026-10-01)
+
+
+### Improvements
+
+- Bump compatible Ocean core dependencies, including uvicorn 0.54 and security fixes in urllib3 and PyJWT
+
+
+## 0.53.0 (2026-10-01)
+
+
+### Features
+
+- Add ocean core smoke configsets that boot fake-integration per Ocean settings, with tests opting in via smoke_configset markers
+
+
 ## 0.52.5 (2026-10-01)
 
 
