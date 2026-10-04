@@ -210,6 +210,43 @@ class FilePatternMappingBuilder:
         ]
 
 
+def build_file_search_map(
+    files: List["GithubFilePattern"],
+    repos_by_org: Dict[str, List[Tuple[str, str]]],
+) -> List[ListFileSearchOptions]:
+    """Build file search options from repos and file patterns.
+
+    Args:
+        files: File patterns from configuration
+        repos_by_org: Dict mapping org_name -> [(repo_name, default_branch)]
+
+    Returns:
+        List of ListFileSearchOptions for file search
+    """
+    repo_path_map = []
+    for org_name, repos in repos_by_org.items():
+        for repo_name, default_branch in repos:
+            for file_sel in files:
+                if file_sel.organization != org_name:
+                    continue
+
+                repo_path_map.append(
+                    ListFileSearchOptions(
+                        organization=org_name,
+                        repo_name=repo_name,
+                        files=[
+                            FileSearchOptions(
+                                organization=org_name,
+                                path=file_sel.path,
+                                skip_parsing=file_sel.skip_parsing,
+                                branch=default_branch,
+                            )
+                        ],
+                    )
+                )
+    return repo_path_map
+
+
 def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
     """
     Match file path against a glob pattern using wcmatch's globmatch.
