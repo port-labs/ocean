@@ -11,7 +11,7 @@ jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
   test:
-    name: 🌊 Ocean Core Tests
+    name: 🌊 Ocean Core Unit Tests
     needs: detect-changes
     runs-on: ubuntu-latest
     if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
@@ -71,7 +71,7 @@ jobs:
           fail_on_failure: true
 
   smoke-tests:
-    name: Smoke tests
+    name: 👋 Ocean Core Smoke Tests
     needs: detect-changes
     runs-on: ubuntu-latest
     if: |
