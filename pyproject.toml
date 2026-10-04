@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.53.1"
+version = "0.53.2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -47,11 +47,11 @@ loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=3.1.9,<4.0.0"
 filelock = "^3.32.7"
-virtualenv = "^20.36.1"
-fastapi = "^0.133.0"
 starlette = ">=1.7.0,<2.0"
 uvicorn = "^0.54.0"
 confluent-kafka = "^2.15.1"
+virtualenv = "^21.14.2"
+fastapi = "^0.142.2"
 httpx = "^0.28.1"
 jq = "^1.8.0"
 urllib3 = "^2.8.0"
@@ -66,11 +66,11 @@ pyjwt = "^2.15.1"
 prometheus-client = "^0.21.1"
 pytest-cov = ">=6,<8"
 ijson = "^3.4.0"
+cryptography = "^50.0.2"
 aiofiles = "^25.1.0"
-cryptography = "^49.0.0"
 jmespath = "^1.0.1"
 psutil = "^7.2.1"
-redis = { version = "^6.1.0", extras = ["hiredis"] }
+redis = { version = "^8.1.0", extras = ["hiredis"] }
 
 # CLI
 click = { version = "^8.5.0", optional = true }
