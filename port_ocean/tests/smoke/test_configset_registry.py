@@ -23,8 +23,9 @@ def test_resync_configset() -> None:
 
 def test_workflows_configset() -> None:
     configset = load_configset("workflows")
-    assert configset.wait_for_resync is True
+    assert configset.wait_for_resync is False
     env = ocean_config_env(configset.ocean)
+    assert json.loads(env["OCEAN__EVENT_LISTENER"])["resync_on_start"] is False
     assert env["OCEAN__ACTIONS_PROCESSOR__ENABLED"] == "true"
     assert env["OCEAN__LIVE_EVENTS__IS_REDIS_STREAM_CONSUMER_ENABLED"] == "false"
 

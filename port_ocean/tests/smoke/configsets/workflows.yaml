@@ -1,9 +1,9 @@
-# Workflows smoke. Tests mark themselves with smoke_configset("workflows").
-# Daemon-style POLLING; wait_for_resync defaults to true before pytest.
+# Workflows smoke. Daemon POLLING so claims/webhooks stay up. No catalog resync.
+wait_for_resync: false
 ocean:
   event_listener:
     type: POLLING
-    resync_on_start: true
+    resync_on_start: false
     interval: 3600
   actions_processor:
     enabled: true

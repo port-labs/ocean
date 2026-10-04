@@ -47,8 +47,8 @@ def get_workflow_resources(unique_suffix: str | None = None) -> WorkflowResource
         suffix=resource_suffix,
         installation_id=details.integration_identifier,
         integration_provider=details.integration_type,
-        echo_workflow_identifier=f"smoke_echo_message_wf{resource_suffix}",
-        trigger_fake_task_workflow_identifier=f"smoke_trigger_fake_task_wf{resource_suffix}",
+        echo_workflow_identifier=f"echo-wf{resource_suffix}",
+        trigger_fake_task_workflow_identifier=f"task-wf{resource_suffix}",
     )
 
 
