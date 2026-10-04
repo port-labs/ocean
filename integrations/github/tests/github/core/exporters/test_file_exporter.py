@@ -25,7 +25,7 @@ from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
 )
-from github.helpers.utils import GithubClientType, IgnoredError
+from github.helpers.utils import GithubClientType
 from port_ocean.context.event import event_context
 from typing import AsyncGenerator, List, Dict, Any
 
@@ -587,7 +587,7 @@ class TestRestFileExporter:
             assert truncated is False
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/repo1/git/trees/main?recursive=1",
-                ignored_errors=[IgnoredError(status=409, message="empty repository")],
+                ignored_errors=RestFileExporter._IGNORED_ERRORS,
                 ignore_default_errors=False,
             )
 
@@ -608,8 +608,39 @@ class TestRestFileExporter:
             assert truncated is False
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{organization}/repo1/git/trees/main?recursive=1",
-                ignored_errors=[IgnoredError(status=409, message="empty repository")],
+                ignored_errors=RestFileExporter._IGNORED_ERRORS,
                 ignore_default_errors=False,
+            )
+
+    async def test_get_tree_recursive_404_returns_empty(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """404 on tree-fetch must remain ignored (skip repo), not abort the kind.
+
+        ignore_default_errors=False is only to surface 403; 404 is re-listed in
+        _IGNORED_ERRORS so send_api_request returns empty and we continue.
+        """
+        exporter = RestFileExporter(rest_client)
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value={})
+        ) as mock_request:
+            tree, truncated = await exporter.get_tree_recursive(
+                "test-org", "missing-repo", "main"
+            )
+
+            assert tree == []
+            assert truncated is False
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/test-org/missing-repo/git/trees/main?recursive=1",
+                ignored_errors=RestFileExporter._IGNORED_ERRORS,
+                ignore_default_errors=False,
+            )
+            assert any(
+                err.status == 404 for err in RestFileExporter._IGNORED_ERRORS
+            )
+            assert not any(
+                err.status == 403 for err in RestFileExporter._IGNORED_ERRORS
             )
 
     async def test_get_tree_recursive_403_raises_exception(

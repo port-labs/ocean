@@ -36,6 +36,8 @@ from github.core.exporters.file_exporter.file_processor import (
 
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     _IGNORED_ERRORS = [
+        IgnoredError(status=401, message="Unauthorized access to endpoint"),
+        IgnoredError(status=404, message="Resource not found at endpoint"),
         IgnoredError(status=409, message="empty repository"),
     ]
 
@@ -409,7 +411,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_tree_recursive(
         self, organization: str, repo: str, branch: str
     ) -> tuple[List[Dict[str, Any]], bool]:
-        """Retrieve the recursive tree and whether GitHub truncated the response."""
+        """Retrieve the recursive tree and whether GitHub truncated the response.
+
+        Primary source for file kinds: 403 must raise (synced-with-issues) so
+        reconciliation does not treat the failure as an empty catalog. 401/404/409
+        remain ignored so missing repos/branches skip without aborting the kind.
+        """
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
         try:
             response = await self.client.send_api_request(
@@ -424,12 +431,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"GitHub API returned {e.response.status_code}. "
                     f"Entities will be preserved until next successful resync."
                 ) from e
-            else:
-                logger.error(
-                    f"Tree fetch returned {e.response.status_code} for "
-                    f"{organization}/{repo}@{branch}, returning empty"
-                )
-                return [], False
+            logger.error(
+                f"Tree fetch returned {e.response.status_code} for "
+                f"{organization}/{repo}@{branch}, returning empty"
+            )
+            return [], False
 
         if not response:
             logger.warning(
