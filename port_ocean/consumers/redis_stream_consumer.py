@@ -27,6 +27,7 @@ from port_ocean.consumers.redis_stream_utils import (
     ensure_consumer_group,
     is_missing_stream_or_group_error,
     is_redis_connection_error,
+    iter_xreadgroup_streams,
 )
 from port_ocean.context.event import EventType
 from port_ocean.context.ocean import ocean
@@ -103,7 +104,15 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
     def _redis_client_kwargs(self) -> dict[str, Any]:
         """Connection kwargs for redis-py, including auth and TLS for cloud Redis."""
         self._cleanup_tls_files()
-        kwargs: dict[str, Any] = {"decode_responses": True}
+        # redis-py 8 speaks RESP3 by default but keeps legacy Python shapes
+        # unless legacy_responses is disabled. Pin the legacy shapes the stream
+        # parsers expect. socket_timeout stays unset: the 8.x default of 5s
+        # aborts blocking XREADGROUP before a longer block interval returns.
+        kwargs: dict[str, Any] = {
+            "decode_responses": True,
+            "legacy_responses": True,
+            "socket_timeout": None,
+        }
         if self._settings.username:
             kwargs["username"] = self._settings.username
         if self._settings.password is not None:
@@ -221,10 +230,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                     count=self._settings.read_count,
                     block=self._settings.block_ms,
                 )
-                if not response:
-                    continue
-
-                for _stream_name, messages in response:
+                for _stream_name, messages in iter_xreadgroup_streams(response):
                     for message_id, fields in messages:
                         await self._handle_message(message_id, fields)
             except asyncio.CancelledError:

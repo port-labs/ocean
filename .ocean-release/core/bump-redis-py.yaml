@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: improvement
+changelog: Bump redis-py to 8.x, cryptography to 50.x, virtualenv to 21.x, and FastAPI to 0.142.x
