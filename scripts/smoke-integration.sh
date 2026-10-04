@@ -110,7 +110,6 @@ integration_docker_run() {
         -e "OCEAN__RUNTIME_MODE=${OCEAN__RUNTIME_MODE:-single_process}"
         -e "OCEAN__LAKEHOUSE_ENABLED=${OCEAN__LAKEHOUSE_ENABLED:-false}"
         -e "OCEAN__RESOURCES_PATH=/opt/port-resources"
-        -e "OCEAN__CREATE_PORT_RESOURCES_ORIGIN=Default"
         -e "APPLICATION__LOG_LEVEL=DEBUG"
     )
 
@@ -124,7 +123,7 @@ integration_docker_run() {
         -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${tar_file}[cli] && ocean sail"
     )
 
-    docker run -d -p "${SMOKE_TEST_HOST_PORT}:8000" "${docker_args[@]}"
+    docker run -d --rm -p "${SMOKE_TEST_HOST_PORT}:8000" "${docker_args[@]}"
 }
 
 wait_for_integration() {
