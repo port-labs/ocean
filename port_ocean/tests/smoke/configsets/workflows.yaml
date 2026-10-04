@@ -10,6 +10,7 @@ ocean:
   live_events:
     is_redis_stream_consumer_enabled: false
   integration:
+    type: fake-integration
     config:
       entity_amount: 1
       entity_kb_size: 1

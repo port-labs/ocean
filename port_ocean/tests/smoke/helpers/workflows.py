@@ -46,7 +46,9 @@ def get_workflow_resources(unique_suffix: str | None = None) -> WorkflowResource
     return WorkflowResources(
         suffix=resource_suffix,
         installation_id=details.integration_identifier,
-        integration_provider=details.integration_type,
+        # Workflow-service validates INTEGRATION_ACTION against enriched specs.
+        # Smoke registers as this type so the org intersects the fake-integration spec.
+        integration_provider="fake-integration",
         echo_workflow_identifier=f"echo-wf{resource_suffix}",
         trigger_fake_task_workflow_identifier=f"task-wf{resource_suffix}",
     )
@@ -93,7 +95,22 @@ def _self_serve_workflow(
             {
                 "identifier": trigger_id,
                 "title": "Trigger",
-                "config": {"type": "SELF_SERVE_TRIGGER", "published": True},
+                "config": {
+                    "type": "SELF_SERVE_TRIGGER",
+                    "published": True,
+                    "userInputs": {
+                        "properties": {
+                            "message": {
+                                "type": "string",
+                                "title": "Message",
+                            },
+                            "taskName": {
+                                "type": "string",
+                                "title": "Task name",
+                            },
+                        }
+                    },
+                },
             },
             action_node,
         ],
@@ -114,7 +131,7 @@ def build_echo_message_workflow(resources: WorkflowResources) -> dict[str, Any]:
         description="Ocean core smoke test workflow for sync integration actions",
         action_node=_integration_workflow_node(
             resources,
-            "echo_message",
+            "echo-message",
             "Echo message",
             ECHO_MESSAGE_ACTION,
             {"message": "{{ .inputs.message }}"},
@@ -129,7 +146,7 @@ def build_trigger_fake_task_workflow(resources: WorkflowResources) -> dict[str, 
         description="Ocean core smoke test workflow for async integration actions",
         action_node=_integration_workflow_node(
             resources,
-            "trigger_fake_task",
+            "trigger-fake-task",
             "Trigger fake task",
             TRIGGER_FAKE_TASK_ACTION,
             {
@@ -147,6 +164,12 @@ async def _upsert_workflow(port_client: PortClient, workflow: dict[str, Any]) ->
         json=workflow,
         headers=headers,
     )
+    if create.is_error and create.status_code != 409:
+        logger.error(
+            "Failed to create smoke workflow {identifier}: {body}",
+            identifier=workflow["identifier"],
+            body=create.text,
+        )
     if create.status_code == 409:
         update = await port_client.client.put(
             f"{port_client.auth.api_url}/workflows/{workflow['identifier']}",
