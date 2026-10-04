@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added identity propagation for GitLab actions. The integration registers its own OAuth app (identityOauthClientId/identityOauthClientSecret) so actions can run as the triggering user. Authorize and token URLs are derived from gitlabHost.
