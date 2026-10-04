@@ -1,0 +1,16 @@
+{
+  "identifier": "//cloudresourcemanager.googleapis.com/projects/my-project|roles/container.developer|serviceAccount:app@my-project.iam.gserviceaccount.com|",
+  "title": "serviceAccount:app@my-project.iam.gserviceaccount.com",
+  "blueprint": "gcpIamPolicyBinding",
+  "properties": {
+    "role": "roles/container.developer",
+    "member": "serviceAccount:app@my-project.iam.gserviceaccount.com",
+    "memberType": "serviceAccount",
+    "resource": "//cloudresourcemanager.googleapis.com/projects/my-project",
+    "assetType": "cloudresourcemanager.googleapis.com/Project",
+    "condition": ""
+  },
+  "relations": {
+    "project": "projects/my-project"
+  }
+}

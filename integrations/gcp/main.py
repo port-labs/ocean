@@ -22,6 +22,7 @@ from gcp_core.search.resource_searches import (
     search_all_organizations,
     search_all_projects,
     search_all_resources,
+    search_explicit_iam_policy_bindings,
 )
 from gcp_core.utils import (
     AssetTypesWithSpecialHandling,
@@ -29,6 +30,11 @@ from gcp_core.utils import (
     get_credentials_json,
     resolve_request_controllers,
 )
+
+
+async def _empty_resync() -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if False:
+        yield []
 
 
 async def _resolve_resync_method_for_resource(
@@ -55,6 +61,12 @@ async def _resolve_resync_method_for_resource(
             return search_all_organizations()
         case AssetTypesWithSpecialHandling.PROJECT:
             return search_all_projects()
+        case AssetTypesWithSpecialHandling.IAM_POLICY:
+            logger.warning(
+                "iam.googleapis.com/Policy cannot be synced through cloudResource. "
+                "Map it as its own kind and set selector.assetTypes."
+            )
+            return _empty_resync()
         case _:
             asset_rate_limiter, asset_semaphore = await resolve_request_controllers(
                 kind
@@ -134,6 +146,25 @@ async def resync_cloud_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     secrets = ocean.integration_config.get("cloud_function_secret", {})
     async for page in resync_cloud_function_resources(config, agent, secrets):
         yield page
+
+
+@ocean.on_resync(kind=AssetTypesWithSpecialHandling.IAM_POLICY)
+async def resync_iam_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = get_current_resource_config().selector
+    asset_types = list(getattr(selector, "asset_types", None) or [])
+    if not asset_types:
+        raise ValueError(
+            "iam.googleapis.com/Policy requires selector.assetTypes with at least one asset type"
+        )
+    policy_query = getattr(selector, "policy_query", None)
+    rate_limiter, semaphore = await resolve_request_controllers(kind)
+    async for batch in search_explicit_iam_policy_bindings(
+        asset_types,
+        policy_query if isinstance(policy_query, str) else None,
+        rate_limiter=rate_limiter,
+        semaphore=semaphore,
+    ):
+        yield batch
 
 
 @ocean.on_resync()

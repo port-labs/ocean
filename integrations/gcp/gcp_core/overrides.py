@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -6,7 +6,9 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic.v1 import Field, BaseModel
+from pydantic.v1 import Field, BaseModel, root_validator, validator
+
+IAM_POLICY_KIND = "iam.googleapis.com/Policy"
 
 
 class GCPCloudResourceSelector(Selector):
@@ -133,6 +135,63 @@ class GCPCloudFunctionResourceConfig(ResourceConfig):
     )
 
 
+class GCPIAMPolicySelector(Selector):
+    asset_types: list[str] = Field(
+        alias="assetTypes",
+        min_items=1,
+        title="Asset Types",
+        description=(
+            "Asset types whose explicit IAM allow policies are read with "
+            "<a target='_blank' href='https://cloud.google.com/asset-inventory/docs/reference/rest/v1/TopLevel/searchAllIamPolicies'>searchAllIamPolicies</a>. "
+            "At least one type is required. An empty asset type list searches every supported type and, together with each binding member, can create a very large number of entities. "
+            "Policies attached to project resources are read once per accessible project. "
+            "Include cloudresourcemanager.googleapis.com/Folder or cloudresourcemanager.googleapis.com/Organization only to read the allow policy set directly on those folders or organizations. "
+            "Example: cloudresourcemanager.googleapis.com/Project"
+        ),
+    )
+    policy_query: str | None = Field(
+        default=None,
+        alias="policyQuery",
+        title="Policy Query",
+        description=(
+            "Optional Cloud Asset Inventory query matched against each explicit allow-policy binding (principal, role, and condition). "
+            "Only matching bindings are returned. "
+            "Example: memberTypes:serviceAccount keeps Google service account principals. "
+            "Leave empty to return every explicit binding on the selected asset types. "
+            "This query does not call Policy Analyzer and does not include inherited access. "
+            "See <a target='_blank' href='https://cloud.google.com/asset-inventory/docs/searching-iam-policies'>search query syntax</a>."
+        ),
+    )
+
+    @validator("asset_types")
+    def _strip_asset_types(cls, value: list[str]) -> list[str]:
+        cleaned = [asset_type.strip() for asset_type in value]
+        if any(not asset_type for asset_type in cleaned):
+            raise ValueError("assetTypes entries must be non-empty strings")
+        return cleaned
+
+    @validator("policy_query")
+    def _blank_policy_query_is_unset(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+
+class GCPIAMPolicyResourceConfig(ResourceConfig):
+    kind: Literal["iam.googleapis.com/Policy"] = Field(
+        title="GCP IAM Allow Policy",
+        description=(
+            "Explicit IAM allow-policy bindings from Cloud Asset Inventory searchAllIamPolicies. "
+            "Each item is one binding member on one resource (role, member, and resource), not effective or inherited access."
+        ),
+    )
+    selector: GCPIAMPolicySelector = Field(
+        title="IAM Policy Selector",
+        description="Selector for explicit IAM allow-policy bindings.",
+    )
+
+
 class GCPPortAppConfig(PortAppConfig):
     allow_custom_kinds: ClassVar[bool] = True
 
@@ -144,12 +203,51 @@ class GCPPortAppConfig(PortAppConfig):
         | GCPOrganizationResourceConfig
         | GCPFolderResourceConfig
         | GCPCloudFunctionResourceConfig
+        | GCPIAMPolicyResourceConfig
         | GCPResourceConfig
     ] = Field(
         title="Resources",
         description="Configuration of resources to be synchronized by this app.",
         default_factory=list,
     )  # type: ignore[assignment]
+
+    @root_validator(pre=True)
+    def _iam_policy_kind_requires_asset_types(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Reject an IAM policy mapping that would search every asset type.
+
+        The generic resource config accepts any kind. Without this check, a
+        mapping that omits assetTypes would fall through to that config and
+        the resync would have no server-side scope.
+        """
+        resources = values.get("resources") or []
+        if not isinstance(resources, list):
+            return values
+        for resource in resources:
+            if not isinstance(resource, dict):
+                continue
+            if resource.get("kind") != IAM_POLICY_KIND:
+                continue
+            selector = resource.get("selector") or {}
+            if not isinstance(selector, dict):
+                raise ValueError(
+                    f"{IAM_POLICY_KIND} selector must be a mapping that includes assetTypes"
+                )
+            asset_types = selector.get("assetTypes", selector.get("asset_types"))
+            if not isinstance(asset_types, list) or not asset_types:
+                raise ValueError(
+                    f"{IAM_POLICY_KIND} requires selector.assetTypes with at least one "
+                    "asset type so a resync does not inventory every IAM allow policy"
+                )
+            if any(
+                not isinstance(asset_type, str) or not asset_type.strip()
+                for asset_type in asset_types
+            ):
+                raise ValueError(
+                    f"{IAM_POLICY_KIND} selector.assetTypes must be a list of non-empty strings"
+                )
+        return values
 
 
 class ProtoConfig(BaseModel):

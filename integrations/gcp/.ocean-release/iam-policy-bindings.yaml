@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added the iam.googleapis.com/Policy kind, which syncs explicit IAM allow-policy bindings (resource, role, and member) from Cloud Asset Inventory searchAllIamPolicies. Set selector.assetTypes to the resources whose policies should be read, and optionally selector.policyQuery to filter bindings on the server.
