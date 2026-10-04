@@ -1184,14 +1184,13 @@ async def resync_folders(
         yield folder_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 @_resync_per_authenticator
 async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration using the file exporter."""
-    logger.info(f"Starting resync for kind: {kind}")
-
     config = cast(GithubFileResourceConfig, event.resource_config)
     files = [
         file
@@ -1206,6 +1205,7 @@ async def resync_files(
     file_exporter = RestFileExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
+    sync_cursor = active_incremental_cursor()
     should_enrich_with_included_files = bool(config.selector.included_files)
     included_files_enricher = (
         IncludedFilesEnricher(
@@ -1224,6 +1224,34 @@ async def resync_files(
         repo_type=app_config.repository_type,
     )
     repo_path_map = await pattern_builder.build(files)
+
+    if sync_cursor:
+        changed_repos = set()
+        async for organizations in org_exporter.get_paginated_resources():
+            for org in organizations:
+                org_name = org["login"]
+                org_type = org["type"]
+
+                repo_options = ListRepositoryOptions(
+                    organization=org_name,
+                    organization_type=org_type,
+                    type=app_config.repository_type,
+                    updated_since=sync_cursor,
+                )
+                async for repos in repo_exporter.get_paginated_resources(
+                    options=repo_options
+                ):
+                    for repo in repos:
+                        changed_repos.add(f"{org_name}/{repo['name']}")
+
+        if not changed_repos:
+            return
+
+        repo_path_map = [
+            repo_opt
+            for repo_opt in repo_path_map
+            if f"{repo_opt['organization']}/{repo_opt['repo_name']}" in changed_repos
+        ]
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
