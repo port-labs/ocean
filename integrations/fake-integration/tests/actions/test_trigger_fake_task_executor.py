@@ -9,8 +9,8 @@ from port_ocean.core.models import (
 )
 
 from actions.constants import (
+    LINK_URL,
     TASK_RUNNING_STATUS_LABEL,
-    THIS_IS_FINE_MEME_URL,
     TRIGGERING_TASK_STATUS_LABEL,
 )
 from actions.exceptions import MissingExecutionPropertyError, TriggerFakeTaskError
@@ -71,7 +71,7 @@ class TestTriggerFakeTaskExecutor:
         assert first_log_call.kwargs["status_label"] == TRIGGERING_TASK_STATUS_LABEL
         mock_port_client.update_run_started.assert_awaited_once_with(
             run,
-            THIS_IS_FINE_MEME_URL,
+            LINK_URL,
             "fake_task_task-123",
             status_label=TASK_RUNNING_STATUS_LABEL,
         )
