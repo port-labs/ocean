@@ -698,9 +698,7 @@ class TestRestFileExporter:
             rest_client, "send_api_request", AsyncMock(side_effect=http_error)
         ):
             with pytest.raises(httpx.HTTPStatusError):
-                await exporter.get_tree_recursive(
-                    "test-org", "repo1", "main"
-                )
+                await exporter.get_tree_recursive("test-org", "repo1", "main")
 
     async def test_get_paginated_resources_mixed_403_and_valid_repos(
         self, rest_client: GithubRestClient
