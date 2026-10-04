@@ -612,13 +612,24 @@ class TestRestFileExporter:
                 ignore_default_errors=False,
             )
 
+    async def test_tree_fetch_preserves_default_ignores_except_403(self) -> None:
+        ignored_statuses = {err.status for err in RestFileExporter._IGNORED_ERRORS}
+        default_statuses = {
+            err.status for err in GithubRestClient._DEFAULT_IGNORED_ERRORS
+        }
+
+        assert 403 in default_statuses
+        assert 403 not in ignored_statuses
+        assert ignored_statuses == (default_statuses - {403}) | {409}
+
     async def test_get_tree_recursive_404_returns_empty(
         self, rest_client: GithubRestClient
     ) -> None:
         """404 on tree-fetch must remain ignored (skip repo), not abort the kind.
 
-        ignore_default_errors=False is only to surface 403; 404 is re-listed in
-        _IGNORED_ERRORS so send_api_request returns empty and we continue.
+        ignore_default_errors=False is only to surface 403; 401/404 stay on
+        _IGNORED_ERRORS from the client defaults so send_api_request returns
+        empty and we continue.
         """
         exporter = RestFileExporter(rest_client)
 
@@ -635,10 +646,6 @@ class TestRestFileExporter:
                 f"{rest_client.base_url}/repos/test-org/missing-repo/git/trees/main?recursive=1",
                 ignored_errors=RestFileExporter._IGNORED_ERRORS,
                 ignore_default_errors=False,
-            )
-            assert any(err.status == 404 for err in RestFileExporter._IGNORED_ERRORS)
-            assert not any(
-                err.status == 403 for err in RestFileExporter._IGNORED_ERRORS
             )
 
     async def test_get_tree_recursive_403_raises_exception(
@@ -669,10 +676,10 @@ class TestRestFileExporter:
             assert "repo1@main" in str(exc_info.value)
 
     @pytest.mark.parametrize("status_code", [422, 429, 500, 502])
-    async def test_get_tree_recursive_non_403_http_error_propagates(
+    async def test_get_tree_recursive_non_403_http_error_returns_empty(
         self, rest_client: GithubRestClient, status_code: int
     ) -> None:
-        """Non-403 HTTP errors keep main behavior: propagate HTTPStatusError."""
+        """Non-403 HTTP errors skip the repo instead of aborting the kind."""
         exporter = RestFileExporter(rest_client)
         mock_response = httpx.Response(
             status_code=status_code,
@@ -688,10 +695,12 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(side_effect=http_error)
         ):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await exporter.get_tree_recursive("test-org", "repo1", "main")
+            tree, truncated = await exporter.get_tree_recursive(
+                "test-org", "repo1", "main"
+            )
 
-            assert exc_info.value.response.status_code == status_code
+            assert tree == []
+            assert truncated is False
 
     async def test_get_paginated_resources_mixed_403_and_valid_repos(
         self, rest_client: GithubRestClient

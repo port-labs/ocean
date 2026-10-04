@@ -416,7 +416,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         Primary source for file kinds: 403 must raise GitHubTreeFetchError
         (synced-with-issues) so reconciliation does not treat the failure as an
         empty catalog. 401/404/409 are ignored so missing repos/branches skip
-        without aborting the kind. Other HTTP errors propagate.
+        without aborting the kind. Other HTTP errors skip that repo.
         """
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
         try:
@@ -432,7 +432,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"GitHub API returned {e.response.status_code}. "
                     f"Entities will be preserved until next successful resync."
                 ) from e
-            raise
+            logger.warning(
+                f"Tree fetch returned {e.response.status_code} for "
+                f"{organization}/{repo}@{branch}, returning empty"
+            )
+            return [], False
 
         if not response:
             logger.warning(
