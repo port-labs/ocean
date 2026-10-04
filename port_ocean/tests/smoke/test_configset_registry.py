@@ -10,7 +10,7 @@ from port_ocean.tests.smoke.configset_registry import (
 
 
 def test_configsets_are_discovered() -> None:
-    assert {"actions", "resync"}.issubset(set(list_configset_names()))
+    assert {"workflows", "resync"}.issubset(set(list_configset_names()))
 
 
 def test_resync_configset() -> None:
@@ -21,8 +21,8 @@ def test_resync_configset() -> None:
     assert env["OCEAN__ACTIONS_PROCESSOR__ENABLED"] == "false"
 
 
-def test_actions_configset() -> None:
-    configset = load_configset("actions")
+def test_workflows_configset() -> None:
+    configset = load_configset("workflows")
     assert configset.wait_for_resync is True
     env = ocean_config_env(configset.ocean)
     assert env["OCEAN__ACTIONS_PROCESSOR__ENABLED"] == "true"
