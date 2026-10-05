@@ -4,7 +4,6 @@ from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
 from github.clients.client_factory import create_github_client_for_org
-from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
@@ -20,16 +19,6 @@ MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS = 20
 
 class AbstractGithubExecutor(AbstractExecutor):
     WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]] = None
-
-    async def _get_execution_clients(
-        self, run: IntegrationRun
-    ) -> list[AbstractGithubClient]:
-        """Clients checked for rate limits before the run is acknowledged.
-
-        Single-org actions use one client; multi-org actions (e.g. bulk external
-        custom properties) override this to return one client per org.
-        """
-        return [await self._get_rest_client(run)]
 
     async def _get_rest_client(self, run: IntegrationRun) -> GithubRestClient:
         organization = run.execution_properties.get("org")
@@ -55,32 +44,18 @@ class AbstractGithubExecutor(AbstractExecutor):
             return None
         return f"{org}/{repo}"
 
-    def _is_client_close_to_rate_limit(self, client: AbstractGithubClient) -> bool:
+    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
+        client = await self._get_rest_client(run)
         info = client.get_rate_limit_status()
         if not info:
             return False
         return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
 
-    def _get_client_seconds_until_rate_limit(
-        self, client: AbstractGithubClient
+    async def get_remaining_seconds_until_rate_limit(
+        self, run: IntegrationRun
     ) -> float:
+        client = await self._get_rest_client(run)
         info = client.get_rate_limit_status()
         if not info:
             return 0.0
         return info.seconds_until_reset
-
-    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        clients = await self._get_execution_clients(run)
-        if not clients:
-            return False
-        return any(self._is_client_close_to_rate_limit(client) for client in clients)
-
-    async def get_remaining_seconds_until_rate_limit(
-        self, run: IntegrationRun
-    ) -> float:
-        clients = await self._get_execution_clients(run)
-        if not clients:
-            return 0.0
-        return max(
-            self._get_client_seconds_until_rate_limit(client) for client in clients
-        )
