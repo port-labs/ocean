@@ -10,7 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from plain.client import PlainClient
 from plain.constants import DISCUSSION_MESSAGE_EVENTS
-from plain.utils import ObjectKind
+from plain.utils import ObjectKind, is_ai_discussion
 from webhook_processors.plain_abstract_webhook_processor import (
     PlainAbstractWebhookProcessor,
 )
@@ -44,6 +44,22 @@ class DiscussionMessageWebhookProcessor(PlainAbstractWebhookProcessor):
             )
 
         client = PlainClient()
+        exclude_ai = bool(
+            getattr(resource_config.selector, "exclude_ai_discussions", False)
+        )
+        if exclude_ai:
+            discussion = await client.get_discussion(discussion_id)
+            if is_ai_discussion(discussion):
+                logger.info(
+                    "Plain discussion message {} belongs to an AI/agent session "
+                    "and excludeAiDiscussions is set; deleting",
+                    message_id,
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[{"id": message_id}],
+                )
+
         message = await client.get_discussion_message(
             discussion_id,
             message_id,

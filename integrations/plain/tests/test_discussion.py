@@ -25,7 +25,8 @@ def test_discussion_queries_select_channel_and_message_fields() -> None:
     assert "slackMessageLink" in THREAD_DISCUSSIONS
     assert "emailRecipients" in THREAD_DISCUSSIONS
     assert "userId" in THREAD_DISCUSSIONS
-    assert "node {\n        id\n      }" in THREAD_DISCUSSION_IDS
+    assert "channelDetails" in THREAD_DISCUSSION_IDS
+    assert "__typename" in THREAD_DISCUSSION_IDS
     assert "discussion(discussionId: $discussionId)" in DISCUSSION_MESSAGES
     assert "slackMessageLink" in DISCUSSION_MESSAGES
 
@@ -114,6 +115,50 @@ async def test_get_discussions_pages_each_thread() -> None:
     assert batches[0][0]["id"] == "disc_1"
 
 
+async def test_get_discussions_skips_ai_channels_when_requested() -> None:
+    client = make_client()
+
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        yield [{"id": "th_1"}]
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+    ) -> Any:
+        yield [
+            {
+                "id": "disc_slack",
+                "channelDetails": {
+                    "__typename": "ThreadDiscussionSlackChannelDetails"
+                },
+            },
+            {
+                "id": "disc_agent",
+                "channelDetails": {
+                    "__typename": "ThreadDiscussionAgentSessionChannelDetails"
+                },
+            },
+            {
+                "id": "disc_cursor",
+                "channelDetails": {
+                    "__typename": (
+                        "ThreadDiscussionCursorWorkspaceBackgroundAgentChannelDetails"
+                    )
+                },
+            },
+        ]
+
+    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    batches = await collect_pages(
+        client.get_discussions([], exclude_ai_discussions=True)
+    )
+
+    assert [discussion["id"] for discussion in batches[0]] == ["disc_slack"]
+
+
 async def test_get_discussion_messages_stamps_parent_thread_id() -> None:
     client = make_client()
     seen: list[dict[str, Any]] = []
@@ -160,6 +205,48 @@ async def test_get_discussion_messages_stamps_parent_thread_id() -> None:
     assert batches[0][0]["threadDiscussionId"] == "disc_1"
 
 
+async def test_get_discussion_messages_skips_ai_discussions_when_requested() -> None:
+    client = make_client()
+    fetched_ids: list[str] = []
+
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        yield [{"id": "th_1"}]
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+    ) -> Any:
+        if operation_name == "ThreadDiscussionIds":
+            yield [
+                {
+                    "id": "disc_human",
+                    "channelDetails": {
+                        "__typename": "ThreadDiscussionSlackChannelDetails"
+                    },
+                },
+                {
+                    "id": "disc_agent",
+                    "channelDetails": {
+                        "__typename": "ThreadDiscussionAgentSessionChannelDetails"
+                    },
+                },
+            ]
+            return
+        fetched_ids.append(str(variables["discussionId"] if variables else ""))
+        yield [{"id": "dm_1", "threadDiscussionId": variables["discussionId"]}]
+
+    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    batches = await collect_pages(
+        client.get_discussion_messages([], exclude_ai_discussions=True)
+    )
+
+    assert fetched_ids == ["disc_human"]
+    assert batches[0][0]["threadDiscussionId"] == "disc_human"
+
+
 async def test_get_discussion_messages_raises_when_discussion_is_missing() -> None:
     client = make_client()
 
@@ -195,7 +282,12 @@ async def test_get_discussion_messages_raises_when_discussion_is_missing() -> No
         await collect_pages(client.get_discussion_messages([]))
 
 
-def _resource(kind: str, exclude_done_threads: bool) -> ResourceConfig:
+def _resource(
+    kind: str,
+    exclude_done_threads: bool,
+    *,
+    exclude_ai_discussions: bool = False,
+) -> ResourceConfig:
     blueprint = (
         '"plainDiscussion"' if kind == "discussion" else '"plainDiscussionMessage"'
     )
@@ -210,6 +302,7 @@ def _resource(kind: str, exclude_done_threads: bool) -> ResourceConfig:
             "selector": {
                 "query": "true",
                 "excludeDoneThreads": exclude_done_threads,
+                "excludeAiDiscussions": exclude_ai_discussions,
             },
             "port": {
                 "entity": {
@@ -241,14 +334,24 @@ async def test_resync_passes_open_statuses_when_flag_is_set(
         def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
             pass
 
-        async def get_discussions(self, statuses: list[str] | None = None) -> Any:
+        async def get_discussions(
+            self,
+            statuses: list[str] | None = None,
+            *,
+            exclude_ai_discussions: bool = False,
+        ) -> Any:
             seen["statuses"] = statuses
+            seen["exclude_ai_discussions"] = exclude_ai_discussions
             yield [{"id": "disc_1"}]
 
         async def get_discussion_messages(
-            self, statuses: list[str] | None = None
+            self,
+            statuses: list[str] | None = None,
+            *,
+            exclude_ai_discussions: bool = False,
         ) -> Any:
             seen["statuses"] = statuses
+            seen["exclude_ai_discussions"] = exclude_ai_discussions
             yield [{"id": "dm_1", "threadId": "th_1"}]
 
     with patch("main.PlainClient", FakeClient):
@@ -275,14 +378,24 @@ async def test_resync_reads_exclude_flag_without_local_config_class(
         def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
             pass
 
-        async def get_discussions(self, statuses: list[str] | None = None) -> Any:
+        async def get_discussions(
+            self,
+            statuses: list[str] | None = None,
+            *,
+            exclude_ai_discussions: bool = False,
+        ) -> Any:
             seen["statuses"] = statuses
+            seen["exclude_ai_discussions"] = exclude_ai_discussions
             yield []
 
         async def get_discussion_messages(
-            self, statuses: list[str] | None = None
+            self,
+            statuses: list[str] | None = None,
+            *,
+            exclude_ai_discussions: bool = False,
         ) -> Any:
             seen["statuses"] = statuses
+            seen["exclude_ai_discussions"] = exclude_ai_discussions
             yield []
 
     config = cast(
@@ -299,3 +412,45 @@ async def test_resync_reads_exclude_flag_without_local_config_class(
             await collect_pages(handler(kind))
 
     assert seen["statuses"] == []
+
+
+@pytest.mark.parametrize(
+    ("handler", "kind"),
+    [
+        (on_resync_discussions, "discussion"),
+        (on_resync_discussion_messages, "discussion-message"),
+    ],
+)
+async def test_resync_passes_exclude_ai_discussions_when_flag_is_set(
+    handler: Any, kind: str
+) -> None:
+    seen: dict[str, Any] = {}
+
+    class FakeClient:
+        def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
+            pass
+
+        async def get_discussions(
+            self,
+            statuses: list[str] | None = None,
+            *,
+            exclude_ai_discussions: bool = False,
+        ) -> Any:
+            seen["exclude_ai_discussions"] = exclude_ai_discussions
+            yield [{"id": "disc_1"}]
+
+        async def get_discussion_messages(
+            self,
+            statuses: list[str] | None = None,
+            *,
+            exclude_ai_discussions: bool = False,
+        ) -> Any:
+            seen["exclude_ai_discussions"] = exclude_ai_discussions
+            yield [{"id": "dm_1", "threadId": "th_1"}]
+
+    with patch("main.PlainClient", FakeClient):
+        assert handler is not None
+        async with resource_context(_resource(kind, False, exclude_ai_discussions=True)):
+            await collect_pages(handler(kind))
+
+    assert seen["exclude_ai_discussions"] is True

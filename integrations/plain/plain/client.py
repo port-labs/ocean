@@ -44,7 +44,7 @@ from plain.queries import (
     THREAD_TIMELINE,
     UPDATE_WEBHOOK_TARGET,
 )
-from plain.utils import edges_to_nodes, get_nested
+from plain.utils import edges_to_nodes, get_nested, is_ai_discussion
 
 DEFAULT_API_URL = "https://core-api.uk.plain.com/graphql/v1"
 USER_AGENT = "port-ocean-plain"
@@ -88,6 +88,8 @@ class PlainClient:
                 "Content-Type": "application/json",
                 "User-Agent": USER_AGENT,
             },
+            # GraphQL is POST-only; Ocean RetryTransport skips POST unless opted in.
+            extensions={"retryable": True},
         )
         if response.status_code >= 400:
             _abort_when_permission_is_missing(response.text)
@@ -262,7 +264,10 @@ class PlainClient:
                         yield messages
 
     async def get_discussions(
-        self, statuses: list[str] | None = None
+        self,
+        statuses: list[str] | None = None,
+        *,
+        exclude_ai_discussions: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for threads in self.get_thread_ids(statuses):
             for thread in threads:
@@ -270,11 +275,20 @@ class PlainClient:
                 if thread_id is None:
                     continue
                 async for discussions in self._discussion_pages(thread_id):
+                    if exclude_ai_discussions:
+                        discussions = [
+                            discussion
+                            for discussion in discussions
+                            if not is_ai_discussion(discussion)
+                        ]
                     if discussions:
                         yield discussions
 
     async def get_discussion_messages(
-        self, statuses: list[str] | None = None
+        self,
+        statuses: list[str] | None = None,
+        *,
+        exclude_ai_discussions: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for threads in self.get_thread_ids(statuses):
             for thread in threads:
@@ -283,6 +297,8 @@ class PlainClient:
                     continue
                 async for discussions in self._discussion_id_pages(thread_id):
                     for discussion in discussions:
+                        if exclude_ai_discussions and is_ai_discussion(discussion):
+                            continue
                         discussion_id = _entity_id(discussion)
                         if discussion_id is None:
                             continue

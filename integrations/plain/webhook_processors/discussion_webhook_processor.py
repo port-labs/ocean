@@ -10,7 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from plain.client import PlainClient
 from plain.constants import DISCUSSION_EVENTS
-from plain.utils import ObjectKind
+from plain.utils import ObjectKind, is_ai_discussion
 from webhook_processors.plain_abstract_webhook_processor import (
     PlainAbstractWebhookProcessor,
 )
@@ -37,6 +37,19 @@ class DiscussionWebhookProcessor(PlainAbstractWebhookProcessor):
 
         client = PlainClient()
         discussion = await client.get_discussion(discussion_id)
+        exclude_ai = bool(
+            getattr(resource_config.selector, "exclude_ai_discussions", False)
+        )
+        if exclude_ai and is_ai_discussion(discussion):
+            logger.info(
+                "Plain discussion {} is an AI/agent session and "
+                "excludeAiDiscussions is set; deleting",
+                discussion_id,
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[discussion]
+            )
+
         logger.info("Upserting Plain discussion {}", discussion_id)
         return WebhookEventRawResults(
             updated_raw_results=[discussion],

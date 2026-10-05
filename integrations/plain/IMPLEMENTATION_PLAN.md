@@ -217,12 +217,14 @@ async def get_discussion_message(...)  # or re-fetch discussion.messages page
 
 - Source: `discussions` filtered by `threadIds`
 - Channel derived from `channelDetails.__typename` → `SLACK` / `EMAIL` / `CURSOR` / `AGENT_SESSION`
+- Selector: `excludeDoneThreads` plus `excludeAiDiscussions` (skips Cursor and agent-session channels)
 - Slack link + email recipients mapped when present
 - Related to parent `plainThread`
 
 #### 6. `discussion-message` (added in Phase 1)
 
 - Source: `discussion.messages`
+- Selector: same `excludeDoneThreads` / `excludeAiDiscussions` as discussion
 - Related to both `plainDiscussion` (`threadDiscussionId`) and `plainThread` (stamped `threadId`)
 
 ### Install configuration (`.port/spec.yaml`) — as shipped

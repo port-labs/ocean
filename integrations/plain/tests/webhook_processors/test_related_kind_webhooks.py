@@ -324,3 +324,107 @@ async def test_discussion_and_message_webhooks() -> None:
             _resource_config(ObjectKind.DISCUSSION_MESSAGE),
         )
     assert result.updated_raw_results[0]["threadId"] == "th_1"
+
+
+@pytest.mark.asyncio
+async def test_discussion_webhook_deletes_ai_when_excluded() -> None:
+    from integration import DiscussionResourceConfig, DiscussionSelector
+
+    processor = DiscussionWebhookProcessor(
+        event=_event(
+            {
+                "type": "discussion.discussion_created",
+                "payload": {"discussion": {"id": "disc_ai", "threadId": "th_1"}},
+            }
+        )
+    )
+    resource = DiscussionResourceConfig(
+        kind=ObjectKind.DISCUSSION,
+        selector=DiscussionSelector(
+            query="true", excludeDoneThreads=False, excludeAiDiscussions=True
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".title",
+                    blueprint='"plainDiscussion"',
+                    icon=None,
+                    team=None,
+                    properties={},
+                )
+            ),
+            itemsToParse=None,
+        ),
+    )
+    with patch(
+        "webhook_processors.discussion_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_discussion = AsyncMock(
+            return_value={
+                "id": "disc_ai",
+                "channelDetails": {
+                    "__typename": "ThreadDiscussionAgentSessionChannelDetails"
+                },
+            }
+        )
+        result = await processor.handle_event(processor.event.payload, resource)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results[0]["id"] == "disc_ai"
+
+
+@pytest.mark.asyncio
+async def test_discussion_message_webhook_deletes_ai_when_excluded() -> None:
+    from integration import DiscussionMessageResourceConfig, DiscussionSelector
+
+    processor = DiscussionMessageWebhookProcessor(
+        event=_event(
+            {
+                "type": "discussion.message_created",
+                "payload": {
+                    "discussion": {"id": "disc_ai", "threadId": "th_1"},
+                    "message": {"id": "dm_ai"},
+                },
+            }
+        )
+    )
+    resource = DiscussionMessageResourceConfig(
+        kind=ObjectKind.DISCUSSION_MESSAGE,
+        selector=DiscussionSelector(
+            query="true", excludeDoneThreads=False, excludeAiDiscussions=True
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".id",
+                    blueprint='"plainDiscussionMessage"',
+                    icon=None,
+                    team=None,
+                    properties={},
+                )
+            ),
+            itemsToParse=None,
+        ),
+    )
+    with patch(
+        "webhook_processors.discussion_message_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_discussion = AsyncMock(
+            return_value={
+                "id": "disc_ai",
+                "channelDetails": {
+                    "__typename": (
+                        "ThreadDiscussionCursorWorkspaceBackgroundAgentChannelDetails"
+                    )
+                },
+            }
+        )
+        result = await processor.handle_event(processor.event.payload, resource)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results[0]["id"] == "dm_ai"
+    client.get_discussion_message.assert_not_called()

@@ -41,6 +41,7 @@ async def test_execute_returns_data_on_success() -> None:
         seen["url"] = str(request.url)
         seen["body"] = json.loads(request.content)
         seen["authorization"] = request.headers["authorization"]
+        seen["retryable"] = request.extensions.get("retryable")
         return httpx.Response(
             200,
             json={"data": {"threads": {"totalCount": 1}}},
@@ -59,6 +60,7 @@ async def test_execute_returns_data_on_success() -> None:
     assert seen["body"]["operationName"] == "ListThreads"
     assert seen["body"]["variables"] == {"first": 1}
     assert seen["authorization"] == f"Bearer {API_TOKEN}"
+    assert seen["retryable"] is True
 
 
 @pytest.mark.asyncio

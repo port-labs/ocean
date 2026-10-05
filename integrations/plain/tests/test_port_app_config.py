@@ -100,6 +100,7 @@ def test_blueprint_and_port_app_config_parse() -> None:
     )
     assert isinstance(discussion, DiscussionResourceConfig)
     assert discussion.selector.exclude_done_threads is False
+    assert discussion.selector.exclude_ai_discussions is False
     discussion_message = next(
         resource
         for resource in config.resources
@@ -107,6 +108,7 @@ def test_blueprint_and_port_app_config_parse() -> None:
     )
     assert isinstance(discussion_message, DiscussionMessageResourceConfig)
     assert discussion_message.selector.exclude_done_threads is False
+    assert discussion_message.selector.exclude_ai_discussions is False
     assert by_id["plainDiscussion"]["relations"]["thread"]["target"] == "plainThread"
     assert (
         "format"

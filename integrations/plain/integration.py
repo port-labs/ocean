@@ -84,6 +84,18 @@ class ThreadSelector(Selector):
     )
 
 
+class DiscussionSelector(ThreadSelector):
+    exclude_ai_discussions: bool = Field(
+        default=False,
+        alias="excludeAiDiscussions",
+        description=(
+            "When true, skip AI/agent discussions (Cursor and agent-session channels) "
+            "during resync. When false (default), sync every discussion including AI ones."
+        ),
+        title="Exclude AI discussions",
+    )
+
+
 class ThreadResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.THREAD] = Field(
         description="Plain thread",
@@ -111,7 +123,7 @@ class DiscussionResourceConfig(ResourceConfig):
         description="Plain thread discussion",
         title="Discussion",
     )
-    selector: ThreadSelector = Field(
+    selector: DiscussionSelector = Field(
         description="Discussion selector",
         title="Selector",
     )
@@ -122,7 +134,7 @@ class DiscussionMessageResourceConfig(ResourceConfig):
         description="Plain discussion message",
         title="Discussion message",
     )
-    selector: ThreadSelector = Field(
+    selector: DiscussionSelector = Field(
         description="Discussion message selector",
         title="Selector",
     )

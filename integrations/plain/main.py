@@ -38,6 +38,12 @@ def _exclude_deleted_machine_users() -> bool:
     )
 
 
+def _exclude_ai_discussions() -> bool:
+    return bool(
+        getattr(resource.resource_config.selector, "exclude_ai_discussions", False)
+    )
+
+
 @ocean.on_resync(ExampleKind.EXAMPLE_KIND)
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
     if kind == ExampleKind.EXAMPLE_KIND:
@@ -123,7 +129,10 @@ async def on_resync_thread_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_discussions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
     client = PlainClient()
-    async for discussions in client.get_discussions(statuses):
+    exclude_ai = _exclude_ai_discussions()
+    async for discussions in client.get_discussions(
+        statuses, exclude_ai_discussions=exclude_ai
+    ):
         logger.info(f"Received discussion batch with {len(discussions)} discussions")
         yield discussions
 
@@ -132,7 +141,10 @@ async def on_resync_discussions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_discussion_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
     client = PlainClient()
-    async for messages in client.get_discussion_messages(statuses):
+    exclude_ai = _exclude_ai_discussions()
+    async for messages in client.get_discussion_messages(
+        statuses, exclude_ai_discussions=exclude_ai
+    ):
         logger.info(f"Received discussion message batch with {len(messages)} messages")
         yield messages
 

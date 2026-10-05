@@ -14,6 +14,24 @@ class ObjectKind(StrEnum):
     DISCUSSION_MESSAGE = "discussion-message"
 
 
+AI_DISCUSSION_CHANNEL_TYPES = frozenset(
+    {
+        "ThreadDiscussionCursorWorkspaceBackgroundAgentChannelDetails",
+        "ThreadDiscussionAgentSessionChannelDetails",
+    }
+)
+
+
+def is_ai_discussion(discussion: dict[str, Any] | None) -> bool:
+    """True when the discussion is an AI/agent session rather than Slack/email."""
+    if not isinstance(discussion, dict):
+        return False
+    details = discussion.get("channelDetails")
+    if not isinstance(details, dict):
+        return False
+    return details.get("__typename") in AI_DISCUSSION_CHANNEL_TYPES
+
+
 def get_nested(data: dict[str, Any] | None, path: str) -> Any:
     """Return the value at a dotted path, or None if any segment is missing."""
     current: Any = data

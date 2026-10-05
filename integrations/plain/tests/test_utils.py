@@ -1,6 +1,6 @@
 from typing import Any
 
-from plain.utils import ObjectKind, edges_to_nodes, get_nested
+from plain.utils import ObjectKind, edges_to_nodes, get_nested, is_ai_discussion
 
 
 def test_get_nested_returns_value_at_dotted_path() -> None:
@@ -60,3 +60,34 @@ def test_object_kind_values_match_kind_strings() -> None:
         "discussion",
         "discussion-message",
     ]
+
+
+def test_is_ai_discussion_detects_agent_channels() -> None:
+    assert is_ai_discussion(
+        {
+            "channelDetails": {
+                "__typename": "ThreadDiscussionAgentSessionChannelDetails"
+            }
+        }
+    )
+    assert is_ai_discussion(
+        {
+            "channelDetails": {
+                "__typename": (
+                    "ThreadDiscussionCursorWorkspaceBackgroundAgentChannelDetails"
+                )
+            }
+        }
+    )
+    assert not is_ai_discussion(
+        {
+            "channelDetails": {
+                "__typename": "ThreadDiscussionSlackChannelDetails"
+            }
+        }
+    )
+    assert not is_ai_discussion(
+        {"channelDetails": {"__typename": "ThreadDiscussionEmailChannelDetails"}}
+    )
+    assert not is_ai_discussion({"channelDetails": None})
+    assert not is_ai_discussion(None)

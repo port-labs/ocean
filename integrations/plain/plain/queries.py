@@ -446,6 +446,9 @@ query ThreadDiscussionIds($threadId: ID!, $first: Int, $after: String) {
     edges {
       node {
         id
+        channelDetails {
+          __typename
+        }
       }
     }
   }

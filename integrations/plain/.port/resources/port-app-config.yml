@@ -129,6 +129,7 @@ resources:
     selector:
       query: "true"
       excludeDoneThreads: false
+      excludeAiDiscussions: false
     port:
       entity:
         mappings:
@@ -156,6 +157,7 @@ resources:
     selector:
       query: "true"
       excludeDoneThreads: false
+      excludeAiDiscussions: false
     port:
       entity:
         mappings:
