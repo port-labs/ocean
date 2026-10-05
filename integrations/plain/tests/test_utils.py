@@ -43,6 +43,7 @@ def test_object_kind_values_match_kind_strings() -> None:
     assert ObjectKind.COMPANY == "company"
     assert ObjectKind.TENANT == "tenant"
     assert ObjectKind.USER == "user"
+    assert ObjectKind.MACHINE_USER == "machine-user"
     assert ObjectKind.CUSTOMER == "customer"
     assert ObjectKind.THREAD == "thread"
     assert ObjectKind.THREAD_MESSAGE == "thread-message"
@@ -52,6 +53,7 @@ def test_object_kind_values_match_kind_strings() -> None:
         "company",
         "tenant",
         "user",
+        "machine-user",
         "customer",
         "thread",
         "thread-message",

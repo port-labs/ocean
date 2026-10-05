@@ -44,6 +44,30 @@ class UserResourceConfig(ResourceConfig):
     )
 
 
+class MachineUserSelector(Selector):
+    exclude_deleted: bool = Field(
+        default=False,
+        alias="excludeDeleted",
+        description=(
+            "When true, skip deleted machine users during resync. "
+            "When false (default), sync all machine users including deleted ones; "
+            "use the Port query selector (e.g. isDeleted == false) to filter in Port."
+        ),
+        title="Exclude deleted machine users",
+    )
+
+
+class MachineUserResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.MACHINE_USER] = Field(
+        description="Plain machine user (API bot or AI agent)",
+        title="Machine user",
+    )
+    selector: MachineUserSelector = Field(
+        description="Machine user selector",
+        title="Selector",
+    )
+
+
 class CustomerResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.CUSTOMER] = Field(
         description="Plain customer",
@@ -110,6 +134,7 @@ class PlainPortAppConfig(PortAppConfig):
         | CompanyResourceConfig
         | TenantResourceConfig
         | UserResourceConfig
+        | MachineUserResourceConfig
         | CustomerResourceConfig
         | ThreadResourceConfig
         | ThreadMessageResourceConfig

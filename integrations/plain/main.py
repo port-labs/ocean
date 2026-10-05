@@ -14,6 +14,7 @@ from webhook_processors import (
     CustomerWebhookProcessor,
     DiscussionMessageWebhookProcessor,
     DiscussionWebhookProcessor,
+    MachineUserWebhookProcessor,
     TenantWebhookProcessor,
     ThreadMessageWebhookProcessor,
     ThreadWebhookProcessor,
@@ -28,6 +29,12 @@ def _exclude_done_threads() -> bool:
     # The parsed resource is therefore a different class object, and isinstance fails.
     return bool(
         getattr(resource.resource_config.selector, "exclude_done_threads", False)
+    )
+
+
+def _exclude_deleted_machine_users() -> bool:
+    return bool(
+        getattr(resource.resource_config.selector, "exclude_deleted", False)
     )
 
 
@@ -71,6 +78,19 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for users in client.get_users():
         logger.info(f"Received user batch with {len(users)} users")
         yield users
+
+
+@ocean.on_resync(ObjectKind.MACHINE_USER)
+async def on_resync_machine_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = PlainClient()
+    exclude_deleted = _exclude_deleted_machine_users()
+    async for machine_users in client.get_machine_users(
+        exclude_deleted=exclude_deleted
+    ):
+        logger.info(
+            f"Received machine user batch with {len(machine_users)} machine users"
+        )
+        yield machine_users
 
 
 @ocean.on_resync(ObjectKind.CUSTOMER)
@@ -141,6 +161,7 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", CompanyWebhookProcessor)
 ocean.add_webhook_processor("/webhook", TenantWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", MachineUserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", CustomerWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ThreadWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ThreadMessageWebhookProcessor)

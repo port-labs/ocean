@@ -42,6 +42,25 @@ resources:
             publicName: .publicName
             status: .status
             role: .role.name
+  - kind: machine-user
+    selector:
+      query: "true"
+      excludeDeleted: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullName // .publicName
+          blueprint: '"plainMachineUser"'
+          properties:
+            publicName: .publicName
+            description: .description
+            type: .type
+            isCustomAgent: .isCustomAgent
+            isAssignableToThreads: .isAssignableToThreads
+            isDeleted: .isDeleted
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
   - kind: customer
     selector:
       query: "true"
@@ -78,7 +97,6 @@ resources:
             priority: .priority
             tier: .tier.name
             assigneeType: .assignedTo.__typename
-            machineUserAssignee: if .assignedTo.__typename == "MachineUser" then .assignedTo.id else null end
             labels: "[.labels[].labelType.name]"
             productArea: '([.threadFields[]? | select(.key == "product_area") | .stringValue] | first) // ""'
             fields: '[.threadFields[] | .key + "=" + ((.stringValue // .numberValue // .booleanValue) | tostring)] | join(", ")'
@@ -88,6 +106,7 @@ resources:
             customer: .customer.id
             tenant: .tenant.id
             assignee: if .assignedTo.__typename == "User" then .assignedTo.id else null end
+            machineAssignee: if .assignedTo.__typename == "MachineUser" then .assignedTo.id else null end
   - kind: thread-message
     selector:
       query: "true"

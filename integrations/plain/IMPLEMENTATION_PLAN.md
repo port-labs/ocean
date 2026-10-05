@@ -81,6 +81,7 @@ Verified API notes live in [API_NOTES.md](./API_NOTES.md).
 | `company` | `companies` | `plainCompany` | Root list |
 | `tenant` | `tenants` | `plainTenant` | Root list |
 | `user` | `users` | `plainUser` | Root list; needs `roles:read` for `role` |
+| `machine-user` | `machineUsers` | `plainMachineUser` | Root list; selector `excludeDeleted`; likely needs `machineUser:read` |
 | `customer` | `customers` | `plainCustomer` | Root list; tenants via `tenantMemberships` |
 | `thread` | `threads` | `plainThread` | Root list; selector `excludeDoneThreads` |
 | `thread-message` | `thread.timelineEntries` | `plainThreadMessage` | Nested per thread; needs `timeline:read` |
@@ -96,6 +97,7 @@ erDiagram
     plainThread ||--o| plainCustomer : requester
     plainThread ||--o| plainTenant : tenant
     plainThread ||--o| plainUser : assignee
+    plainThread ||--o| plainMachineUser : machineAssignee
     plainCustomer ||--o| plainCompany : company
     plainCustomer }o--o{ plainTenant : tenants
     plainThreadMessage }o--|| plainThread : thread
@@ -109,6 +111,7 @@ erDiagram
 | `plainThread` | `customer` | `plainCustomer` | `thread.customer.id` |
 | `plainThread` | `tenant` | `plainTenant` | `thread.tenant.id` |
 | `plainThread` | `assignee` | `plainUser` | `thread.assignedTo.id` (when `__typename == "User"`) |
+| `plainThread` | `machineAssignee` | `plainMachineUser` | `thread.assignedTo.id` (when `__typename == "MachineUser"`) |
 | `plainCustomer` | `company` | `plainCompany` | `customer.company.id` |
 | `plainCustomer` | `tenants` | `plainTenant` | `customer.tenantMemberships.edges[].node.tenant.id` |
 | `plainThreadMessage` | `thread` | `plainThread` | stamped `threadId` on timeline entry |
@@ -189,7 +192,7 @@ async def get_discussion_message(...)  # or re-fetch discussion.messages page
 - Query: `threads` — [docs](https://www.plain.com/docs/graphql/threads/get.md)
 - Permission: `thread:read`
 - Selector: `excludeDoneThreads` → sync `TODO` + `SNOOZED` only when `true`
-- Assignee relation only when `assignedTo.__typename == "User"`; `MachineUser` / `System` stored as properties
+- `assignee` when `assignedTo.__typename == "User"`; `machineAssignee` when `MachineUser`; `System` has no relation
 
 #### 2. `customer`
 
@@ -353,7 +356,7 @@ Not in Phase 1/2 scope. `discussion` / discussion messages moved **out** of this
 
 | Kind | GraphQL query | Notes |
 |------|---------------|------|
-| `machine-user` | `machineUsers` | AI/bot assignees (today stored as thread property only) |
+| ~~`machine-user`~~ | — | **Shipped as `plainMachineUser` with thread `machineAssignee` relation** |
 | `label-type` | `labelTypes` | Tag definitions (labels usually embedded on thread) |
 
 ### Tier 2 — Thread ecosystem

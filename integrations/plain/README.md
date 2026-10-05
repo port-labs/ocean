@@ -13,13 +13,14 @@ Ocean integration that syncs [Plain](https://www.plain.com/) support data into P
 | `company` | `companies` | `company:read` |
 | `tenant` | `tenants` | `tenant:read` |
 | `user` | `users` | `user:read` |
+| `machine-user` | `machineUsers` | likely `machineUser:read` (confirm on your API key) |
 | `customer` | `customers` | `customer:read` |
 | `thread` | `threads` | `thread:read` |
 | `thread-message` | `thread.timelineEntries` | `timeline:read` |
 | `discussion` | `discussions` filtered by thread | not named in the public schema |
 | `discussion-message` | `discussion.messages` | not named in the public schema |
 
-Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, `plainThread`, `plainThreadMessage`, `plainDiscussion`, and `plainDiscussionMessage`. A thread assignee relation is set only when `assignedTo` is a `User`. Thread tier is synced as a string property (`.tier.name`), not a separate kind. Customer tenants come from `tenantMemberships`. On the thread, thread-message, discussion, and discussion-message selectors, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. `false` syncs every status. Each flag is independent. The next resync uses the saved mapping. Thread messages are timeline entries that have text. Discussions are the internal conversations on those threads. A discussion message is related to its discussion and to the parent thread. Slack links and email recipients are stored when Plain sends them.
+Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainMachineUser`, `plainCustomer`, `plainThread`, `plainThreadMessage`, `plainDiscussion`, and `plainDiscussionMessage`. A thread `assignee` relation is set only when `assignedTo` is a `User`; a `machineAssignee` relation is set when it is a `MachineUser`. Thread tier is synced as a string property (`.tier.name`), not a separate kind. Machine users sync all by default (including deleted); set `excludeDeleted: true` on the machine-user selector to skip deleted ones at sync time, or keep them and filter in Port with a query such as `.isDeleted == false`. Customer tenants come from `tenantMemberships`. On the thread, thread-message, discussion, and discussion-message selectors, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. `false` syncs every status. Each flag is independent. The next resync uses the saved mapping. Thread messages are timeline entries that have text. Discussions are the internal conversations on those threads. A discussion message is related to its discussion and to the parent thread. Slack links and email recipients are stored when Plain sends them.
 
 Create the API key on a Plain machine user (Settings → Machine Users → Add API key). The token looks like `plainApiKey_…`.
 
@@ -50,6 +51,7 @@ Set `enableLiveEvents: true`, configure `OCEAN__BASE_URL`, and optionally `webho
 | `company` | No `company.*` webhooks — refreshed from customer create/update events |
 | `tenant` | No `tenant.*` webhooks — refreshed from `thread.thread_tenant_updated` |
 | `user` | No `user.*` webhooks — refreshed from `thread.thread_assignment_transitioned` when the assignee is a human user |
+| `machine-user` | No `machineUser.*` webhooks — refreshed from `thread.thread_assignment_transitioned` when the assignee is a machine user |
 
 Handlers re-fetch entities via GraphQL before upserting (except customer delete, which uses the payload id).
 
@@ -65,5 +67,6 @@ Handlers re-fetch entities via GraphQL before upserting (except customer delete,
 - Discussions are loaded per thread with `discussions(filters: { threadIds })`. Messages are `discussion.messages`. The public schema does not name those permissions.
 - A missing Plain permission fails that kind and logs the permission name. The other kinds still sync.
 - Company fields are `id`, `name`, and `domainName`. Company has no `externalId`.
-- A thread assignee is a `User`, `MachineUser`, or `System`. The sync stores `__typename` and `id` for those three.
+- A thread assignee is a `User`, `MachineUser`, or `System`. Human assignees map to `assignee` (`plainUser`); machine assignees map to `machineAssignee` (`plainMachineUser`). `assigneeType` stores `__typename`.
+- Machine-user list/get may need `machineUser:read` on the API key.
 - HTTP failures (including a missing token) raise before GraphQL parsing. A GraphQL `errors` array fails the sync instead of yielding an empty page.

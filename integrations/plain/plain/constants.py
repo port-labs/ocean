@@ -62,6 +62,7 @@ DISCUSSION_MESSAGE_EVENTS = frozenset({"discussion.message_created"})
 COMPANY_EVENTS = CUSTOMER_UPSERT_EVENTS
 TENANT_EVENTS = frozenset({"thread.thread_tenant_updated"})
 USER_EVENTS = frozenset({"thread.thread_assignment_transitioned"})
+MACHINE_USER_EVENTS = frozenset({"thread.thread_assignment_transitioned"})
 
 WEBHOOK_EVENT_TYPES = sorted(
     THREAD_UPSERT_EVENTS
@@ -72,4 +73,5 @@ WEBHOOK_EVENT_TYPES = sorted(
     | COMPANY_EVENTS
     | TENANT_EVENTS
     | USER_EVENTS
+    | MACHINE_USER_EVENTS
 )

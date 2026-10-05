@@ -7,6 +7,7 @@ from plain.queries import (
     GET_COMPANY,
     GET_CUSTOMER,
     GET_DISCUSSION,
+    GET_MACHINE_USER,
     GET_TENANT,
     GET_THREAD,
     GET_TIMELINE_ENTRY,
@@ -22,6 +23,7 @@ async def test_get_company_tenant_user_discussion_and_timeline() -> None:
             {"company": {"id": "co_1", "name": "Acme"}},
             {"tenant": {"id": "te_1", "name": "Tenant"}},
             {"user": {"id": "us_1", "email": "a@b.com"}},
+            {"machineUser": {"id": "mu_1", "fullName": "Bot"}},
             {"discussion": {"id": "disc_1", "threadId": "th_1"}},
             {
                 "timelineEntry": {
@@ -36,14 +38,16 @@ async def test_get_company_tenant_user_discussion_and_timeline() -> None:
     assert (await client.get_company("co_1"))["id"] == "co_1"
     assert (await client.get_tenant("te_1"))["id"] == "te_1"
     assert (await client.get_user("us_1"))["id"] == "us_1"
+    assert (await client.get_machine_user("mu_1"))["id"] == "mu_1"
     assert (await client.get_discussion("disc_1"))["id"] == "disc_1"
     assert (await client.get_timeline_entry("c_1", "tl_1"))["id"] == "tl_1"
 
     assert client.execute.await_args_list[0].args[0] is GET_COMPANY
     assert client.execute.await_args_list[1].args[0] is GET_TENANT
     assert client.execute.await_args_list[2].args[0] is GET_USER
-    assert client.execute.await_args_list[3].args[0] is GET_DISCUSSION
-    assert client.execute.await_args_list[4].args[0] is GET_TIMELINE_ENTRY
+    assert client.execute.await_args_list[3].args[0] is GET_MACHINE_USER
+    assert client.execute.await_args_list[4].args[0] is GET_DISCUSSION
+    assert client.execute.await_args_list[5].args[0] is GET_TIMELINE_ENTRY
 
 
 async def test_get_thread_returns_node() -> None:

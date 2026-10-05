@@ -8,6 +8,7 @@ import yaml  # type: ignore[import-untyped]
 from integration import (
     DiscussionMessageResourceConfig,
     DiscussionResourceConfig,
+    MachineUserResourceConfig,
     PlainPortAppConfig,
     ThreadMessageResourceConfig,
     ThreadResourceConfig,
@@ -43,6 +44,7 @@ def test_blueprint_and_port_app_config_parse() -> None:
         "company",
         "tenant",
         "user",
+        "machine-user",
         "customer",
         "thread",
         "thread-message",
@@ -54,6 +56,7 @@ def test_blueprint_and_port_app_config_parse() -> None:
         "plainCompany",
         "plainTenant",
         "plainUser",
+        "plainMachineUser",
         "plainCustomer",
         "plainThread",
         "plainThreadMessage",
@@ -67,7 +70,20 @@ def test_blueprint_and_port_app_config_parse() -> None:
     assert by_id["plainThread"]["relations"]["customer"]["target"] == "plainCustomer"
     assert by_id["plainThread"]["relations"]["tenant"]["target"] == "plainTenant"
     assert by_id["plainThread"]["relations"]["assignee"]["target"] == "plainUser"
+    assert (
+        by_id["plainThread"]["relations"]["machineAssignee"]["target"]
+        == "plainMachineUser"
+    )
     assert by_id["plainThread"]["schema"]["properties"]["tier"]["type"] == "string"
+    assert "machineUserAssignee" not in by_id["plainThread"]["schema"]["properties"]
+    assert by_id["plainMachineUser"]["schema"]["properties"]["isDeleted"]["type"] == (
+        "boolean"
+    )
+    machine_user = next(
+        resource for resource in config.resources if resource.kind == "machine-user"
+    )
+    assert isinstance(machine_user, MachineUserResourceConfig)
+    assert machine_user.selector.exclude_deleted is False
     thread = next(
         resource for resource in config.resources if resource.kind == "thread"
     )
@@ -140,18 +156,31 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
         "te_2",
     ]
 
+    machine_user = _load_json(FIXTURES / "machine_user.json")
+    assert _apply(mappings["machine-user"]["identifier"], machine_user) == "mu_1"
+    assert _apply(mappings["machine-user"]["title"], machine_user) == (
+        "Support Automation Bot"
+    )
+    assert _apply(mappings["machine-user"]["properties"]["type"], machine_user) == (
+        "API_USER"
+    )
+    assert (
+        _apply(mappings["machine-user"]["properties"]["isDeleted"], machine_user)
+        is False
+    )
+
     assert _apply(mappings["thread"]["identifier"], thread) == "th_1"
     assert _apply(mappings["thread"]["title"], thread) == "Login help"
     assert _apply(mappings["thread"]["relations"]["customer"], thread) == "c_1"
     assert _apply(mappings["thread"]["relations"]["tenant"], thread) == "te_1"
     assert _apply(mappings["thread"]["relations"]["assignee"], thread) == "us_1"
+    assert (
+        _apply(mappings["thread"]["relations"]["machineAssignee"], thread) is None
+    )
     assert _apply(mappings["thread"]["properties"]["labels"], thread) == ["Billing"]
     assert _apply(mappings["thread"]["properties"]["tier"], thread) == "Enterprise"
     assert _apply(mappings["thread"]["properties"]["productArea"], thread) == (
         "Users, teams & permissions"
-    )
-    assert (
-        _apply(mappings["thread"]["properties"]["machineUserAssignee"], thread) is None
     )
 
     assert _apply(mappings["thread"]["title"], machine_thread) == "T-200"
@@ -159,7 +188,7 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     assert _apply(mappings["thread"]["relations"]["tenant"], machine_thread) is None
     assert _apply(mappings["thread"]["properties"]["tier"], machine_thread) is None
     assert (
-        _apply(mappings["thread"]["properties"]["machineUserAssignee"], machine_thread)
+        _apply(mappings["thread"]["relations"]["machineAssignee"], machine_thread)
         == "mu_1"
     )
     assert _apply(mappings["thread"]["properties"]["fields"], machine_thread) == (

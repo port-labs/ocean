@@ -6,6 +6,7 @@ class ObjectKind(StrEnum):
     COMPANY = "company"
     TENANT = "tenant"
     USER = "user"
+    MACHINE_USER = "machine-user"
     CUSTOMER = "customer"
     THREAD = "thread"
     THREAD_MESSAGE = "thread-message"

@@ -4,6 +4,9 @@ from webhook_processors.discussion_message_webhook_processor import (
     DiscussionMessageWebhookProcessor,
 )
 from webhook_processors.discussion_webhook_processor import DiscussionWebhookProcessor
+from webhook_processors.machine_user_webhook_processor import (
+    MachineUserWebhookProcessor,
+)
 from webhook_processors.tenant_webhook_processor import TenantWebhookProcessor
 from webhook_processors.thread_message_webhook_processor import (
     ThreadMessageWebhookProcessor,
@@ -16,6 +19,7 @@ __all__ = [
     "CustomerWebhookProcessor",
     "DiscussionMessageWebhookProcessor",
     "DiscussionWebhookProcessor",
+    "MachineUserWebhookProcessor",
     "TenantWebhookProcessor",
     "ThreadMessageWebhookProcessor",
     "ThreadWebhookProcessor",

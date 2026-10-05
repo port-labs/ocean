@@ -36,6 +36,23 @@ role {
 }
 """.strip()
 
+_MACHINE_USER_FIELDS = """
+id
+fullName
+publicName
+description
+type
+isCustomAgent
+isAssignableToThreads
+isDeleted
+createdAt {
+  iso8601
+}
+updatedAt {
+  iso8601
+}
+""".strip()
+
 
 def _indent(selection: str, spaces: int) -> str:
     prefix = " " * spaces
@@ -110,6 +127,30 @@ GET_USER = f"""
 query GetUser($userId: ID!) {{
   user(userId: $userId) {{
 {_indent(_USER_FIELDS, 4)}
+  }}
+}}
+""".strip()
+
+LIST_MACHINE_USERS = f"""
+query ListMachineUsers($first: Int, $after: String) {{
+  machineUsers(first: $first, after: $after) {{
+    pageInfo {{
+      hasNextPage
+      endCursor
+    }}
+    edges {{
+      node {{
+{_indent(_MACHINE_USER_FIELDS, 8)}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+GET_MACHINE_USER = f"""
+query GetMachineUser($machineUserId: ID!) {{
+  machineUser(machineUserId: $machineUserId) {{
+{_indent(_MACHINE_USER_FIELDS, 4)}
   }}
 }}
 """.strip()

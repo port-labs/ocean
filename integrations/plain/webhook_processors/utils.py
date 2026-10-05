@@ -77,6 +77,19 @@ def assignee_user_id(body: dict[str, Any]) -> str | None:
     return entity_id(assignee)
 
 
+def assignee_machine_user_id(body: dict[str, Any]) -> str | None:
+    thread = body.get("thread")
+    if not isinstance(thread, dict):
+        return None
+    assignee = thread.get("assignee")
+    if not isinstance(assignee, dict):
+        return None
+    # Machine users have no email; human users do.
+    if "email" in assignee:
+        return None
+    return entity_id(assignee)
+
+
 def timeline_entry_refs(body: dict[str, Any]) -> tuple[str | None, str | None]:
     """Return ``(customer_id, timeline_entry_id)`` for message-like events."""
     timeline_entry = body.get("timelineEntry")

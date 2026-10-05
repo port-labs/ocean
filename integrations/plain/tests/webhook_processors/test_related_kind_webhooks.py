@@ -22,6 +22,9 @@ from webhook_processors.tenant_webhook_processor import TenantWebhookProcessor
 from webhook_processors.thread_message_webhook_processor import (
     ThreadMessageWebhookProcessor,
 )
+from webhook_processors.machine_user_webhook_processor import (
+    MachineUserWebhookProcessor,
+)
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
 
 
@@ -128,6 +131,89 @@ async def test_user_from_assignment() -> None:
         )
 
     assert result.updated_raw_results[0]["id"] == "us_1"
+
+
+@pytest.mark.asyncio
+async def test_machine_user_from_assignment() -> None:
+    processor = MachineUserWebhookProcessor(
+        event=_event(
+            {
+                "type": "thread.thread_assignment_transitioned",
+                "payload": {
+                    "thread": {
+                        "id": "th_1",
+                        "assignee": {
+                            "id": "mu_1",
+                            "fullName": "Support Bot",
+                        },
+                    }
+                },
+            }
+        )
+    )
+    with patch(
+        "webhook_processors.machine_user_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_machine_user = AsyncMock(
+            return_value={
+                "id": "mu_1",
+                "fullName": "Support Bot",
+                "isDeleted": False,
+            }
+        )
+        result = await processor.handle_event(
+            processor.event.payload, _resource_config(ObjectKind.MACHINE_USER)
+        )
+
+    assert result.updated_raw_results[0]["id"] == "mu_1"
+
+
+@pytest.mark.asyncio
+async def test_machine_user_deleted_when_excluded() -> None:
+    from integration import MachineUserResourceConfig, MachineUserSelector
+
+    processor = MachineUserWebhookProcessor(
+        event=_event(
+            {
+                "type": "thread.thread_assignment_transitioned",
+                "payload": {
+                    "thread": {
+                        "id": "th_1",
+                        "assignee": {"id": "mu_1", "fullName": "Gone Bot"},
+                    }
+                },
+            }
+        )
+    )
+    resource = MachineUserResourceConfig(
+        kind=ObjectKind.MACHINE_USER,
+        selector=MachineUserSelector(query="true", excludeDeleted=True),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".fullName",
+                    blueprint='"plainMachineUser"',
+                    icon=None,
+                    team=None,
+                    properties={},
+                )
+            ),
+            itemsToParse=None,
+        ),
+    )
+    with patch(
+        "webhook_processors.machine_user_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_machine_user = AsyncMock(
+            return_value={"id": "mu_1", "fullName": "Gone Bot", "isDeleted": True}
+        )
+        result = await processor.handle_event(processor.event.payload, resource)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results[0]["id"] == "mu_1"
 
 
 @pytest.mark.asyncio

@@ -89,6 +89,54 @@
         "relations": {}
     },
     {
+        "identifier": "plainMachineUser",
+        "title": "Plain Machine User",
+        "icon": "Blueprint",
+        "description": "A machine user (API bot or AI agent) in Plain",
+        "schema": {
+            "properties": {
+                "publicName": {
+                    "type": "string",
+                    "title": "Public name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "type": {
+                    "type": "string",
+                    "title": "Type",
+                    "enum": ["API_USER", "AI_AGENT"]
+                },
+                "isCustomAgent": {
+                    "type": "boolean",
+                    "title": "Is custom agent"
+                },
+                "isAssignableToThreads": {
+                    "type": "boolean",
+                    "title": "Is assignable to threads"
+                },
+                "isDeleted": {
+                    "type": "boolean",
+                    "title": "Is deleted"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
         "identifier": "plainCustomer",
         "title": "Plain Customer",
         "icon": "Blueprint",
@@ -173,10 +221,6 @@
                     "type": "string",
                     "title": "Assignee type"
                 },
-                "machineUserAssignee": {
-                    "type": "string",
-                    "title": "Machine user assignee"
-                },
                 "labels": {
                     "type": "array",
                     "title": "Labels",
@@ -222,6 +266,12 @@
             "assignee": {
                 "title": "Assignee",
                 "target": "plainUser",
+                "required": false,
+                "many": false
+            },
+            "machineAssignee": {
+                "title": "Machine assignee",
+                "target": "plainMachineUser",
                 "required": false,
                 "many": false
             }

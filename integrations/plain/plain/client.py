@@ -29,9 +29,11 @@ from plain.queries import (
     GET_TENANT,
     GET_THREAD,
     GET_TIMELINE_ENTRY,
+    GET_MACHINE_USER,
     GET_USER,
     LIST_COMPANIES,
     LIST_CUSTOMERS,
+    LIST_MACHINE_USERS,
     LIST_TENANTS,
     LIST_THREAD_IDS,
     LIST_THREADS,
@@ -199,6 +201,21 @@ class PlainClient:
             None,
             "data.users",
         ):
+            yield batch
+
+    async def get_machine_users(
+        self, *, exclude_deleted: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self.paginate_connection(
+            LIST_MACHINE_USERS,
+            "ListMachineUsers",
+            None,
+            "data.machineUsers",
+        ):
+            if exclude_deleted:
+                batch = [user for user in batch if not user.get("isDeleted")]
+                if not batch:
+                    continue
             yield batch
 
     async def get_customers(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -373,6 +390,16 @@ class PlainClient:
             "user",
             user_id,
             "user",
+        )
+
+    async def get_machine_user(self, machine_user_id: str) -> dict[str, Any]:
+        return await self._get_single_entity(
+            GET_MACHINE_USER,
+            {"machineUserId": machine_user_id},
+            "GetMachineUser",
+            "machineUser",
+            machine_user_id,
+            "machine user",
         )
 
     async def get_customer(self, customer_id: str) -> dict[str, Any]:

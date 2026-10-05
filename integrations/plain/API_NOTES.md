@@ -91,6 +91,7 @@ All five are root `Query` fields. Connection path for the paginator is `data.<fi
 | company | `companies` | `company:read` | `data.companies` |
 | tenant | `tenants` | `tenant:read` | `data.tenants` |
 | user | `users` | `user:read` | `data.users` |
+| machine-user | `machineUsers` | likely `machineUser:read` | `data.machineUsers` |
 | customer | `customers` | `customer:read` | `data.customers` |
 | thread | `threads` | `thread:read` | `data.threads` |
 
@@ -100,9 +101,13 @@ Argument shapes from the schema (2026-09-24):
 companies(first: Int, after: String, last: Int, before: String, filters: CompaniesFilter): CompanyConnection!
 tenants(first: Int, after: String, last: Int, before: String, filters: TenantsFilter): TenantConnection!
 users(filters: UsersFilter, first: Int, after: String, last: Int, before: String): UserConnection!
+machineUsers(filters: MachineUsersFilter, first: Int, after: String, last: Int, before: String): MachineUserConnection!
+machineUser(machineUserId: ID!): MachineUser
 customers(filters: CustomersFilter, sortBy: CustomersSort, first: Int, after: String, last: Int, before: String): CustomerConnection!
 threads(filters: ThreadsFilter, sortBy: ThreadsSort, first: Int, after: String, last: Int, before: String): ThreadConnection!
 ```
+
+`MachineUsersFilter` supports `type` (`API_USER` / `AI_AGENT`) and `isCustomAgent`. It has **no** `isDeleted` filter — the integration's `excludeDeleted` selector filters client-side after fetch.
 
 `ThreadsFilter.statuses` is `[ThreadStatus!]`. Status enum: `TODO`, `SNOOZED`, `DONE`. That is the variable for an optional `threadStatusFilter`.
 
@@ -114,6 +119,7 @@ These matter when writing queries. Several plan field names do not exist on the 
 - **Company** has `id`, `name`, `domainName` (not `domain`). There is **no** `externalId`.
 - **Tenant** has `id`, `name`, `externalId: String!`, `url`, `createdAt`, `updatedAt`.
 - **User** has `id`, `fullName`, `publicName`, `email: String!`, `status: UserStatus!` (`ONLINE`, `OFFLINE`, `AWAY`; `BREAK` is deprecated), `role { id name key }`. No `externalId`.
+- **MachineUser** has `id`, `fullName`, `publicName`, `description`, `type` (`API_USER` / `AI_AGENT`), `isCustomAgent`, `isAssignableToThreads`, `isDeleted`, timestamps. No `email` / `status` / `role`. Do not sync `apiKeys`.
 - **Customer.email** is `EmailAddress { email isVerified verifiedAt }`, not a string.
 - **Customer → company** is `company { id }`.
 - **Customer → tenants** is not `tenants[]`. It is the nested connection `tenantMemberships { edges { node { tenant { id } } } }`.
