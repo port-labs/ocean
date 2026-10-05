@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 from collections import defaultdict
+from datetime import datetime
 from enum import StrEnum
 import json
 from pathlib import Path
@@ -171,15 +172,17 @@ class FilePatternMappingBuilder:
         repo_type: str,
     ):
         self.org_exporter = org_exporter
-        self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
+        self.repo_type = repo_type
 
     async def build(
-        self, files: List["GithubFilePattern"]
+        self, files: List["GithubFilePattern"], updated_since: Optional[datetime] = None
     ) -> List[ListFileSearchOptions]:
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
+
+        repo_selector = CompositeRepositorySelector(self.repo_type, updated_since=updated_since)
 
         for file_sel in files:
             async for batch in self.org_exporter.get_paginated_resources(
@@ -188,7 +191,7 @@ class FilePatternMappingBuilder:
                 for org in batch:
                     org_login = org["login"]
                     org_type = org["type"]
-                    async for repo_name, branch, _ in self.repo_selector.select_repos(
+                    async for repo_name, branch, _ in repo_selector.select_repos(
                         file_sel, self.repo_exporter, org_login, org_type
                     ):
                         repo_map[(org_login, repo_name)].append(
@@ -208,43 +211,6 @@ class FilePatternMappingBuilder:
             )
             for (org, repo), items in repo_map.items()
         ]
-
-
-def build_file_search_map(
-    files: List["GithubFilePattern"],
-    repos_by_org: Dict[str, List[Tuple[str, str]]],
-) -> List[ListFileSearchOptions]:
-    """Build file search options from repos and file patterns.
-
-    Args:
-        files: File patterns from configuration
-        repos_by_org: Dict mapping org_name -> [(repo_name, default_branch)]
-
-    Returns:
-        List of ListFileSearchOptions for file search
-    """
-    repo_path_map = []
-    for org_name, repos in repos_by_org.items():
-        for repo_name, default_branch in repos:
-            for file_sel in files:
-                if file_sel.organization != org_name:
-                    continue
-
-                repo_path_map.append(
-                    ListFileSearchOptions(
-                        organization=org_name,
-                        repo_name=repo_name,
-                        files=[
-                            FileSearchOptions(
-                                organization=org_name,
-                                path=file_sel.path,
-                                skip_parsing=file_sel.skip_parsing,
-                                branch=default_branch,
-                            )
-                        ],
-                    )
-                )
-    return repo_path_map
 
 
 def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:

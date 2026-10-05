@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Callable, cast, Dict, List, Tuple
+from typing import Any, Callable, cast
 
 from loguru import logger
 
@@ -28,7 +28,7 @@ from github.core.exporters.team_exporter import (
 )
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.registry import register_live_events_webhooks
-from github.core.exporters.file_exporter.utils import FilePatternMappingBuilder, build_file_search_map
+from github.core.exporters.file_exporter.utils import FilePatternMappingBuilder
 from github.clients.client_factory import (
     create_github_client,
 )
@@ -1190,23 +1190,11 @@ async def resync_folders(
 async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync files based on configuration using the file exporter."""
-    sync_cursor = active_incremental_cursor()
-    auth_label = getattr(authenticator, "organization", None) or type(
-        authenticator
-    ).__name__
-    if sync_cursor:
-        logger.info(
-            f"[file-incremental] kind={kind} authenticator={auth_label} "
-            f"mode=incremental cursor={sync_cursor.isoformat()} "
-            f"cursor_tzinfo={sync_cursor.tzinfo}"
-        )
-    else:
-        logger.info(
-            f"[file-incremental] kind={kind} authenticator={auth_label} mode=full "
-            f"(no active incremental cursor)"
-        )
+    """Resync files based on configuration using the file exporter.
+    Incremental resync is supported by filtering repositories based on the updated_since cursor."""
+    logger.info(f"Starting resync for kind: {kind}")
 
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubFileResourceConfig, event.resource_config)
     files = [
         file
@@ -1214,9 +1202,6 @@ async def resync_files(
         if can_access_organization(authenticator, file.organization)
     ]
     if not files:
-        logger.info(
-            f"[file-incremental] No accessible file patterns for authenticator={auth_label}, skipping"
-        )
         return
 
     rest_client = create_github_client(authenticator)
@@ -1237,44 +1222,15 @@ async def resync_files(
         else None
     )
 
-    # Collect repos: incremental or full scan
-    if sync_cursor:
-        repos_by_org: Dict[str, List[Tuple[str, str]]] = {}
+    pattern_builder = FilePatternMappingBuilder(
+        org_exporter=org_exporter,
+        repo_exporter=repo_exporter,
+        repo_type=app_config.repository_type,
+    )
+    repo_path_map = await pattern_builder.build(files, updated_since=sync_cursor)
 
-        async for organizations in org_exporter.get_paginated_resources():
-            for org in organizations:
-                org_name = org["login"]
-                org_type = org["type"]
-
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org_type,
-                    type=app_config.repository_type,
-                    updated_since=sync_cursor,
-                )
-
-                repos_in_org = []
-                async for repos in repo_exporter.get_paginated_resources(
-                    options=repo_options
-                ):
-                    for repo in repos:
-                        repos_in_org.append((repo["name"], repo.get("default_branch")))
-
-                if repos_in_org:
-                    repos_by_org[org_name] = repos_in_org
-
-        if not repos_by_org:
-            return
-
-        repo_path_map = build_file_search_map(files, repos_by_org)
-    else:
-        # Full sync: use builder for all repos
-        pattern_builder = FilePatternMappingBuilder(
-            org_exporter=org_exporter,
-            repo_exporter=repo_exporter,
-            repo_type=app_config.repository_type,
-        )
-        repo_path_map = await pattern_builder.build(files)
+    if not repo_path_map:
+        return
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:

@@ -175,7 +175,7 @@ async def test_resync_files_skips_inaccessible_organizations(
     denied_file = MagicMock(organization="denied")
     file_exporter = MagicMock()
     file_exporter.get_paginated_resources.return_value = _aiter_one([{"path": "a.yml"}])
-    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[{"organization": "allowed", "repo_name": "repo1", "files": []}]))
     authenticator = MagicMock(organization="allowed")
 
     with (
@@ -208,7 +208,7 @@ async def test_resync_files_skips_inaccessible_organizations(
                 batches = [batch async for batch in github_main.resync_files("file")]
 
     assert batches == [[{"path": "a.yml"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_file])
+    pattern_builder.build.assert_awaited_once_with([allowed_file], updated_since=None)
 
 
 @pytest.mark.asyncio
@@ -326,10 +326,10 @@ async def test_resync_files_routes_selectors_to_matching_authenticators(
         "second",
     }
     assert {
-        tuple(call.args[0])
+        (tuple(call.args[0]), call.kwargs.get('updated_since'))
         for builder in (first_builder, second_builder)
         for call in builder.build.await_args_list
     } == {
-        (first_file,),
-        (second_file,),
+        ((first_file,), None),
+        ((second_file,), None),
     }
