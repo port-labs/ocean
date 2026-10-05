@@ -120,6 +120,7 @@ These matter when writing queries. Several plan field names do not exist on the 
 - **Thread.assignedTo** is the union `ThreadAssignee = User | MachineUser | System`. Use an inline fragment and treat assignee as a user only when `__typename` is `User`.
 - **Thread.priority** is `Int` (0 urgent, 1 high, 2 normal, 3 low), not an enum.
 - **Thread.tenant** is a nullable `Tenant`. **Thread.customer** is a required `Customer`.
+- **Thread.tier** is a nullable `Tier { id name }`. Mapped as a string property (`.tier.name`), not a separate kind. Nested selection may need `tier:read` in addition to `thread:read`.
 
 Minimal list selections to use in T5–T9 (pagination args omitted):
 
@@ -137,6 +138,7 @@ threads { edges { node {
   id ref externalId title status priority
   customer { id }
   tenant { id }
+  tier { id name }
   assignedTo { __typename ... on User { id } }
 } } }
 ```

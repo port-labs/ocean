@@ -76,6 +76,7 @@ resources:
             description: .description
             status: .status
             priority: .priority
+            tier: .tier.name
             assigneeType: .assignedTo.__typename
             machineUserAssignee: if .assignedTo.__typename == "MachineUser" then .assignedTo.id else null end
             labels: "[.labels[].labelType.name]"

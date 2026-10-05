@@ -8,6 +8,7 @@
   "priority": 2,
   "customer": {"id": "c_1"},
   "tenant": null,
+  "tier": null,
   "assignedTo": {"__typename": "MachineUser", "id": "mu_1"},
   "labels": [],
   "threadFields": [

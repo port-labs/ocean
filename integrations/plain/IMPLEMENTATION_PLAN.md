@@ -365,7 +365,7 @@ Not in Phase 1/2 scope. `discussion` / discussion messages moved **out** of this
 | `thread-field-schema` | `threadFieldSchemas` | Custom field definitions |
 | `tenant-field-schema` | `tenantFieldSchemas` | Tenant custom field definitions |
 | `customer-group` | `customerGroups` | Customer segmentation |
-| `tier` | `tiers` | Support / priority tiers |
+| ~~`tier`~~ | — | **Embedded on `thread` as string property `.tier.name` (not a separate kind)** |
 | `snippet` | `snippets` | Canned responses |
 | ~~`discussion`~~ | — | **Shipped in Phase 1** |
 | ~~`timeline-entry`~~ | — | **Covered by `thread-message` in Phase 1** |

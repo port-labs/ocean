@@ -165,6 +165,10 @@
                     "type": "number",
                     "title": "Priority"
                 },
+                "tier": {
+                    "type": "string",
+                    "title": "Tier"
+                },
                 "assigneeType": {
                     "type": "string",
                     "title": "Assignee type"

@@ -19,7 +19,7 @@ Ocean integration that syncs [Plain](https://www.plain.com/) support data into P
 | `discussion` | `discussions` filtered by thread | not named in the public schema |
 | `discussion-message` | `discussion.messages` | not named in the public schema |
 
-Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, `plainThread`, `plainThreadMessage`, `plainDiscussion`, and `plainDiscussionMessage`. A thread assignee relation is set only when `assignedTo` is a `User`. Customer tenants come from `tenantMemberships`. On the thread, thread-message, discussion, and discussion-message selectors, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. `false` syncs every status. Each flag is independent. The next resync uses the saved mapping. Thread messages are timeline entries that have text. Discussions are the internal conversations on those threads. A discussion message is related to its discussion and to the parent thread. Slack links and email recipients are stored when Plain sends them.
+Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, `plainThread`, `plainThreadMessage`, `plainDiscussion`, and `plainDiscussionMessage`. A thread assignee relation is set only when `assignedTo` is a `User`. Thread tier is synced as a string property (`.tier.name`), not a separate kind. Customer tenants come from `tenantMemberships`. On the thread, thread-message, discussion, and discussion-message selectors, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. `false` syncs every status. Each flag is independent. The next resync uses the saved mapping. Thread messages are timeline entries that have text. Discussions are the internal conversations on those threads. A discussion message is related to its discussion and to the parent thread. Slack links and email recipients are stored when Plain sends them.
 
 Create the API key on a Plain machine user (Settings → Machine Users → Add API key). The token looks like `plainApiKey_…`.
 
@@ -61,6 +61,7 @@ Handlers re-fetch entities via GraphQL before upserting (except customer delete,
 - Customer tenants come from the first page of `tenantMemberships` (at most 100). That selection needs `customerTenantMembership:read` in addition to `customer:read`.
 - The user query selects `role`, which needs `roles:read` in addition to `user:read`.
 - Thread messages come from `thread.timelineEntries`, which needs `timeline:read` in addition to `thread:read`.
+- Thread tier is selected as nested `tier { id name }` and mapped to a string. That nested field may need `tier:read` in addition to `thread:read`.
 - Discussions are loaded per thread with `discussions(filters: { threadIds })`. Messages are `discussion.messages`. The public schema does not name those permissions.
 - A missing Plain permission fails that kind and logs the permission name. The other kinds still sync.
 - Company fields are `id`, `name`, and `domainName`. Company has no `externalId`.

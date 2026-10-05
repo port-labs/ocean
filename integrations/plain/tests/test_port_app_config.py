@@ -67,6 +67,7 @@ def test_blueprint_and_port_app_config_parse() -> None:
     assert by_id["plainThread"]["relations"]["customer"]["target"] == "plainCustomer"
     assert by_id["plainThread"]["relations"]["tenant"]["target"] == "plainTenant"
     assert by_id["plainThread"]["relations"]["assignee"]["target"] == "plainUser"
+    assert by_id["plainThread"]["schema"]["properties"]["tier"]["type"] == "string"
     thread = next(
         resource for resource in config.resources if resource.kind == "thread"
     )
@@ -145,6 +146,7 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     assert _apply(mappings["thread"]["relations"]["tenant"], thread) == "te_1"
     assert _apply(mappings["thread"]["relations"]["assignee"], thread) == "us_1"
     assert _apply(mappings["thread"]["properties"]["labels"], thread) == ["Billing"]
+    assert _apply(mappings["thread"]["properties"]["tier"], thread) == "Enterprise"
     assert _apply(mappings["thread"]["properties"]["productArea"], thread) == (
         "Users, teams & permissions"
     )
@@ -155,6 +157,7 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     assert _apply(mappings["thread"]["title"], machine_thread) == "T-200"
     assert _apply(mappings["thread"]["relations"]["assignee"], machine_thread) is None
     assert _apply(mappings["thread"]["relations"]["tenant"], machine_thread) is None
+    assert _apply(mappings["thread"]["properties"]["tier"], machine_thread) is None
     assert (
         _apply(mappings["thread"]["properties"]["machineUserAssignee"], machine_thread)
         == "mu_1"

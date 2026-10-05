@@ -22,6 +22,7 @@ def test_list_threads_query_includes_relations_labels_and_fields() -> None:
 
     assert "customer" in selection
     assert "tenant" in selection
+    assert "tier" in selection
     assert "assignedTo" in selection
     assert "__typename" in selection
     assert "... on User" in selection

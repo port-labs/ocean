@@ -156,6 +156,10 @@ customer {
 tenant {
   id
 }
+tier {
+  id
+  name
+}
 assignedTo {
   __typename
   ... on User {
