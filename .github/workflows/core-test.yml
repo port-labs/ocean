@@ -110,7 +110,6 @@ jobs:
 
       - name: Run smoke tests
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append
           PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
@@ -128,15 +127,6 @@ jobs:
           PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
         run: make smoke/clean-all
-
-      - name: Upload smoke coverage
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-smoke
-          path: .coverage
-          include-hidden-files: true
-          if-no-files-found: ignore
 
       - name: Publish Smoke Test Report
         uses: mikepenz/action-junit-report@v5
