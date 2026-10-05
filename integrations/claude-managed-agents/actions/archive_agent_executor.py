@@ -12,36 +12,30 @@ ARCHIVING_STATUS_LABEL = "Archiving agent"
 ARCHIVE_FAILED_STATUS_LABEL = "Archive failed"
 AGENT_ARCHIVED_STATUS_LABEL = "Agent archived"
 
-# The Anthropic Managed Agents API has no delete endpoint for agents; archive
-# is the terminal (permanent) operation — it makes the agent read-only and
-# prevents new sessions from referencing it. Existing sessions continue.
-# This action is therefore named `delete_agent` from Port's perspective but
-# maps to the SDK's `beta.agents.archive` under the hood.
 
-
-class DeleteAgentInputs(AbstractAnthropicActionInput):
+class ArchiveAgentInputs(AbstractAnthropicActionInput):
     agentId: str = Field(min_length=1)
 
 
-class DeleteAgentExecutor(AbstractAnthropicExecutor):
-    """Executor for the `delete_agent` action.
+class ArchiveAgentExecutor(AbstractAnthropicExecutor):
+    """Executor for the `archive_agent` action.
 
-    Archives a Claude managed agent, making it permanently read-only. The
-    Anthropic API has no hard-delete for agents — archive is the closest
-    terminal operation. The run completes synchronously: no async webhook is
-    involved.
+    Archives a Claude managed agent, making it permanently read-only. Archive
+    is the terminal operation on the Anthropic API — no hard-delete exists.
+    Existing sessions continue; new sessions cannot reference the agent.
+    The run completes synchronously: no async webhook is involved.
 
     Runs are serialized per agent id so two concurrent archive attempts on the
     same agent do not race each other.
     """
 
-    ACTION_NAME = "delete_agent"
+    ACTION_NAME = "archive_agent"
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         return run.execution_properties.get("agentId")
 
     async def execute(self, run: IntegrationRun) -> None:
-        inputs = DeleteAgentInputs.from_execution_properties(run.execution_properties)
+        inputs = ArchiveAgentInputs.from_execution_properties(run.execution_properties)
         agent_id = inputs.agentId
 
         await ocean.port_client.post_run_log(
