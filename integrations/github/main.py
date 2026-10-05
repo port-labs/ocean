@@ -1191,7 +1191,8 @@ async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration using the file exporter.
-    Incremental resync is supported by filtering repositories based on the updated_since cursor."""
+    Incremental resync is supported by filtering repositories based on the updated_since cursor.
+    """
     logger.info(f"Starting resync for kind: {kind}")
 
     sync_cursor = active_incremental_cursor()

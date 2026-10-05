@@ -47,7 +47,9 @@ class AbstractGithubExporter[T: AbstractGithubClient](ABC):
             )
             if commits:
                 sample = commits[0]
-                commit_meta = sample.get("commit", {}) if isinstance(sample, dict) else {}
+                commit_meta = (
+                    sample.get("commit", {}) if isinstance(sample, dict) else {}
+                )
                 logger.info(
                     f"[file-incremental] {organization}/{repo_name}: path={path!r} "
                     f"HAS changes since cursor={since_date} "

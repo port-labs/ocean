@@ -187,7 +187,9 @@ class FilePatternMappingBuilder:
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
-        repo_selector = CompositeRepositorySelector(self.repo_type, updated_since=updated_since)
+        repo_selector = CompositeRepositorySelector(
+            self.repo_type, updated_since=updated_since
+        )
 
         for file_sel in files:
             async for batch in self.org_exporter.get_paginated_resources(
