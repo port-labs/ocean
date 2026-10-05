@@ -141,6 +141,71 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "relations": {
+      "dependsOn": {
+        "title": "Depends On",
+        "target": "newRelicService",
+        "required": false,
+        "many": true
+      },
+      "calls": {
+        "title": "Calls",
+        "target": "newRelicDependency",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "newRelicDependency",
+    "description": "This blueprint represents a dependency target discovered from New Relic CALLS relationships.",
+    "title": "New Relic Dependency",
+    "icon": "NewRelic",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "entityType": {
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "accountId": {
+          "title": "Account ID",
+          "type": "string"
+        },
+        "reporting": {
+          "title": "Reporting",
+          "type": "boolean"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        },
+        "relationshipType": {
+          "title": "Relationship Type",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
     "relations": {}
   },
   {

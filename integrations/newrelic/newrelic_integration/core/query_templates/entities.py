@@ -71,3 +71,81 @@ LIST_ENTITIES_BY_GUIDS_QUERY = """
     }
 }
 """
+
+LIST_ENTITIES_RELATED_ENTITIES_BY_GUIDS_QUERY = """
+{
+  actor {
+    entities(guids: {{ entity_guids }}) {
+      guid
+      relatedEntities(filter: {direction: OUTBOUND, relationshipTypes: {include: [CALLS]}}) {
+        nextCursor
+        results {
+          type
+          createdAt
+          source {
+            entity {
+              guid
+            }
+          }
+          target {
+            accountId
+            entity {
+              guid
+              name
+              type
+              domain
+              entityType
+              accountId
+              reporting
+              permalink
+              tags {
+                key
+                values
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+LIST_ENTITY_RELATED_ENTITIES_QUERY = """
+{
+  actor {
+    entity(guid: "{{ entity_guid }}") {
+      guid
+      relatedEntities(filter: {direction: OUTBOUND, relationshipTypes: {include: [CALLS]}} {{ next_cursor_request }}) {
+        nextCursor
+        results {
+          type
+          createdAt
+          source {
+            entity {
+              guid
+            }
+          }
+          target {
+            accountId
+            entity {
+              guid
+              name
+              type
+              domain
+              entityType
+              accountId
+              reporting
+              permalink
+              tags {
+                key
+                values
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""

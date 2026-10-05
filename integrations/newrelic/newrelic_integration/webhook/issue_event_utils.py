@@ -74,10 +74,12 @@ async def fetch_entities_for_resource(
 ) -> list[dict[str, Any]]:
     updated_entities: list[dict[str, Any]] = []
     newrelic_types = resource_config.selector.newrelic_types or []
+    include_service_dependencies = resource_config.selector.include_service_dependencies
+    entities_handler = EntitiesHandler()
 
     for entity_guid in entity_guids:
         try:
-            entity = await EntitiesHandler().get_entity(entity_guid=entity_guid)
+            entity = await entities_handler.get_entity(entity_guid=entity_guid)
             entity_type = entity["type"]
             if newrelic_types and entity_type not in newrelic_types:
                 continue
@@ -90,6 +92,15 @@ async def fetch_entities_for_resource(
                     )
                 )
                 entity["__open_issues_count"] = number_of_open_issues
+
+            if include_service_dependencies:
+                relations = (
+                    await entities_handler.list_service_call_relations_for_entity(
+                        entity_guid
+                    )
+                )
+                entity["__depends_on"] = relations.get("depends_on", [])
+                entity["__calls"] = relations.get("calls", [])
 
             updated_entities.append(entity)
         except Exception:

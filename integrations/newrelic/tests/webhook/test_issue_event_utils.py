@@ -26,6 +26,7 @@ def entity_resource_config() -> NewRelicCustomResourceConfig:
             newRelicTypes=["APM_APPLICATION"],
             entityQueryFilter="type = 'APM_APPLICATION'",
             calculateOpenIssueCount=True,
+            includeServiceDependencies=True,
         ),
         port=port_resource_config(),
     )
@@ -120,6 +121,12 @@ async def test_fetch_entities_for_resource_filters_by_type(
                 {"type": "APM_APPLICATION", "guid": "entity-guid-2"},
             ]
         )
+        mock_handler.list_service_call_relations_for_entity = AsyncMock(
+            side_effect=[
+                {"depends_on": ["service-1"], "calls": ["dependency-1"]},
+                {"depends_on": ["service-2"], "calls": ["dependency-2"]},
+            ]
+        )
         mock_issues_cls.return_value.get_number_of_issues_by_entity_guid = AsyncMock(
             return_value=2
         )
@@ -133,10 +140,15 @@ async def test_fetch_entities_for_resource_filters_by_type(
     assert len(entities) == 2
     assert entities[0]["__open_issues_count"] == 2
     assert entities[1]["__open_issues_count"] == 2
+    assert entities[0]["__depends_on"] == ["service-1"]
+    assert entities[0]["__calls"] == ["dependency-1"]
+    assert entities[1]["__depends_on"] == ["service-2"]
+    assert entities[1]["__calls"] == ["dependency-2"]
     assert (
         mock_issues_cls.return_value.get_number_of_issues_by_entity_guid.await_count
         == 2
     )
+    assert mock_handler.list_service_call_relations_for_entity.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -147,6 +159,7 @@ async def test_fetch_entities_for_resource_skips_non_matching_types() -> None:
             query="true",
             newRelicTypes=["HOST"],
             entityQueryFilter="type = 'HOST'",
+            includeServiceDependencies=False,
         ),
         port=port_resource_config(),
     )
@@ -176,6 +189,7 @@ async def test_fetch_entities_for_resource_includes_entities_without_newrelic_ty
         selector=NewRelicSelector(
             query="true",
             entityQueryFilter="type IN ('AWSEC2INSTANCE')",
+            includeServiceDependencies=False,
         ),
         port=port_resource_config(),
     )
@@ -197,6 +211,33 @@ async def test_fetch_entities_for_resource_includes_entities_without_newrelic_ty
         )
 
     assert entities == [{"type": "AWSEC2INSTANCE", "guid": "entity-guid-1"}]
+
+
+@pytest.mark.asyncio
+async def test_fetch_entities_for_resource_skips_dependencies_when_flag_disabled(
+    entity_resource_config: NewRelicCustomResourceConfig,
+) -> None:
+    entity_resource_config.selector.include_service_dependencies = False
+    entity_resource_config.selector.calculate_open_issue_count = False
+    with (
+        patch(
+            "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
+        ) as mock_handler_cls,
+        patch("newrelic_integration.webhook.issue_event_utils.IssuesHandler"),
+    ):
+        mock_handler = mock_handler_cls.return_value
+        mock_handler.get_entity = AsyncMock(
+            return_value={"type": "APM_APPLICATION", "guid": "entity-guid-1"}
+        )
+        mock_handler.list_service_call_relations_for_entity = AsyncMock()
+
+        entities = await fetch_entities_for_resource(
+            entity_resource_config,
+            ["entity-guid-1"],
+        )
+
+    assert entities == [{"type": "APM_APPLICATION", "guid": "entity-guid-1"}]
+    mock_handler.list_service_call_relations_for_entity.assert_not_awaited()
 
 
 def test_get_issue_kinds_defaults_to_new_relic_alert() -> None:

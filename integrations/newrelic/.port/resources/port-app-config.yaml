@@ -7,6 +7,7 @@ resources:
         - SERVICE
         - APPLICATION
       calculateOpenIssueCount: true
+      includeServiceDependencies: true
       entityQueryFilter: "type in ('SERVICE','APPLICATION')"
       entityExtraPropertiesQuery: |
         ... on ApmApplicationEntityOutline {
@@ -52,6 +53,28 @@ resources:
             error_rate: .apmSummary.errorRate
             response_time_avg: .apmSummary.responseTimeAverage
             instance_count: .apmSummary.instanceCount
+          relations:
+            dependsOn: .__depends_on
+            calls: .__calls
+  - kind: newRelicDependency
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"newRelicDependency"'
+          identifier: .guid
+          title: .name
+          properties:
+            type: .type
+            domain: .domain
+            entityType: .entityType
+            accountId: .accountId
+            reporting: .reporting
+            link: .permalink
+            tags: .tags
+            relationshipType: .relationshipType
+            createdAt: if .createdAt != null then (.createdAt | tonumber / 1000 | todate) else null end
   - kind: newRelicAlert
     selector:
       query: 'true'
