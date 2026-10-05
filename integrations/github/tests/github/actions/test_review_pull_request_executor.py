@@ -138,6 +138,21 @@ class TestReviewPullRequestExecutor:
             await executor.execute(run)
 
     @pytest.mark.asyncio
+    async def test_comment_without_body_raises(
+        self, executor: ReviewPullRequestExecutor
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "prNumber": 42,
+                "event": "COMMENT",
+            }
+        )
+        with pytest.raises(InvalidActionParametersException, match="body is required"):
+            await executor.execute(run)
+
+    @pytest.mark.asyncio
     async def test_missing_required_inputs(
         self, executor: ReviewPullRequestExecutor
     ) -> None:
