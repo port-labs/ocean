@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.1 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 0.15.0 (2026-10-04)
+
+
+### Features
+
+- Added identity propagation for GitLab actions. The integration registers its own OAuth app (identityOauthClientId/identityOauthClientSecret) so actions can run as the triggering user. Authorize and token URLs are derived from gitlabHost.
+
+
 ## 0.14.4 (2026-10-04)
 
 

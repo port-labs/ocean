@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.3 (2026-10-05)
+
+
+### Improvements
+
+- Enable Ocean core smoke tests for Port workflows
+
+
 ## 0.53.2 (2026-10-04)
 
 
