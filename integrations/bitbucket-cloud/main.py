@@ -159,14 +159,17 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         Union[ResourceConfig, BitbucketFileResourceConfig], event.resource_config
     )
     selector = cast(BitbucketFileSelector, config.selector)
-    included_files = selector.included_files or []
-    client = init_client() if included_files else None
-    async for file_result in process_file_patterns(selector.files):
-        if included_files and client:
-            enricher = IncludedFilesEnricher(
-                client=client,
-                strategy=FileIncludedFilesStrategy(included_files=included_files),
-            )
+    params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    enricher = (
+        IncludedFilesEnricher(
+            client=init_client(),
+            strategy=FileIncludedFilesStrategy(included_files=selector.included_files),
+        )
+        if selector.included_files
+        else None
+    )
+    async for file_result in process_file_patterns(selector.files, params):
+        if enricher:
             file_result = await enricher.enrich_batch(file_result)
         yield file_result
 

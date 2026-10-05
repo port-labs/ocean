@@ -133,16 +133,10 @@ class BitbucketFilePattern(BaseModel):
     )
 
 
-class BitbucketFileSelector(Selector):
+class BitbucketFileSelector(RepositorySelector):
     files: BitbucketFilePattern = Field(
         title="File Patterns",
         description="Define which files to sync by specifying path patterns, target repositories, and filenames to match",
-    )
-    included_files: list[str] = Field(
-        title="Additional files",
-        alias="includedFiles",
-        default_factory=list,
-        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
     )
 
 

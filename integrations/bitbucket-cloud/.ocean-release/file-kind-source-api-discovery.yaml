@@ -1,0 +1,10 @@
+bump: patch
+changelog-type: improvement
+changelog: |
+  File discovery for the `file` kind now lists each repository through Bitbucket's Source API with a server-side filter, instead of the code search API that Bitbucket is retiring. Configuration is unchanged and the emitted entity is a superset of the previous one.
+
+  The `file` kind now also works on workspaces that do not have code search enabled, where it previously returned nothing and deleted its existing entities on every resync, and files are discovered as soon as they are committed rather than once Bitbucket has indexed them. Files are fetched by repository slug and at the commit the listing returned, so repositories whose display name differs from their slug are no longer missed.
+
+  The kind also accepts the same `userRole` and `repoQuery` repository filters as the `repository` and `folder` kinds, so discovery can be narrowed to the repositories you care about instead of walking the whole workspace; both default to no filter. Discovered files are emitted in batches, and content fetches are bounded across repositories.
+
+  Failures that previously produced a silent empty result are now reported. Bitbucket answers 404 for an absent directory, an unreadable repository, a bad branch and a bad slug alike, and all four were read as "this repository has no matching files" — which let reconciliation delete that repository's file entities. A repository whose listing cannot be read is now reported as a failure; when a sub-path is configured, the repository root is read once to tell an absent directory apart from an unreadable repository, so a genuinely missing directory still means no files.

@@ -202,3 +202,32 @@ class TestIncludedFilesFetcher:
 
         result = await fetcher.get(key)
         assert result == ""
+
+
+class TestFileIncludedFilesStrategy:
+    """The file kind emits no top-level `path`, so includedFiles resolve from the repo root.
+
+    Adding a `path` key to the emitted object would silently relocate every configured
+    includedFiles path to the matched file's directory instead.
+    """
+
+    def test_base_path_is_repo_root_without_a_path_key(self) -> None:
+        from bitbucket_cloud.enrichments.included_files.strategies import (
+            FileIncludedFilesStrategy,
+        )
+
+        strategy = FileIncludedFilesStrategy(included_files=["docs/service.md"])
+        entity = {
+            "content": "",
+            "metadata": {"path": "charts/app/port.yml"},
+            "repo": {"slug": "repo", "name": "Repo"},
+            "branch": "main",
+        }
+
+        ctx = strategy.context_for(entity)
+
+        assert ctx.base_path == "."
+        assert (
+            resolve_included_file_path("docs/service.md", base_path=ctx.base_path)
+            == "docs/service.md"
+        )
