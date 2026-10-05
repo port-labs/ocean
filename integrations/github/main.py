@@ -1202,6 +1202,7 @@ async def resync_files(
         if can_access_organization(authenticator, file.organization)
     ]
     if not files:
+        logger.debug("No accessible file patterns, skipping FILE sync")
         return
 
     rest_client = create_github_client(authenticator)
@@ -1230,6 +1231,7 @@ async def resync_files(
     repo_path_map = await pattern_builder.build(files, updated_since=sync_cursor)
 
     if not repo_path_map:
+        logger.debug("No repos matched FILE patterns, skipping sync")
         return
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):

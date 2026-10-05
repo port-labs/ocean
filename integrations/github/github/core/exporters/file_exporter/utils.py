@@ -178,6 +178,11 @@ class FilePatternMappingBuilder:
     async def build(
         self, files: List["GithubFilePattern"], updated_since: Optional[datetime] = None
     ) -> List[ListFileSearchOptions]:
+        """Build file search options from patterns.
+        Supports both incremental and full sync modes.
+        If updated_since is provided (incremental), only repos modified since timestamp are included.
+        If updated_since is None (full sync), all repos are included.
+        """
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
