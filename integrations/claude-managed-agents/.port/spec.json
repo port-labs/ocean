@@ -170,6 +170,41 @@
           "required": false
         }
       ]
+    },
+    {
+      "name": "cancel_session",
+      "icon": "Claude",
+      "description": "Cancel a running Claude session by interrupting the agent",
+      "inputs": [
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "The ID of the session to cancel. The session must be running.",
+          "required": true
+        },
+        {
+          "name": "sessionThreadId",
+          "title": "Session thread ID",
+          "type": "string",
+          "description": "Optional thread to interrupt. When omitted, every non-archived thread in the session is interrupted.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "archive_agent",
+      "icon": "Claude",
+      "description": "Permanently archive a Claude managed agent, making it read-only. Existing sessions continue, but no new sessions can reference the agent after this operation.",
+      "inputs": [
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "description": "The ID of the agent to archive",
+          "required": true
+        }
+      ]
     }
   ]
 }

@@ -4,6 +4,7 @@ from typing import Any, Callable, cast
 from loguru import logger
 
 from github.actions.registry import register_actions_executors
+from github.oauth.registry import register_oauth_provider
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -1411,6 +1412,7 @@ async def resync_collaborators(
                     yield collaborators
 
 
+@ocean.on_incremental_resync(ObjectKind.SECRET_SCANNING_ALERT)
 @ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
 @_resync_per_authenticator
 async def resync_secret_scanning_alerts(
@@ -1425,6 +1427,7 @@ async def resync_secret_scanning_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -1449,6 +1452,9 @@ async def resync_secret_scanning_alerts(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 hide_secret=config.selector.hide_secret,
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.updated_since_datetime
+                                ),
                             )
                         )
                     )
@@ -1462,3 +1468,4 @@ register_live_events_webhooks()
 
 # Register actions executors
 register_actions_executors()
+register_oauth_provider()

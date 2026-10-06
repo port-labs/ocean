@@ -24,15 +24,12 @@ from port_ocean.exceptions.context import (
 )
 
 if TYPE_CHECKING:
-    from port_ocean.config.settings import (
-        IntegrationConfiguration,
-        OAuthProviderSettings,
-    )
+    from port_ocean.config.settings import IntegrationConfiguration
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient
     from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
-    from port_ocean.identity_propagation.oauth_broker.providers import ProviderDefaults
+    from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
 from loguru import logger
 
@@ -240,21 +237,18 @@ class PortOceanContext:
     def register_action_executor(self, executor: "AbstractExecutor") -> None:
         self.app.execution_manager.register_executor(executor)
 
-    def register_oauth_provider(
-        self, defaults: "ProviderDefaults", settings: "OAuthProviderSettings"
-    ) -> None:
-        """Register this process's OAuth provider for identity propagation.
+    def register_oauth_provider(self, provider: "OAuth2Provider") -> None:
+        """Register a fully-built OAuth provider for identity propagation.
 
-        Each Ocean process hosts exactly one integration, so there's exactly one provider to
-        register - no target string needed, this process already knows who it is via its own
-        `integration.type`. Call once at startup, e.g. from the integration's own
-        `oauth/registry.py`, alongside `register_action_executor`.
+        Each Ocean process hosts exactly one integration, so there is exactly
+        one provider.  The integration constructs the provider with its own
+        URLs and credentials, then hands it here.  Core never parses
+        provider-specific config.
+
+        Call once at startup from the integration's ``oauth/registry.py``.
         """
         from port_ocean.exceptions.identity_propagation import (
             DuplicateOAuthProviderError,
-        )
-        from port_ocean.identity_propagation.oauth_broker.providers import (
-            OAuth2Provider,
         )
 
         if not self.app.config.identity_propagation.enabled:
@@ -269,8 +263,11 @@ class PortOceanContext:
                 "each Ocean process hosts exactly one integration and one provider"
             )
 
-        target = self.app.config.integration.type
-        self.app.oauth_provider = OAuth2Provider(target, defaults, settings)
+        self.app.oauth_provider = provider
+        logger.info(
+            "OAuth provider registered for identity propagation",
+            target=provider.target,
+        )
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)
