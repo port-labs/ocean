@@ -302,11 +302,11 @@ class AnthropicClient:
         payload: dict[str, Any] = {
             k: v for k, v in (extra or {}).items() if v is not None
         }
-        if name is not None:
+        if name:
             payload["name"] = name
-        if model is not None:
+        if model:
             payload["model"] = model
-        if system is not None:
+        if system:
             payload["system"] = system
 
         logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
