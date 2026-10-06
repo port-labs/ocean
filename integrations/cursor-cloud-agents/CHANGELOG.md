@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.4 (2026-10-06)
-
-
-### Bug Fixes
-
-- Bumped pytest to ^9.1.1 to fix CVE-2025-71176 (GHSA-6w46-j5rx-g56g)
-
-
 ## 0.2.3 (2026-10-05)
 
 
