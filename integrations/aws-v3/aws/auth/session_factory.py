@@ -140,6 +140,12 @@ async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSess
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
 
 
+def get_inaccessible_accounts() -> dict[str, str]:
+    """Account IDs that failed assume-role during the last health check."""
+    strategy = AccountStrategyFactory.get()
+    return strategy.inaccessible_accounts if strategy else {}
+
+
 async def get_session_for_account(account_id: str) -> AioSession | None:
     """Get an authenticated session for a specific AWS account ID.
 
