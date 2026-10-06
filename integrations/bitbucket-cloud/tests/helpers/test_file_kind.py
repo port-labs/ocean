@@ -327,3 +327,30 @@ async def test_process_file_patterns_skip_non_matching() -> None:
 
             # Verify no results due to path mismatch
             assert not results
+
+
+@pytest.mark.asyncio
+async def test_retrieve_file_content_raises_when_content_cannot_be_read() -> None:
+    """A listed file whose content fails to read must fail the resync, not vanish.
+
+    Yielding nothing would let the resync complete and reconciliation delete the
+    entity the listing had just proved exists. BitbucketFileWalkError subclasses
+    OceanAbortException, so the kind ends in error and the delete phase is skipped.
+    """
+    from bitbucket_cloud.helpers.exceptions import BitbucketFileWalkError
+    from bitbucket_cloud.helpers.file_kind import retrieve_file_content
+
+    file_info = {
+        "path": "port.yml",
+        "commit": {"repository": {"name": "test repo", "mainbranch": {"name": "main"}}},
+    }
+
+    mock_client = AsyncMock()
+    mock_client.get_repository_files.return_value = None
+
+    with patch(
+        "bitbucket_cloud.helpers.file_kind.init_client", return_value=mock_client
+    ):
+        with pytest.raises(BitbucketFileWalkError):
+            async for _ in retrieve_file_content(file_info, False):
+                pass

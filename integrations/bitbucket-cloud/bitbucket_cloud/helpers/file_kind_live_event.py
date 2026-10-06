@@ -60,6 +60,12 @@ async def process_file_value(
     file_meta = Path(value.replace(FILE_PROPERTY_PREFIX, ""))
     file_path = f"{parent_directory}/{file_meta}"
     bitbucket_file = await client.get_repository_files(repository, hash, file_path)
+    if bitbucket_file is None:
+        logger.warning(
+            f"Referenced file {file_path} could not be read in {repository} at "
+            f"{hash[:12]}, resolving it to null"
+        )
+        return None
 
     return (
         parse_file(bitbucket_file, file_path)
@@ -241,6 +247,17 @@ async def process_file_changes(
                     raw_data = await webhook_client.get_repository_files(
                         repository, new_hash, file_path
                     )
+                    if raw_data is None:
+                        # Unlike the resync walk, a push runs no delete phase, so
+                        # omitting this file leaves the existing entity alone rather
+                        # than reconciling it away. Skipping is the safe default here,
+                        # and raising would abandon the rest of the push for nothing.
+                        logger.warning(
+                            f"Skipping {repository}/{file_path} at "
+                            f"{new_hash[:12]}: the push reported it but its content "
+                            "could not be read"
+                        )
+                        continue
 
                     if not skip_parsing:
                         raw_data = parse_file(raw_data, file_path)

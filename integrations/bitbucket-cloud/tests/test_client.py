@@ -625,11 +625,13 @@ async def test_get_directory_contents_keeps_its_own_max_depth(
 # against Rusty_x/buyorbid. Only the first means "the configured directory is not in
 # this repository"; the other two mean the repository cannot be read, and tolerating
 # them would let a resync complete with no files and have its entities deleted.
-ABSENT_PATH_BODY = '{"type":"error","error":{"message":"No such file or directory: charts/"}}'
+ABSENT_PATH_BODY = (
+    '{"type":"error","error":{"message":"No such file or directory: charts/"}}'
+)
 MISSING_COMMIT_BODY = '{"type":"error","error":{"message":"Commit not found","data":{"shas":["deadbeef"]}}}'
 NO_ACCESS_BODY = (
     '{"type":"error","error":{"message":"You may not have access to this repository '
-    'or it no longer exists in this workspace. If you think this repository exists '
+    "or it no longer exists in this workspace. If you think this repository exists "
     'and you have access, make sure you are authenticated."}}'
 )
 
@@ -700,3 +702,37 @@ def test_should_ignore_error_empty_declared_list_tolerates_nothing(
         ignored_errors=[],
         ignore_default_errors=False,
     )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_returns_none_on_missing_file(
+    mock_client: BitbucketClient,
+) -> None:
+    """A 404 on a blob is surfaced as None, not an empty dict.
+
+    The default tolerance returns `{}`, and `response.text` on a dict raises
+    AttributeError, so every caller saw a crash instead of a missing file.
+    """
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_send_file_api_request_with_rate_limiter"
+        ) as mock_request:
+            mock_request.side_effect = _status_error(404, ABSENT_PATH_BODY)
+            assert (
+                await mock_client.get_repository_files("repo", "main", "port.yml")
+                is None
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_raises_on_any_other_status(
+    mock_client: BitbucketClient,
+) -> None:
+    """Only a 404 becomes None; everything else stays an error."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_send_file_api_request_with_rate_limiter"
+        ) as mock_request:
+            mock_request.side_effect = _status_error(500, "")
+            with pytest.raises(HTTPStatusError):
+                await mock_client.get_repository_files("repo", "main", "port.yml")

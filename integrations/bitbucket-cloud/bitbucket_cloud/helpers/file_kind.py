@@ -6,6 +6,7 @@ from loguru import logger
 from integration import BitbucketFilePattern
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from initialize_client import init_client
+from bitbucket_cloud.helpers.exceptions import BitbucketFileWalkError
 from bitbucket_cloud.helpers.file_kind_live_event import (
     FileObject,
     check_and_load_file_prefix,
@@ -140,6 +141,14 @@ async def retrieve_file_content(
     file_content = await bitbucket_client.get_repository_files(
         repo_slug, branch, file_path
     )
+    if file_content is None:
+        # Omitting it would not protect the entity: the resync completes and
+        # reconciliation deletes it. Failing the repository is what preserves it.
+        raise BitbucketFileWalkError(
+            f"{repo_slug}/{file_path} was listed on {branch} but its content could "
+            "not be read"
+        )
+
     parent_directory = Path(file_path).parent
     if not skip_parsing:
         file_content = parse_file(file_content, file_path)

@@ -327,13 +327,30 @@ class BitbucketClient:
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
 
-    async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
-        """Get the content of a file."""
-        response = await self._send_file_api_request_with_rate_limiter(
-            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
-            method="GET",
-            return_full_response=True,
-        )
+    async def get_repository_files(
+        self, repo: str, branch: str, path: str
+    ) -> Optional[str]:
+        """Get the content of a file, or None when Bitbucket does not have it.
+
+        The default 404 tolerance would return an empty dict here, and
+        ``response.text`` on it raises AttributeError. Callers need to tell an
+        unreadable file apart from an empty one, so the 404 is surfaced and turned
+        into None with a log that names the file.
+        """
+        try:
+            response = await self._send_file_api_request_with_rate_limiter(
+                f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+                method="GET",
+                return_full_response=True,
+                ignore_default_errors=False,
+            )
+        except HTTPStatusError as error:
+            if error.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"File {path} not found in repository {repo} at ref {branch}"
+            )
+            return None
         logger.info(f"Retrieved file content for {repo}/{branch}/{path}")
         return response.text
 

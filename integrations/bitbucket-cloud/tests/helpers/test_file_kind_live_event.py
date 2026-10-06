@@ -238,3 +238,72 @@ async def test_process_file_changes() -> None:
         assert len(updated) > 0
         assert len(deleted) == 0
         assert mock_webhook_client.get_repository_files.called
+
+
+@pytest.mark.asyncio
+async def test_process_file_changes_skips_a_file_whose_content_cannot_be_read() -> None:
+    """A push must not upsert an entity built from a failed read.
+
+    `get_repository_files` answers None when Bitbucket 404s the blob. Building an
+    entity from that would overwrite previously synced file content with null, and a
+    push runs no delete phase, so skipping leaves the existing entity intact.
+    """
+    with patch("bitbucket_cloud.helpers.file_kind_live_event.init_client"):
+        mock_webhook_client = AsyncMock()
+
+        # Built locally rather than from SAMPLE_DIFF_STAT: the existing
+        # test_process_file_changes shallow-copies that dict and mutates
+        # ["new"]["path"] through the copy, so the shared fixture is not stable.
+        diff_stat: Dict[str, Any] = {
+            "new": {"path": "conf/file.txt"},
+            "old": {"path": "conf/file.txt"},
+            "status": "modified",
+            "commit": {"hash": "new_hash"},
+        }
+
+        async def mock_retrieve_diff_stat(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [diff_stat]
+
+        mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat
+        mock_webhook_client.get_repository_files.return_value = None
+
+        mock_selector = MagicMock()
+        mock_selector.files.filenames = ["file.txt"]
+        mock_selector.files.path = "*"
+
+        updated, deleted = await process_file_changes(
+            "test-repo",
+            [SAMPLE_CHANGE],
+            mock_selector,
+            False,
+            mock_webhook_client,
+            {"repository": {"name": "test-repo"}},
+        )
+
+        assert mock_webhook_client.get_repository_files.called
+        assert updated == []
+        assert deleted == []
+
+
+@pytest.mark.asyncio
+async def test_process_file_value_resolves_an_unreadable_reference_to_null() -> None:
+    """A `file://` reference is enrichment, so an unreadable target degrades to null.
+
+    Asserting the parse is skipped, not just that the result is None: without the
+    guard, `parse_file(None, ...)` is reached, raises inside its own try, logs an
+    error and returns None too - so the return value alone proves nothing.
+    """
+    from bitbucket_cloud.helpers.file_kind_live_event import process_file_value
+
+    mock_client = AsyncMock()
+    mock_client.get_repository_files.return_value = None
+
+    with patch("bitbucket_cloud.helpers.file_kind_live_event.parse_file") as mock_parse:
+        result = await process_file_value(
+            "file://config.json", "conf", "test-repo", "0123456789abcdef", mock_client
+        )
+
+    assert result is None
+    mock_parse.assert_not_called()
