@@ -33,9 +33,7 @@ def _exclude_done_threads() -> bool:
 
 
 def _exclude_deleted_machine_users() -> bool:
-    return bool(
-        getattr(resource.resource_config.selector, "exclude_deleted", False)
-    )
+    return bool(getattr(resource.resource_config.selector, "exclude_deleted", False))
 
 
 def _exclude_ai_discussions() -> bool:

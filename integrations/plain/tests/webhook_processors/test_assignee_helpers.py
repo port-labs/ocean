@@ -17,9 +17,7 @@ def test_assignee_user_id_requires_email() -> None:
         == "us_1"
     )
     assert (
-        assignee_user_id(
-            {"thread": {"assignee": {"id": "mu_1", "fullName": "Bot"}}}
-        )
+        assignee_user_id({"thread": {"assignee": {"id": "mu_1", "fullName": "Bot"}}})
         is None
     )
     assert assignee_user_id({"thread": {"assignee": {"id": "sys_1"}}}) is None

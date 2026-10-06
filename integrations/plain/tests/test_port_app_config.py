@@ -176,9 +176,7 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     assert _apply(mappings["thread"]["relations"]["customer"], thread) == "c_1"
     assert _apply(mappings["thread"]["relations"]["tenant"], thread) == "te_1"
     assert _apply(mappings["thread"]["relations"]["assignee"], thread) == "us_1"
-    assert (
-        _apply(mappings["thread"]["relations"]["machineAssignee"], thread) is None
-    )
+    assert _apply(mappings["thread"]["relations"]["machineAssignee"], thread) is None
     assert _apply(mappings["thread"]["properties"]["labels"], thread) == ["Billing"]
     assert _apply(mappings["thread"]["properties"]["tier"], thread) == "Enterprise"
     assert _apply(mappings["thread"]["properties"]["productArea"], thread) == (

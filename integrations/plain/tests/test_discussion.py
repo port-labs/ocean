@@ -130,9 +130,7 @@ async def test_get_discussions_skips_ai_channels_when_requested() -> None:
         yield [
             {
                 "id": "disc_slack",
-                "channelDetails": {
-                    "__typename": "ThreadDiscussionSlackChannelDetails"
-                },
+                "channelDetails": {"__typename": "ThreadDiscussionSlackChannelDetails"},
             },
             {
                 "id": "disc_agent",
@@ -234,8 +232,10 @@ async def test_get_discussion_messages_skips_ai_discussions_when_requested() -> 
                 },
             ]
             return
-        fetched_ids.append(str(variables["discussionId"] if variables else ""))
-        yield [{"id": "dm_1", "threadDiscussionId": variables["discussionId"]}]
+        assert variables is not None
+        discussion_id = str(variables["discussionId"])
+        fetched_ids.append(discussion_id)
+        yield [{"id": "dm_1", "threadDiscussionId": discussion_id}]
 
     client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
     client.paginate_connection = paginate_connection  # type: ignore[method-assign]
@@ -450,7 +450,9 @@ async def test_resync_passes_exclude_ai_discussions_when_flag_is_set(
 
     with patch("main.PlainClient", FakeClient):
         assert handler is not None
-        async with resource_context(_resource(kind, False, exclude_ai_discussions=True)):
+        async with resource_context(
+            _resource(kind, False, exclude_ai_discussions=True)
+        ):
             await collect_pages(handler(kind))
 
     assert seen["exclude_ai_discussions"] is True

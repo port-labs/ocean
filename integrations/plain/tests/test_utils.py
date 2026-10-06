@@ -64,11 +64,7 @@ def test_object_kind_values_match_kind_strings() -> None:
 
 def test_is_ai_discussion_detects_agent_channels() -> None:
     assert is_ai_discussion(
-        {
-            "channelDetails": {
-                "__typename": "ThreadDiscussionAgentSessionChannelDetails"
-            }
-        }
+        {"channelDetails": {"__typename": "ThreadDiscussionAgentSessionChannelDetails"}}
     )
     assert is_ai_discussion(
         {
@@ -80,11 +76,7 @@ def test_is_ai_discussion_detects_agent_channels() -> None:
         }
     )
     assert not is_ai_discussion(
-        {
-            "channelDetails": {
-                "__typename": "ThreadDiscussionSlackChannelDetails"
-            }
-        }
+        {"channelDetails": {"__typename": "ThreadDiscussionSlackChannelDetails"}}
     )
     assert not is_ai_discussion(
         {"channelDetails": {"__typename": "ThreadDiscussionEmailChannelDetails"}}
