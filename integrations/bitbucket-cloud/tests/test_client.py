@@ -5,6 +5,7 @@ from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator, AsyncGenerator
 from bitbucket_cloud.client import BitbucketClient, PAGE_SIZE, PULL_REQUEST_PAGE_SIZE
 from bitbucket_cloud.helpers.token_manager import TokenManager
+from bitbucket_cloud.helpers.utils import IgnoredError
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
 from bitbucket_cloud.utils import build_pull_request_params
@@ -556,6 +557,8 @@ async def test_paginated_request_keeps_page_size_when_caller_passes_params(
                 "https://api.bitbucket.org/2.0/repositories/test_workspace",
                 params={"pagelen": PAGE_SIZE, "role": "member"},
                 method="GET",
+                ignored_errors=None,
+                ignore_default_errors=True,
             )
 
 
@@ -616,3 +619,84 @@ async def test_get_directory_contents_keeps_its_own_max_depth(
                 pass
 
             assert mock_paginated.call_args.kwargs["params"]["max_depth"] == 10000
+
+
+# The three bodies Bitbucket actually returns with a 404 on /src, measured 2026-10-06
+# against Rusty_x/buyorbid. Only the first means "the configured directory is not in
+# this repository"; the other two mean the repository cannot be read, and tolerating
+# them would let a resync complete with no files and have its entities deleted.
+ABSENT_PATH_BODY = '{"type":"error","error":{"message":"No such file or directory: charts/"}}'
+MISSING_COMMIT_BODY = '{"type":"error","error":{"message":"Commit not found","data":{"shas":["deadbeef"]}}}'
+NO_ACCESS_BODY = (
+    '{"type":"error","error":{"message":"You may not have access to this repository '
+    'or it no longer exists in this workspace. If you think this repository exists '
+    'and you have access, make sure you are authenticated."}}'
+)
+
+
+def _status_error(status_code: int, body: str = "") -> HTTPStatusError:
+    response = MagicMock()
+    response.status_code = status_code
+    response.text = body
+    return HTTPStatusError(
+        f"{status_code} Error", request=MagicMock(), response=response
+    )
+
+
+def test_should_ignore_error_default_list_still_swallows_a_404(
+    mock_client: BitbucketClient,
+) -> None:
+    """Every existing caller relies on the blanket 404 tolerance. It must not change."""
+    for body in (ABSENT_PATH_BODY, MISSING_COMMIT_BODY, NO_ACCESS_BODY, ""):
+        assert mock_client._should_ignore_error(_status_error(404, body), "url", "GET")
+
+
+def test_should_ignore_error_default_list_does_not_swallow_401_or_403(
+    mock_client: BitbucketClient,
+) -> None:
+    """The default list is 404 only, so an auth failure is still raised."""
+    for status in (401, 403, 500):
+        assert not mock_client._should_ignore_error(_status_error(status), "url", "GET")
+
+
+def test_should_ignore_error_declared_body_only(
+    mock_client: BitbucketClient,
+) -> None:
+    """With the default list off, only the declared body is ignored.
+
+    This is the guard against re-introducing the delete-entities regression: a 404
+    that means "repository unreadable" must raise even though its status matches.
+    """
+    declared = [
+        IgnoredError(status=404, body_contains="No such file or directory"),
+    ]
+
+    assert mock_client._should_ignore_error(
+        _status_error(404, ABSENT_PATH_BODY),
+        "url",
+        "GET",
+        ignored_errors=declared,
+        ignore_default_errors=False,
+    )
+
+    for body in (MISSING_COMMIT_BODY, NO_ACCESS_BODY, ""):
+        assert not mock_client._should_ignore_error(
+            _status_error(404, body),
+            "url",
+            "GET",
+            ignored_errors=declared,
+            ignore_default_errors=False,
+        )
+
+
+def test_should_ignore_error_empty_declared_list_tolerates_nothing(
+    mock_client: BitbucketClient,
+) -> None:
+    """An empty list with the default off is how a caller asks for no tolerance."""
+    assert not mock_client._should_ignore_error(
+        _status_error(404, ABSENT_PATH_BODY),
+        "url",
+        "GET",
+        ignored_errors=[],
+        ignore_default_errors=False,
+    )

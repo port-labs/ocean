@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPError, HTTPStatusError
 from loguru import logger
@@ -7,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 from bitbucket_cloud.helpers.auth import BitbucketAuthFacade, AbstractAuth
 from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext, TokenManager
-from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
+from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig, IgnoredError
 
 PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
@@ -18,6 +19,15 @@ RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
 
 class BitbucketClient:
     """Client for interacting with Bitbucket Cloud API v2.0."""
+
+    # Reproduces the blanket 404 tolerance every caller has relied on so far. A caller
+    # that cannot afford it declares its own list with ignore_default_errors=False.
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=HTTPStatus.NOT_FOUND,
+            message="Requested resource not found",
+        ),
+    ]
 
     def __init__(
         self,
@@ -85,6 +95,34 @@ class BitbucketClient:
             workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
         )
 
+    def _should_ignore_error(
+        self,
+        error: HTTPStatusError,
+        url: str,
+        method: str,
+        ignored_errors: Optional[list[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> bool:
+        all_ignored_errors = (ignored_errors or []) + (
+            self._DEFAULT_IGNORED_ERRORS if ignore_default_errors else []
+        )
+        status_code = error.response.status_code
+
+        for ignored_error in all_ignored_errors:
+            if str(status_code) != str(ignored_error.status):
+                continue
+            if (
+                ignored_error.body_contains
+                and ignored_error.body_contains not in error.response.text
+            ):
+                continue
+            logger.warning(
+                f"Failed to {method} {url} due to {ignored_error.message} "
+                f"with status code {status_code}"
+            )
+            return True
+        return False
+
     async def _send_api_request(
         self,
         url: str,
@@ -92,6 +130,8 @@ class BitbucketClient:
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
+        ignored_errors: Optional[list[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
         response = await self.client.request(
@@ -101,10 +141,9 @@ class BitbucketClient:
             response.raise_for_status()
             return response if return_full_response else response.json()
         except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Requested resource not found: {url}; message: {str(e)}"
-                )
+            if self._should_ignore_error(
+                e, url, method, ignored_errors, ignore_default_errors
+            ):
                 return {}
             logger.error(f"Bitbucket API error: {str(e)}")
             raise e
@@ -118,6 +157,8 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         data_key: str = "values",
+        ignored_errors: Optional[list[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"pagelen": PAGE_SIZE, **(params or {})}
         while True:
@@ -126,12 +167,20 @@ class BitbucketClient:
                     current_token = ctx.get_token()
                     self._update_authorization_header(current_token)
                     response = await self._send_api_request(
-                        url, params=params, method=method
+                        url,
+                        params=params,
+                        method=method,
+                        ignored_errors=ignored_errors,
+                        ignore_default_errors=ignore_default_errors,
                     )
             else:
                 async with RATE_LIMITER:
                     response = await self._send_api_request(
-                        url, params=params, method=method
+                        url,
+                        params=params,
+                        method=method,
+                        ignored_errors=ignored_errors,
+                        ignore_default_errors=ignore_default_errors,
                     )
 
             values: list[dict[str, Any]] = response.get(data_key, [])
@@ -151,6 +200,8 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
+        ignored_errors: Optional[list[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
     ) -> Any:
         """Send file-specific API request with dedicated file rate limiter."""
         if hasattr(self.auth, "file_token_manager") and self.auth.file_token_manager:
@@ -162,6 +213,8 @@ class BitbucketClient:
                     params=params,
                     method=method,
                     return_full_response=return_full_response,
+                    ignored_errors=ignored_errors,
+                    ignore_default_errors=ignore_default_errors,
                 )
         else:
             # No file token manager means single token or basic auth - just make the request
@@ -170,6 +223,8 @@ class BitbucketClient:
                 params=params,
                 method=method,
                 return_full_response=return_full_response,
+                ignored_errors=ignored_errors,
+                ignore_default_errors=ignore_default_errors,
             )
         return response
 

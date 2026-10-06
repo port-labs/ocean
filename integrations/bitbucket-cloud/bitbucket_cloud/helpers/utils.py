@@ -1,5 +1,12 @@
 from enum import StrEnum
 from dataclasses import dataclass
+from typing import NamedTuple, Optional
+
+
+class IgnoredError(NamedTuple):
+    status: int | str
+    message: Optional[str] = None
+    body_contains: Optional[str] = None
 
 
 class ObjectKind(StrEnum):
