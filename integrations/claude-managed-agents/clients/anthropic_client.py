@@ -310,7 +310,9 @@ class AnthropicClient:
             payload["system"] = system
 
         logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
-        agent = await self._client.beta.agents.update(agent_id, version=version, **payload)
+        agent = await self._client.beta.agents.update(
+            agent_id, version=version, **payload
+        )
         return agent.to_dict(mode="json")
 
     async def archive_agent(self, agent_id: str) -> dict[str, Any]:
