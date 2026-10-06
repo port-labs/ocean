@@ -280,7 +280,7 @@ async def test_thread_message_from_email_received() -> None:
 
 
 @pytest.mark.asyncio
-async def test_thread_message_ignores_entries_without_text() -> None:
+async def test_thread_message_deletes_when_text_is_cleared() -> None:
     processor = ThreadMessageWebhookProcessor(
         event=_event(
             {
@@ -306,7 +306,32 @@ async def test_thread_message_ignores_entries_without_text() -> None:
         )
 
     assert result.updated_raw_results == []
-    assert result.deleted_raw_results == []
+    assert result.deleted_raw_results == [{"id": "tl_1"}]
+
+
+@pytest.mark.asyncio
+async def test_thread_message_deletes_removed_previous_timeline_entry() -> None:
+    processor = ThreadMessageWebhookProcessor(
+        event=_event(
+            {
+                "type": "timeline.timeline_entry_changed",
+                "payload": {
+                    "changeType": "REMOVED",
+                    "timelineEntry": None,
+                    "previousTimelineEntry": {
+                        "id": "tl_removed",
+                        "customerId": "c_1",
+                    },
+                },
+            }
+        )
+    )
+    result = await processor.handle_event(
+        processor.event.payload, _resource_config(ObjectKind.THREAD_MESSAGE)
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [{"id": "tl_removed"}]
 
 
 @pytest.mark.asyncio

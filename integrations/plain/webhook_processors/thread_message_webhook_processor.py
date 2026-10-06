@@ -60,10 +60,11 @@ class ThreadMessageWebhookProcessor(PlainAbstractWebhookProcessor):
         except PlainGraphQLError as error:
             if "has no message text" in str(error):
                 logger.info(
-                    "Ignoring Plain timeline entry {} without message text", entry_id
+                    "Deleting Plain thread message {} without message text", entry_id
                 )
                 return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
+                    updated_raw_results=[],
+                    deleted_raw_results=[{"id": entry_id}],
                 )
             raise
 

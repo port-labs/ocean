@@ -136,10 +136,18 @@ def assignee_machine_user_id(body: dict[str, Any]) -> str | None:
 
 
 def timeline_entry_refs(body: dict[str, Any]) -> tuple[str | None, str | None]:
-    """Return ``(customer_id, timeline_entry_id)`` for message-like events."""
+    """Return ``(customer_id, timeline_entry_id)`` for message-like events.
+
+    ``timeline.timeline_entry_changed`` sets ``timelineEntry`` to null on
+    ``REMOVED`` and puts the removed entry in ``previousTimelineEntry``.
+    """
     timeline_entry = body.get("timelineEntry")
     if isinstance(timeline_entry, dict):
         return entity_id(timeline_entry.get("customerId")), entity_id(timeline_entry)
+
+    previous = body.get("previousTimelineEntry")
+    if isinstance(previous, dict):
+        return entity_id(previous.get("customerId")), entity_id(previous)
 
     thread = body.get("thread")
     customer_id = None
