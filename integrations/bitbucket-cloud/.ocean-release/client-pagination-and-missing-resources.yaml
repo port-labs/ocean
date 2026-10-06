@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed the repository and directory listings paginating at Bitbucket's default page size of 10 instead of 100 whenever a selector supplied query parameters, and the directory listing silently dropping its own depth limit in the same case. Fixed an `AttributeError` raised for a file whose content Bitbucket cannot return. A resync now fails that repository so its existing file entities are preserved, a `file://` reference resolves to null, and a push skips the file instead of overwriting a good entity with empty content.
