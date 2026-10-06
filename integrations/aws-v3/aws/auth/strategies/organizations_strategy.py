@@ -22,8 +22,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
     """Mixin for organizations discovery."""
 
     def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
-        self.provider = provider
-        self.config = config
+        super().__init__(provider, config)
 
         self._organization_role_details: dict[str, str] | None = None
         self._valid_arns: set[str] = set()
@@ -39,7 +38,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
     @property
     def valid_sessions(self) -> dict[str, AioSession]:
         """Get the dictionary of valid sessions that passed health check."""
-        return getattr(self, "_valid_sessions", {})
+        return self._valid_sessions
 
     def _get_organization_account_role_arn(self) -> str:
         """Get the organization account role ARN from the configuration."""
@@ -350,12 +349,14 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
             logger.debug(
                 f"Cannot assume role '{role_arn}' in account {account_id}: {e}"
             )
+            self._inaccessible_accounts[account_id] = str(e)
             return None
 
     async def healthcheck(self) -> bool:
         """Perform health check by discovering accounts and validating role assumption."""
         self._valid_arns = set()
         self._valid_sessions = {}
+        self._inaccessible_accounts = {}
         self._discovered_accounts = []
 
         try:
@@ -403,6 +404,11 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
                             successful += 1
                             logger.debug(
                                 f"Role '{self._build_role_arn(account_id)}' assumption validated for account {account_id}"
+                            )
+                        else:
+                            self._inaccessible_accounts.setdefault(
+                                account_id,
+                                f"Failed to assume role '{self._build_role_arn(account_id)}'",
                             )
                     except Exception as e:
                         logger.warning(

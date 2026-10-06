@@ -9,8 +9,7 @@ from aws.utils import RegionHelper
 
 class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
     def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
-        self.provider = provider
-        self.config = config
+        super().__init__(provider, config)
 
         self._session: AioSession | None = None
         self.account_id: str | None = None
