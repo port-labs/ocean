@@ -116,6 +116,10 @@ class AccountStrategyFactory:
         cls._cached_strategy = strategy
         return strategy
 
+    @classmethod
+    def get(cls) -> StrategyType | None:
+        return cls._cached_strategy
+
 
 class AccountInfo(TypedDict):
     Id: str
