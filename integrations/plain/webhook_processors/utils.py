@@ -67,28 +67,35 @@ def tenant_id_from_payload(body: dict[str, Any]) -> str | None:
     return entity_id(body.get("tenant"))
 
 
-def assignee_user_id(body: dict[str, Any]) -> str | None:
+def _thread_assignee(body: dict[str, Any]) -> dict[str, Any] | None:
     thread = body.get("thread")
     if not isinstance(thread, dict):
         return None
     assignee = thread.get("assignee")
     if not isinstance(assignee, dict):
         return None
-    # Webhook user objects include email; machine users do not.
+    return assignee
+
+
+def assignee_user_id(body: dict[str, Any]) -> str | None:
+    assignee = _thread_assignee(body)
+    if assignee is None:
+        return None
+    # Webhook User includes email; MachineUser and System do not.
     if "email" not in assignee:
         return None
     return entity_id(assignee)
 
 
 def assignee_machine_user_id(body: dict[str, Any]) -> str | None:
-    thread = body.get("thread")
-    if not isinstance(thread, dict):
+    assignee = _thread_assignee(body)
+    if assignee is None:
         return None
-    assignee = thread.get("assignee")
-    if not isinstance(assignee, dict):
-        return None
-    # Machine users have no email; human users do.
+    # ThreadAssignee is User | MachineUser | System ({id} only).
+    # Users have email; System is id-only. Machine users have profile fields.
     if "email" in assignee:
+        return None
+    if "fullName" not in assignee and "publicName" not in assignee:
         return None
     return entity_id(assignee)
 

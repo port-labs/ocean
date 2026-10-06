@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Skip System thread assignees in the machine-user live handler so assignment events do not call get_machine_user for non-machine assignees

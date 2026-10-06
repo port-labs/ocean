@@ -170,6 +170,36 @@ async def test_machine_user_from_assignment() -> None:
 
 
 @pytest.mark.asyncio
+async def test_machine_user_skips_system_assignee() -> None:
+    processor = MachineUserWebhookProcessor(
+        event=_event(
+            {
+                "type": "thread.thread_assignment_transitioned",
+                "payload": {
+                    "thread": {
+                        "id": "th_1",
+                        # System assignees are id-only in webhook payloads.
+                        "assignee": {"id": "sys_1"},
+                    }
+                },
+            }
+        )
+    )
+    with patch(
+        "webhook_processors.machine_user_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_machine_user = AsyncMock()
+        result = await processor.handle_event(
+            processor.event.payload, _resource_config(ObjectKind.MACHINE_USER)
+        )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+    client.get_machine_user.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_machine_user_deleted_when_excluded() -> None:
     from integration import MachineUserResourceConfig, MachineUserSelector
 
