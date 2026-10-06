@@ -285,6 +285,34 @@ class AnthropicClient:
         vault = await self._client.beta.vaults.retrieve(vault_id)
         return vault.to_dict(mode="json")
 
+    async def get_agent(self, agent_id: str) -> dict[str, Any]:
+        logger.info(f"Retrieving Claude agent '{agent_id}'")
+        agent = await self._client.beta.agents.retrieve(agent_id)
+        return agent.to_dict(mode="json")
+
+    async def update_agent(
+        self,
+        agent_id: str,
+        version: int,
+        name: str | None = None,
+        model: str | None = None,
+        system: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            k: v for k, v in (extra or {}).items() if v is not None
+        }
+        if name is not None:
+            payload["name"] = name
+        if model is not None:
+            payload["model"] = model
+        if system is not None:
+            payload["system"] = system
+
+        logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
+        agent = await self._client.beta.agents.update(agent_id, version=version, **payload)
+        return agent.to_dict(mode="json")
+
     async def archive_agent(self, agent_id: str) -> dict[str, Any]:
         logger.info(f"Archiving Claude agent '{agent_id}'")
         agent = await self._client.beta.agents.archive(agent_id)
