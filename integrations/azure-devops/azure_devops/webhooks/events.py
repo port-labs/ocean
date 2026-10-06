@@ -43,6 +43,15 @@ class AdvancedSecurityAlertEvents(StrEnum):
     SECURITY_ALERT_UPDATED = "ms.vss-alerts.alert-updated-event"
 
 
+class BuildEvents(StrEnum):
+    """
+    Events for Azure DevOps build webhooks.
+    https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#build-completed
+    """
+
+    BUILD_COMPLETE = "build.complete"
+
+
 class PipelineEvents(StrEnum):
     """
     Events for Azure DevOps pipeline webhooks.
@@ -73,3 +82,23 @@ class PipelineRunEvents(StrEnum):
     """
 
     PIPELINE_RUN_STATE_CHANGED = "ms.vss-pipelines.run-state-changed-event"
+
+
+class ReleaseEvents(StrEnum):
+    """
+    Events for Azure DevOps release webhooks.
+    https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops
+    """
+
+    RELEASE_CREATED = "ms.vss-release.release-created-event"
+    RELEASE_ABANDONED = "ms.vss-release.release-abandoned-event"
+
+
+class ReleaseDeploymentEvents(StrEnum):
+    """
+    Events for Azure DevOps release deployment webhooks.
+    https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops
+    """
+
+    DEPLOYMENT_COMPLETED = "ms.vss-release.deployment-completed-event"
+    DEPLOYMENT_STARTED = "ms.vss-release.deployment-started-event"

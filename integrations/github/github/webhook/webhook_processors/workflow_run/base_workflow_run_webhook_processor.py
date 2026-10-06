@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from github.webhook.events import WORKFLOW_DELETE_EVENTS, WORKFLOW_UPSERT_EVENTS
+from github.webhook.events import WORKFLOW_UPSERT_EVENTS
 from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -15,7 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class BaseWorkflowRunWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         if event.payload.get("action") and event.payload["action"] not in (
-            WORKFLOW_DELETE_EVENTS + WORKFLOW_UPSERT_EVENTS
+            WORKFLOW_UPSERT_EVENTS
         ):
             return False
         return event.headers.get("x-github-event") == "workflow_run"

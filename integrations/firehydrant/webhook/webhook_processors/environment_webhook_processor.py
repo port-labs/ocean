@@ -1,0 +1,39 @@
+from functools import partial
+
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.webhook.webhook_event import (
+    EventPayload,
+    WebhookEvent,
+    WebhookEventRawResults,
+)
+
+from init_client import init_client
+from utils import ObjectKind
+from webhook.utils import gather_with_concurrency_limit
+from webhook.webhook_processors.base_webhook_processor import (
+    FirehydrantBaseWebhookProcessor,
+)
+
+
+class EnvironmentWebhookProcessor(FirehydrantBaseWebhookProcessor):
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        return "environments" in event.payload.get("data", {})
+
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        return [ObjectKind.ENVIRONMENT]
+
+    async def handle_event(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
+        client = init_client()
+        environments = payload["data"]["environments"]
+        updated = await gather_with_concurrency_limit(
+            [
+                partial(client.get_single_environment, environment_id=environment["id"])
+                for environment in environments
+            ]
+        )
+        return WebhookEventRawResults(
+            updated_raw_results=list(updated),
+            deleted_raw_results=[],
+        )

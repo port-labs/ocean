@@ -1,0 +1,24 @@
+{
+  "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+  "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/project/10004",
+  "id": "10004",
+  "key": "DEMO",
+  "name": "Demo",
+  "avatarUrls": {
+    "48x48": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10408",
+    "24x24": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10408?size=small",
+    "16x16": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10408?size=xsmall",
+    "32x32": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10408?size=medium"
+  },
+  "projectTypeKey": "software",
+  "simplified": true,
+  "style": "next-gen",
+  "isPrivate": false,
+  "properties": {},
+  "entityId": "00000000-0000-0000-0000-000000000003",
+  "uuid": "00000000-0000-0000-0000-000000000003",
+  "insight": {
+    "totalIssueCount": 133,
+    "lastIssueUpdateTime": "2025-06-26T20:18:13.009+0300"
+  }
+}

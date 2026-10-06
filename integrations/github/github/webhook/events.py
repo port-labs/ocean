@@ -13,8 +13,7 @@ REPOSITORY_DELETE_EVENTS = ["archived", "deleted"]
 USER_UPSERT_EVENTS = ["member_added"]
 USER_DELETE_EVENTS = ["member_removed"]
 
-WORKFLOW_UPSERT_EVENTS = ["in_progress", "requested"]
-WORKFLOW_DELETE_EVENTS = ["completed"]
+WORKFLOW_UPSERT_EVENTS = ["completed", "in_progress", "requested"]
 
 # Pull request events
 PULL_REQUEST_EVENTS = [
@@ -26,7 +25,27 @@ PULL_REQUEST_EVENTS = [
     "unassigned",
     "review_request_removed",
     "closed",
+    "labeled",
+    "unlabeled",
+    "assigned",
+    "review_requested",
+    "converted_to_draft",
+    "locked",
+    "unlocked",
+    "auto_merge_enabled",
+    "auto_merge_disabled",
+    "milestoned",
+    "demilestoned",
+    "dequeued",
+    "enqueued",
+    "stacked",
 ]
+
+# Pull request review events (separate GitHub event type: pull_request_review)
+PULL_REQUEST_REVIEW_EVENTS = ["submitted", "edited", "dismissed"]
+
+# Check run validation only fires for these PR actions
+CHECK_RUN_PR_ACTIONS = ["opened", "synchronize", "reopened", "edited"]
 
 TEAM_UPSERT_EVENTS = ["created", "edited"]
 TEAM_DELETE_EVENTS = ["deleted"]
@@ -37,6 +56,12 @@ TEAM_MEMBERSHIP_EVENTS = MEMBERSHIP_ADDED_EVENTS + MEMBERSHIP_DELETE_EVENTS
 
 TEAM_EVENTS = TEAM_UPSERT_EVENTS + TEAM_DELETE_EVENTS
 USER_EVENTS = USER_UPSERT_EVENTS + USER_DELETE_EVENTS
+
+# Organization events (x-github-event: organization)
+ORGANIZATION_RENAME_EVENTS = ["renamed"]
+ORGANIZATION_UPSERT_EVENTS = ORGANIZATION_RENAME_EVENTS
+ORGANIZATION_DELETE_EVENTS = ["deleted"]
+ORGANIZATION_EVENTS = ORGANIZATION_UPSERT_EVENTS + ORGANIZATION_DELETE_EVENTS
 
 # Issue events
 ISSUE_UPSERT_EVENTS = [
@@ -68,7 +93,7 @@ RELEASE_UPSERT_EVENTS = [
 RELEASE_DELETE_EVENTS = ["deleted"]
 RELEASE_EVENTS = RELEASE_UPSERT_EVENTS + RELEASE_DELETE_EVENTS
 
-WORKFLOW_RUN_EVENTS = WORKFLOW_DELETE_EVENTS + WORKFLOW_UPSERT_EVENTS
+WORKFLOW_RUN_EVENTS = WORKFLOW_UPSERT_EVENTS
 
 DEPENDABOT_ACTION_TO_STATE = {
     "created": "open",
@@ -104,11 +129,18 @@ SECRET_SCANNING_ALERT_ACTION_TO_STATE = {
 
 SECRET_SCANNING_ALERT_EVENTS = list(SECRET_SCANNING_ALERT_ACTION_TO_STATE.keys())
 
+PACKAGE_UPSERT_EVENTS = ["published", "updated"]
+PACKAGE_EVENTS = PACKAGE_UPSERT_EVENTS
+
 
 # Collaborator events
 COLLABORATOR_UPSERT_EVENTS = ["added", "created", "edited"]
 COLLABORATOR_DELETE_EVENTS = ["removed", "deleted"]
-TEAM_COLLABORATOR_EVENTS = ["added_to_repository"]
+TEAM_COLLABORATOR_UPSERT_EVENTS = ["added_to_repository"]
+TEAM_COLLABORATOR_DELETE_EVENTS = ["removed_from_repository"]
+TEAM_COLLABORATOR_EVENTS = (
+    TEAM_COLLABORATOR_UPSERT_EVENTS + TEAM_COLLABORATOR_DELETE_EVENTS
+)
 COLLABORATOR_EVENTS = COLLABORATOR_UPSERT_EVENTS + COLLABORATOR_DELETE_EVENTS
 
 
@@ -126,12 +158,14 @@ ALL_EVENTS = (
     + COLLABORATOR_EVENTS
     + TEAM_COLLABORATOR_EVENTS
     + SECRET_SCANNING_ALERT_EVENTS
+    + PACKAGE_EVENTS
 )
 
 
 WEBHOOK_CREATE_EVENTS = [
     "repository",
     "pull_request",
+    "pull_request_review",
     "issues",
     "release",
     "create",
@@ -147,4 +181,5 @@ WEBHOOK_CREATE_EVENTS = [
     "membership",
     "member",
     "secret_scanning_alert",
+    "package",
 ]

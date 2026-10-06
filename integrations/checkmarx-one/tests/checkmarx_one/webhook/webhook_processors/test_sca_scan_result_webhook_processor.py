@@ -19,14 +19,14 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from integration import (
-    CheckmarxOneScanResultResourcesConfig,
+    CheckmarxOneScaResourcesConfig,
     CheckmarxOneResultSelector,
 )
 
 
 @pytest.fixture
-def sca_scan_result_resource_config() -> CheckmarxOneScanResultResourcesConfig:
-    return CheckmarxOneScanResultResourcesConfig(
+def sca_scan_result_resource_config() -> CheckmarxOneScaResourcesConfig:
+    return CheckmarxOneScaResourcesConfig(
         kind="sca",
         selector=CheckmarxOneResultSelector(
             query="true",
@@ -179,7 +179,7 @@ class TestScaScanResultWebhookProcessor:
     async def test_handle_event_success(
         self,
         sca_scan_result_webhook_processor: ScaScanResultWebhookProcessor,
-        sca_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        sca_scan_result_resource_config: CheckmarxOneScaResourcesConfig,
     ) -> None:
         """Test successful handling of SCA scan result webhook event."""
         sca_scan_result_data = [
@@ -244,7 +244,7 @@ class TestScaScanResultWebhookProcessor:
     async def test_handle_event_empty_results(
         self,
         sca_scan_result_webhook_processor: ScaScanResultWebhookProcessor,
-        sca_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        sca_scan_result_resource_config: CheckmarxOneScaResourcesConfig,
     ) -> None:
         """Test handling when no SCA scan results are found."""
         payload: EventPayload = {
@@ -280,7 +280,7 @@ class TestScaScanResultWebhookProcessor:
     async def test_handle_event_exporter_error(
         self,
         sca_scan_result_webhook_processor: ScaScanResultWebhookProcessor,
-        sca_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        sca_scan_result_resource_config: CheckmarxOneScaResourcesConfig,
     ) -> None:
         """Test handling when the exporter raises an error."""
         payload: EventPayload = {
@@ -316,7 +316,7 @@ class TestScaScanResultWebhookProcessor:
     async def test_handle_event_multiple_batches(
         self,
         sca_scan_result_webhook_processor: ScaScanResultWebhookProcessor,
-        sca_scan_result_resource_config: CheckmarxOneScanResultResourcesConfig,
+        sca_scan_result_resource_config: CheckmarxOneScaResourcesConfig,
     ) -> None:
         """Test handling SCA scan result event with multiple batches."""
         batch1 = [
@@ -368,3 +368,37 @@ class TestScaScanResultWebhookProcessor:
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == batch1[0]
         assert result.updated_raw_results[1] == batch2[0]
+
+    async def test_handle_event_passes_project_id_in_options(
+        self,
+        sca_scan_result_webhook_processor: ScaScanResultWebhookProcessor,
+        sca_scan_result_resource_config: CheckmarxOneScaResourcesConfig,
+    ) -> None:
+        """Test that project_id from the payload is passed through to ListScanResultOptions."""
+        payload: EventPayload = {
+            "scanId": "scan-123",
+            "projectId": "project-456",
+        }
+
+        captured_options: list[Any] = []
+        mock_exporter = AsyncMock()
+
+        async def mock_get_paginated_resources(
+            options: Any,
+        ) -> AsyncIterator[List[dict[str, Any]]]:
+            captured_options.append(options)
+            yield []
+
+        mock_exporter.get_paginated_resources = mock_get_paginated_resources
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.sca_scan_result_webhook_processor.create_scan_result_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+            await sca_scan_result_webhook_processor.handle_event(
+                payload, sca_scan_result_resource_config
+            )
+
+        assert len(captured_options) == 1
+        assert captured_options[0]["project_id"] == "project-456"
+        assert captured_options[0]["scan_id"] == "scan-123"

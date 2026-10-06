@@ -2,7 +2,7 @@ from typing import Callable, TYPE_CHECKING, Any, Union
 
 from fastapi import APIRouter
 from port_ocean.helpers.metric.metric import Metrics
-from pydantic.main import BaseModel
+from pydantic import BaseModel
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
@@ -15,6 +15,8 @@ from port_ocean.core.ocean_types import (
     EntityDiff,
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
+    INCREMENTAL_EVENT_LISTENER,
+    ON_PROBE_EVENT_LISTENER,
 )
 from port_ocean.exceptions.context import (
     PortOceanContextNotFoundError,
@@ -27,6 +29,7 @@ if TYPE_CHECKING:
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient
     from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
+    from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
 from loguru import logger
 
@@ -66,7 +69,7 @@ class PortOceanContext:
     @property
     def integration_config(self) -> dict[str, Any]:
         if isinstance(self.app.config.integration.config, BaseModel):
-            return self.app.config.integration.config.dict()
+            return self.app.config.integration.config.model_dump(mode="json")
         return self.app.config.integration.config
 
     @property
@@ -130,6 +133,25 @@ class PortOceanContext:
                 )
                 return None
             return self.integration.on_resync_complete(function)
+
+        return wrapper
+
+    def on_incremental_resync(
+        self,
+        kind: str | None = None,
+    ) -> Callable[
+        [INCREMENTAL_EVENT_LISTENER | None], INCREMENTAL_EVENT_LISTENER | None
+    ]:
+        def wrapper(
+            function: INCREMENTAL_EVENT_LISTENER | None,
+        ) -> INCREMENTAL_EVENT_LISTENER | None:
+            return self.integration.on_incremental_resync(function, kind)
+
+        return wrapper
+
+    def on_probe(self) -> Callable[[ON_PROBE_EVENT_LISTENER], ON_PROBE_EVENT_LISTENER]:
+        def wrapper(function: ON_PROBE_EVENT_LISTENER) -> ON_PROBE_EVENT_LISTENER:
+            return self.integration.on_probe(function)
 
         return wrapper
 
@@ -214,6 +236,38 @@ class PortOceanContext:
 
     def register_action_executor(self, executor: "AbstractExecutor") -> None:
         self.app.execution_manager.register_executor(executor)
+
+    def register_oauth_provider(self, provider: "OAuth2Provider") -> None:
+        """Register a fully-built OAuth provider for identity propagation.
+
+        Each Ocean process hosts exactly one integration, so there is exactly
+        one provider.  The integration constructs the provider with its own
+        URLs and credentials, then hands it here.  Core never parses
+        provider-specific config.
+
+        Call once at startup from the integration's ``oauth/registry.py``.
+        """
+        from port_ocean.exceptions.identity_propagation import (
+            DuplicateOAuthProviderError,
+        )
+
+        if not self.app.config.identity_propagation.enabled:
+            logger.debug(
+                "Identity propagation is disabled; ignoring OAuth provider registration"
+            )
+            return
+
+        if self.app.oauth_provider is not None:
+            raise DuplicateOAuthProviderError(
+                "An OAuth provider is already registered for this process - "
+                "each Ocean process hosts exactly one integration and one provider"
+            )
+
+        self.app.oauth_provider = provider
+        logger.info(
+            "OAuth provider registered for identity propagation",
+            target=provider.target,
+        )
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)

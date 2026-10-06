@@ -1,31 +1,59 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field, validator
 
 from port_ocean.clients.port.types import RequestOptions
 
+CUSTOM_KIND = "__custom__"
+ProbePermissions = tuple[str, ...] | dict[str, tuple[str, ...]]
+
 
 class Rule(BaseModel):
-    property: str
-    operator: str
-    value: str
+    property: str = Field(title="Property", description="The property to search on.")
+    operator: str = Field(
+        title="Operator", description="The operator to use for the search."
+    )
+    value: str = Field(title="Value", description="The value to search for.")
 
 
 class IngestSearchQuery(BaseModel):
-    combinator: str
-    rules: list[Rule | IngestSearchQuery]
+    combinator: str = Field(
+        title="Combinator",
+        description="The combinator to use for the search, avaliable: 'and', 'or'.",
+    )
+    rules: list[Rule | IngestSearchQuery] = Field(
+        title="Rules", description="The rules to use for the search."
+    )
 
 
 class EntityMapping(BaseModel):
-    identifier: str | IngestSearchQuery
-    title: str | None
-    icon: str | None
-    blueprint: str
-    team: str | IngestSearchQuery | None
-    properties: dict[str, str] = Field(default_factory=dict)
-    relations: dict[str, str | IngestSearchQuery] = Field(default_factory=dict)
+    identifier: str | IngestSearchQuery = Field(
+        title="Identifier", description="The identifier to use for the entity."
+    )
+    title: str | None = Field(
+        title="Title", description="The title to use for the entity."
+    )
+    icon: str | None = Field(
+        title="Icon", description="The icon to use for the entity."
+    )
+    blueprint: str = Field(
+        title="Blueprint", description="The blueprint to use for the entity."
+    )
+    team: str | IngestSearchQuery | None = Field(
+        title="Team", description="The team to use for the entity."
+    )
+    properties: dict[str, str] = Field(
+        default_factory=dict,
+        title="Properties",
+        description="The properties to use for the entity.",
+    )
+    relations: dict[str, str | IngestSearchQuery] = Field(
+        default_factory=dict,
+        title="Relations",
+        description="The relations to use for the entity.",
+    )
 
     @property
     def is_using_search_identifier(self) -> bool:
@@ -35,41 +63,123 @@ class EntityMapping(BaseModel):
 
 
 class MappingsConfig(BaseModel):
-    mappings: EntityMapping
+    mappings: EntityMapping = Field(
+        title="Mappings", description="The mappings to use for the entity."
+    )
 
 
 class PortResourceConfig(BaseModel):
-    entity: MappingsConfig
-    items_to_parse: str | None = Field(alias="itemsToParse")
-    items_to_parse_name: str = Field(alias="itemsToParseName", default="item")
+    entity: MappingsConfig = Field(
+        title="Entity", description="The entity to use for the resource."
+    )
+    items_to_parse: str | None = Field(
+        alias="itemsToParse",
+        title="Items to Parse",
+        description="JQ expression pointing on an array value in the raw data, on which multiple entities will be parsed from.",
+    )
+    items_to_parse_name: str = Field(
+        alias="itemsToParseName",
+        default="item",
+        title="Items to Parse Name",
+        description="The name of the key that will be enriched with the specific item context in the raw data.",
+    )
     items_to_parse_top_level_transform: bool = Field(
-        alias="itemsToParseTopLevelTransform", default=True
+        alias="itemsToParseTopLevelTransform",
+        default=True,
+        title="Items to Parse Top Level Transform",
+        description="Whether to removes the target array specified in itemsToParse from the result data.",
     )
 
 
 class Selector(BaseModel):
-    query: str
+    query: str = Field(
+        title="Query",
+        description="JQ expression that will filter which objects of the specified kind will be ingested into Port.",
+    )
+    export_env_variables: list[str] = Field(
+        alias="exportEnvVariables",
+        default_factory=list,
+        title="Export Env Variables",
+        description="Environment variable names whose values should be included in lakehouse ingest payloads for DSP processing.",
+    )
 
 
 class ResourceConfig(BaseModel):
-    kind: str
-    selector: Selector
-    port: PortResourceConfig
+    probe_permissions: ClassVar[ProbePermissions | None] = None
+
+    kind: str = Field(
+        title="Kind",
+        description="key is a specifier for the object you wish to map from the tool's API.",
+    )
+    enable_delete: bool = Field(
+        alias="enableDelete",
+        default=True,
+        title="Enable Delete",
+        description=(
+            "When true (default), reconciliation may delete stale entities for this "
+            "resource. When false, upserts still run but reconciliation deletes for "
+            "this resource are skipped. Omit the key to keep the default (true). "
+            "YAML-only in v1 (hidden from mapping form UI)."
+        ),
+        extra={"ui_schema": {"hidden": True}},
+    )
+
+    @validator("enable_delete", pre=True)
+    def _enable_delete_must_be_bool(cls, value: object) -> object:
+        # Reject string/number/null coercion so YAML `"false"` / 0 / 1 / null fail
+        # validation. Omit the key for default true (Port omitempty parity).
+        if not isinstance(value, bool):
+            raise ValueError(
+                "enableDelete must be a boolean (true or false). "
+                "Omit the key to keep the default (true)."
+            )
+        return value
+
+    selector: Selector = Field(
+        title="Selector",
+        description="Specifies extraction flags and transformation filters reagrding the data to ingest into Port.",
+    )
+    port: PortResourceConfig = Field(
+        title="Port",
+        description="Defines the mapping from the raw data to the entity and relations.",
+    )
 
 
 class PortAppConfig(BaseModel):
-    _default_entity_deletion_threshold: float = 0.9
-    enable_merge_entity: bool = Field(alias="enableMergeEntity", default=True)
+    allow_custom_kinds: ClassVar[bool] = False
+
+    enable_merge_entity: bool = Field(
+        alias="enableMergeEntity",
+        default=True,
+        title="Enable Merge Entity",
+        description="Whether to merge entities when merging an entity.",
+        extra={"ui_schema": {"hidden": True}},
+    )
     delete_dependent_entities: bool = Field(
-        alias="deleteDependentEntities", default=True
+        alias="deleteDependentEntities",
+        default=True,
+        title="Auto-delete related entities",
+        description="Automatically delete entities that have a relation to a deleted entity. Enable this to avoid orphaned relations in the catalog.",
     )
     create_missing_related_entities: bool = Field(
-        alias="createMissingRelatedEntities", default=True
+        alias="createMissingRelatedEntities",
+        default=True,
+        title="Auto-create related entities",
+        description="Create related entities automatically if they don't exist in the catalog yet. Useful when ingesting entities before their dependencies.",
     )
-    entity_deletion_threshold: float | None = Field(
-        alias="entityDeletionThreshold", default=None
+    entity_deletion_threshold: float = Field(
+        alias="entityDeletionThreshold",
+        default=0.9,
+        ge=0,
+        le=1,
+        title="Allow entity deletion",
+        description="When on - deletes entities missing from the source, keeping the catalog in sync. When off - no deletions, stale entities may remain.",
     )
-    resources: list[ResourceConfig] = Field(default_factory=list)
+    resources: list[ResourceConfig] = Field(
+        default_factory=list,
+        title="Resources",
+        description="The list of resource configurations for the integration.",
+    )
 
     def get_port_request_options(self) -> RequestOptions:
         return {
@@ -79,23 +189,25 @@ class PortAppConfig(BaseModel):
             "validation_only": False,
         }
 
-    def get_entity_deletion_threshold(self) -> float | None:
-        if self.entity_deletion_threshold is not None:
-            return self.entity_deletion_threshold
-        return self._default_entity_deletion_threshold
-
     def to_request(self) -> dict[str, Any]:
-        mapping = {
+        return {
             "deleteDependentEntities": self.delete_dependent_entities,
             "createMissingRelatedEntities": self.create_missing_related_entities,
             "enableMergeEntity": self.enable_merge_entity,
+            "entityDeletionThreshold": self.entity_deletion_threshold,
             "resources": [
                 resource.dict(by_alias=True, exclude_none=True, exclude_unset=True)
                 for resource in self.resources
             ],
         }
-        if self.entity_deletion_threshold is not None:
-            mapping["entityDeletionThreshold"] = self.entity_deletion_threshold
+
+    def to_dsp_lifecycle_mapping(self) -> dict[str, Any]:
+        mapping = self.to_request()
+        for resource in mapping.get("resources", []):
+            entity = resource.get("port", {}).get("entity", {})
+            mappings = entity.get("mappings")
+            if mappings is not None and not isinstance(mappings, list):
+                entity["mappings"] = [mappings]
         return mapping
 
     class Config:

@@ -1,40 +1,22 @@
-import sys
-from inspect import getmembers, isclass
-from types import ModuleType
+from inspect import getmembers
+from pathlib import Path
 from typing import Type, Any, Dict
 
 from pydantic import BaseModel
 
-from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.config.dynamic import default_config_factory
 from port_ocean.ocean import Ocean
-from port_ocean.utils.misc import load_module
-
-
-def _get_base_integration_class_from_module(
-    module: ModuleType,
-) -> Type[BaseIntegration]:
-    for name, obj in getmembers(module):
-        if (
-            isclass(obj)
-            and type(obj) is type
-            and issubclass(obj, BaseIntegration)
-            and obj != BaseIntegration
-        ):
-            return obj
-
-    raise Exception(f"Failed to load integration from module: {module.__name__}")
+from port_ocean.utils.misc import get_integration_class, get_spec_file, load_module
 
 
 def create_default_app(
-    path: str | None = None,
+    path: str,
     config_factory: Type[BaseModel] | None = None,
     config_override: Dict[str, Any] | None = None,
 ) -> Ocean:
-    sys.path.append(".")
+
     try:
-        integration_path = f"{path}/integration.py" if path else "integration.py"
-        module = load_module(integration_path)
-        integration_class = _get_base_integration_class_from_module(module)
+        integration_class = get_integration_class(path)
     except Exception:
         integration_class = None
 
@@ -43,3 +25,18 @@ def create_default_app(
         config_factory=config_factory,
         config_override=config_override,
     )
+
+
+def load_ocean_app(
+    path: str = ".",
+    config_override: Dict[str, Any] | None = None,
+) -> Ocean:
+    """Load an integration's configured Ocean app without starting its runtime."""
+    spec = get_spec_file(Path(path))
+    config_factory = (
+        default_config_factory(spec.get("configurations", [])) if spec else None
+    )
+    default_app = create_default_app(path, config_factory, config_override)
+
+    app_module = load_module(str(Path(path) / "main.py"))
+    return {name: item for name, item in getmembers(app_module)}.get("app", default_app)

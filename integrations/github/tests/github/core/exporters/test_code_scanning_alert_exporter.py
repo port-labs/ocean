@@ -13,7 +13,6 @@ from github.core.options import (
 )
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_CODE_SCANNING_ALERTS = [
     {
         "number": 42,
@@ -262,7 +261,7 @@ class TestRestCodeScanningAlertExporter:
                     organization="test-org", repo_name="test-repo", alert_number="43"
                 )
             )
-            assert result == {"__repository": "test-repo", "__organization": "test-org"}
+            assert result is None
 
     async def test_handle_request_paginated_with_advanced_security_disabled_error(
         self, rest_client: GithubRestClient

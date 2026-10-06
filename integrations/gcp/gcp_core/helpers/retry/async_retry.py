@@ -1,7 +1,7 @@
 import asyncio
 import time
 import functools
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterator
 
 from loguru import logger
 from google.api_core.exceptions import (
@@ -22,7 +22,6 @@ from google.api_core.retry.retry_base import (
     _retry_error_helper,
     if_exception_type,
 )
-
 
 _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES: float = 5.0
 _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS: float = 60.0
@@ -49,7 +48,7 @@ def log_retry_attempt(error: Exception) -> None:
 async def retry_generator_target(
     target: Callable[..., ASYNC_GENERATOR_RESYNC_TYPE],
     predicate: Callable[[Exception], bool],
-    sleep_generator: Iterable[float],
+    sleep_generator: Iterator[float],
     timeout: float | None = None,
     on_error: Callable[..., None] | None = None,
     exception_factory: Callable[
@@ -95,7 +94,7 @@ async def retry_generator_target(
             _retry_error_helper(
                 exc,
                 deadline,
-                sleep,
+                sleep_generator,
                 error_list,
                 predicate,
                 on_error,

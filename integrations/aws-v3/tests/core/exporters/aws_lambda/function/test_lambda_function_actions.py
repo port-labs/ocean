@@ -216,8 +216,9 @@ class TestListTagsAction:
 
         result = await action.execute(functions)
 
-        # Should only return results for successful calls
-        expected_result = [{"Tags": {"Environment": "production"}}]
+        # Recoverable failure must produce a placeholder so the result list
+        # stays positionally aligned with sibling actions' results.
+        expected_result = [{"Tags": {"Environment": "production"}}, {}]
         assert result == expected_result
 
         # Verify warning logging for recoverable exception
@@ -229,6 +230,52 @@ class TestListTagsAction:
         # Verify success logging
         mock_logger.info.assert_called_once_with(
             "Successfully fetched tags for 1 Lambda functions"
+        )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.aws_lambda.function.actions.logger")
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, mock_logger: MagicMock, action: ListTagsAction
+    ) -> None:
+        """Middle Lambda function fails recoverably; tag results stay aligned."""
+        functions = [
+            {
+                "FunctionName": "function-1",
+                "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:function-1",
+            },
+            {
+                "FunctionName": "function-2",
+                "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:function-2",
+            },
+            {
+                "FunctionName": "function-3",
+                "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:function-3",
+            },
+        ]
+
+        def mock_list_tags(Resource: str, **kwargs: Any) -> dict[str, Any]:
+            if Resource.endswith("function-2"):
+                raise ClientError(
+                    {"Error": {"Code": "AccessDenied", "Message": "denied"}},
+                    "ListTags",
+                )
+            tag_value = "first" if Resource.endswith("function-1") else "third"
+            return {"Tags": {"Owner": tag_value}}
+
+        action.client.list_tags.side_effect = mock_list_tags
+
+        result = await action.execute(functions)
+
+        assert len(result) == 3
+        assert result[0] == {"Tags": {"Owner": "first"}}
+        assert result[1] == {}
+        assert result[2] == {"Tags": {"Owner": "third"}}
+
+        mock_logger.warning.assert_called_once()
+        warning_call = mock_logger.warning.call_args[0][0]
+        assert "Skipping tags for Lambda function 'function-2'" in warning_call
+        mock_logger.info.assert_called_once_with(
+            "Successfully fetched tags for 2 Lambda functions"
         )
 
     @pytest.mark.asyncio

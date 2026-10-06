@@ -34,6 +34,7 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         config = cast(GitLabFoldersResourceConfig, resource_config)
         selector = config.selector
         folder_patterns = selector.folders
+        included_files = selector.included_files or []
 
         folders = []
         for pattern in folder_patterns:
@@ -57,6 +58,22 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 path=pattern.path, repository=repo_path, branch=branch
             ):
                 folders.extend(folder_batch)
+
+        # Enrich folders with included files if configured
+        if included_files and folders:
+            from gitlab.enrichments.included_files import (
+                IncludedFilesEnricher,
+                FolderIncludedFilesStrategy,
+            )
+
+            enricher = IncludedFilesEnricher(
+                client=self._gitlab_webhook_client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=folder_patterns,
+                    global_included_files=included_files,
+                ),
+            )
+            folders = await enricher.enrich_batch(folders)
 
         if not folders:
             logger.info(

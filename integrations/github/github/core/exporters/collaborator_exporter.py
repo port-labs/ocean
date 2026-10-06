@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Optional
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
     enrich_with_repository,
@@ -12,9 +12,9 @@ from github.clients.http.rest_client import GithubRestClient
 
 
 class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
-    async def get_resource[
-        ExporterOptionsT: SingleCollaboratorOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleCollaboratorOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         username = params["username"]
 
@@ -24,7 +24,7 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"No collaborator found with identifier: {username} from repository: {repo_name} from {organization}"
             )
-            return {}
+            return None
 
         logger.info(
             f"Fetched collaborator with identifier: {username} from repository: {repo_name} from {organization}"
@@ -35,9 +35,9 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(collaborator, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListCollaboratorOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListCollaboratorOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all collaborators in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))

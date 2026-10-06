@@ -7,3 +7,4 @@ class IntegrationKind(StrEnum):
     ISSUE = "issue"
     TARGET = "target"
     VULNERABILITY = "vulnerability"
+    POLICY = "policy"

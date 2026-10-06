@@ -180,5 +180,74 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "snsTopic",
+    "title": "SNS Topic",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "topicArn": {
+          "type": "string",
+          "title": "Topic ARN",
+          "description": "The Amazon Resource Name (ARN) of the SNS topic"
+        },
+        "displayName": {
+          "type": "string",
+          "title": "Display Name",
+          "description": "The human-readable name used in email From field"
+        },
+        "fifoTopic": {
+          "type": "boolean",
+          "title": "FIFO Topic",
+          "description": "Whether this is a FIFO topic"
+        },
+        "subscriptionsConfirmed": {
+          "type": "number",
+          "title": "Confirmed Subscriptions",
+          "description": "The number of confirmed subscriptions"
+        },
+        "subscriptionsPending": {
+          "type": "number",
+          "title": "Pending Subscriptions",
+          "description": "The number of subscriptions pending confirmation"
+        },
+        "kmsMasterKeyId": {
+          "type": "string",
+          "title": "KMS Key ID",
+          "description": "The ID of the AWS KMS key for server-side encryption"
+        },
+        "tracingConfig": {
+          "type": "string",
+          "title": "Tracing Config",
+          "description": "X-Ray tracing mode (PassThrough or Active)"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region of the topic"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the topic",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

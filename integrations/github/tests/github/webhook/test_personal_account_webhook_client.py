@@ -3,12 +3,15 @@ from typing import Any, AsyncGenerator, Dict, List
 from unittest.mock import AsyncMock, patch
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+from github.clients.auth.github_app.installation_authenticator import (
+    GitHubAppInstallationAuthenticator,
+)
 from github.webhook.clients.base_webhook_client import HookTarget
 from github.webhook.clients.personal_account_webhook_client import (
     GithubPersonalAccountWebhookClient,
 )
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
+from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
 
 
 @pytest.mark.asyncio
@@ -180,11 +183,13 @@ class TestGithubPersonalAccountWebhookClient:
             token="test-token",
             organization="test-org",
             github_host="https://api.github.com",
-            authenticator=GitHubAppAuthenticator(
-                app_id="app",
-                private_key="key",
+            authenticator=GitHubAppInstallationAuthenticator(
+                app_auth=GitHubAppAuthenticator(
+                    app_id="app",
+                    private_key="key",
+                    github_host="https://api.github.com",
+                ),
                 organization="test-org",
-                github_host="https://api.github.com",
                 installation_id="123",
             ),
         )

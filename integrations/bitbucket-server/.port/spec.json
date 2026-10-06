@@ -1,0 +1,79 @@
+{
+  "title": "Bitbucket Server",
+  "description": "Bitbucket Server integration for Port Ocean",
+  "icon": "BitBucket",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Git Providers",
+      "resources": [
+        {
+          "kind": "project"
+        },
+        {
+          "kind": "repository"
+        },
+        {
+          "kind": "pull-request"
+        },
+        {
+          "kind": "user"
+        }
+      ]
+    }
+  ],
+  "deploymentMethodOverride": [
+    {
+      "type": "helm"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "bitbucketUsername",
+      "required": true,
+      "type": "string",
+      "description": "Bitbucket Server username"
+    },
+    {
+      "name": "bitbucketPassword",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "Bitbucket Server password"
+    },
+    {
+      "name": "bitbucketBaseUrl",
+      "required": true,
+      "type": "url",
+      "description": "Bitbucket Server API URL"
+    },
+    {
+      "name": "bitbucketWebhookSecret",
+      "type": "string",
+      "description": "Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Bitbucket are accepted.",
+      "sensitive": true,
+      "required": false
+    },
+    {
+      "name": "bitbucketIsVersion8Point7OrOlder",
+      "type": "boolean",
+      "description": "Whether the Bitbucket Server version is 8.7 or older",
+      "required": false
+    },
+    {
+      "name": "bitbucketRateLimitQuota",
+      "type": "integer",
+      "default": "1000",
+      "description": "Maximum number of API requests allowed within the rate limit window. Default is 1000 requests per hour.",
+      "required": false
+    },
+    {
+      "name": "bitbucketRateLimitWindow",
+      "type": "integer",
+      "default": "3600",
+      "description": "Time window in seconds for rate limiting. Default is 3600 seconds (1 hour).",
+      "required": false
+    }
+  ]
+}

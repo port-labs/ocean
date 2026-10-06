@@ -1,15 +1,31 @@
+import asyncio
+from typing import Any
+
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
-from github.core.exporters.team_exporter import (
-    GraphQLTeamMembersAndReposExporter,
+from github.clients.client_factory import create_github_client_for_org
+from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
+from github.core.exporters.team_exporter import RestTeamExporter
+from github.core.options import SingleTeamOptions
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
 )
-from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import (
     TEAM_COLLABORATOR_EVENTS,
+    TEAM_COLLABORATOR_DELETE_EVENTS,
 )
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
+    CollaboratorEventValidator,
+)
+from github.webhook.webhook_processors.collaborator_webhook_processor.utils import (
+    BATCH_CONCURRENCY_LIMIT,
+    CollaboratorCheck,
+    check_collaborator_access,
+    process_access_check_results,
+    skip_if_affiliation_filtered,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -17,27 +33,17 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.options import SingleTeamOptions
 
 
-class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
+class CollaboratorTeamWebhookProcessor(
+    BaseRepositoryWebhookProcessor, CollaboratorEventValidator
+):
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
-
-        has_required_fields = not (
-            {"action", "repository", "organization", "team"} - payload.keys()
-        )
-
-        has_org_login = "login" in payload.get("organization", {})
-        has_team_name = "name" in payload.get("team", {})
-
-        return has_required_fields and has_org_login and has_team_name
+        return await self.validate_team_collaborator_payload(payload)
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return (
-            event.headers.get("x-github-event") == "team"
-            and event.payload.get("action") in TEAM_COLLABORATOR_EVENTS
-        )
+        return await self.should_process_team_collaborator_event(event)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.COLLABORATOR]
@@ -45,15 +51,19 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        """Handle team-related webhook events for collaborators."""
 
         action = payload["action"]
         team_slug = payload["team"]["slug"]
         organization = self.get_webhook_payload_organization(payload)["login"]
+        repository = payload["repository"]
 
         logger.info(
             f"Handling team event: {action} for team {team_slug} of organization: {organization}"
         )
+
+        skipped = skip_if_affiliation_filtered(resource_config)
+        if skipped is not None:
+            return skipped
 
         if action not in TEAM_COLLABORATOR_EVENTS:
             logger.info(
@@ -63,13 +73,15 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        graphql_client = create_github_client(client_type=GithubClientType.GRAPHQL)
-        team_exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
-        team_data = await team_exporter.get_resource(
+        rest_client = await create_github_client_for_org(organization)
+        team_exporter = RestTeamExporter(rest_client)
+        members: list[dict[str, Any]] = []
+        async for batch in team_exporter.get_team_members_by_slug(
             SingleTeamOptions(organization=organization, slug=team_slug)
-        )
+        ):
+            members.extend(batch)
 
-        if not team_data:
+        if not members:
             logger.warning(
                 f"No team data returned for team {team_slug} of organization: {organization}"
             )
@@ -77,16 +89,47 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        if action in TEAM_COLLABORATOR_DELETE_EVENTS:
+            collaborator_exporter = RestCollaboratorExporter(rest_client)
+            semaphore = asyncio.BoundedSemaphore(BATCH_CONCURRENCY_LIMIT)
+            repo_name = repository["name"]
+
+            results = await asyncio.gather(
+                *(
+                    check_collaborator_access(
+                        collaborator_exporter=collaborator_exporter,
+                        organization=organization,
+                        repo_name=repo_name,
+                        username=member["login"],
+                        semaphore=semaphore,
+                    )
+                    for member in members
+                ),
+                return_exceptions=True,
+            )
+
+            checks: list[CollaboratorCheck] = [
+                (member["login"], member["id"], repo_name) for member in members
+            ]
+            updated, deleted = process_access_check_results(
+                results, checks, organization
+            )
+
+            logger.info(
+                f"Reconciled {len(members)} members of team {team_slug} for "
+                f"repository {repo_name} in {organization}: "
+                f"{len(updated)} still collaborators, {len(deleted)} removed"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=updated, deleted_raw_results=deleted
+            )
+
         data_to_upsert = [
-            {
-                "id": member["id"],
-                "login": member["login"],
-                "name": member["name"],
-                "site_admin": member["isSiteAdmin"],
-                "__repository": repo["name"],
-            }
-            for member in team_data["members"]["nodes"]
-            for repo in team_data["repositories"]["nodes"]
+            enrich_with_organization(
+                enrich_with_repository(member.copy(), repository["name"]),
+                organization,
+            )
+            for member in members
         ]
 
         logger.info(

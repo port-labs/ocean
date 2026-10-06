@@ -1,11 +1,19 @@
 import pytest
+from logging import LogRecord
+from logging.handlers import QueueHandler
+from queue import Queue
+
 from fastapi import Request
+from loguru import logger
+
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
-    WebhookEvent,
     LiveEventTimestamp,
+    WebhookEvent,
+    WebhookRequestAdapter,
 )
+from port_ocean.log.handlers import _serialize_record
 
 
 @pytest.fixture
@@ -104,3 +112,180 @@ def test_setTimestamp_setsTimestampCorrectly(
 
     event.set_timestamp(LiveEventTimestamp.FinishedProcessingSuccessfully)
     assert event._timestamp == LiveEventTimestamp.FinishedProcessingSuccessfully
+
+
+def test_setTimestamp_logsTraceIdAtTopLevelExtra(
+    sample_payload: EventPayload, sample_headers: EventHeaders
+) -> None:
+    """Added To Queue logs headers and payload on a single entry."""
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=sample_payload,
+        headers=sample_headers,
+        original_request=None,
+    )
+
+    queue: Queue[LogRecord] = Queue()
+    queue_handler = QueueHandler(queue)
+    logger_id = logger.add(
+        queue_handler,
+        level="DEBUG",
+        format="{message}",
+        diagnose=False,
+        enqueue=True,
+    )
+    try:
+        event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+        logger.complete()
+        record = queue.get()
+        assert queue.empty()
+    finally:
+        logger.remove(logger_id)
+
+    extra = _serialize_record(record)["extra"]
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["timestamp_type"] == "Added To Queue"
+    assert extra["payload"] == sample_payload
+    assert extra["headers"] == sample_headers
+    assert "payload_b64" not in extra
+    assert extra.get("extra") is None
+
+
+def test_setTimestamp_addedToQueue_base64EncodesOversizedPayload() -> None:
+    payload = {f"key_{index}": {"nested": index} for index in range(250)}
+    headers = {"x-github-event": "pull_request"}
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=payload,
+        headers=headers,
+        original_request=None,
+    )
+
+    queue: Queue[LogRecord] = Queue()
+    queue_handler = QueueHandler(queue)
+    logger_id = logger.add(
+        queue_handler,
+        level="DEBUG",
+        format="{message}",
+        diagnose=False,
+        enqueue=True,
+    )
+    try:
+        event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+        logger.complete()
+        record = queue.get()
+        assert queue.empty()
+    finally:
+        logger.remove(logger_id)
+
+    extra = _serialize_record(record)["extra"]
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["headers"] == headers
+    assert "payload" not in extra
+    assert "payload_b64" in extra
+
+
+def _capture_set_timestamp_extra(
+    event: WebhookEvent, timestamp: LiveEventTimestamp
+) -> dict[str, object]:
+    queue: Queue[LogRecord] = Queue()
+    queue_handler = QueueHandler(queue)
+    logger_id = logger.add(
+        queue_handler,
+        level="DEBUG",
+        format="{message}",
+        diagnose=False,
+        enqueue=True,
+    )
+    try:
+        event.set_timestamp(timestamp)
+        logger.complete()
+        record = queue.get()
+        assert queue.empty()
+    finally:
+        logger.remove(logger_id)
+
+    extra: dict[str, object] = _serialize_record(record)["extra"]
+    return extra
+
+
+def test_setTimestamp_startedProcessing_logsNestedPayloadForSmallPayload(
+    sample_payload: EventPayload, sample_headers: EventHeaders
+) -> None:
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=sample_payload,
+        headers=sample_headers,
+        original_request=None,
+    )
+
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["timestamp_type"] == "Started Processing"
+    assert extra["payload"] == sample_payload
+    assert extra["headers"] == sample_headers
+    assert "payload_b64" not in extra
+
+
+def test_setTimestamp_startedProcessing_base64EncodesOversizedPayload() -> None:
+    payload = {f"key_{index}": {"nested": index} for index in range(250)}
+    headers = {"x-github-event": "pull_request"}
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=payload,
+        headers=headers,
+        original_request=None,
+    )
+
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["headers"] == headers
+    assert "payload" not in extra
+    assert "payload_b64" in extra
+
+
+def test_setTimestamp_finishedProcessing_base64EncodesOversizedPayload() -> None:
+    payload = {f"key_{index}": {"nested": index} for index in range(250)}
+    headers = {"x-github-event": "pull_request"}
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=payload,
+        headers=headers,
+        original_request=None,
+    )
+
+    extra = _capture_set_timestamp_extra(
+        event, LiveEventTimestamp.FinishedProcessingSuccessfully
+    )
+
+    assert extra["trace_id"] == "test-trace-id"
+    assert extra["timestamp_type"] == "Finished Processing Successfully"
+    assert extra["headers"] == headers
+    assert "payload" not in extra
+    assert "payload_b64" in extra
+
+
+class TestWebhookRequestAdapter:
+    @pytest.mark.asyncio
+    async def test_body_returns_raw_bytes(self) -> None:
+        raw = b'{"action":"opened"}'
+        adapter = WebhookRequestAdapter(raw_body=raw, headers={})
+        assert await adapter.body() == raw
+
+    @pytest.mark.asyncio
+    async def test_body_is_idempotent(self) -> None:
+        raw = b'{"x":1}'
+        adapter = WebhookRequestAdapter(raw_body=raw, headers={})
+        assert await adapter.body() == await adapter.body()
+
+    def test_headers_accessible(self) -> None:
+        headers = {
+            "x-hub-signature-256": "sha256=abc",
+            "content-type": "application/json",
+        }
+        adapter = WebhookRequestAdapter(raw_body=b"", headers=headers)
+        assert adapter.headers == headers

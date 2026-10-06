@@ -21,7 +21,7 @@ from github.core.options import SingleTeamOptions
 
 from github.helpers.utils import ObjectKind, GithubClientType
 
-from integration import GithubTeamConfig, GithubTeamSector
+from integration import GithubTeamConfig, GithubTeamSelector
 
 
 @pytest.fixture
@@ -122,7 +122,7 @@ class TestTeamMemberWebhookProcessor:
 
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,
-            selector=GithubTeamSector(members=members_selector_setting, query="true"),
+            selector=GithubTeamSelector(members=members_selector_setting, query="true"),
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(
@@ -159,7 +159,7 @@ class TestTeamMemberWebhookProcessor:
         if api_call_for_team_upsert_expected:
             mock_exporter_instance.get_resource.return_value = full_team_export_data
             exporter_class_path = "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter"
-            create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
+            create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client_for_org"
 
             with (
                 patch(
@@ -173,12 +173,18 @@ class TestTeamMemberWebhookProcessor:
                     payload, resource_config
                 )
 
-                mock_create_client.assert_called_once_with(GithubClientType.GRAPHQL)
+                mock_create_client.assert_called_once_with(
+                    "test-org", GithubClientType.GRAPHQL
+                )
                 mock_exporter_class_constructor.assert_called_once_with(
                     mock_graphql_client
                 )
                 mock_exporter_instance.get_resource.assert_called_once_with(
-                    SingleTeamOptions(organization="test-org", slug=team_data["slug"])
+                    SingleTeamOptions(
+                        organization="test-org",
+                        slug=team_data["slug"],
+                        include_saml_email=False,
+                    )
                 )
         else:
             # No API call expected for team upsert (e.g., member added but selector.members is False)
@@ -277,7 +283,7 @@ class TestTeamMemberWebhookProcessor:
 
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,
-            selector=GithubTeamSector(members=members_selector_setting, query="true"),
+            selector=GithubTeamSelector(members=members_selector_setting, query="true"),
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(
@@ -294,7 +300,7 @@ class TestTeamMemberWebhookProcessor:
         mock_exporter_instance = AsyncMock()
 
         exporter_class_path = "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter"
-        create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client"
+        create_client_path = "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client_for_org"
 
         with (
             patch(

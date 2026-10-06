@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class GetQueueAttributesAction(Action):
+class GetQueueAttributesAction(Action[list[str]]):
     """Fetches detailed attributes for SQS queues."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
@@ -16,6 +16,7 @@ class GetQueueAttributesAction(Action):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, attr_result in enumerate(attributes):
             if isinstance(attr_result, Exception):
                 queue_url = queues[idx]
@@ -23,6 +24,7 @@ class GetQueueAttributesAction(Action):
                     logger.warning(
                         f"Skipping queue attributes for queue '{queue_url}': {attr_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(
@@ -30,7 +32,8 @@ class GetQueueAttributesAction(Action):
                     )
                     raise attr_result
             results.append(cast(dict[str, Any], attr_result))
-        logger.info(f"Successfully fetched attributes for {len(results)} SQS queues")
+            success_count += 1
+        logger.info(f"Successfully fetched attributes for {success_count} SQS queues")
         return results
 
     async def _fetch_queue_attributes(self, queue: str) -> dict[str, Any]:
@@ -42,7 +45,7 @@ class GetQueueAttributesAction(Action):
         return response["Attributes"]
 
 
-class ListQueueTagsAction(Action):
+class ListQueueTagsAction(Action[list[str]]):
     """Lists tags for SQS queues."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
@@ -55,6 +58,7 @@ class ListQueueTagsAction(Action):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
                 queue_url = queues[idx]
@@ -62,12 +66,14 @@ class ListQueueTagsAction(Action):
                     logger.warning(
                         f"Skipping tags for queue '{queue_url}': {tag_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(f"Error fetching tags for queue '{queue_url}'")
                     raise tag_result
             results.append(cast(dict[str, Any], tag_result))
-        logger.info(f"Successfully fetched tags for {len(results)} SQS queues")
+            success_count += 1
+        logger.info(f"Successfully fetched tags for {success_count} SQS queues")
         return results
 
     async def _fetch_queue_tags(self, queue: str) -> dict[str, Any]:
@@ -79,7 +85,7 @@ class ListQueueTagsAction(Action):
         return {"Tags": tags}
 
 
-class ListQueuesAction(Action):
+class ListQueuesAction(Action[list[str]]):
     """List queues as a pass-through function."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
@@ -87,8 +93,11 @@ class ListQueuesAction(Action):
         return [{"QueueUrl": queue_url} for queue_url in queues]
 
 
-class SqsQueueActionsMap(ActionMap):
+class SqsQueueActionsMap(ActionMap[list[str]]):
     """Groups all actions for SQS queues."""
 
-    defaults: list[Type[Action]] = [ListQueuesAction, GetQueueAttributesAction]
-    options: list[Type[Action]] = [ListQueueTagsAction]
+    defaults: list[Type[Action[list[str]]]] = [
+        ListQueuesAction,
+        GetQueueAttributesAction,
+    ]
+    options: list[Type[Action[list[str]]]] = [ListQueueTagsAction]

@@ -11,9 +11,15 @@ def push_processor(
     event: WebhookEvent, monkeypatch: pytest.MonkeyPatch
 ) -> RepositoryWebhookProcessor:
     mock_client = MagicMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.repository_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return RepositoryWebhookProcessor(event)
 

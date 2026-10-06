@@ -16,6 +16,8 @@ from port_ocean.core.models import (
     Blueprint,
     CreatePortResourcesOrigin,
     IntegrationFeatureFlag,
+    ProcessingMode,
+    Runtime,
 )
 from port_ocean.ocean import Ocean
 
@@ -76,6 +78,8 @@ def mock_integration_config() -> IntegrationConfiguration:
     config.event_listener.get_changelog_destination_details = MagicMock(return_value={})
     config.actions_processor = MagicMock()
     config.actions_processor.enabled = False
+    config.integration.incremental_sync_enabled = False
+    config.processing_mode = ProcessingMode.ocean_core
     return config
 
 
@@ -136,174 +140,6 @@ def mock_ocean_context(
 def mock_port_app_config_class() -> type[PortAppConfig]:
     """Create a mock PortAppConfig class."""
     return PortAppConfig
-
-
-@pytest.mark.asyncio
-async def test_default_origin_setup_all_mapped_blueprints_exist(
-    mock_port_client: PortClient,
-    mock_defaults: Defaults,
-    mock_integration_config: IntegrationConfiguration,
-    mock_port_app_config_class: type[PortAppConfig],
-) -> None:
-    """
-    Test case 1: All mapped blueprints exist in Port and they are different from default ones.
-    Should skip creation of all resources.
-
-    Flow:
-    1. Get_blueprint is called for creation_stage default blueprints
-       - These should NOT exist (raise exception) so blueprints_results = []
-    2. _mapped_blueprints_exist calls get_blueprint for mapped blueprints
-       - These SHOULD exist (return Blueprint) so mapped_blueprints_exist = True
-    3. Since mapped_blueprints_exist is True, we skip creation
-    """
-    mock_integration_config.initialize_port_resources = True
-    mock_integration_config.create_port_resources_origin = (
-        CreatePortResourcesOrigin.Default
-    )
-    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
-        "config": {
-            "resources": [
-                {
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "blueprint": "blueprint1test",
-                            }
-                        }
-                    }
-                },
-                {
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "blueprint": "blueprint2test",
-                            }
-                        }
-                    }
-                },
-            ]
-        }
-    }
-
-    # Track call order: first 2 calls are for creation_stage, next 2 are for mapped blueprints
-    call_count = 0
-
-    async def get_blueprint_side_effect(
-        identifier: str, should_log: bool = True
-    ) -> Blueprint:
-        nonlocal call_count
-        call_count += 1
-
-        # First 2 calls are for creation_stage blueprints
-        # These should NOT exist to make blueprints_results = []
-        if call_count <= 2:
-            raise Exception(f"Blueprint {identifier} not found")
-
-        # Next 2 calls are for mapped blueprints
-        # These SHOULD exist to make mapped_blueprints_exist = True
-        return Blueprint.parse_obj(
-            {
-                "identifier": identifier,
-                "title": f"Blueprint {identifier}",
-                "team": None,
-                "schema": {"type": "object", "properties": {}},
-                "relations": {},
-            }
-        )
-
-    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
-
-    with patch(
-        "port_ocean.core.defaults.initialization.default_origin_setup.get_port_integration_defaults",
-        return_value=mock_defaults,
-    ):
-        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
-
-    # Assert: Should not create any blueprints, actions, scorecards, or pages
-    mock_port_client.create_blueprint.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.patch_blueprint.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_action.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_scorecard.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_page.assert_not_called()  # type: ignore[attr-defined]
-    assert mock_port_client.get_blueprint.call_count == 4  # type: ignore[attr-defined]
-
-
-@pytest.mark.asyncio
-async def test_ocean_origin_setup_no_mapped_blueprints_exist(
-    mock_port_client: PortClient,
-    mock_defaults: Defaults,
-    mock_integration_config: IntegrationConfiguration,
-    mock_port_app_config_class: type[PortAppConfig],
-) -> None:
-    """
-    Test case 2: No mapped blueprints exist in Port (they are in config but don't exist).
-    Should create all blueprints, actions, scorecards, and pages from defaults.
-
-    Flow:
-    1. Get_blueprint is called for creation_stage default blueprints
-       - These should NOT exist (raise exception) so blueprints_results = []
-    2. _mapped_blueprints_exist calls get_blueprint for mapped blueprints
-       - These should NOT exist (raise exception) so mapped_blueprints_exist = False
-    3. Since both are False/empty, we create all resources
-    """
-    mock_integration_config.initialize_port_resources = True
-    mock_integration_config.create_port_resources_origin = (
-        CreatePortResourcesOrigin.Default
-    )
-    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
-        "config": {
-            "resources": [
-                {
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "blueprint": "blueprint1",
-                            }
-                        }
-                    }
-                },
-                {
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "blueprint": "blueprint2",
-                            }
-                        }
-                    }
-                },
-            ]
-        }
-    }
-
-    # Mock get_blueprint to always raise exception (blueprints don't exist)
-    # This simulates that no blueprints exist in Port
-    async def get_blueprint_side_effect(
-        identifier: str, should_log: bool = True
-    ) -> Blueprint:
-        raise Exception(f"Blueprint {identifier} not found")
-
-    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
-
-    # Mock create_blueprint to return created blueprint
-    async def create_blueprint_side_effect(
-        blueprint: dict[str, Any], user_agent_type: UserAgentType | None = None
-    ) -> dict[str, Any]:
-        return {"identifier": blueprint["identifier"], **blueprint}
-
-    mock_port_client.create_blueprint.side_effect = create_blueprint_side_effect  # type: ignore[attr-defined]
-
-    with patch(
-        "port_ocean.core.defaults.initialization.default_origin_setup.get_port_integration_defaults",
-        return_value=mock_defaults,
-    ):
-        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
-
-    # Assert
-    assert mock_port_client.create_blueprint.call_count == 2  # type: ignore[attr-defined]
-    assert mock_port_client.patch_blueprint.call_count >= 2  # type: ignore[attr-defined]
-    assert mock_port_client.create_action.call_count == 2  # type: ignore[attr-defined]
-    assert mock_port_client.create_scorecard.call_count == 1  # type: ignore[attr-defined]
-    assert mock_port_client.create_page.call_count == 1  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -377,6 +213,7 @@ async def test_port_origin_setup(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {"config": {"resources": []}}
@@ -403,6 +240,7 @@ async def test_none_origin_with_provision_enabled(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {"config": {"resources": []}}
@@ -583,7 +421,9 @@ async def test_empty_setup_integration_exists(
         "version": "1.0.0",
         "portCreateResourcesOrigin": CreatePortResourcesOrigin.Empty.value,
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
         "changelogDestination": {},
+        "processingMode": ProcessingMode.ocean_core,
     }
 
     await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
@@ -605,6 +445,7 @@ async def test_default_setup_integration_not_exists(
         CreatePortResourcesOrigin.Default
     )
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
     mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
     # First call returns empty (integration doesn't exist), subsequent calls return created integration
@@ -701,6 +542,7 @@ async def test_default_setup_integration_exists(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
 
     # Mock get_blueprint to always raise exception (blueprints don't exist)
@@ -780,6 +622,7 @@ async def test_port_setup_integration_exists_config_falsy(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {
@@ -810,6 +653,7 @@ async def test_port_setup_integration_exists_config_not_empty(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     # Poll should return immediately when config is not empty
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
@@ -873,6 +717,7 @@ async def test_none_origin_provision_enabled_integration_exists(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
     mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
         "integration": {
@@ -897,6 +742,7 @@ async def test_none_origin_provision_disabled_integration_not_exists(
     """Test None origin with provision disabled when integration doesn't exist - should use Ocean and create it."""
     mock_integration_config.create_port_resources_origin = None
     mock_integration_config.initialize_port_resources = True
+    mock_integration_config.runtime = Runtime.OnPrem
 
     # Mock provision disabled
     mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
@@ -1003,6 +849,7 @@ async def test_none_origin_provision_disabled_integration_exists(
         "installationAppType": "test-integration",
         "version": "1.0.0",
         "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
     }
 
     # Mock get_blueprint to always raise exception (blueprints don't exist)
@@ -1031,3 +878,36 @@ async def test_none_origin_provision_disabled_integration_exists(
     mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
     mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
     mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_not_called()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_verify_patches_incremental_sync_enabled_when_diverged(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Empty
+    )
+    mock_integration_config.integration.incremental_sync_enabled = True
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {"resources": []},
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "portCreateResourcesOrigin": CreatePortResourcesOrigin.Empty.value,
+        "actionsProcessingEnabled": False,
+        "incrementalSyncEnabled": False,
+        "changelogDestination": {},
+        "processingMode": ProcessingMode.ocean_core,
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    verify_calls = [
+        call
+        for call in mock_port_client.patch_integration.call_args_list  # type: ignore[attr-defined]
+        if call.kwargs.get("incremental_sync_enabled") is not None
+    ]
+    assert len(verify_calls) == 1
+    assert verify_calls[0].kwargs["incremental_sync_enabled"] is True

@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.helpers.utils import require_aws_resource
 from aws.core.exporters.ecs.cluster.actions import EcsClusterActionsMap
 from aws.core.exporters.ecs.cluster.models import Cluster
 from aws.core.exporters.ecs.cluster.models import (
@@ -12,7 +13,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EcsClusterExporter(IResourceExporter):
+class EcsClusterExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "ecs"
     _model_cls: Type[Cluster] = Cluster
     _actions_map: Type[EcsClusterActionsMap] = EcsClusterActionsMap
@@ -23,12 +24,26 @@ class EcsClusterExporter(IResourceExporter):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            response = await proxy.client.describe_clusters(  # type: ignore[attr-defined]
+                clusters=[options.cluster_name]
+            )
+            require_aws_resource(
+                response.get("clusters"),
+                error_code="ClusterNotFoundException",
+                message=f"Cluster not found: {options.cluster_name}",
+                operation_name="DescribeClusters",
+            )
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"clusterName": options.cluster_name}], options.include
+                [options.cluster_name],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
             )
 
             return response[0] if response else {}

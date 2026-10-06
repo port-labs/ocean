@@ -1,7 +1,11 @@
 from typing import cast
 from loguru import logger
-from github.helpers.utils import ObjectKind
-from github.clients.client_factory import create_github_client
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -56,7 +60,17 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         selector = cast(GithubBranchConfig, resource_config).selector
-        if selector.branch_names and branch_name not in selector.branch_names:
+        if selector.default_branch_only:
+            default_branch = repo["default_branch"]
+            if branch_name != default_branch:
+                logger.debug(
+                    f"Skipping branch event for branch '{branch_name}' because defaultBranchOnly is enabled "
+                    f"and repository default branch is '{default_branch}'."
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+        elif selector.branch_names and branch_name not in selector.branch_names:
             logger.debug(
                 f"Skipping branch event for branch '{branch_name}' because it is not in selector.branch_names"
             )
@@ -65,12 +79,16 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         if self._event_type == "delete" or payload.get("deleted", False):
-            data_to_delete = {"name": branch_name}
+            data_to_delete = enrich_with_organization(
+                enrich_with_repository({"name": branch_name}, repo_name, repo=repo),
+                organization,
+            )
+
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         exporter = RestBranchExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
@@ -82,6 +100,10 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo=repo,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

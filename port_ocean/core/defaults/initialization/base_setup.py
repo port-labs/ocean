@@ -27,7 +27,7 @@ class BaseSetup(ABC):
         pass
 
     @abstractmethod
-    async def _setup(self) -> None:
+    async def _setup(self, config: dict[str, Any] | None) -> None:
         pass
 
     async def setup(self, integration: dict[str, Any]) -> None:
@@ -38,4 +38,4 @@ class BaseSetup(ABC):
             return
 
         logger.info("Initializing integration at port")
-        await self._setup()
+        await self._setup(integration.get("config", None))

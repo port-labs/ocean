@@ -14,6 +14,7 @@ class GithubWebhookClientFactory:
         authenticator: AbstractGitHubAuthenticator,
         organization: str,
         webhook_secret: str | None,
+        skip_patching: bool = False,
     ) -> BaseGithubWebhookClient:
         config = integration_config(authenticator)
         is_personal_org = await authenticator.is_personal_org(
@@ -29,4 +30,5 @@ class GithubWebhookClientFactory:
             **config,
             organization=organization,
             webhook_secret=webhook_secret,
+            skip_patching=skip_patching,
         )

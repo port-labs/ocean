@@ -6,7 +6,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from snyk.utils import enrich_batch_with_org, get_matching_organization
+from snyk.utils import enrich_batch_with_data, get_matching_organization
 from webhook_processors.snyk_base_webhook_processor import SnykBaseWebhookProcessor
 
 
@@ -34,7 +34,7 @@ class IssueWebhookProcessor(SnykBaseWebhookProcessor):
         )
         data_to_update = await snyk_client.get_issues(organization_id, project_id)
         if organization:
-            data_to_update = enrich_batch_with_org(data_to_update, organization)
+            data_to_update = enrich_batch_with_data(data_to_update, organization)
 
         return WebhookEventRawResults(
             updated_raw_results=data_to_update, deleted_raw_results=[]

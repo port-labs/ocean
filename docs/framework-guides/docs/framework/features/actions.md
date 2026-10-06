@@ -131,7 +131,7 @@ When the execution manager detects an approaching rate limit:
 
 The framework implements a high-watermark system to prevent queue overload:
 
-- **High Watermark** - Maximum total size across all queues (default: 1000 runs)
+- **High Watermark** - Maximum total size across all queues (default: 300 runs)
 - **Poll Throttling** - When queues reach the watermark, polling pauses
 - **Automatic Resume** - Polling resumes once workers process runs and free up space
 
@@ -178,17 +178,80 @@ class MyActionExecutor(AbstractExecutor):
 
 Webhook processors allow the integration to receive external events (e.g., from the third-party service) and update run status in Port asynchronously.
 
+## Reporting Progress
+
+Long-running actions hand work off to an external system, so the run sits in progress with nothing to show. Alongside run logs, executors can attach a **status label** - a short phrase describing the current lifecycle stage, displayed on the run in Port.
+
+Keep labels to **two words at most** (`Dispatching workflow`, `Workflow failed`). They are rendered as a label next to the run, so a sentence gets truncated or crowds the UI. Put the detail in the accompanying log message, which has room for it.
+
+```python
+# Before handing off, so there is a trace even if the dispatch fails
+await ocean.port_client.post_run_log(
+    run,
+    f"Dispatching workflow '{workflow}' on ref '{ref}'",
+    status_label="Dispatching workflow",
+    should_raise=False,
+)
+
+# Once the external run exists and can be linked
+await ocean.port_client.update_run_started(
+    run, workflow_url, external_id, status_label="Workflow running"
+)
+
+# On completion, usually from a webhook processor
+await ocean.port_client.report_run_completed(
+    run, success=True, message="Workflow completed", status_label="Workflow succeeded"
+)
+```
+
+To label a failure, raise `ActionExecutionError` with a `status_label`; the Execution Manager forwards it when it reports the run as failed. Integration-specific exceptions can set `DEFAULT_STATUS_LABEL` instead of repeating the label at every raise site.
+
+```python
+class TriggerPipelineError(ActionExecutionError):
+    DEFAULT_STATUS_LABEL = "Trigger failed"
+```
+
+A failed run always ends up with a label. If the error carries none - including any unexpected exception - the Execution Manager applies `Execution failed`. This is deliberate: a run keeps the last label it was given, so omitting one would leave an in-progress label like `Dispatching workflow` sitting on a run that has already failed. Set a label on the exception to say something more specific than the generic fallback.
+
+The calls above work for both run kinds. Action runs accept the label on the log entry itself, while workflow node runs accept it only on the run, so `post_run_log` issues an extra patch for them - `update_run_started` and `report_run_completed` fold it into the patch they already send.
+
 ## Configuration
 
-The Execution Manager is configured with these parameters:
+Action processing is controlled by the `actionsProcessor` section of the Ocean configuration (or `OCEAN__ACTIONS_PROCESSOR__*` environment variables).
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `workers_count` | Number of concurrent worker tasks | `1` |
-| `runs_buffer_high_watermark` | Maximum queue size before throttling polls | `1000` |
-| `poll_check_interval_seconds` | Seconds between polling attempts | `5` |
-| `visibility_timeout_ms` | Timeout for claimed runs (milliseconds) | `30000` |
-| `max_wait_seconds_before_shutdown` | Maximum time to wait during graceful shutdown | `30` |
+To start the Execution Manager, set `actionsProcessor.enabled` to `true`. This also requires:
+
+- `actionsProcessingEnabled: true` in the integration `.port/spec.yaml`
+- An event listener that supports action processing (for example, `POLLING` or `KAFKA`; listeners such as `WEBHOOKS_ONLY` disable it)
+
+```yaml showLineNumbers
+actionsProcessor:
+  enabled: true
+  workersCount: 3
+  runsBufferHighWatermark: 300
+  pollCheckIntervalSeconds: 10
+  visibilityTimeoutMs: 60000
+  maxRunsBufferUtilPctPerAction: 30
+```
+
+### Actions processor settings
+
+| Parameter | Env variable | Description | Default |
+| --------- | ------------ | ----------- | ------- |
+| `enabled` | `OCEAN__ACTIONS_PROCESSOR__ENABLED` | Start the Execution Manager and poll for pending runs | `false` |
+| `workersCount` | `OCEAN__ACTIONS_PROCESSOR__WORKERS_COUNT` | Number of concurrent worker tasks; tune based on pod CPU and memory (≥ 1) | `3` |
+| `runsBufferHighWatermark` | `OCEAN__ACTIONS_PROCESSOR__RUNS_BUFFER_HIGH_WATERMARK` | Max total runs queued before throttling claim-pending polls (1–1000) | `300` |
+| `pollCheckIntervalSeconds` | `OCEAN__ACTIONS_PROCESSOR__POLL_CHECK_INTERVAL_SECONDS` | Seconds between claim-pending polling attempts (≥ 1) | `10` |
+| `visibilityTimeoutMs` | `OCEAN__ACTIONS_PROCESSOR__VISIBILITY_TIMEOUT_MS` | How long a claimed run stays invisible to other consumers before becoming reclaimable, in milliseconds (1–600000) | `60000` |
+| `maxRunsBufferUtilPctPerAction` | `OCEAN__ACTIONS_PROCESSOR__MAX_RUNS_BUFFER_UTIL_PCT_PER_ACTION` | Max buffer utilization per action identifier before excluding it from claim-pending (1–100). When an identifier's queued runs reach this percentage of `runsBufferHighWatermark`, new runs for that identifier are not claimed until the buffer drains | `30` |
+
+### General shutdown setting
+
+The Execution Manager also uses this top-level Ocean setting during graceful shutdown:
+
+| Parameter | Env variable | Description | Default |
+| --------- | ------------ | ----------- | ------- |
+| `maxWaitSecondsBeforeShutdown` | `OCEAN__MAX_WAIT_SECONDS_BEFORE_SHUTDOWN` | Maximum time to wait for workers to finish during shutdown | `5` |
 
 ## Implementation Guide
 

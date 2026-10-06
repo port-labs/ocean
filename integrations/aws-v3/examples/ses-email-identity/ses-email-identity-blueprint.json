@@ -1,0 +1,54 @@
+{
+  "identifier": "sesEmailIdentity",
+  "title": "SES Email Identity",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "identityType": {
+        "type": "string",
+        "title": "Identity Type",
+        "description": "The type of the email identity (EMAIL_ADDRESS or DOMAIN)"
+      },
+      "verifiedForSendingStatus": {
+        "type": "boolean",
+        "title": "Verified For Sending Status",
+        "description": "Indicates whether the identity is verified for sending email"
+      },
+      "dkimEnabled": {
+        "type": "boolean",
+        "title": "DKIM Enabled",
+        "description": "Indicates whether DKIM signing is enabled for the identity"
+      },
+      "verificationStatus": {
+        "type": "string",
+        "title": "Verification Status",
+        "description": "The verification status of the email identity"
+      },
+      "configurationSetName": {
+        "type": "string",
+        "title": "Configuration Set Name",
+        "description": "The name of the configuration set associated with the email identity"
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Tags associated with the email identity",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

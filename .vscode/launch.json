@@ -7,7 +7,18 @@
       "envFile": "${workspaceFolder}/integrations/jira/.env",
       "justMyCode": true,
       "name": "Run jira integration",
-      "program": "${workspaceFolder}/integrations/jira/debug.py",
+      "program": "${workspaceFolder}/integrations/jira/debug_resync.py",
+      "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jira",
+      "envFile": "${workspaceFolder}/integrations/jira/.env",
+      "justMyCode": true,
+      "name": "Probe jira integration",
+      "program": "${workspaceFolder}/integrations/jira/debug_probe.py",
       "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
@@ -31,6 +42,17 @@
       "name": "Run fake-integration integration",
       "program": "${workspaceFolder}/integrations/fake-integration/debug.py",
       "python": "${workspaceFolder}/integrations/fake-integration/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/firehydrant",
+      "envFile": "${workspaceFolder}/integrations/firehydrant/.env",
+      "justMyCode": true,
+      "name": "Run firehydrant integration",
+      "program": "${workspaceFolder}/integrations/firehydrant/debug.py",
+      "python": "${workspaceFolder}/integrations/firehydrant/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
@@ -123,6 +145,17 @@
       "name": "Run Datadog integration",
       "program": "${workspaceFolder}/integrations/datadog/debug.py",
       "python": "${workspaceFolder}/integrations/datadog/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/newrelic",
+      "envFile": "${workspaceFolder}/integrations/newrelic/.env",
+      "justMyCode": false,
+      "name": "Run New Relic integration",
+      "program": "${workspaceFolder}/integrations/newrelic/debug.py",
+      "python": "${workspaceFolder}/integrations/newrelic/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
@@ -240,6 +273,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/linear",
+      "envFile": "${workspaceFolder}/integrations/linear/.env",
+      "justMyCode": true,
+      "name": "Run linear integration",
+      "program": "${workspaceFolder}/integrations/linear/debug.py",
+      "python": "${workspaceFolder}/integrations/linear/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/checkmarx-one",
       "envFile": "${workspaceFolder}/integrations/checkmarx-one/.env",
       "justMyCode": true,
@@ -299,7 +343,18 @@
       "envFile": "${workspaceFolder}/integrations/github/.env",
       "justMyCode": true,
       "name": "Run Github integration",
-      "program": "${workspaceFolder}/integrations/github/debug.py",
+      "program": "${workspaceFolder}/integrations/github/debug_resync.py",
+      "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/github",
+      "envFile": "${workspaceFolder}/integrations/github/.env",
+      "justMyCode": true,
+      "name": "Probe Github integration",
+      "program": "${workspaceFolder}/integrations/github/debug_probe.py",
       "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
@@ -345,6 +400,39 @@
       "name": "Run servicenow integration",
       "program": "${workspaceFolder}/integrations/servicenow/debug.py",
       "python": "${workspaceFolder}/integrations/servicenow/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/sonarqube",
+      "envFile": "${workspaceFolder}/integrations/sonarqube/.env",
+      "justMyCode": true,
+      "name": "Run sonarqube integration",
+      "program": "${workspaceFolder}/integrations/sonarqube/debug.py",
+      "python": "${workspaceFolder}/integrations/sonarqube/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/statuspage",
+      "envFile": "${workspaceFolder}/integrations/statuspage/.env",
+      "justMyCode": true,
+      "name": "Run statuspage integration",
+      "program": "${workspaceFolder}/integrations/statuspage/debug.py",
+      "python": "${workspaceFolder}/integrations/statuspage/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/terraform-cloud",
+      "envFile": "${workspaceFolder}/integrations/terraform-cloud/.env",
+      "justMyCode": true,
+      "name": "Run terraform-cloud integration",
+      "program": "${workspaceFolder}/integrations/terraform-cloud/debug.py",
+      "python": "${workspaceFolder}/integrations/terraform-cloud/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },

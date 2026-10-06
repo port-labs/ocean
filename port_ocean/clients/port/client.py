@@ -3,12 +3,14 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.mixins.actions import ActionsClientMixin
 from port_ocean.clients.port.mixins.blueprints import BlueprintClientMixin
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.mixins.migrations import MigrationClientMixin
 from port_ocean.clients.port.mixins.organization import OrganizationClientMixin
+from port_ocean.clients.port.mixins.actions_and_workflow_runs import (
+    ActionsAndWorkflowRunsClientMixin,
+)
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )
@@ -25,7 +27,7 @@ class PortClient(
     BlueprintClientMixin,
     MigrationClientMixin,
     OrganizationClientMixin,
-    ActionsClientMixin,
+    ActionsAndWorkflowRunsClientMixin,
 ):
     def __init__(
         self,
@@ -35,7 +37,8 @@ class PortClient(
         integration_identifier: str,
         integration_type: str,
         integration_version: str,
-        ingest_url: str,
+        feature_flags_cache_ttl_seconds: float = 300.0,
+        blueprint_cache_ttl_seconds: float = 120.0,
     ):
         self.api_url = f"{base_url}/v1"
         self.client = get_internal_http_client(self)
@@ -47,16 +50,22 @@ class PortClient(
             integration_identifier,
             integration_type,
             integration_version,
-            ingest_url,
         )
         EntityClientMixin.__init__(self, self.auth, self.client)
         IntegrationClientMixin.__init__(
             self, integration_identifier, integration_version, self.auth, self.client
         )
-        BlueprintClientMixin.__init__(self, self.auth, self.client)
+        BlueprintClientMixin.__init__(
+            self,
+            self.auth,
+            self.client,
+            blueprint_cache_ttl_seconds,
+        )
         MigrationClientMixin.__init__(self, self.auth, self.client)
-        OrganizationClientMixin.__init__(self, self.auth, self.client)
-        ActionsClientMixin.__init__(self, self.auth, self.client)
+        OrganizationClientMixin.__init__(
+            self, self.auth, self.client, feature_flags_cache_ttl_seconds
+        )
+        ActionsAndWorkflowRunsClientMixin.__init__(self, self.auth, self.client)
 
     async def get_kafka_creds(self) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")
@@ -85,6 +94,26 @@ class PortClient(
         handle_port_status_code(response)
 
         return response.json()["organization"]["id"]
+
+    async def patch_probe_health_result(
+        self, org_id: str, probe_id: str, body: dict[str, Any]
+    ) -> None:
+        logger.debug(
+            "Patching probe health result",
+            org_id=org_id,
+            probe_id=probe_id,
+            status=body.get("status"),
+        )
+        response = await self.client.patch(
+            f"{self.api_url}/org/{org_id}/integration/probe/{probe_id}",
+            headers=await self.auth.headers(),
+            json=body,
+        )
+
+        if response.is_success:
+            logger.info("Probe health result updated successfully", probe_id=probe_id)
+        else:
+            logger.warning("Probe health result update failed", probe_id=probe_id)
 
     async def update_integration_state(
         self, state: dict[str, Any], should_raise: bool = True, should_log: bool = True

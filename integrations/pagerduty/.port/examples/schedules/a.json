@@ -1,0 +1,31 @@
+{
+  "description": "This is the weekly on call schedule for Port Test Service associated with your first escalation policy.",
+  "escalation_policies": [
+    {
+      "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP",
+      "id": "P7LVMYP",
+      "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+      "summary": "Backend Escalation Policy",
+      "type": "escalation_policy_reference"
+    }
+  ],
+  "html_url": "https://getport-io.pagerduty.com/schedules/PWAXLIH",
+  "id": "PWAXLIH",
+  "name": "Port Test Service - Weekly Rotation",
+  "self": "https://api.pagerduty.com/schedules/PWAXLIH",
+  "summary": "Port Test Service - Weekly Rotation",
+  "teams": [],
+  "time_zone": "Asia/Jerusalem",
+  "type": "schedule",
+  "users": [
+    {
+      "html_url": "https://getport-io.pagerduty.com/users/P4K4DLP",
+      "id": "P4K4DLP",
+      "self": "https://api.pagerduty.com/users/P4K4DLP",
+      "summary": "John Doe",
+      "type": "user_reference",
+      "__email": "jdoe@getport.io"
+    }
+
+  ]
+}

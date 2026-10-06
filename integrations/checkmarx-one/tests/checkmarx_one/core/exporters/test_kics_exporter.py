@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from typing import Any, AsyncIterator, List
 
-
 # Mock port_ocean imports before importing the module under test
 with patch.dict(
     "sys.modules",
@@ -36,7 +35,7 @@ class TestCheckmarxKicsExporter:
 
         mock_client.send_paginated_request = gen
 
-        options = ListKicsOptions(scan_id="scan-1")
+        options = ListKicsOptions(scan_id="scan-1", project_id="project-1")
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources(options):
@@ -45,19 +44,24 @@ class TestCheckmarxKicsExporter:
         assert len(batches) == 2
         assert batches[0][0]["ID"] == "a"
         assert batches[0][0]["__scan_id"] == "scan-1"
+        assert batches[0][0]["__project_id"] == "project-1"
         assert batches[1][0]["ID"] == "b"
         assert batches[1][0]["__scan_id"] == "scan-1"
+        assert batches[1][0]["__project_id"] == "project-1"
 
     @pytest.mark.asyncio
     async def test_build_params(self, exporter: CheckmarxKicsExporter) -> None:
         # Test basic scan-id only
-        options = ListKicsOptions(scan_id="scan-2")
+        options = ListKicsOptions(scan_id="scan-2", project_id="project-2")
         params = exporter._build_params(options)
         assert params == {"scan-id": "scan-2"}
 
         # Test with filters
         options_with_filters = ListKicsOptions(
-            scan_id="scan-3", severity=["HIGH", "CRITICAL"], status=["NEW", "RECURRENT"]
+            scan_id="scan-3",
+            project_id="project-1",
+            severity=["HIGH", "CRITICAL"],
+            status=["NEW", "RECURRENT"],
         )
         params_with_filters = exporter._build_params(options_with_filters)
         assert params_with_filters == {

@@ -1,0 +1,19 @@
+{
+  "id": "6d6965b6-b31f-5a42-9fcf-e3aa6f8ca767",
+  "name": "cURL (docker.io/nginx@dec7a90b)",
+  "technology": {
+    "id": "3760",
+    "name": "cURL"
+  },
+  "resource": {
+    "id": "8687d4ec-9644-55ba-a9be-6c7c9bfa0111",
+    "name": "docker.io/nginx@dec7a90b"
+  },
+  "detectionMethods": [
+    "PACKAGE"
+  ],
+  "installedPackages": null,
+  "firstSeen": "2026-03-18T14:17:57.723489Z",
+  "updatedAt": "2026-03-20T09:50:09.457451Z",
+  "cpe": "cpe:/a:haxx:curl, cpe:/a:daniel_stenberg:curl:8.14.1"
+}

@@ -3,7 +3,6 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.base import BasePortAppConfig
-from port_ocean.exceptions.api import EmptyPortAppConfigError
 
 
 class APIPortAppConfig(BasePortAppConfig):
@@ -19,11 +18,9 @@ class APIPortAppConfig(BasePortAppConfig):
         config = integration["config"]
 
         if not config:
-            logger.error(
-                "The integration port app config is empty. "
-                f"Integration: {integration}, "
-                f"Config: {config}. "
-                "Please make sure to configure your port app config using Port's API."
+            logger.warning(
+                "The integration port app config is empty; "
+                "resync will be skipped until resources are configured."
             )
-            raise EmptyPortAppConfigError()
+            return {}
         return config

@@ -1,5 +1,6 @@
+import asyncio
 from http import HTTPStatus
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Literal, Optional
 
 import httpx
 from loguru import logger
@@ -10,8 +11,14 @@ from port_ocean.context.event import event
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-from clients.utils import get_date_range_for_last_n_months
-from clients.rate_limiter import PagerDutyRateLimiter
+from port_ocean.utils.relative_time import days_ago, to_rfc3339
+from clients.rate_limiter import (
+    PagerDutyDailyRateLimitExceededError,
+    PagerDutyRateLimiter,
+    RateLimitInfo,
+    daily_quota_exhausted,
+)
+from clients.retry_transport import PagerDutyRetryTransport
 
 USER_KEY = "users"
 
@@ -28,7 +35,12 @@ class PagerDutyClient(OAuthClient):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
+        self._rate_limiter = PagerDutyRateLimiter(
+            max_concurrent=MAX_CONCURRENT_REQUESTS,
+        )
         self.http_client = OceanAsyncClient(
+            transport_class=PagerDutyRetryTransport,
+            transport_kwargs={"rate_limiter": self._rate_limiter},
             retry_config=RetryConfig(
                 additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
                 retry_after_headers=[
@@ -38,9 +50,6 @@ class PagerDutyClient(OAuthClient):
             timeout=ocean.config.client_timeout,
         )
         self.http_client.headers.update(self.headers)
-        self._rate_limiter = PagerDutyRateLimiter(
-            max_concurrent=MAX_CONCURRENT_REQUESTS,
-        )
 
     @classmethod
     def from_ocean_configuration(cls) -> "PagerDutyClient":
@@ -270,13 +279,11 @@ class PagerDutyClient(OAuthClient):
         logger.info(
             f"Fetching analytics for {len(service_ids)} services: {service_ids}"
         )
-        date_ranges = get_date_range_for_last_n_months(months_period)
-
         body = {
             "filters": {
                 "service_ids": service_ids,
-                "created_at_start": date_ranges[0],
-                "created_at_end": date_ranges[1],
+                "created_at_start": to_rfc3339(days_ago(30 * months_period)),
+                "created_at_end": to_rfc3339(days_ago(0)),
             }
         }
 
@@ -294,6 +301,84 @@ class PagerDutyClient(OAuthClient):
             logger.error(f"Error fetching analytics for services {service_ids}: {e}")
             raise
 
+    async def create_incident(
+        self,
+        *,
+        service_id: str,
+        title: str,
+        from_email: str,
+        details: str | None = None,
+        urgency: str | None = None,
+        incident_key: str | None = None,
+        escalation_policy_id: str | None = None,
+    ) -> dict[str, Any]:
+        incident: dict[str, Any] = {
+            "type": "incident",
+            "title": title,
+            "service": {"id": service_id, "type": "service_reference"},
+        }
+
+        if details:
+            incident["body"] = {"type": "incident_body", "details": details}
+        if urgency:
+            incident["urgency"] = urgency
+        if incident_key:
+            incident["incident_key"] = incident_key
+        if escalation_policy_id:
+            incident["escalation_policy"] = {
+                "id": escalation_policy_id,
+                "type": "escalation_policy_reference",
+            }
+
+        response = await self.send_api_request(
+            endpoint="incidents",
+            method="POST",
+            json_data={"incident": incident},
+            headers={"From": from_email},
+        )
+        return response["incident"]
+
+    async def update_incident(
+        self,
+        *,
+        incident_id: str,
+        status: Literal["acknowledged", "resolved"],
+        from_email: str,
+    ) -> dict[str, Any]:
+        incident: dict[str, Any] = {
+            "id": incident_id,
+            "type": "incident_reference",
+            "status": status,
+        }
+
+        response = await self.send_api_request(
+            endpoint="incidents",
+            method="PUT",
+            json_data={"incidents": [incident]},
+            headers={"From": from_email},
+        )
+        incidents = response.get("incidents", [])
+        if not incidents:
+            raise ValueError(
+                f"PagerDuty returned an empty response while updating incident {incident_id}"
+            )
+        return incidents[0]
+
+    async def create_incident_note(
+        self,
+        *,
+        incident_id: str,
+        from_email: str,
+        content: str,
+    ) -> dict[str, Any]:
+        response = await self.send_api_request(
+            endpoint=f"incidents/{incident_id}/notes",
+            method="POST",
+            json_data={"note": {"content": content}},
+            headers={"From": from_email},
+        )
+        return response["note"]
+
     async def send_api_request(
         self,
         endpoint: str,
@@ -301,10 +386,13 @@ class PagerDutyClient(OAuthClient):
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
         extensions: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> dict[str, Any]:
         logger.debug(
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
+
+        self._rate_limiter.check_daily_budget(endpoint)
 
         async with self._rate_limiter:
             try:
@@ -314,16 +402,26 @@ class PagerDutyClient(OAuthClient):
                     params=query_params,
                     json=json_data,
                     extensions=extensions,
+                    headers=headers,
                 )
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
-                if status_code == 404:
+                if status_code == HTTPStatus.NOT_FOUND:
                     logger.debug(
                         f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
                     )
                     return {}
+
+                if (
+                    status_code == HTTPStatus.TOO_MANY_REQUESTS
+                    and endpoint.startswith("analytics/")
+                    and daily_quota_exhausted(e.response.headers)
+                ):
+                    raise PagerDutyDailyRateLimitExceededError(
+                        f"PagerDuty analytics daily quota exhausted on {endpoint}."
+                    ) from e
 
                 logger.error(
                     f"HTTP error for endpoint '{endpoint}': Status code {status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}"
@@ -377,3 +475,41 @@ class PagerDutyClient(OAuthClient):
             incident["__analytics"] = analytics_map.get(incident["id"])
 
         return incidents
+
+    async def get_entity_custom_fields(
+        self, entity_type: str, entity_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch custom field values for a single service or incident."""
+        logger.debug(f"Fetching custom fields for {entity_type}/{entity_id}")
+        data = await self.send_api_request(
+            endpoint=f"{entity_type}/{entity_id}/custom_fields/values",
+            method="GET",
+        )
+        return data.get("custom_fields", [])
+
+    async def enrich_entities_with_custom_fields(
+        self, entities: list[dict[str, Any]], entity_type: str
+    ) -> list[dict[str, Any]]:
+        """Enrich a batch of entities with their custom field values."""
+        logger.info(f"Enriching {len(entities)} {entity_type} with custom fields")
+
+        results = await asyncio.gather(
+            *[
+                self.get_entity_custom_fields(entity_type, entity["id"])
+                for entity in entities
+            ],
+            return_exceptions=True,
+        )
+        for entity, result in zip(entities, results):
+            if isinstance(result, Exception):
+                logger.warning(
+                    f"Failed to fetch custom fields for {entity_type}/{entity['id']}: {result}"
+                )
+                result = []
+            entity["__custom_fields"] = result
+
+        return entities
+
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
+        """Return the most-recently observed per-minute rate-limit info, or None if unknown."""
+        return self._rate_limiter.rate_limit_info

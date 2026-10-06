@@ -2,7 +2,7 @@ import datetime
 from loguru import logger
 
 
-def convert_str_to_utc_datetime(time_str: str) -> datetime.datetime | None:
+def convert_str_to_utc_datetime(time_str: str) -> datetime.datetime:
     """
     Convert a string representing time to a datetime object.
     :param time_str: a string representing time in the format "2021-09-01T12:00:00Z"
@@ -22,6 +22,17 @@ def convert_to_minutes(s: str) -> int:
         raise ValueError(
             f"Invalid format. Expected a string ending with {minutes_per_unit.keys()}"
         )
+
+
+def parse_interval_to_minutes(value: str | int, *, default_minutes: int = 15) -> int:
+    if isinstance(value, int):
+        return value
+    stripped = value.strip()
+    if not stripped:
+        return default_minutes
+    if stripped.isdigit():
+        return int(stripped)
+    return convert_to_minutes(stripped)
 
 
 def get_next_occurrence(

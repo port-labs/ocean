@@ -3,6 +3,7 @@ from typing import Any, Literal
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import ocean
+from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import get_next_occurrence
@@ -18,6 +19,8 @@ class ResyncStateUpdater:
         # So that the polling event-listener can decide whether to perform a full resync or not
         # TODO: remove this once we separate the state from the integration
         self.last_integration_state_updated_at: str = ""
+        self.last_resync_request_updated_at: str | None = None
+        self.supersede_in_progress: bool = False
 
     def _calculate_next_scheduled_resync(
         self,
@@ -29,6 +32,22 @@ class ResyncStateUpdater:
         return get_next_occurrence(
             interval * 60, custom_start_time or self.initiated_at
         ).isoformat()
+
+    async def update_after_superseded_resync(
+        self, resync_id: str | None = None
+    ) -> None:
+        """Aborted resyncState for a cancelled run, plus lifecycle when DSP is on."""
+        await self.update_after_resync(IntegrationStateStatus.Aborted)
+
+        resync_id_normalized = resync_id.strip() if resync_id else ""
+        if not resync_id_normalized or not await is_dsp_mode_enabled():
+            return
+
+        await ocean.app.lifecycle_client.notify_resync_aborted(
+            resync_id=resync_id_normalized,
+            integration_id=ocean.config.integration.identifier,
+            integration_type=ocean.config.integration.type,
+        )
 
     async def update_before_resync(
         self,
@@ -100,5 +119,8 @@ class ResyncStateUpdater:
             kind=ocean.metrics.current_resource_kind()
         )
         await ocean.metrics.report_sync_metrics(
-            kinds=[ocean.metrics.current_resource_kind()]
+            kinds=[ocean.metrics.current_resource_kind()],
+            dsp_enabled=await is_dsp_mode_enabled(),
         )
+
+        ocean.metrics.clear_sync_context()

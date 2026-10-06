@@ -8,17 +8,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from initialize_client import initialize_client
 from webhook.initialize_client import initialize_webhook_client
 from webhook.webhook_client import WEBHOOK_ENDPOINT
-from webhook.events import DEFAULT_FIELDS_PER_TABLE
-from webhook.processors.incident_processor import IncidentWebhookProcessor
-from webhook.processors.service_catalog_processor import ServiceCatalogWebhookProcessor
-from webhook.processors.user_group_processor import UserGroupWebhookProcessor
-from webhook.processors.release_project_processor import (
-    ReleaseProjectWebhookProcessor,
-)
-from webhook.processors.vulnerability_processor import (
-    VulnerabilityWebhookProcessor,
-)
-from integration import ServiceNowResourceConfig
+from webhook.processors.generic_processor import GenericWebhookProcessor
+from integration import ResourceSelector
 
 
 @ocean.on_resync()
@@ -32,9 +23,10 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         password=ocean.integration_config.get("servicenow_password"),
     )
     api_query_params = {}
-    selector = cast(ServiceNowResourceConfig, event.resource_config).selector
-    if selector.api_query_params:
-        api_query_params = selector.api_query_params.generate_request_params()
+    if event.resource_config:
+        selector = cast(ResourceSelector, event.resource_config.selector)
+        if selector.api_query_params:
+            api_query_params = selector.api_query_params.generate_request_params()
     async for records in servicenow_client.get_paginated_resource(
         resource_kind=kind, api_query_params=api_query_params
     ):
@@ -74,17 +66,17 @@ async def on_start() -> None:
         return
 
     live_event_tables = ocean.integration_config.get("live_event_tables")
-    if not live_event_tables:
-        logger.info("No tables specified for live events webhook. Using defaults")
-        live_event_tables = [str(kind) for kind in DEFAULT_FIELDS_PER_TABLE.keys()]
+    if live_event_tables:
+        tables = [table.strip() for table in live_event_tables]
+    else:
+        app_config = (
+            await ocean.integration.port_app_config_handler.get_port_app_config()
+        )
+        tables = sorted({resource.kind for resource in app_config.resources})
+    logger.info(f"Configuring live events for {len(tables)} tables: {tables}")
 
     webhook_client = initialize_webhook_client()
-    tables = [table.strip() for table in live_event_tables]
     await webhook_client.create_webhook(base_url, tables)
 
 
-ocean.add_webhook_processor(WEBHOOK_ENDPOINT, IncidentWebhookProcessor)
-ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ServiceCatalogWebhookProcessor)
-ocean.add_webhook_processor(WEBHOOK_ENDPOINT, UserGroupWebhookProcessor)
-ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ReleaseProjectWebhookProcessor)
-ocean.add_webhook_processor(WEBHOOK_ENDPOINT, VulnerabilityWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, GenericWebhookProcessor)

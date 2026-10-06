@@ -21,7 +21,7 @@ from integration import GithubDependabotAlertConfig, GithubDependabotAlertSelect
 @pytest.fixture
 def dependabot_resource_config() -> GithubDependabotAlertConfig:
     return GithubDependabotAlertConfig(
-        kind="dependabot-alert",
+        kind=ObjectKind.DEPENDABOT_ALERT,
         selector=GithubDependabotAlertSelector(
             query="true", states=["open", "dismissed"]
         ),
@@ -174,7 +174,7 @@ class TestDependabotAlertWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.dependabot_webhook_processor.create_github_client"
+                "github.webhook.webhook_processors.dependabot_webhook_processor.create_github_client_for_org"
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.dependabot_webhook_processor.RestDependabotAlertExporter",
@@ -205,7 +205,7 @@ class TestDependabotAlertWebhookProcessor:
         """Test handling a 'dismissed' event when 'dismissed' state is not allowed."""
         # Create config that only allows 'open' state
         resource_config = GithubDependabotAlertConfig(
-            kind="dependabot-alert",
+            kind=ObjectKind.DEPENDABOT_ALERT,
             selector=GithubDependabotAlertSelector(
                 query="true", states=["open"]  # Only open alerts allowed
             ),

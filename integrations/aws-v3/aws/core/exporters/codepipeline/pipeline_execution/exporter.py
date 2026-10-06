@@ -1,0 +1,104 @@
+from typing import Any, AsyncGenerator, Type
+from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.exporters.codepipeline.pipeline_execution.actions import (
+    CodePipelinePipelineExecutionActionsMap,
+    CodePipelineExecutionActionInput,
+)
+from aws.core.exporters.codepipeline.pipeline_execution.models import PipelineExecution
+from aws.core.exporters.codepipeline.pipeline_execution.models import (
+    SinglePipelineExecutionRequest,
+    PaginatedPipelineExecutionRequest,
+)
+from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.utils import require_aws_resource
+from aws.core.interfaces.exporter import IResourceExporter
+from aws.core.modeling.resource_inspector import ResourceInspector
+
+
+class CodePipelinePipelineExecutionExporter(
+    IResourceExporter[CodePipelineExecutionActionInput]
+):
+    _service_name: SupportedServices = "codepipeline"
+    _model_cls: Type[PipelineExecution] = PipelineExecution
+    _actions_map: Type[CodePipelinePipelineExecutionActionsMap] = (
+        CodePipelinePipelineExecutionActionsMap
+    )
+
+    async def get_resource(
+        self, options: SinglePipelineExecutionRequest
+    ) -> dict[str, Any]:
+        """Fetch detailed attributes of a single pipeline execution."""
+        async with AioBaseClientProxy(
+            self.session, options.region, self._service_name
+        ) as proxy:
+            # Live-event single-execution fetch only has pipeline/execution ids from
+            # CloudTrail. The inspector actions swallow get_pipeline_execution failures
+            # and still emit an identifier stub. Confirm the execution exists first.
+            execution_response = await proxy.client.get_pipeline_execution(  # type: ignore[attr-defined]
+                pipelineName=options.pipeline_name,
+                pipelineExecutionId=options.pipeline_execution_id,
+            )
+            pipeline_execution = execution_response.get("pipelineExecution")
+            require_aws_resource(
+                [pipeline_execution] if pipeline_execution else [],
+                error_code="PipelineExecutionNotFoundException",
+                message=(
+                    f"Pipeline execution not found: {options.pipeline_name}/"
+                    f"{options.pipeline_execution_id}"
+                ),
+                operation_name="GetPipelineExecution",
+            )
+
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls()
+            )
+
+            # Create a mock execution object for the inspector
+            mock_execution = {
+                "pipelineName": options.pipeline_name,
+                "pipelineExecutionId": options.pipeline_execution_id,
+            }
+
+            response = await inspector.inspect(
+                CodePipelineExecutionActionInput(
+                    items=[mock_execution], pipeline_name=options.pipeline_name
+                ),
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
+            return response[0] if response else {}
+
+    async def get_paginated_resources(
+        self, options: PaginatedPipelineExecutionRequest
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch all pipeline executions in a region."""
+        async with AioBaseClientProxy(
+            self.session, options.region, self._service_name
+        ) as proxy:
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls()
+            )
+
+            pipeline_paginator = proxy.get_paginator("list_pipelines", "pipelines")
+            execution_paginator = proxy.get_paginator(
+                "list_pipeline_executions", "pipelineExecutionSummaries"
+            )
+
+            async for pipelines in pipeline_paginator.paginate():
+                for pipeline in pipelines:
+                    async for executions in execution_paginator.paginate(
+                        pipelineName=pipeline["name"]
+                    ):
+                        yield await inspector.inspect(
+                            CodePipelineExecutionActionInput(
+                                items=executions, pipeline_name=pipeline["name"]
+                            ),
+                            options.include,
+                            extra_context={
+                                "AccountId": options.account_id,
+                                "Region": options.region,
+                            },
+                        )

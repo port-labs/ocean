@@ -12,11 +12,15 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
     This class is not meant to be used directly, it is used as a base class for exporters that have similar functionality.
     """
 
-    def _enrich_scan_result_with_scan_id(
-        self, scan_result: Dict[str, Any], scan_id: str
+    def _enrich_scan_result(
+        self,
+        scan_result: Dict[str, Any],
+        scan_id: str,
+        project_id: str,
     ) -> dict[str, Any]:
-        """Enrich scan result with scan ID."""
+        """Enrich scan result with scan ID and project ID."""
         scan_result["__scan_id"] = scan_id
+        scan_result["__project_id"] = project_id
         return scan_result
 
     async def get_resource(self, options: Any) -> RAW_ITEM:
@@ -62,9 +66,10 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         params: dict[str, Any] = self._get_params(options)
         async for results in self._get_paginated_scan_results(params):
             yield [
-                self._enrich_scan_result_with_scan_id(
+                self._enrich_scan_result(
                     result,
                     options["scan_id"],
+                    options["project_id"],
                 )
                 for result in results
                 if result["type"] == options["type"]

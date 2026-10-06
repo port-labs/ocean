@@ -1,10 +1,11 @@
 from gcp_core.helpers.retry.async_retry import async_generator_retry
+from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from aiolimiter import AsyncLimiter
 from typing import Any, Optional, Callable
 from loguru import logger
 
 DEFAULT_REQUEST_TIMEOUT: float = 120
+PAGE_SIZE: int = 100
 
 
 @async_generator_retry
@@ -13,7 +14,7 @@ async def paginated_query(
     method: str,
     request: dict[str, Any],
     parse_fn: Callable[..., Any],
-    rate_limiter: Optional[AsyncLimiter] = None,
+    rate_limiter: Optional[FixedWindowLimiter] = None,
     timeout: float = DEFAULT_REQUEST_TIMEOUT,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
@@ -29,6 +30,8 @@ async def paginated_query(
     """
     page = 0
     page_token = None
+
+    request["page_size"] = PAGE_SIZE
 
     if rate_limiter:
         logger.info(

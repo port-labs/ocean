@@ -4,6 +4,7 @@ import asyncio
 from loguru import logger
 from github.core.options import FileContentOptions
 from github.core.exporters.file_exporter.utils import FileObject, parse_content
+from github.core.exporters.file_exporter.utils import MAX_FILE_SIZE
 
 if TYPE_CHECKING:
     from github.core.exporters.file_exporter.core import RestFileExporter
@@ -26,6 +27,7 @@ class FileProcessor:
         branch: str,
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
+        should_resolve_references: bool = True,
     ) -> FileObject:
         """
         Common content processor for GraphQL and REST paths.
@@ -49,6 +51,18 @@ class FileProcessor:
             return result
 
         parsed_content = parse_content(content, file_path)
+
+        if not should_resolve_references:
+            return FileObject(
+                organization=organization,
+                content=parsed_content,
+                repository=repository,
+                branch=branch,
+                path=file_path,
+                name=file_name,
+                metadata=result["metadata"],
+                __base_jq=".content",
+            )
 
         logger.info(f"Resolving file references for: {file_path}")
 
@@ -161,7 +175,7 @@ class FileProcessor:
     async def _process_list_content(
         self,
         organization: str,
-        data: List[Dict[str, Any]],
+        data: List[Any],
         parent_directory: str,
         file_path: str,
         file_name: str,
@@ -169,9 +183,12 @@ class FileProcessor:
         file_info: Dict[str, Any],
         repo_info: Dict[str, Any],
     ) -> FileObject:
-        """Process each dict item in the list concurrently, resolving file references."""
+        """Process list content, resolving file references in dict items only."""
 
-        async def process_item(item: Dict[str, Any]) -> Dict[str, Any]:
+        async def process_item(item: Any) -> Any:
+            if not isinstance(item, dict):
+                return item
+
             keys = list(item.keys())
             values = await asyncio.gather(
                 *[
@@ -229,9 +246,58 @@ class FileProcessor:
                 branch=branch,
             )
         )
+        if not file_content_response:
+            logger.warning(f"File {file_path} not found from {organization}")
+            return ""
         decoded_content = file_content_response.get("content")
         if not decoded_content:
             logger.warning(f"File {file_path} has no content from {organization}")
             return ""
 
         return parse_content(decoded_content, file_path)
+
+
+class FileResponseValidator:
+    def __init__(self, file_path: str, organization: str, repo_name: str, branch: str):
+        self.file_path = file_path
+        self.organization = organization
+        self.repo_name = repo_name
+        self.branch = branch
+
+    def validate(self, response: dict[str, Any]) -> str | None:
+        """Return error message if invalid, None if valid."""
+        validators = [
+            self._check_size,
+            self._check_type,
+            self._check_content_field,
+            self._check_encoding_field,
+        ]
+
+        for validator in validators:
+            error = validator(response)
+            if error:
+                return error
+
+        return None
+
+    def _check_size(self, response: dict[str, Any]) -> str | None:
+        size = response["size"]
+        if size > MAX_FILE_SIZE:
+            return f"File {self.file_path} exceeds size limit ({size} bytes > {MAX_FILE_SIZE}), skipping content processing from {self.organization}/{self.repo_name} and branch {self.branch}"
+        return None
+
+    def _check_type(self, response: dict[str, Any]) -> str | None:
+        type_ = response.get("type")
+        if type_ is not None and type_ != "file":
+            return f"Path {self.file_path} is not a regular file (type={type_}) in {self.organization}/{self.repo_name} and branch {self.branch}"
+        return None
+
+    def _check_content_field(self, response: dict[str, Any]) -> str | None:
+        if "content" not in response:
+            return f"File {self.file_path} is missing 'content' field in {self.organization}/{self.repo_name} and branch {self.branch}"
+        return None
+
+    def _check_encoding_field(self, response: dict[str, Any]) -> str | None:
+        if "encoding" not in response:
+            return f"File {self.file_path} is missing 'encoding' field in {self.organization}/{self.repo_name} and branch {self.branch}"
+        return None

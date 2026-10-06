@@ -1,5 +1,5 @@
 from loguru import logger
-from initialize_client import create_jira_client
+from initialize_client import get_or_create_jira_client
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -31,7 +31,7 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         webhook_event = payload.get("webhookEvent", "")
 
-        client = create_jira_client()
+        client = get_or_create_jira_client()
         project_key = payload["project"]["key"]
 
         if webhook_event == "project_soft_deleted":

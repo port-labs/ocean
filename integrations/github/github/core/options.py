@@ -1,15 +1,14 @@
 from datetime import datetime
+from collections.abc import Sequence
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
+from github.helpers.utils import PackageType
+from pydantic.v1 import BaseModel, Field
 
 
-class ListOrganizationOptions(TypedDict):
-    """Options for listing organizations."""
-
-    organization: NotRequired[str]
-    allowed_multi_organizations: NotRequired[List[str]]
-    include_authenticated_user: NotRequired[bool]
+class ListOrganizationOptions(BaseModel):
+    organization: Optional[str] = None
 
 
 class SingleOrganizationOptions(TypedDict):
@@ -18,7 +17,7 @@ class SingleOrganizationOptions(TypedDict):
 
 class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class ListRepositoryOptions(SingleOrganizationOptions):
@@ -27,7 +26,9 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
-    included_relationships: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -41,14 +42,35 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     """Options for fetching a single pull request."""
 
     pr_number: Required[int]
+    enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
-    """Options for listing pull requests."""
+    """Options for listing pull requests.
+
+    For closed PRs exactly one cutoff drives filtering: ``updated_after`` filters by
+    ``updated_at`` (days lookback); ``closed_after`` filters by ``closed_at`` (closedSinceDate).
+    """
 
     states: Required[list[str]]
-    max_results: Required[int]
-    updated_after: Required[datetime]
+    max_results: Required[Optional[int]]
+    incremental_cursor: NotRequired[Optional[datetime]]
+    updated_after: NotRequired[Optional[datetime]]
+    closed_after: NotRequired[Optional[datetime]]
+    enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
+
+
+class PullRequestGraphQLOptions(BaseModel):
+    enrich_with_first_commit: bool = Field(default=False)
+    exclude_graphql_fields: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of PullRequest GraphQL fields to omit from the query. "
+            "Useful as a workaround for GitHub GraphQL instability around certain fields."
+        ),
+    )
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -62,23 +84,27 @@ class ListIssueOptions(RepositoryIdentifier):
 
     state: Required[str]
     labels: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
-class SingleUserOptions(SingleOrganizationOptions):
+class BaseUserOptions(SingleOrganizationOptions):
+    include_saml_email: NotRequired[bool]
+    include_verified_domain_emails: NotRequired[bool]
+
+
+class SingleUserOptions(BaseUserOptions):
     login: Required[str]
 
 
-class ListUserOptions(SingleOrganizationOptions):
+class ListUserOptions(BaseUserOptions):
     """Options for listing users."""
 
-    include_bots: Required[bool]
 
-
-class SingleTeamOptions(SingleOrganizationOptions):
+class SingleTeamOptions(BaseUserOptions):
     slug: Required[str]
 
 
-class ListTeamOptions(SingleOrganizationOptions):
+class ListTeamOptions(BaseUserOptions):
     """Options for listing teams."""
 
 
@@ -94,7 +120,10 @@ class ListWorkflowRunOptions(RepositoryIdentifier):
     """Options for workflow runs"""
 
     workflow_id: Required[int]
-    max_runs: Required[int]
+    max_runs: NotRequired[Optional[int]]
+    status: NotRequired[Optional[str]]
+    created: NotRequired[Optional[str]]
+    incremental_active: NotRequired[bool]
 
 
 class SingleWorkflowRunOptions(RepositoryIdentifier):
@@ -109,6 +138,8 @@ class SingleReleaseOptions(RepositoryIdentifier):
 
 class ListReleaseOptions(RepositoryIdentifier):
     """Options for listing releases."""
+
+    created_since: NotRequired[Optional[datetime]]
 
 
 class SingleTagOptions(RepositoryIdentifier):
@@ -134,16 +165,20 @@ class ListBranchOptions(RepositoryIdentifier):
     protection_rules: Required[bool]
     detailed: Required[bool]
     branch_names: NotRequired[Optional[list[str]]]
+    default_branch_only: NotRequired[bool]
 
 
 class SingleEnvironmentOptions(RepositoryIdentifier):
     """Options for fetching a single environment."""
 
     name: str
+    include_variables: NotRequired[bool]
 
 
 class ListEnvironmentsOptions(RepositoryIdentifier):
     """Options for listing environments."""
+
+    include_variables: NotRequired[bool]
 
 
 class SingleDeploymentOptions(RepositoryIdentifier):
@@ -157,6 +192,21 @@ class ListDeploymentsOptions(RepositoryIdentifier):
 
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
+    enrich_with_first_commit: NotRequired[bool]
+    created_since: NotRequired[Optional[datetime]]
+
+
+class SingleDeploymentStatusOptions(RepositoryIdentifier):
+    """Options for fetching a single deployment status."""
+
+    deployment_id: Required[str]
+    status_id: Required[str]
+
+
+class ListDeploymentStatusesOptions(RepositoryIdentifier):
+    """Options for listing deployment statuses."""
+
+    deployment_id: Required[str]
 
 
 class SingleDependabotAlertOptions(RepositoryIdentifier):
@@ -171,6 +221,7 @@ class ListDependabotAlertOptions(RepositoryIdentifier):
     state: Required[list[str]]
     severity: NotRequired[Optional[str]]
     ecosystem: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -184,6 +235,7 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
 
     state: Required[str]
     severity: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class FileContentOptions(RepositoryIdentifier):
@@ -206,6 +258,19 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+
+
+class PluginRepositoryOptions(SingleOrganizationOptions):
+    """Options for detecting an agent plugin in a single repository."""
+
+    repository: Required[dict[str, Any]]
+    branch: Required[str]
+
+
+class ListPluginOptions(SingleOrganizationOptions):
+    """Options for detecting agent plugins across an organization's repositories."""
+
+    repositories: Required[List[PluginRepositoryOptions]]
 
 
 class SingleFolderOptions(TypedDict):
@@ -237,6 +302,8 @@ class SingleCollaboratorOptions(RepositoryIdentifier):
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""
 
+    affiliation: Required[str]
+
 
 class BaseSecretScanningAlertOptions(RepositoryIdentifier):
     """Base options for secret scanning alerts."""
@@ -254,3 +321,24 @@ class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
     """Options for listing secret scanning alerts."""
 
     state: Required[str]
+    updated_since: NotRequired[Optional[datetime]]
+
+
+class SinglePackageOptions(SingleOrganizationOptions):
+    """Options for fetching a single GitHub package."""
+
+    package_name: Required[str]
+    package_type: Required[PackageType]
+    org_type: NotRequired[str]
+    include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]
+
+
+class ListPackageOptions(SingleOrganizationOptions):
+    """Options for listing GitHub packages."""
+
+    package_types: Required[Sequence[PackageType]]
+    org_type: NotRequired[str]
+    visibility: NotRequired[Optional[str]]
+    include_versions: NotRequired[bool]
+    max_versions: NotRequired[Optional[int]]

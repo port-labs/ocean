@@ -22,7 +22,7 @@ endef
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
     	pip install --upgrade pip; \
-		pip install 'poetry>=1.0.0,<2.0.0'; \
+		pip install 'poetry>=2.0.0,<3.0.0'; \
 	else \
     	echo "Poetry is already installed."; \
 	fi
@@ -49,7 +49,7 @@ install:
 	poetry install --with dev
 
 install/local-core: install
-	# NOTE: This is a temporary change that shouldn't be committed
+	# For local development only: installs local Ocean core in editable mode - Note: do not commit the resulting environment changes
 	$(ACTIVATE) && pip install -e ../../
 
 install/prod:

@@ -69,6 +69,8 @@ Multiple processors can be registered for the same endpoint. Ocean routes events
 - `should_process_event()` - Determines if a processor should handle the event
 - `get_matching_kinds()` - Identifies which resource kinds are affected
 
+When live events are consumed from Redis, Ocean first selects the processor **queue by exact `webhookPath` match** against paths registered via `ocean.add_webhook_processor()`. Register **static paths only** (e.g. `/webhook`); dynamic route templates (e.g. `/webhook/{run_id}`) are not matched against concrete request paths, so those Redis messages are acknowledged and dropped.
+
 ### Error Handling
 
 Processors include built-in error handling:

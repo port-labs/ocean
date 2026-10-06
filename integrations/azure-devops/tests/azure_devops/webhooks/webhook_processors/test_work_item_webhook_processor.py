@@ -19,9 +19,19 @@ def work_item_processor(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-123", "name": "Test Project"}
     )
+    mock_client.filter_projects_by_excluded_tags = AsyncMock(
+        return_value=[{"id": "project-123", "name": "Test Project"}]
+    )
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.work_item_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return WorkItemWebhookProcessor(event)
 
@@ -131,7 +141,8 @@ async def test_work_item_validate_payload_valid(
         "publisherId": "tfs",
         "resource": {"id": 123},
         "resourceContainers": {
-            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     assert await work_item_processor.validate_payload(valid_payload) is True
@@ -176,9 +187,16 @@ async def test_work_item_handle_event_created(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-123", "name": "Test Project"}
     )
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.work_item_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
@@ -186,7 +204,8 @@ async def test_work_item_handle_event_created(
         "publisherId": "tfs",
         "resource": {"id": 123},
         "resourceContainers": {
-            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -223,9 +242,16 @@ async def test_work_item_handle_event_updated(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-456", "name": "Test Project"}
     )
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.work_item_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
@@ -233,7 +259,8 @@ async def test_work_item_handle_event_updated(
         "publisherId": "tfs",
         "resource": {"id": 456},
         "resourceContainers": {
-            "project": {"id": "project-456", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-456", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -268,9 +295,16 @@ async def test_work_item_handle_event_commented(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-789", "name": "Test Project"}
     )
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.work_item_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
@@ -278,7 +312,8 @@ async def test_work_item_handle_event_commented(
         "publisherId": "tfs",
         "resource": {"id": 789},
         "resourceContainers": {
-            "project": {"id": "project-789", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-789", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -301,16 +336,24 @@ async def test_work_item_handle_event_deleted(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-999", "name": "Test Project"}
     )
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.work_item_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     payload = {
         "eventType": WorkItemEvents.WORK_ITEM_DELETED,
         "publisherId": "tfs",
         "resource": {"id": 999},
         "resourceContainers": {
-            "project": {"id": "project-999", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-999", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -335,7 +378,8 @@ async def test_work_item_validate_payload_missing_work_item_id(
         "publisherId": "tfs",
         "resource": {},
         "resourceContainers": {
-            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     assert await work_item_processor.validate_payload(payload) is False
@@ -350,7 +394,10 @@ async def test_work_item_validate_payload_missing_project_id(
         "eventType": WorkItemEvents.WORK_ITEM_CREATED,
         "publisherId": "tfs",
         "resource": {"id": 123},
-        "resourceContainers": {"project": {"id": None}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": None},
+        },
     }
     assert await work_item_processor.validate_payload(payload) is False
 
@@ -377,7 +424,9 @@ async def test_work_item_validate_payload_missing_project_in_containers(
         "eventType": WorkItemEvents.WORK_ITEM_CREATED,
         "publisherId": "tfs",
         "resource": {"id": 123},
-        "resourceContainers": {},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
     }
     assert await work_item_processor.validate_payload(payload) is False
 
@@ -393,9 +442,16 @@ async def test_work_item_handle_event_not_found(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-404", "name": "Test Project"}
     )
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.work_item_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
@@ -403,7 +459,8 @@ async def test_work_item_handle_event_not_found(
         "publisherId": "tfs",
         "resource": {"id": 404},
         "resourceContainers": {
-            "project": {"id": "project-404", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-404", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -413,6 +470,140 @@ async def test_work_item_handle_event_not_found(
     assert isinstance(result, WebhookEventRawResults)
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 0
+
+
+@pytest.mark.asyncio
+async def test_work_item_handle_event_skipped_when_project_matches_excluded_tags(
+    work_item_processor: WorkItemWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = {"id": "project-restricted", "name": "Restricted Project"}
+    mock_client = MagicMock()
+    mock_client.get_single_project = AsyncMock(return_value=project)
+    mock_client.filter_projects_by_excluded_tags = AsyncMock(return_value=[])
+    mock_client.excluded_tags = ["tr:restricted"]
+    _mgr = MagicMock()
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
+    )
+
+    payload = {
+        "eventType": WorkItemEvents.WORK_ITEM_CREATED,
+        "publisherId": "tfs",
+        "resource": {"id": 1},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {
+                "id": "project-restricted",
+                "baseUrl": "https://dev.azure.com/test/",
+            },
+        },
+    }
+    resource_config = MagicMock()
+
+    result = await work_item_processor.handle_event(payload, resource_config)
+
+    assert isinstance(result, WebhookEventRawResults)
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+    mock_client.filter_projects_by_excluded_tags.assert_called_once_with(
+        [{"id": "project-restricted"}], ["tr:restricted"]
+    )
+    mock_client.get_single_project.assert_not_called()
+    mock_client.get_work_item.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_work_item_handle_event_allowed_when_project_does_not_match_excluded_tags(
+    work_item_processor: WorkItemWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = {"id": "project-allowed", "name": "Allowed Project"}
+    work_item = {"id": 2, "fields": {"System.Title": "My Task"}}
+    mock_client = MagicMock()
+    mock_client.get_single_project = AsyncMock(return_value=project)
+    mock_client.filter_projects_by_excluded_tags = AsyncMock(return_value=[project])
+    mock_client.get_work_item = AsyncMock(return_value=work_item)
+    mock_client.excluded_tags = ["tr:restricted"]
+    _mgr = MagicMock()
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
+    )
+
+    payload = {
+        "eventType": WorkItemEvents.WORK_ITEM_UPDATED,
+        "publisherId": "tfs",
+        "resource": {"id": 2},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {
+                "id": "project-allowed",
+                "baseUrl": "https://dev.azure.com/test/",
+            },
+        },
+    }
+    resource_config = MagicMock()
+
+    result = await work_item_processor.handle_event(payload, resource_config)
+
+    assert isinstance(result, WebhookEventRawResults)
+    assert len(result.updated_raw_results) == 1
+    assert result.updated_raw_results[0]["id"] == 2
+    assert result.updated_raw_results[0]["__project"] == project
+    mock_client.filter_projects_by_excluded_tags.assert_called_once_with(
+        [{"id": "project-allowed"}], ["tr:restricted"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_work_item_handle_event_skips_tag_check_when_no_exclude_filter_configured(
+    work_item_processor: WorkItemWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = {"id": "project-123", "name": "Test Project"}
+    work_item = {"id": 3, "fields": {"System.Title": "Task"}}
+    mock_client = MagicMock()
+    mock_client.get_single_project = AsyncMock(return_value=project)
+    mock_client.filter_projects_by_excluded_tags = AsyncMock()
+    mock_client.get_work_item = AsyncMock(return_value=work_item)
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
+    )
+
+    payload = {
+        "eventType": WorkItemEvents.WORK_ITEM_CREATED,
+        "publisherId": "tfs",
+        "resource": {"id": 3},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"},
+        },
+    }
+    resource_config = MagicMock()
+
+    result = await work_item_processor.handle_event(payload, resource_config)
+
+    assert isinstance(result, WebhookEventRawResults)
+    assert len(result.updated_raw_results) == 1
+    assert result.updated_raw_results[0]["id"] == 3
+    mock_client.filter_projects_by_excluded_tags.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -426,9 +617,16 @@ async def test_work_item_handle_event_exception(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-500", "name": "Test Project"}
     )
+    mock_client.excluded_tags = None
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.work_item_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
@@ -436,7 +634,8 @@ async def test_work_item_handle_event_exception(
         "publisherId": "tfs",
         "resource": {"id": 500},
         "resourceContainers": {
-            "project": {"id": "project-500", "baseUrl": "https://dev.azure.com/test/"}
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-500", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()

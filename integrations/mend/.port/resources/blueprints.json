@@ -1,0 +1,221 @@
+[
+  {
+    "identifier": "mendProject",
+    "title": "Mend Project",
+    "icon": "Mend",
+    "schema": {
+      "properties": {
+        "applicationName": {
+          "type": "string",
+          "title": "Application Name"
+        },
+        "applicationUuid": {
+          "type": "string",
+          "title": "Application UUID"
+        },
+        "totalCritical": {
+          "type": "number",
+          "title": "Critical Findings"
+        },
+        "totalHigh": {
+          "type": "number",
+          "title": "High Findings"
+        },
+        "totalMedium": {
+          "type": "number",
+          "title": "Medium Findings"
+        },
+        "totalLow": {
+          "type": "number",
+          "title": "Low Findings"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Languages"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Date"
+        },
+        "lastScanned": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Scanned"
+        },
+        "dependencyFindingStats": {
+          "type": "object",
+          "title": "Dependency Finding Stats"
+        },
+        "codeFindingStats": {
+          "type": "object",
+          "title": "Code Finding Stats"
+        },
+        "containerFindingStats": {
+          "type": "object",
+          "title": "Container Finding Stats"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "mendSCA",
+    "title": "Mend SCA",
+    "icon": "Mend",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["UNREVIEWED", "IN_REVIEW", "REMEDIATED", "SUPPRESSED"],
+          "enumColors": {
+            "UNREVIEWED": "blue",
+            "IN_REVIEW": "yellow",
+            "REMEDIATED": "green",
+            "SUPPRESSED": "darkGray"
+          }
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+          "enumColors": {
+            "CRITICAL": "red",
+            "HIGH": "orange",
+            "MEDIUM": "yellow",
+            "LOW": "blue"
+          }
+        },
+        "violations": {
+          "type": "boolean",
+          "title": "Violations"
+        },
+        "reachability": {
+          "type": "string",
+          "title": "Reachability",
+          "enum": [
+            "REACHABLE",
+            "POTENTIALLY_REACHABLE",
+            "UNREACHABLE",
+            "REACHABILITY_UNAVAILABLE"
+          ],
+          "enumColors": {
+            "REACHABLE": "red",
+            "POTENTIALLY_REACHABLE": "yellow",
+            "UNREACHABLE": "green",
+            "REACHABILITY_UNAVAILABLE": "darkGray"
+          }
+        },
+        "malicious": {
+          "type": "boolean",
+          "title": "Malicious"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "componentType": {
+          "type": "string",
+          "title": "Component Type"
+        },
+        "componentName": {
+          "type": "string",
+          "title": "Component Name / Origin"
+        },
+        "cvssType": {
+          "type": "string",
+          "title": "CVSS Type",
+          "enum": ["CVSS_2", "CVSS_3", "CVSS_4"],
+          "enumColors": {
+            "CVSS_2": "yellow",
+            "CVSS_3": "blue",
+            "CVSS_4": "green"
+          }
+        },
+        "cvssScore": {
+          "type": "number",
+          "title": "CVSS Score"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": ["Direct", "Transitive", "Direct / Transitive"],
+          "enumColors": {
+            "Direct": "red",
+            "Transitive": "orange",
+            "Direct / Transitive": "blue"
+          }
+        },
+        "exploitMaturity": {
+          "type": "string",
+          "title": "Exploit Maturity",
+          "enum": ["HIGH", "FUNCTIONAL", "POC_CODE", "UNPROVEN", "NOT_DEFINED"],
+          "enumColors": {
+            "HIGH": "red",
+            "FUNCTIONAL": "orange",
+            "POC_CODE": "yellow",
+            "UNPROVEN": "green",
+            "NOT_DEFINED": "darkGray"
+          }
+        },
+        "epssScore": {
+          "type": "number",
+          "title": "EPSS Score %"
+        },
+        "cveLink": {
+          "type": "string",
+          "format": "url",
+          "title": "CVE Link",
+          "icon": "Vulnerability"
+        },
+        "mendLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Mend Link"
+        },
+        "topFix": {
+          "type": "object",
+          "title": "Remediation"
+        },
+        "suppressionReason": {
+          "type": "string",
+          "title": "Suppression Reason"
+        },
+        "suppressionDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Suppression Date"
+        },
+        "publishDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Published"
+        },
+        "detectedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Detected"
+        },
+        "modifiedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Modified"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "mendProject",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

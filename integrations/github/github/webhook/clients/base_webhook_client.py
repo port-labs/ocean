@@ -8,7 +8,6 @@ from github.clients.http.rest_client import GithubRestClient
 from github.webhook.registry import WEBHOOK_PATH
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 
-
 from dataclasses import dataclass
 
 
@@ -31,11 +30,17 @@ class BaseGithubWebhookClient(GithubRestClient):
     """
 
     def __init__(
-        self, *, organization: str, webhook_secret: str | None = None, **kwargs: Any
+        self,
+        *,
+        organization: str,
+        webhook_secret: str | None = None,
+        skip_patching: bool = False,
+        **kwargs: Any,
     ):
         super().__init__(**kwargs)
         self.organization = organization
         self.webhook_secret = webhook_secret
+        self.skip_patching = skip_patching
         if self.webhook_secret:
             logger.info(
                 "Received secret for authenticating incoming webhooks. "
@@ -68,15 +73,15 @@ class BaseGithubWebhookClient(GithubRestClient):
         return config
 
     async def _patch_webhook(
-        self, webhook_id: str, config_data: dict[str, str], target: HookTarget
+        self,
+        webhook_id: str,
+        patch_data: dict[str, Any],
+        target: HookTarget,
     ) -> None:
-        webhook_data = {"config": config_data}
-        logger.info(f"Patching webhook {webhook_id} with data {webhook_data}")
-
         await self.send_api_request(
             target.hook_url(webhook_id),
             method="PATCH",
-            json_data=webhook_data,
+            json_data=patch_data,
         )
         logger.info(f"Webhook {webhook_id} patched successfully")
 
@@ -98,15 +103,6 @@ class BaseGithubWebhookClient(GithubRestClient):
             method="POST",
             json_data=webhook_data,
         )
-
-    async def _patch_webhook_config(
-        self, webhook_id: str, webhook_url: str, target: HookTarget
-    ) -> None:
-        logger.info(
-            f"Patching webhook {webhook_id} with URL {webhook_url} to update secret"
-        )
-        config_data = self._build_webhook_config(webhook_url)
-        await self._patch_webhook(webhook_id, config_data, target)
 
     async def upsert_webhook(self, base_url: str) -> None:
         webhook_url = f"{base_url}/integration{WEBHOOK_PATH}"
@@ -142,13 +138,33 @@ class BaseGithubWebhookClient(GithubRestClient):
             existing_webhook_secret = existing_webhook["config"].get("secret")
 
             logger.info(
-                f"Found existing webhook ID: {existing_webhook_id} for {target.target_type} - {self._target_name(target)}"
+                f"Found existing webhook ID: {existing_webhook_id} for "
+                f"{target.target_type} {self._target_name(target)}"
             )
 
+            patch_data: dict[str, Any] = {}
+
+            desired_events = set(self.get_supported_events())
+            existing_events = set(existing_webhook["events"])
+            if desired_events != existing_events:
+                patch_data["events"] = self.get_supported_events()
+
             if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
-                await self._patch_webhook_config(
-                    existing_webhook_id, webhook_url, target
-                )
+                patch_data["config"] = self._build_webhook_config(webhook_url)
+
+            if patch_data:
+                if self.skip_patching:
+                    logger.info(
+                        f"Webhook {existing_webhook_id} requires updates for "
+                        f"{target.target_type} {self._target_name(target)} "
+                        f"but patching is disabled"
+                    )
+                else:
+                    logger.info(
+                        f"Patching webhook {existing_webhook_id} for "
+                        f"{target.target_type} {self._target_name(target)}"
+                    )
+                    await self._patch_webhook(existing_webhook_id, patch_data, target)
                 return
 
             logger.info("Webhook already exists with appropriate configuration")

@@ -5,7 +5,7 @@ from typing import Optional, Type
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun
+from port_ocean.core.models import IntegrationRun
 
 
 class AbstractExecutor(ABC):
@@ -40,10 +40,12 @@ class AbstractExecutor(ABC):
             WEBHOOK_PROCESSOR_CLASS = MyWebhookProcessor  # Optional
             WEBHOOK_PATH = "/webhook/my_action"  # Optional
 
-            async def is_close_to_rate_limit(self) -> bool:
+            async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
                 return await self._check_rate_limit()
 
-            async def get_remaining_seconds_until_rate_limit(self) -> float:
+            async def get_remaining_seconds_until_rate_limit(
+                self, run: IntegrationRun
+            ) -> float:
                 return await self._get_rate_limit_wait_time()
 
             async def execute(self, run: ActionRun) -> None:
@@ -56,7 +58,7 @@ class AbstractExecutor(ABC):
     WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
     WEBHOOK_PATH: str
 
-    async def _get_partition_key(self, run: ActionRun) -> str | None:
+    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         """
         This method should return a string used to identify runs that must be executed sequentially,
         or return None to allow runs to execute in parallel.
@@ -67,7 +69,7 @@ class AbstractExecutor(ABC):
         return None
 
     @abstractmethod
-    async def is_close_to_rate_limit(self) -> bool:
+    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         """
         Check if the action is approaching its rate limit threshold.
 
@@ -80,7 +82,7 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def is_close_to_rate_limit(self) -> bool:
+            async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
                 rate_info = await self.client.get_rate_limit_info()
                 return rate_info.remaining / rate_info.limit < 0.1  # 10% threshold
             ```
@@ -88,7 +90,9 @@ class AbstractExecutor(ABC):
         pass
 
     @abstractmethod
-    async def get_remaining_seconds_until_rate_limit(self) -> float:
+    async def get_remaining_seconds_until_rate_limit(
+        self, run: IntegrationRun
+    ) -> float:
         """
         Calculate the number of seconds to wait before executing the next action.
 
@@ -102,7 +106,9 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def get_remaining_seconds_until_rate_limit(self) -> float:
+            async def get_remaining_seconds_until_rate_limit(
+                self, run: IntegrationRun
+            ) -> float:
                 rate_info = await self.client.get_rate_limit_info()
                 if rate_info.reset_time > datetime.now():
                     return (rate_info.reset_time - datetime.now()).total_seconds()
@@ -112,12 +118,12 @@ class AbstractExecutor(ABC):
         pass
 
     @abstractmethod
-    async def execute(self, run: ActionRun) -> None:
+    async def execute(self, run: IntegrationRun) -> None:
         """
         Execute the integration action with the provided run configuration.
 
         Args:
-            run (ActionRun): The action run configuration
+            run (IntegrationRun): The action or workflow node run
                 containing all necessary parameters and context for execution.
 
         Raises:
@@ -126,10 +132,10 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def execute(self, run: ActionRun) -> None:
+            async def execute(self, run: IntegrationRun) -> None:
                 try:
                     # Extract parameters
-                    params = run.payload.integrationActionExecutionProperties
+                    params = run.execution_properties
                     resource_id = params.get("resource_id")
                     if not resource_id:
                         raise ValueError("resource_id is required")

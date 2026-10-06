@@ -8,7 +8,7 @@ from github.helpers.utils import (
     enrich_with_repository,
     enrich_with_organization,
 )
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from integration import GithubCodeScanningAlertConfig, GithubCodeScanningAlertSelector
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -79,14 +79,14 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
             alert = enrich_with_organization(
-                enrich_with_repository(alert, repo_name), organization
+                enrich_with_repository(alert, repo_name, repo=repo), organization
             )
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[alert]
             )
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         exporter = RestCodeScanningAlertExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
@@ -96,6 +96,10 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
                 alert_number=alert_number,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

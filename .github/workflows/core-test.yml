@@ -11,19 +11,21 @@ jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
   test:
-    name: 🌊 Ocean Core Tests
+    name: 🌊 Ocean Core Unit Tests
     needs: detect-changes
     runs-on: ubuntu-latest
     if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
+    outputs:
+      integrations: ${{ steps.list-integrations.outputs.integrations }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install poetry
-        run: pipx install 'poetry>=1.0.0,<2.0.0'
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: 'poetry'
@@ -38,11 +40,63 @@ jobs:
         run: |
           make test
 
-      - name: Build core for smoke test
+      - name: List integrations with tests
+        id: list-integrations
         run: |
-          make build
+          INTEGRATIONS=$(
+            for dir in integrations/*; do
+              name=$(basename "$dir")
+              if [ "$name" != "_infra" ]; then
+                echo "$name"
+              fi
+            done | jq -R -s -c 'split("\n") | map(select(length > 0))'
+          )
+          echo "integrations=$INTEGRATIONS" >> $GITHUB_OUTPUT
 
-      - name: Build fake-integration image for smoke test
+      - name: Upload core coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-core
+          path: .coverage
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: ${{ always() }}
+        with:
+          report_paths: '**/junit/**-test-results-**/*.xml'
+          include_passed: true
+          require_tests: true
+          fail_on_failure: true
+
+  smoke-tests:
+    name: 🌊 Ocean Core Smoke Tests
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: |
+      (needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true')
+      && (github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name)
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Install poetry
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Build core
+        run: make build
+
+      - name: Build fake-integration image
         uses: ./.github/workflows/actions/build-docker-image
         with:
           dockerfile: integrations/_infra/Dockerfile
@@ -54,83 +108,161 @@ jobs:
           load-created-image: 'true'
           skip-login: 'true'
 
-      - name: Run fake integration for core test
+      - name: Run smoke tests
         env:
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
           SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
-          OCEAN__PROCESS_EXECUTION_MODE: single_process
+          SMOKE_JUNIT_DIR: junit/smoke-test-results-ocean
           OCEAN__CACHING_STORAGE_MODE: memory
-        run: |
-          ./scripts/run-smoke-test.sh
+        run: make smoke/run-all
 
-      - name: Smoke Test Core
-        env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
-
-        run: |
-          make smoke/test
-
-      - name: Cleanup Smoke Test
+      - name: Cleanup smoke tests
         if: always()
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
-        run: |
-          make smoke/clean
+        run: make smoke/clean-all
 
-      - name: Run fake integration for core test with multiprocessing enabled
+      - name: Publish Smoke Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: ${{ always() }}
+        with:
+          report_paths: '**/junit/smoke-test-results-**/*.xml'
+          include_passed: true
+          require_tests: false
+          fail_on_failure: true
+
+  test-integrations:
+    name: ${{ format('🌊 Test integrations shard {0}/10', matrix.shard) }}
+    needs: test
+    runs-on: ubuntu-latest
+    if: ${{ needs.test.outputs.integrations != '[]' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Install poetry
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Test integrations with local core
         env:
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
-          SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
-          OCEAN__PROCESS_EXECUTION_MODE: multi_process
-          OCEAN__CACHING_STORAGE_MODE: disk
+          INTEGRATIONS: ${{ needs.test.outputs.integrations }}
+          SHARD: ${{ matrix.shard }}
         run: |
-          ./scripts/run-smoke-test.sh
+          mapfile -t folders < <(
+            echo "$INTEGRATIONS" | jq -r --argjson shard "$SHARD" '
+              . as $all |
+              ($all | length) as $len |
+              10 as $count |
+              ((($len + $count - 1) / $count) | floor) as $size |
+              ($shard * $size) as $start |
+              $all[$start:$start + $size][]
+            '
+          )
 
-      - name: Smoke Test Core
-        env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
+          if [ ${#folders[@]} -eq 0 ]; then
+            echo "No integrations assigned to shard ${SHARD}"
+            exit 0
+          fi
 
+          echo "Shard ${SHARD} integrations: ${folders[*]}"
+          exit_code=0
+
+          for folder in "${folders[@]}"; do
+            echo "Installing local core for ${folder}"
+            if ! (cd "integrations/${folder}" && make install/local-core); then
+              exit_code=1
+              continue
+            fi
+
+            echo "Testing ${folder} with local core"
+            if ! (
+              cd "integrations/${folder}" &&
+              PYTEST_ADDOPTS="--cov --cov-report= --cov-append --junitxml=junit/test-results-core-change/${folder}.xml" make test
+            ); then
+              exit_code=1
+            fi
+          done
+
+          exit $exit_code
+
+      - name: Upload shard coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-shard-${{ matrix.shard }}
+          path: integrations/**/.coverage
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: ${{ always() }}
+        with:
+          report_paths: 'integrations/**/junit/test-results-core-change/*.xml'
+          include_passed: true
+          require_tests: true
+          fail_on_failure: true
+
+  finalize:
+    name: 🌊 Ocean Core Tests — Finalize
+    needs: [test, test-integrations]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.test.result == 'success' && (needs.test-integrations.result == 'success' || needs.test-integrations.result == 'skipped') }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Install poetry
+        run: pipx install 'poetry>=2.0.0,<3.0.0'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+          path: coverage-artifacts
+
+      - name: Produce coverage report
         run: |
-          make smoke/test
+          mkdir -p coverage-merge
+          i=0
+          find coverage-artifacts -type f \( -name '.coverage' -o -name '.coverage.*' \) | while read -r file; do
+            i=$((i + 1))
+            cp "$file" "coverage-merge/.coverage.$i"
+          done
+          make coverage
 
-      - name: Cleanup Smoke Test
-        if: always()
-        env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
-        run: |
-          make smoke/clean
-
-      - name: Install current core for all integrations
-        run: |
-          echo "Installing local core for all integrations"
-          SCRIPT_TO_RUN='make install/local-core' make execute/all
-
-      - name: Test all integrations with current core
-        run: |
-          echo "Testing all integrations with local core"
-          SCRIPT_TO_RUN="PYTEST_ADDOPTS=\"--cov --cov-report= --cov-append --junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml\" make test" make execute/all
+      - name: Upload coverage report
+        id: upload-coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: htmlcov
 
       - name: Get PR_NUMBER
         id: pr-number
@@ -143,23 +275,6 @@ jobs:
             echo "PR_NUMBER=0" >> $GITHUB_OUTPUT
           fi
 
-      - name: Produce coverage report
-        run: |
-          mkdir -p coverage-merge
-          i=0
-          find . -type f -name ".coverage" | while read -r file; do
-            i=$((i + 1))
-            cp "$file" "coverage-merge/.coverage.$i"
-          done
-          make coverage
-
-      - name: Upload coverage report
-        id: upload-coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: htmlcov
-
       - name: Set repo code coverage percentage by the percentage of statements covered in the tests
         id: set-stmts-coverage
         run: |
@@ -167,7 +282,8 @@ jobs:
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
       - name: Comment PR with code coverage summary
-        uses: actions/github-script@v7
+        if: ${{ steps.pr-number.outputs.PR_NUMBER != 0 }}
+        uses: actions/github-script@v9
         env:
           CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
@@ -197,11 +313,14 @@ jobs:
 
       - name: Set current code coverage
         id: set-current-coverage
-        run: echo "CURRENT_COVERAGE=${{ fromJson(steps.get-current-coverage.outputs.entity).properties.coverage_percent }}" >> $GITHUB_OUTPUT
+        env:
+          PORT_ENTITY: ${{ steps.get-current-coverage.outputs.entity }}
+        run: |
+          echo "CURRENT_COVERAGE=$(echo "$PORT_ENTITY" | jq -r '.properties.coverage_percent')" >> $GITHUB_OUTPUT
 
       - name: Comment if Coverage Regression
         if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
           CURRENT_COVERAGE: ${{ steps.set-current-coverage.outputs.CURRENT_COVERAGE }}
@@ -243,12 +362,3 @@ jobs:
             {
               "coverage_percent": "${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}"
             }
-
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v5
-        if: ${{ always() }}
-        with:
-          report_paths: '**/junit/**-test-results-**/*.xml'
-          include_passed: true
-          require_tests: true
-          fail_on_failure: true

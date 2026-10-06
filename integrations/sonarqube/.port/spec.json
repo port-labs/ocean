@@ -1,0 +1,83 @@
+{
+  "title": "SonarQube",
+  "description": "SonarQube integration for Port Ocean",
+  "icon": "sonarqube",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/sonarqube",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Code Quality & Security",
+      "resources": [
+        {
+          "kind": "projects"
+        },
+        {
+          "kind": "projects_ga"
+        },
+        {
+          "kind": "saas_analysis"
+        },
+        {
+          "kind": "onprem_analysis"
+        },
+        {
+          "kind": "issues"
+        },
+        {
+          "kind": "analysis"
+        },
+        {
+          "kind": "portfolios"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "sonarApiToken",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "The SonarQube API token used to authenticate with the SonarQube API. SonarQube has 3 types of tokens namely user, project analysis, and global analysis token. We recommend using the user token. To create a user token, see the <a href=\"https://docs.sonarsource.com/sonarqube-server/latest/user-guide/managing-tokens\" target=\"_blank\">SonarQube documentation</a>"
+    },
+    {
+      "name": "sonarOrganizationId",
+      "type": "string",
+      "required": false,
+      "description": "The SonarQube organization ID. This is required if you are using SonarCloud. To find the organization ID, see the <a href=\"https://docs.sonarsource.com/sonarcloud/administering-sonarcloud/managing-organizations/\" target=\"_blank\">SonarQube documentation</a>"
+    },
+    {
+      "name": "appHost",
+      "type": "string",
+      "required": false,
+      "description": "The host of the Port Ocean app. Used to set up the integration endpoint as the target for webhooks created in SonarQube"
+    },
+    {
+      "name": "sonarUrl",
+      "type": "string",
+      "required": false,
+      "description": "The SonarQube URL to connect to. This is required if you are using SonarQube on-premise. If you are using SonarCloud, the default URL is <a href=\"https://sonarcloud.io\" target=\"_blank\">https://sonarcloud.io</a>",
+      "default": "https://sonarcloud.io"
+    },
+    {
+      "name": "sonarIsOnPremise",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether the SonarQube instance is on-premise. If set to true, the sonarUrl configuration is required.",
+      "default": false
+    },
+    {
+      "name": "webhookSecret",
+      "type": "string",
+      "sensitive": true,
+      "required": false,
+      "description": "The secret token used to authenticate incoming webhook requests from SonarQube. This is required if webhook authentication is enabled in SonarQube to verify the integrity of received payloads."
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    }
+  }
+}

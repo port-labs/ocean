@@ -1,5 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 class RepoSearchParams(BaseModel):
-    query: str = Field(default_factory=str)
+    query: str = Field(
+        title="Query",
+        default_factory=str,
+        description="GitHub repository search query (e.g. 'org:myorg' or 'topic:security').",
+    )

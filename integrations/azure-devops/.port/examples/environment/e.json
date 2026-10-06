@@ -1,0 +1,37 @@
+{
+  "id": 5,
+  "name": "production-eu-west",
+  "description": "Live customer-facing environment for EMEA region",
+  "createdBy": {
+    "displayName": "Miles Dixon",
+    "url": "https://spsprodweu6.vssps.visualstudio.com/Aa9ef9d0d-7e82-458a-b5b1-0b5069164ca5/_apis/Identities/22222222-3333-4444-5555-666666666666",
+    "_links": {
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+      }
+    },
+    "id": "22222222-3333-4444-5555-666666666666",
+    "uniqueName": "mdixon@technova.com",
+    "imageUrl": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4",
+    "descriptor": "aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+  },
+  "createdOn": "2025-11-20T14:30:10.00Z",
+  "lastModifiedBy": {
+    "displayName": "Priya Patel",
+    "url": "https://spsprodweu6.vssps.visualstudio.com/Aa9ef9d0d-7e82-458a-b5b1-0b5069164ca5/_apis/Identities/44444444-5555-6666-7777-888888888888",
+    "_links": {
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+      }
+    },
+    "id": "44444444-5555-6666-7777-888888888888",
+    "uniqueName": "ppatel@technova.com",
+    "imageUrl": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg==",
+    "descriptor": "aad.VmE4YjljMGQxZTJmM2c0aDVpNmo3azhsOW0wbg=="
+  },
+  "lastModifiedOn": "2026-04-02T16:20:05.88Z",
+  "project": {
+    "id": "31440986-0c26-4def-ae3d-feadd2d3498e",
+    "name": null
+  }
+}

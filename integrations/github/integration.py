@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -14,6 +14,7 @@ from port_ocean.core.handlers.queue import GroupQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
+from port_ocean.utils.relative_time import days_ago, to_rfc3339
 from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
     WebhookEvent,
@@ -27,118 +28,624 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
-from typing import Any, Dict, List, Optional, Type, Literal
+from github.helpers.datetime_selectors import (
+    ISO_8601_SELECTOR_REGEX,
+    parse_selector_iso_datetime,
+)
+from typing import Any, Dict, List, Optional, Type, Literal, ClassVar
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import ObjectKind, PackageType
+from github.core.exporters.skill_exporter.utils import DEFAULT_SKILL_PATHS
+from github.core.exporters.plugin_exporter.utils import (
+    DEFAULT_PLUGIN_PROVIDERS,
+    PluginProvider,
+)
+from github.core.exporters.mcp_exporter.utils import DEFAULT_MCP_PATHS
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
     is_repo_managed_mapping,
     load_org_port_app_config,
 )
 
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
+def _optional_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    return parse_selector_iso_datetime(value)
+
+
 FILE_PROPERTY_PREFIX = "file://"
 
 
-class RepoSearchSelector(Selector):
-    repo_search: Optional[RepoSearchParams] = Field(default=None, alias="repoSearch")
-
-
-class GithubRepositorySelector(RepoSearchSelector):
-    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
-        default_factory=list,
-        max_items=3,
-        description="Specify the relationships to include in the repository",
+class ExcludeArchivedSelector(BaseModel):
+    exclude_archived: bool = Field(
+        title="Exclude Archived Repositories",
+        alias="excludeArchived",
+        default=False,
+        description=(
+            "When enabled, archived repositories are excluded during repository "
+            "discovery for this kind, before any per-repository data is fetched. "
+            "Does not affect explicitly listed `repos` entries, which are always "
+            "included regardless of archived status."
+        ),
     )
 
 
+class RepoSearchSelector(Selector, ExcludeArchivedSelector):
+    repo_search: Optional[RepoSearchParams] = Field(
+        title="Repositories",
+        alias="repoSearch",
+        description=(
+            "Filter which repositories are ingested using GitHub's repository search API. "
+            "<b>Read the limitations before using this selector:</b> "
+            "<a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/capabilities/#limitations-1'>Port docs</a>."
+        ),
+        default=None,
+    )
+
+
+class IncludedFilesConfig(BaseModel):
+    included_files: list[str] = Field(
+        title="Attached Files",
+        alias="includedFiles",
+        default_factory=list,
+        description='File paths to fetch and attach to the raw data under `__includedFiles`. E.g. ["README.md", "CODEOWNERS"]',
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GitHubCollaboratorRelationshipSelector(BaseModel):
+    affiliation: Literal["all", "direct", "outside"] = Field(
+        title="Affiliation",
+        default="all",
+        description="Filter collaborators by affiliation (all, direct, outside).",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GitHubRepositoryRelationSelector(BaseModel):
+    collaborators: Optional[GitHubCollaboratorRelationshipSelector] = Field(
+        title="Collaborators",
+        description="Fetch collaborators of the repository.",
+        default=None,
+    )
+    teams: bool = Field(
+        title="Include Teams",
+        default=False,
+        description="Include teams with access to the repository.",
+    )
+    sbom: bool = Field(
+        title="Include SBOM",
+        default=False,
+        description="Include SBOM for the repository.",
+    )
+    custom_properties: bool = Field(
+        title="Include Custom Properties",
+        alias="customProperties",
+        default=False,
+        description="Include organization custom property values for the repository.",
+    )
+    pages: bool = Field(
+        title="Include GitHub Pages",
+        default=False,
+        description="Include GitHub Pages configuration for the repository.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+    def get_relations_dict(self) -> dict[str, dict[str, Any]]:
+        result = {}
+
+        if self.collaborators:
+            result["collaborators"] = {"include": True, **self.collaborators.dict()}
+
+        if self.teams:
+            result["teams"] = {"include": self.teams}
+
+        if self.sbom:
+            result["sbom"] = {"include": self.sbom}
+
+        if self.custom_properties:
+            result["custom_properties"] = {"include": self.custom_properties}
+
+        if self.pages:
+            result["pages"] = {"include": self.pages}
+
+        return result
+
+
+class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
+    class Config:
+        schema_extra = {
+            "extra": {
+                "ui_schema": {
+                    "mutuallyExclusiveSelectorGroups": [
+                        {"legacyKey": "include", "newKey": "includedRelations"}
+                    ]
+                }
+            }
+        }
+
+    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
+        default_factory=list,
+    )
+    included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
+        alias="includedRelations",
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples/#repositories-with-multiple-relationships'>teams, collaborators, sbom, custom properties and pages</a>",
+        default=None,
+    )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include repositories updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
+
+    @property
+    def normalized_relations(self) -> dict[str, dict[str, Any]]:
+        if self.included_relations:
+            return self.included_relations.get_relations_dict()
+
+        if self.include:
+            return {item: {"include": True} for item in self.include}
+
+        return {}
+
+    @root_validator(pre=True)
+    def validate_include_and_included_relations(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        if values.get("include") and values.get("includedRelations"):
+            raise ValueError(
+                "You cannot supply both 'include' and 'includedRelations' at the same time."
+            )
+        return values
+
+
 class GithubRepositoryConfig(ResourceConfig):
-    selector: GithubRepositorySelector
-    kind: Literal["repository"]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("metadata",),
+    }
+
+    selector: GithubRepositorySelector = Field(
+        title="Repository Selector",
+        description="Selector for the repository resource.",
+    )
+    kind: Literal[ObjectKind.REPOSITORY] = Field(
+        title="Github Repository",
+        description="Github repository resource kind.",
+    )
 
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
-        description="Specify the repository name",
+        title="Repository Name",
+        description="The repository name to fetch from.",
     )
     branch: Optional[str] = Field(
+        title="Branch",
         default=None,
-        description="Specify the branch to bring the folders from, repo's default branch will be used if none is passed",
+        description="Branch to use; repo's default branch will be used if not specified.",
     )
 
+    class Config:
+        extra = "forbid"
 
-class FolderSelector(BaseModel):
-    organization: Optional[str] = Field(default=None)
-    path: str = Field(default="*")
+
+class RepositorySourceModel(ExcludeArchivedSelector):
+    organization: Optional[str] = Field(
+        title="Organization",
+        default=None,
+        description="GitHub organization name.",
+    )
     repos: Optional[list[RepositoryBranchMapping]] = Field(
-        description="Specify the repositories and branches to fetch files from",
+        title="Repositories",
+        description="Repositories and branches to fetch folders from.",
         default=None,
     )
 
+    class Config:
+        extra = "forbid"
 
-class GithubFolderSelector(Selector):
-    folders: list[FolderSelector]
+
+class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
+    path: str = Field(
+        default="*",
+        title="Path",
+        description="Relative folder path to sync. Supports glob (*) within a path segment.",
+    )
+
+    class Config:
+        extra = "forbid"
 
 
-class GithubUserSelector(Selector):
-    include_bots: bool = Field(
-        default=True,
-        alias="includeBots",
-        description="Include bots in the list of users",
+class GithubFolderSelector(Selector, IncludedFilesConfig):
+    folders: list[FolderSelector] = Field(
+        title="Folders",
+        description="Folder definitions (path and repos) to ingest.",
+    )
+
+
+class GithubFilePattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        alias="path",
+        description="Glob path to match files (e.g. '**/*.yaml').",
+    )
+    skip_parsing: bool = Field(
+        title="Skip Parsing",
+        default=False,
+        alias="skipParsing",
+        description="Return raw file content without parsing.",
+    )
+    validation_check: bool = Field(
+        title="Validation Check",
+        default=False,
+        alias="validationCheck",
+        description="Enable validation for this file pattern during pull request processing.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubFileSelector(Selector, IncludedFilesConfig):
+    files: list[GithubFilePattern] = Field(
+        title="File sync patterns",
+        description="""Array of files to retrieve. Each cell can include:<br/>
+• <b>Path</b> - files path, supports glob pattern. Example: "**/package.json"<br/>
+• <b>Organization</b> - GitHub org to scan<br/>
+• <b>Repos</b> - array of repositories used to fetch files from. Each repo includes name and branch.<br/>
+For more information, see <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#files-and-file-contents'>Our docs</a>.""",
+    )
+    included_files: list[str] = Field(
+        title="Additional files",
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
+    )
+
+
+class GithubFileResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
+    kind: Literal[ObjectKind.FILE] = Field(
+        title="Github File",
+        description="Github file resource kind.",
+    )
+    selector: GithubFileSelector = Field(
+        title="File selector",
+        description="Selector for the file resource.",
+    )
+
+
+class GithubSkillPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description="Glob path for SKILL.md files (e.g. '.cursor/skills/**/SKILL.md').",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubSkillSelector(Selector):
+    paths: list[GithubSkillPattern] = Field(
+        title="Paths",
+        default=[GithubSkillPattern(path=path) for path in DEFAULT_SKILL_PATHS],
+        description=(
+            "Glob patterns for SKILL.md discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtration."
+        ),
+    )
+
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+                for path in default_paths
+            ]
+
+
+class GithubSkillResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
+    kind: Literal[ObjectKind.SKILL] = Field(
+        title="Github Skill",
+        description="Agent Skill (SKILL.md) resource kind.",
+    )
+    selector: GithubSkillSelector = Field(
+        title="Skill selector",
+        description="Selector for discovering and ingesting Agent Skills.",
+    )
+
+
+class GithubPluginSelector(Selector):
+    providers: list[PluginProvider] = Field(
+        title="Providers",
+        default=list(DEFAULT_PLUGIN_PROVIDERS),
+        description=(
+            "Agent plugin providers to detect. A repository is treated as a "
+            "plugin when any matching manifest/dir exists."
+        ),
+    )
+    paths: list[RepositorySourceModel] = Field(
+        title="Paths",
+        default=[RepositorySourceModel()],
+        description=(
+            "Org/repo scopes to scan. Each entry can set organization and repos. "
+            "Multiple entries enable multi-org filtration."
+        ),
+    )
+
+
+class GithubPluginResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
+    kind: Literal[ObjectKind.PLUGIN] = Field(
+        title="Github Plugin",
+        description="Agent plugin package resource kind.",
+    )
+    selector: GithubPluginSelector = Field(
+        title="Plugin selector",
+        description="Selector for discovering agent plugin repositories.",
+    )
+
+
+class GithubMcpPattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        description=(
+            "Path to an MCP server config file (e.g. 'mcp.json' or '.mcp.json'). "
+            "Root-level exact paths are recommended; broadening this to a glob "
+            "(e.g. '**/mcp.json') can pick up unrelated IDE config files such as "
+            "'.cursor/mcp.json' or '.vscode/mcp.json'."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubMcpSelector(Selector):
+    paths: list[GithubMcpPattern] = Field(
+        title="Paths",
+        default=[GithubMcpPattern(path=path) for path in DEFAULT_MCP_PATHS],
+        description=(
+            "Paths for MCP server config discovery. Each entry can set organization "
+            "and repos (same shape as the file kind). Multiple entries enable "
+            "multi-org filtering."
+        ),
+    )
+
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict[str, Any], model: Type[BaseModel]) -> None:
+            default_paths = model.__fields__["paths"].default
+            schema["properties"]["paths"]["default"] = [
+                path.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+                for path in default_paths
+            ]
+
+
+class GithubMcpResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.MCP] = Field(
+        title="Github MCP Server",
+        description="MCP server (mcp.json/.mcp.json) resource kind.",
+    )
+    selector: GithubMcpSelector = Field(
+        title="MCP selector",
+        description="Selector for discovering and ingesting MCP servers.",
+    )
+
+
+class IncludeSAMLEmailSelector(Selector):
+    include_saml_email: bool = Field(
+        title="Include SAML email",
+        alias="includeSAMLEmail",
+        default=False,
+        description=(
+            "When enabled, the integration will enrich exported GitHub users with "
+            "`__SAMLEmail` populated from the organization's SAML external identity (nameId). "
+            "If no SAML identity is found for a user, `__SAMLEmail` will be null."
+        ),
+    )
+
+
+class GithubUserSelector(IncludeSAMLEmailSelector):
+    include_verified_domain_emails: bool = Field(
+        title="Include verified domain emails",
+        alias="includeVerifiedDomainEmails",
+        default=False,
+        description=(
+            "When enabled, the integration will include `organizationVerifiedDomainEmails` "
+            "on exported GitHub users — a list of email addresses matching the organization's "
+            "verified domains. Requires GitHub Enterprise Cloud with at least one verified domain."
+        ),
     )
 
 
 class GithubUserConfig(ResourceConfig):
-    selector: GithubUserSelector
-    kind: Literal[ObjectKind.USER]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("members",),
+    }
+
+    kind: Literal[ObjectKind.USER] = Field(
+        title="Github User",
+        description="Github user resource kind.",
+    )
+    selector: GithubUserSelector = Field(
+        title="User selector",
+        description="Selector for the user resource.",
+    )
 
 
 class GithubFolderResourceConfig(ResourceConfig):
-    selector: GithubFolderSelector
-    kind: Literal[ObjectKind.FOLDER]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
+    selector: GithubFolderSelector = Field(
+        title="Folder selector",
+        description="Selector for the folder resource.",
+    )
+    kind: Literal[ObjectKind.FOLDER] = Field(
+        title="Github Folder",
+        description="Github folder resource kind.",
+    )
 
 
 class GithubPullRequestSelector(RepoSearchSelector):
     states: list[Literal["open", "closed"]] = Field(
+        title="Pull requests states",
         default=["open"],
-        description="Filter by pull request state (e.g., open, closed)",
+        description="Filter pull requests by states (e.g. ['open']).",
     )
-    max_results: int = Field(
+    max_results: Optional[int] = Field(
+        title="Max merged pull requests",
         alias="maxResults",
-        default=100,
+        default=None,
         ge=1,
-        description="Limit the number of pull requests returned",
+        description="Max number of merged pull requests. Defaults to 100 for the days lookback; with closedSinceDate set, leave empty to fetch all closed PRs back to the cutoff. Large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
     since: int = Field(
+        title="Closed PRs Lookback Days",
         default=60,
         ge=1,
-        description="Only fetch pull requests updated within the last N days",
+        description=(
+            "Numbers of days back for closed pull requests."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+    closed_since_date: Optional[str] = Field(
+        title="Closed PRs Since Date",
+        alias="closedSinceDate",
+        default=None,
+        description=(
+            "Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     api: Literal["rest", "graphql"] = Field(
+        title="API",
         default="rest",
-        description="Select the API to use for fetching pull requests",
+        description="API to use for fetching pull requests (REST or GraphQL).",
+    )
+    enrich_with_first_commit: bool = Field(
+        title="Enrich with first commit",
+        alias="enrichWithFirstCommit",
+        default=False,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, each pull request is enriched with the "
+            "first commit on the branch (OID and committed timestamp in UTC). Use this to measure "
+            "lead time from the initial commit through review and merge."
+            "This option will be ignored if the api selector is set to rest."
+        ),
+    )
+    exclude_graphql_fields: list[str] = Field(
+        title="Exclude GraphQL Fields",
+        alias="excludeGraphqlFields",
+        default_factory=list,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
+            "This option will be ignored if the api selector is set to rest."
+        ),
     )
 
     @property
-    def updated_after(self) -> datetime:
-        """Convert the since days to a timezone-aware datetime object."""
-        return datetime.now(timezone.utc) - timedelta(days=self.since)
+    def updated_after(self) -> Optional[datetime]:
+        if self.closed_since_date is not None:
+            return None
+        return days_ago(self.since)
+
+    @property
+    def closed_after(self) -> Optional[datetime]:
+        if self.closed_since_date is None:
+            return None
+        parsed = datetime.fromisoformat(self.closed_since_date)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+    @property
+    def effective_max_results(self) -> Optional[int]:
+        if self.max_results is not None:
+            return self.max_results
+        if self.closed_since_date is not None:
+            return None
+        return 100
 
 
 class GithubPullRequestConfig(ResourceConfig):
-    selector: GithubPullRequestSelector
-    kind: Literal["pull-request"]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("pull_requests",),
+    }
+
+    selector: GithubPullRequestSelector = Field(
+        title="Pull request selector",
+        description="Selector for the pull request resource.",
+    )
+    kind: Literal[ObjectKind.PULL_REQUEST] = Field(
+        title="Github Pull Request",
+        description="Github pull request resource kind.",
+    )
 
 
 class GithubIssueSelector(RepoSearchSelector):
     state: Literal["open", "closed", "all"] = Field(
+        title="State",
         default="open",
-        description="Filter by issue state (open, closed, all)",
+        description="Filter by issue state (open, closed, or all).",
     )
     labels: Optional[list[str]] = Field(
+        title="Labels",
         default=None,
-        description="Filter issues by labels. Issues must have ALL of the specified labels. Example: ['bug', 'enhancement']",
+        description="Filter issues by labels; issues must have ALL specified labels (e.g. ['bug', 'enhancement']).",
+    )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include issues updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
 
     @property
@@ -146,29 +653,66 @@ class GithubIssueSelector(RepoSearchSelector):
         """Convert labels list to comma-separated string for GitHub API."""
         return ",".join(self.labels) if self.labels else None
 
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
+
 
 class GithubIssueConfig(ResourceConfig):
-    selector: GithubIssueSelector
-    kind: Literal["issue"]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("issues",),
+    }
+
+    selector: GithubIssueSelector = Field(
+        title="Issue selector",
+        description="Selector for the issue resource.",
+    )
+    kind: Literal[ObjectKind.ISSUE] = Field(
+        title="Github Issue",
+        description="Github issue resource kind.",
+    )
 
 
-class GithubTeamSector(Selector):
-    members: bool = Field(default=True)
+class GithubTeamSelector(IncludeSAMLEmailSelector):
+    members: bool = Field(
+        title="Include Members",
+        default=True,
+        description="Include team members in the exported data.",
+    )
+    include_external_group: bool = Field(
+        title="Include External IdP Group",
+        default=False,
+        description="Include the external IdP group linked to each team via GET /orgs/{org}/teams/{slug}/external-groups. Only available for organizations using GitHub Enterprise with managed user accounts and external SCIM.",
+    )
 
 
 class GithubTeamConfig(ResourceConfig):
-    selector: GithubTeamSector
-    kind: Literal[ObjectKind.TEAM]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("members",),
+    }
+
+    selector: GithubTeamSelector = Field(
+        title="Team selector",
+        description="Selector for the team resource.",
+    )
+    kind: Literal[ObjectKind.TEAM] = Field(
+        title="Github Team",
+        description="Github team resource kind.",
+    )
 
 
 class GithubDependabotAlertSelector(RepoSearchSelector):
     states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
+        title="States",
+        description="Filter alerts by states (e.g. ['auto_dismissed', 'dismissed', 'fixed', 'open']).",
         default=["open"],
-        description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)",
     )
     severity: Optional[list[Literal["low", "medium", "high", "critical"]]] = Field(
+        title="Severity",
+        description="Filter alerts by severity (e.g. ['low', 'medium']).",
         default=None,
-        description="Filter alerts by severities. A comma-separated list of severities. If specified, only alerts with these severities will be returned. Example: ['low', 'medium']",
     )
     ecosystems: Optional[
         list[
@@ -185,8 +729,19 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
             ]
         ]
     ] = Field(
+        title="Ecosystems",
+        description="Filter alerts by package ecosystem (e.g. ['npm', 'pip']).",
         default=None,
-        description="Filter alerts by ecosystems. Only alerts for these ecosystems will be returned. Example: ['npm', 'pip']",
+    )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
 
     @property
@@ -199,122 +754,494 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
         """Convert ecosystems list to comma-separated string for GitHub API."""
         return ",".join(self.ecosystems) if self.ecosystems else None
 
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
+
 
 class GithubDependabotAlertConfig(ResourceConfig):
-    selector: GithubDependabotAlertSelector
-    kind: Literal["dependabot-alert"]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("vulnerability_alerts",),
+    }
+
+    selector: GithubDependabotAlertSelector = Field(
+        title="Dependabot alert selector",
+        description="Selector for the dependabot alert resource.",
+    )
+    kind: Literal[ObjectKind.DEPENDABOT_ALERT] = Field(
+        title="Github Dependabot Alert",
+        description="Github dependabot alert resource kind.",
+    )
 
 
 class GithubCodeScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "closed", "dismissed", "fixed"] = Field(
+        title="State",
+        description="Filter alerts by state (e.g. 'open', 'closed', 'dismissed', 'fixed').",
         default="open",
-        description="Filter alerts by state (open, closed, dismissed, fixed)",
     )
     severity: Optional[
         Literal["critical", "high", "medium", "low", "warning", "note", "error"]
     ] = Field(
+        title="Severity",
+        description="Filter alerts by severity level (e.g. 'critical', 'high', 'medium', 'low', 'warning', 'note', 'error').",
         default=None,
-        description="Filter alerts by severity level. If specified, only code scanning alerts with this severity will be returned.",
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
-    selector: GithubCodeScanningAlertSelector
-    kind: Literal["code-scanning-alerts"]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("security_events",),
+    }
+
+    selector: GithubCodeScanningAlertSelector = Field(
+        title="Code scanning alert selector",
+        description="Selector for the code scanning alert resource.",
+    )
+    kind: Literal[ObjectKind.CODE_SCANNING_ALERT] = Field(
+        title="Github Code Scanning Alert",
+        description="Github code scanning alert resource kind.",
+    )
 
 
 class GithubDeploymentSelector(RepoSearchSelector):
     task: Optional[str] = Field(
+        title="Task name",
+        description="Filter deployments by task name (e.g. deploy, deploy:migrations).",
         default=None,
-        description="Filter deployments by task name (e.g., deploy or deploy:migrations)",
     )
     environment: Optional[str] = Field(
+        title="Environment name",
+        description="Filter deployments by environment name (e.g. staging, production).",
         default=None,
-        description="Filter deployments by environment name (e.g., staging or production)",
     )
+    enrich_with_first_commit: bool = Field(
+        title="Enrich with first commit",
+        alias="enrichWithFirstCommit",
+        default=False,
+        description=(
+            "When enabled, each deployment is enriched with the earliest commit shipped since the previous "
+            "deployment to the same environment: __firstCommit (__sha, __timestamp in UTC) plus a "
+            "deployment-level __commitCount. Defaults to false."
+        ),
+    )
+    created_since: Optional[str] = Field(
+        default=None,
+        alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Created Since",
+        description=(
+            "Only include deployments created after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.created_since)
 
 
 class GithubDeploymentConfig(ResourceConfig):
-    selector: GithubDeploymentSelector
-    kind: Literal["deployment"]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("deployments",),
+    }
+
+    selector: GithubDeploymentSelector = Field(
+        title="Deployment selector",
+        description="Selector for the deployment resource.",
+    )
+    kind: Literal[ObjectKind.DEPLOYMENT] = Field(
+        title="Github Deployment",
+        description="Github deployment resource kind.",
+    )
+
+
+class GithubDeploymentStatusSelector(RepoSearchSelector):
+    task: Optional[str] = Field(
+        title="Task name",
+        description="Filter deployment statuses by deployment task name (e.g. deploy, deploy:migrations).",
+        default=None,
+    )
+    environment: Optional[str] = Field(
+        title="Environment name",
+        description="Filter deployment statuses by deployment environment name (e.g. staging, production).",
+        default=None,
+    )
+
+
+class GithubDeploymentStatusConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("deployments",),
+    }
+
+    selector: GithubDeploymentStatusSelector = Field(
+        title="Deployment status selector",
+        description="Selector for the deployment status resource.",
+    )
+    kind: Literal[ObjectKind.DEPLOYMENT_STATUS] = Field(
+        title="Github Deployment Status",
+        description="Github deployment status resource kind.",
+    )
 
 
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "resolved", "all"] = Field(
+        title="State",
+        description="Filter alerts by state (open, resolved, all).",
         default="open",
-        description="Filter alerts by state (open, resolved, all)",
     )
     hide_secret: bool = Field(
+        title="Hide Secret",
         alias="hideSecret",
+        description="Control whether the secret content is included.",
         default=True,
-        description="Whether to hide the actual secret content in the alert data for security purposes",
     )
+    updated_since: Optional[str] = Field(
+        default=None,
+        alias="updatedSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Updated Since",
+        description=(
+            "Only include alerts updated after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def updated_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.updated_since)
 
 
 class GithubSecretScanningAlertConfig(ResourceConfig):
-    selector: GithubSecretScanningAlertSelector
-    kind: Literal["secret-scanning-alerts"]
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("secret_scanning_alerts",),
+    }
 
-
-class GithubFilePattern(BaseModel):
-    organization: Optional[str] = Field(default=None)
-    path: str = Field(
-        alias="path",
-        description="Specify the path to match files from",
+    selector: GithubSecretScanningAlertSelector = Field(
+        title="Secret scanning alert selector",
+        description="Selector for the secret scanning alert resource.",
     )
-    repos: Optional[list[RepositoryBranchMapping]] = Field(
-        alias="repos",
-        description="Specify the repositories and branches to fetch files from",
-        default=None,
+    kind: Literal[ObjectKind.SECRET_SCANNING_ALERT] = Field(
+        title="Github Secret Scanning Alert",
+        description="Github secret scanning alert resource kind.",
     )
-    skip_parsing: bool = Field(
-        default=False,
-        alias="skipParsing",
-        description="Skip parsing the files and just return the raw file content",
-    )
-    validation_check: bool = Field(
-        default=False,
-        alias="validationCheck",
-        description="Enable validation for this file pattern during pull request processing",
-    )
-
-
-class GithubFileSelector(Selector):
-    files: list[GithubFilePattern]
-
-
-class GithubFileResourceConfig(ResourceConfig):
-    kind: Literal["file"]
-    selector: GithubFileSelector
 
 
 class GithubBranchSelector(RepoSearchSelector):
     detailed: bool = Field(
-        default=False, description="Include extra details about the branch"
+        title="Detailed",
+        default=False,
+        description="Whether to include the latest commit details for each branch.",
+    )
+    default_branch_only: bool = Field(
+        title="Default Branch Only",
+        default=False,
+        alias="defaultBranchOnly",
+        description="Sync only the repository's default branch; overrides branchNames if set.",
     )
     protection_rules: bool = Field(
+        title="Protection Rules",
         default=False,
         alias="protectionRules",
-        description="Include protection rules for the branch",
+        description="Whether to include branch protection rules for each branch.",
     )
     branch_names: List[str] = Field(
+        title="Branch Names",
         default_factory=list,
         alias="branchNames",
-        description="List of branch names to fetch. If provided, the branch names will be fetched explicitly and not using pagination.",
+        description="Branches to fetch (e.g. ['main', 'develop']).",
     )
+
+
+class GithubCollaboratorSelector(
+    RepoSearchSelector, GitHubCollaboratorRelationshipSelector
+):
+    pass
 
 
 class GithubBranchConfig(ResourceConfig):
-    kind: Literal["branch"]
-    selector: GithubBranchSelector
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
+    kind: Literal[ObjectKind.BRANCH] = Field(
+        title="Github Branch",
+        description="Github branch resource kind.",
+    )
+    selector: GithubBranchSelector = Field(
+        title="Branch selector",
+        description="Selector for the branch resource.",
+    )
 
 
-class GithubRepoSearchConfig(ResourceConfig):
-    selector: RepoSearchSelector
+class GithubOrganizationConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:org",),
+        "app": ("metadata",),
+    }
+
+    kind: Literal[ObjectKind.ORGANIZATION] = Field(
+        title="Github Organization",
+        description="Github organization resource kind.",
+    )
+    selector: RepoSearchSelector = Field(
+        title="Organization selector",
+        description="Selector for the organization resource.",
+    )
+
+
+class GithubPackageSelector(Selector):
+    package_types: list[PackageType] = Field(
+        title="Package Types",
+        alias="packageTypes",
+        default=[PackageType.CONTAINER],
+        min_items=1,
+        description="GitHub package types to ingest.",
+    )
+    visibility: Optional[Literal["public", "private", "internal"]] = Field(
+        title="Visibility",
+        default=None,
+        description=(
+            "Filter packages by visibility. When unset, packages of all "
+            "visibilities are ingested."
+        ),
+    )
+    include_versions: bool = Field(
+        title="Include Versions",
+        alias="includeVersions",
+        default=False,
+        description=(
+            "Fetch package versions (tags and digests) and attach them as "
+            "`__versions`. Enabling this consumes additional GitHub API rate "
+            "limit and may slow down the resync."
+        ),
+    )
+    max_versions: Optional[int] = Field(
+        title="Max Versions",
+        alias="maxVersions",
+        default=10,
+        ge=1,
+        description=(
+            "Maximum number of versions to fetch per package, newest first. "
+            "Only used when includeVersions is true. A larger version history "
+            "consumes additional GitHub API rate limit and may slow down the resync."
+        ),
+    )
+
+
+class GithubPackageConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("read:packages",),
+        "app": ("organization_packages", "packages"),
+    }
+
+    kind: Literal[ObjectKind.PACKAGE] = Field(
+        title="Github Package",
+        description="GitHub package resource kind.",
+    )
+    selector: GithubPackageSelector = Field(
+        title="Package selector",
+        description="Selector for GitHub packages.",
+    )
+
+
+class GithubWorkflowConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("actions",),
+    }
+
+    kind: Literal[ObjectKind.WORKFLOW] = Field(
+        title="Github Workflow",
+        description="Github workflow resource kind.",
+    )
+    selector: RepoSearchSelector = Field(
+        title="Workflow selector",
+        description="Selector for the workflow resource.",
+    )
+
+
+class GithubEnvironmentSelector(RepoSearchSelector):
+    include_variables: bool = Field(
+        title="Include Variables",
+        alias="includeVariables",
+        default=False,
+        description="Include environment variables (fetched via the variables REST API) as __variables on each environment.",
+    )
+
+
+class GithubWorkflowRunSelector(RepoSearchSelector):
+    statuses: Optional[
+        list[
+            Literal[
+                "completed",
+                "action_required",
+                "cancelled",
+                "failure",
+                "neutral",
+                "skipped",
+                "stale",
+                "success",
+                "timed_out",
+                "in_progress",
+                "queued",
+                "requested",
+                "waiting",
+                "pending",
+            ]
+        ]
+    ] = Field(
+        title="Statuses",
+        default=None,
+        description="Filter workflow runs by status or conclusion. Accepts a list of values. Each additional status value results in one extra API call per workflow — keep the list small.",
+    )
+    since: Optional[int] = Field(
+        title="Lookback Days",
+        default=None,
+        ge=1,
+        description=(
+            "Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+    since_date: Optional[str] = Field(
+        title="Since Date",
+        default=None,
+        description=(
+            "Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_after(self) -> Optional[str]:
+        if self.since is not None:
+            return f">={to_rfc3339(days_ago(self.since))}"
+        if self.since_date is not None:
+            return f">={self.since_date}"
+        return None
+
+
+class GithubWorkflowRunConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("actions",),
+    }
+
+    kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
+        title="Github Workflow Run",
+        description="Github workflow run resource kind.",
+    )
+    selector: GithubWorkflowRunSelector = Field(
+        title="Workflow run selector",
+        description="Selector for the workflow run resource.",
+    )
+
+
+class GithubReleaseSelector(RepoSearchSelector):
+    created_since: Optional[str] = Field(
+        default=None,
+        alias="createdSince",
+        regex=ISO_8601_SELECTOR_REGEX,
+        title="Created Since",
+        description=(
+            "Only include releases created after this date (ISO 8601)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
+    )
+
+    @property
+    def created_since_datetime(self) -> Optional[datetime]:
+        return _optional_iso_datetime(self.created_since)
+
+
+class GithubReleaseConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
+    kind: Literal[ObjectKind.RELEASE] = Field(
+        title="Github Release",
+        description="Github release resource kind.",
+    )
+    selector: GithubReleaseSelector = Field(
+        title="Release selector",
+        description="Selector for the release resource.",
+    )
+
+
+class GithubTagConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
+    kind: Literal[ObjectKind.TAG] = Field(
+        title="Github Tag",
+        description="Github tag resource kind.",
+    )
+    selector: RepoSearchSelector = Field(
+        title="Tag selector",
+        description="Selector for the tag resource.",
+    )
+
+
+class GithubEnvironmentConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("environments",),
+    }
+
+    kind: Literal[ObjectKind.ENVIRONMENT] = Field(
+        title="Github Environment",
+        description="Github environment resource kind.",
+    )
+    selector: GithubEnvironmentSelector = Field(
+        title="Environment selector",
+        description="Selector for the environment resource.",
+    )
+
+
+class GithubCollaboratorConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("metadata",),
+    }
+
+    kind: Literal[ObjectKind.COLLABORATOR] = Field(
+        title="Github Collaborator",
+        description="Github collaborator resource kind.",
+    )
+    selector: GithubCollaboratorSelector = Field(
+        title="Collaborator selector",
+        description="Selector for the collaborator resource.",
+    )
 
 
 class GithubPortAppConfig(PortAppConfig):
     organizations: List[str] = Field(
+        title="Organizations",
         default_factory=list,
         description=(
             "List of GitHub organization names (optional - if not provided, "
@@ -323,11 +1250,18 @@ class GithubPortAppConfig(PortAppConfig):
         ),
     )
     include_authenticated_user: bool = Field(
+        title="Include Authenticated User",
         default=False,
         alias="includeAuthenticatedUser",
-        description="Include the authenticated user's personal account",
+        description="Include the personal account of the authenticated user when using Classic PAT authentication.",
     )
-    repository_type: str = Field(alias="repositoryType", default="all")
+    repository_type: str = Field(
+        title="Repository Type",
+        alias="repositoryType",
+        enum=["all", "public", "private"],
+        default="all",
+        description="Filter repositories by visibility.",
+    )
     resources: list[
         GithubRepositoryConfig
         | GithubPullRequestConfig
@@ -335,25 +1269,48 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
         | GithubDeploymentConfig
+        | GithubDeploymentStatusConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubSkillResourceConfig
+        | GithubPluginResourceConfig
+        | GithubMcpResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
-        | GithubRepoSearchConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
+        | GithubOrganizationConfig
+        | GithubWorkflowConfig
+        | GithubWorkflowRunConfig
+        | GithubReleaseConfig
+        | GithubTagConfig
+        | GithubEnvironmentConfig
+        | GithubCollaboratorConfig
+        | GithubPackageConfig
+    ] = Field(
+        title="Resources",
+        default_factory=list,
+        description=("Resource mappings"),
+    )  # type: ignore[assignment]
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'includedFiles' selector instead. Example: "
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+            )
             entity_processor = FileEntityProcessor
         else:
             entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern, field)
 
 
 class GithubHandlerMixin(HandlerMixin):
@@ -443,8 +1400,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
               and load the Port app config from a GitHub organization config
               repository (global mapping).
             - Otherwise, if `config` is non-empty, use it as-is (standard mapping).
-            - If `config` is empty and no repo source is specified, treat it as an
-              invalid/empty mapping.
+            - If `config` is empty and no repo source is specified, return an empty
+              mapping; resync will no-op until resources are configured in Port.
             """
             logger.info("Fetching GitHub Port app config")
 
@@ -466,8 +1423,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
                 logger.debug("Using Port integration config from API")
                 return raw_config
 
-            logger.error(
-                "Integration Port app config is empty and no repoManagedMapping "
-                "flag was specified"
+            logger.info(
+                "The integration port app config is empty; "
+                "resync will be skipped until resources are configured."
             )
-            raise EmptyPortAppConfigError()
+            return {}

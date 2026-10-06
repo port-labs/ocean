@@ -1,0 +1,24 @@
+{
+  "skill": {
+    "name": "incident-triage",
+    "description": "Triage production incidents using service catalog context and recent deploys.",
+    "instructions": "# Incident triage\n\n1. Identify the affected service.\n2. Pull the last five deploys.\n3. Correlate with open alerts.\n",
+    "frontmatter": {
+      "name": "incident-triage",
+      "description": "Triage production incidents using service catalog context and recent deploys.",
+      "allowed-tools": ["Read", "Grep", "Bash"]
+    },
+    "path": ".claude/skills/incident-triage",
+    "skillMdPath": ".claude/skills/incident-triage/SKILL.md",
+    "root": ".claude/skills",
+    "blob_sha": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
+  },
+  "__repository": {
+    "name": "platform-tooling",
+    "full_name": "acme/platform-tooling",
+    "html_url": "https://github.com/acme/platform-tooling",
+    "default_branch": "main"
+  },
+  "__branch": "main",
+  "__organization": "acme"
+}

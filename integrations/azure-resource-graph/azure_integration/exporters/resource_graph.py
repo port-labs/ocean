@@ -21,9 +21,11 @@ _MAX_CONCURRENT_REQUESTS = 10
 
 def _get_subscription_batch_size() -> int:
     """Get subscription batch size from config at runtime when ocean context is available."""
-    return ocean.integration_config.get(
-        "azure_subscription_batch_size", _DEFAULT_SUBSCRIPTION_BATCH_SIZE
+    value = (
+        ocean.integration_config.get("azure_subscription_batch_size")
+        or _DEFAULT_SUBSCRIPTION_BATCH_SIZE
     )
+    return int(value)
 
 
 class ResourceGraphExporter(BaseExporter):

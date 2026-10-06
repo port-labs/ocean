@@ -1,15 +1,28 @@
+from __future__ import annotations
+
 import inspect
+import json
 from enum import Enum
 from importlib.util import module_from_spec, spec_from_file_location
 import multiprocessing
 from pathlib import Path
+import sys
 from time import time
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any, Callable, Type, TYPE_CHECKING, TypeVar
 from uuid import uuid4
 
 import tomli
 import yaml
+
+from port_ocean.exceptions.spec import (
+    SpecFileError,
+    SpecNotFoundError,
+    MalformedSpecError,
+)
+
+if TYPE_CHECKING:
+    from port_ocean.core.integrations.base import BaseIntegration
 
 
 class IntegrationStateStatus(Enum):
@@ -61,11 +74,64 @@ def get_integration_name() -> str:
     return ""
 
 
+SPEC_FILE_CANDIDATES = ("spec.json", "spec.yaml", "spec.yml")
+
+
 def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
+    spec_dir = path / ".port"
+    for filename in SPEC_FILE_CANDIDATES:
+        spec_path = spec_dir / filename
+        if not spec_path.is_file():
+            continue
+
+        content = spec_path.read_text(encoding="utf-8")
+        if filename.endswith(".json"):
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as exc:
+                raise SpecFileError(
+                    f"Failed to parse {spec_path}: invalid JSON"
+                ) from exc
+        else:
+            try:
+                result = yaml.safe_load(content)
+            except yaml.YAMLError as exc:
+                raise SpecFileError(
+                    f"Failed to parse {spec_path}: invalid YAML"
+                ) from exc
+
+        if not isinstance(result, dict):
+            raise SpecFileError(
+                f"Failed to load {spec_path}: spec file must contain a JSON object"
+            )
+
+        return result
+
+    return None
+
+
+def get_spec_kinds(path: Path = Path(".")) -> list[str]:
+    """Return the unique resource kinds declared by an integration spec."""
+    spec = get_spec_file(path)
+    if spec is None:
+        raise SpecNotFoundError(
+            f"Failed to load spec from {path / '.port'}: "
+            "expected spec.json, spec.yaml, or spec.yml"
+        )
+
+    kinds: set[str] = set()
     try:
-        return yaml.safe_load((path / ".port/spec.yaml").read_text())
-    except FileNotFoundError:
-        return None
+        for feature in spec["features"]:
+            if feature.get("type") != "exporter":
+                continue
+
+            for resource in feature["resources"]:
+                kinds.add(resource["kind"])
+    except KeyError as e:
+        raise MalformedSpecError(
+            f"Missing expected key {e} when trying to extract kinds from spec"
+        ) from e
+    return list(kinds)
 
 
 def load_module(file_path: str) -> ModuleType:
@@ -77,6 +143,51 @@ def load_module(file_path: str) -> ModuleType:
     spec.loader.exec_module(module)
 
     return module
+
+
+GenericClass = TypeVar("GenericClass", bound=Any)
+
+
+def get_subclass_class_from_module(
+    module: ModuleType,
+    base_class: Type[GenericClass],
+) -> Type[GenericClass] | None:
+
+    for name, obj in inspect.getmembers(module):
+        if (
+            inspect.isclass(obj)
+            and type(obj) is type
+            and issubclass(obj, base_class)
+            and obj != base_class
+        ):
+            return obj
+
+    return None
+
+
+# Cache loaded integration classes per resolved path. Executing integration.py
+# more than once in the same process re-registers its Pydantic validators and
+# raises a "duplicate validator" error. Production calls this once per process,
+# so the cache is a safe no-op there; it matters for the integration test
+# harness, which boots integrations repeatedly in one process.
+_integration_class_cache: dict[str, Type["BaseIntegration"] | None] = {}
+
+
+def get_integration_class(
+    path: str,
+) -> Type["BaseIntegration"] | None:
+    from port_ocean.core.integrations.base import BaseIntegration
+
+    sys.path.append(".")
+    integration_path = f"{path}/integration.py" if path else "integration.py"
+    cache_key = str(Path(integration_path).resolve())
+    if cache_key in _integration_class_cache:
+        return _integration_class_cache[cache_key]
+
+    module = load_module(integration_path)
+    integration_class = get_subclass_class_from_module(module, BaseIntegration)
+    _integration_class_cache[cache_key] = integration_class
+    return integration_class
 
 
 def get_cgroup_cpu_limit() -> int:

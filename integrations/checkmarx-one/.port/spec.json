@@ -1,0 +1,78 @@
+{
+  "title": "Checkmarx One",
+  "description": "Checkmarx One integration for Port Ocean",
+  "icon": "Checkmarx",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/checkmarx-one",
+  "recommendedInstallationMethod": "Saas",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Code Quality & Security",
+      "resources": [
+        {
+          "kind": "project"
+        },
+        {
+          "kind": "scan"
+        },
+        {
+          "kind": "api-security"
+        },
+        {
+          "kind": "kics"
+        },
+        {
+          "kind": "sca"
+        },
+        {
+          "kind": "containers"
+        },
+        {
+          "kind": "sast"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "checkmarxBaseUrl",
+      "required": false,
+      "type": "url",
+      "description": "Checkmarx One server URL for your region:\nUS: https://ast.checkmarx.net/api\nEU: https://eu.ast.checkmarx.net/api\nUS2: https://us.ast.checkmarx.net/api\nEU2: https://eu-2.ast.checkmarx.net/api\nDEU: https://deu.ast.checkmarx.net/api\nANZ: https://anz.ast.checkmarx.net/api\nIND: https://ind.ast.checkmarx.net/api\nSNG: https://sng.ast.checkmarx.net/api\nUAE: https://mea.ast.checkmarx.net/api\n",
+      "default": "https://ast.checkmarx.net/api"
+    },
+    {
+      "name": "checkmarxIamUrl",
+      "required": false,
+      "type": "url",
+      "description": "Checkmarx One IAM URL for your region (for authentication):\nUS: https://iam.checkmarx.net\nEU: https://eu.iam.checkmarx.net\nUS2: https://us.iam.checkmarx.net\nEU2: https://eu-2.iam.checkmarx.net\nDEU: https://deu.iam.checkmarx.net\nANZ: https://anz.iam.checkmarx.net\nIND: https://ind.iam.checkmarx.net\nSNG: https://sng.iam.checkmarx.net\nUAE: https://mea.iam.checkmarx.net\n",
+      "default": "https://iam.checkmarx.net"
+    },
+    {
+      "name": "checkmarxTenant",
+      "required": true,
+      "type": "string",
+      "description": "Your Checkmarx One tenant name (required for authentication URL)"
+    },
+    {
+      "name": "checkmarxApiKey",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "Checkmarx One API Key.\nGenerate in: Settings > Identity and Access Management > API Keys\n"
+    },
+    {
+      "name": "webhookSecret",
+      "required": false,
+      "type": "string",
+      "sensitive": true,
+      "description": "Optional secret used to verify incoming webhook requests.\nEnsures that only legitimate events from Checkmarx One are accepted.\n"
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    }
+  }
+}

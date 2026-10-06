@@ -10,7 +10,6 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleDependabotAlertOptions, ListDependabotAlertOptions
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_DEPENDABOT_ALERTS = [
     {
         "number": 1,
@@ -257,7 +256,7 @@ class TestRestDependabotAlertExporter:
                 )
             )
 
-            assert result == {"__repository": "test-repo", "__organization": "test-org"}
+            assert result is None
 
     async def test_handle_request_paginated_with_dependabot_disabled_error(
         self, rest_client: GithubRestClient

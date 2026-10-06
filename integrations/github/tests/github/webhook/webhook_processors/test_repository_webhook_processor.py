@@ -1,4 +1,4 @@
-from typing import Dict, Literal, List, cast
+from typing import Dict, Literal, List
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -23,7 +23,7 @@ from github.helpers.utils import ObjectKind
 @pytest.fixture
 def resource_config() -> GithubRepositoryConfig:
     return GithubRepositoryConfig(
-        kind="repository",
+        kind=ObjectKind.REPOSITORY,
         selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -95,6 +95,8 @@ class TestRepositoryWebhookProcessor:
             "name": "test-repo",
             "full_name": "test-org/test-repo",
             "description": "Test repository",
+            "visibility": "public",
+            "default_branch": "main",
         }
 
         payload = {
@@ -103,29 +105,36 @@ class TestRepositoryWebhookProcessor:
             "organization": {"login": "test-org"},
         }
 
-        if is_deletion:
-            result = await repository_webhook_processor.handle_event(
-                payload, resource_config
-            )
-        else:
-            # Mock the RepositoryExporter
-            mock_exporter = AsyncMock()
-            mock_exporter.get_resource.return_value = repo_data
-
-            with patch(
-                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
-                return_value=mock_exporter,
-            ):
+        with patch.object(
+            repository_webhook_processor,
+            "validate_repository_visibility",
+            new=AsyncMock(return_value=True),
+        ):
+            if is_deletion:
                 result = await repository_webhook_processor.handle_event(
                     payload, resource_config
                 )
+            else:
+                # Mock the RepositoryExporter
+                mock_exporter = AsyncMock()
+                mock_exporter.get_resource.return_value = repo_data
 
-            # Verify exporter was called with correct repo name
-            mock_exporter.get_resource.assert_called_once_with(
-                SingleRepositoryOptions(
-                    organization="test-org", name="test-repo", included_relationships=[]
+                with patch(
+                    "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                    return_value=mock_exporter,
+                ):
+                    result = await repository_webhook_processor.handle_event(
+                        payload, resource_config
+                    )
+
+                mock_exporter.get_resource.assert_called_once_with(
+                    SingleRepositoryOptions(
+                        organization="test-org",
+                        name="test-repo",
+                        included_relations={},
+                    ),
+                    skip_metadata_cache=True,
                 )
-            )
 
         assert isinstance(result, WebhookEventRawResults)
         assert bool(result.updated_raw_results) is expected_updated
@@ -136,6 +145,143 @@ class TestRepositoryWebhookProcessor:
 
         if expected_deleted:
             assert result.deleted_raw_results == [repo_data]
+
+    @pytest.mark.parametrize(
+        "action,archived",
+        [
+            ("archived", True),
+            ("unarchived", False),
+        ],
+    )
+    async def test_handle_event_excludes_archived_repository_when_selector_opts_in(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+        action: str,
+        archived: bool,
+    ) -> None:
+        """When exclude_archived is enabled, an "archived" event must delete
+        the repository rather than leave a stale entity behind - the next
+        resync would omit it from discovery, mirroring how a repository that
+        no longer matches the visibility filter is handled. An "unarchived"
+        event reports archived=False in the payload, so it is unaffected and
+        still upserts normally."""
+        resource_config.selector.exclude_archived = True
+
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "visibility": "public",
+            "default_branch": "main",
+            "archived": archived,
+        }
+
+        payload = {
+            "action": action,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = repo_data
+
+        with (
+            patch.object(
+                repository_webhook_processor,
+                "validate_repository_visibility",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                return_value=mock_exporter,
+            ),
+        ):
+            result = await repository_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        if archived:
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == [repo_data]
+            mock_exporter.get_resource.assert_not_called()
+        else:
+            assert result.updated_raw_results == [repo_data]
+            assert result.deleted_raw_results == []
+
+    async def test_handle_event_archived_repository_unaffected_by_default(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+    ) -> None:
+        """exclude_archived defaults to False, so an "archived" event must
+        keep deleting the repository as before (backward compatible)."""
+        assert resource_config.selector.exclude_archived is False
+
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "visibility": "public",
+            "default_branch": "main",
+            "archived": True,
+        }
+
+        payload = {
+            "action": "archived",
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        result = await repository_webhook_processor.handle_event(
+            payload, resource_config
+        )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == [repo_data]
+
+    async def test_handle_event_upsert_event_on_archived_repository_deletes_instead_of_reintroducing(
+        self,
+        repository_webhook_processor: RepositoryWebhookProcessor,
+        resource_config: GithubRepositoryConfig,
+    ) -> None:
+        """An upsert event on an already-archived repository must not
+        reintroduce an entity that resync would skip. The repository is
+        deleted instead, and no fetch is issued for it."""
+        resource_config.selector.exclude_archived = True
+
+        repo_data = {
+            "id": 1,
+            "name": "test-repo",
+            "full_name": "test-org/test-repo",
+            "visibility": "public",
+            "default_branch": "main",
+            "archived": True,
+        }
+
+        payload = {
+            "action": "edited",
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = repo_data
+
+        with patch(
+            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+            return_value=mock_exporter,
+        ):
+            result = await repository_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == [repo_data]
+        mock_exporter.get_resource.assert_not_called()
 
     @pytest.mark.parametrize(
         "include_relationships",
@@ -153,6 +299,8 @@ class TestRepositoryWebhookProcessor:
             "name": "test-repo",
             "full_name": "test-org/test-repo",
             "description": "Test repository",
+            "visibility": "public",
+            "default_branch": "main",
         }
 
         resource_config.selector.include = include_relationships
@@ -167,9 +315,16 @@ class TestRepositoryWebhookProcessor:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = repo_data
 
-        with patch(
-            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
-            return_value=mock_exporter,
+        with (
+            patch.object(
+                repository_webhook_processor,
+                "validate_repository_visibility",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                return_value=mock_exporter,
+            ),
         ):
             result = await repository_webhook_processor.handle_event(
                 payload, resource_config
@@ -179,8 +334,11 @@ class TestRepositoryWebhookProcessor:
             SingleRepositoryOptions(
                 organization="test-org",
                 name="test-repo",
-                included_relationships=cast(list[str], include_relationships),
-            )
+                included_relations={
+                    item: {"include": True} for item in include_relationships
+                },
+            ),
+            skip_metadata_cache=True,
         )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -194,14 +352,22 @@ class TestRepositoryWebhookProcessor:
             (
                 {
                     "action": REPOSITORY_UPSERT_EVENTS[0],
-                    "repository": {"name": "repo1"},
+                    "repository": {
+                        "name": "repo1",
+                        "visibility": "public",
+                        "default_branch": "main",
+                    },
                 },
                 True,
             ),
             (
                 {
                     "action": REPOSITORY_DELETE_EVENTS[0],
-                    "repository": {"name": "repo2"},
+                    "repository": {
+                        "name": "repo2",
+                        "visibility": "public",
+                        "default_branch": "main",
+                    },
                 },
                 True,
             ),

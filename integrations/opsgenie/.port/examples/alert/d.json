@@ -1,0 +1,36 @@
+{
+  "seen": true,
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0064-1695747977090",
+  "tinyId": "10",
+  "alias": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0041_aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0046",
+  "message": "Example Token Alert",
+  "status": "open",
+  "acknowledged": false,
+  "isSeen": true,
+  "tags": [
+    "tags"
+  ],
+  "snoozed": false,
+  "count": 1,
+  "lastOccurredAt": "2023-09-26T17:06:17.09Z",
+  "createdAt": "2023-09-26T17:06:17.09Z",
+  "updatedAt": "2023-09-26T17:56:31.248Z",
+  "source": "",
+  "owner": "",
+  "priority": "P3",
+  "teams": [
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+    }
+  ],
+  "responders": [
+    {
+      "type": "team",
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+    }
+  ],
+  "report": {
+    "ackTime": 2348873
+  },
+  "ownerTeamId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+}

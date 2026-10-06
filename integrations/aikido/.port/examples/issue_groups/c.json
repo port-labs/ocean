@@ -1,0 +1,19 @@
+{
+  "id": 26361955,
+  "type": "eol",
+  "title": "go version no longer receiving security updates",
+  "description": null,
+  "severity_score": 95,
+  "severity": "critical",
+  "group_status": "new",
+  "time_to_fix_minutes": 300,
+  "locations": [
+    {
+      "id": 1841546,
+      "name": "test-azure-sync-project",
+      "type": "code_repository"
+    }
+  ],
+  "how_to_fix": "Upgrade go to the nearest LTS version.",
+  "related_cve_ids": []
+}

@@ -1,13 +1,12 @@
 import pytest
-from typing import Any
-from unittest.mock import AsyncMock, patch, MagicMock
+from typing import Any, Optional
+from unittest.mock import AsyncMock, call, patch, MagicMock
 
 from client import KomodorClient, SERVICES_PAGE_SIZE
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-NUM_OF_PAGES = 3
-MAX_PAGE_SIZE = 1
+API_URL = "https://api.komodor.com/api/v2"
 
 
 @pytest.fixture(autouse=True)
@@ -16,7 +15,7 @@ def mock_ocean_context() -> None:
         mock_ocean_app = MagicMock()
         mock_ocean_app.config.integration.config = {
             "api_key": "test_api_key",
-            "api_url": "https://api.komodor.com/api/v2",
+            "api_url": API_URL,
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
@@ -29,74 +28,116 @@ def mock_ocean_context() -> None:
 
 @pytest.fixture
 def mock_komodor_client() -> KomodorClient:
-    return KomodorClient(
-        api_key="test_api_key", api_url="https://api.komodor.com/api/v2"
-    )
+    return KomodorClient(api_key="test_api_key", api_url=API_URL)
 
 
 @pytest.mark.asyncio
-async def test_get_all_services(mock_komodor_client: KomodorClient) -> None:
-    pages = await generate_service_response(NUM_OF_PAGES)
-    page_data = [entry["data"]["services"] for entry in pages]
-    api_response = {
-        "data": {"services": page_data},
-        "meta": {"page": 0, "page_size": NUM_OF_PAGES},
-    }
-
-    with patch.object(
-        mock_komodor_client, "_send_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.side_effect = [api_response]
-
-        services = []
-        async for service_batch in mock_komodor_client.get_all_services():
-            services.extend(service_batch)
-
-        assert len(services) == NUM_OF_PAGES
-        assert services == page_data
-        mock_request.assert_called_with(
-            url=f"{mock_komodor_client.api_url}/services/search",
-            data={
-                "kind": ["Deployment", "StatefulSet", "DaemonSet", "Rollout"],
-                "pagination": {"pageSize": SERVICES_PAGE_SIZE, "page": 0},
-            },
-            method="POST",
-        )
-
-
-@pytest.mark.asyncio
-async def test_get_all_services_multiple_pages(
+async def test_get_all_services_omits_cursor_on_first_request(
     mock_komodor_client: KomodorClient,
 ) -> None:
+    with patch.object(
+        mock_komodor_client, "_send_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [service_page("1")]
 
-    pages = await generate_service_response(NUM_OF_PAGES)
+        await collect_services(mock_komodor_client)
+
+        assert mock_request.call_args == search_call({"pageSize": SERVICES_PAGE_SIZE})
+
+
+@pytest.mark.asyncio
+async def test_get_all_services_follows_token_across_pages(
+    mock_komodor_client: KomodorClient,
+) -> None:
+    with patch.object(
+        mock_komodor_client, "_send_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            service_page("1", next_token="cursor-1"),
+            service_page("2", next_token="cursor-2"),
+            service_page("3"),
+        ]
+
+        await collect_services(mock_komodor_client)
+
+        assert mock_request.call_args_list == [
+            search_call({"pageSize": SERVICES_PAGE_SIZE}),
+            search_call({"pageSize": SERVICES_PAGE_SIZE, "token": "cursor-1"}),
+            search_call({"pageSize": SERVICES_PAGE_SIZE, "token": "cursor-2"}),
+        ]
+
+
+@pytest.mark.asyncio
+async def test_get_all_services_yields_services_from_every_page(
+    mock_komodor_client: KomodorClient,
+) -> None:
+    with patch.object(
+        mock_komodor_client, "_send_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            service_page("1", next_token="cursor-1"),
+            service_page("2", next_token="cursor-2"),
+            service_page("3"),
+        ]
+
+        services = await collect_services(mock_komodor_client)
+
+        assert services == [
+            {"id": "1", "type": "deployment"},
+            {"id": "2", "type": "deployment"},
+            {"id": "3", "type": "deployment"},
+        ]
+
+
+@pytest.mark.asyncio
+async def test_get_all_services_stops_when_token_is_null(
+    mock_komodor_client: KomodorClient,
+) -> None:
+    with patch.object(
+        mock_komodor_client, "_send_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [service_page("1")]
+
+        await collect_services(mock_komodor_client)
+
+        assert mock_request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_all_services_stops_when_token_key_is_absent(
+    mock_komodor_client: KomodorClient,
+) -> None:
+    last_page = service_page("1")
+    del last_page["meta"]["token"]
 
     with patch.object(
         mock_komodor_client, "_send_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = [pages[0], pages[1], pages[2]]
+        mock_request.side_effect = [last_page]
 
-        services = []
-        async for service_batch in mock_komodor_client.get_all_services():
-            services.extend(service_batch)
+        await collect_services(mock_komodor_client)
 
-        assert len(services) == NUM_OF_PAGES
-        assert services == [
-            service for entry in pages for service in entry["data"]["services"]
-        ]
-
-        assert mock_request.call_count == NUM_OF_PAGES
+        assert mock_request.call_count == 1
 
 
-async def generate_service_response(num_of_pages: int) -> list[dict[str, Any]]:
-    pages: list[dict[str, Any]] = []
-    for page in range(num_of_pages):
-        pages.append(
-            {
-                "data": {"services": [{"id": str(page + 1), "type": "deployment"}]},
-                "meta": {"page": page},
-            }
-        )
-        if page + 1 < num_of_pages:
-            pages[page]["meta"].update({"nextPage": page + 1})
-    return pages
+async def collect_services(client: KomodorClient) -> list[dict[str, Any]]:
+    services: list[dict[str, Any]] = []
+    async for batch in client.get_all_services():
+        services.extend(batch)
+    return services
+
+
+def service_page(service_id: str, next_token: Optional[str] = None) -> dict[str, Any]:
+    """The API sends an explicit null token on the last page, rather than dropping the key."""
+    return {
+        "data": {"services": [{"id": service_id, "type": "deployment"}]},
+        "meta": {"pageSize": SERVICES_PAGE_SIZE, "token": next_token},
+    }
+
+
+def search_call(pagination: dict[str, Any]) -> Any:
+    return call(
+        url=f"{API_URL}/services/search",
+        data={"pagination": pagination},
+        method="POST",
+    )

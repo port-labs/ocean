@@ -21,7 +21,6 @@ def test_metrics_endpoints() -> None:
         metrics_settings=metrics_settings,
         integration_configuration=integration_settings,
         port_client=port_client,
-        multiprocessing_enabled=False,
     )
 
     # Create FastAPI app with the metrics router using the same pattern as Ocean

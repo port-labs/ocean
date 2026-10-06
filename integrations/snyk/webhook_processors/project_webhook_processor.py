@@ -6,7 +6,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from snyk.utils import enrich_batch_with_org, get_matching_organization
+from snyk.utils import enrich_batch_with_data, get_matching_organization
 from webhook_processors.snyk_base_webhook_processor import SnykBaseWebhookProcessor
 
 
@@ -29,7 +29,7 @@ class ProjectWebhookProcessor(SnykBaseWebhookProcessor):
             organization_id, project_id
         )
         if organization:
-            item_to_upsert = enrich_batch_with_org([project_details], organization)
+            item_to_upsert = enrich_batch_with_data([project_details], organization)
         else:
             item_to_upsert = [project_details]
 

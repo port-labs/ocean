@@ -24,6 +24,7 @@ class TerraformWebhookClient(TerraformClient):
         self,
         workspace: dict[str, Any],
         webhook_target_url: str,
+        webhook_secret: str,
         semaphore: asyncio.Semaphore,
     ) -> None:
         """
@@ -46,7 +47,7 @@ class TerraformWebhookClient(TerraformClient):
                     return
 
                 await self._create_webhook(
-                    workspace_id, workspace_name, webhook_target_url
+                    workspace_id, workspace_name, webhook_target_url, webhook_secret
                 )
 
             except Exception as e:
@@ -55,7 +56,7 @@ class TerraformWebhookClient(TerraformClient):
                 )
 
     async def ensure_workspace_webhooks(
-        self, base_url: str, max_concurrent: int = 10
+        self, base_url: str, webhook_secret: str, max_concurrent: int = 10
     ) -> None:
         """
         Create webhooks for all workspaces if they don't already exist.
@@ -72,13 +73,19 @@ class TerraformWebhookClient(TerraformClient):
 
         async for workspaces in self.get_paginated_workspaces():
             batch_tasks = (
-                self._ensure_workspace_webhook(workspace, webhook_target_url, semaphore)
+                self._ensure_workspace_webhook(
+                    workspace, webhook_target_url, webhook_secret, semaphore
+                )
                 for workspace in workspaces
             )
             await asyncio.gather(*batch_tasks, return_exceptions=True)
 
     async def _create_webhook(
-        self, workspace_id: str, workspace_name: str, webhook_target_url: str
+        self,
+        workspace_id: str,
+        workspace_name: str,
+        webhook_target_url: str,
+        webhook_secret: str,
     ) -> None:
         """Create a webhook configuration for a specific workspace."""
         endpoint = f"workspaces/{workspace_id}/notification-configurations"
@@ -92,6 +99,7 @@ class TerraformWebhookClient(TerraformClient):
                     "name": "Port Ocean Integration",
                     "url": webhook_target_url,
                     "triggers": TERRAFORM_WEBHOOK_EVENTS,
+                    "token": webhook_secret,
                 },
             }
         }

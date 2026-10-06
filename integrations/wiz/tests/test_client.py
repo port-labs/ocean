@@ -1,9 +1,45 @@
+from typing import Any, AsyncGenerator, List
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from wiz.client import WizClient  # Adjust the import based on your project structure
+from wiz.client import WizClient
+from wiz.constants import VULNERABILITY_FINDING_SEVERITIES
+from wiz.options import (
+    SbomArtifactOptions,
+    VulnerabilityFindingOptions,
+    ParallelismConfig,
+)
+from wiz.pagination import PaginationPartition, VulnerabilityFindingPartitionStrategy
+
+
+def mock_paginated_generator(
+    *pages: List[Any],
+) -> AsyncGenerator[List[Any], None]:
+    """
+    Returns a generator that yields each page in sequence.
+    """
+
+    async def _gen() -> AsyncGenerator[List[Any], None]:
+        for page in pages:
+            yield page
+
+    return _gen()
+
+
+def _mock_ready_partition_crawl_stream(
+    generator: AsyncGenerator[List[Any], None],
+) -> type:
+    class MockReadyPartitionCrawlStream:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+        def __aiter__(self) -> AsyncGenerator[List[Any], None]:
+            return generator
+
+    return MockReadyPartitionCrawlStream
 
 
 @pytest.fixture(autouse=True)
@@ -38,11 +74,90 @@ def mock_wiz_client() -> WizClient:
 
 
 @pytest.mark.asyncio
+async def test_auth_request_params_returns_correct_audience_for_valid_urls() -> None:
+    """Test that auth_request_params returns correct audience for Auth0 vs Cognito token URLs."""
+    auth0_client = WizClient(
+        api_url="https://api.wiz.io",
+        client_id="cid",
+        client_secret="secret",
+        token_url="https://auth.wiz.io/oauth/token",
+    )
+    params = auth0_client.auth_request_params
+    assert params["audience"] == "beyond-api"
+    assert params["grant_type"] == "client_credentials"
+    assert params["client_id"] == "cid"
+    assert params["client_secret"] == "secret"
+
+    cognito_client = WizClient(
+        api_url="https://api.wiz.io",
+        client_id="cid",
+        client_secret="secret",
+        token_url="https://auth.app.wiz.io/oauth/token",
+    )
+    params = cognito_client.auth_request_params
+    assert params["audience"] == "wiz-api"
+
+
+@pytest.mark.asyncio
 async def test_make_graphql_query(mock_wiz_client: WizClient) -> None:
     """Test that make_graphql_query is called with extensions={'retryable': True}."""
     query = "query { issues { nodes { id } } }"
     variables = {"first": 10}
     mock_response_data = {"data": {"issues": {"nodes": [{"id": "issue1"}]}}}
+
+    with (
+        patch.object(
+            mock_wiz_client.http_client, "post", new_callable=AsyncMock
+        ) as mock_post,
+        patch.object(
+            mock_wiz_client._api_rate_limiter,
+            "acquire",
+            new_callable=AsyncMock,
+        ) as mock_acquire,
+        patch.object(
+            mock_wiz_client, "_get_token", new_callable=AsyncMock
+        ) as mock_get_token,
+    ):
+        mock_get_token.return_value = MagicMock(
+            full_token="Bearer test_token",
+            expired=False,
+        )
+
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = mock_response_data
+        mock_post.return_value = mock_response
+
+        result = await mock_wiz_client.make_graphql_query(query, variables)
+
+        mock_acquire.assert_awaited_once()
+        mock_post.assert_called_once_with(
+            url=mock_wiz_client.api_url,
+            json={"query": query, "variables": variables},
+            headers={
+                "Authorization": "Bearer test_token",
+                "Content-Type": "application/json",
+            },
+            extensions={"retryable": True},
+        )
+
+        assert result == mock_response_data["data"]
+
+
+@pytest.mark.asyncio
+async def test_make_graphql_query_raises_on_null_data_with_graphql_errors(
+    mock_wiz_client: WizClient,
+) -> None:
+    query = "query { repositories { nodes { id } } }"
+    variables = {"first": 10}
+    mock_response_data = {
+        "data": None,
+        "errors": [
+            {
+                "message": "access denied",
+                "extensions": {"code": "UNAUTHORIZED"},
+            }
+        ],
+    }
 
     with patch.object(
         mock_wiz_client.http_client, "post", new_callable=AsyncMock
@@ -54,25 +169,471 @@ async def test_make_graphql_query(mock_wiz_client: WizClient) -> None:
                 full_token="Bearer test_token",
                 expired=False,
             )
-
-            # Arrange
             mock_response = MagicMock(status_code=200)
             mock_response.json.return_value = mock_response_data
             mock_post.return_value = mock_response
 
-            # Act
-            result = await mock_wiz_client.make_graphql_query(query, variables)
+            with pytest.raises(
+                OceanAbortException,
+                match="Wiz GraphQL returned errors",
+            ):
+                await mock_wiz_client.make_graphql_query(query, variables)
 
-            # Assert
-            mock_post.assert_called_once_with(
-                url=mock_wiz_client.api_url,
-                json={"query": query, "variables": variables},
-                headers={
-                    "Authorization": "Bearer test_token",
-                    "Content-Type": "application/json",
+
+@pytest.mark.asyncio
+async def test_get_paginated_resources_raises_on_missing_resource_data(
+    mock_wiz_client: WizClient,
+) -> None:
+    with patch.object(
+        mock_wiz_client,
+        "make_graphql_query",
+        new_callable=AsyncMock,
+    ) as mock_query:
+        mock_query.return_value = {"repositories": None}
+
+        with pytest.raises(
+            OceanAbortException,
+            match="missing 'repositories' object",
+        ):
+            await mock_wiz_client._get_paginated_resources(
+                resource="repositories",
+                variables={"first": 1},
+                max_pages=1,
+            ).__anext__()
+
+
+@pytest.mark.asyncio
+async def test_get_resource_total_count(mock_wiz_client: WizClient) -> None:
+    with patch.object(
+        mock_wiz_client,
+        "make_graphql_query",
+        new_callable=AsyncMock,
+    ) as mock_graphql:
+        mock_graphql.return_value = {
+            "vulnerabilityFindings": {"totalCount": 42},
+        }
+
+        count = await mock_wiz_client.get_resource_total_count(
+            "vulnerabilityFindings",
+            {"first": 100, "filterBy": {"severity": ["CRITICAL"]}},
+        )
+
+        assert count == 42
+        mock_graphql.assert_awaited_once()
+        assert mock_graphql.await_args is not None
+        assert mock_graphql.await_args.args[1] == {
+            "filterBy": {"severity": ["CRITICAL"]},
+        }
+
+
+@pytest.mark.asyncio
+async def test_get_vulnerability_findings_with_parallelism(
+    mock_wiz_client: WizClient,
+) -> None:
+    options = VulnerabilityFindingOptions(
+        max_pages=2,
+        parallelism=ParallelismConfig(
+            strategy="severity",
+            date_interval_days=30,
+            lookback_days=365,
+            api_requests_per_second=10,
+            max_partition_entities=500,
+        ),
+    )
+
+    with (
+        patch(
+            "wiz.client.ReadyPartitionCrawlStream",
+        ) as mock_stream_class,
+        patch.object(
+            VulnerabilityFindingPartitionStrategy,
+            "build_partitions",
+            return_value=[
+                PaginationPartition(
+                    label="severity-critical",
+                    filter_overlay={"severity": ["CRITICAL"]},
+                )
+            ],
+        ),
+    ):
+        mock_stream_class.side_effect = _mock_ready_partition_crawl_stream(
+            mock_paginated_generator([{"id": "vuln-1"}])
+        )
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client.get_vulnerability_findings(options):
+            results.extend(batch)
+
+        mock_stream_class.assert_called_once_with(
+            mock_wiz_client,
+            "vulnerabilityFindings",
+            {"first": 100, "filterBy": {}},
+            [
+                PaginationPartition(
+                    label="severity-critical",
+                    filter_overlay={"severity": ["CRITICAL"]},
+                )
+            ],
+            options.parallelism,
+            mock_wiz_client._get_paginated_resources,
+            max_pages=2,
+        )
+        assert results == [{"id": "vuln-1"}]
+
+
+@pytest.mark.asyncio
+async def test_get_vulnerability_findings_with_filters(
+    mock_wiz_client: WizClient,
+) -> None:
+    """Test that get_vulnerability_findings calls _get_paginated_resources with user overridden params."""
+    options = VulnerabilityFindingOptions(
+        status_list=["OPEN"],
+        severity_list=[VULNERABILITY_FINDING_SEVERITIES.CRITICAL],
+        max_pages=2,
+    )
+
+    mock_findings = [{"id": "vuln1", "name": "Vulnerability 1"}]
+
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_findings)
+
+        results = []
+        async for batch in mock_wiz_client.get_vulnerability_findings(options):
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="vulnerabilityFindings",
+            variables={
+                "first": 100,
+                "filterBy": {
+                    "status": ["OPEN"],
+                    "severity": ["CRITICAL"],
                 },
-                extensions={"retryable": True},
+            },
+            max_pages=2,
+        )
+
+        assert results == mock_findings
+
+
+@pytest.mark.asyncio
+async def test_get_vulnerability_findings_without_filters(
+    mock_wiz_client: WizClient,
+) -> None:
+    """Test that get_vulnerability_findings calls _get_paginated_resources with default params."""
+    options = VulnerabilityFindingOptions(max_pages=500)
+
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(
+            [{"id": "vuln1", "name": "Vulnerability 1"}]
+        )
+
+        async for _ in mock_wiz_client.get_vulnerability_findings(options):
+            pass
+
+        mock_paginated.assert_called_once_with(
+            resource="vulnerabilityFindings",
+            variables={
+                "first": 100,
+                "filterBy": {},
+            },
+            max_pages=500,
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_technologies(mock_wiz_client: WizClient) -> None:
+    """Test that get_technologies calls _get_paginated_resources with correct params and yields technologies."""
+    mock_technologies = [{"id": "tech1", "name": "Technology 1"}]
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_technologies)
+
+        results = []
+        async for batch in mock_wiz_client.get_technologies():
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="technologies",
+            variables={
+                "first": 100,
+                "filterBy": {},
+            },
+        )
+
+        assert results == mock_technologies
+
+
+@pytest.mark.asyncio
+async def test_get_hosted_technologies(mock_wiz_client: WizClient) -> None:
+    """Test that get_hosted_technologies calls _get_paginated_resources with correct params and yields hosted technologies."""
+    mock_hosted_technologies = [{"id": "hosted1", "name": "Hosted Technology 1"}]
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_hosted_technologies)
+
+        results = []
+        async for batch in mock_wiz_client.get_hosted_technologies():
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="hostedTechnologies",
+            variables={
+                "first": 100,
+                "filterBy": {},
+            },
+        )
+
+        assert results == mock_hosted_technologies
+
+
+@pytest.mark.asyncio
+async def test_get_repositories(mock_wiz_client: WizClient) -> None:
+    """Test that get_repositories calls _get_paginated_resources with correct params and yields repos."""
+    mock_repos = [
+        {"id": "repo-1", "name": "my-repo", "branches": [{"id": "b1", "name": "main"}]},
+    ]
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_repos)
+
+        results = []
+        async for batch in mock_wiz_client.get_repositories():
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="repositories",
+            variables={"first": 100, "filterBy": {}},
+        )
+        assert results == mock_repos
+
+
+@pytest.mark.asyncio
+async def test_build_sbom_artifact_type_filter_selects_only_one_key(
+    mock_wiz_client: WizClient,
+) -> None:
+    sbom_type = {
+        "codeLibraryLanguage": "PYTHON",
+        "osPackageManager": None,
+        "plugin": None,
+        "custom": None,
+        "ciComponent": None,
+    }
+
+    assert mock_wiz_client._build_sbom_artifact_type_filter(sbom_type) == {
+        "codeLibraryLanguage": ["PYTHON"]
+    }
+
+
+@pytest.mark.asyncio
+async def test_build_sbom_artifact_resource_filter_maps_supported_fields(
+    mock_wiz_client: WizClient,
+) -> None:
+    resource_filter = {
+        "cloud_platform": ["AWS", "GitLab"],
+        "scan_source": "WORKLOAD",
+        "status": ["Active", "Error"],
+        "region": [" us-east-1 "],
+    }
+
+    assert mock_wiz_client._build_sbom_artifact_resource_filter(resource_filter) == {
+        "cloudPlatform": ["AWS", "GitLab"],
+        "scanSource": "WORKLOAD",
+        "status": ["Active", "Error"],
+        "region": ["us-east-1"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_filters_groups_without_capping_max_pages(
+    mock_wiz_client: WizClient,
+) -> None:
+    options = SbomArtifactOptions(
+        group_list=["CODE_LIBRARY"],
+        max_pages=999,
+    )
+    grouped_nodes = [
+        {
+            "id": "group-1",
+            "name": "pandas",
+            "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+            "artifacts": {"totalCount": 2},
+        },
+        {
+            "id": "group-2",
+            "name": "dpkg-pkg",
+            "type": {"group": "OS_PACKAGE", "osPackageManager": "DPKG"},
+            "artifacts": {"totalCount": 1},
+        },
+    ]
+
+    with (
+        patch.object(
+            mock_wiz_client,
+            "_get_paginated_resources",
+        ) as mock_paginated,
+        patch.object(
+            mock_wiz_client,
+            "_get_sbom_artifacts_for_grouped_name",
+        ) as mock_grouped_fetch,
+    ):
+        mock_paginated.return_value = mock_paginated_generator(grouped_nodes)
+
+        def _grouped_fetch_side_effect(
+            grouped_node: dict[str, Any],
+            page_size: int,
+            max_pages: int,
+            resource_filter: dict[str, Any] | None = None,
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            return mock_paginated_generator(
+                [{"id": f"{grouped_node['id']}-artifact", "name": grouped_node["name"]}]
             )
 
-            # Verify the response data
-            assert result == mock_response_data["data"]
+        mock_grouped_fetch.side_effect = _grouped_fetch_side_effect
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client.get_sbom_artifacts(options):
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="sbomArtifactsGroupedByName",
+            variables={"first": 100},
+            max_pages=999,
+        )
+        mock_grouped_fetch.assert_called_once_with(
+            grouped_node=grouped_nodes[0],
+            page_size=100,
+            max_pages=999,
+            resource_filter=None,
+        )
+        assert results == [{"id": "group-1-artifact", "name": "pandas"}]
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_for_grouped_name_enriches_type_metadata(
+    mock_wiz_client: WizClient,
+) -> None:
+    grouped_node = {
+        "id": "group-1",
+        "name": "pandas",
+        "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+        "artifacts": {"totalCount": 2},
+    }
+    artifact_nodes = [
+        {"id": "artifact-1", "name": "pandas", "version": "1.5.1"},
+    ]
+
+    with patch.object(
+        mock_wiz_client, "_get_paginated_resources"
+    ) as mock_paginated_resources:
+        mock_paginated_resources.return_value = mock_paginated_generator(artifact_nodes)
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client._get_sbom_artifacts_for_grouped_name(
+            grouped_node=grouped_node, page_size=100, max_pages=500
+        ):
+            results.extend(batch)
+
+        assert results[0]["__groupTypeMetadata"] == grouped_node["type"]
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_for_grouped_name_adds_resource_filter(
+    mock_wiz_client: WizClient,
+) -> None:
+    grouped_node = {
+        "id": "group-1",
+        "name": "pandas",
+        "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+        "artifacts": {"totalCount": 2},
+    }
+    resource_filter = {
+        "cloudPlatform": ["AWS"],
+        "scanSource": "CODE",
+        "status": ["Active"],
+        "region": ["us-east-1"],
+    }
+
+    with patch.object(
+        mock_wiz_client, "_get_paginated_resources"
+    ) as mock_paginated_resources:
+        mock_paginated_resources.return_value = mock_paginated_generator([])
+
+        async for _ in mock_wiz_client._get_sbom_artifacts_for_grouped_name(
+            grouped_node=grouped_node,
+            page_size=100,
+            max_pages=500,
+            resource_filter=resource_filter,
+        ):
+            pass
+
+        mock_paginated_resources.assert_called_once_with(
+            resource="sbomArtifacts",
+            variables={
+                "first": 100,
+                "filterBy": {
+                    "name": "pandas",
+                    "type": {"codeLibraryLanguage": ["PYTHON"]},
+                    "resource": resource_filter,
+                },
+            },
+            max_pages=500,
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_fans_out_group_fetches(
+    mock_wiz_client: WizClient,
+) -> None:
+    options = SbomArtifactOptions(
+        group_list=["CODE_LIBRARY"],
+        max_pages=1,
+    )
+    grouped_nodes = [
+        {
+            "id": "group-1",
+            "name": "pandas",
+            "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+            "artifacts": {"totalCount": 1},
+        },
+        {
+            "id": "group-2",
+            "name": "numpy",
+            "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+            "artifacts": {"totalCount": 1},
+        },
+    ]
+
+    with (
+        patch.object(
+            mock_wiz_client,
+            "_get_paginated_resources",
+        ) as mock_paginated,
+        patch.object(
+            mock_wiz_client,
+            "_get_sbom_artifacts_for_grouped_name",
+        ) as mock_grouped_fetch,
+    ):
+        mock_paginated.return_value = mock_paginated_generator(grouped_nodes)
+        mock_grouped_fetch.side_effect = lambda **kwargs: mock_paginated_generator(
+            [{"id": kwargs["grouped_node"]["id"]}]
+        )
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client.get_sbom_artifacts(options):
+            results.extend(batch)
+
+        assert len(results) == 2
+        assert mock_grouped_fetch.call_count == 2

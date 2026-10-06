@@ -7,6 +7,7 @@ from yaml import safe_load
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
+from port_ocean.context.event import EventType, event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import RESYNC_RESULT
 from port_ocean.ocean import Ocean
@@ -61,8 +62,9 @@ def get_integation_resource_configs(integration_path: str) -> List[ResourceConfi
 
 
 async def get_raw_result_on_integration_sync_resource_config(
-    app: Ocean, resource_config: ResourceConfig
+    app: Ocean,
+    resource_config: ResourceConfig,
+    event_type: str = EventType.RESYNC,
 ) -> Tuple[RESYNC_RESULT, List[Exception]]:
-    resource_result = await app.integration._get_resource_raw_results(resource_config)
-
-    return resource_result
+    async with event_context(event_type, trigger_type="machine"):
+        return await app.integration._get_resource_raw_results(resource_config)

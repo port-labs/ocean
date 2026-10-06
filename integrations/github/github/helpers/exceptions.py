@@ -1,5 +1,9 @@
-from typing import List
+from typing import List, TYPE_CHECKING
 from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.execution_manager import ActionExecutionError
+
+if TYPE_CHECKING:
+    from github.clients.rate_limiter.utils import RateLimitInfo
 
 
 class AuthenticationException(OceanAbortException):
@@ -27,25 +31,50 @@ class GraphQLErrorGroup(Exception):
         return "GraphQL errors occurred:\n" + "\n".join(f"- {e}" for e in self.errors)
 
 
+class GraphQLForbiddenFieldError(Exception):
+    """Raised when GraphQL fields return 403 FORBIDDEN and need to be excluded."""
+
+    def __init__(self, fields: set[str]):
+        self.fields = fields
+        super().__init__(f"Fields {fields} returned 403 FORBIDDEN")
+
+
 class CheckRunsException(Exception):
     """Exception for check runs errors."""
-
-
-class OrganizationRequiredException(Exception):
-    """Exception for organization required."""
 
 
 class OrganizationConflictError(Exception):
     """Raised when both github_organization and github_multi_organizations are provided."""
 
 
-class RepositoryDefaultBranchNotFoundException(Exception):
+class RepositoryDefaultBranchNotFoundException(ActionExecutionError):
     """Exception for default branch not found."""
 
+    DEFAULT_STATUS_LABEL = "Branch missing"
 
-class InvalidActionParametersException(Exception):
+
+class InvalidActionParametersException(ActionExecutionError):
     """Exception for invalid action parameters."""
 
+    DEFAULT_STATUS_LABEL = "Invalid inputs"
 
-class NoWorkflowRunsFoundException(Exception):
-    """Exception for no workflow runs found."""
+
+class NoWorkflowRunsFoundException(ActionExecutionError):
+    """Exception for workflow runs not found after dispatch."""
+
+    DEFAULT_STATUS_LABEL = "Tracking failed"
+
+
+class RateLimitException(Exception):
+    """Raised when GitHub API rate limit is exceeded."""
+
+    def __init__(self, rate_limit_info: "RateLimitInfo"):
+        self.rate_limit_info = rate_limit_info
+        super().__init__(
+            f"Rate limit exceeded. Reset at {rate_limit_info.reset_time}. "
+            f"Remaining: {rate_limit_info.remaining}/{rate_limit_info.limit}"
+        )
+
+
+class GitHubTreeFetchError(OceanAbortException):
+    """Raised when git tree fetch fails so the file kind aborts without reconciliation deletes."""

@@ -20,7 +20,6 @@ def _make_metrics() -> Metrics:
         metrics_settings=metrics_settings,
         integration_configuration=integration_configuration,
         port_client=port_client,
-        multiprocessing_enabled=False,
     )
 
 

@@ -27,7 +27,7 @@ variable "additional_secrets" {
 
 variable "subnets" {
   description = "List of subnet IDs where the ECS tasks and load balancer will be deployed. Use private subnets when 'is_internal' is true and public subnets when 'is_internal' is false."
-  type = list(string)
+  type        = list(string)
 }
 
 variable "is_internal" {
@@ -68,10 +68,12 @@ variable "logs_cloudwatch_group" {
 
 variable "cpu" {
   default = 1024
+  type    = number
 }
 
 variable "memory" {
   default = 2048
+  type    = number
 }
 
 variable "network_mode" {
@@ -158,7 +160,7 @@ variable "additional_policy_statements" {
 }
 
 variable "allow_incoming_requests" {
-  type = bool
+  type    = bool
   default = true
 }
 

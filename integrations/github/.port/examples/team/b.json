@@ -1,0 +1,17 @@
+{
+  "name": "Kickerstarters",
+  "id": 13175706,
+  "node_id": "T_kwDOBMNoS84AyQua",
+  "slug": "kickerstarters",
+  "description": "Test team younno",
+  "privacy": "closed",
+  "notification_setting": "notifications_enabled",
+  "url": "https://api.github.com/organizations/799150/team/13175706",
+  "html_url": "https://github.com/orgs/Journey/teams/kickerstarters",
+  "members_url": "https://api.github.com/organizations/799150/team/13175706/members{/member}",
+  "repositories_url": "https://api.github.com/organizations/799150/team/13175706/repos",
+  "type": "organization",
+  "organization_id": 799150,
+  "permission": "pull",
+  "parent": null
+}

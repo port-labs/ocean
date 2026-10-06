@@ -55,7 +55,7 @@ class TestOrganizationsAccountExporter:
                 Email="a@b.com",
             )
         )
-        mock_inspector.inspect.return_value = [expected.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [expected.model_dump(exclude_none=True)]
 
         options = SingleAccountRequest(
             region="us-east-1",
@@ -65,7 +65,7 @@ class TestOrganizationsAccountExporter:
 
         result = await exporter.get_resource(options)
 
-        assert result == expected.dict(exclude_none=True)
+        assert result == expected.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-east-1", "organizations"
         )
@@ -107,8 +107,8 @@ class TestOrganizationsAccountExporter:
         acc3 = Account(Properties=AccountProperties(Id="333333333333"))
 
         mock_inspector.inspect.side_effect = [
-            [acc1.dict(exclude_none=True), acc2.dict(exclude_none=True)],
-            [acc3.dict(exclude_none=True)],
+            [acc1.model_dump(exclude_none=True), acc2.model_dump(exclude_none=True)],
+            [acc3.model_dump(exclude_none=True)],
         ]
 
         options = PaginatedAccountRequest(
@@ -120,9 +120,9 @@ class TestOrganizationsAccountExporter:
             results.extend(page)
 
         assert len(results) == 3
-        assert results[0] == acc1.dict(exclude_none=True)
-        assert results[1] == acc2.dict(exclude_none=True)
-        assert results[2] == acc3.dict(exclude_none=True)
+        assert results[0] == acc1.model_dump(exclude_none=True)
+        assert results[1] == acc2.model_dump(exclude_none=True)
+        assert results[2] == acc3.model_dump(exclude_none=True)
 
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-east-1", "organizations"
@@ -135,3 +135,45 @@ class TestOrganizationsAccountExporter:
         mock_inspector.inspect.assert_any_call(
             [{"Id": "333333333333"}], ["ListParentsAction"]
         )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.organizations.account.exporter.AioBaseClientProxy")
+    async def test_get_paginated_resources_with_state_and_status_fields(
+        self,
+        mock_proxy_class: MagicMock,
+        exporter: OrganizationsAccountExporter,
+    ) -> None:
+        """Verifies that raw AWS paginator output containing both State and Status fields
+        passes Pydantic validation through the real ResourceInspector/ResourceBuilder path.
+        ResourceInspector is intentionally NOT mocked so AccountProperties(**raw_dict) actually runs.
+        ListAccountsAction._execute returns its input unchanged and makes no client calls,
+        so the mock client is sufficient."""
+        mock_proxy = AsyncMock()
+        mock_proxy.client = AsyncMock()
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        async def mock_paginate() -> AsyncGenerator[list[dict[str, str]], None]:
+            yield [
+                {"Id": "111111111111", "Status": "ACTIVE", "State": "ACTIVE"},
+                {"Id": "222222222222", "Status": "ACTIVE", "State": "ACTIVE"},
+            ]
+
+        class MockPaginator:
+            def paginate(self) -> AsyncGenerator[list[dict[str, str]], None]:
+                return mock_paginate()
+
+        mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
+
+        options = PaginatedAccountRequest(
+            region="us-east-1", account_id="999999999999", include=[]
+        )
+
+        results = []
+        async for page in exporter.get_paginated_resources(options):
+            results.extend(page)
+
+        assert len(results) == 2
+        assert results[0]["Properties"]["Status"] == "ACTIVE"
+        assert results[0]["Properties"]["State"] == "ACTIVE"
+        assert results[1]["Properties"]["Status"] == "ACTIVE"
+        assert results[1]["Properties"]["State"] == "ACTIVE"

@@ -1,0 +1,18 @@
+{
+  "identifier": "arn:aws:sns:us-east-1:123456789012:my-notifications",
+  "title": "my-notifications",
+  "blueprint": "snsTopic",
+  "properties": {
+    "topicArn": "arn:aws:sns:us-east-1:123456789012:my-notifications",
+    "displayName": "My Notifications",
+    "fifoTopic": null,
+    "subscriptionsConfirmed": 3,
+    "subscriptionsPending": 1,
+    "kmsMasterKeyId": null,
+    "tracingConfig": "PassThrough",
+    "region": "us-east-1"
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

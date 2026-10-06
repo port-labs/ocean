@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import base64
 import binascii
 from collections import defaultdict
+from enum import StrEnum
 import json
 from pathlib import Path
 import re
@@ -16,18 +19,18 @@ from typing import (
     Union,
 )
 
-import yaml
+from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
 
-from github.clients.utils import get_mono_repo_organization
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import FileSearchOptions, ListFileSearchOptions
-from github.helpers.utils import GithubClientType
-from github.helpers.repo_selectors import (
-    CompositeRepositorySelector,
-    OrganizationLoginAndTypeGenerator,
+from github.core.options import (
+    FileSearchOptions,
+    ListOrganizationOptions,
+    ListFileSearchOptions,
 )
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.helpers.utils import GithubClientType, matches_glob_pattern
+from github.helpers.repo_selectors import CompositeRepositorySelector
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -73,8 +76,19 @@ def decode_content(content: str, encoding: str) -> str:
         raise ValueError(f"Unsupported encoding: {encoding}")
 
     try:
-        return base64.b64decode(content).decode("utf-8")
-    except (binascii.Error, UnicodeDecodeError) as e:
+        decoded_bytes = base64.b64decode(content)
+        content_str = decoded_bytes.decode("utf-8")
+        return content_str.replace("\x00", "")
+
+    except UnicodeDecodeError as e:
+        logger.warning(
+            f"Failed to decode content with strict utf-8 decoding: {str(e)}. "
+            "Retrying with replacement of invalid characters."
+        )
+        content_str = decoded_bytes.decode("utf-8", errors="replace")
+        return content_str.replace("\x00", "")
+
+    except binascii.Error as e:
         logger.error(f"Failed to decode content: {str(e)}")
         raise
 
@@ -85,11 +99,21 @@ def parse_content(content: str, file_path: str) -> Any:
         if file_path.endswith(JSON_FILE_SUFFIX):
             return json.loads(content)
         elif file_path.endswith(YAML_FILE_SUFFIX):
-            return yaml.safe_load(content)
+            yaml = YAML(typ="safe")
+            documents = [doc for doc in yaml.load_all(content) if doc is not None]
+            if not documents:
+                return content
+            return documents if len(documents) > 1 else documents[0]
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
 
     return content
+
+
+class FileDiffStatus(StrEnum):
+    ADDED = "added"
+    REMOVED = "removed"
+    RENAMED = "renamed"
 
 
 def group_files_by_status(
@@ -99,12 +123,32 @@ def group_files_by_status(
     updated_files: List[Dict[str, Any]] = []
 
     for file in files:
-        if file.get("status") == "removed":
+        if file.get("status") == FileDiffStatus.REMOVED:
             deleted_files.append(file)
         else:
             updated_files.append(file)
 
     return deleted_files, updated_files
+
+
+def split_files_by_content_presence(
+    files: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Return ``(files_with_new_content, files_with_old_content)``.
+
+    New content: not removed (upserts). Old content: not added (deletes).
+    """
+    files_with_new_content: List[Dict[str, Any]] = []
+    files_with_old_content: List[Dict[str, Any]] = []
+
+    for file in files:
+        status = file.get("status")
+        if status != FileDiffStatus.REMOVED:
+            files_with_new_content.append(file)
+        if status != FileDiffStatus.ADDED:
+            files_with_old_content.append(file)
+
+    return files_with_new_content, files_with_old_content
 
 
 def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
@@ -126,9 +170,7 @@ class FilePatternMappingBuilder:
         repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
-        self.generate_org_logins_and_types = OrganizationLoginAndTypeGenerator(
-            org_exporter
-        )
+        self.org_exporter = org_exporter
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
@@ -140,21 +182,23 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            organization = get_mono_repo_organization(file_sel.organization)
-            async for org_login, org_type in self.generate_org_logins_and_types(
-                organization
+            async for batch in self.org_exporter.get_paginated_resources(
+                ListOrganizationOptions(organization=file_sel.organization)
             ):
-                async for repo_name, branch, _ in self.repo_selector.select_repos(
-                    file_sel, self.repo_exporter, org_login, org_type
-                ):
-                    repo_map[(org_login, repo_name)].append(
-                        FileSearchOptions(
-                            organization=org_login,
-                            path=file_sel.path,
-                            skip_parsing=file_sel.skip_parsing,
-                            branch=branch,
+                for org in batch:
+                    org_login = org["login"]
+                    org_type = org["type"]
+                    async for repo_name, branch, _ in self.repo_selector.select_repos(
+                        file_sel, self.repo_exporter, org_login, org_type
+                    ):
+                        repo_map[(org_login, repo_name)].append(
+                            FileSearchOptions(
+                                organization=org_login,
+                                path=file_sel.path,
+                                skip_parsing=file_sel.skip_parsing,
+                                branch=branch,
+                            )
                         )
-                    )
 
         return [
             ListFileSearchOptions(
@@ -171,9 +215,7 @@ def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
     Match file path against a glob pattern using wcmatch's globmatch.
     Supports ** and other extended glob syntax.
     """
-    return glob.globmatch(
-        path, pattern, flags=glob.GLOBSTAR | glob.IGNORECASE | glob.DOTGLOB
-    )
+    return matches_glob_pattern(path, pattern, flags=glob.DOTGLOB)
 
 
 def determine_api_client_type_by_file_size(size: int) -> GithubClientType:
@@ -206,6 +248,7 @@ def filter_github_tree_entries_by_pattern(
                 {
                     "path": path,
                     "fetch_method": fetch_method,
+                    "sha": entry.get("sha"),
                 }
             )
 
@@ -213,7 +256,13 @@ def filter_github_tree_entries_by_pattern(
 
 
 def get_graphql_file_metadata(
-    host: str, organization: str, repo_name: str, branch: str, file_path: str, size: int
+    host: str,
+    organization: str,
+    repo_name: str,
+    branch: str,
+    file_path: str,
+    size: int,
+    sha: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Get metadata for a file from the GraphQL API.
@@ -224,6 +273,7 @@ def get_graphql_file_metadata(
         "url": url,
         "path": file_path,
         "size": size,
+        "sha": sha,
     }
 
 
@@ -233,17 +283,14 @@ def build_batch_file_query(
     """
     Build a GraphQL query to fetch multiple files from a repository.
     """
-    objects = "\n".join(
-        f"""
+    objects = "\n".join(f"""
         file_{file_index}: object(expression: "{branch}:{path}") {{
             ... on Blob {{
                 text
                 byteSize
             }}
         }}
-        """
-        for file_index, path in enumerate(file_paths)
-    )
+        """ for file_index, path in enumerate(file_paths))
 
     query = f"""
     query {{
@@ -283,16 +330,18 @@ def extract_file_index(field_name: str) -> Optional[int]:
 
 def extract_file_paths_and_metadata(
     files: List[Dict[str, Any]],
-) -> tuple[list[str], dict[str, bool]]:
+) -> tuple[list[str], dict[str, bool], dict[str, Optional[str]]]:
     file_paths = []
     file_metadata = {}
+    file_shas: dict[str, Optional[str]] = {}
 
     for file in files:
         file_path = file["file_path"]
         file_paths.append(file_path)
         file_metadata[file_path] = file["skip_parsing"]
+        file_shas[file_path] = file.get("sha")
 
-    return file_paths, file_metadata
+    return file_paths, file_metadata, file_shas
 
 
 def deep_dict(d: Union[DefaultDict[str, Any], Dict[str, Any], list[Any], Any]) -> Any:

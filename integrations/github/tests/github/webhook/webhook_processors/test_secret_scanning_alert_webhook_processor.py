@@ -24,7 +24,7 @@ from integration import (
 @pytest.fixture
 def resource_config() -> GithubSecretScanningAlertConfig:
     return GithubSecretScanningAlertConfig(
-        kind="secret-scanning-alerts",
+        kind=ObjectKind.SECRET_SCANNING_ALERT,
         selector=GithubSecretScanningAlertSelector(
             query="true", state="open", hideSecret=True
         ),
@@ -196,7 +196,7 @@ class TestSecretScanningAlertWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.secret_scanning_alert_webhook_processor.create_github_client"
+                "github.webhook.webhook_processors.secret_scanning_alert_webhook_processor.create_github_client_for_org"
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.secret_scanning_alert_webhook_processor.RestSecretScanningAlertExporter",

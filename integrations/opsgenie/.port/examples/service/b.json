@@ -1,0 +1,15 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0052",
+  "name": "Port Comments Integration",
+  "description": "For comments and integrations",
+  "teamId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012",
+  "tags": [
+    "ui",
+    "comment"
+  ],
+  "links": {
+    "web": "https://app.opsgenie.com/service/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0052/status",
+    "api": "https://api.opsgenie.com/v1/services/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0052"
+  },
+  "isExternal": false
+}

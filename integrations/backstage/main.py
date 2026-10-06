@@ -1,20 +1,8 @@
-from enum import StrEnum
-
 from client import BackstageClient
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
-
-class ObjectKind(StrEnum):
-    COMPONENT = "component"
-    API = "api"
-    GROUP = "group"
-    USER = "user"
-    SYSTEM = "system"
-    DOMAIN = "domain"
-    RESOURCE = "resource"
 
 
 def init_client() -> BackstageClient:

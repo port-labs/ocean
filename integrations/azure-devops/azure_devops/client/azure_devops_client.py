@@ -2,8 +2,11 @@ from azure_devops.webhooks.events import AdvancedSecurityAlertEvents
 import asyncio
 import functools
 import json
-import httpx
+import re
 from collections import defaultdict
+from datetime import datetime, timezone, timedelta
+from dataclasses import dataclass
+from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
@@ -12,7 +15,14 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
+from azure_devops.webhooks.subscription_reconciliation import (
+    create_webhook_subscription_batch,
+    delete_webhook_subscriptions,
+    dedupe_subscriptions_by_id,
+    plan_webhook_subscription_reconciliation,
+)
 from azure_devops.webhooks.events import (
+    BuildEvents,
     RepositoryEvents,
     PullRequestEvents,
     PushEvents,
@@ -20,11 +30,25 @@ from azure_devops.webhooks.events import (
     PipelineEvents,
     PipelineStageEvents,
     PipelineRunEvents,
+    ReleaseEvents,
+    ReleaseDeploymentEvents,
 )
 
-from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
+from azure_devops.client.auth import AuthProvider, build_auth_provider
+from azure_devops.incremental import (
+    ANALYTICS_PIPELINE_RUNS_ODATA_PATH,
+    ANALYTICS_PIPELINE_RUNS_PAGE_SIZE,
+    BUILD_INCREMENTAL,
+    build_pipeline_runs_analytics_filter,
+    wiql_changed_after_clause,
+)
+from azure_devops.client.base_client import (
+    CONTINUATION_TOKEN_HEADER,
+    MAX_TIMEMOUT_RETRIES,
+    PAGE_SIZE,
+    HTTPBaseClient,
+)
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
-from azure_devops.client.base_client import PAGE_SIZE
 
 from azure_devops.client.file_processing import (
     PathDescriptor,
@@ -39,6 +63,7 @@ from azure_devops.client.file_processing import (
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
     semaphore_async_iterator,
+    throttle_batch_operation,
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
@@ -48,11 +73,16 @@ import fnmatch
 if TYPE_CHECKING:
     from integration import CodeCoverageConfig
 
+AZURE_DEVOPS_CLIENT_CACHE_KEY = "azure_devops_client"
 API_URL_PREFIX = "_apis"
+PROJECT_TAG_PROPERTY_PREFIX = "Microsoft.TeamFoundation.Project.Tag."
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+GRAPH_USERS_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
+ANALYTICS_PUBLISHER_ID = "analytics"
 PIPELINES_PUBLISHER_ID = "pipelines"
+RELEASE_PUBLISHER_ID = "rm"
 API_PARAMS = {"api-version": "7.1"}
 WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
@@ -63,6 +93,24 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_CONCURRENT_PULL_REQUESTS_FOR_ENRICHMENT = 25
+MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT = 25
+_PR_ENRICHMENT_FIELDS = {
+    "commits": "__commits",
+    "threads": "__threads",
+}
+MAX_SUBJECTS_PER_LOOKUP = 500
+# Conservative concurrency caps to avoid exhausting the shared ADO TSTU budget.
+# ADO does not publish a per-connection limit; these values are empirically chosen
+# to keep concurrent fanout low enough that the TSTU window resets before exhaustion.
+MAX_CONCURRENT_PROJECTS = 5
+MAX_CONCURRENT_TEAMS = 5
+MAX_CONCURRENT_PIPELINES = 5
+MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
+MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION = 100
+MAX_CONCURRENT_USER_MEMBERSHIPS = 10
+MAX_CONCURRENT_WIKI_PAGES = 10
+TEST_RUN_QUERY_MAX_WINDOW = timedelta(days=7)
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -80,6 +128,7 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
     ),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
+    WebhookSubscription(publisherId="tfs", eventType=BuildEvents.BUILD_COMPLETE),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_RESTORED),
     WebhookSubscription(
         publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
@@ -117,39 +166,162 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId=PIPELINES_PUBLISHER_ID,
         eventType=PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
     ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseEvents.RELEASE_CREATED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseEvents.RELEASE_ABANDONED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
+    ),
 ]
+
+# Azure DevOps rejects these events when the subscription has no projectId:
+# the tfs/pipelines ones fail with "not allowed at collection level" (400) and
+# the advsec ones with "No scope found" (403).
+PROJECT_SCOPED_ONLY_EVENT_TYPES = {
+    RepositoryEvents.REPO_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_STATE_CHANGED,
+    AdvancedSecurityAlertEvents.SECURITY_ALERT_UPDATED,
+    PipelineEvents.PIPELINE_UPDATED,
+    PipelineStageEvents.PIPELINE_JOB_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_PENDING,
+    PipelineStageEvents.PIPELINE_STAGE_APPROVAL_COMPLETED,
+    PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
+}
+
+
+def _parse_change_timestamp(timestamp: str) -> datetime:
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.max.replace(tzinfo=timezone.utc)
+
+
+def _normalize_git_scope_path(path: str) -> str:
+    """Format ``scopePath`` for the Git Items API (leading ``/``, no trailing ``/``)."""
+    normalized = path.strip().strip("/")
+    return "/" if not normalized else f"/{normalized}"
+
+
+def _normalize_area_path(path: str) -> str:
+    """Convert a classification-node path to work-item ``System.AreaPath`` format.
+
+    Example: ``\\Project\\Area\\L1\\L2`` → ``Project\\L1\\L2``.
+    """
+    segments = path.strip("\\").split("\\")
+    # segments[0] is the project name; segments[1] is the "Area" structure group.
+    if len(segments) >= 2 and segments[1] == "Area":
+        del segments[1]
+    return "\\".join(segments)
+
+
+def _flatten_area_path_tree(
+    node: dict[str, Any],
+    project: dict[str, Any],
+    parent_identifier: Optional[str],
+) -> list[dict[str, Any]]:
+    """Flatten a nested area tree into one dict per node, with project and parent context."""
+    if node.get("structureType") != "area":
+        return []
+
+    enriched = {
+        **{key: value for key, value in node.items() if key != "children"},
+        "__project": project,
+        "__parentIdentifier": parent_identifier,
+        "__normalizedPath": _normalize_area_path(node.get("path", "")),
+    }
+    result = [enriched]
+    for child in node.get("children", []):
+        result.extend(_flatten_area_path_tree(child, project, node.get("identifier")))
+    return result
+
+
+def _pull_request_resource_ids(
+    pull_request: dict[str, Any],
+) -> tuple[str, str, str] | None:
+    repository = pull_request.get("repository") or {}
+    project = repository.get("project") or {}
+    project_id = project.get("id")
+    repository_id = repository.get("id")
+    pull_request_id = pull_request.get("pullRequestId")
+    if not project_id or not repository_id or pull_request_id is None:
+        return None
+    return str(project_id), str(repository_id), str(pull_request_id)
+
+
+@dataclass
+class RunPipelineOptions:
+    """Optional inputs for triggering a pipeline run."""
+
+    branch: Optional[str] = None
+    template_parameters: Optional[dict[str, Any]] = None
+    variables: Optional[dict[str, Any]] = None
+
+
+@dataclass
+class CreatePullRequestOptions:
+    """Inputs for creating a pull request."""
+
+    title: str
+    source_ref_name: str
+    target_ref_name: str
+    description: Optional[str] = None
+
+
+def _normalize_git_ref(ref: str) -> str:
+    if ref.startswith("refs/"):
+        return ref
+    return f"refs/heads/{ref}"
 
 
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
         organization_url: str,
-        personal_access_token: str,
+        auth_provider: AuthProvider,
         webhook_auth_username: Optional[str] = None,
+        excluded_tags: Optional[list[str]] = None,
     ) -> None:
-        super().__init__(personal_access_token)
+        organization_url = organization_url.rstrip("/")
+        super().__init__(auth_provider)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
+        self.excluded_tags = excluded_tags
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
-        if cache := event.attributes.get("azure_devops_client"):
+        if cache := event.attributes.get(AZURE_DEVOPS_CLIENT_CACHE_KEY):
             return cache
+        auth_provider = build_auth_provider(ocean.integration_config)
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
-            ocean.integration_config["webhook_auth_username"],
+            auth_provider,
+            ocean.integration_config.get("webhook_auth_username"),
+            ocean.integration_config.get("excluded_tags"),
         )
-        event.attributes["azure_devops_client"] = azure_devops_client
+        event.attributes[AZURE_DEVOPS_CLIENT_CACHE_KEY] = azure_devops_client
         return azure_devops_client
 
     @classmethod
     def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClient":
+        auth_provider = build_auth_provider(ocean.integration_config)
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
-            ocean.integration_config["webhook_auth_username"],
+            auth_provider,
+            ocean.integration_config.get("webhook_auth_username"),
+            ocean.integration_config.get("excluded_tags"),
         )
         return azure_devops_client
 
@@ -175,9 +347,66 @@ class AzureDevopsClient(HTTPBaseClient):
         project = response.json()
         return project
 
-    @cache_iterator_result()
+    async def get_project_tags(self, project_id: str) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/properties"
+        response = await self.send_request(
+            "GET",
+            url,
+            params={
+                "keys": f"{PROJECT_TAG_PROPERTY_PREFIX}*",
+                "api-version": "7.1-preview.1",
+            },
+        )
+        if not response:
+            return []
+        return response.json().get("value", [])
+
+    async def filter_projects_by_excluded_tags(
+        self,
+        projects: list[dict[str, Any]],
+        exclude_tags: list[str],
+    ) -> list[dict[str, Any]]:
+        exclude_set = set(exclude_tags)
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+
+        async def get_tags_with_semaphore(project_id: str) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_project_tags(project_id)
+
+        tags_results = await asyncio.gather(
+            *[get_tags_with_semaphore(project["id"]) for project in projects],
+            return_exceptions=True,
+        )
+        filtered = []
+        for project, tags in zip(projects, tags_results):
+            if isinstance(tags, BaseException):
+                logger.warning(
+                    "Failed to fetch tags for project %s, including in sync: %s",
+                    project["id"],
+                    tags,
+                )
+                filtered.append(project)
+            elif exclude_set.isdisjoint(
+                t["name"].removeprefix(PROJECT_TAG_PROPERTY_PREFIX) for t in tags
+            ):
+                filtered.append(project)
+        return filtered
+
     async def generate_projects(
         self, sync_default_team: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        exclude_tags = tuple(self.excluded_tags) if self.excluded_tags else ()
+        async for batch in self._generate_projects_cached(
+            self._organization_base_url, sync_default_team, exclude_tags
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_projects_cached(
+        self,
+        org_identifier: str,
+        sync_default_team: bool = False,
+        exclude_tags: tuple[str, ...] = (),
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         sync_default_team: bool - The List projects endpoint of ADO API excludes default team of a project.
@@ -193,12 +422,27 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if sync_default_team:
                 logger.info("Adding default team to projects")
-                tasks = [self.get_single_project(project["id"]) for project in projects]
+                semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+
+                async def get_project_with_semaphore(
+                    project_id: str,
+                ) -> dict[str, Any] | None:
+                    async with semaphore:
+                        return await self.get_single_project(project_id)
+
+                tasks = [
+                    get_project_with_semaphore(project["id"]) for project in projects
+                ]
                 projects_batch: list[dict[str, Any] | None] = await asyncio.gather(
                     *tasks
                 )
                 projects = [project for project in projects_batch if project]
-            yield projects
+            if exclude_tags:
+                projects = await self.filter_projects_by_excluded_tags(
+                    projects, list(exclude_tags)
+                )
+            if projects:
+                yield projects
 
     async def get_single_advanced_security_alert(
         self,
@@ -207,36 +451,40 @@ class AzureDevopsClient(HTTPBaseClient):
         alert_id: str,
     ) -> dict[str, Any] | None:
         security_alert_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts/{alert_id}"
-        response = await self.send_request("GET", security_alert_url)
+        try:
+            response = await self.send_request("GET", security_alert_url)
+        except HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.warning(
+                    f"Skipping Advanced Security alerts for {security_alert_url}: "
+                    "GHAS not enabled or repository not onboarded (HTTP 400)"
+                )
+                return None
+            raise
         if not response:
             return None
-        security_alert = response.json()
-        return security_alert
+        return response.json()
 
     async def generate_advanced_security_alerts(
         self,
         repository: dict[str, Any],
-        params: Optional[dict[str, Any]] = None,
+        additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate security alerts from GitHub Advanced Security (GHAS) in Azure DevOps.
         This method fetches alerts for all repositories across all projects using the Advanced Security API.
         read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/advancedsecurity/alerts/list?view=azure-devops-rest-7.2
         """
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
+        query_params = {**ADVANCED_SECURITY_API_PARAMS, **(additional_params or {})}
         try:
-            project_id = repository["project"]["id"]
-            repository_id = repository["id"]
-            security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
-            additional_params = {
-                **ADVANCED_SECURITY_API_PARAMS,
-            }
-
-            if params:
-                additional_params.update(params)
             async for (
                 security_alerts
             ) in self._get_paginated_by_top_and_continuation_token(
-                security_alerts_url, additional_params=additional_params
+                security_alerts_url,
+                additional_params=query_params,
             ):
                 enriched_alerts = [
                     self._enrich_security_alert(
@@ -245,11 +493,13 @@ class AzureDevopsClient(HTTPBaseClient):
                     for security_alert in security_alerts
                 ]
                 yield enriched_alerts
-        except httpx.HTTPStatusError as e:
+        except HTTPStatusError as e:
             if e.response.status_code == 400:
-                logger.error(
-                    f"Advanced Security not enabled for repository {repository['name']} in project {project_id}"
+                logger.warning(
+                    f"Skipping Advanced Security alerts for {security_alerts_url}: "
+                    "GHAS not enabled or repository not onboarded (HTTP 400)"
                 )
+                return
             raise
 
     def _enrich_security_alert(
@@ -261,8 +511,14 @@ class AzureDevopsClient(HTTPBaseClient):
             "__projectId": project_id,
         }
 
-    @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_teams_cached(self._organization_base_url):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_teams_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
             yield teams
@@ -283,8 +539,15 @@ class AzureDevopsClient(HTTPBaseClient):
         self, teams: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAMS)
 
-        team_tasks = [self.get_team_members(team) for team in teams]
+        async def get_members_with_semaphore(
+            team: dict[str, Any],
+        ) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_team_members(team)
+
+        team_tasks = [get_members_with_semaphore(team) for team in teams]
 
         members_results = await asyncio.gather(*team_tasks)
 
@@ -293,6 +556,46 @@ class AzureDevopsClient(HTTPBaseClient):
 
         for team, members in zip(teams, members_results):
             team["__members"] = members
+
+        return teams
+
+    async def get_team_field_values(
+        self, team: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
+        """Get a team's configured area paths (Team Field Values)."""
+        field_values_url = (
+            f"{self._organization_base_url}/{team['projectId']}/{team['id']}"
+            f"/{API_URL_PREFIX}/work/teamsettings/teamfieldvalues"
+        )
+        response = await self.send_request("GET", field_values_url, params=API_PARAMS)
+        return response.json() if response else None
+
+    async def _get_team_field_values_bounded(
+        self, team: dict[str, Any], semaphore: asyncio.BoundedSemaphore
+    ) -> Optional[dict[str, Any]]:
+        async with semaphore:
+            return await self.get_team_field_values(team)
+
+    async def enrich_teams_with_area_paths(
+        self, teams: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        logger.debug(f"Fetching area paths for {len(teams)} teams")
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAMS)
+        field_values_results = await asyncio.gather(
+            *(self._get_team_field_values_bounded(team, semaphore) for team in teams),
+            return_exceptions=True,
+        )
+
+        for team, result in zip(teams, field_values_results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch area paths for team {team['id']} in project {team['projectId']}: {result}"
+                )
+                team["__areaPaths"] = None
+            else:
+                team["__areaPaths"] = result
 
         return teams
 
@@ -320,34 +623,315 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return base_url
 
-    async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        users_url = (
-            self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
-        )
+    def _get_subscription_base_url_and_params(
+        self, publisher_id: str
+    ) -> tuple[str, dict[str, str]]:
+        if publisher_id == ADVANCED_SECURITY_PUBLISHER_ID:
+            return self._advsec_base_url, ADVANCED_SECURITY_API_PARAMS
+        if publisher_id == RELEASE_PUBLISHER_ID:
+            return self._format_service_url("vsrm"), WEBHOOK_API_PARAMS
+        return self._organization_base_url, WEBHOOK_API_PARAMS
+
+    async def generate_graph_users(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        users_url = self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/users"
+        params = {**GRAPH_USERS_API_PARAMS, **(additional_params or {})}
         async for users in self._get_paginated_by_top_and_continuation_token(
-            users_url, data_key="items"
+            users_url, additional_params=params
         ):
             yield users
 
+    @staticmethod
+    def _parse_project_from_principal_name(principal_name: str) -> Optional[str]:
+        match = re.match(r"^\[(?P<project>.+?)\]\\", principal_name or "")
+        return match.group("project") if match else None
+
+    async def _fetch_group_descriptors(
+        self, descriptor: str, semaphore: asyncio.BoundedSemaphore
+    ) -> list[str]:
+        async with semaphore:
+            memberships = await self._get_subject_memberships(descriptor, "Up")
+        if not memberships:
+            return []
+        return [
+            membership["containerDescriptor"]
+            for membership in memberships
+            if membership.get("containerDescriptor")
+        ]
+
+    async def enrich_users_with_group_memberships(
+        self, users: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Enrich graph users with their direct group memberships."""
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_USER_MEMBERSHIPS)
+        candidates = [user for user in users if user.get("descriptor")]
+        results = await asyncio.gather(
+            *[
+                self._fetch_group_descriptors(user["descriptor"], semaphore)
+                for user in candidates
+            ],
+            return_exceptions=True,
+        )
+
+        user_group_descriptors: dict[str, list[str]] = {}
+        all_descriptors: set[str] = set()
+        for user, result in zip(candidates, results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch group memberships for user "
+                    f"'{user['descriptor']}': {result}"
+                )
+                user_group_descriptors[user["descriptor"]] = []
+                continue
+            user_group_descriptors[user["descriptor"]] = result
+            all_descriptors.update(result)
+
+        subject_details = (
+            await self._lookup_subjects(list(all_descriptors))
+            if all_descriptors
+            else {}
+        )
+
+        for user in users:
+            descriptor = user.get("descriptor")
+            descriptors = (
+                user_group_descriptors.get(descriptor, []) if descriptor else []
+            )
+            groups = [
+                subject_details[descriptor]
+                for descriptor in descriptors
+                if descriptor in subject_details
+            ]
+            projects = {
+                project
+                for group in groups
+                if (
+                    project := self._parse_project_from_principal_name(
+                        group.get("principalName", "")
+                    )
+                )
+            }
+            user["__groups"] = groups
+            user["__projects"] = sorted(projects)
+
+        return users
+
+    async def generate_entitlement_users(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        users_url = (
+            self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
+        )
+        params = dict(additional_params or {})
+        api_version = params.get("api-version", "")
+
+        if self._is_legacy_user_entitlements_version(api_version):
+            async for users in self._get_paginated_by_top_and_skip(
+                users_url,
+                params=params,
+                top_param="top",
+                skip_param="skip",
+            ):
+                yield users
+        else:
+            async for users in self._get_paginated_by_top_and_continuation_token(
+                users_url, data_key="items", additional_params=params
+            ):
+                yield users
+
+    @staticmethod
+    def _is_legacy_user_entitlements_version(api_version: str) -> bool:
+        """Versions before 7.x use top/skip pagination and 'value' data key."""
+        if not api_version:
+            return False
+        try:
+            major = api_version.split(".")[0]
+            return major.isdigit() and int(major) < 7
+        except Exception:
+            logger.warning(
+                f"Failed to parse API version {api_version}, assuming legacy version"
+            )
+            return True
+
+    async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate all security groups in the organization."""
+        async for batch in self._generate_groups_cached(self._organization_base_url):
+            yield batch
+
     @cache_iterator_result()
+    async def _generate_groups_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        groups_url = (
+            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/groups"
+        )
+        async for groups in self._get_paginated_by_top_and_continuation_token(
+            groups_url
+        ):
+            yield groups
+
+    async def _get_subject_memberships(
+        self, descriptor: str, direction: str
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get memberships for a subject in the given direction.
+
+        direction='Down' yields the members contained by a group;
+        direction='Up' yields the groups a subject belongs to.
+        """
+        memberships_url = (
+            self._format_service_url("vssps")
+            + f"/{API_URL_PREFIX}/graph/memberships/{descriptor}"
+        )
+        response = await self.send_request(
+            "GET", memberships_url, params={"direction": direction}
+        )
+        if not response:
+            return None
+        return response.json()["value"]
+
+    async def _get_group_direct_members(
+        self, group_descriptor: str
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get direct members of a group."""
+        return await self._get_subject_memberships(group_descriptor, "Down")
+
+    async def _lookup_subjects(
+        self, descriptors: list[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Batch lookup subject details for multiple descriptors."""
+        all_results: dict[str, dict[str, Any]] = {}
+        total_batches = (
+            len(descriptors) + MAX_SUBJECTS_PER_LOOKUP - 1
+        ) // MAX_SUBJECTS_PER_LOOKUP
+
+        logger.info(
+            f"Starting subject lookup for {len(descriptors)} descriptors across {total_batches} batch(es)"
+        )
+
+        for batch_num, batch in enumerate(
+            batched(descriptors, MAX_SUBJECTS_PER_LOOKUP), start=1
+        ):
+            request_body = {"lookupKeys": [{"descriptor": d} for d in batch]}
+
+            try:
+                response = await self.send_request(
+                    "POST",
+                    self._format_service_url("vssps")
+                    + f"/{API_URL_PREFIX}/graph/subjectlookup",
+                    data=json.dumps(request_body),
+                    headers={"Content-Type": "application/json"},
+                    params={"api-version": "7.1-preview.1"},
+                )
+
+                if not response:
+                    logger.warning(
+                        f"No response received for subject lookup batch {batch_num} of {total_batches} (descriptors: {batch})"
+                    )
+                    continue
+                all_results.update(response.json()["value"])
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to look up subjects for batch {batch_num} of {total_batches} "
+                    f"(size: {len(batch)}). Descriptors: {batch}. Error: {e}"
+                )
+                continue
+
+        logger.info(f"Successfully looked up {len(all_results)} subjects")
+        return all_results
+
+    async def generate_group_members(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate direct group memberships (top-level only, no recursion).
+
+        Yields members for each group. Each member includes:
+        - __group: The full group object this member belongs to
+        """
+        async for groups in self.generate_groups():
+            for group in groups:
+                group_descriptor = group["descriptor"]
+
+                memberships = await self._get_group_direct_members(group_descriptor)
+                if not memberships:
+                    logger.info(
+                        f"No membership found for {group_descriptor}, skipping ..."
+                    )
+                    continue
+
+                descriptors = [
+                    membership["memberDescriptor"] for membership in memberships
+                ]
+                subject_details = await self._lookup_subjects(descriptors)
+
+                members = []
+                for membership in memberships:
+                    member_descriptor = membership["memberDescriptor"]
+                    if member_descriptor not in subject_details:
+                        logger.debug(
+                            f"Subject details not found for member '{member_descriptor}' in group '{group_descriptor}'"
+                        )
+                        continue
+                    members.append(
+                        {
+                            **subject_details[member_descriptor],
+                            "__group": group,
+                        }
+                    )
+
+                logger.info(
+                    f"Resolved {len(members)} direct members for group '{group_descriptor}'"
+                )
+                yield members
+
+    async def _fetch_repositories_for_project(
+        self,
+        project: dict[str, Any],
+        include_disabled_repositories: bool,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+        response = await self.send_request("GET", repos_url)
+        if not response:
+            return
+        repositories = response.json()["value"]
+        if include_disabled_repositories:
+            yield repositories
+        else:
+            yield [repo for repo in repositories if self._repository_is_healthy(repo)]
+
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async for batch in self._generate_repositories_cached(
+            self._organization_base_url, include_disabled_repositories
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_repositories_cached(
+        self, org_identifier: str, include_disabled_repositories: bool = True
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
-            for project in projects:
-                repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                response = await self.send_request("GET", repos_url)
-                if not response:
-                    continue
-                repositories = response.json()["value"]
-                if include_disabled_repositories:
-                    yield repositories
-                else:
-                    yield [
-                        repo
-                        for repo in repositories
-                        if self._repository_is_healthy(repo)
-                    ]
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_repositories_for_project,
+                        project,
+                        include_disabled_repositories,
+                    ),
+                )
+                for project in projects
+            ]
+            async for repositories in stream_async_iterators_tasks(*tasks):
+                yield repositories
 
     async def generate_branches(
         self,
@@ -423,6 +1007,9 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         search_filters: Optional[dict[str, Any]] = None,
         max_results: Optional[int] = None,
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
@@ -441,6 +1028,14 @@ class AzureDevopsClient(HTTPBaseClient):
                 for repository in repositories
             ]
             async for pull_requests in stream_async_iterators_tasks(*tasks):
+                if pull_requests and (
+                    enrich_with_commits or enrich_with_review_discussion
+                ):
+                    pull_requests = await self.enrich_pull_requests(
+                        pull_requests,
+                        enrich_with_commits=enrich_with_commits,
+                        enrich_with_review_discussion=enrich_with_review_discussion,
+                    )
                 yield pull_requests
 
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -454,7 +1049,11 @@ class AzureDevopsClient(HTTPBaseClient):
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
 
-    async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_releases(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params = dict(additional_params or {})
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
@@ -462,9 +1061,28 @@ class AzureDevopsClient(HTTPBaseClient):
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
                 async for releases in self._get_paginated_by_top_and_continuation_token(
-                    releases_url
+                    releases_url, additional_params=params
                 ):
                     yield releases
+
+    async def generate_release_definitions(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                definitions_url = (
+                    self._format_service_url("vsrm")
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/definitions"
+                )
+                async for (
+                    definitions
+                ) in self._get_paginated_by_top_and_continuation_token(
+                    definitions_url, additional_params=additional_params or {}
+                ):
+                    for definition in definitions:
+                        definition["__project"] = project
+                    yield definitions
 
     async def generate_pipeline_runs(
         self,
@@ -476,9 +1094,128 @@ class AzureDevopsClient(HTTPBaseClient):
         https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
         """
         async for projects in self.generate_projects():
-            project_tasks = [self._runs_for_project(project) for project in projects]
-            async for batch in stream_async_iterators_tasks(*project_tasks):
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._runs_for_project, project),
+                )
+                for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
+
+    async def generate_pipeline_runs_incremental(
+        self,
+        incremental_cursor: Optional[datetime] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Discover completed pipeline runs via Analytics OData, enrich via Runs Get."""
+        if incremental_cursor is None:
+            return
+        analytics_filter = build_pipeline_runs_analytics_filter(incremental_cursor)
+        async for projects in self.generate_projects():
+            for project in projects:
+                async for (
+                    discoveries
+                ) in self._discover_pipeline_runs_from_analytics_for_project(
+                    project["id"], analytics_filter
+                ):
+                    enriched = await self._enrich_analytics_pipeline_run_discoveries(
+                        project, discoveries
+                    )
+                    if enriched:
+                        yield enriched
+
+    async def _discover_pipeline_runs_from_analytics_for_project(
+        self,
+        project_id: str,
+        analytics_filter: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Discover completed pipeline runs for a project via Analytics OData."""
+        url = (
+            f"{self._format_service_url(ANALYTICS_PUBLISHER_ID)}/{project_id}"
+            f"{ANALYTICS_PIPELINE_RUNS_ODATA_PATH}"
+        )
+        params: dict[str, Any] = {
+            "$select": "PipelineRunId,CompletedDate",
+            "$expand": "Pipeline($select=PipelineId,PipelineName)",
+            "$filter": analytics_filter,
+            "$orderby": "CompletedDate desc",
+            "$top": ANALYTICS_PIPELINE_RUNS_PAGE_SIZE,
+        }
+        next_url: str | None = url
+        next_params: dict[str, Any] | None = params
+        while next_url:
+            try:
+                response = await self.send_request(
+                    "GET",
+                    next_url,
+                    params=next_params,
+                    raise_on_404=True,
+                )
+            except HTTPStatusError as e:
+                if e.response.status_code in (403, 404):
+                    logger.warning(
+                        f"Skipping Analytics OData request for {next_url}: "
+                        "Analytics is not enabled, the project is not onboarded, or access "
+                        f"is denied (HTTP {e.response.status_code})"
+                    )
+                    return
+                raise
+            if not response:
+                return
+            payload = response.json()
+            rows = payload.get("value") or []
+            if rows:
+                yield rows
+            next_url = payload.get("@odata.nextLink")
+            next_params = None
+
+    async def _enrich_analytics_pipeline_run_discoveries(
+        self,
+        project: dict[str, Any],
+        discoveries: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        pipeline_cache: dict[int, dict[str, Any]] = {}
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
+
+        async def enrich_one(discovery: dict[str, Any]) -> dict[str, Any] | None:
+            pipeline_ref = discovery.get("Pipeline") or {}
+            pipeline_id = pipeline_ref.get("PipelineId")
+            run_id = discovery.get("PipelineRunId")
+            if pipeline_id is None or run_id is None:
+                return None
+            async with semaphore:
+                pipeline_run = await self.get_pipeline_run(
+                    project["id"], str(pipeline_id), str(run_id)
+                )
+                if not pipeline_run:
+                    return None
+                if pipeline_id not in pipeline_cache:
+                    pipeline = await self.get_pipeline(project["id"], str(pipeline_id))
+                    if not pipeline:
+                        return None
+                    pipeline_cache[pipeline_id] = pipeline
+                self.annotate_runs(
+                    [pipeline_run],
+                    project=project,
+                    pipeline=pipeline_cache[pipeline_id],
+                )
+                return pipeline_run
+
+        results = await asyncio.gather(
+            *[enrich_one(row) for row in discoveries], return_exceptions=True
+        )
+        enriched: list[dict[str, Any]] = []
+        for result in results:
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to enrich pipeline run from analytics: {result}"
+                )
+                continue
+            if result:
+                enriched.append(result)
+        return enriched
 
     async def _runs_for_project(
         self, project: dict[str, Any]
@@ -487,8 +1224,12 @@ class AzureDevopsClient(HTTPBaseClient):
         async for pipelines in self._paginate_pipelines(project_id=project["id"]):
             if not pipelines:
                 continue
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
             pipeline_tasks = [
-                self._paginate_pipeline_runs(project, pipeline)
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._paginate_pipeline_runs, project, pipeline),
+                )
                 for pipeline in pipelines
             ]
             async for batch in stream_async_iterators_tasks(*pipeline_tasks):
@@ -583,23 +1324,97 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _generate_builds_for_project(
         self,
         project: dict[str, Any],
+        min_time: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield paginated builds for a single project, enriched with project data."""
         builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
+        additional_params: dict[str, Any] = {"queryOrder": "queueTimeDescending"}
+        if min_time is not None:
+            additional_params.update(BUILD_INCREMENTAL.build_params(min_time))
         async for builds in self._get_paginated_by_top_and_continuation_token(
-            builds_url
+            builds_url,
+            additional_params=additional_params,
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 
-    async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def _attach_first_commit(
+        self, build: dict[str, Any], project_id: str
+    ) -> dict[str, Any]:
+        changes_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/build/builds/{build['id']}/changes"
+        )
+        try:
+            changes: list[dict[str, Any]] = []
+            async for batch in self._get_paginated_by_top_and_continuation_token(
+                changes_url
+            ):
+                changes.extend(batch)
+
+            timestamped = [change for change in changes if change.get("timestamp")]
+            if timestamped:
+                earliest = min(
+                    timestamped,
+                    key=lambda change: _parse_change_timestamp(change["timestamp"]),
+                )
+                build["__firstCommit"] = {
+                    **earliest,
+                    "__sha": earliest.get("id"),
+                    "__timestamp": earliest["timestamp"],
+                    "__commitCount": len(changes),
+                }
+                return build
+
+            source_version = build.get("sourceVersion")
+            repository_id = (build.get("repository") or {}).get("id")
+            if source_version and repository_id:
+                commit = await self.get_commit(
+                    project_id, repository_id, source_version
+                )
+                committer = commit.get("committer", {})
+                if committer.get("date"):
+                    build["__firstCommit"] = {
+                        **commit,
+                        "__sha": commit.get("commitId") or source_version,
+                        "__timestamp": committer["date"],
+                        "__commitCount": 1,
+                    }
+        except Exception as e:
+            logger.warning(
+                f"First-commit enrichment failed for build {build['id']}: {e}"
+            )
+        return build
+
+    async def _enrich_builds_with_first_commit(
+        self, project_id: str, builds: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        return await process_in_queue(
+            builds,
+            self._attach_first_commit,
+            project_id,
+            concurrency=MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT,
+        )
+
+    async def generate_builds(
+        self,
+        enrich_with_first_commit: bool = False,
+        min_time: Optional[datetime] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
         Uses continuation token pagination as per Azure DevOps Builds API.
         https://learn.microsoft.com/en-us/rest/api/azure/devops/build/builds/list?view=azure-devops-rest-7.1
         """
         async for projects in self.generate_projects():
-            tasks = [self._generate_builds_for_project(project) for project in projects]
+            tasks = [
+                self._generate_builds_for_project(project, min_time=min_time)
+                for project in projects
+            ]
             async for batch in stream_async_iterators_tasks(*tasks):
+                if enrich_with_first_commit and batch:
+                    batch = await self._enrich_builds_with_first_commit(
+                        batch[0]["__projectId"], batch
+                    )
                 yield batch
 
     async def generate_pipeline_stages(
@@ -613,9 +1428,16 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 async for builds_batch in self._generate_builds_for_project(project):
+                    semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
+
+                    async def fetch_stages_with_semaphore(
+                        build: dict[str, Any],
+                    ) -> list[dict[str, Any]]:
+                        async with semaphore:
+                            return await self._fetch_stages_for_build(project, build)
+
                     stage_tasks = [
-                        self._fetch_stages_for_build(project, build)
-                        for build in builds_batch
+                        fetch_stages_with_semaphore(build) for build in builds_batch
                     ]
                     stage_results = await asyncio.gather(
                         *stage_tasks, return_exceptions=True
@@ -688,10 +1510,8 @@ class AzureDevopsClient(HTTPBaseClient):
         team_id = team["id"]
         iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
 
-        params = {"api-version": "7.1"}
-
         try:
-            response = await self.send_request("GET", iterations_url, params=params)
+            response = await self.send_request("GET", iterations_url, params=API_PARAMS)
             if not response:
                 return []
 
@@ -712,8 +1532,61 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             return []
 
-    @cache_iterator_result()
+    async def generate_area_paths(
+        self, depth: Optional[int] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate area paths (work item area classification nodes) for all
+        projects in the organization.
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [
+                self._area_paths_for_project(project, depth) for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _area_paths_for_project(
+        self, project: dict[str, Any], depth: Optional[int] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield the flattened area-path tree for a single project."""
+        project_id = project["id"]
+        areas_url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wit/classificationnodes/Areas"
+        )
+        params: dict[str, Any] = {**API_PARAMS}
+        if depth is not None:
+            params["$depth"] = depth
+
+        try:
+            response = await self.send_request("GET", areas_url, params=params)
+            if not response:
+                return
+
+            area_paths = _flatten_area_path_tree(
+                node=response.json(), project=project, parent_identifier=None
+            )
+            if area_paths:
+                logger.info(
+                    f"Found {len(area_paths)} area paths for project {project['name']}"
+                )
+                yield area_paths
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch area paths for project {project_id}: {str(e)}"
+            )
+
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_environments_cached(
+            self._organization_base_url
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_environments_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
@@ -726,7 +1599,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_release_deployments(
         self,
+        additional_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        additional_params = additional_params or {}
         async for projects in self.generate_projects():
             for project in projects:
                 deployments_url = (
@@ -735,7 +1610,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 async for (
                     deployments
-                ) in self._get_paginated_by_top_and_continuation_token(deployments_url):
+                ) in self._get_paginated_by_top_and_continuation_token(
+                    deployments_url, additional_params=additional_params
+                ):
                     yield deployments
 
     async def generate_pipeline_deployments(
@@ -749,89 +1626,249 @@ class AzureDevopsClient(HTTPBaseClient):
                 deployment["__project"] = project
             yield deployments
 
+    async def _fetch_policies_for_repo(
+        self,
+        repo: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params: dict[str, Any] = {
+            "repositoryId": repo["id"],
+        }
+        if default_branch := repo.get("defaultBranch"):
+            params["refName"] = default_branch
+
+        policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
+        response = await self.send_request("GET", policies_url, params=params)
+        if not response:
+            return
+        repo_policies = response.json()["value"]
+
+        for policy in repo_policies:
+            policy["__repository"] = repo
+        yield repo_policies
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repos in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            for repo in repos:
-                params = {
-                    "repositoryId": repo["id"],
-                }
-                if default_branch := repo.get("defaultBranch"):
-                    params["refName"] = default_branch
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._fetch_policies_for_repo, repo),
+                )
+                for repo in repos
+            ]
+            async for policies in stream_async_iterators_tasks(*tasks):
+                yield policies
 
-                policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                response = await self.send_request("GET", policies_url, params=params)
-                if not response:
-                    continue
-                repo_policies = response.json()["value"]
-
-                for policy in repo_policies:
-                    policy["__repository"] = repo
-                yield repo_policies
+    async def _fetch_work_items_for_project(
+        self,
+        project: dict[str, Any],
+        wiql: Optional[str],
+        expand: str,
+        changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for work_item_ids in self._fetch_work_item_id_batches(
+            project,
+            wiql,
+            changed_after=changed_after,
+            wiql_time_precision=wiql_time_precision,
+        ):
+            if not work_item_ids:
+                logger.debug(
+                    f"No work item IDs returned for project {project['name']}, skipping"
+                )
+                continue
+            logger.info(
+                f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
+            )
+            async for work_items_batch in self._fetch_work_items_in_batches(
+                project["id"],
+                work_item_ids,
+                query_params={"$expand": expand},
+            ):
+                logger.debug(
+                    f"Received {len(work_items_batch)} work items for project {project['name']}"
+                )
+                yield self._add_project_details_to_work_items(work_items_batch, project)
 
     async def generate_work_items(
-        self, wiql: Optional[str], expand: str
+        self,
+        wiql: Optional[str],
+        expand: str,
+        changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
+
+        Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
+        of 20,000 results per query.
         """
         async for projects in self.generate_projects():
-            for project in projects:
-                # Execute WIQL query to get work item IDs
-                work_item_ids = await self._fetch_work_item_ids(project, wiql)
-                logger.info(
-                    f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_work_items_for_project,
+                        project,
+                        wiql,
+                        expand,
+                        changed_after,
+                        wiql_time_precision=wiql_time_precision,
+                    ),
                 )
-                # Fetch work items using the IDs (in batches if needed)
-                async for work_items_batch in self._fetch_work_items_in_batches(
-                    project["id"],
-                    work_item_ids,
-                    query_params={"$expand": expand},
-                ):
-                    logger.debug(f"Received {len(work_items_batch)} work items")
-                    # Enrich each work item with project details before yielding
-                    yield self._add_project_details_to_work_items(
-                        work_items_batch, project
-                    )
+                for project in projects
+            ]
+            async for work_items in stream_async_iterators_tasks(*tasks):
+                yield work_items
 
-    async def _fetch_work_item_ids(
-        self, project: dict[str, Any], wiql: Optional[str]
-    ) -> list[int]:
+    def _parse_wiql_with_order_by(
+        self, wiql: Optional[str]
+    ) -> tuple[Optional[str], Optional[str]]:
         """
-        Executes a WIQL query to fetch work item IDs for a given project.
+        Parse user's WIQL into filter and ORDER BY parts.
 
-        :param project_id: The ID of the project.
-        :return: A list of work item IDs.
+        :param wiql: User-provided WIQL (filter conditions, optionally with ORDER BY).
+        :return: Tuple of (filter_part, order_part). If no ORDER BY, order_part is None.
         """
-        wiql_query = f"SELECT [Id] from WorkItems WHERE [System.TeamProject] = '{project['name']}'"
+        if not wiql or not wiql.strip():
+            return None, None
 
-        if wiql:
-            # Append the user-provided wiql to the WHERE clause
-            wiql_query += f" AND {wiql}"
-            logger.info(f"Found and appended WIQL filter: {wiql}")
+        # Case-insensitive split on ORDER BY clause (WIQL: " ORDER BY [Field] Asc/Desc")
+        wiql_stripped = wiql.strip()
+        wiql_upper = wiql_stripped.upper()
+        order_by_marker = " ORDER BY "
+        order_by_idx = wiql_upper.find(order_by_marker)
+        if order_by_idx == -1:
+            # Also check for ORDER BY at start (no leading space)
+            if wiql_upper.startswith("ORDER BY "):
+                order_part = wiql_stripped[len("ORDER BY ") :].strip()
+                return None, order_part or None
+            return wiql_stripped, None
 
+        filter_part = wiql_stripped[:order_by_idx].strip()
+        order_part = wiql_stripped[order_by_idx + len(order_by_marker) :].strip()
+        return filter_part or None, order_part or None
+
+    def _wiql_request_params(
+        self,
+        *,
+        changed_after: Optional[datetime],
+        wiql_time_precision: bool,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "api-version": "7.1-preview.2",
+            "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+        }
+        if changed_after is not None and wiql_time_precision:
+            params["timePrecision"] = "true"
+        return params
+
+    async def _fetch_work_item_id_batches(
+        self,
+        project: dict[str, Any],
+        wiql: Optional[str],
+        changed_after: Optional[datetime] = None,
+        wiql_time_precision: bool = False,
+    ) -> AsyncGenerator[list[int], None]:
+        """
+        Executes WIQL queries to fetch work item IDs for a project.
+
+        When user's WIQL has no ORDER BY: uses ID-range pagination to fetch all work items
+        (Azure DevOps WIQL API returns at most 20,000 per query).
+
+        When user's WIQL has ORDER BY: uses their query as-is. Pagination is disabled;
+        only up to 20,000 work items per project will be returned (with a warning).
+
+        :param project: The project dict containing id and name.
+        :param wiql: Optional user-provided WIQL filter to append to the WHERE clause.
+        :param changed_after: When set (incremental sync), only work items changed on or
+            after the cursor. With ``wiql_time_precision``, uses full timestamp + ADO
+            ``timePrecision=true``; otherwise uses UTC calendar date only.
+        :yield: Batches of work item IDs (each batch up to MAX_WORK_ITEMS_RESULTS_PER_PROJECT).
+        """
+        filter_part, user_order_part = self._parse_wiql_with_order_by(wiql)
+
+        wiql_base = f"SELECT [Id] FROM WorkItems WHERE [System.TeamProject] = '{project['name']}'"
+        if filter_part:
+            wiql_base += f" AND ({filter_part})"
+            logger.info(f"Using WIQL filter: {filter_part}")
+        if changed_after is not None:
+            wiql_base += f" AND {wiql_changed_after_clause(changed_after, time_precision=wiql_time_precision)}"
+
+        wiql_params = self._wiql_request_params(
+            changed_after=changed_after,
+            wiql_time_precision=wiql_time_precision,
+        )
+
+        if user_order_part:
+            logger.warning(
+                "WIQL contains ORDER BY. Pagination is disabled - only up to 20,000 work items "
+                "per project will be returned. To fetch all work items, remove ORDER BY from your WIQL."
+            )
+            # Single WIQL call, no pagination loop
+            wiql_query = wiql_base + f" ORDER BY {user_order_part}"
+            wiql_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
+            wiql_response = await self.send_request(
+                "POST",
+                wiql_url,
+                params=wiql_params,
+                data=json.dumps({"query": wiql_query}),
+                headers={"Content-Type": "application/json"},
+            )
+            if wiql_response:
+                work_items = wiql_response.json().get("workItems", [])
+                work_item_ids = [item["id"] for item in work_items]
+                if work_item_ids:
+                    yield work_item_ids
+            return
+
+        # No user ORDER BY: use our ORDER BY [System.Id] Asc for pagination
         wiql_url = (
             f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
         )
-        logger.info(
-            f"Fetching work item IDs for project {project['name']} using WIQL query {wiql_query}"
-        )
-        wiql_response = await self.send_request(
-            "POST",
-            wiql_url,
-            params={
-                "api-version": "7.1-preview.2",
-                "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
-            },
-            data=json.dumps({"query": wiql_query}),
-            headers={"Content-Type": "application/json"},
-        )
-        if not wiql_response:
-            return []
-        return [item["id"] for item in wiql_response.json()["workItems"]]
+        last_id = 0
+
+        while True:
+            wiql_query = wiql_base
+            if last_id > 0:
+                wiql_query += f" AND [System.Id] > {last_id}"
+            wiql_query += " ORDER BY [System.Id] Asc"
+
+            logger.debug(
+                f"Fetching work item IDs for project {project['name']} (last_id={last_id})"
+            )
+            wiql_response = await self.send_request(
+                "POST",
+                wiql_url,
+                params=wiql_params,
+                data=json.dumps({"query": wiql_query}),
+                headers={"Content-Type": "application/json"},
+            )
+            if not wiql_response:
+                break
+
+            work_items = wiql_response.json().get("workItems", [])
+            work_item_ids = [item["id"] for item in work_items]
+
+            if not work_item_ids:
+                break
+
+            yield work_item_ids
+
+            if len(work_item_ids) < MAX_WORK_ITEMS_RESULTS_PER_PROJECT:
+                logger.info(
+                    f"Completed work item ID fetch for project {project['name']} "
+                    f"(total batches, last batch had {len(work_item_ids)} items)"
+                )
+                break
+
+            last_id = max(work_item_ids)
 
     async def _fetch_work_items_in_batches(
         self,
@@ -871,7 +1908,15 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             if not work_items_response:
                 continue
-            yield work_items_response.json()["value"]
+            try:
+                yield work_items_response.json()["value"]
+            except json.decoder.JSONDecodeError as e:
+                logger.error(
+                    f"Failed to decode work items response for project {project_id}, "
+                    f"batch IDs {batch_ids[0]}-{batch_ids[-1]} ({len(batch_ids)} items): {e}. "
+                    f"Aborting resync to prevent incorrect deletes of work items in incomplete batch."
+                )
+                raise
 
     def _add_project_details_to_work_items(
         self, work_items: list[dict[str, Any]], project: dict[str, Any]
@@ -908,13 +1953,428 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         return response.json()
 
-    async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
+    async def get_pull_request(
+        self,
+        pull_request_id: str,
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+    ) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
         if not response:
             return None
         pull_request_data = response.json()
-        return pull_request_data
+        if not (enrich_with_commits or enrich_with_review_discussion):
+            return pull_request_data
+        enriched = await self.enrich_pull_requests(
+            [pull_request_data],
+            enrich_with_commits=enrich_with_commits,
+            enrich_with_review_discussion=enrich_with_review_discussion,
+            concurrency=1,
+        )
+        return enriched[0] if enriched else pull_request_data
+
+    def _pull_request_item_url(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+        resource: str,
+    ) -> str:
+        return (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/{resource}"
+        )
+
+    async def get_pull_request_commits(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return commits on a pull request, paginating with continuation tokens.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/commits
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-commits/get-pull-request-commits
+        """
+        commits: list[dict[str, Any]] = []
+        async for batch in self._get_paginated_by_top_and_continuation_token(
+            self._pull_request_item_url(
+                project_id, repository_id, pull_request_id, "commits"
+            ),
+            additional_params=API_PARAMS,
+        ):
+            commits.extend(batch)
+        return commits
+
+    async def get_pull_request_threads(
+        self,
+        project_id: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return discussion threads on a pull request.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/list
+        """
+        url = self._pull_request_item_url(
+            project_id, repository_id, pull_request_id, "threads"
+        )
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        if not response:
+            return []
+        data = response.json()
+        value = data.get("value") if isinstance(data, dict) else None
+        return value if isinstance(value, list) else []
+
+    async def enrich_pull_requests(
+        self,
+        batch: list[dict[str, Any]],
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+        concurrency: int = MAX_CONCURRENT_PULL_REQUESTS_FOR_ENRICHMENT,
+    ) -> list[dict[str, Any]]:
+        """Attach opt-in raw commits and threads from Azure DevOps onto a pull-request batch."""
+        if not batch or not (enrich_with_commits or enrich_with_review_discussion):
+            return batch
+
+        logger.info(
+            f"Enriching {len(batch)} pull requests "
+            f"(commits={enrich_with_commits}, "
+            f"reviewDiscussion={enrich_with_review_discussion})"
+        )
+        return await throttle_batch_operation(
+            [
+                functools.partial(
+                    self._attach_pull_request_enrichment,
+                    pull_request,
+                    enrich_with_commits=enrich_with_commits,
+                    enrich_with_review_discussion=enrich_with_review_discussion,
+                )
+                for pull_request in batch
+            ],
+            concurrency,
+        )
+
+    async def _attach_pull_request_enrichment(
+        self,
+        pull_request: dict[str, Any],
+        *,
+        enrich_with_commits: bool,
+        enrich_with_review_discussion: bool,
+    ) -> dict[str, Any]:
+        resource_ids = _pull_request_resource_ids(pull_request)
+        if resource_ids is None:
+            logger.warning(
+                "Skipping pull request enrichment; missing project, repository, "
+                f"or pullRequestId (id={pull_request.get('pullRequestId')!r})"
+            )
+            return pull_request
+
+        project_id, repository_id, pull_request_id = resource_ids
+        fetchers: dict[str, Awaitable[list[dict[str, Any]]]] = {}
+        if enrich_with_commits:
+            fetchers["commits"] = self.get_pull_request_commits(
+                project_id, repository_id, pull_request_id
+            )
+        if enrich_with_review_discussion:
+            fetchers["threads"] = self.get_pull_request_threads(
+                project_id, repository_id, pull_request_id
+            )
+
+        results = await asyncio.gather(
+            *fetchers.values(),
+            return_exceptions=True,
+        )
+
+        for label, result in zip(fetchers, results):
+            field = _PR_ENRICHMENT_FIELDS[label]
+            if not isinstance(result, list):
+                logger.warning(
+                    f"{label} enrichment failed for pull request "
+                    f"{project_id}/{repository_id}!{pull_request_id}: {result}"
+                )
+                pull_request[field] = None
+                continue
+            pull_request[field] = result
+
+        return pull_request
+
+    async def create_pull_request_thread(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create a comment thread on a pull request.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/create
+        """
+        create_thread_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/threads"
+        )
+        logger.info(
+            f"Creating comment thread on pull request {pull_request_id} in repository "
+            f"{repository_id} for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "POST",
+            create_thread_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create a comment thread on pull request {pull_request_id} "
+                f"in repository {repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def get_pull_request_labels(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> list[dict[str, Any]]:
+        """List the labels assigned to a pull request.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/labels
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-labels/list
+        """
+        labels_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/labels"
+        )
+        response = await self.send_request(
+            "GET",
+            labels_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return []
+        return response.json().get("value", [])
+
+    async def create_pull_request_label(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        label: str,
+    ) -> dict[str, Any]:
+        """Add a label to a pull request.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/labels
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-labels/create
+        """
+        create_label_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullRequests/{pull_request_id}/labels"
+        )
+        logger.info(
+            f"Adding label '{label}' to pull request {pull_request_id} in repository "
+            f"{repository_id} for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "POST",
+            create_label_url,
+            data=json.dumps({"name": label}),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to add label '{label}' to pull request {pull_request_id} in "
+                f"repository {repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def update_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a pull request.
+
+        API: PATCH {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update
+        """
+        update_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        logger.info(
+            f"Updating pull request {pull_request_id} in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            pull_request_id=pull_request_id,
+        )
+        response = await self.send_request(
+            "PATCH",
+            update_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to update pull request {pull_request_id} in repository "
+                f"{repository_id}: no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+                pull_request_id=pull_request_id,
+            )
+            return {}
+        return response.json()
+
+    async def close_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Abandon a pull request without merging it."""
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {"status": "abandoned"},
+        )
+
+    async def get_repository_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any] | None:
+        """Get a pull request scoped to a project and repository."""
+        get_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests/{pull_request_id}"
+        )
+        response = await self.send_request(
+            "GET",
+            get_pull_request_url,
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            return None
+        return response.json()
+
+    async def merge_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        pull_request_id: str,
+    ) -> dict[str, Any]:
+        """Merge a pull request."""
+        pull_request = await self.get_repository_pull_request(
+            project, repository_id, pull_request_id
+        )
+        if not pull_request:
+            raise RuntimeError(
+                f"Pull request '{pull_request_id}' was not found in repository "
+                f"'{repository_id}'"
+            )
+
+        last_merge_source_commit = pull_request.get("lastMergeSourceCommit")
+        commit_id = (
+            last_merge_source_commit.get("commitId")
+            if isinstance(last_merge_source_commit, dict)
+            else None
+        )
+        if not commit_id:
+            raise RuntimeError(
+                "Pull request is not ready to merge: lastMergeSourceCommit is missing. "
+                "Wait for Azure DevOps to finish computing the merge preview and retry."
+            )
+
+        return await self.update_pull_request(
+            project,
+            repository_id,
+            pull_request_id,
+            {
+                "status": "completed",
+                "lastMergeSourceCommit": last_merge_source_commit,
+            },
+        )
+
+    async def create_pull_request(
+        self,
+        project: str,
+        repository_id: str,
+        options: CreatePullRequestOptions,
+    ) -> dict[str, Any]:
+        """Create a pull request in the given repository.
+
+        API: POST {org}/{project}/_apis/git/repositories/{repositoryId}/pullrequests
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/create
+        """
+        create_pull_request_url = (
+            f"{self._organization_base_url}/{project}/{API_URL_PREFIX}"
+            f"/git/repositories/{repository_id}/pullrequests"
+        )
+        body: dict[str, Any] = {
+            "title": options.title,
+            "sourceRefName": _normalize_git_ref(options.source_ref_name),
+            "targetRefName": _normalize_git_ref(options.target_ref_name),
+        }
+        if options.description:
+            body["description"] = options.description
+
+        logger.info(
+            f"Creating pull request '{options.title}' in repository {repository_id} "
+            f"for project {project}",
+            project=project,
+            repository_id=repository_id,
+            source_ref_name=body["sourceRefName"],
+            target_ref_name=body["targetRefName"],
+        )
+        response = await self.send_request(
+            "POST",
+            create_pull_request_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to create pull request in repository {repository_id}: "
+                "no response from Azure DevOps",
+                project=project,
+                repository_id=repository_id,
+            )
+            return {}
+        return response.json()
 
     async def get_repository(self, repository_id: str) -> dict[Any, Any] | None:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
@@ -947,6 +2407,83 @@ class AzureDevopsClient(HTTPBaseClient):
         pipeline_run_data = response.json()
         return pipeline_run_data
 
+    async def run_pipeline(
+        self,
+        project_id: str,
+        pipeline_id: str,
+        options: RunPipelineOptions,
+    ) -> dict[str, Any]:
+        """Trigger a pipeline run and return the created run.
+
+        API: POST {org}/{project}/_apis/pipelines/{pipelineId}/runs
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/run-pipeline
+        """
+        run_pipeline_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/pipelines/{pipeline_id}/runs"
+        )
+        body: dict[str, Any] = {}
+        if options.branch:
+            ref_name = (
+                options.branch
+                if options.branch.startswith("refs/")
+                else f"refs/heads/{options.branch}"
+            )
+            body["resources"] = {"repositories": {"self": {"refName": ref_name}}}
+        if options.template_parameters:
+            body["templateParameters"] = options.template_parameters
+        if options.variables:
+            # The Run Pipeline API expects each variable as { "value": <value> }.
+            # Values already in that shape are passed through to allow advanced
+            # inputs (e.g. { "value": x, "isSecret": true }).
+            body["variables"] = {
+                name: (
+                    value
+                    if isinstance(value, dict) and "value" in value
+                    else {"value": value}
+                )
+                for name, value in options.variables.items()
+            }
+
+        logger.info(
+            f"Sending Run Pipeline request for pipeline {pipeline_id} in project {project_id}",
+            project_id=project_id,
+            pipeline_id=pipeline_id,
+            url=run_pipeline_url,
+        )
+        response = await self.send_request(
+            "POST",
+            run_pipeline_url,
+            data=json.dumps(body),
+            headers={"Content-Type": "application/json"},
+            params=API_PARAMS,
+            raise_on_404=True,
+        )
+        if not response:
+            logger.error(
+                f"Failed to trigger pipeline {pipeline_id} in project {project_id}: no response from Azure DevOps",
+                project_id=project_id,
+                pipeline_id=pipeline_id,
+            )
+            raise RuntimeError(
+                f"Failed to trigger pipeline {pipeline_id} in project {project_id}"
+            )
+        run = response.json()
+        logger.info(
+            f"Run Pipeline request succeeded for pipeline {pipeline_id} in project {project_id}: run {run.get('id')}",
+            project_id=project_id,
+            pipeline_id=pipeline_id,
+            run_id=run.get("id"),
+            state=run.get("state"),
+        )
+        return run
+
+    def is_close_to_rate_limit(self) -> bool:
+        return self._rate_limiter.is_close_to_limit
+
+    def seconds_until_rate_limit_reset(self) -> float:
+        return self._rate_limiter.seconds_until_reset
+
     async def get_pipeline_stage(
         self, project: dict[str, Any], pipeline_id: str, run_id: str, stage_id: str
     ) -> dict[Any, Any] | None:
@@ -962,6 +2499,51 @@ class AzureDevopsClient(HTTPBaseClient):
             if stage["id"] == stage_id:
                 return stage
         return None
+
+    async def get_release(
+        self, project_id: str, release_id: int
+    ) -> dict[Any, Any] | None:
+        release_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/releases/{release_id}"
+        )
+        response = await self.send_request("GET", release_url)
+        if not response:
+            return None
+        return response.json()
+
+    async def get_release_definition(
+        self, project_id: str, definition_id: str, project: dict[str, Any]
+    ) -> dict[Any, Any] | None:
+        definition_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/definitions/{definition_id}"
+        )
+        response = await self.send_request("GET", definition_url)
+        if not response:
+            return None
+        definition = response.json()
+        definition["__project"] = project
+        return definition
+
+    async def get_release_deployment(
+        self, project_id: str, release_id: int, environment_id: int
+    ) -> dict[Any, Any] | None:
+        deployments_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/deployments"
+        )
+        params = {
+            "deploymentStatus": "all",
+            "releaseId": release_id,
+            "definitionEnvironmentId": environment_id,
+            "$top": 1,
+        }
+        response = await self.send_request("GET", deployments_url, params=params)
+        if not response:
+            return None
+        deployments = response.json().get("value", [])
+        return deployments[0] if deployments else None
 
     async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_boards_in_organization():
@@ -1024,9 +2606,17 @@ class AzureDevopsClient(HTTPBaseClient):
                         continue
                     raise
 
-    @cache_iterator_result()
     async def get_boards_in_organization(
         self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._get_boards_in_organization_cached(
+            self._organization_base_url
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _get_boards_in_organization_cached(
+        self, org_identifier: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             yield [
@@ -1036,18 +2626,39 @@ class AzureDevopsClient(HTTPBaseClient):
                 for board in boards
             ]
 
-    async def generate_subscriptions_webhook_events(self) -> list[WebhookSubscription]:
+    async def generate_subscriptions_webhook_events(
+        self,
+        publisher_id: str,
+        event_type: str,
+    ) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
+        subscription_base_url, api_params = self._get_subscription_base_url_and_params(
+            publisher_id
+        )
+        params: dict[str, str] = {
+            **api_params,
+            "publisherId": publisher_id,
+            "eventType": event_type,
+        }
         try:
             get_subscriptions_url = (
-                f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
+                f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
             response = await self.send_request(
-                "GET", get_subscriptions_url, headers=headers
+                "GET", get_subscriptions_url, headers=headers, params=params
             )
             if not response:
+                logger.warning(
+                    f"Webhook subscription lookup returned no response: "
+                    f"eventType={event_type}, publisherId={publisher_id}, "
+                    f"url={get_subscriptions_url}",
+                )
                 return []
             subscriptions_raw = response.json().get("value", [])
+            logger.debug(
+                f"Fetched webhook subscriptions: eventType={event_type}, publisherId={publisher_id}, "
+                f"count={response.json().get("count", []) or len(subscriptions_raw)}"
+            )
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
@@ -1056,22 +2667,67 @@ class AzureDevopsClient(HTTPBaseClient):
             WebhookSubscription(**subscription) for subscription in subscriptions_raw
         ]
 
+    async def get_filtered_webhook_subscriptions(
+        self,
+        *,
+        org_level: bool = False,
+    ) -> list[WebhookSubscription]:
+        unique_filters = sorted(
+            {
+                (sub.publisherId, sub.eventType)
+                for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+                if not org_level or sub.eventType not in PROJECT_SCOPED_ONLY_EVENT_TYPES
+            }
+        )
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+
+        async def fetch(
+            publisher_id: str, event_type: str
+        ) -> list[WebhookSubscription]:
+            async with semaphore:
+                logger.debug(
+                    f"Fetching existing subscriptions for publisherId={publisher_id}, eventType={event_type}"
+                )
+                return await self.generate_subscriptions_webhook_events(
+                    publisher_id=publisher_id, event_type=event_type
+                )
+
+        results = await asyncio.gather(
+            *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
+        )
+
+        total_subscriptions = sum(len(batch) for batch in results)
+        logger.info(
+            f"Completed filtered webhook subscription lookup: "
+            f"totalFilters={len(unique_filters)}, "
+            f"totalSubscriptions={total_subscriptions}"
+        )
+
+        return [sub for batch in results for sub in batch]
+
     async def create_subscription(
         self,
         webhook_subscription: WebhookSubscription,
-    ) -> None:
+    ) -> Optional[str]:
+        """Create a webhook subscription and return its ID (or None on failure)."""
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         create_subscription_url = (
             f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
+        project_id = (webhook_subscription.publisherInputs or {}).get("projectId")
         webhook_subscription_json = webhook_subscription.json()
-        logger.info(f"Creating subscription to event: {webhook_subscription_json}")
+        logger.debug(
+            f"Creating webhook subscription: "
+            f"publisherId={webhook_subscription.publisherId}, "
+            f"eventType={webhook_subscription.eventType}, "
+            f"projectId={project_id}, "
+            f"url={create_subscription_url}, params={params}"
+        )
         response = await self.send_request(
             "POST",
             create_subscription_url,
@@ -1080,21 +2736,29 @@ class AzureDevopsClient(HTTPBaseClient):
             data=webhook_subscription_json,
         )
         if not response:
-            return
+            logger.warning(
+                f"Webhook subscription create returned no response: "
+                f"publisherId={webhook_subscription.publisherId}, "
+                f"eventType={webhook_subscription.eventType}, "
+                f"projectId={project_id}, "
+                f"url={create_subscription_url}, params={params}"
+            )
+            return None
         response_content = response.json()
+        sub_id = response_content.get("id")
         logger.info(
-            f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
+            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')} for projectId {project_id}"
         )
+        return sub_id
 
     async def delete_subscription(
         self, webhook_subscription: WebhookSubscription
     ) -> None:
         headers = {"Content-Type": "application/json"}
-        subscription_base_url = self._organization_base_url
-        params = WEBHOOK_API_PARAMS
-        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
-            subscription_base_url = self._advsec_base_url
-            params = ADVANCED_SECURITY_API_PARAMS
+        (
+            subscription_base_url,
+            params,
+        ) = self._get_subscription_base_url_and_params(webhook_subscription.publisherId)
 
         delete_subscription_url = f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
         logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
@@ -1166,8 +2830,10 @@ class AzureDevopsClient(HTTPBaseClient):
             include_disabled_repositories=True
         ):
             if not repositories:
-                logger.warning("No repositories found. Skipping file discovery.")
-                return
+                logger.warning(
+                    "Skipping file discovery for project with no repositories."
+                )
+                continue
 
             filtered_repositories = (
                 [repo for repo in repositories if repo["name"] in repos]
@@ -1190,23 +2856,35 @@ class AzureDevopsClient(HTTPBaseClient):
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
 
+    def _resolve_repository_branch(
+        self,
+        repository: dict[str, Any],
+        branch_override: str | None = None,
+    ) -> str | None:
+        if branch_override:
+            return branch_override
+
+        default_branch = repository.get("defaultBranch")
+        if not default_branch:
+            return None
+
+        return default_branch.replace("refs/heads/", "")
+
     async def _get_repository_files(
         self,
         repository: dict[str, Any],
         paths: list[str],
-    ) -> AsyncGenerator[list[dict[str, Any] | None], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Checking repository {repository['name']} for files matching {paths}"
         )
 
-        branch = repository.get("defaultBranch")
+        branch = self._resolve_repository_branch(repository)
         if not branch:
             logger.warning(
                 f"Repository {repository['name']} has no default branch. Skipping."
             )
             return
-
-        branch = branch.replace("refs/heads/", "")
 
         files = []
         literal_paths, glob_patterns = separate_glob_and_literal_paths(paths)
@@ -1249,6 +2927,11 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         for file in downloaded_files:
+            if file is None:
+                logger.warning(
+                    f"A file in repository {repository['name']} could not be downloaded or processed and will be skipped."
+                )
+                continue
             yield [file]
 
     async def _get_files_by_explicit_paths(
@@ -1291,8 +2974,8 @@ class AzureDevopsClient(HTTPBaseClient):
             ]
         }
 
-        timeout_retries = 0
-        while timeout_retries <= MAX_TIMEMOUT_RETRIES:
+        transient_retries = 0
+        while transient_retries <= MAX_TIMEMOUT_RETRIES:
             try:
                 response = await self.send_request(
                     "POST",
@@ -1300,9 +2983,8 @@ class AzureDevopsClient(HTTPBaseClient):
                     params=API_PARAMS,
                     data=json.dumps(request_data),
                     headers={"Content-Type": "application/json"},
-                    timeout=30,
                 )
-                if not response or response.status_code >= 400:
+                if not response:
                     logger.warning(f"Failed to fetch items from {items_batch_url}")
                     return []
 
@@ -1314,13 +2996,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 ]
 
             except ReadTimeout:
-                timeout_retries += 1
-                if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                transient_retries += 1
+                if transient_retries <= MAX_TIMEMOUT_RETRIES:
                     logger.warning(
                         f"Request timeout while fetching items for repository {repository['name']} "
-                        f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
                     )
-                    await asyncio.sleep(2 ** (timeout_retries - 1))
+                    await asyncio.sleep(2 ** (transient_retries - 1))
                     continue
                 else:
                     logger.error(
@@ -1334,6 +3016,20 @@ class AzureDevopsClient(HTTPBaseClient):
                     )
 
             except HTTPStatusError as e:
+                if e.response.status_code == 503:
+                    transient_retries += 1
+                    if transient_retries <= MAX_TIMEMOUT_RETRIES:
+                        logger.warning(
+                            f"503 from itemsbatch for repository {repository['name']} "
+                            f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        )
+                        await asyncio.sleep(2 ** (transient_retries - 1))
+                        continue
+                    logger.error(
+                        f"Persistent 503 fetching items for repository {repository['name']} "
+                        f"after {MAX_TIMEMOUT_RETRIES + 1} attempts."
+                    )
+                    raise
                 logger.error(e.response.status_code)
                 logger.error(e.response.text)
                 if e.response.status_code == 400:
@@ -1341,8 +3037,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
                     )
                     return []
-                else:
-                    raise
+                raise
             except Exception as e:
                 logger.error(
                     f"Unexpected error processing files in {repository['name']}: {e}"
@@ -1415,52 +3110,68 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.error(f"Failed to commit changes from {url}: {str(e)}")
             raise
 
+    async def get_commit(
+        self, project_id: str, repository_id: str, commit_id: str
+    ) -> dict[str, Any]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}"
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        return response.json() if response else {}
+
     async def create_webhook_subscriptions(
         self,
         base_url: str,
         project_id: Optional[str] = None,
         webhook_secret: Optional[str] = None,
-    ) -> None:
-        auth_username = self.webhook_auth_username
-
-        existing_subscriptions = await self.generate_subscriptions_webhook_events()
-
-        subs_to_create = []
-        subs_to_delete = []
-
-        webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
-
-        for sub in webhook_subs:
-            sub.set_webhook_details(
-                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
-                auth_username=auth_username,
-                webhook_secret=webhook_secret,
-                project_id=project_id,
-            )
-            existing_sub = sub.get_event_by_subscription(existing_subscriptions)
-
-            if existing_sub and not existing_sub.is_enabled():
-                subs_to_delete.append(existing_sub)
-                subs_to_create.append(sub)
-            elif not existing_sub:
-                subs_to_create.append(sub)
-
-        if subs_to_delete:
-            await asyncio.gather(
-                *[self.delete_subscription(sub) for sub in subs_to_delete]
+        existing_subscriptions: Optional[list[WebhookSubscription]] = None,
+    ) -> list[str]:
+        """Create/reconcile webhook subscriptions and return all active subscription IDs."""
+        if existing_subscriptions is None:
+            existing_subscriptions = await self.get_filtered_webhook_subscriptions(
+                org_level=not bool(project_id),
             )
 
-        if subs_to_create:
-            results = await asyncio.gather(
-                *[self.create_subscription(sub) for sub in subs_to_create],
-                return_exceptions=True,
-            )
+        plan = plan_webhook_subscription_reconciliation(
+            webhook_subscriptions=AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS,
+            webhook_url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
+            auth_username=self.webhook_auth_username,
+            webhook_secret=webhook_secret,
+            project_id=project_id,
+            existing_subscriptions=existing_subscriptions,
+            project_scoped_only_event_types=PROJECT_SCOPED_ONLY_EVENT_TYPES,
+        )
+        (
+            created_sub_ids,
+            stale_subscriptions_to_delete,
+            failed_create_count,
+        ) = await create_webhook_subscription_batch(
+            subs_to_create=plan.subs_to_create,
+            create_subscription=self.create_subscription,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
 
-            errors = [result for result in results if isinstance(result, Exception)]
-            if errors:
-                logger.error(f"Failed to create {len(errors)} webhooks:")
-                for idx, error in enumerate(errors, start=1):
-                    logger.error(f"[{idx}] {type(error).__name__}: {str(error)}")
+        subscriptions_to_delete = plan.subs_to_delete + stale_subscriptions_to_delete
+        delete_candidate_count = len(
+            dedupe_subscriptions_by_id(subscriptions_to_delete)
+        )
+        logger.info(
+            f"Webhook subscription reconciliation summary: "
+            f"kept={len(plan.kept_sub_ids)}, created={len(created_sub_ids)}, "
+            f"failedCreates={failed_create_count}, "
+            f"deleteCandidates={delete_candidate_count}, "
+            f"skippedProjectScoped={plan.skipped_project_scoped_count}, "
+            f"actions={dict(plan.action_counts)}"
+        )
+
+        await delete_webhook_subscriptions(
+            subscriptions=subscriptions_to_delete,
+            delete_subscription=self.delete_subscription,
+            max_deletes_per_reconciliation=MAX_SUBSCRIPTION_DELETES_PER_RECONCILIATION,
+            max_concurrent_requests=MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+        )
+
+        # Return all active subscription IDs so the caller can populate the
+        # subscription registry for webhook event routing.
+        return plan.kept_sub_ids + created_sub_ids
 
     async def get_repository_tree(
         self,
@@ -1481,7 +3192,7 @@ class AzureDevopsClient(HTTPBaseClient):
         items_batch_url = f"{self._organization_base_url}/_apis/git/repositories/{repository_id}/items"
 
         params = {
-            "scopePath": path,
+            "scopePath": _normalize_git_scope_path(path),
             "recursionLevel": recursion_level,
             "$top": PAGE_SIZE,
             "api-version": "7.1",
@@ -1514,16 +3225,16 @@ class AzureDevopsClient(HTTPBaseClient):
         parts = pattern.split("/")
         base_parts = []
         for part in parts:
-            if "*" not in part:
-                base_parts.append(part)
-            else:
+            if "*" in part:
                 break
+            if part:
+                base_parts.append(part)
         base_path = "/".join(base_parts)
 
         return functools.partial(
             self.get_repository_tree,
             repository_id,
-            path=base_path or "/",
+            path=_normalize_git_scope_path(base_path),
             recursion_level="oneLevel",  # Always use oneLevel recursion
         )
 
@@ -1573,20 +3284,27 @@ class AzureDevopsClient(HTTPBaseClient):
         folder_pattern: FolderPattern,
         repo_mapping: RepositoryBranchMapping | None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        branch = repo_mapping.branch if repo_mapping else None
-        if not branch and "defaultBranch" in repo:
-            branch = repo["defaultBranch"].replace("refs/heads/", "")
+        branch = self._resolve_repository_branch(
+            repo, repo_mapping.branch if repo_mapping else None
+        )
+        if not branch:
+            logger.warning(
+                f"Repository {repo['name']} has no default branch. Skipping."
+            )
+            return
 
         async for found_folders in self.get_repository_folders(
             repo["id"], [folder_pattern.path]
         ):
-            processed_folders = []
-            for folder in found_folders:
-                folder_dict = dict(folder)
-                folder_dict["__repository"] = repo
-                folder_dict["__branch"] = branch
-                folder_dict["__pattern"] = folder_pattern.path
-                processed_folders.append(folder_dict)
+            processed_folders = [
+                {
+                    **folder,
+                    "__repository": repo,
+                    "__branch": branch,
+                    "__pattern": folder_pattern.path,
+                }
+                for folder in found_folders
+            ]
             if processed_folders:
                 yield processed_folders
 
@@ -1720,26 +3438,71 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return enriched
 
+    async def _fetch_enriched_test_runs(
+        self,
+        project_id: str,
+        include_results: bool,
+        coverage_config: Optional["CodeCoverageConfig"],
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        if min_last_updated_date is None and max_last_updated_date is None:
+            params: dict[str, Any] = {"includeRunDetails": True, **API_PARAMS}
+            async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+                yield await self._enrich_test_runs(
+                    runs, project_id, include_results, coverage_config
+                )
+            return
+
+        window_start = min_last_updated_date
+        window_end = max_last_updated_date or datetime.now(timezone.utc)
+        if window_start is None:
+            window_start = window_end - TEST_RUN_QUERY_MAX_WINDOW
+
+        while window_start < window_end:
+            chunk_end = min(window_start + TEST_RUN_QUERY_MAX_WINDOW, window_end)
+            params = {
+                "includeRunDetails": True,
+                **API_PARAMS,
+                "minLastUpdatedDate": window_start.isoformat(),
+                "maxLastUpdatedDate": chunk_end.isoformat(),
+            }
+            async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+                yield await self._enrich_test_runs(
+                    runs, project_id, include_results, coverage_config
+                )
+            window_start = chunk_end
+
     async def fetch_test_runs(
         self,
         include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"] = None,
+        min_last_updated_date: Optional[datetime] = None,
+        max_last_updated_date: Optional[datetime] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
         )
 
-        params = {"includeRunDetails": True}
         async for projects in self.generate_projects():
-            for project in projects:
-                project_id = project["id"]
-                url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-                async for runs in self._get_paginated_by_top_and_continuation_token(
-                    url, additional_params=params
-                ):
-                    yield await self._enrich_test_runs(
-                        runs, project_id, include_results, coverage_config
-                    )
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_enriched_test_runs,
+                        project["id"],
+                        include_results,
+                        coverage_config,
+                        min_last_updated_date,
+                        max_last_updated_date,
+                    ),
+                )
+                for project in projects
+            ]
+            async for test_runs in stream_async_iterators_tasks(*tasks):
+                yield test_runs
 
     async def _attach_async_results(
         self,
@@ -1762,6 +3525,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     value,
                     field_name,
                     run.get("id"),
+                    exc_info=True,
                 )
                 continue
             run[field_name] = value
@@ -1783,15 +3547,8 @@ class AzureDevopsClient(HTTPBaseClient):
             else []
         )
 
-        coverage_tasks: list[Awaitable[dict[str, Any]]] = (
-            [
-                self._fetch_code_coverage(
-                    project_id, run["build"]["id"], coverage_config
-                )
-                for run in test_runs
-            ]
-            if coverage_config
-            else []
+        coverage_tasks = self._build_coverage_tasks(
+            test_runs, project_id, coverage_config
         )
 
         await self._attach_async_results(
@@ -1802,6 +3559,43 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         return test_runs
+
+    def _build_coverage_tasks(
+        self,
+        test_runs: list[dict[str, Any]],
+        project_id: str,
+        coverage_config: Optional["CodeCoverageConfig"],
+    ) -> list[Awaitable[dict[str, Any]]]:
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = []
+        if not coverage_config:
+            return coverage_tasks
+
+        skipped_coverage = 0
+        for run in test_runs:
+            run_id = run.get("id")
+            build_id = (run.get("build") or {}).get("id")
+            if not build_id:
+                skipped_coverage += 1
+                logger.debug(
+                    f"Skipping code coverage for test run {run_id} in "
+                    f"project {project_id}: no associated build"
+                )
+                coverage_tasks.append(self._no_coverage())
+                continue
+
+            coverage_tasks.append(
+                self._fetch_code_coverage(project_id, build_id, coverage_config)
+            )
+
+        logger.info(
+            "Fetched code coverage for {} of {} test runs in project {}. Skipped {} runs without an associated build.",
+            len(test_runs) - skipped_coverage,
+            len(test_runs),
+            project_id,
+            skipped_coverage,
+        )
+
+        return coverage_tasks
 
     async def _fetch_test_results(
         self, project_id: str, run_id: str
@@ -1821,7 +3615,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Starting to fetch code coverage for project {project_id}, run id={build_id}, flags={coverage_config.flags}"
         )
 
-        params = {"buildId": build_id}
+        params: dict[str, Any] = {"buildId": build_id, **API_PARAMS}
         if coverage_config.flags is not None:
             params["flags"] = coverage_config.flags
 
@@ -1831,3 +3625,239 @@ class AzureDevopsClient(HTTPBaseClient):
             return {}
 
         return response.json()
+
+    async def _no_coverage(self) -> dict[str, Any]:
+        """Return empty coverage for test runs without a build (e.g., manual test runs)."""
+        return {}
+
+    async def get_test_runs_by_build(
+        self,
+        project_id: str,
+        build_id: str,
+        include_results: bool = False,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
+    ) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        params: dict[str, Any] = {
+            "includeRunDetails": True,
+            "buildUri": f"vstfs:///Build/Build/{build_id}",
+        }
+        all_runs: list[dict[str, Any]] = []
+        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+            all_runs.extend(runs)
+        if all_runs:
+            await self._enrich_test_runs(
+                all_runs, project_id, include_results, coverage_config
+            )
+        return all_runs
+
+    async def get_wiki(
+        self, project_id: str, wiki_id: str, api_version: str = "7.1"
+    ) -> dict[str, Any] | None:
+        """Fetch a single wiki by ID.
+
+        API: GET {org}/{project}/_apis/wiki/wikis/{wikiId}?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}"
+        )
+        response = await self.send_request(
+            "GET", url, params={"api-version": api_version}
+        )
+        if not response:
+            logger.warning(f"Wiki {wiki_id} not found in project {project_id}")
+            return None
+        return response.json()
+
+    async def _get_wikis_for_project(
+        self, project: dict[str, Any], api_version: str = "7.1"
+    ) -> list[dict[str, Any]]:
+        """List all wikis for a project.
+
+        API: GET {org}/{project}/_apis/wiki/wikis?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project['id']}"
+            f"/{API_URL_PREFIX}/wiki/wikis"
+        )
+        response = await self.send_request(
+            "GET", url, params={"api-version": api_version}
+        )
+        if not response:
+            logger.warning(
+                f"No response when fetching wikis for project {project['name']}"
+            )
+            return []
+        wikis = response.json()["value"]
+        for wiki in wikis:
+            wiki["__project"] = project
+        return wikis
+
+    async def get_wiki_pages_batch(
+        self,
+        project_id: str,
+        wiki_id: str,
+        wiki_name: str,
+        api_version: str = "7.1",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate through all pages in a wiki using the pages batch endpoint.
+
+        API: POST {org}/{project}/_apis/wiki/wikis/{wikiId}/pagesbatch?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}/pagesbatch"
+        )
+        continuation_token: str | None = None
+
+        while True:
+            body: dict[str, Any] = {"top": PAGE_SIZE}
+            if continuation_token:
+                body["continuationToken"] = continuation_token
+
+            response = await self.send_request(
+                "POST",
+                url,
+                data=json.dumps(body),
+                headers={"Content-Type": "application/json"},
+                params={"api-version": api_version},
+            )
+            if not response:
+                logger.warning(
+                    f"No response when fetching wiki pages batch for wiki {wiki_name} in project {project_id}"
+                )
+                break
+
+            pages = response.json()["value"]
+            if not pages:
+                logger.debug(
+                    f"No more pages found for wiki {wiki_name} in project {project_id}"
+                )
+                break
+
+            logger.info(
+                f"Fetched {len(pages)} wiki pages for wiki {wiki_name} in project {project_id}"
+            )
+            yield pages
+
+            continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
+            if not continuation_token:
+                break
+
+    async def _get_wiki_page_by_id(
+        self,
+        project_id: str,
+        wiki_id: str,
+        wiki_name: str,
+        page_id: int,
+        include_content: bool = False,
+        api_version: str = "7.1",
+    ) -> dict[str, Any] | None:
+        """Fetch a single wiki page by its permanent ID.
+
+        API: GET {org}/{project}/_apis/wiki/wikis/{wikiId}/pages/{id}?api-version=7.1
+        """
+        url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wiki/wikis/{wiki_id}/pages/{page_id}"
+        )
+        params: dict[str, Any] = {"api-version": api_version}
+        if include_content:
+            params["includeContent"] = "true"
+
+        response = await self.send_request("GET", url, params=params)
+        if not response:
+            logger.warning(
+                f"Wiki page {page_id} not found in wiki {wiki_name} (project {project_id})"
+            )
+            return None
+        return response.json()
+
+    async def _enrich_pages_with_content(
+        self,
+        project_id: str,
+        wiki: dict[str, Any],
+        pages: list[dict[str, Any]],
+        semaphore: asyncio.BoundedSemaphore,
+        api_version: str = "7.1",
+    ) -> list[dict[str, Any]]:
+        project = wiki["__project"]
+        wiki_name = wiki["name"]
+
+        async def fetch_page_with_semaphore(
+            page: dict[str, Any],
+        ) -> dict[str, Any]:
+            async with semaphore:
+                full_page = await self._get_wiki_page_by_id(
+                    project_id,
+                    wiki["id"],
+                    wiki_name,
+                    page["id"],
+                    include_content=True,
+                    api_version=api_version,
+                )
+                enriched_page = full_page if full_page else page
+                enriched_page["__wiki"] = wiki
+                enriched_page["__project"] = project
+                return enriched_page
+
+        results = await asyncio.gather(
+            *[fetch_page_with_semaphore(page) for page in pages],
+            return_exceptions=True,
+        )
+
+        enriched: list[dict[str, Any]] = []
+        for result in results:
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch content for wiki page in wiki {wiki_name} (project {project_id}): {result}"
+                )
+                continue
+            enriched.append(result)
+        return enriched
+
+    async def generate_wiki_pages(
+        self,
+        wiki_type: str | None = None,
+        include_content: bool = False,
+        api_version: str = "7.1",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate wiki pages for all projects in the organization."""
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_WIKI_PAGES)
+
+        async for projects in self.generate_projects():
+            for project in projects:
+                wikis = await self._get_wikis_for_project(
+                    project, api_version=api_version
+                )
+
+                for wiki in wikis:
+                    if wiki_type and wiki["type"] != wiki_type:
+                        logger.debug(
+                            f"Skipping wiki {wiki['name']} (type={wiki['type']}, wanted {wiki_type})"
+                        )
+                        continue
+
+                    async for page_batch in self.get_wiki_pages_batch(
+                        project["id"],
+                        wiki["id"],
+                        wiki["name"],
+                        api_version=api_version,
+                    ):
+                        if include_content:
+                            enriched = await self._enrich_pages_with_content(
+                                project["id"],
+                                wiki,
+                                page_batch,
+                                semaphore,
+                                api_version=api_version,
+                            )
+                        else:
+                            enriched = [
+                                {**page, "__wiki": wiki, "__project": project}
+                                for page in page_batch
+                            ]
+                        yield enriched

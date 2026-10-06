@@ -1,0 +1,129 @@
+{
+  "identifier": "arn:aws:rds:us-east-1:1234567890:db:mysqldb",
+  "title": "mysqldb",
+  "blueprint": "rdsDbInstance",
+  "properties": {
+    "allocatedStorage": 100,
+    "associatedRoles": [],
+    "autoMinorVersionUpgrade": true,
+    "availabilityZone": "us-east-1b",
+    "backupRetentionPeriod": 7,
+    "caCertificateIdentifier": "rds-ca-2015",
+    "copyTagsToSnapshot": false,
+    "customerOwnedIpEnabled": false,
+    "dbInstanceArn": "arn:aws:rds:us-east-1:1234567890:db:mysqldb",
+    "dbInstanceClass": "db.m4.xlarge",
+    "dbInstanceIdentifier": "mysqldb",
+    "dbInstanceStatus": "available",
+    "dbParameterGroups": [
+      {
+        "DBParameterGroupName": "default.mysql5.6",
+        "ParameterApplyStatus": "in-sync"
+      }
+    ],
+    "dbSecurityGroups": [],
+    "dbSubnetGroup": {
+      "VpcId": "vpc-########",
+      "Subnets": [
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1e"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1d"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1c"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1f"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1a"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1b"
+          }
+        }
+      ],
+      "SubnetGroupStatus": "Complete",
+      "DBSubnetGroupDescription": "default",
+      "DBSubnetGroupName": "default"
+    },
+    "dbiResourceId": "db-IXRXA2XS7KFFA6JWYYWFZEBJDE",
+    "dedicatedLogVolume": false,
+    "deletionProtection": false,
+    "domainMemberships": [],
+    "endpoint": {
+      "HostedZoneId": "Z2R2ITUGPM61AM",
+      "Address": "mysqldb.########.us-east-1.rds.amazonaws.com",
+      "Port": 3306
+    },
+    "engine": "mysql",
+    "engineVersion": "5.6.39",
+    "enhancedMonitoringResourceArn": "arn:aws:logs:us-east-1:1234567890:log-group:RDSOSMetrics:log-stream:db-IXRXA2XS7KFFA6JWYYWFZEBJDE",
+    "instanceCreateTime": "2018-03-28T19:54:07.871Z",
+    "iops": 1000,
+    "isStorageConfigUpgradeAvailable": false,
+    "kmsKeyId": "arn:aws:kms:us-east-1:1234567890:key/######################",
+    "latestRestorableTime": "2018-03-28T20:10:00Z",
+    "licenseModel": "general-public-license",
+    "masterUsername": "mysqldbadmin",
+    "monitoringInterval": 60,
+    "monitoringRoleArn": "arn:aws:iam::1234567890:role/rds-monitoring-role",
+    "multiAZ": true,
+    "optionGroupMemberships": [
+      {
+        "OptionGroupName": "default:mysql-5-6",
+        "Status": "in-sync"
+      }
+    ],
+    "pendingModifiedValues": {},
+    "preferredBackupWindow": "05:27-05:57",
+    "preferredMaintenanceWindow": "fri:05:57-fri:06:27",
+    "publiclyAccessible": true,
+    "readReplicaDBInstanceIdentifiers": [],
+    "secondaryAvailabilityZone": "us-east-1a",
+    "storageEncrypted": true,
+    "storageType": "io1",
+    "tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "database"
+      },
+      {
+        "Key": "Application",
+        "Value": "web-app"
+      }
+    ]
+  },
+  "relations": {
+    "account": null
+  }
+}

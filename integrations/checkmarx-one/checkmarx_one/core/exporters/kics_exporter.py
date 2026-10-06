@@ -27,11 +27,15 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
             "Single KICS result fetch is not implemented for the KICS exporter."
         )
 
-    def _enrich_kics_result_with_scan_id(
-        self, result: Dict[str, Any], scan_id: str
+    def _enrich_kics_result_with_scan_info(
+        self,
+        result: Dict[str, Any],
+        scan_id: str,
+        project_id: str,
     ) -> dict[str, Any]:
-        """Enrich a KICS result with the scan ID."""
+        """Enrich a KICS result with the scan ID and project ID."""
         result["__scan_id"] = scan_id
+        result["__project_id"] = project_id
         return result
 
     async def get_paginated_resources(
@@ -56,6 +60,8 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
                 f"Fetched batch of {len(results)} KICS results for scan {options['scan_id']}"
             )
             yield [
-                self._enrich_kics_result_with_scan_id(result, options["scan_id"])
+                self._enrich_kics_result_with_scan_info(
+                    result, options["scan_id"], options["project_id"]
+                )
                 for result in results
             ]

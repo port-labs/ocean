@@ -31,7 +31,7 @@ from integration import (
     CheckmarxOneSastResourcesConfig,
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneKicsResourcesConfig,
-    CheckmarxOneScanResultResourcesConfig,
+    CheckmarxOneScaResourcesConfig,
     CheckmarxOneApiSecResourcesConfig,
     CheckmarxOneDastScanResourcesConfig,
     CheckmarxOneApplicationResourcesConfig,
@@ -173,6 +173,7 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListSastOptions(
                 scan_id=scan_data["id"],
+                project_id=scan_data["projectId"],
                 severity=selector.severity,
                 status=selector.status,
                 state=selector.state,
@@ -185,7 +186,7 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             async for results_batch in sast_exporter.get_paginated_resources(options):
                 logger.info(
-                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']}"
+                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']} and project {scan_data['projectId']}"
                 )
                 yield results_batch
 
@@ -214,12 +215,13 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListKicsOptions(
                 scan_id=scan_data["id"],
+                project_id=scan_data["projectId"],
                 severity=selector.severity,
                 status=selector.status,
             )
             async for results_batch in kics_exporter.get_paginated_resources(options):
                 logger.info(
-                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']}"
+                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']} and project {scan_data['projectId']}"
                 )
                 yield results_batch
 
@@ -238,9 +240,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
-    selector = cast(
-        CheckmarxOneScanResultResourcesConfig, event.resource_config
-    ).selector
+    selector = cast(CheckmarxOneScaResourcesConfig, event.resource_config).selector
 
     scan_options = ListScanOptions(
         project_names=selector.scan_filter.project_names,
@@ -253,6 +253,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListScanResultOptions(
                 scan_id=scan_data["id"],
+                project_id=scan_data["projectId"],
                 type=kind,
                 severity=selector.severity,
                 state=selector.state,

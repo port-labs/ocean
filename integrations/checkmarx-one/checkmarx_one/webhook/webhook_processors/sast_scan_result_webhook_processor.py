@@ -45,6 +45,7 @@ class SastScanResultWebhookProcessor(ScanWebhookProcessor):
 
         options = ListSastOptions(
             scan_id=scan_id,
+            project_id=project_id,
             compliance=selector.compliance,
             group=selector.group,
             include_nodes=selector.include_nodes,

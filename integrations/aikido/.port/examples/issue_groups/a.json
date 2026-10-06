@@ -1,0 +1,23 @@
+{
+  "id": 26361967,
+  "type": "open_source",
+  "title": "lodash-es",
+  "description": "Attacker can inject own code to run",
+  "severity_score": 99,
+  "severity": "critical",
+  "group_status": "new",
+  "time_to_fix_minutes": 30,
+  "locations": [
+    {
+      "id": 1841547,
+      "name": "vscode",
+      "type": "code_repository"
+    }
+  ],
+  "how_to_fix": "In order to fix all of these vulnerabilities, update lodash-es to 4.18.1.",
+  "related_cve_ids": [
+    "CVE-2026-4800",
+    "CVE-2025-13465",
+    "CVE-2026-2950"
+  ]
+}

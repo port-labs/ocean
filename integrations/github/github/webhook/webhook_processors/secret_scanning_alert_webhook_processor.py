@@ -5,7 +5,7 @@ from github.helpers.utils import (
     enrich_with_repository,
     enrich_with_organization,
 )
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -73,7 +73,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
             alert = enrich_with_organization(
-                enrich_with_repository(alert, repo_name), organization
+                enrich_with_repository(alert, repo_name, repo=repo), organization
             )
 
             return WebhookEventRawResults(
@@ -84,7 +84,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"The action {action} is allowed for secret scanning alert {alert_number} in {repo_name} from {organization}. Updating resource."
         )
 
-        rest_client = create_github_client()
+        rest_client = await create_github_client_for_org(organization)
         exporter = RestSecretScanningAlertExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
@@ -95,6 +95,10 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
                 hide_secret=config.selector.hide_secret,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

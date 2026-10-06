@@ -1,0 +1,19 @@
+{
+  "id": "8e9664f8-2deb-57cb-8b7e-d14b52588456",
+  "name": "OpenSSL (docker.io/nginx@dec7a90b)",
+  "technology": {
+    "id": "3929",
+    "name": "OpenSSL"
+  },
+  "resource": {
+    "id": "8687d4ec-9644-55ba-a9be-6c7c9bfa0111",
+    "name": "docker.io/nginx@dec7a90b"
+  },
+  "detectionMethods": [
+    "PACKAGE"
+  ],
+  "installedPackages": null,
+  "firstSeen": "2026-03-18T14:17:58.306923Z",
+  "updatedAt": "2026-03-20T09:50:09.664826Z",
+  "cpe": "cpe:/a:openssl:openssl:3.5.5"
+}

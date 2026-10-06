@@ -3,9 +3,9 @@ import signal
 from asyncio import get_running_loop, ensure_future
 from typing import Any, Callable, Awaitable
 
-from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
+from confluent_kafka import Consumer, KafkaException, Message, TopicPartition
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 class KafkaConsumerConfig(BaseModel):
@@ -32,6 +32,7 @@ class KafkaConsumer:
         self.config = config
 
         self.msg_process = msg_process
+        kafka_config: dict[str, str | int | float | bool | None]
         if config.kafka_security_enabled:
             kafka_config = {
                 "bootstrap.servers": config.brokers,
@@ -56,7 +57,12 @@ class KafkaConsumer:
 
         self.consumer = Consumer(kafka_config)
 
-    def _handle_partitions_assignment(self, _: Any, partitions: list[str]) -> None:
+    def _get_topics(self) -> list[str]:
+        return [f"{self.org_id}.change.log"]
+
+    def _handle_partitions_assignment(
+        self, _: Consumer, partitions: list[TopicPartition]
+    ) -> None:
         logger.info(f"Assigned partitions: {partitions}")
         if not partitions and not self._assigned_partitions:
             logger.error(
@@ -72,7 +78,7 @@ class KafkaConsumer:
     async def start(self) -> None:
         self.running = True
         logger.info("Starting kafka consumer...")
-        topics = [f"{self.org_id}.change.log"]
+        topics = self._get_topics()
         self.consumer.subscribe(
             topics,
             on_assign=self._handle_partitions_assignment,
@@ -116,3 +122,8 @@ class KafkaConsumer:
         logger.info("Closing the kafka consumer gracefully...")
         self.running = False
         self.consumer.close()
+
+
+class IntegrationResyncRequestsKafkaConsumer(KafkaConsumer):
+    def _get_topics(self) -> list[str]:
+        return [f"{self.org_id}.integration.resync.requests"]

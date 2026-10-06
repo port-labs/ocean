@@ -1,0 +1,28 @@
+resources:
+  - kind: AWS::ECS::TaskDefinition
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.TaskDefinitionArn
+          title: .Properties.Family + ":" + (.Properties.Revision | tostring)
+          blueprint: '"ecsTaskDefinition"'
+          properties:
+            taskDefinitionArn: .Properties.TaskDefinitionArn
+            family: .Properties.Family
+            revision: .Properties.Revision
+            status: .Properties.Status
+            containerDefinitions: .Properties.ContainerDefinitions
+            cpu: .Properties.Cpu
+            memory: .Properties.Memory
+            networkMode: .Properties.NetworkMode
+            requiresCompatibilities: .Properties.RequiresCompatibilities
+            taskRoleArn: .Properties.TaskRoleArn
+            executionRoleArn: .Properties.ExecutionRoleArn
+            volumes: .Properties.Volumes
+            placementConstraints: .Properties.PlacementConstraints
+            tags: .Properties.Tags
+            registeredAt: .Properties.RegisteredAt
+          relations:
+            account: .__ExtraContext.AccountId

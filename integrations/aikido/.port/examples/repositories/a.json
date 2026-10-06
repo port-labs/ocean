@@ -1,0 +1,13 @@
+{
+  "id": 1841542,
+  "name": "ads-service",
+  "external_repo_id": "494be960-87eb-4bc7-8e56-d94ce8f87ab7",
+  "external_repo_numeric_id": -1,
+  "provider": "azure_devops",
+  "active": true,
+  "url": "https://dev.azure.com/eridotdev/test-azure-sync-project/_git/ads-service",
+  "branch": "copilot/create-workplace-attendance-system",
+  "last_scanned_at": 1775686380,
+  "connectivity": "unknown",
+  "sensitivity": "normal"
+}

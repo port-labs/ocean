@@ -80,17 +80,36 @@ Integration Development Guidelines
     - Maintain consistent naming conventions
     - Organize code logically
 
-11. Changelog Management
-    - Document all changes clearly
-    - Include version numbers
-    - Describe new features and fixes
-    - Note breaking changes
+11. Release intent (changesets)
+    - Every PR that modifies an integration MUST declare how to release
+    - **Prefer** a release intent file: add `integrations/<name>/.ocean-release/<feature-related-name>.yaml` alongside your code changes (use a short filename related to the feature or change, e.g. `fix-pagination.yaml`)
+    - If the same PR also changes `port_ocean/`, still add an integration intent for this integration's own work. Changelog only the integration-specific change; do not copy the core changelog into this file. You can skip an integration intent when the integration files only moved because of core.
+    - Only bump `integrations/<name>/pyproject.toml` or `integrations/<name>/CHANGELOG.md` manually when explicitly asked — if both a release file and manual bumps are present, manual changes take priority
+    - Example:
+
+      ```yaml
+      bump: patch
+      changelog-type: bugfix
+      changelog: Describe the change
+      ```
+
+    - Write a clear, user-facing `changelog` entry; use `changelog-type: breaking` for breaking changes
+    - `bump` must be `patch`, `minor`, or `major` — use `patch` for fixes and minor improvements, `minor` for new features, `major` for breaking changes
+    - `changelog-type` must be `breaking`, `deprecation`, `feature`, `improvement`, `bugfix`, or `doc`
+    - After the PR merges to `main`, the Apply ocean release workflow opens a follow-up PR with the version bump and changelog updates; review and merge that PR to publish
 
 12. Testing Requirements
     - Write unit tests for new code
     - Include integration tests
     - Test error scenarios
     - Maintain test coverage
+
+13. Versioning
+    - Prefer declarative release intent files (section 11) over manual version bumps in feature branches
+
+14. Code Quality
+    - run `make lint` command on the integration folder before any commit
+    - run `make test` command on the integration folder before any commit
 
 Dependencies
 

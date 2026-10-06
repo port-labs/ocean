@@ -25,7 +25,6 @@ from port_ocean.core.event_listener.actions_only import (
     ActionsOnlyEventListenerSettings,
 )
 
-
 EventListenerSettingsType = (
     HttpEventListenerSettings
     | KafkaEventListenerSettings

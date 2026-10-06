@@ -1,0 +1,54 @@
+{
+  "identifier": "codeDeployApplication",
+  "title": "CodeDeploy Application",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "applicationName": {
+        "type": "string",
+        "title": "Application Name"
+      },
+      "applicationId": {
+        "type": "string",
+        "title": "Application ID"
+      },
+      "createTime": {
+        "type": "string",
+        "title": "Create Time",
+        "format": "date-time"
+      },
+      "linkedToGitHub": {
+        "type": "boolean",
+        "title": "Linked To GitHub"
+      },
+      "gitHubAccountName": {
+        "type": "string",
+        "title": "GitHub Account Name"
+      },
+      "computePlatform": {
+        "type": "string",
+        "title": "Compute Platform"
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Tags associated with the Application",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

@@ -194,6 +194,8 @@ resources:
   - kind: build
     selector:
       query: 'true'
+      # Opt in to first-commit enrichment to power DORA Lead Time for Changes.
+      enrichWithFirstCommit: true
     port:
       entity:
         mappings:
@@ -208,6 +210,12 @@ resources:
             finishTime: .finishTime
             definitionName: .definition.name
             requestedFor: .requestedFor.displayName
+            leadTimeHours: >-
+              if .__firstCommit.__timestamp and .finishTime then
+                ((((.finishTime | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601)
+                   - (.__firstCommit.__timestamp | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601))
+                   / 3600) * 100 | floor) / 100
+              else null end
           relations:
             project: .__project.id | gsub(" "; "")
   - kind: pipeline-stage
@@ -239,7 +247,7 @@ resources:
           identifier: >-
             .__project.id + "-" + (.__pipeline.id | tostring) + "-" + (.id |
             tostring) | gsub(" "; "")
-          title: .name // .runNumber // (.id | tostring)
+          title: .name
           blueprint: '"pipeline-run"'
           properties:
             state: .state
@@ -249,6 +257,7 @@ resources:
             pipelineName: .pipeline.name
           relations:
             project: .__project.id | gsub(" "; "")
+            pipeline: .__project.id + "/" + (.__pipeline.id | tostring)
   - kind: iteration
     selector:
       query: 'true'

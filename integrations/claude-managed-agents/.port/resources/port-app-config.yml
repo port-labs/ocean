@@ -1,0 +1,111 @@
+resources:
+  - kind: environment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"claude_environment"'
+          properties:
+            description: .description
+            scope: .scope
+            environmentType: .config.type
+            metadata: .metadata
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+  - kind: vault
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .display_name
+          blueprint: '"claude_vault"'
+          properties:
+            metadata: .metadata
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+  - kind: memory-store
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"claude_memory_store"'
+          properties:
+            description: .description
+            metadata: .metadata
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+  - kind: skill
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '.display_title // .id'
+          blueprint: '"claude_skill"'
+          properties:
+            displayTitle: .display_title
+            source: .source
+            latestVersion: .latest_version
+            createdAt: .created_at
+            updatedAt: .updated_at
+  - kind: agent
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"claude_agent"'
+          properties:
+            description: .description
+            model: .model.id
+            system: .system
+            version: .version
+            metadata: .metadata
+            mcpServers: '[.mcp_servers[]?.name] // []'
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+          relations:
+            skills: '[.skills[]? | select(.type == "custom") | .skill_id]'
+            delegateAgents: '[.multiagent.agents[]?.id] // []'
+  - kind: session
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '.title // .id'
+          blueprint: '"claude_session"'
+          properties:
+            status: .status
+            inputTokens: .usage.input_tokens
+            outputTokens: .usage.output_tokens
+            cacheReadInputTokens: .usage.cache_read_input_tokens
+            activeSeconds: .stats.active_seconds
+            durationSeconds: .stats.duration_seconds
+            agentVersion: .agent.version
+            githubRepositories: '[.resources[]? | select(.type == "github_repository") | .url]'
+            metadata: .metadata
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+          relations:
+            agent: .agent.id
+            environment: .environment_id
+            memoryStores: '[.resources[]? | select(.type == "memory_store") | .memory_store_id]'
+            vaults: .vault_ids

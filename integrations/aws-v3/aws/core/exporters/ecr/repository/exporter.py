@@ -11,7 +11,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EcrRepositoryExporter(IResourceExporter):
+class EcrRepositoryExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "ecr"
     _model_cls: Type[Repository] = Repository
     _actions_map: Type[EcrRepositoryActionsMap] = EcrRepositoryActionsMap
@@ -32,7 +32,14 @@ class EcrRepositoryExporter(IResourceExporter):
             if not repositories:
                 return {}
 
-            result = await inspector.inspect(repositories, options.include)
+            result = await inspector.inspect(
+                repositories,
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
             return result[0] if result else {}
 
     async def get_paginated_resources(

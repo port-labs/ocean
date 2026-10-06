@@ -8,7 +8,6 @@ from port_ocean.context.event import event_context
 from github.core.options import SingleTagOptions, ListTagOptions
 from github.clients.http.rest_client import GithubRestClient
 
-
 TEST_TAGS = [
     {
         "ref": "refs/tags/v1.0",
@@ -52,6 +51,7 @@ class TestRestTagExporter:
                 )
             )
 
+            assert tag is not None
             assert tag["name"] == "v1.0"  # Check name is set
             assert tag["__repository"] == "repo1"  # Check repository is enriched
             assert tag["commit"] == TEST_TAGS[0]["object"]  # Check commit is set

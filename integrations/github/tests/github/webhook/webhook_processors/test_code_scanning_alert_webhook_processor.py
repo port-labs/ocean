@@ -21,7 +21,7 @@ from integration import GithubCodeScanningAlertConfig, GithubCodeScanningAlertSe
 @pytest.fixture
 def code_scanning_resource_config() -> GithubCodeScanningAlertConfig:
     return GithubCodeScanningAlertConfig(
-        kind="code-scanning-alerts",
+        kind=ObjectKind.CODE_SCANNING_ALERT,
         selector=GithubCodeScanningAlertSelector(query="true", state="open"),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -151,7 +151,7 @@ class TestCodeScanningAlertWebhookProcessor:
         """Test handling a 'fixed' event when 'fixed' state is allowed."""
         # Create config that allows 'fixed' state
         resource_config = GithubCodeScanningAlertConfig(
-            kind="code-scanning-alerts",
+            kind=ObjectKind.CODE_SCANNING_ALERT,
             selector=GithubCodeScanningAlertSelector(query="true", state=config_state),
             port=PortResourceConfig(
                 entity=MappingsConfig(
@@ -196,7 +196,7 @@ class TestCodeScanningAlertWebhookProcessor:
 
         with (
             patch(
-                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.create_github_client"
+                "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.create_github_client_for_org"
             ) as mock_create_client,
             patch(
                 "github.webhook.webhook_processors.code_scanning_alert_webhook_processor.RestCodeScanningAlertExporter",
@@ -235,7 +235,7 @@ class TestCodeScanningAlertWebhookProcessor:
     ) -> None:
         """Test handling events when the action is not allowed for the configured state."""
         resource_config = GithubCodeScanningAlertConfig(
-            kind="code-scanning-alerts",
+            kind=ObjectKind.CODE_SCANNING_ALERT,
             selector=GithubCodeScanningAlertSelector(query="true", state=config_state),
             port=PortResourceConfig(
                 entity=MappingsConfig(

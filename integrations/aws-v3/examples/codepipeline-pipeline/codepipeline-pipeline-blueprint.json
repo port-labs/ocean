@@ -1,0 +1,74 @@
+{
+  "identifier": "codePipeline",
+  "title": "CodePipeline Pipeline",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "arn": {
+        "type": "string",
+        "title": "ARN",
+        "description": "The Amazon Resource Name (ARN) of the pipeline"
+      },
+      "roleArn": {
+        "type": "string",
+        "title": "Role ARN",
+        "description": "The service role ARN for the pipeline"
+      },
+      "executionMode": {
+        "type": "string",
+        "title": "Execution Mode",
+        "description": "The execution mode of the pipeline"
+      },
+      "pipelineType": {
+        "type": "string",
+        "title": "Pipeline Type",
+        "description": "The type of the pipeline"
+      },
+      "version": {
+        "type": "number",
+        "title": "Version",
+        "description": "The version number of the pipeline"
+      },
+      "stages": {
+        "type": "array",
+        "title": "Stages",
+        "description": "The stages of the pipeline",
+        "items": {
+          "type": "object"
+        }
+      },
+      "created": {
+        "type": "string",
+        "title": "Created",
+        "description": "The date when the pipeline was created",
+        "format": "date-time"
+      },
+      "updated": {
+        "type": "string",
+        "title": "Updated",
+        "description": "The date when the pipeline was last updated",
+        "format": "date-time"
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Tags associated with the pipeline",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

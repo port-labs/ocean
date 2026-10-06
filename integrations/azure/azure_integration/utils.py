@@ -7,10 +7,12 @@ from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
 from azure_integration.overrides import (
-    AzureSpecificKindsResourceConfig,
+    AzureCustomKindResourceConfig,
     AzureCloudResourceConfig,
     AzureCloudResourceSelector,
     AzureSpecificKindSelector,
+    AzureResourceGroupResourceConfig,
+    AzureSubscriptionResourceConfig,
 )
 
 BATCH_SIZE = 20
@@ -28,7 +30,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
 
 
 def get_current_resource_config() -> (
-    typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+    typing.Union[AzureCustomKindResourceConfig, AzureCloudResourceConfig]
 ):
     """
     Returns the current resource config, accessible only inside an event context
@@ -77,10 +79,20 @@ def resolve_resource_type_from_resource_uri(resource_uri: str) -> str:
 def get_resource_configs_with_resource_kind(
     resource_kind: str,
     resource_configs: typing.List[
-        typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+        typing.Union[
+            AzureResourceGroupResourceConfig,
+            AzureSubscriptionResourceConfig,
+            AzureCloudResourceConfig,
+            AzureCustomKindResourceConfig,
+        ]
     ],
-) -> typing.List[
-    typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+) -> list[
+    typing.Union[
+        AzureResourceGroupResourceConfig,
+        AzureSubscriptionResourceConfig,
+        AzureCloudResourceConfig,
+        AzureCustomKindResourceConfig,
+    ]
 ]:
     """
     Returns the resource configs that have the resource kind

@@ -1,7 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, mock_open, patch
 from port_ocean.ocean import Ocean
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.config.settings import IntegrationConfiguration
+from port_ocean.exceptions.identity_propagation import DuplicateOAuthProviderError
+from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
 
 @pytest.fixture
@@ -9,6 +12,8 @@ def mock_ocean() -> Ocean:
     with patch("port_ocean.ocean.Ocean.__init__", return_value=None):
         ocean_mock = Ocean()
         ocean_mock.config = MagicMock(spec=IntegrationConfiguration)
+        # spec is built from the class, which does not expose pydantic fields.
+        ocean_mock.config.identity_propagation = MagicMock(enabled=False)
         return ocean_mock
 
 
@@ -83,12 +88,22 @@ class TestRoutePrefix:
 # initialize_app route registration tests
 class TestInitializeAppRoutes:
     @pytest.mark.parametrize(
-        "path_prefix,expected_integration_path,expected_metrics_path",
+        "path_prefix,expected_integration_path,expected_metrics_path,expected_health_path",
         [
-            (None, "/integration", "/metrics"),
-            ("", "/integration", "/metrics"),
-            ("my-prefix", "/my-prefix/integration", "/my-prefix/metrics"),
-            ("/my-prefix/", "/my-prefix/integration", "/my-prefix/metrics"),
+            (None, "/integration", "/metrics", "/health"),
+            ("", "/integration", "/metrics", "/health"),
+            (
+                "my-prefix",
+                "/my-prefix/integration",
+                "/my-prefix/metrics",
+                "/my-prefix/health",
+            ),
+            (
+                "/my-prefix/",
+                "/my-prefix/integration",
+                "/my-prefix/metrics",
+                "/my-prefix/health",
+            ),
         ],
     )
     def test_initialize_app_registers_routes_with_correct_prefix(
@@ -97,6 +112,7 @@ class TestInitializeAppRoutes:
         path_prefix: str | None,
         expected_integration_path: str,
         expected_metrics_path: str,
+        expected_health_path: str,
     ) -> None:
         mock_ocean.config.path_prefix = path_prefix
         mock_ocean.fast_api_app = MagicMock()
@@ -109,6 +125,90 @@ class TestInitializeAppRoutes:
         calls = mock_ocean.fast_api_app.include_router.call_args_list
         assert calls[0].kwargs["prefix"] == expected_integration_path
         assert calls[1].kwargs["prefix"] == expected_metrics_path
+        assert calls[2].kwargs["prefix"] == expected_health_path
+
+    def test_initialize_app_does_not_register_oauth_routes_by_default(
+        self, mock_ocean: Ocean
+    ) -> None:
+        mock_ocean.config.path_prefix = None
+        mock_ocean.fast_api_app = MagicMock()
+        mock_ocean.integration_router = MagicMock()
+        mock_ocean.metrics = MagicMock()
+
+        mock_ocean.initialize_app()
+
+        prefixes = [
+            call.kwargs["prefix"]
+            for call in mock_ocean.fast_api_app.include_router.call_args_list
+        ]
+        assert prefixes == ["/integration", "/metrics", "/health"]
+
+    def test_initialize_app_registers_oauth_routes_when_enabled(
+        self, mock_ocean: Ocean, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_ocean.config.path_prefix = "my-prefix"
+        mock_ocean.config.identity_propagation.enabled = True
+        mock_ocean.fast_api_app = MagicMock()
+        mock_ocean.integration_router = MagicMock()
+        mock_ocean.metrics = MagicMock()
+
+        # register_oauth_broker() reaches for the global `ocean` context rather than
+        # the instance being initialized, so it needs to be pointed at our mock too.
+        monkeypatch.setattr(
+            "port_ocean.identity_propagation.oauth_broker.router.ocean",
+            PortOceanContext(mock_ocean),
+        )
+
+        mock_ocean.initialize_app()
+
+        prefixes = [
+            call.kwargs["prefix"]
+            for call in mock_ocean.fast_api_app.include_router.call_args_list
+        ]
+        assert prefixes[-1] == "/my-prefix/v1/oauth-broker"
+
+
+class TestRegisterOAuthProvider:
+    def _provider(self) -> OAuth2Provider:
+        return OAuth2Provider(
+            target="example-integration",
+            authorize_url="https://idp.example.com/oauth/authorize",
+            token_url="https://idp.example.com/oauth/token",
+            client_id="id",
+            client_secret="secret",
+            scopes="read",
+        )
+
+    def test_ignores_registration_when_identity_propagation_disabled(
+        self, mock_ocean: Ocean
+    ) -> None:
+        mock_ocean.config.identity_propagation.enabled = False
+        mock_ocean.oauth_provider = None
+        context = PortOceanContext(mock_ocean)
+
+        context.register_oauth_provider(self._provider())
+
+        assert mock_ocean.oauth_provider is None
+
+    def test_registers_provider_when_identity_propagation_enabled(
+        self, mock_ocean: Ocean
+    ) -> None:
+        mock_ocean.config.identity_propagation.enabled = True
+        mock_ocean.oauth_provider = None
+        context = PortOceanContext(mock_ocean)
+        provider = self._provider()
+
+        context.register_oauth_provider(provider)
+
+        assert mock_ocean.oauth_provider is provider
+
+    def test_rejects_a_second_provider(self, mock_ocean: Ocean) -> None:
+        mock_ocean.config.identity_propagation.enabled = True
+        mock_ocean.oauth_provider = self._provider()
+        context = PortOceanContext(mock_ocean)
+
+        with pytest.raises(DuplicateOAuthProviderError):
+            context.register_oauth_provider(self._provider())
 
 
 # base_url property tests

@@ -1,0 +1,64 @@
+{
+  "type": "sca",
+  "id": "CVE-2025-6170",
+  "alternateId": "6bdI5QTrsM9Ek6fpTeDLy9o5rHYvLNxK54lbAGfWE5k=",
+  "similarityId": "CVE-2025-6170",
+  "status": "RECURRENT",
+  "state": "TO_VERIFY",
+  "severity": "LOW",
+  "confidenceLevel": 0,
+  "created": "2025-10-28T13:32:32Z",
+  "firstFoundAt": "2025-10-28T13:29:29Z",
+  "foundAt": "2025-10-28T13:32:32Z",
+  "firstScanId": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "description": "A flaw was found in the interactive shell of the xmllint tool in libxml2, used for parsing XML files. When a user inputs an overly long command, the program does not check the input size properly, which can cause it to crash. This issue might allow attackers to run harmful code in rare configurations without modern protections. This issue affects libxml2 versions through 2.13.8.",
+  "data": {
+    "packageIdentifier": "Python-lxml-4.2.5",
+    "publishedAt": "2025-06-16T16:15:20+00:00",
+    "recommendations": "6.0.2",
+    "recommendedVersion": "6.0.2",
+    "exploitableMethods": null,
+    "packageData": [
+      {
+        "url": "https://github.com/advisories/GHSA-6qrf-r65h-2r77",
+        "type": "Advisory"
+      },
+      {
+        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=2372952",
+        "type": "Issue"
+      },
+      {
+        "url": "https://github.com/GNOME/libxml2/commit/a3992815b3d4caa4a6709406ca085c9f93856809",
+        "type": "Commit"
+      },
+      {
+        "url": "https://github.com/advisories/GHSA-353f-x4gh-cqq8",
+        "type": "Advisory",
+        "comment": "Dependent GHSA "
+      }
+    ]
+  },
+  "comments": {
+    "comments": ""
+  },
+  "vulnerabilityDetails": {
+    "cvssScore": 2.5,
+    "cveName": "CVE-2025-6170",
+    "cweId": "CWE-121",
+    "cvss": {
+      "scope": "UNCHANGED",
+      "score": 2.5,
+      "version": 3,
+      "severity": "Low",
+      "integrity": "NONE",
+      "attackVector": "LOCAL",
+      "availability": "LOW",
+      "confidentiality": "NONE",
+      "userInteraction": "REQUIRED",
+      "attackComplexity": "HIGH",
+      "reportConfidence": "REASONABLE",
+      "privilegesRequired": "NONE"
+    }
+  },
+  "__scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440"
+}

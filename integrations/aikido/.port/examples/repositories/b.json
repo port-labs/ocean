@@ -1,0 +1,13 @@
+{
+  "id": 1841543,
+  "name": "authentication-service",
+  "external_repo_id": "a8d65272-0cb1-4b06-8687-ce96d9e7ac15",
+  "external_repo_numeric_id": -1,
+  "provider": "azure_devops",
+  "active": true,
+  "url": "https://dev.azure.com/eridotdev/test-azure-sync-project/_git/authentication-service",
+  "branch": "feature/test-branch-02af9b",
+  "last_scanned_at": 1775686381,
+  "connectivity": "unknown",
+  "sensitivity": "normal"
+}

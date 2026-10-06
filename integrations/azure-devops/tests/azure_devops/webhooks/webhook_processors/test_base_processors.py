@@ -18,7 +18,7 @@ class AzureDevOpsWebhookProcessorImpl(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["test-kind"]
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: dict[str, Any], resource: ResourceConfig
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
@@ -49,7 +49,10 @@ def mock_context(monkeypatch: Any) -> PortOceanContext:
 def mock_ocean(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_ocean_instance = MagicMock()
     mock_ocean_instance.integration_config = {"webhook_secret": "test-secret"}
-    monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_ocean_instance)
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.base_processor.ocean",
+        mock_ocean_instance,
+    )
 
 
 @pytest.mark.asyncio

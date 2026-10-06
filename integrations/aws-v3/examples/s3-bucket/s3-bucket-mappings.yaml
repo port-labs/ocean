@@ -4,18 +4,18 @@ resources:
       query: 'true'
       includeActions:
         - GetBucketEncryptionAction
-        - GetBucketPublicAccessBlockAction
-        - GetBucketTaggingAction
+        - GetPublicAccessBlockAction
     port:
       entity:
         mappings:
-          identifier: .Properties.Name
-          title: .Properties.Name
+          identifier: .Properties.BucketName
+          title: .Properties.BucketName
           blueprint: '"s3Bucket"'
           properties:
-            arn: .Properties.BucketArn
-            region: .Properties.BucketRegion
+            arn: .Properties.Arn
             creationDate: .Properties.CreationDate
             encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

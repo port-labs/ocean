@@ -1,0 +1,48 @@
+{
+  "user": {
+    "subjectKind": "user",
+    "metaType": "member",
+    "directoryAlias": "sjenkins",
+    "domain": "8b2a3c91-11d2-4e89-a2c3-99b8d7621a55",
+    "principalName": "sjenkins@technova.com",
+    "mailAddress": "sjenkins@technova.com",
+    "origin": "aad",
+    "originId": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+    "displayName": "Sarah Jenkins",
+    "_links": {
+      "self": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ2"
+      },
+      "memberships": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Memberships/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ2"
+      },
+      "membershipState": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/MembershipStates/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ2"
+      },
+      "storageKey": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/StorageKeys/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ2"
+      },
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ2"
+      }
+    },
+    "url": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ2",
+    "descriptor": "aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ2"
+  },
+  "extensions": [],
+  "id": "11111111-2222-3333-4444-555555555555",
+  "accessLevel": {
+    "licensingSource": "account",
+    "accountLicenseType": "express",
+    "msdnLicenseType": "none",
+    "gitHubLicenseType": "none",
+    "licenseDisplayName": "Basic",
+    "status": "active",
+    "statusMessage": "",
+    "assignmentSource": "unknown"
+  },
+  "lastAccessedDate": "2026-04-05T14:12:05.1234567Z",
+  "dateCreated": "2025-01-15T08:30:00.0000000Z",
+  "projectEntitlements": [],
+  "groupAssignments": []
+}

@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Optional
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
     enrich_with_repository,
@@ -12,19 +12,33 @@ from github.core.options import (
     SingleSecretScanningAlertOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    paginate_with_strategy,
+)
+
+SECRET_SCANNING_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="updated_at",
+    query_params={"sort": "updated", "direction": "desc"},
+)
 
 
 class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
 
-    async def get_resource[
-        ExporterOptionsT: SingleSecretScanningAlertOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleSecretScanningAlertOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         alert_number = params.pop("alert_number")
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/secret-scanning/alerts/{alert_number}"
         response = await self.client.send_api_request(endpoint, params)
+        if not response:
+            logger.warning(
+                f"No secret scanning alert found with number: {alert_number} in repository: {repo_name} from {organization}"
+            )
+            return None
 
         logger.info(
             f"Fetched secret scanning alert with number: {alert_number} for repo: {repo_name} from {organization}"
@@ -34,18 +48,27 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListSecretScanningAlertOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListSecretScanningAlertOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all secret scanning alerts in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
         if params["state"] == "all":
             params.pop("state")
 
-        async for alerts in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{organization}/{repo_name}/secret-scanning/alerts",
-            params,
+        incremental_cursor = params.pop("updated_since", None)
+        request_params = SECRET_SCANNING_INCREMENTAL.merge_params(
+            params, incremental_cursor
+        )
+
+        async for alerts in paginate_with_strategy(
+            self.client.send_paginated_request(
+                f"{self.client.base_url}/repos/{organization}/{repo_name}/secret-scanning/alerts",
+                request_params,
+            ),
+            cursor=incremental_cursor,
+            strategy=SECRET_SCANNING_INCREMENTAL,
         ):
             logger.info(
                 f"Fetched batch of {len(alerts)} secret scanning alerts from repository {repo_name} from {organization}"

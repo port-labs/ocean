@@ -3,6 +3,7 @@ import re
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.utils import http_async_client
 from newrelic_integration.core.utils import send_graph_api_request
 from newrelic_integration.core.query_templates.alert_conditions import (
     GET_ENTITY_TAGS_QUERY,
@@ -11,8 +12,8 @@ from newrelic_integration.utils import render_query
 
 
 class AlertConditionsHandler:
-    def __init__(self, http_client: httpx.AsyncClient):
-        self.http_client = http_client
+    def __init__(self, http_client: httpx.AsyncClient | None = None):
+        self.http_client = http_client or http_async_client
         self.base_url = cast(
             str,
             ocean.integration_config.get("new_relic_rest_api_url"),

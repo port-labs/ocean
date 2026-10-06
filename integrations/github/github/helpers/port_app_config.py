@@ -3,7 +3,7 @@ from typing import Any, Dict
 import yaml
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.options import FileContentOptions
 from port_ocean.exceptions.api import EmptyPortAppConfigError
@@ -26,7 +26,7 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
     branch and using it as the single global mapping.
     """
 
-    rest_client = create_github_client()
+    rest_client = await create_github_client_for_org(github_org)
     repo_metadata = await rest_client.send_api_request(
         f"{rest_client.base_url}/repos/{github_org}/{ORG_CONFIG_REPO}"
     )
@@ -48,10 +48,9 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
         )
     )
 
-    content = file_response.get("content")
-    if not content:
+    if not file_response:
         logger.error(
-            f"Port app config file not found or empty using GitHub Global configuration for {github_org}",
+            f"Port app config file not found using GitHub Global configuration for {github_org}",
             extra={
                 "github_org": github_org,
                 "org_config_repo": ORG_CONFIG_REPO,
@@ -60,6 +59,20 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
             },
         )
         raise EmptyPortAppConfigError()
+
+    content = file_response.get("content")
+    if not content:
+        logger.info(
+            "The integration port app config is empty; "
+            "resync will be skipped until resources are configured.",
+            extra={
+                "github_org": github_org,
+                "org_config_repo": ORG_CONFIG_REPO,
+                "default_branch": default_branch,
+                "file_path": ORG_CONFIG_FILE,
+            },
+        )
+        return {}
 
     try:
         file_config = yaml.safe_load(content)
@@ -71,11 +84,11 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
         raise EmptyPortAppConfigError("Port app config is invalid") from exc
 
     if file_config is None:
-        logger.error(
-            "Parsed GitHub Port app config from organization config "
-            "repository is empty"
+        logger.info(
+            "The integration port app config is empty; "
+            "resync will be skipped until resources are configured."
         )
-        raise EmptyPortAppConfigError("Config is empty")
+        return {}
 
     if not isinstance(file_config, dict):
         log_message = f"Expected YAML mapping (dict), got {type(file_config).__name__}"

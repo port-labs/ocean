@@ -1,9 +1,14 @@
+from collections.abc import Iterable
+
+from github.core.options import PullRequestGraphQLOptions
+
 PAGE_INFO_FRAGMENT = """
 fragment PageInfoFields on PageInfo {
   hasNextPage
   endCursor
 }
 """
+
 
 LIST_ORG_MEMBER_GQL = f"""
 {PAGE_INFO_FRAGMENT}
@@ -18,11 +23,13 @@ query OrgMemberQuery(
         after: $after
       ) {{
         nodes {{
-          login
-          ... on User {{
-            email
-            name
-          }}
+            ... on User {{
+              login
+              id
+              databaseId
+              email
+              name
+            }}
         }}
         pageInfo {{
         ...PageInfoFields
@@ -32,7 +39,7 @@ query OrgMemberQuery(
 }}
 """
 
-LIST_ORG_MEMBER_WITHOUT_BOTS_GQL = f"""
+LIST_ORG_MEMBER_WITH_VERIFIED_EMAILS_GQL = f"""
 {PAGE_INFO_FRAGMENT}
 query OrgMemberQuery(
   $organization: String!
@@ -47,8 +54,11 @@ query OrgMemberQuery(
         nodes {{
             ... on User {{
               login
+              id
+              databaseId
               email
               name
+              organizationVerifiedDomainEmails(login: $organization)
             }}
         }}
         pageInfo {{
@@ -65,6 +75,17 @@ FETCH_GITHUB_USER_GQL = """
                 login
                 email
                 name
+            }
+        }
+        """
+
+FETCH_GITHUB_USER_WITH_VERIFIED_EMAILS_GQL = """
+        query ($login: String!, $organization: String!) {
+            user(login: $login) {
+                login
+                email
+                name
+                organizationVerifiedDomainEmails(login: $organization)
             }
         }
         """
@@ -126,6 +147,7 @@ fragment TeamMemberFields on Team {
       login
       name
       isSiteAdmin
+      email
     }
     pageInfo {
       ...PageInfoFields
@@ -188,134 +210,317 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
     }}
 """
 
-
-PR_FIELDS = """
-  url
-  id
-  fullDatabaseId
-  number
-  state
-  locked
-  title
-  body
-  createdAt
-  updatedAt
-  closedAt
-  mergedAt
-  isDraft
-  headRefName
-  baseRefName
-  mergeable
-  mergeStateStatus
-  reviewDecision
-  authorAssociation
-  activeLockReason
-  merged
-  permalink
-  canBeRebased
-  closed
-  maintainerCanModify
-  lastEditedAt
-
-  additions
-  deletions
-  changedFiles
-
-  headRefOid
-  headRef {
-    name
-    target {
-      ... on Commit {
-        oid
-      }
-    }
-  }
-
-  baseRef {
-    name
-    target {
-      ... on Commit {
-        oid
-      }
-    }
-  }
-
-  author {
-    login
-    avatarUrl
-    url
-    __typename
-  }
-
-  mergedBy {
-    login
-    avatarUrl
-    url
-    __typename
-  }
-
-  mergeCommit {
-    oid
-  }
-
-  potentialMergeCommit {
-    oid
-  }
-
-  assignees(first: 10) {
-    nodes {
-      login
-      avatarUrl
-    }
-  }
-
-  reviewRequests(first: 10) {
-    nodes {
-      requestedReviewer {
-        ... on User {
-          login
-          avatarUrl
-        }
-        ... on Team {
-          name
-          slug
+VIEWER_ENTERPRISE_GQL = """
+    query {
+      viewer {
+        enterprises(first: 1) {
+          nodes {
+            slug
+          }
         }
       }
     }
-  }
+"""
 
-  labels(first: 10) {
+LIST_ENTERPRISE_EXTERNAL_IDENTITIES_GQL = f"""
+    {PAGE_INFO_FRAGMENT}
+    query ($enterprise: String!, $first: Int = 25, $after: String) {{
+      enterprise(slug: $enterprise) {{
+        ownerInfo {{
+          samlIdentityProvider {{
+            externalIdentities(first: $first, after: $after) {{
+              edges {{
+                node {{
+                  guid
+                  samlIdentity {{
+                    nameId
+                    emails {{
+                      primary
+                      type
+                      value
+                    }}
+                  }}
+                  user {{
+                    login
+                  }}
+                }}
+              }}
+              pageInfo {{
+              ...PageInfoFields
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+"""
+
+PR_COMMITS_TOTAL_ONLY = """
+commits { totalCount }
+"""
+
+PR_COMMITS_WITH_FIRST = """
+commits(first: 1) {
+    totalCount
     nodes {
-      id
-      url
-      name
-      color
-      isDefault
-      description
+      commit {
+        oid
+        committedDate
+      }
     }
-  }
-
-  milestone {
-    number
-    title
-    description
-    dueOn
-    url
-  }
-
-  comments { totalCount }
-  reviewThreads { totalCount }
-  commits { totalCount }
-
-  autoMergeRequest {
-    enabledAt
-    mergeMethod
-    commitHeadline
-    commitBody
   }
 """
 
-LIST_PULL_REQUESTS_GQL = f"""
+
+def _pr_optional_field_defs(
+    options: PullRequestGraphQLOptions,
+) -> list[tuple[str, str]]:
+    return [
+        ("state", "state"),
+        ("locked", "locked"),
+        ("body", "body"),
+        ("createdAt", "createdAt"),
+        ("updatedAt", "updatedAt"),
+        ("closedAt", "closedAt"),
+        ("mergedAt", "mergedAt"),
+        ("isDraft", "isDraft"),
+        ("headRefName", "headRefName"),
+        ("baseRefName", "baseRefName"),
+        ("mergeable", "mergeable"),
+        ("mergeStateStatus", "mergeStateStatus"),
+        ("reviewDecision", "reviewDecision"),
+        ("authorAssociation", "authorAssociation"),
+        ("activeLockReason", "activeLockReason"),
+        ("merged", "merged"),
+        ("permalink", "permalink"),
+        ("canBeRebased", "canBeRebased"),
+        ("closed", "closed"),
+        ("maintainerCanModify", "maintainerCanModify"),
+        ("lastEditedAt", "lastEditedAt"),
+        ("additions", "additions"),
+        ("deletions", "deletions"),
+        ("changedFiles", "changedFiles"),
+        ("headRefOid", "headRefOid"),
+        (
+            "headRef",
+            """headRef {
+        name
+        target {
+          ... on Commit {
+            oid
+          }
+        }
+      }""",
+        ),
+        (
+            "baseRef",
+            """baseRef {
+        name
+        target {
+          ... on Commit {
+            oid
+          }
+        }
+      }""",
+        ),
+        (
+            "author",
+            """author {
+        login
+        avatarUrl
+        url
+        __typename
+      }""",
+        ),
+        (
+            "mergedBy",
+            """mergedBy {
+        login
+        avatarUrl
+        url
+        __typename
+      }""",
+        ),
+        ("mergeCommit", "mergeCommit { oid }"),
+        ("potentialMergeCommit", "potentialMergeCommit { oid }"),
+        (
+            "assignees",
+            """assignees(first: 10) {
+        nodes {
+          login
+          avatarUrl
+          url
+          __typename
+        }
+      }""",
+        ),
+        (
+            "reviewRequests",
+            """reviewRequests(first: 10) {
+        nodes {
+          requestedReviewer {
+            __typename
+            ... on User {
+              login
+              avatarUrl
+              url
+              __typename
+            }
+            ... on Team {
+              name
+              slug
+            }
+          }
+        }
+      }""",
+        ),
+        (
+            "labels",
+            """labels(first: 10) {
+        nodes {
+          id
+          url
+          name
+          color
+          isDefault
+          description
+        }
+      }""",
+        ),
+        (
+            "milestone",
+            """milestone {
+        number
+        title
+        description
+        dueOn
+        url
+      }""",
+        ),
+        ("comments", "comments { totalCount }"),
+        ("reviewThreads", "reviewThreads { totalCount }"),
+        (
+            "reviews",
+            """
+            reviews (first: 10) {
+              nodes {
+                state
+                body
+                createdAt
+                author {
+                  login
+                  avatarUrl
+                  url
+                  __typename
+
+                }
+
+              }
+            }
+        """,
+        ),
+        ("statusCheckRollup", "statusCheckRollup { state }"),
+        (
+            "commits",
+            (
+                PR_COMMITS_WITH_FIRST
+                if options.enrich_with_first_commit
+                else PR_COMMITS_TOTAL_ONLY
+            ),
+        ),
+        (
+            "autoMergeRequest",
+            """autoMergeRequest {
+        enabledAt
+        mergeMethod
+        commitHeadline
+        commitBody
+      }""",
+        ),
+    ]
+
+
+ALL_OPTIONAL_PR_FIELD_NAMES = [
+    name for name, _ in _pr_optional_field_defs(PullRequestGraphQLOptions())
+]
+
+_PR_RELATION_FIELDS = [
+    "reviewRequests",
+    "reviews",
+    "reviewThreads",
+    "assignees",
+    "statusCheckRollup",
+    "labels",
+]
+_PR_COMMIT_FIELDS = [
+    "commits",
+    "mergeCommit",
+    "potentialMergeCommit",
+    "headRef",
+    "baseRef",
+    "headRefOid",
+    "additions",
+    "deletions",
+    "changedFiles",
+]
+
+# Ordered tiers of PullRequest fields to shed when a query keeps exceeding
+# GitHub's GraphQL execution budget. Stripping is gradual: each successive retry
+# drops the next tier *in addition to* every earlier one, cheapest-to-lose first,
+# so we only give up the more valuable fields once the lighter ones haven't
+# helped. The final tier is everything else, leaving only the required fields.
+EXPENSIVE_PR_GRAPHQL_FIELD_TIERS: list[list[str]] = [
+    _PR_RELATION_FIELDS,
+    _PR_COMMIT_FIELDS,
+    [
+        name
+        for name in ALL_OPTIONAL_PR_FIELD_NAMES
+        if name not in {*_PR_RELATION_FIELDS, *_PR_COMMIT_FIELDS}
+    ],
+]
+
+
+def resolve_excluded_pr_fields(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> set[str]:
+    return set(options.exclude_graphql_fields) | set(extra_excluded_fields or [])
+
+
+def generate_pr_fields(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+    include_required_fields: bool = True,
+) -> str:
+    required_fields = [
+        "url",
+        "id",
+        "fullDatabaseId",
+        "number",
+        "title",
+    ]
+
+    optional_fields = _pr_optional_field_defs(options)
+
+    excluded = resolve_excluded_pr_fields(options, extra_excluded_fields)
+    filtered_optional_fields = [
+        body for name, body in optional_fields if name not in excluded
+    ]
+
+    return "\n".join(
+        [
+            *(required_fields if include_required_fields else []),
+            *filtered_optional_fields,
+        ]
+    )
+
+
+def generate_list_pull_requests_gql(
+    options: PullRequestGraphQLOptions,
+    order_by_field: str = "CREATED_AT",
+    extra_excluded_fields: Iterable[str] | None = None,
+) -> str:
+    return f"""
 {PAGE_INFO_FRAGMENT}
 query ListPullRequests(
   $organization: String!,
@@ -329,10 +534,10 @@ query ListPullRequests(
       first: $first,
       after: $after,
       states: $states,
-      orderBy: {{ field: CREATED_AT, direction: DESC }}
+      orderBy: {{ field: {order_by_field}, direction: DESC }}
     ) {{
       nodes {{
-{PR_FIELDS}
+{generate_pr_fields(options, extra_excluded_fields)}
       }}
       pageInfo {{
         ...PageInfoFields
@@ -342,8 +547,13 @@ query ListPullRequests(
 }}
 """
 
-PULL_REQUEST_DETAILS_GQL = f"""
-{PAGE_INFO_FRAGMENT}
+
+def generate_pull_request_details_gql(
+    options: PullRequestGraphQLOptions,
+    extra_excluded_fields: Iterable[str] | None = None,
+    include_required_fields: bool = True,
+) -> str:
+    return f"""
 query PullRequestDetails(
   $organization: String!,
   $repo: String!,
@@ -351,11 +561,12 @@ query PullRequestDetails(
 ) {{
   repository(owner: $organization, name: $repo) {{
     pullRequest(number: $prNumber) {{
-{PR_FIELDS}
+{generate_pr_fields(options, extra_excluded_fields, include_required_fields)}
     }}
   }}
 }}
 """
+
 
 REPOSITORY_FRAGMENT = """
 fragment RepositoryFields on Repository {

@@ -1,7 +1,6 @@
 import os
 from typing import Any, Dict
 
-
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
 

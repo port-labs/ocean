@@ -97,7 +97,7 @@ The Entity Processor applies JQ mappings to transform raw data:
 **JQ Processing**:
 - Uses `jq` library to apply JQ expressions
 - Compiles patterns for performance
-- Processes in parallel (multiprocessing for sync patterns)
+- Processes compileable JQ patterns in parallel using a process pool
 - Handles errors gracefully
 
 ### Step 6: Calculate State Diff

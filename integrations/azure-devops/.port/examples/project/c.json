@@ -1,0 +1,25 @@
+{
+  "id": "99887766-5544-3322-1100-ffeeddccbbaa",
+  "name": "frontend-portal",
+  "url": "[REDACTED]/_apis/projects/99887766-5544-3322-1100-ffeeddccbbaa",
+  "state": "wellFormed",
+  "revision": 87,
+  "_links": {
+    "self": {
+      "href": "[REDACTED]/_apis/projects/99887766-5544-3322-1100-ffeeddccbbaa"
+    },
+    "collection": {
+      "href": "[REDACTED]/_apis/projectCollections/1d8e3089-8f24-43f5-96f6-7a561518619b"
+    },
+    "web": {
+      "href": "[REDACTED]/frontend-portal"
+    }
+  },
+  "visibility": "private",
+  "defaultTeam": {
+    "id": "abcdef01-2345-6789-abcd-ef0123456789",
+    "name": "frontend-portal Team",
+    "url": "[REDACTED]/_apis/projects/99887766-5544-3322-1100-ffeeddccbbaa/teams/abcdef01-2345-6789-abcd-ef0123456789"
+  },
+  "lastUpdateTime": "2026-04-05T14:22:11.55Z"
+}

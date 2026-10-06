@@ -44,7 +44,7 @@ import threading
 import signal
 import sys
 
-from confluent_kafka import Consumer, Producer, KafkaError  # type: ignore
+from confluent_kafka import Consumer, KafkaError, Producer
 from confluent_kafka.admin import AdminClient, NewTopic  # type: ignore
 
 
@@ -71,7 +71,9 @@ class KafkaLoadTest:
     def run(self) -> None:
         """Main function to set up and run the Kafka load test"""
         # Create topics
-        admin_config = {"bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS}
+        admin_config: dict[str, str | int | float | bool] = {
+            "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS
+        }
         admin_client = AdminClient(admin_config)
 
         # Generate topic names
@@ -187,12 +189,12 @@ def start_consumer(
             msg = consumer.poll(1.0)
             if msg is None:
                 continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
+            error = msg.error()
+            if error is not None:
+                if error.code() == KafkaError._PARTITION_EOF:
                     continue
-                else:
-                    print(f"Consumer error: {msg.error()}")
-                    break
+                print(f"Consumer error: {error}")
+                break
 
             # Process the message (in this case, we just continue)
             continue

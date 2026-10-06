@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -13,7 +13,6 @@ class MockServicenowProcessor(ServicenowAbstractWebhookProcessor):
     """Mock concrete implementation of ServicenowAbstractWebhookProcessor for testing."""
 
     def _should_process_event(self, event: WebhookEvent) -> bool:
-        # Simple implementation for testing: process if 'process_me' is in payload
         return event.payload.get("process_me", False)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -34,16 +33,59 @@ def base_processor(mock_webhook_event: WebhookEvent) -> MockServicenowProcessor:
     return MockServicenowProcessor(event=mock_webhook_event)
 
 
+def _mock_ocean_config(webhook_secret: str | None = None) -> MagicMock:
+    mock = MagicMock()
+    config = {}
+    if webhook_secret is not None:
+        config["webhook_secret"] = webhook_secret
+    mock.integration_config = config
+    return mock
+
+
 @pytest.mark.asyncio
 class TestServicenowAbstractWebhookProcessor:
     """Test suite for ServicenowAbstractWebhookProcessor."""
 
-    async def test_authenticate_always_returns_true(
+    async def test_authenticate_no_secret_configured(
         self, base_processor: MockServicenowProcessor
     ) -> None:
-        """Test that authenticate always returns True as per implementation."""
-        result = await base_processor.authenticate({}, {})
-        assert result is True
+        with patch("webhook.processors._base_processor.ocean", _mock_ocean_config()):
+            result = await base_processor.authenticate({}, {})
+            assert result is True
+
+    async def test_authenticate_matching_secret(
+        self, base_processor: MockServicenowProcessor
+    ) -> None:
+        with patch(
+            "webhook.processors._base_processor.ocean",
+            _mock_ocean_config("my-secret"),
+        ):
+            result = await base_processor.authenticate(
+                {}, {"authorization": "my-secret"}
+            )
+            assert result is True
+
+    async def test_authenticate_missing_header(
+        self, base_processor: MockServicenowProcessor
+    ) -> None:
+        with patch(
+            "webhook.processors._base_processor.ocean",
+            _mock_ocean_config("my-secret"),
+        ):
+            result = await base_processor.authenticate({}, {})
+            assert result is False
+
+    async def test_authenticate_mismatching_secret(
+        self, base_processor: MockServicenowProcessor
+    ) -> None:
+        with patch(
+            "webhook.processors._base_processor.ocean",
+            _mock_ocean_config("my-secret"),
+        ):
+            result = await base_processor.authenticate(
+                {}, {"authorization": "wrong-secret"}
+            )
+            assert result is False
 
     async def test_validate_payload_with_sys_id(
         self, base_processor: MockServicenowProcessor

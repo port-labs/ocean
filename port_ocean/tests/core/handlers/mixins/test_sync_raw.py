@@ -1,8 +1,11 @@
+import asyncio
 from graphlib import CycleError
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
+from concurrent.futures import ThreadPoolExecutor
 
+from loguru import logger
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import KindNotImplementedException, OceanAbortException
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from port_ocean.ocean import Ocean
@@ -23,11 +26,47 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
 from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import ETLPhase, RAW_RESULT
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.clients.dsp.lifecycle import GranularityType
+from port_ocean.helpers.metric.metric import MetricResourceKind, SyncState
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import List, Optional
 from port_ocean.tests.core.conftest import create_entity, no_op_event_context
+
+
+class _TestProcessPoolExecutor(ThreadPoolExecutor):
+    def __init__(self, *args: Any, mp_context: Any = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+
+@pytest.fixture(autouse=True)
+def mock_resource_monitoring() -> Generator[None, None, None]:
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.start_monitoring",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.stop_monitoring",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.start_kind_tracking",
+            MagicMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.stop_kind_tracking",
+            MagicMock(return_value=None),
+        ),
+        patch(
+            "port_ocean.core.handlers.entity_processor.jq_entity_processor.ProcessPoolExecutor",
+            _TestProcessPoolExecutor,
+        ),
+    ):
+        yield
 
 
 @pytest.fixture
@@ -124,7 +163,11 @@ async def test_sync_raw_mixin_self_dependency(
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
                 use_cache=False
@@ -245,7 +288,11 @@ async def test_sync_raw_mixin_circular_dependency(
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
                 use_cache=False
@@ -390,7 +437,11 @@ async def test_sync_raw_mixin_dependency(
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
                 use_cache=False
@@ -800,7 +851,11 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
 
         # Test execution
@@ -827,7 +882,11 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
 
         # Test execution
@@ -854,7 +913,11 @@ async def test_register_resource_raw_with_errors(
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
 
         # Test execution
@@ -930,7 +993,11 @@ async def test_on_resync_start_hooks_are_called(
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
             trigger_type="machine",
@@ -939,6 +1006,111 @@ async def test_on_resync_start_hooks_are_called(
 
     # Verify
     assert resync_start_called, "on_resync_start hook was not called"
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_all_clears_blueprint_cache_on_start_and_finish(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    invalidate_mock = MagicMock(wraps=mock_ocean.port_client.clear_blueprint_cache)
+    mock_ocean.port_client.clear_blueprint_cache = invalidate_mock  # type: ignore[method-assign]
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
+        event.port_app_config = mock_port_app_config
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    assert invalidate_mock.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_all_returns_true_and_skips_sync_when_resources_empty(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config_handler: MagicMock,
+    mock_ocean: Ocean,
+) -> None:
+    empty_config = PortAppConfig(resources=[])
+    mock_port_app_config_handler.get_port_app_config = AsyncMock(
+        return_value=empty_config
+    )
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=False),
+    ):
+        result = await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    assert result is True
+    mock_sync_raw_mixin._get_resource_raw_results.assert_not_called()
+    mock_ocean.metrics.report_sync_metrics.assert_called_once_with(
+        kinds=[MetricResourceKind.RUNTIME],
+        dsp_enabled=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_all_empty_resources_notifies_dsp_lifecycle_when_enabled(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config_handler: MagicMock,
+    mock_ocean: Ocean,
+) -> None:
+    empty_config = PortAppConfig(resources=[])
+    mock_port_app_config_handler.get_port_app_config = AsyncMock(
+        return_value=empty_config
+    )
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_resync_started = AsyncMock()
+    lifecycle_client.notify_resync_finished = AsyncMock()
+    lifecycle_client.notify_resync_failed = AsyncMock()
+    lifecycle_client.notify_resync_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        result = await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    assert result is True
+    mock_sync_raw_mixin._get_resource_raw_results.assert_not_called()
+    lifecycle_client.notify_resync_started.assert_awaited_once()
+    started_kwargs = lifecycle_client.notify_resync_started.await_args.kwargs
+    assert started_kwargs["integration_id"] == "integration-id"
+    assert started_kwargs["integration_type"] == "integration-type"
+    assert started_kwargs["sync_type"] == "full_sync"
+    assert started_kwargs["mapping"]["resources"] == []
+    lifecycle_client.notify_resync_finished.assert_awaited_once()
+    lifecycle_client.notify_resync_failed.assert_not_awaited()
+    lifecycle_client.notify_resync_aborted.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -962,7 +1134,11 @@ async def test_on_resync_complete_hooks_are_called_on_success(
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
 
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
             trigger_type="machine",
@@ -989,15 +1165,19 @@ async def test_on_resync_complete_hooks_not_called_on_error(
     mock_sync_raw_mixin._get_resource_raw_results.side_effect = Exception("Test error")  # type: ignore
 
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
-        with pytest.raises(Exception):
-            await mock_sync_raw_mixin.sync_raw_all(
-                trigger_type="machine",
-                user_agent_type=UserAgentType.exporter,
-            )
+        result = await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
 
     # Verify
+    assert result is False
     assert (
         not resync_complete_called
     ), "on_resync_complete hook should not have been called on error"
@@ -1035,7 +1215,11 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
             trigger_type="machine",
@@ -1064,7 +1248,7 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     - Raw data has users with 'name' and 'email' fields
     - Mapping tries to use '.nonexistent_field' as identifier (doesn't exist)
     - Transformation should fail (no valid entities created)
-    - BUT examples should still be sent to Port
+    - BUT examples should already be sent to Port by the extraction wrapper
     """
     # Create a resource config with a broken mapping (identifier field doesn't exist)
     broken_resource_config = ResourceConfig(
@@ -1103,15 +1287,30 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     # Enable sending raw data examples
     mock_ocean.config.send_raw_data_examples = True
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async def resync_handler(kind: str) -> list[dict[str, Any]]:
+        return raw_results
+
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = broken_app_config
 
-        # Call _register_resource_raw which will process the data
+        extracted_results, errors = (
+            await mock_sync_raw_mixin_with_jq_processor._execute_resync_tasks(
+                [resync_handler],
+                broken_resource_config,
+                send_raw_data_examples_amount=2,
+            )
+        )
+        assert errors == []
+
+        # Call _register_resource_raw which will process the data after examples were sent
         result = await mock_sync_raw_mixin_with_jq_processor._register_resource_raw(
             broken_resource_config,
-            raw_results,
+            cast(list[dict[Any, Any]], extracted_results),
             UserAgentType.exporter,
-            send_raw_data_examples_amount=2,  # Request 2 examples
         )
 
         # KEY ASSERTION: Examples should be sent even though transformation failed
@@ -1170,7 +1369,11 @@ async def test_on_resync_start_hook_error_prevents_resync(
     mock_sync_raw_mixin._get_resource_raw_results = track_resync  # type: ignore
 
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         with pytest.raises(Exception, match="Before resync error"):
             await mock_sync_raw_mixin.sync_raw_all(
@@ -1185,3 +1388,756 @@ async def test_on_resync_start_hook_error_prevents_resync(
     assert (
         not resync_complete_called
     ), "on_resync_complete hook should not have been called after error"
+
+
+@pytest.mark.asyncio
+async def test_reconciliation_search_entities_uses_resync_start_time_filter(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    """Reconciliation must fetch entities from Port before resync_start_time.
+
+    This guards against the race where live events create/update entities during a resync:
+    those entities have updatedAt after resync_start_time and must be excluded from the
+    delete diff so they are not incorrectly deleted.
+    """
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> "FixedDatetime":
+            return cls(2026, 3, 3, 12, 0, 0, tzinfo=tz)
+
+    resync_start_time = FixedDatetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc)
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
+
+    with patch("port_ocean.core.integrations.mixins.sync_raw.datetime", FixedDatetime):
+        await mock_sync_raw_mixin.sync_raw_all()
+
+    mock_ocean.port_client.search_entities.assert_called_once()
+    call_args = mock_ocean.port_client.search_entities.call_args
+    assert call_args.kwargs["before"] == resync_start_time.isoformat()
+
+
+# ---------------------------------------------------------------------------
+# ETL phase context tests (PR: ocean logging standardization)
+# ---------------------------------------------------------------------------
+
+
+def _capture_loguru_extras() -> tuple[list[dict[str, Any]], int]:
+    """Add a loguru sink that captures record extras. Returns (records_list, sink_id)."""
+    records: list[dict[str, Any]] = []
+    sink_id = logger.add(lambda msg: records.append(dict(msg.record["extra"])))
+    return records, sink_id
+
+
+@pytest.mark.asyncio
+async def test_register_resource_raw_sets_transform_etl_phase_in_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    entity = Entity(identifier="1", blueprint="service")
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(  # type: ignore
+        return_value=[
+            CalculationResult(
+                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+                errors=[],
+                misconfigurations=[],
+                misconfigured_entity_keys=[],
+            )
+        ]
+    )
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[])  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin._register_resource_raw(
+                mock_port_app_config.resources[0],
+                [{"some": "data"}],
+                UserAgentType.exporter,
+                batch_index=3,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    transform_records = [r for r in records if r.get("etl_phase") == ETLPhase.TRANSFORM]
+    load_records = [r for r in records if r.get("etl_phase") == ETLPhase.LOAD]
+
+    assert (
+        len(transform_records) >= 2
+    ), "Expected at least 2 logs with etl_phase=transform"
+    assert len(load_records) >= 2, "Expected at least 2 logs with etl_phase=load"
+
+
+@pytest.mark.asyncio
+async def test_register_resource_raw_batch_number_appears_in_log_extras(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    entity = Entity(identifier="1", blueprint="service")
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(  # type: ignore
+        return_value=[
+            CalculationResult(
+                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+                errors=[],
+                misconfigurations=[],
+                misconfigured_entity_keys=[],
+            )
+        ]
+    )
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[])  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin._register_resource_raw(
+                mock_port_app_config.resources[0],
+                [{"some": "data"}],
+                UserAgentType.exporter,
+                batch_index=5,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    records_with_batch = [r for r in records if r.get("batch_index") == 5]
+    assert (
+        len(records_with_batch) >= 1
+    ), "Expected at least one log record with batch_index=5"
+
+
+@pytest.mark.asyncio
+async def test_register_in_batches_sets_extract_etl_phase_in_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    from port_ocean.context.resource import resource_context
+
+    # _get_resource_raw_results returns a list of items that are either dicts or async generators
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(  # type: ignore
+        return_value=([{"id": "1", "name": "entity_1"}], [])
+    )
+    mock_sync_raw_mixin._lakehouse_data_enabled = AsyncMock(return_value=False)  # type: ignore
+    calc_result = MagicMock()
+    calc_result.errors = []
+    calc_result.entity_selector_diff = MagicMock()
+    calc_result.entity_selector_diff.passed = []
+    calc_result.number_of_transformed_entities = 0
+    mock_sync_raw_mixin._register_resource_raw = AsyncMock(return_value=calc_result)  # type: ignore
+    mock_ocean.metrics.set_metric = MagicMock()  # type: ignore
+    mock_ocean.metrics.inc_metric = MagicMock()  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            async with resource_context(mock_resource_config, 0):
+                await mock_sync_raw_mixin._register_in_batches(
+                    mock_resource_config, UserAgentType.exporter, index=0
+                )
+    finally:
+        logger.remove(sink_id)
+
+    extract_records = [r for r in records if r.get("etl_phase") == ETLPhase.EXTRACT]
+    assert len(extract_records) >= 2, "Expected at least 2 logs with etl_phase=extract"
+
+
+@pytest.mark.asyncio
+async def test_resync_reconciliation_sets_reconciliation_etl_phase_in_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.delete_diff = AsyncMock()  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin._resync_reconciliation(
+                creation_results=[],
+                did_fetched_current_state=True,
+                user_agent_type=UserAgentType.exporter,
+                app_config=mock_port_app_config,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    reconciliation_records = [
+        r for r in records if r.get("etl_phase") == ETLPhase.RECONCILIATION
+    ]
+    assert (
+        len(reconciliation_records) >= 1
+    ), "Expected at least 1 log with etl_phase=reconciliation"
+
+
+def _resource_config_for_kind(kind: str) -> ResourceConfig:
+    return ResourceConfig(
+        kind=kind,
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={"url": ".web_url"},
+                    relations={},
+                )
+            )
+        ),
+    )
+
+
+async def _resync_handler(kind: str) -> list[dict[str, str]]:
+    return [{"id": "1"}]
+
+
+@pytest.mark.asyncio
+async def test_get_resource_raw_results_returns_error_for_unregistered_kind(
+    mock_resource_config: ResourceConfig,
+) -> None:
+    # Arrange
+    mixin = SyncRawMixin()
+
+    # Act
+    async with event_context(EventType.RESYNC, trigger_type="machine"):
+        with patch.object(
+            mixin,
+            "_execute_resync_tasks",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            results, errors = await mixin._get_resource_raw_results(
+                mock_resource_config
+            )
+
+    # Assert
+    mock_execute.assert_not_awaited()
+    assert results == []
+    assert len(errors) == 1
+    assert isinstance(errors[0], KindNotImplementedException)
+    assert mock_resource_config.kind in str(errors[0])
+
+
+@pytest.mark.asyncio
+async def test_get_resource_raw_results_proceeds_when_specific_kind_registered(
+    mock_resource_config: ResourceConfig,
+) -> None:
+    # Arrange
+    mixin = SyncRawMixin()
+    mixin.on_resync(_resync_handler, kind=mock_resource_config.kind)
+
+    # Act
+    async with event_context(EventType.RESYNC, trigger_type="machine"):
+        with patch.object(
+            mixin,
+            "_execute_resync_tasks",
+            new_callable=AsyncMock,
+            return_value=([], []),
+        ) as mock_execute:
+            results, errors = await mixin._get_resource_raw_results(
+                mock_resource_config
+            )
+
+    # Assert
+    mock_execute.assert_awaited_once()
+    assert results == []
+    assert errors == []
+
+
+@pytest.mark.asyncio
+async def test_get_resource_raw_results_proceeds_when_catch_all_registered() -> None:
+    # Arrange
+    mixin = SyncRawMixin()
+    mixin.on_resync(_resync_handler, kind=None)
+    resource_config = _resource_config_for_kind("pull-request")
+
+    # Act
+    async with event_context(EventType.RESYNC, trigger_type="machine"):
+        with patch.object(
+            mixin,
+            "_execute_resync_tasks",
+            new_callable=AsyncMock,
+            return_value=([], []),
+        ) as mock_execute:
+            results, errors = await mixin._get_resource_raw_results(resource_config)
+
+    # Assert
+    mock_execute.assert_awaited_once()
+    assert results == []
+    assert errors == []
+
+
+@pytest.mark.asyncio
+async def test_get_resource_raw_results_proceeds_when_both_catch_all_and_specific_registered(
+    mock_resource_config: ResourceConfig,
+) -> None:
+    # Arrange
+    mixin = SyncRawMixin()
+    mixin.on_resync(_resync_handler, kind=mock_resource_config.kind)
+    mixin.on_resync(_resync_handler, kind=None)
+
+    # Act
+    async with event_context(EventType.RESYNC, trigger_type="machine"):
+        with patch.object(
+            mixin,
+            "_execute_resync_tasks",
+            new_callable=AsyncMock,
+            return_value=([], []),
+        ) as mock_execute:
+            results, errors = await mixin._get_resource_raw_results(
+                mock_resource_config
+            )
+
+    # Assert
+    mock_execute.assert_awaited_once()
+    assert results == []
+    assert errors == []
+
+
+@pytest.mark.asyncio
+async def test_collect_resync_functions_returns_functions_without_setting_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    """The old code called logger.contextualize() without `with` — a no-op.
+    Verify the removal doesn't break function collection and leaks no context."""
+    records, sink_id = _capture_loguru_extras()
+    try:
+        fns = mock_sync_raw_mixin._collect_resync_functions(
+            mock_resource_config,
+            cast(
+                dict[str | None, list[Callable[[str], Awaitable[RAW_RESULT]]]],
+                mock_sync_raw_mixin.event_strategy.resync,
+            ),
+        )
+    finally:
+        logger.remove(sink_id)
+
+    # No logs should have been emitted, and no `kind` context should be set
+    assert isinstance(fns, list)
+    assert all(
+        "kind" not in r for r in records
+    ), "Expected no logger context to be set by _collect_resync_functions"
+
+
+@pytest.mark.asyncio
+async def test_parse_items_sets_both_kind_and_resource_kind_in_logger_context(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    """base.py parse_items now contextualizes with both kind and resource_kind."""
+    processor = mock_sync_raw_mixin_with_jq_processor.entity_processor
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        await processor.parse_items(
+            mapping=mock_resource_config,
+            raw_data=[{"id": "1", "name": "test", "web_url": "https://example.com"}],
+        )
+    finally:
+        logger.remove(sink_id)
+
+    assert any(
+        r.get("kind") == mock_resource_config.kind for r in records
+    ), "Expected 'kind' to be set in logger context"
+    assert any(
+        r.get("resource_kind") == mock_resource_config.kind for r in records
+    ), "Expected 'resource_kind' to be set in logger context"
+
+
+@pytest.mark.asyncio
+async def test_execute_resync_tasks_passes_examples_amount_to_each_async_generator(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    async def generator_one(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if False:
+            yield [{"kind": kind}]
+
+    async def generator_two(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if False:
+            yield [{"kind": kind}]
+
+    wrapped_generator_one = generator_one("test-kind")
+    wrapped_generator_two = generator_two("test-kind")
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.resync_generator_wrapper",
+        side_effect=[wrapped_generator_one, wrapped_generator_two],
+    ) as mock_wrapper:
+        resync_handlers = [
+            cast(Callable[[str], Awaitable[list[dict[Any, Any]]]], generator_one),
+            cast(Callable[[str], Awaitable[list[dict[Any, Any]]]], generator_two),
+        ]
+        await mock_sync_raw_mixin._execute_resync_tasks(
+            resync_handlers,
+            mock_resource_config,
+            send_raw_data_examples_amount=5,
+        )
+
+    assert mock_wrapper.call_count == 2
+    assert mock_wrapper.call_args_list[0].kwargs == {"send_raw_data_examples_amount": 5}
+    assert mock_wrapper.call_args_list[1].kwargs == {"send_raw_data_examples_amount": 5}
+
+
+@pytest.mark.asyncio
+async def test_process_resource_unexpected_exception_marks_kind_failed(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    sync_states_at_report: list[str] = []
+
+    async def capture_kind_report(*args: object, **kwargs: object) -> None:
+        sync_states_at_report.append(mock_ocean.metrics.sync_state)
+
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(
+        side_effect=RuntimeError("crash")
+    )
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(  # type: ignore
+        side_effect=capture_kind_report
+    )
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=False),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=False),
+        ),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin.sync_raw_all(
+                trigger_type="machine",
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert mock_ocean.metrics.report_kind_sync_metrics.await_count >= 1
+    assert SyncState.FAILED in sync_states_at_report
+
+
+@pytest.mark.asyncio
+async def test_process_resource_unexpected_exception_returns_error_in_results(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(
+        side_effect=RuntimeError("crash")
+    )
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=False),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=False),
+        ),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            entities, errors = await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert entities == []
+    assert len(errors) == 1
+    assert isinstance(errors[0], RuntimeError)
+    assert str(errors[0]) == "crash"
+    assert mock_ocean.metrics.sync_state == SyncState.FAILED
+
+
+@pytest.mark.asyncio
+async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(return_value=([], []))
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.event_id = "resync-1"
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_started = AsyncMock()
+    lifecycle_client.notify_finished = AsyncMock()
+    lifecycle_client.notify_failed = AsyncMock()
+    lifecycle_client.notify_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ):
+            entities, errors = await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert entities == []
+    assert errors == []
+    lifecycle_client.notify_started.assert_awaited_once_with(
+        event_id="resync-1",
+        integration_id="integration-id",
+        integration_type="integration-type",
+        granularity=GranularityType.KIND,
+        kind_identifier="service-0",
+    )
+    lifecycle_client.notify_finished.assert_awaited_once_with(
+        event_id="resync-1",
+        integration_type="integration-type",
+        granularity=GranularityType.KIND,
+        kind_identifier="service-0",
+    )
+    lifecycle_client.notify_failed.assert_not_awaited()
+    lifecycle_client.notify_aborted.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_resource_incremental_dsp_notifies_kind_finished(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(return_value=([], []))
+    mock_ocean.metrics.event_id = "incremental-resync-1"
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_started = AsyncMock()
+    lifecycle_client.notify_finished = AsyncMock()
+    lifecycle_client.notify_failed = AsyncMock()
+    lifecycle_client.notify_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        async with event_context(
+            EventType.INCREMENTAL_RESYNC,
+            trigger_type="machine",
+        ):
+            entities, errors = await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert entities == []
+    assert errors == []
+    lifecycle_client.notify_started.assert_awaited_once_with(
+        event_id="incremental-resync-1",
+        integration_id="integration-id",
+        integration_type="integration-type",
+        granularity=GranularityType.KIND,
+        kind_identifier="service-0",
+    )
+    lifecycle_client.notify_finished.assert_awaited_once_with(
+        event_id="incremental-resync-1",
+        integration_type="integration-type",
+        granularity=GranularityType.KIND,
+        kind_identifier="service-0",
+    )
+    lifecycle_client.notify_failed.assert_not_awaited()
+    lifecycle_client.notify_aborted.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_resource_incremental_dsp_notifies_kind_aborted(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(
+        side_effect=asyncio.CancelledError
+    )
+    mock_ocean.metrics.event_id = "incremental-resync-1"
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_started = AsyncMock()
+    lifecycle_client.notify_finished = AsyncMock()
+    lifecycle_client.notify_failed = AsyncMock()
+    lifecycle_client.notify_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=True),
+        ),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        async with event_context(
+            EventType.INCREMENTAL_RESYNC,
+            trigger_type="machine",
+        ):
+            await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    lifecycle_client.notify_started.assert_awaited_once()
+    lifecycle_client.notify_aborted.assert_awaited_once_with(
+        event_id="incremental-resync-1",
+        granularity=GranularityType.KIND,
+        kind_identifier="service-0",
+    )
+    lifecycle_client.notify_finished.assert_not_awaited()
+    lifecycle_client.notify_failed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_all_dsp_notifies_resync_started_with_mapping(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin.process_resource = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_resync_started = AsyncMock()
+    lifecycle_client.notify_resync_finished = AsyncMock()
+    lifecycle_client.notify_resync_failed = AsyncMock()
+    lifecycle_client.notify_resync_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    expected_mapping = mock_port_app_config.to_dsp_lifecycle_mapping()
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
+
+    lifecycle_client.notify_resync_started.assert_awaited_once()
+    call_kwargs = lifecycle_client.notify_resync_started.await_args.kwargs
+    assert call_kwargs["integration_id"] == "integration-id"
+    assert call_kwargs["integration_type"] == "integration-type"
+    assert call_kwargs["sync_type"] == "full_sync"
+    assert call_kwargs["mapping"] == expected_mapping
+    mappings = call_kwargs["mapping"]["resources"][0]["port"]["entity"]["mappings"]
+    assert isinstance(mappings, list)
+    assert len(mappings) == 1
+    lifecycle_client.notify_resync_finished.assert_awaited_once()
+    finished_kwargs = lifecycle_client.notify_resync_finished.await_args.kwargs
+    assert "sync_type" not in finished_kwargs
+    assert mock_ocean.metrics.event_id != ""
+
+
+@pytest.mark.asyncio
+async def test_poll_for_lifecycle_abort_aborts_event(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    mock_ocean.lifecycle_client = MagicMock()
+    mock_ocean.lifecycle_client.get_resync_status = AsyncMock(return_value="aborted")
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.asyncio.sleep", AsyncMock()
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as current_event:
+            assert not current_event.aborted
+            await mock_sync_raw_mixin._poll_for_lifecycle_abort("resync-1")
+            assert current_event.aborted
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_all_ignores_poll_task_failure_and_completes_cleanup(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._poll_for_lifecycle_abort = AsyncMock(  # type: ignore[method-assign]
+        side_effect=RuntimeError("poll failed")
+    )
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_ocean.lifecycle_client = MagicMock()
+    mock_ocean.lifecycle_client.notify_started = AsyncMock()
+    mock_ocean.lifecycle_client.notify_finished = AsyncMock()
+    mock_ocean.lifecycle_client.notify_failed = AsyncMock()
+    mock_ocean.lifecycle_client.notify_resync_started = AsyncMock()
+    mock_ocean.lifecycle_client.notify_resync_finished = AsyncMock()
+    mock_ocean.lifecycle_client.notify_resync_failed = AsyncMock()
+
+    clear_cache = AsyncMock()
+    clear_blueprint_cache = MagicMock()
+    mock_ocean.cache_provider.clear = clear_cache  # type: ignore[method-assign]
+    mock_ocean.port_client.clear_blueprint_cache = clear_blueprint_cache  # type: ignore[method-assign]
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            result = await mock_sync_raw_mixin.sync_raw_all(
+                trigger_type="machine",
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert result is True
+    assert clear_cache.await_count == 2
+    assert clear_blueprint_cache.call_count == 2

@@ -13,6 +13,9 @@ from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.strategies.organizations_strategy import OrganizationsStrategy
+from aws.auth.providers.assume_role_with_web_identity_provider import (
+    AssumeRoleWithWebIdentityProvider,
+)
 
 from aws.auth.utils import AWSSessionError
 
@@ -130,6 +133,76 @@ class TestAccountStrategyFactory:
                 with pytest.raises(Exception, match="Health check failed"):
                     async for _ in strategy.get_account_sessions():
                         break
+
+    @pytest.mark.asyncio
+    async def test_provider_priority_default_prefers_web_identity(
+        self,
+        mock_single_account_config: dict[str, object],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When both web identity and static creds exist, default priority picks web identity first."""
+        config = mock_single_account_config.copy()
+        # Ensure web identity provider can initialize by providing a role ARN
+        config["account_role_arn"] = (
+            "arn:aws:iam::111122223333:role/test-web-identity-role"
+        )
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = config
+            monkeypatch.setenv("AWS_WEB_IDENTITY_TOKEN_FILE", "/tmp/token")
+
+            strategy = await AccountStrategyFactory.create()
+            assert isinstance(strategy.provider, AssumeRoleWithWebIdentityProvider)
+
+    @pytest.mark.asyncio
+    async def test_provider_priority_custom_prefers_static_over_web_identity(
+        self,
+        mock_single_account_config: dict[str, object],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Custom priority should choose StaticCredential before web identity when both applicable."""
+        config = mock_single_account_config.copy()
+        # Ensure web identity is applicable but lower priority than static
+        config["account_role_arn"] = (
+            "arn:aws:iam::111122223333:role/test-web-identity-role"
+        )
+        config["credential_provider_priority"] = (
+            "StaticCredential,AssumeRoleWithWebIdentity,AssumeRole"
+        )
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = config
+            monkeypatch.setenv("AWS_WEB_IDENTITY_TOKEN_FILE", "/tmp/token")
+
+            strategy = await AccountStrategyFactory.create()
+            assert isinstance(strategy.provider, StaticCredentialProvider)
+
+    @pytest.mark.asyncio
+    async def test_provider_priority_unknown_and_not_applicable_fallbacks_to_assume_role(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Unknown providers are skipped; if none applicable, fallback to AssumeRoleProvider."""
+        config: dict[str, object] = {
+            "aws_access_key_id": None,
+            "aws_secret_access_key": None,
+            "aws_session_token": None,
+            "region": None,
+            "account_role_arn": None,
+            "account_role_arns": [],
+            "external_id": None,
+            "credential_provider_priority": "UnknownProvider,StaticCredential",
+        }
+        monkeypatch.delenv("AWS_WEB_IDENTITY_TOKEN_FILE", raising=False)
+        with (
+            patch("aws.auth.session_factory.ocean") as mock_ocean,
+            patch("aws.auth.session_factory.logger") as mock_logger,
+        ):
+            mock_ocean.integration_config = config
+
+            strategy = await AccountStrategyFactory.create()
+
+            assert isinstance(strategy.provider, AssumeRoleProvider)
+            mock_logger.warning.assert_any_call(
+                "Unknown provider 'UnknownProvider', skipping..."
+            )
 
     @pytest.mark.asyncio
     async def test_create_with_empty_config(self) -> None:
@@ -350,7 +423,7 @@ class TestGetAllAccountSessions:
         """Test that clear_aws_account_sessions clears the cached strategy and all its state."""
         # Create a mock strategy with state (ARNs, sessions)
         mock_strategy = MagicMock(spec=MultiAccountStrategy)
-        mock_strategy._valid_arns = ["arn:aws:iam::123456789012:role/TestRole"]
+        mock_strategy._valid_arns = {"arn:aws:iam::123456789012:role/TestRole"}
         mock_strategy._valid_sessions = {
             "arn:aws:iam::123456789012:role/TestRole": mock_aiosession
         }
@@ -360,9 +433,9 @@ class TestGetAllAccountSessions:
 
         # Verify strategy exists and has state
         assert AccountStrategyFactory._cached_strategy is not None
-        assert AccountStrategyFactory._cached_strategy._valid_arns == [
+        assert AccountStrategyFactory._cached_strategy._valid_arns == {
             "arn:aws:iam::123456789012:role/TestRole"
-        ]
+        }
         assert len(AccountStrategyFactory._cached_strategy._valid_sessions) == 1
 
         # Clear the strategy
@@ -437,10 +510,10 @@ class TestGetAllAccountSessions:
                 mock_get_session.side_effect = [mock_session_1, mock_session_2]
 
                 async def fake_healthcheck(self: MultiAccountStrategy) -> bool:
-                    self._valid_arns = [
+                    self._valid_arns = {
                         "arn:aws:iam::123456789012:role/test-role-1",
                         "arn:aws:iam::987654321098:role/test-role-2",
-                    ]
+                    }
                     self._valid_sessions = {
                         "arn:aws:iam::123456789012:role/test-role-1": mock_session_1,
                         "arn:aws:iam::987654321098:role/test-role-2": mock_session_2,
@@ -466,10 +539,13 @@ class TestGetAllAccountSessions:
                         ) in strategy.get_account_sessions():
                             sessions.append((account_info, session))
                         assert len(sessions) == 2
-                        assert sessions[0][0]["Id"] == "123456789012"
-                        assert sessions[1][0]["Id"] == "987654321098"
-                        assert sessions[0][1] == mock_session_1
-                        assert sessions[1][1] == mock_session_2
+                        sessions_by_id = {s[0]["Id"]: s[1] for s in sessions}
+                        assert set(sessions_by_id.keys()) == {
+                            "123456789012",
+                            "987654321098",
+                        }
+                        assert sessions_by_id["123456789012"] == mock_session_1
+                        assert sessions_by_id["987654321098"] == mock_session_2
 
 
 @pytest.fixture

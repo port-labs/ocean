@@ -1,0 +1,48 @@
+{
+  "Type": "AWS::SES::ConfigurationSet",
+  "Properties": {
+    "ConfigurationSetName": "my-config-set",
+    "TrackingOptions": {
+      "CustomRedirectDomain": "tracking.example.com"
+    },
+    "DeliveryOptions": {
+      "TlsPolicy": "REQUIRE",
+      "SendingPoolName": "my-dedicated-pool"
+    },
+    "ReputationOptions": {
+      "ReputationMetricsEnabled": true,
+      "LastFreshStart": "2024-01-15T10:30:00Z"
+    },
+    "SendingOptions": {
+      "SendingEnabled": true
+    },
+    "SuppressionOptions": {
+      "SuppressedReasons": [
+        "BOUNCE",
+        "COMPLAINT"
+      ]
+    },
+    "VdmOptions": {
+      "DashboardOptions": {
+        "EngagementMetrics": "ENABLED"
+      },
+      "GuardianOptions": {
+        "OptimizedSharedDelivery": "ENABLED"
+      }
+    },
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      }
+    ]
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

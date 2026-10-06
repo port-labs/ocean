@@ -11,6 +11,7 @@ class ObjectKind(StrEnum):
     STATE_FILE = "state-file"
     PROJECT = "project"
     ORGANIZATION = "organization"
+    HEALTH_ASSESSMENT = "health-assessment"
 
 
 def init_terraform_client() -> TerraformClient:

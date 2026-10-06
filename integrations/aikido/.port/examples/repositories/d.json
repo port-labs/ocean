@@ -1,0 +1,13 @@
+{
+  "id": 1841545,
+  "name": "small-repo",
+  "external_repo_id": "c974749d-d442-4e31-a768-47f42c000f11",
+  "external_repo_numeric_id": -1,
+  "provider": "azure_devops",
+  "active": true,
+  "url": "https://dev.azure.com/eridotdev/test-azure-sync-project/_git/small-repo",
+  "branch": "PeyGis-patch-1",
+  "last_scanned_at": 1775686382,
+  "connectivity": "unknown",
+  "sensitivity": "normal"
+}

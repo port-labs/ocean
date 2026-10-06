@@ -1,6 +1,7 @@
 import pytest
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from botocore.exceptions import ClientError
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
 from aws.core.exporters.ecs.service.models import (
     SingleServiceRequest,
@@ -55,7 +56,12 @@ class TestEcsServiceExporter:
             "aws.core.exporters.ecs.service.exporter.AioBaseClientProxy"
         ) as mock_proxy_class:
             mock_proxy = AsyncMock()
+            mock_client = AsyncMock()
+            mock_proxy.client = mock_client
             mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+            mock_client.describe_services.return_value = {
+                "services": [mock_service_data]
+            }
 
             mock_inspector = AsyncMock()
             mock_inspector.inspect.return_value = [mock_service_data]
@@ -67,6 +73,13 @@ class TestEcsServiceExporter:
                 result = await exporter.get_resource(options)
 
         assert result == mock_service_data
+        mock_client.describe_services.assert_awaited_once_with(
+            cluster="arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
+            services=[
+                "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
+            ],
+            include=["TAGS"],
+        )
         mock_inspector.inspect.assert_called_once()
 
         # Verify the service ARN was passed correctly
@@ -87,10 +100,10 @@ class TestEcsServiceExporter:
         )
 
     @pytest.mark.asyncio
-    async def test_get_resource_empty_response(
+    async def test_get_resource_describe_services_not_found(
         self, exporter: EcsServiceExporter
     ) -> None:
-        """Test handling empty response from inspector."""
+        """Missing services must raise before stub resources are built."""
         options = SingleServiceRequest(
             service_name="nonexistent-service",
             cluster_name="test-cluster",
@@ -102,18 +115,19 @@ class TestEcsServiceExporter:
             "aws.core.exporters.ecs.service.exporter.AioBaseClientProxy"
         ) as mock_proxy_class:
             mock_proxy = AsyncMock()
+            mock_client = AsyncMock()
+            mock_proxy.client = mock_client
             mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
-
-            mock_inspector = AsyncMock()
-            mock_inspector.inspect.return_value = []
+            mock_client.describe_services.return_value = {"services": []}
 
             with patch(
-                "aws.core.exporters.ecs.service.exporter.ResourceInspector",
-                return_value=mock_inspector,
-            ):
-                result = await exporter.get_resource(options)
+                "aws.core.exporters.ecs.service.exporter.ResourceInspector"
+            ) as mock_inspector_class:
+                with pytest.raises(ClientError) as exc_info:
+                    await exporter.get_resource(options)
 
-        assert result == {}
+        assert exc_info.value.response["Error"]["Code"] == "ServiceNotFoundException"
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.service.exporter.AioBaseClientProxy")

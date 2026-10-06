@@ -479,6 +479,38 @@ async def test_get_single_project_is_called_with_correct_params(
     mock_get_branches.assert_any_call(PURE_PROJECTS[0]["key"])
 
 
+async def test_get_single_project_handles_ignored_errors_return_no_branches(
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+        metrics=["coverage", "bugs"],
+    )
+    sonarqube_client.http_client = MockHttpxClient(
+        [
+            {
+                "status_code": 403,
+                "json": {"errors": [{"msg": "Insufficient privileges"}]},
+            },
+            {
+                "status_code": 403,
+                "json": {"errors": [{"msg": "Insufficient privileges"}]},
+            },
+        ]
+    )  # type: ignore
+
+    result = await sonarqube_client.get_single_project({"key": "GWAM_gwamda-Honeywell"})
+
+    assert result["key"] == "GWAM_gwamda-Honeywell"
+    assert result["__measures"] == []
+    assert result["__branches"] == []
+    assert result["__branch"] == {}
+
+
 async def test_projects_will_return_correct_data(
     mock_event_context: Any, mock_ocean_context: Any, monkeypatch: Any
 ) -> None:
@@ -1145,3 +1177,89 @@ async def test_sonarqube_client_normalizes_trailing_slashes(
     assert client_without_app_host.base_url == "https://sonarqube.com"
     assert client_without_app_host.app_host is None
     assert client_without_app_host.webhook_invoke_url == ""
+
+
+@pytest.mark.asyncio
+async def test_get_issues_by_component_pops_pagination_param_and_resets(
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    component = {"key": "test-project"}
+    query_params = {"some_other_param": "value"}
+
+    mock_http_client = AsyncMock()
+
+    # Prepare mock responses
+    mock_responses = [
+        httpx.Response(
+            200,
+            json={
+                "issues": [{"key": "issue1"}],
+                "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
+            },
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+        httpx.Response(
+            200,
+            json={
+                "issues": [{"key": "issue2"}],
+                "paging": {"pageIndex": 2, "pageSize": 1, "total": 2},
+            },
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+        httpx.Response(
+            200,
+            json={"issues": [], "paging": {"pageIndex": 1, "pageSize": 1, "total": 0}},
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+    ]
+
+    captured_params: list[dict[str, Any]] = []
+
+    async def capture_request(*args: Any, **kwargs: Any) -> httpx.Response:
+        captured_params.append(dict(kwargs.get("params", {})))
+        return mock_responses.pop(0)
+
+    mock_http_client.request.side_effect = capture_request
+    sonarqube_client.http_client = mock_http_client
+
+    # First call: processes 2 pages
+    batches = []
+    async for batch in sonarqube_client.get_issues_by_component(
+        component, query_params=query_params
+    ):
+        batches.append(batch)
+
+    assert len(batches) == 2
+
+    # First request: no pagination param
+    sent_params_1 = captured_params[0]
+    assert "p" not in sent_params_1
+    assert sent_params_1["ps"] == 100
+    assert sent_params_1["some_other_param"] == "value"
+    assert sent_params_1["componentKeys"] == "test-project"
+
+    # Second request: pagination applied
+    sent_params_2 = captured_params[1]
+    assert sent_params_2["p"] == 2
+    assert sent_params_2["ps"] == 100
+
+    # Original query params must remain untouched
+    assert query_params == {"some_other_param": "value"}
+
+    # Second call: should reset pagination (no 'p' again)
+    async for _ in sonarqube_client.get_issues_by_component(
+        component, query_params=query_params
+    ):
+        pass
+
+    sent_params_3 = captured_params[2]
+    assert "p" not in sent_params_3
+    assert sent_params_3["ps"] == 100

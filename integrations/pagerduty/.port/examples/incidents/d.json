@@ -1,0 +1,144 @@
+{
+  "incident_number": 275,
+  "title": "Test incident from n8n",
+  "description": "Test incident from n8n",
+  "created_at": "2025-12-03T23:23:50Z",
+  "updated_at": "2025-12-03T23:53:52Z",
+  "status": "triggered",
+  "incident_key": "3d137d075f94496e94f6185223cbeba6",
+  "service": {
+    "id": "P94D8C0",
+    "type": "service_reference",
+    "summary": "Created Service From Port",
+    "self": "https://api.pagerduty.com/services/P94D8C0",
+    "html_url": "https://getport-io.pagerduty.com/service-directory/P94D8C0"
+  },
+  "assignments": [
+    {
+      "at": "2025-12-03T23:23:50Z",
+      "assignee": {
+        "name": "Jane Smith",
+        "email": "jsmith@getport.io",
+        "time_zone": "Asia/Jerusalem",
+        "color": "green",
+        "avatar_url": "https://secure.gravatar.com/avatar/0d5d34ceb820d324d69046a1b2f51dc0.png?d=mm&r=PG",
+        "billed": true,
+        "role": "admin",
+        "description": null,
+        "invitation_sent": false,
+        "job_title": null,
+        "teams": [],
+        "created_via_sso": false,
+        "contact_methods": [
+          {
+            "id": "PKDRC7X",
+            "type": "email_contact_method_reference",
+            "summary": "Default",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/contact_methods/PKDRC7X",
+            "html_url": null
+          }
+        ],
+        "notification_rules": [
+          {
+            "id": "PL8ZDWC",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel PKDRC7X",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PL8ZDWC",
+            "html_url": null
+          },
+          {
+            "id": "PRIX7O7",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel PKDRC7X",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PRIX7O7",
+            "html_url": null
+          }
+        ],
+        "locale": "en-US",
+        "id": "PJCRRLH",
+        "type": "user",
+        "summary": "Jane Smith",
+        "self": "https://api.pagerduty.com/users/PJCRRLH",
+        "html_url": "https://getport-io.pagerduty.com/users/PJCRRLH"
+      }
+    }
+  ],
+  "assigned_via": "escalation_policy",
+  "last_status_change_at": "2025-12-03T23:53:52Z",
+  "resolved_at": null,
+  "first_trigger_log_entry": {
+    "id": "R4RGMF653IIXWM06SE5TZJO5LE",
+    "type": "trigger_log_entry",
+    "summary": "Triggered through the website.",
+    "self": "https://api.pagerduty.com/log_entries/R4RGMF653IIXWM06SE5TZJO5LE",
+    "html_url": "https://getport-io.pagerduty.com/incidents/Q17MJPM38GKM2Q/log_entries/R4RGMF653IIXWM06SE5TZJO5LE",
+    "created_at": "2025-12-03T23:23:50Z",
+    "agent": {
+      "id": "PJCRRLH",
+      "type": "user_reference",
+      "summary": "Jane Smith",
+      "self": "https://api.pagerduty.com/users/PJCRRLH",
+      "html_url": "https://getport-io.pagerduty.com/users/PJCRRLH"
+    },
+    "channel": {
+      "type": "api",
+      "summary": "Test incident from n8n",
+      "subject": "Test incident from n8n",
+      "details": ""
+    },
+    "service": {
+      "id": "P94D8C0",
+      "type": "service_reference",
+      "summary": "Created Service From Port",
+      "self": "https://api.pagerduty.com/services/P94D8C0",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P94D8C0"
+    },
+    "incident": {
+      "id": "Q17MJPM38GKM2Q",
+      "type": "incident_reference",
+      "summary": "[#275] Test incident from n8n",
+      "self": "https://api.pagerduty.com/incidents/Q17MJPM38GKM2Q",
+      "html_url": "https://getport-io.pagerduty.com/incidents/Q17MJPM38GKM2Q"
+    },
+    "teams": [],
+    "contexts": [],
+    "event_details": {
+      "description": "Test incident from n8n"
+    }
+  },
+  "alert_counts": {
+    "all": 0,
+    "triggered": 0,
+    "resolved": 0
+  },
+  "is_mergeable": true,
+  "incident_type": {
+    "name": "incident_default"
+  },
+  "escalation_policy": {
+    "id": "P7LVMYP",
+    "type": "escalation_policy_reference",
+    "summary": "Backend Escalation Policy",
+    "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+    "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP"
+  },
+  "teams": [],
+  "pending_actions": [],
+  "acknowledgements": [],
+  "basic_alert_grouping": null,
+  "alert_grouping": null,
+  "last_status_change_by": {
+    "id": "P94D8C0",
+    "type": "service_reference",
+    "summary": "Created Service From Port",
+    "self": "https://api.pagerduty.com/services/P94D8C0",
+    "html_url": "https://getport-io.pagerduty.com/service-directory/P94D8C0"
+  },
+  "priority": null,
+  "urgency": "high",
+  "id": "Q17MJPM38GKM2Q",
+  "type": "incident",
+  "summary": "[#275] Test incident from n8n",
+  "self": "https://api.pagerduty.com/incidents/Q17MJPM38GKM2Q",
+  "html_url": "https://getport-io.pagerduty.com/incidents/Q17MJPM38GKM2Q"
+}

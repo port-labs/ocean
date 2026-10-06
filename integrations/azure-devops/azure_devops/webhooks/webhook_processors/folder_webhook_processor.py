@@ -14,8 +14,11 @@ from azure_devops.misc import (
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
+from azure_devops.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FolderIncludedFilesStrategy,
+)
 from azure_devops.webhooks.events import PushEvents
-from azure_devops.client.azure_devops_client import AzureDevopsClient
 import fnmatch
 
 
@@ -51,11 +54,11 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 return True
         return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         logger.info("Processing folder webhook event")
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = self._get_client_for_webhook(payload)
         repository = payload["resource"]["repository"]
         repo_id = repository["id"]
         project_id = repository["project"]["id"]
@@ -63,6 +66,7 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         folder_config = cast(AzureDevopsFolderResourceConfig, resource_config)
         folder_patterns = [pattern.path for pattern in folder_config.selector.folders]
+        included_files = folder_config.selector.included_files or []
 
         repo_name = repository["name"]
         configured_repos = {
@@ -126,7 +130,18 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                         case _:
                             modified_folders.append(folder_entity)
 
+        updated_folders = created_folders + modified_folders
+        if included_files and updated_folders:
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=folder_config.selector.folders,
+                    global_included_files=included_files,
+                ),
+            )
+            updated_folders = await enricher.enrich_batch(updated_folders)
+
         return WebhookEventRawResults(
-            updated_raw_results=created_folders + modified_folders,
+            updated_raw_results=updated_folders,
             deleted_raw_results=deleted_folders,
         )

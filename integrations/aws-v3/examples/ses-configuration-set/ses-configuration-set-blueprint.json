@@ -1,0 +1,57 @@
+{
+  "identifier": "sesConfigurationSet",
+  "title": "SES Configuration Set",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "sendingEnabled": {
+        "type": "boolean",
+        "title": "Sending Enabled",
+        "description": "Indicates whether email sending is enabled for the configuration set"
+      },
+      "reputationMetricsEnabled": {
+        "type": "boolean",
+        "title": "Reputation Metrics Enabled",
+        "description": "Indicates whether reputation metrics tracking is enabled"
+      },
+      "tlsPolicy": {
+        "type": "string",
+        "title": "TLS Policy",
+        "description": "The TLS policy that applies to the configuration set (REQUIRE or OPTIONAL)"
+      },
+      "trackingDomain": {
+        "type": "string",
+        "title": "Tracking Domain",
+        "description": "The domain used to track open and click events"
+      },
+      "suppressionList": {
+        "type": "array",
+        "title": "Suppression List",
+        "description": "The reasons that email addresses are automatically added to the suppression list",
+        "items": {
+          "type": "string"
+        }
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Tags associated with the configuration set",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

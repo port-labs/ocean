@@ -1,0 +1,45 @@
+{
+  "id": 1310048,
+  "name": "Backend Team",
+  "external_source": "azure_devops",
+  "external_source_id": "8c524b6b-d8ff-4388-9ad8-a260dfd83d39",
+  "responsibilities": [
+    {
+      "id": 1841542,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841544,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841546,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841543,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841547,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841545,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    }
+  ],
+  "active": true
+}

@@ -29,6 +29,7 @@ def mock_initialize_client() -> Generator[None, None, None]:
 def mock_ocean_context() -> None | MagicMock:
     """Fixture to initialize the PortOcean context."""
     mock_app = MagicMock()
+    mock_app.is_saas.return_value = False
     mock_app.integration_config = {
         "bitbucket_app_password": "test_password",
         "bitbucket_username": "test_user",

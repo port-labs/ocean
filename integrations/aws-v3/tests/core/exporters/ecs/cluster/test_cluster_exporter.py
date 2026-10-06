@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
 from aws.core.exporters.ecs.cluster.models import (
@@ -48,6 +49,9 @@ class TestEcsClusterExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_clusters.return_value = {
+            "clusters": [{"clusterName": "test-cluster"}]
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -65,7 +69,9 @@ class TestEcsClusterExporter:
                 tags=[{"key": "Environment", "value": "test"}],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_cluster.model_dump(exclude_none=True)
+        ]
 
         # Create options
         options = SingleClusterRequest(
@@ -79,12 +85,20 @@ class TestEcsClusterExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_cluster.dict(exclude_none=True)
+        assert result == expected_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecs")
+        mock_client.describe_clusters.assert_awaited_once_with(
+            clusters=["test-cluster"]
+        )
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "test-cluster"}], []
+            ["test-cluster"],
+            [],
+            extra_context={
+                "AccountId": "123456789012",
+                "Region": "us-west-2",
+            },
         )
 
     @pytest.mark.asyncio
@@ -102,6 +116,9 @@ class TestEcsClusterExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_clusters.return_value = {
+            "clusters": [{"clusterName": "prod-cluster"}]
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -117,7 +134,9 @@ class TestEcsClusterExporter:
                 capacityProviders=["FARGATE", "FARGATE_SPOT"],
             ),
         )
-        mock_inspector.inspect.return_value = [expected_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            expected_cluster.model_dump(exclude_none=True)
+        ]
 
         # Create options with no includes
         options = SingleClusterRequest(
@@ -131,12 +150,17 @@ class TestEcsClusterExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_cluster.dict(exclude_none=True)
+        assert result == expected_cluster.model_dump(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "eu-west-1", "ecs")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "prod-cluster"}], []
+            ["prod-cluster"],
+            [],
+            extra_context={
+                "AccountId": "123456789012",
+                "Region": "eu-west-1",
+            },
         )
 
     @pytest.mark.asyncio
@@ -316,6 +340,35 @@ class TestEcsClusterExporter:
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
+    async def test_get_resource_describe_clusters_not_found(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: EcsClusterExporter,
+    ) -> None:
+        """Missing clusters must raise before stub resources are built."""
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_clusters.return_value = {"clusters": []}
+
+        options = SingleClusterRequest(
+            region="us-west-2",
+            account_id="123456789012",
+            cluster_name="nonexistent-cluster",
+            include=[],
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            await exporter.get_resource(options)
+
+        assert exc_info.value.response["Error"]["Code"] == "ClusterNotFoundException"
+        mock_inspector_class.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -328,6 +381,9 @@ class TestEcsClusterExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_client.describe_clusters.return_value = {
+            "clusters": [{"clusterName": "nonexistent-cluster"}]
+        }
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -359,6 +415,11 @@ class TestEcsClusterExporter:
         mock_proxy = AsyncMock()
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
         mock_proxy_class.return_value.__aexit__ = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_client.describe_clusters.return_value = {
+            "clusters": [{"clusterName": "test-cluster"}]
+        }
 
         # Setup inspector to return a normal result
         mock_inspector = AsyncMock()
@@ -367,7 +428,9 @@ class TestEcsClusterExporter:
                 clusterName="test-cluster",
             ),
         )
-        mock_inspector.inspect.return_value = [mock_cluster.dict(exclude_none=True)]
+        mock_inspector.inspect.return_value = [
+            mock_cluster.model_dump(exclude_none=True)
+        ]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleClusterRequest(
@@ -386,7 +449,12 @@ class TestEcsClusterExporter:
 
         # Verify the inspector was called correctly
         mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "test-cluster"}], []
+            ["test-cluster"],
+            [],
+            extra_context={
+                "AccountId": "123456789012",
+                "Region": "us-west-2",
+            },
         )
 
         # Verify the context manager was used correctly (__aenter__ and __aexit__ were called)

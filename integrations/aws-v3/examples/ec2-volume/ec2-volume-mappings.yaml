@@ -1,0 +1,26 @@
+resources:
+  - kind: AWS::EC2::Volume
+    selector:
+      query: 'true'
+      includeActions:
+        - DescribeVolumeAttributeAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.VolumeId
+          title: '(.Properties.Tags // [] | map(select(.Key == "Name")) | first | .Value) // .Properties.VolumeId'
+          blueprint: '"ebsVolume"'
+          properties:
+            volumeType: .Properties.VolumeType
+            size: .Properties.Size
+            iops: .Properties.Iops
+            throughput: .Properties.Throughput
+            availabilityZone: .Properties.AvailabilityZone
+            state: .Properties.State
+            creationDate: .Properties.CreateTime
+            encrypted: .Properties.Encrypted
+            autoEnableIO: .Properties.AutoEnableIO
+            tags: .Properties.Tags
+            arn: '"arn:aws:ec2:" + .__ExtraContext.Region + ":" + .__ExtraContext.AccountId + ":volume/" + .Properties.VolumeId'
+          relations:
+            account: .__ExtraContext.AccountId

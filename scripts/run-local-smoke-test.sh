@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Host-process fake-integration for local perf (run-local-perf-test.sh).
+# Assertion smoke uses Make: make smoke/run CONFIGSET=resync|workflows
+
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
 

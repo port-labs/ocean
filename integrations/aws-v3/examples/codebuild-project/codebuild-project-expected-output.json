@@ -1,0 +1,72 @@
+{
+  "identifier": "arn:aws:codebuild:us-east-1:123456789012:project/sample-codebuild-project",
+  "title": "sample-codebuild-project",
+  "blueprint": "codeBuildProject",
+  "properties": {
+    "name": "sample-codebuild-project",
+    "arn": "arn:aws:codebuild:us-east-1:123456789012:project/sample-codebuild-project",
+    "description": "Sample CodeBuild project for building and testing applications",
+    "serviceRole": "arn:aws:iam::123456789012:role/service-role/codebuild-sample-service-role",
+    "timeoutInMinutes": 60,
+    "queuedTimeoutInMinutes": 480,
+    "encryptionKey": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
+    "environment": {
+      "type": "LINUX_CONTAINER",
+      "image": "aws/codebuild/amazonlinux2-x86_64-standard:3.0",
+      "computeType": "BUILD_GENERAL1_MEDIUM",
+      "environmentVariables": [
+        {
+          "name": "NODE_ENV",
+          "value": "production",
+          "type": "PLAINTEXT"
+        },
+        {
+          "name": "API_KEY",
+          "value": "sample-api-key-parameter",
+          "type": "PARAMETER_STORE"
+        }
+      ],
+      "privilegedMode": false,
+      "imagePullCredentialsType": "CODEBUILD"
+    },
+    "source": {
+      "type": "GITHUB",
+      "location": "https://github.com/example/sample-app.git",
+      "gitCloneDepth": 1,
+      "buildspec": "buildspec.yml",
+      "reportBuildStatus": true,
+      "insecureSsl": false
+    },
+    "artifacts": {
+      "type": "S3",
+      "location": "sample-build-artifacts-bucket",
+      "path": "artifacts/",
+      "namespaceType": "BUILD_ID",
+      "name": "sample-app-artifacts",
+      "packaging": "ZIP",
+      "overrideArtifactName": false,
+      "encryptionDisabled": false
+    },
+    "created": "2023-01-15T10:30:00.000Z",
+    "lastModified": "2023-06-20T14:45:00.000Z",
+    "projectVisibility": "PRIVATE",
+    "concurrentBuildLimit": 5,
+    "tags": [
+      {
+        "key": "Environment",
+        "value": "Production"
+      },
+      {
+        "key": "Team",
+        "value": "DevOps"
+      },
+      {
+        "key": "Project",
+        "value": "SampleApp"
+      }
+    ]
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

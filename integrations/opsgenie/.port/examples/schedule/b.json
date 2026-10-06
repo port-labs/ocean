@@ -1,0 +1,61 @@
+{
+  "item": {
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0031",
+    "name": "Rota1",
+    "startDate": "2024-09-02T08:00:00Z",
+    "endDate": "2024-09-10T09:00:00Z",
+    "type": "weekly",
+    "length": 1,
+    "participants": [
+      {
+        "type": "user",
+        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+        "username": "user1@example.com"
+      }
+    ],
+    "timeRestriction": null
+  },
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0021",
+  "name": "Devops Team_schedule",
+  "description": "",
+  "timezone": "Africa/Monrovia",
+  "enabled": true,
+  "ownerTeam": {
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0011",
+    "name": "Devops Team"
+  },
+  "rotations": [
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0032",
+      "name": "Rota2",
+      "startDate": "2024-09-02T08:00:00Z",
+      "endDate": "2024-09-14T09:00:00Z",
+      "type": "weekly",
+      "length": 3,
+      "participants": [
+        {
+          "type": "user",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+          "username": "user1@example.com"
+        }
+      ],
+      "timeRestriction": null
+    },
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0031",
+      "name": "Rota1",
+      "startDate": "2024-09-02T08:00:00Z",
+      "endDate": "2024-09-10T09:00:00Z",
+      "type": "weekly",
+      "length": 1,
+      "participants": [
+        {
+          "type": "user",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+          "username": "user1@example.com"
+        }
+      ],
+      "timeRestriction": null
+    }
+  ]
+}

@@ -1,8 +1,10 @@
 import asyncio
+import ipaddress
 import sys
 import threading
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Callable, Dict, Type
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
@@ -13,28 +15,38 @@ import port_ocean.helpers.metric.metric
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.clients.dsp.lifecycle import LifecycleClient
 from port_ocean.clients.port.client import PortClient
-from port_ocean.config.settings import (
-    IntegrationConfiguration,
-)
+from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import (
     PortOceanContext,
     initialize_port_ocean_context,
     ocean,
 )
+from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.models import ProcessExecutionMode
+from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
+from port_ocean.health import create_health_router, set_ready
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
+from port_ocean.identity_propagation.oauth_broker.router import register_oauth_broker
+from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
+from port_ocean.identity_propagation.vault.base import VaultClient, build_vault_client
+from port_ocean.identity_propagation.verifier import (
+    IdentityTokenVerifier,
+    PortIdentityTokenVerifier,
+    UnavailableIdentityTokenVerifier,
+)
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
+
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 class Ocean:
@@ -51,10 +63,10 @@ class Ocean:
         self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
-            # type: ignore
-            _integration_config_model=config_factory,
+            integration_config_model=config_factory,
             **(config_override or {}),
         )
+        self._warn_non_default_ssl_settings()
         # add the integration sensitive configuration to the sensitive patterns to mask out
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
@@ -62,26 +74,23 @@ class Ocean:
         self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
-            base_url=self.config.port.base_url,
+            base_url=str(self.config.port.base_url),
             client_id=self.config.port.client_id,
             client_secret=self.config.port.client_secret,
             integration_identifier=self.config.integration.identifier,
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
-            ingest_url=self.config.port.ingest_url,
+            feature_flags_cache_ttl_seconds=self.config.port.feature_flags_cache_ttl_seconds,
+            blueprint_cache_ttl_seconds=self.config.port.blueprint_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
-        self.process_execution_mode: ProcessExecutionMode = (
-            self._get_process_execution_mode()
-        )
         self.metrics = port_ocean.helpers.metric.metric.Metrics(
             metrics_settings=self.config.metrics,
             integration_configuration=self.config.integration,
             port_client=self.port_client,
-            multiprocessing_enabled=self.process_execution_mode
-            == ProcessExecutionMode.multi_process,
+            is_self_hosted=not self.is_saas(),
         )
-        self.metrics.execution_mode = self.process_execution_mode.value
+        self.metrics.execution_mode = "single_process"
 
         self.webhook_manager = LiveEventsProcessorManager(
             self.integration_router,
@@ -98,6 +107,7 @@ class Ocean:
             poll_check_interval_seconds=self.config.actions_processor.poll_check_interval_seconds,
             visibility_timeout_ms=self.config.actions_processor.visibility_timeout_ms,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+            max_runs_buffer_util_pct_per_action=self.config.actions_processor.max_runs_buffer_util_pct_per_action,
         )
 
         self.integration = (
@@ -107,9 +117,50 @@ class Ocean:
         self.resync_state_updater = ResyncStateUpdater(
             self.port_client, self.config.scheduled_resync_interval
         )
+        self.lifecycle_client: LifecycleClient = LifecycleClient(
+            auth=self.port_client.auth,
+        )
+
+        self.identity_verifier: IdentityTokenVerifier = (
+            UnavailableIdentityTokenVerifier()
+        )
+        self.vault_client: VaultClient | None = None
+        self.oauth_provider: OAuth2Provider | None = None
+
+        if self.config.identity_propagation.enabled:
+            if not self.config.actions_processor.enabled:
+                raise ValueError(
+                    "Identity propagation requires actions processing to be enabled. "
+                    "Set OCEAN__ACTIONS_PROCESSOR__ENABLED=true or disable "
+                    "identity propagation."
+                )
+            self.vault_client = build_vault_client(
+                self.config.identity_propagation.vault
+            ) or getattr(self, "vault_client", None)
+            self.identity_verifier = PortIdentityTokenVerifier()
+            if self.vault_client is None:
+                raise ValueError(
+                    "Identity propagation enabled but no vault client configured."
+                )
+
         self.app_initialized = False
+        self._status_heartbeat_task: asyncio.Task[None] | None = None
 
         signal_handler.register(self._report_resync_aborted, priority=100)
+        signal_handler.register(self._stop_status_heartbeat, priority=90)
+
+    def _warn_non_default_ssl_settings(self) -> None:
+        for label, client_ssl in (
+            ("Port API", self.config.ssl.port),
+            ("Third-party", self.config.ssl.third_party),
+        ):
+            if not client_ssl.verify:
+                description = "verify=false"
+            elif not client_ssl.x509.strict:
+                description = "x509.strict=false"
+            else:
+                continue
+            logger.warning(f"{label} SSL settings are non-default ({description}). ")
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -131,6 +182,14 @@ class Ocean:
                     logger.info(
                         "Graceful shutdown completed - sync state set to aborted"
                     )
+                    if await is_dsp_mode_enabled():
+                        resync_id = self.metrics.event_id.strip()
+                        if resync_id:
+                            await self.lifecycle_client.notify_resync_aborted(
+                                resync_id=resync_id,
+                                integration_id=self.config.integration.identifier,
+                                integration_type=self.config.integration.type,
+                            )
                 else:
                     logger.info(
                         "Graceful shutdown completed - sync was already completed, status unchanged"
@@ -138,10 +197,14 @@ class Ocean:
         except Exception as e:
             logger.warning(f"Error during graceful shutdown: {e}")
 
-    def _get_process_execution_mode(self) -> ProcessExecutionMode:
-        if self.config.process_execution_mode:
-            return self.config.process_execution_mode
-        return ProcessExecutionMode.single_process
+    async def _stop_status_heartbeat(self) -> None:
+        if self._status_heartbeat_task is not None:
+            self._status_heartbeat_task.cancel()
+            try:
+                await self._status_heartbeat_task
+            except asyncio.CancelledError:
+                pass
+            self._status_heartbeat_task = None
 
     def _get_caching_provider(self) -> CacheProvider:
         if self.config.caching_storage_mode:
@@ -152,8 +215,6 @@ class Ocean:
             if self.config.caching_storage_mode in caching_type_to_provider:
                 return caching_type_to_provider[self.config.caching_storage_mode]()
 
-        if self.config.process_execution_mode == ProcessExecutionMode.multi_process:
-            return DiskCacheProvider()
         return InMemoryCacheProvider()
 
     def is_saas(self) -> bool:
@@ -205,6 +266,28 @@ class Ocean:
             )
             await repeated_function()
 
+    async def _setup_status_heartbeat(self) -> None:
+        interval = self.config.status_heartbeat_interval_seconds
+        logger.info(
+            "Starting metrics heartbeat",
+            interval_seconds=interval,
+        )
+
+        async def heartbeat_loop() -> None:
+            while True:
+                try:
+                    if not self.metrics.event_id.strip():
+                        await asyncio.sleep(interval)
+                        continue
+                    await self.metrics.report_metrics_heartbeat()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.error(f"Metrics heartbeat failed: {e}")
+                await asyncio.sleep(interval)
+
+        self._status_heartbeat_task = asyncio.create_task(heartbeat_loop())
+
     @property
     def route_prefix(self) -> str:
         return (
@@ -215,7 +298,7 @@ class Ocean:
     def base_url(self) -> str:
         integration_config = self.config.integration.config
         if isinstance(integration_config, BaseModel):
-            integration_config = integration_config.dict()
+            integration_config = integration_config.model_dump(mode="json")
         if integration_config.get("app_host"):
             logger.warning(
                 "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
@@ -230,12 +313,27 @@ class Ocean:
             try:
                 with open(self.config.oauth_access_token_file_path, "r") as f:
                     return f.read()
-            except Exception:
+            except Exception as e:
                 logger.debug(
                     "Failed to load external oauth access token from file",
+                    error=str(e),
                     file_path=self.config.oauth_access_token_file_path,
                 )
         return None
+
+    @staticmethod
+    def _is_public_url(url: str) -> bool:
+        try:
+            host = urlparse(url).hostname or ""
+        except Exception:
+            return False
+        if host in _LOOPBACK_HOSTS or host.endswith(".local"):
+            return False
+        try:
+            addr = ipaddress.ip_address(host)
+            return addr.is_global
+        except ValueError:
+            return True  # hostname, not an IP - assume public
 
     async def _register_addons(self) -> None:
         if self.base_url and self.config.event_listener.should_process_webhooks:
@@ -255,6 +353,17 @@ class Ocean:
                 "Execution agent is not enabled, or actions processing is disabled in this event listener, skipping execution agent setup"
             )
 
+        if self.config.identity_propagation.enabled:
+            if self.base_url and self._is_public_url(self.base_url):
+                broker_url = f"{self.base_url}/v1/oauth-broker/authorize"
+                await self.port_client.patch_integration(oauth_broker_url=broker_url)
+                logger.info("Registered OAuth broker URL", url=broker_url)
+            else:
+                logger.warning(
+                    "Identity propagation enabled but OCEAN__BASE_URL is not a publicly reachable URL. "
+                    "OAuth broker will not be registered. Workflow runs requiring user authentication will fail."
+                )
+
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(
             self.integration_router, prefix=f"{self.route_prefix}/integration"
@@ -262,13 +371,20 @@ class Ocean:
         self.fast_api_app.include_router(
             self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
         )
+        self.fast_api_app.include_router(
+            create_health_router(), prefix=f"{self.route_prefix}/health"
+        )
+        if self.config.identity_propagation.enabled:
+            register_oauth_broker()
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
                 await self._register_addons()
+                await self._setup_status_heartbeat()
                 await self._setup_scheduled_resync()
+                set_ready(True)
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import (
     Any,
-    AsyncGenerator,
     AsyncIterator,
     Dict,
     List,
@@ -9,29 +8,24 @@ from typing import (
     Tuple,
     TYPE_CHECKING,
     Protocol,
-    cast,
 )
 
 from loguru import logger
 
 
-from github.core.options import (
-    ListOrganizationOptions,
-    ListRepositoryOptions,
-)
+from github.core.options import ListRepositoryOptions
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import get_repository_metadata
-from port_ocean.context.event import event
-
 
 if TYPE_CHECKING:
-    from integration import RepositoryBranchMapping, GithubPortAppConfig
+    from integration import RepositoryBranchMapping
 
 
 class RepoListSelector(Protocol):
     """Minimal selector interface exposing optional repos list."""
 
     repos: Optional[List["RepositoryBranchMapping"]]
+    exclude_archived: bool
 
 
 class RepositorySelectorStrategy(ABC):
@@ -70,7 +64,10 @@ class AllRepositorySelector(RepositorySelectorStrategy):
             f"Fetching all '{self.repo_type}' repositories from '{org_login}' of type '{org_type}'."
         )
         options = ListRepositoryOptions(
-            organization=org_login, organization_type=org_type, type=self.repo_type
+            organization=org_login,
+            organization_type=org_type,
+            type=self.repo_type,
+            exclude_archived=selector.exclude_archived,
         )
         async for batch in repo_exporter.get_paginated_resources(options):
             for repo in batch:
@@ -87,6 +84,10 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
 
     For each explicit repository, repository metadata is fetched to determine a
     branch fallback when the selector omits a branch.
+
+    Note: explicitly listed repos are always included regardless of
+    `exclude_archived` on the selector - the same precedent already applies to
+    `repo_search`/`search_params`, which are likewise never consulted here.
     """
 
     async def select_repos(
@@ -141,30 +142,3 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
                 selector, repo_exporter, org_login, org_type
             ):
                 yield result
-
-
-class OrganizationLoginAndTypeGenerator:
-    """Helper to iterate organizations for a selector.
-
-    Wraps the exporter pagination to yield organization logins for a specific
-    organization or for all accessible organizations when not provided.
-    """
-
-    def __init__(self, org_exporter: AbstractGithubExporter[Any]):
-        self.org_exporter = org_exporter
-
-    async def __call__(
-        self, organization: Optional[str]
-    ) -> AsyncGenerator[Tuple[str, str], None]:
-        port_app_config = cast("GithubPortAppConfig", event.port_app_config)
-        org_options: ListOrganizationOptions = {
-            "include_authenticated_user": port_app_config.include_authenticated_user
-        }
-        if organization:
-            org_options.update({"organization": organization})
-
-        async for batch in self.org_exporter.get_paginated_resources(org_options):
-            if not batch or not any(batch):
-                continue
-            for org in batch:
-                yield org["login"], org["type"]

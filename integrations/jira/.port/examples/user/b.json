@@ -1,0 +1,13 @@
+{
+  "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/user?accountId=557058:00000000-0000-0000-0000-000000000001",
+  "accountId": "557058:00000000-0000-0000-0000-000000000001",
+  "accountType": "app",
+  "avatarUrls": {
+    "48x48": "https://secure.gravatar.com/avatar/00000000000000000000000000000001?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+    "24x24": "https://secure.gravatar.com/avatar/00000000000000000000000000000001?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+    "16x16": "https://secure.gravatar.com/avatar/00000000000000000000000000000001?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+    "32x32": "https://secure.gravatar.com/avatar/00000000000000000000000000000001?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+  },
+  "displayName": "Automation for Jira",
+  "active": true
+}

@@ -1,0 +1,28 @@
+{
+  "id": 26361970,
+  "type": "open_source",
+  "title": "undici",
+  "description": "HTTP request smuggling attack possible",
+  "severity_score": 98,
+  "severity": "critical",
+  "group_status": "new",
+  "time_to_fix_minutes": 120,
+  "locations": [
+    {
+      "id": 1841547,
+      "name": "vscode",
+      "type": "code_repository"
+    }
+  ],
+  "how_to_fix": "In order to fix all of these vulnerabilities, update undici to 7.24.1. In order to solve only the critical issues, update to 7.24.0 or upgrade one at a time.",
+  "related_cve_ids": [
+    "CVE-2026-1525",
+    "CVE-2026-2229",
+    "CVE-2026-1528",
+    "CVE-2026-1526",
+    "CVE-2026-2581",
+    "CVE-2026-1527",
+    "AIKIDO-2026-10385",
+    "AIKIDO-2026-10369"
+  ]
+}

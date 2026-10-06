@@ -1,11 +1,38 @@
-from copy import deepcopy
-from enum import StrEnum
-from loguru import logger
-from typing import Any, Union
 import json
+import re
+from copy import deepcopy
+from dataclasses import dataclass
+from enum import IntEnum
+from enum import StrEnum
+from typing import Any, Optional, Union
 
-# import strictyaml as syaml
-from yaml import safe_load, YAMLError
+from loguru import logger
+from yaml import YAMLError, safe_load
+
+# GitLab project/group access-token bots have system-generated usernames like
+# "project_<id>_bot_<hex>" or "group_<id>_bot_<hex>".  The members/all API
+# does NOT return a `bot` field, so we fall back to pattern detection.
+_BOT_USERNAME_RE = re.compile(r"^(?:project|group)_\d+_bot_[a-f0-9]+$")
+
+
+def is_bot_member(member: dict[str, Any]) -> bool:
+    """Return True when *member* looks like a GitLab bot / access-token user.
+
+    Priority:
+    1. Explicit ``bot=True`` from the API  → bot.
+    2. Explicit ``bot=False`` from the API → not a bot (trust the API).
+    3. ``bot`` field absent or ``None``    → fall back to username pattern.
+       GitLab's /members/all endpoint omits the ``bot`` field for access-token
+       users, so we detect them by their system-generated username format.
+    """
+    bot = member.get("bot")
+    if bot is True:
+        return True
+    if bot is False:
+        return False
+    # bot field absent or None — fall back to username pattern
+    username: str = member.get("username") or ""
+    return bool(_BOT_USERNAME_RE.match(username))
 
 
 class ObjectKind(StrEnum):
@@ -14,6 +41,7 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     GROUP_WITH_MEMBERS = "group-with-members"
+    PROJECT_WITH_MEMBERS = "project-with-members"
     MEMBER = "member"
     FILE = "file"
     PIPELINE = "pipeline"
@@ -21,6 +49,10 @@ class ObjectKind(StrEnum):
     FOLDER = "folder"
     TAG = "tag"
     RELEASE = "release"
+    BRANCH = "branch"
+    DEPLOYMENT = "deployment"
+    SKILL = "skill"
+    PLUGIN = "plugin"
 
 
 def parse_file_content(
@@ -73,6 +105,60 @@ def parse_file_content(
         return content
 
 
+@dataclass
+class SearchQuery:
+    """Parsed components of a file search path pattern.
+
+    ``path`` preserves the original pattern so tree-based lookups can glob-match
+    against it, while ``keyword``/``filename``/``directory`` back the search API
+    query string.
+    """
+
+    path: str
+    keyword: str
+    filename: str
+    directory: Optional[str] = None
+
+    def to_query_string(self) -> str:
+        """Build the GitLab search query string from components."""
+        parts = [self.keyword, f"filename:{self.filename}"]
+        if self.directory:
+            parts.insert(1, f"path:{self.directory}")
+        return " ".join(parts)
+
+
+def build_search_query(search_path: str) -> SearchQuery:
+    """Parse a file path pattern into search query components.
+
+    The query always includes a ``filename:`` modifier so results are filtered
+    by file name rather than just file contents.  When a directory component is
+    present a ``path:`` modifier is also appended.  Glob characters (``*``) are
+    stripped from the keyword because GitLab does not support them there, but
+    they are preserved inside the ``filename:`` and ``path:`` modifiers.
+
+    Examples:
+        ``readme.md``            -> keyword='readme', filename='readme.md'
+        ``src/config/app.json``  -> keyword='app', filename='app.json', directory='src/config'
+        ``home/directory/*.txt`` -> keyword='.txt', filename='*.txt', directory='home/directory'
+        ``home/*/*.txt``         -> keyword='.txt', filename='*.txt', directory='home/*'
+        ``.opencode/plugins/*``  -> keyword='plugins', filename='*', directory='.opencode/plugins'
+    """
+    if "/" not in search_path:
+        keyword = search_path.replace("*", "")
+        if not keyword:
+            keyword = search_path
+        return SearchQuery(path=search_path, keyword=keyword, filename=search_path)
+
+    directory, filename = search_path.rsplit("/", 1)
+    keyword = filename.replace("*", "")
+    if not keyword:
+        # Directory wildcards like `.opencode/plugins/*` need a non-empty keyword.
+        keyword = directory.rsplit("/", 1)[-1].replace("*", "") or directory
+    return SearchQuery(
+        path=search_path, keyword=keyword, filename=filename, directory=directory
+    )
+
+
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
 ) -> list[dict[str, Any]]:
@@ -93,3 +179,20 @@ def enrich_resources_with_project(
         enriched_resource = {**resource, "__project": project_map.get(project_id)}
         enriched_resources.append(enriched_resource)
     return enriched_resources
+
+
+class GitlabAccessLevel(IntEnum):
+    GUEST = 10
+    REPORTER = 20
+    DEVELOPER = 30
+    MAINTAINER = 40
+    OWNER = 50
+
+
+class GitLabDeploymentStatus(StrEnum):
+    CREATED = "created"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELED = "canceled"
+    BLOCKED = "blocked"

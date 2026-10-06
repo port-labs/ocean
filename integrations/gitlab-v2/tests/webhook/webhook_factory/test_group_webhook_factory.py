@@ -6,6 +6,8 @@ from unittest.mock import call
 from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
 from gitlab.webhook.events import GroupEvents
 
+STATIC_WEBHOOK_URL = "https://app.example.com/integration/webhook"
+
 
 class AsyncIterator:
     """Helper class to properly mock async iterators in tests"""
@@ -58,14 +60,14 @@ class TestGroupWebHook:
             AsyncMock(
                 return_value={
                     "id": 1,
-                    "url": "https://app.example.com/integration/hook/123",
+                    "url": STATIC_WEBHOOK_URL,
                 }
             ),
         )
         result = await group_webhook.create_group_webhook("123")
         assert result is True
         cast(AsyncMock, group_webhook.create).assert_called_once_with(
-            "https://app.example.com/integration/hook/123", "groups/123/hooks"
+            STATIC_WEBHOOK_URL, "groups/123/hooks"
         )
 
     async def test_create_group_webhook_failure(
@@ -88,7 +90,7 @@ class TestGroupWebHook:
         create_mock = AsyncMock(
             return_value={
                 "id": 1,
-                "url": "https://app.example.com/integration/hook/123",
+                "url": STATIC_WEBHOOK_URL,
             }
         )
         monkeypatch.setattr(group_webhook, "create", create_mock)
@@ -109,14 +111,8 @@ class TestGroupWebHook:
         assert create_mock.call_count == 3
         create_mock.assert_has_calls(
             [
-                call(
-                    "https://app.example.com/integration/hook/123", "groups/123/hooks"
-                ),
-                call(
-                    "https://app.example.com/integration/hook/456", "groups/456/hooks"
-                ),
-                call(
-                    "https://app.example.com/integration/hook/789", "groups/789/hooks"
-                ),
+                call(STATIC_WEBHOOK_URL, "groups/123/hooks"),
+                call(STATIC_WEBHOOK_URL, "groups/456/hooks"),
+                call(STATIC_WEBHOOK_URL, "groups/789/hooks"),
             ]
         )

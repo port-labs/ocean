@@ -1,0 +1,23 @@
+resources:
+  - kind: AWS::MSK::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ClusterArn
+          title: .Properties.ClusterName
+          blueprint: '"mskCluster"'
+          properties:
+            clusterArn: .Properties.ClusterArn
+            state: .Properties.State
+            kafkaVersion: .Properties.CurrentBrokerSoftwareInfo.KafkaVersion
+            numberOfBrokerNodes: .Properties.NumberOfBrokerNodes
+            instanceType: .Properties.BrokerNodeGroupInfo.InstanceType
+            enhancedMonitoring: .Properties.EnhancedMonitoring
+            clientAuthentication: .Properties.ClientAuthentication
+            encryptionInTransit: .Properties.EncryptionInfo.EncryptionInTransit.ClientBroker
+            creationTime: .Properties.CreationTime
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

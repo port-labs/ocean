@@ -1,6 +1,10 @@
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from datetime import datetime, timezone
+from wcmatch import glob
 from enum import StrEnum
 from typing import (
     Any,
+    AsyncGenerator,
     Dict,
     List,
     NamedTuple,
@@ -10,13 +14,18 @@ from typing import (
     TYPE_CHECKING,
 )
 
+import httpx
 from loguru import logger
 
+from github.helpers.exceptions import GraphQLErrorGroup, GraphQLForbiddenFieldError
 from port_ocean.utils import cache
-
+from port_ocean.utils.cache import cache_coroutine_result
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+
+
+BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
 
 
 class GithubClientType(StrEnum):
@@ -41,11 +50,22 @@ class ObjectKind(StrEnum):
     BRANCH = "branch"
     ENVIRONMENT = "environment"
     DEPLOYMENT = "deployment"
+    DEPLOYMENT_STATUS = "deployment-status"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
     SECRET_SCANNING_ALERT = "secret-scanning-alerts"
     FILE = "file"
     COLLABORATOR = "collaborator"
+    SKILL = "skill"
+    PLUGIN = "plugin"
+    MCP = "mcp"
+    PACKAGE = "package"
+
+
+class PackageType(StrEnum):
+    """GitHub Packages REST `package_type` values we ingest."""
+
+    CONTAINER = "container"
 
 
 def enrich_with_organization(
@@ -103,12 +123,61 @@ async def fetch_commit_diff(
     """
     resource = f"{client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
     response = await client.send_api_request(resource)
+    if not response:
+        logger.warning(
+            f"No commit diff found for {before_sha}...{after_sha} in {repo_name} from {organization}"
+        )
+        return {"files": []}
 
     logger.info(
         f"Found {len(response['files'])} files in commit diff of organization: {organization}"
     )
 
     return response
+
+
+def parse_timestamp(timestamp: str) -> Optional[datetime]:
+    """Parse an ISO-8601 timestamp to an aware datetime, or None if it cannot be parsed."""
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+async def get_commit(
+    client: "AbstractGithubClient",
+    organization: str,
+    repo_name: str,
+    sha: str,
+) -> Dict[str, Any]:
+    """Fetch a single commit from the GitHub API."""
+    resource = f"{client.base_url}/repos/{organization}/{repo_name}/commits/{sha}"
+    return await client.send_api_request(resource)
+
+
+def build_first_commit(
+    commit: Dict[str, Any], sha: Optional[str], timestamp: str
+) -> Dict[str, Any]:
+    """Build the __firstCommit payload: the raw commit plus normalized __sha/__timestamp keys."""
+    return {**commit, "__sha": sha, "__timestamp": timestamp}
+
+
+def created_at_sort_key(deployment: Dict[str, Any]) -> datetime:
+    """Sort key for deployments by created_at; unparseable dates sort earliest."""
+    parsed = parse_timestamp(deployment.get("created_at", ""))
+    return parsed if parsed is not None else datetime.min.replace(tzinfo=timezone.utc)
+
+
+def earliest_commit(commits: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Return the chronologically earliest commit, skipping unparseable dates."""
+    dated: list[tuple[datetime, Dict[str, Any]]] = []
+    for commit in commits:
+        parsed = parse_timestamp(commit["commit"]["committer"]["date"])
+        if parsed is not None:
+            dated.append((parsed, commit))
+    if not dated:
+        return None
+    return min(dated, key=lambda item: item[0])[1]
 
 
 def extract_changed_files(
@@ -147,15 +216,22 @@ class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
     type: Optional[str] = None
+    body_contains: Optional[str] = None
+
+
+async def fetch_repository_metadata(
+    client: "AbstractGithubClient", organization: str, repo_name: str
+) -> Dict[str, Any]:
+    url = f"{client.base_url}/repos/{organization}/{repo_name}"
+    logger.info(f"Fetching metadata for repository: {repo_name} from {organization}")
+    return await client.send_api_request(url)
 
 
 @cache.cache_coroutine_result()
 async def get_repository_metadata(
     client: "AbstractGithubClient", organization: str, repo_name: str
 ) -> Dict[str, Any]:
-    url = f"{client.base_url}/repos/{organization}/{repo_name}"
-    logger.info(f"Fetching metadata for repository: {repo_name} from {organization}")
-    return await client.send_api_request(url)
+    return await fetch_repository_metadata(client, organization, repo_name)
 
 
 @cache.cache_coroutine_result()
@@ -210,3 +286,191 @@ def has_exhausted_rate_limit_headers(headers: Any) -> bool:
         headers.get("x-ratelimit-remaining") == "0"
         and headers.get("x-ratelimit-reset") is not None
     )
+
+
+def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
+    combined_flags = BASE_GLOB_FLAGS | flags
+    return glob.globmatch(path, pattern, flags=combined_flags)
+
+
+def _parse_saml_edges(edges: list[dict[str, Any]]) -> dict[str, str]:
+    saml_users: dict[str, str] = {}
+    for edge in edges:
+        if edge["node"].get("user"):
+            try:
+                login = edge["node"]["user"]["login"]
+                name_id = edge["node"]["samlIdentity"]["nameId"]
+                saml_users[login] = name_id
+            except (KeyError, TypeError):
+                logger.warning(
+                    f"Skipping malformed SAML edge: {edge.get('node', {}).get('guid', 'unknown')}"
+                )
+    return saml_users
+
+
+async def _get_org_saml_identities(
+    client: "AbstractGithubClient", organization: str
+) -> dict[str, str]:
+    from github.helpers.gql_queries import LIST_EXTERNAL_IDENTITIES_GQL
+
+    variables = {
+        "organization": organization,
+        "first": 100,
+        "__path": "organization.samlIdentityProvider.externalIdentities",
+        "__node_key": "edges",
+    }
+
+    saml_users: dict[str, str] = {}
+
+    try:
+        async for identity_batch in client.send_paginated_request(
+            LIST_EXTERNAL_IDENTITIES_GQL,
+            variables,
+        ):
+            saml_users.update(_parse_saml_edges(identity_batch))
+    except TypeError:
+        logger.info(f"Org-level SAML not configured for '{organization}'")
+    except GraphQLForbiddenFieldError:
+        logger.warning(
+            f"SAML identity query returned FORBIDDEN for organization '{organization}', "
+            "skipping SAML enrichment"
+        )
+
+    return saml_users
+
+
+@cache_coroutine_result()
+async def _get_enterprise_slug(client: "AbstractGithubClient") -> str | None:
+    from github.helpers.gql_queries import VIEWER_ENTERPRISE_GQL
+
+    try:
+        response = await client.send_api_request(
+            client.base_url,
+            method="POST",
+            json_data={"query": VIEWER_ENTERPRISE_GQL},
+        )
+        enterprises = response["data"]["viewer"]["enterprises"]["nodes"]
+        if enterprises:
+            slug = enterprises[0]["slug"]
+            logger.info(f"Auto-detected enterprise slug: {slug}")
+            return slug
+        logger.debug("No enterprise found for authenticated user")
+    except (KeyError, httpx.HTTPStatusError, GraphQLErrorGroup) as exc:
+        logger.debug(f"Failed to detect enterprise slug: {exc}", exc_info=True)
+
+    return None
+
+
+async def _get_enterprise_saml_identities(
+    client: "AbstractGithubClient", enterprise_slug: str
+) -> dict[str, str]:
+    from github.helpers.gql_queries import LIST_ENTERPRISE_EXTERNAL_IDENTITIES_GQL
+
+    variables = {
+        "enterprise": enterprise_slug,
+        "first": 100,
+        "__path": "enterprise.ownerInfo.samlIdentityProvider.externalIdentities",
+        "__node_key": "edges",
+    }
+
+    saml_users: dict[str, str] = {}
+
+    try:
+        async for identity_batch in client.send_paginated_request(
+            LIST_ENTERPRISE_EXTERNAL_IDENTITIES_GQL,
+            variables,
+        ):
+            saml_users.update(_parse_saml_edges(identity_batch))
+    except TypeError:
+        logger.info(f"Enterprise-level SAML not configured for '{enterprise_slug}'")
+    except GraphQLForbiddenFieldError:
+        logger.warning(
+            f"Enterprise SAML identity query returned FORBIDDEN for '{enterprise_slug}', "
+            "skipping enterprise SAML enrichment"
+        )
+
+    return saml_users
+
+
+@cache_coroutine_result()
+async def get_saml_identities(
+    client: "AbstractGithubClient", organization: str
+) -> dict[str, str]:
+    """Fetch and cache SAML identities for an organization.
+
+    Returns a mapping of GitHub login -> SAML nameId (email).
+    Tries org-level SAML first, falls back to enterprise-level SAML.
+    """
+    logger.info(f"Starting SAML identity fetch for organization '{organization}'")
+
+    saml_users = await _get_org_saml_identities(client, organization)
+
+    if not saml_users:
+        enterprise_slug = await _get_enterprise_slug(client)
+        if enterprise_slug:
+            logger.info(
+                f"Org SAML empty for '{organization}', "
+                f"trying enterprise '{enterprise_slug}'"
+            )
+            saml_users = await _get_enterprise_saml_identities(client, enterprise_slug)
+
+    if saml_users:
+        logger.info(
+            f"SAML fetch complete for '{organization}': "
+            f"{len(saml_users)} identities"
+        )
+    else:
+        logger.info(
+            f"No SAML identities found for organization '{organization}' "
+            f"(checked org-level and enterprise-level)"
+        )
+
+    return saml_users
+
+
+async def enrich_members_with_saml_email(
+    client: "AbstractGithubClient",
+    organization: str,
+    members: list[dict[str, Any]],
+    include_saml_email: bool,
+) -> None:
+    """
+    Enrich members in-place:
+    - If include_saml_email=True: add '__SAMLEmail' field for all members
+    - Always: fill 'email' field from SAML when it's missing
+    """
+    if not members:
+        return
+
+    if not include_saml_email and all(m.get("email") for m in members):
+        return
+
+    saml_map = await get_saml_identities(client, organization)
+
+    enriched = 0
+    for member in members:
+        login = member.get("login")
+        saml_email = saml_map.get(login) if login else None
+
+        member_has_email = member.get("email")
+        should_fallback_to_saml_email = not member_has_email and saml_email
+
+        if include_saml_email or should_fallback_to_saml_email:
+            member["__SAMLEmail"] = saml_email
+
+        if should_fallback_to_saml_email:
+            member["email"] = saml_email
+            enriched += 1
+
+    if enriched > 0:
+        logger.info(
+            f"Enriched {enriched}/{len(members)} members with SAML email "
+            f"for organization '{organization}'"
+        )
+
+
+async def tag_batch_with_org(
+    organization: str, iterator: ASYNC_GENERATOR_RESYNC_TYPE
+) -> AsyncGenerator[Tuple[str, List[Dict[str, Any]]], None]:
+    async for batch in iterator:
+        yield (organization, batch)

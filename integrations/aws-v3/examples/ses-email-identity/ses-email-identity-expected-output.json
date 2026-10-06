@@ -1,0 +1,25 @@
+{
+  "identifier": "example.com",
+  "title": "example.com",
+  "blueprint": "sesEmailIdentity",
+  "properties": {
+    "identityType": "DOMAIN",
+    "verifiedForSendingStatus": true,
+    "dkimEnabled": true,
+    "verificationStatus": "SUCCESS",
+    "configurationSetName": "my-config-set",
+    "tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      }
+    ]
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

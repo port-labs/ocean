@@ -1,6 +1,8 @@
 import functools
 import hashlib
 import base64
+import asyncio
+from weakref import WeakValueDictionary
 from typing import Callable, AsyncIterator, Awaitable, Any
 from port_ocean.cache.errors import FailedToReadCacheError, FailedToWriteCacheError
 from port_ocean.context.ocean import ocean
@@ -8,6 +10,9 @@ from loguru import logger
 
 AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 AsyncCallable = Callable[..., Awaitable[Any]]
+
+_locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
+_key_locks_guard = asyncio.Lock()
 
 
 def sanitize_identifier(name: str) -> str:
@@ -70,6 +75,8 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     The caching mechanism also detects changes in parameters.
     If a function is called with different parameter values, it will be stored in different hash keys for each unique call.
 
+    Concurrency is handled by using asyncio locks to prevent race conditions when multiple tasks try to access the same cache key.
+
     Usage:
     ```python
     @cache_iterator_result()
@@ -83,7 +90,6 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache_key = hash_func(func, *args, **kwargs)
 
-            # Check if the result is already in the cache
             try:
                 if cache := await ocean.app.cache_provider.get(cache_key):
                     for chunk in cache:
@@ -92,20 +98,32 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
             except FailedToReadCacheError as e:
                 logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
 
-            # If not in cache, fetch the data
-            cached_results = list()
-            async for result in func(*args, **kwargs):
-                cached_results.append(result)
-                yield result
+            async with _key_locks_guard:
+                lock = _locks.setdefault(cache_key, asyncio.Lock())
 
-            # Cache the results
-            try:
-                await ocean.app.cache_provider.set(
-                    cache_key,
-                    cached_results,
-                )
-            except FailedToWriteCacheError as e:
-                logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
+            async with lock:
+                try:
+                    # Check cache again before writing because another task may have
+                    # populated the cache while we were waiting for lock.
+                    if cache := await ocean.app.cache_provider.get(cache_key):
+                        for chunk in cache:
+                            yield chunk
+                        return
+                except FailedToReadCacheError as e:
+                    logger.debug(f"Failed to read cache for {cache_key}: {str(e)}")
+
+                cached_results = list()
+                async for result in func(*args, **kwargs):
+                    cached_results.append(result)
+                    yield result
+
+                try:
+                    await ocean.app.cache_provider.set(
+                        cache_key,
+                        cached_results,
+                    )
+                except FailedToWriteCacheError as e:
+                    logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
             return
 
         return wrapper
@@ -113,7 +131,9 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     return decorator
 
 
-def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
+def cache_coroutine_result(
+    cache_keys: list[str] | None = None,
+) -> Callable[[AsyncCallable], AsyncCallable]:
     """Coroutine version of `cache_iterator_result` from port_ocean.utils.cache
 
     Decorator that caches the result of a coroutine function.
@@ -124,32 +144,62 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     removed when the event is finished.
     If a database is configured, the cache will also be stored in the database.
 
+    Concurrency is handled by using asyncio locks to prevent race conditions when multiple tasks try to access the same cache key.
+
     Usage:
     ```python
     @cache_coroutine_result()
     async def my_coroutine_function():
         # Your code here
     ```
+
+    :param cache_keys: If defined, a list of cache keys that must be present as an object in the kwargs under the key
+        "cache_keys" in order to use the cache. This allows us to inject extra context that is relevant to the caching
+        mechanism, but not to the actual function call.
     """
 
     def decorator(func: AsyncCallable) -> AsyncCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            cache_key = hash_func(func, *args, **kwargs)
+            received_cached_keys = kwargs.pop("cache_keys", {})
+            if cache_keys:
+                if any(key not in received_cached_keys for key in cache_keys):
+                    logger.warning(
+                        "Missing cache keys, cache will be skipped",
+                        extra={
+                            "expected_cache_keys": cache_keys,
+                            "received_cached_keys": received_cached_keys,
+                            "function_name": func.__name__,
+                        },
+                    )
+                    return await func(*args, **kwargs)
+
+            cache_key = hash_func(func, *args, **received_cached_keys, **kwargs)
+
             try:
                 if cache := await ocean.app.cache_provider.get(cache_key):
                     return cache
             except FailedToReadCacheError as e:
                 logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
 
-            result = await func(*args, **kwargs)
-            try:
-                await ocean.app.cache_provider.set(
-                    cache_key,
-                    result,
-                )
-            except FailedToWriteCacheError as e:
-                logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
+            async with _key_locks_guard:
+                lock = _locks.setdefault(cache_key, asyncio.Lock())
+
+            async with lock:
+                try:
+                    if cache := await ocean.app.cache_provider.get(cache_key):
+                        return cache
+                except FailedToReadCacheError as e:
+                    logger.debug(f"Failed to read cache for {cache_key}: {str(e)}")
+
+                result = await func(*args, **kwargs)
+                try:
+                    await ocean.app.cache_provider.set(
+                        cache_key,
+                        result,
+                    )
+                except FailedToWriteCacheError as e:
+                    logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
             return result
 
         return wrapper

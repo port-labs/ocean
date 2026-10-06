@@ -3,6 +3,8 @@ from typing import Optional, Any, AsyncIterable, Tuple, Dict
 import httpx
 from loguru import logger
 
+from port_ocean.utils import http_async_client
+
 from newrelic_integration.core.paging import send_paginated_graph_api_request
 from newrelic_integration.core.query_templates.entities import (
     LIST_ENTITIES_WITH_FILTER_QUERY,
@@ -18,8 +20,8 @@ from newrelic_integration.core.errors import NewRelicNotFoundError
 
 
 class EntitiesHandler:
-    def __init__(self, http_client: httpx.AsyncClient):
-        self.http_client = http_client
+    def __init__(self, http_client: httpx.AsyncClient | None = None):
+        self.http_client = http_client or http_async_client
 
     async def get_entity(self, entity_guid: str) -> dict[Any, Any]:
         query = await render_query(GET_ENTITY_BY_GUID_QUERY, entity_guid=entity_guid)
@@ -56,7 +58,7 @@ class EntitiesHandler:
             )
 
         async def extract_entities(
-            response: Optional[Dict[str, Any]] = None
+            response: Optional[Dict[str, Any]] = None,
         ) -> Tuple[Optional[str], list[Dict[str, Any]]]:
             if not response:
                 return None, []
@@ -84,14 +86,14 @@ class EntitiesHandler:
                 yield entity
 
     async def list_entities_by_guids(
-        self, http_client: httpx.AsyncClient, entity_guids: list[str]
+        self, entity_guids: list[str]
     ) -> list[dict[Any, Any]]:
         # entities api doesn't support pagination
         query = await render_query(
             LIST_ENTITIES_BY_GUIDS_QUERY, entity_guids=entity_guids
         )
         response = await send_graph_api_request(
-            http_client,
+            self.http_client,
             query,
             request_type="list_entities_by_guids",
             entity_guids=entity_guids,

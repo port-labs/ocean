@@ -109,36 +109,128 @@ class TestMemberWebhookProcessor:
     async def test_handle_bot_member_with_exclude(
         self, processor: MemberWebhookProcessor
     ) -> None:
-        """Test handling a bot member when include_bot_members is False"""
+        """Bot detection uses is_bot_member which checks both the `bot` field and username pattern."""
         resource_config = MagicMock()
         resource_config.selector = MagicMock()
         resource_config.selector.include_bot_members = False
+        resource_config.selector.include_inherited_members = False
 
         bot_payload = {
             "event_name": "user_add_to_group",
             "group_id": 10,
             "user_id": 123,
-            "user_username": "botuser",  # Changed to "botuser" to trigger the bot check
+            "user_username": "project_12345_bot_abc123",
         }
 
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.get_group_member = AsyncMock(
             return_value={
                 "id": 123,
-                "username": "botuser",
+                "username": "project_12345_bot_abc123",
                 "name": "Bot User",
+                "bot": True,
             }
         )
 
         result = await processor.handle_event(bot_payload, resource_config)
 
-        # The implementation should not call get_group_member for bot users when include_bot_members is False
         processor._gitlab_webhook_client.get_group_member.assert_not_called()
-
-        # The implementation should return empty results and include the payload in deleted_raw_results
         assert not result.updated_raw_results
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == bot_payload
+
+    async def test_handle_bot_member_no_bot_field_username_pattern(
+        self, processor: MemberWebhookProcessor
+    ) -> None:
+        """When the members API omits the `bot` field (None), the username pattern is used as fallback."""
+        resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_bot_members = False
+        resource_config.selector.include_inherited_members = False
+
+        bot_payload = {
+            "event_name": "user_add_to_group",
+            "group_id": 10,
+            "user_id": 789,
+            "user_username": "project_80799742_bot_b13ca8f587d7496b21a2e969f20cae21",
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_group_member = AsyncMock(
+            return_value={
+                "id": 789,
+                "username": "project_80799742_bot_b13ca8f587d7496b21a2e969f20cae21",
+                "name": "Bot User",
+                "bot": None,  # Members API does not return the bot field
+            }
+        )
+
+        result = await processor.handle_event(bot_payload, resource_config)
+
+        processor._gitlab_webhook_client.get_group_member.assert_not_called()
+        assert not result.updated_raw_results
+        assert len(result.deleted_raw_results) == 1
+        assert result.deleted_raw_results[0] == bot_payload
+
+    async def test_excludes_bot_via_user_bot_payload_without_api(
+        self, processor: MemberWebhookProcessor
+    ) -> None:
+        """When GitLab sends user_bot=True, exclude without fetching the member API."""
+        resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_bot_members = False
+        resource_config.selector.include_inherited_members = False
+
+        payload = {
+            "event_name": "user_add_to_group",
+            "group_id": 10,
+            "user_id": 999,
+            "user_username": "some-service-account",
+            "user_bot": True,
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_group_member = AsyncMock()
+
+        result = await processor.handle_event(payload, resource_config)
+
+        processor._gitlab_webhook_client.get_group_member.assert_not_called()
+        assert not result.updated_raw_results
+        assert result.deleted_raw_results == [payload]
+
+    async def test_handle_bot_member_username_not_filtered(
+        self, processor: MemberWebhookProcessor
+    ) -> None:
+        """A user with 'bot' in their name but bot=False is NOT excluded."""
+        resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_bot_members = False
+        resource_config.selector.include_inherited_members = False
+
+        ambiguous_payload = {
+            "event_name": "user_add_to_group",
+            "group_id": 10,
+            "user_id": 456,
+            "user_username": "botner-elay",
+        }
+        expected_member = {
+            "id": 456,
+            "username": "botner-elay",
+            "name": "Botner Elay",
+            "bot": False,
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_group_member = AsyncMock(
+            return_value=expected_member
+        )
+
+        result = await processor.handle_event(ambiguous_payload, resource_config)
+
+        # Should NOT be excluded — bot field is False
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results[0] == expected_member
+        assert not result.deleted_raw_results
 
     async def test_should_process_event(
         self, processor: MemberWebhookProcessor

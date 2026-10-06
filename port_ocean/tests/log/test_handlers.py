@@ -1,9 +1,16 @@
+import sys
+from collections import namedtuple
+
 from port_ocean.log.handlers import _serialize_record
+from port_ocean.log.logger_setup import _extract_traceback
 from loguru import logger
 from logging import LogRecord
 from queue import Queue
 from logging.handlers import QueueHandler
 from typing import Callable, Any
+
+# Matches the shape of loguru's internal RecordException namedtuple
+_RecordException = namedtuple("_RecordException", ["type", "value", "traceback"])
 
 
 log_message = "This is a test log message."
@@ -47,6 +54,44 @@ def test_serialize_record_exc_info_group_exception() -> None:
     serialized_record = _serialize_record(record)
     exc_info = assert_extra(serialized_record.get("extra", {}))
     assert exception_message in exc_info
+
+
+def test_extract_traceback_with_real_exception() -> None:
+    """When a real exception is caught, traceback should be extracted into extra."""
+    try:
+        raise ValueError("real error")
+    except ValueError:
+        exc_type, exc_value, exc_tb = sys.exc_info()
+
+    record: dict[str, Any] = {
+        "extra": {},
+        "exception": _RecordException(exc_type, exc_value, exc_tb),
+    }
+    _extract_traceback(record)  # type: ignore[arg-type]
+
+    assert "traceback" in record["extra"]
+    assert "ValueError" in record["extra"]["traceback"]
+    assert "real error" in record["extra"]["traceback"]
+
+
+def test_extract_traceback_without_traceback() -> None:
+    """Manually created exception (no traceback) should not set extra['traceback']."""
+    exc_value = ValueError("manual error")
+    record: dict[str, Any] = {
+        "extra": {},
+        "exception": _RecordException(ValueError, exc_value, None),
+    }
+    _extract_traceback(record)  # type: ignore[arg-type]
+
+    assert "traceback" not in record["extra"]
+
+
+def test_extract_traceback_no_exception() -> None:
+    """When there is no exception, extra should remain unchanged."""
+    record: dict[str, Any] = {"extra": {}, "exception": None}
+    _extract_traceback(record)  # type: ignore[arg-type]
+
+    assert "traceback" not in record["extra"]
 
 
 def assert_extra(extra: dict[str, Any]) -> str:
