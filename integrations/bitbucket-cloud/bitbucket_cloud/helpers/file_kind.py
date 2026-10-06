@@ -24,14 +24,12 @@ GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
 COMMIT_FILE_TYPE = "commit_file"
 SKIPPED_REPOSITORY_EXAMPLES = 5
 
-# Bitbucket publishes hourly quotas and no concurrency limit; the quotas are enforced
-# by RollingWindowLimiter in helpers/utils.py. 10 matches github/main.py:151.
 MAX_CONCURRENT_REPOSITORIES = 10
 MAX_CONCURRENT_FILE_FETCHES = 20
 
-FILE_BATCH_SIZE = 100  # client.PAGE_SIZE: one listing page, one upsert
+FILE_BATCH_SIZE = 100
 
-MAX_FILE_SIZE = 1024 * 1024  # ours; from github file_exporter/utils.py:40
+MAX_FILE_SIZE = 1024 * 1024
 
 # Defaults to the root's immediate entries. 10000 measured accepted 2026-10-03.
 MAX_LISTING_DEPTH = 10000
