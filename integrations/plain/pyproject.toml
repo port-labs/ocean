@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "plain"
-version = "0.1.0-beta"
+version = "0.1.0"
 description = "Plain integration for Port Ocean"
 authors = ["Haim Natan <haimn@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = { version = "^0.52.1", extras = ["cli"] }
+port_ocean = { version = "^0.53.3", extras = ["cli"] }
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
